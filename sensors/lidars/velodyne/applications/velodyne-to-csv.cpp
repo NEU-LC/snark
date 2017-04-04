@@ -239,6 +239,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        bool verbose=options.exists("--verbose,-v");
         if( options.exists( "--output-fields" ) ) {std::cout << comma::join( comma::csv::names< snark::velodyne_point >(), ',' ) << std::endl; return 0; }
         std::string fields = fields_( options.value< std::string >( "--fields", "" ) );
         comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
@@ -305,8 +306,11 @@ int main( int ac, char** av )
             ostream.write( p );
         }
         //Profilerstop(); }
-        if( is_shutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; }
-        else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; }
+        if(verbose)
+        {
+            if( is_shutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; }
+            else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; }
+        }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "velodyne-to-csv: " << ex.what() << std::endl; }

@@ -308,8 +308,11 @@ int main( int ac, char** av )
         #ifdef PROFILE
         ProfilerStop(); }
         #endif
-        if( is_shutdown ) { std::cerr << "points-to-partitions: caught signal" << std::endl; }
-        else { std::cerr << "points-to-partitions: end of stream" << std::endl; }
+        if(verbose)
+        {
+            if( is_shutdown ) { std::cerr << "points-to-partitions: caught signal" << std::endl; }
+            else { std::cerr << "points-to-partitions: end of stream" << std::endl; }
+        }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "points-to-partitions: " << ex.what() << std::endl; }
