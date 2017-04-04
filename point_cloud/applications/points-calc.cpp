@@ -176,7 +176,8 @@ static void usage( bool more = false )
     std::cerr << "                                                       extremum record, discard points with no extremum nearby" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields: x,y,z,scalar,id; default: x,y,z,id" << std::endl;
+    std::cerr << "        input fields: x,y,z,scalar,id,mask; default: x,y,z,id" << std::endl;
+    std::cerr << "            if mask field is specified it only considers points with a mask value of 1, ignoring points with mask value of 0"<< std::endl;
     std::cerr << "        output fields: <input line>,reference_id,distance, where reference_id is nearest min or max id" << std::endl;
     std::cerr << "        example: get local height maxima in the radius of 5 metres:" << std::endl;
     std::cerr << "            cat xyz.csv | points-calc local-max --fields=x,y,scalar --radius=5" << std::endl;
@@ -514,9 +515,10 @@ struct point
     double scalar;
     comma::uint32 id;
     comma::uint32 block;
+    uint8_t mask;
     
-    point() : coordinates( 0, 0, 0 ), scalar( 0 ), id( 0 ), block( 0 ) {}
-    point( const Eigen::Vector3d& coordinates, double scalar ) : coordinates( coordinates ), scalar( scalar ) {}
+    point() : coordinates( 0, 0, 0 ), scalar( 0 ), id( 0 ), block( 0 ), mask(1) {}
+    point( const Eigen::Vector3d& coordinates, double scalar ) : coordinates( coordinates ), scalar( scalar ), id( 0 ), block( 0 ), mask(1) {}
 };
 
 struct output // quick and dirty
@@ -607,7 +609,10 @@ static void process_nearest_extremum_block( std::deque< local_operation::record 
     typedef snark::voxel_map< voxel_t, 3 > grid_t;
 
     grid_t grid( extents.min(), resolution );
-    for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] ); }
+    for( std::size_t i = 0; i < records.size(); ++i )
+    { 
+        if(records[i].point.mask ) { ( grid.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] ); }
+    }
     for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
     {
         grid_t::index_type i;
@@ -689,6 +694,7 @@ template <> struct traits< local_operation::point >
         v.apply( "scalar", t.scalar );
         v.apply( "id", t.id );
         v.apply( "block", t.block );
+        v.apply( "mask", t.mask );
     }
     
     template< typename K, typename V > static void visit( const K&, local_operation::point& t, V& v )
@@ -697,6 +703,7 @@ template <> struct traits< local_operation::point >
         v.apply( "scalar", t.scalar );
         v.apply( "id", t.id );
         v.apply( "block", t.block );
+        v.apply( "mask", t.mask );
     }
 };
 
