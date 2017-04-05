@@ -46,6 +46,7 @@
 #include "points-calc/plane_intersection_with_trajectory.h"
 #include "points-calc/project.h"
 #include "points-calc/vector_calc.h"
+#include "points-calc/remove_outliers.h"
 
 static comma::csv::options csv;
 static bool verbose;
@@ -139,7 +140,7 @@ static void usage( bool more = false )
     std::cerr << "                   unless --no-antialiasing defined, will not remove points" << std::endl;
     std::cerr << "                   on the border of a denser cloud" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "        input fields: " << comma::join( comma::csv::names< remove_outliers::point >( false ), ',' ) << "; default: x,y,z"<<std::endl;
     std::cerr << std::endl;
     std::cerr << "        output: input line with appended 0 for outliers, 1 for non-outliers (unless --discard is specified)" << std::endl;
     std::cerr << "                binary output: flag as unsigned byte (ub)" << std::endl;
@@ -176,8 +177,8 @@ static void usage( bool more = false )
     std::cerr << "                                                       extremum record, discard points with no extremum nearby" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields: x,y,z,scalar,id,mask; default: x,y,z,id" << std::endl;
-    std::cerr << "            if mask field is specified it only considers points with a mask value of 1, ignoring points with mask value of 0"<< std::endl;
+    std::cerr << "        input fields: x,y,z,scalar,id; default: x,y,z,id" << std::endl;
+//     std::cerr << "            if mask field is specified it only considers points with a mask value of 1, ignoring points with mask value of 0"<< std::endl;
     std::cerr << "        output fields: <input line>,reference_id,distance, where reference_id is nearest min or max id" << std::endl;
     std::cerr << "        example: get local height maxima in the radius of 5 metres:" << std::endl;
     std::cerr << "            cat xyz.csv | points-calc local-max --fields=x,y,scalar --radius=5" << std::endl;
@@ -515,10 +516,10 @@ struct point
     double scalar;
     comma::uint32 id;
     comma::uint32 block;
-    uint8_t mask;
+//     uint8_t mask;
     
-    point() : coordinates( 0, 0, 0 ), scalar( 0 ), id( 0 ), block( 0 ), mask(1) {}
-    point( const Eigen::Vector3d& coordinates, double scalar ) : coordinates( coordinates ), scalar( scalar ), id( 0 ), block( 0 ), mask(1) {}
+    point() : coordinates( 0, 0, 0 ), scalar( 0 ), id( 0 ), block( 0 ) {}
+    point( const Eigen::Vector3d& coordinates, double scalar ) : coordinates( coordinates ), scalar( scalar ), id( 0 ), block( 0 ) {}
 };
 
 struct output // quick and dirty
@@ -611,7 +612,8 @@ static void process_nearest_extremum_block( std::deque< local_operation::record 
     grid_t grid( extents.min(), resolution );
     for( std::size_t i = 0; i < records.size(); ++i )
     { 
-        if(records[i].point.mask ) { ( grid.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] ); }
+//         if(records[i].point.mask )
+        ( grid.touch_at( records[i].point.coordinates ) )->second.push_back( &records[i] );
     }
     for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
     {
@@ -694,7 +696,7 @@ template <> struct traits< local_operation::point >
         v.apply( "scalar", t.scalar );
         v.apply( "id", t.id );
         v.apply( "block", t.block );
-        v.apply( "mask", t.mask );
+//         v.apply( "mask", t.mask );
     }
     
     template< typename K, typename V > static void visit( const K&, local_operation::point& t, V& v )
@@ -703,7 +705,7 @@ template <> struct traits< local_operation::point >
         v.apply( "scalar", t.scalar );
         v.apply( "id", t.id );
         v.apply( "block", t.block );
-        v.apply( "mask", t.mask );
+//         v.apply( "mask", t.mask );
     }
 };
 
@@ -717,20 +719,6 @@ template <> struct traits< local_operation::output >
 };
 
 } } // namespace comma { namespace visiting {
-
-namespace remove_outliers {
-
-struct record
-{
-    Eigen::Vector3d point;
-    std::string line;
-    bool rejected;
-    
-    record() : rejected( false ) {}
-    record( const Eigen::Vector3d& p, const std::string& line ) : point( p ), line( line ), rejected( false ) {}
-};
-
-} // namespace remove_outliers {
 
 template < typename Traits > static int run( const comma::command_line_options& options )
 {
@@ -1083,19 +1071,32 @@ int main( int ac, char** av )
         }
         if( operation == "find-outliers" )
         {
+            if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+            csv.full_xpath = false;
             unsigned int size = options.value< unsigned int >( "--min-number-of-points-per-voxel,--size" );
             double r = options.value< double >( "--resolution" );
             Eigen::Vector3d resolution( r, r, r );
             bool no_antialiasing = options.exists( "--no-antialiasing" );            
             bool discard=options.exists("--discard");
-            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
-            std::deque< remove_outliers::record > records;
-            snark::math::closed_interval< double, 3 > extents;
+            comma::csv::input_stream< remove_outliers::point > istream( std::cin, csv );
+            remove_outliers::app app(csv,verbose);
+            unsigned block=0;
+            #ifdef WIN32
+            _setmode( _fileno( stdout ), _O_BINARY );
+            #endif
             if( verbose ) { std::cerr << "points-calc: reading input points..." << std::endl; }
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
-                const Eigen::Vector3d* p = istream.read();
+                const remove_outliers::point* p = istream.read();
+                if ( !p || block != p->block )
+                {
+                    app.process(resolution,no_antialiasing,size);
+                    app.write_output(discard);
+                    app.extents=snark::math::closed_interval< double, 3 >();
+                    app.records.clear();
+                }
                 if( !p ) { break; }
+                block = p->block;
                 std::string line;
                 if( csv.binary() ) // quick and dirty
                 {
@@ -1106,59 +1107,8 @@ int main( int ac, char** av )
                 {
                     line = comma::join( istream.ascii().last(), csv.delimiter );
                 }
-                records.push_back( remove_outliers::record( *p, line ) );
-                extents.set_hull( *p );
-            }
-            if( verbose ) { std::cerr << "points-calc: loading " << records.size() << " points into grid..." << std::endl; }
-            typedef std::vector< remove_outliers::record* > voxel_t; // todo: is vector a good container? use deque
-            typedef snark::voxel_map< voxel_t, 3 > grid_t;
-            grid_t grid( extents.min(), resolution );
-            for( std::size_t i = 0; i < records.size(); ++i ) { ( grid.touch_at( records[i].point ) )->second.push_back( &records[i] ); }
-            if( verbose ) { std::cerr << "points-calc: removing outliers..." << std::endl; }
-            for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
-            {
-                bool rejected = true;
-                if( no_antialiasing )
-                {
-                    rejected = it->second.size() < size;
-                }
-                else
-                {
-                    grid_t::index_type i;
-                    for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2 && rejected; ++i[0] )
-                    {
-                        for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2 && rejected; ++i[1] )
-                        {
-                            for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2 && rejected; ++i[2] )
-                            {
-                                grid_t::iterator git = grid.find( i );
-                                rejected = git == grid.end() || git->second.size() < size;
-                            }
-                        }
-                    }
-                }
-                if( rejected ) { for( std::size_t i = 0; i < it->second.size(); ++i ) { it->second[i]->rejected = true; } }
-            }
-            #ifdef WIN32
-            _setmode( _fileno( stdout ), _O_BINARY );
-            #endif
-            if( verbose ) { std::cerr << "points-calc: outputting..." << std::endl; }
-            std::string endl = csv.binary() ? "" : "\n";
-            std::string delimiter = csv.binary() ? "" : std::string( 1, csv.delimiter );
-            for( std::size_t i = 0; i < records.size(); ++i )
-            {
-                char valid = records[i].rejected ? 0 : 1;
-                if(!discard || valid)
-                {
-                    std::cout.write( &records[i].line[0], records[i].line.size() );
-                    if(!discard)
-                    {
-                        std::cout.write( &delimiter[0], delimiter.size() );
-                        std::cout.write( &valid, 1 );
-                    }
-                    std::cout.write( &endl[0], endl.size() );
-                    if( csv.flush ) { std::cout.flush(); }
-                }
+                app.records.push_back( remove_outliers::record( *p, line ) );
+                app.extents.set_hull( p->coordinates );
             }
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
