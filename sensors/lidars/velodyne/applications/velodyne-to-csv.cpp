@@ -95,6 +95,7 @@ static void usage( bool )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
+    std::cerr << "    --output-format,--format: output full binary format and exit (see examples)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "input stream options" << std::endl;
     std::cerr << "    default : read velodyne data directly from stdin in the format: <timestamp><packet>" << std::endl;
@@ -115,7 +116,6 @@ static void usage( bool )
     std::cerr << "output options:" << std::endl;
     std::cerr << "    --binary,-b[=<format>]: if present, output in binary equivalent of csv" << std::endl;
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
-    std::cerr << "    --format: output full binary format and exit (see examples)" << std::endl;
     std::cerr << "    --min-range=<value>: do not output points closer than <value>; default 0" << std::endl;
     std::cerr << "    --max-range=<value>: do not output points farther away than <value>; default output all points" << std::endl;
     std::cerr << "    --output-invalid-points: output also invalid laser returns" << std::endl;
@@ -148,7 +148,7 @@ static void usage( bool )
     std::cerr << "    (the output could be directed straight to view-points," << std::endl;
     std::cerr << "    just the command line would be longer)" << std::endl;
     std::cerr << "    raw/*.bin | velodyne-to-csv --db db.xml --binary | > velodyne.bin" << std::endl;
-    std::cerr << "    cat velodyne.bin | view-points --fields \",id,,,,,x,y,z\" --binary $(velodyne-to-csv --format)" << std::endl;
+    std::cerr << "    cat velodyne.bin | view-points --fields \",id,,,,,x,y,z\" --binary $(velodyne-to-csv --output-format)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "copyright (c) 2011 Australian Centre for Field Robotics" << std::endl;
     std::cerr << "                   http://www.acfr.usyd.edu.au/" << std::endl;
@@ -239,10 +239,11 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        bool verbose=options.exists("--verbose,-v");
         if( options.exists( "--output-fields" ) ) {std::cout << comma::join( comma::csv::names< snark::velodyne_point >(), ',' ) << std::endl; return 0; }
         std::string fields = fields_( options.value< std::string >( "--fields", "" ) );
         comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
-        if( options.exists( "--format" ) ) { std::cout << format.string(); exit( 0 ); }
+        if( options.exists( "--output-format,--format" ) ) { std::cout << format.string()<<std::endl; exit( 0 ); }
         snark::velodyne::db db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) );
         bool outputInvalidpoints = options.exists( "--output-invalid-points" );
         boost::optional< std::size_t > from;
@@ -305,8 +306,11 @@ int main( int ac, char** av )
             ostream.write( p );
         }
         //Profilerstop(); }
-        if( is_shutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; }
-        else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; }
+        if(verbose)
+        {
+            if( is_shutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; }
+            else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; }
+        }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "velodyne-to-csv: " << ex.what() << std::endl; }

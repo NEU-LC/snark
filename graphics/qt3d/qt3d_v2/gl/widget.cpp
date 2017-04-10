@@ -150,7 +150,7 @@ void widget::paintGL()
     painter.beginNativePainting();
 
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    glEnable( GL_DEPTH_TEST );
+//     glEnable( GL_DEPTH_TEST );
     glEnable( GL_BLEND );
 //     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE); //use gl_PointSize from shader
 //     glHint(GL_POINT_SMOOTH, GL_NICEST);
@@ -167,7 +167,7 @@ void widget::paintGL()
 
     for(auto& i : shapes) { i->paint(); }
 
-    glDisable( GL_DEPTH_TEST );
+//     glDisable( GL_DEPTH_TEST );
 
     program_->release();
 
