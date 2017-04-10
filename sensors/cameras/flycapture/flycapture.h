@@ -63,7 +63,7 @@ struct moment {
             case(before) : return "before";
             case(after)  : return "after";
             case(average): return "average";
-            case(camera): return "camera";
+            case(camera) : return "camera";
             case(none)   : return "none";
         }
     }
