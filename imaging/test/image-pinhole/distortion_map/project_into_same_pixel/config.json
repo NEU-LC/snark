@@ -1,0 +1,12 @@
+{
+    "focal_length": "1",
+    "image_size":
+    {
+        "x": "4",
+        "y": "4"
+    },
+    "distortion":
+    {
+        "map": "map.bin"
+    }
+}
