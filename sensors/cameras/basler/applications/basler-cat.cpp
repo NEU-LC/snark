@@ -119,6 +119,16 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --offset-x=[<pixels>]        offset in pixels in the line; todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --offset-y=[<pixels>]        offset in lines in the frame; todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --width=[<pixels>]           line width in pixels; default: max";
+    std::cerr << "\n    --reverse-x                  horizontal mirror image";
+    std::cerr << "\n    --reverse-y                  vertical mirror image";
+    std::cerr << "\n    --binning-horizontal=<pixels>[,<mode>]";
+    std::cerr << "\n                                 sets the number of adjacent horizontal pixels to bin";
+    std::cerr << "\n                                 <mode>: sum, average (default: sum)";
+    std::cerr << "\n                                 ROI will refer to binned columns";
+    std::cerr << "\n    --binning-vertical=<pixels>[,<mode>]";
+    std::cerr << "\n                                 sets the number of adjacent vertical pixels to bin";
+    std::cerr << "\n                                 <mode>: sum, average (default: sum)";
+    std::cerr << "\n                                 ROI will refer to binned rows";
     std::cerr << "\n";
     std::cerr << "\ncamera settings options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
@@ -848,6 +858,18 @@ static double get_exposure_time( const Pylon::CBaslerUsbCamera& camera ) { retur
 static double get_gain( const Pylon::CBaslerUsbCamera& camera ) { return camera.Gain(); }
 static double get_frame_rate( const Pylon::CBaslerUsbCamera& camera ) { return camera.ResultingFrameRate(); }
 
+template< typename T, typename P > static void set_binning_horizontal_mode( T& camera, P mode ) { camera.BinningHorizontalMode = mode; }
+static void set_binning_horizontal_mode_sum( Pylon::CBaslerGigECamera& camera ) { set_binning_horizontal_mode( camera, Basler_GigECameraParams::BinningHorizontalMode_Sum ); }
+static void set_binning_horizontal_mode_average( Pylon::CBaslerGigECamera& camera ) { set_binning_horizontal_mode( camera, Basler_GigECameraParams::BinningHorizontalMode_Average ); }
+static void set_binning_horizontal_mode_sum( Pylon::CBaslerUsbCamera& camera ) { set_binning_horizontal_mode( camera, Basler_UsbCameraParams::BinningHorizontalMode_Sum ); }
+static void set_binning_horizontal_mode_average( Pylon::CBaslerUsbCamera& camera ) { set_binning_horizontal_mode( camera, Basler_UsbCameraParams::BinningHorizontalMode_Average ); }
+
+template< typename T, typename P > static void set_binning_vertical_mode( T& camera, P mode ) { camera.BinningVerticalMode = mode; }
+static void set_binning_vertical_mode_sum( Pylon::CBaslerGigECamera& camera ) { set_binning_vertical_mode( camera, Basler_GigECameraParams::BinningVerticalMode_Sum ); }
+static void set_binning_vertical_mode_average( Pylon::CBaslerGigECamera& camera ) { set_binning_vertical_mode( camera, Basler_GigECameraParams::BinningVerticalMode_Average ); }
+static void set_binning_vertical_mode_sum( Pylon::CBaslerUsbCamera& camera ) { set_binning_vertical_mode( camera, Basler_UsbCameraParams::BinningVerticalMode_Sum ); }
+static void set_binning_vertical_mode_average( Pylon::CBaslerUsbCamera& camera ) { set_binning_vertical_mode( camera, Basler_UsbCameraParams::BinningVerticalMode_Average ); }
+
 template< typename T >
 static void show_config( const T& camera, const comma::command_line_options& options )
 {
@@ -968,6 +990,42 @@ static int run( T& camera, const comma::command_line_options& options )
     comma::verbose << "set width,height to " << width << "," << height << std::endl;
 
     if( options.exists( "--packet-size" )) { set_packet_size( camera, options.value< unsigned int >( "--packet-size" )); }
+
+    if( options.exists( "--binning-horizontal" ) )
+    {
+        std::string s = options.value< std::string >( "--binning-horizontal" );
+        std::vector< std::string > v = comma::split( s, ',' );
+        camera.BinningHorizontal = boost::lexical_cast< unsigned int >( v[0] );
+        for( unsigned int i = 1 ; i < v.size(); ++i )
+        {
+            if( v[i] == "sum" ) { set_binning_horizontal_mode_sum( camera ); }
+            else if( v[i] == "average" ) { set_binning_horizontal_mode_average( camera ); }
+            else { std::cerr << "basler-cat: invalid mode for --binning-horizontal: " << v[i] << std::endl; return 1; }
+        }
+    }
+    else
+    {
+        camera.BinningHorizontal = 1;
+    }
+    if( options.exists( "--binning-vertical" ) )
+    {
+        std::string s = options.value< std::string >( "--binning-vertical" );
+        std::vector< std::string > v = comma::split( s, ',' );
+        camera.BinningVertical = boost::lexical_cast< unsigned int >( v[0] );
+        for( unsigned int i = 1 ; i < v.size(); ++i )
+        {
+            if( v[i] == "sum" ) { set_binning_vertical_mode_sum( camera ); }
+            else if( v[i] == "average" ) { set_binning_vertical_mode_average( camera ); }
+            else { std::cerr << "basler-cat: invalid mode for --binning-vertical: " << v[i] << std::endl; return 1; }
+        }
+    }
+    else
+    {
+        camera.BinningVertical = 1;
+    }
+
+    if( options.exists( "--reverse-x" ) ) { camera.ReverseX = true; }
+    if( options.exists( "--reverse-y" ) ) { camera.ReverseY = true; }
     
     // todo: giving up... the commented code throws, but failure to stop acquisition, if active
     //       seems to lead to the following scenario:
