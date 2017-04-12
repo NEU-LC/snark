@@ -163,6 +163,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 << "duration " << pStrobe.duration << std::endl;
         }
 
+        // move the after/before logic for flycapture cat here
         std::pair< boost::posix_time::ptime, cv::Mat > read()
         {
             cv::Mat image_;
