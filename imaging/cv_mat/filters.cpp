@@ -2858,8 +2858,8 @@ static std::string usage_impl_()
     oss << "        overlay=<image_file>[,x,y]: overlay image_file on top of current stream at optional x,y location; overlay image should have alpha channel" << std::endl;
     oss << "        pack=<bits>,<format>: pack pixel data in specified bits, example: pack=12,cd,hb,fg" << std::endl;
     oss << "            <bits>: number of bits, currently only 12-bit packing from 16-bit is supported (pack 2 pixels into 3 bytes)" << std::endl;
-    oss << "            <format>: output pixel formats in quadbits named a,b,c,d,e,f,g,h" << std::endl;
-    oss << "                where 'a' is most significant quadbit, 'd' is least significant quadbit, 'e' is most significant quadbit, 'h' is least significant quadbit" << std::endl;
+    oss << "            <format>: output pixel formats in quadbits" << std::endl;
+    oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
     oss << "                             in format <width>,<height>,<interpolation> corresponding numeric values can be used: " << cv::INTER_NEAREST << ", " << cv::INTER_LINEAR << ", " << cv::INTER_AREA << ", " << cv::INTER_CUBIC << ", " << cv::INTER_LANCZOS4 << std::endl;
@@ -2886,9 +2886,8 @@ static std::string usage_impl_()
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
     oss << "        unpack=<bits>,<format>: unpack compressed pixel formats, example: unpack=12,cba0,fed0" << std::endl;
     oss << "            <bits>: number of bits, currently only 12 is supported" << std::endl;
-    oss << "            <format>: output pixels format in base 4 notation, containting letters 'a' to 'f' and '0'" << std::endl;
-    oss << "                where 'b' is 4-bit LSB of byte 0, 'a' is 4-bit MSB of byte 0, 'd' is 4-bit LSB of byte 1, etc and '0' means 4-bit zero" << std::endl;
-    oss << "                ATTENTION: base 4 notation looks swapped compared to byte order (because common PC architecture is little endian)" << std::endl;
+    oss << "            <format>: output pixel formats in quadbits" << std::endl;
+    oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,abc0,efd0" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
