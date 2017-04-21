@@ -59,6 +59,9 @@ void usage(bool detail)
     std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
     std::cerr << "    --topic=<topic>: name of the topic to subscribe to" << std::endl;
     std::cerr << "    --queue-size=[<n>]: ROS Subscriber queue size, default 1" << std::endl;
+    std::cerr << "field names and format are extracted from the first message of the subscribed topic; following options wait until they receive a message" << std::endl;
+    std::cerr << "    --output-fields; print field names and exit" << std::endl;
+    std::cerr << "    --output-format; print format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    csv options --fields must be specified" << std::endl;
     std::cerr << "    either --format or --binary option must be specified" << std::endl;
@@ -105,12 +108,16 @@ public:
         return rmap_data_type;
     }
     /// returns list of field names from the message
-    static std::vector<std::string> msg_fields_names(const sensor_msgs::PointCloud2::_fields_type& msg_fields)
+    static std::string msg_fields_names(const sensor_msgs::PointCloud2::_fields_type& msg_fields)
     {
-        std::vector<std::string> v;
+        std::string s;
+        std::string delimiter;
         for(const auto& i : msg_fields)
-            v.push_back(i.name);
-        return v;
+        {
+            s+=delimiter+i.name;
+            if(delimiter.empty()) { delimiter=","; }
+        }
+        return s;
     }
     /// returns csv format elements from the message
     static std::vector<comma::csv::format::element> msg_fields_format_elements(const sensor_msgs::PointCloud2::_fields_type& msg_fields)
@@ -191,6 +198,8 @@ struct points
     comma::csv::format format;
     bool ascii;
     comma::csv::options csv;
+    bool output_fields;
+    bool output_format;
     points(const comma::command_line_options& options) : csv(options)
     {
         if(!csv.binary())
@@ -199,11 +208,25 @@ struct points
             ascii=true;
             format=comma::csv::format(comma::csv::format(options.value<std::string>("--format")).expanded_string());
         }
+        output_fields=options.exists("--output-fields");
+        output_format=options.exists("--output-format");
     }
     void process(const sensor_msgs::PointCloud2ConstPtr& input)
     {
         try
         {
+            if(output_fields)
+            { 
+                std::cout<<snark::ros::point_cloud::msg_fields_names(input->fields)<<std::endl;
+                ros::shutdown();
+                return;
+            }
+            if(output_format)
+            { 
+                std::cout<<snark::ros::point_cloud::msg_fields_format(input->fields)<<std::endl;
+                ros::shutdown();
+                return;
+            }
             unsigned count=input->width*input->height;
             unsigned record_size=input->point_step;
             comma::verbose<<record_size<<"; "<<input->header.seq<<"; "<<input->header.stamp<<std::endl;
