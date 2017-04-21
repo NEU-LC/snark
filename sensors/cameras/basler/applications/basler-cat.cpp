@@ -119,6 +119,16 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --offset-x=[<pixels>]        offset in pixels in the line; todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --offset-y=[<pixels>]        offset in lines in the frame; todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --width=[<pixels>]           line width in pixels; default: max";
+    std::cerr << "\n    --reverse-x                  horizontal mirror image";
+    std::cerr << "\n    --reverse-y                  vertical mirror image";
+    std::cerr << "\n    --binning-horizontal=<pixels>[,<mode>]";
+    std::cerr << "\n                                 sets the number of adjacent horizontal pixels to bin";
+    std::cerr << "\n                                 <mode>: sum, average (default: sum)";
+    std::cerr << "\n                                 ROI will refer to binned columns";
+    std::cerr << "\n    --binning-vertical=<pixels>[,<mode>]";
+    std::cerr << "\n                                 sets the number of adjacent vertical pixels to bin";
+    std::cerr << "\n                                 <mode>: sum, average (default: sum)";
+    std::cerr << "\n                                 ROI will refer to binned rows";
     std::cerr << "\n";
     std::cerr << "\ncamera settings options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
@@ -134,24 +144,12 @@ static void usage( bool verbose = false )
     std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
     std::cerr << "\nthe USB address. Detected cameras along with their addresses and serial numbers";
     std::cerr << "\nare shown by --list-cameras --verbose.";
-    std::cerr << "\n";
-    std::cerr << "\nNote that most parameter settings (exposure, gain, etc) are sticky.";
-    std::cerr << "\nThey will persist from one run to the next.";
     if( verbose )
     {
         std::cerr << "\n";
         std::cerr << snark::cv_mat::filters::usage();
         std::cerr << snark::cv_mat::serialization::options::type_usage();
     }
-    std::cerr << "\nNote: there is a glitch or a subtle feature in basler line camera:";
-    std::cerr << "\n    - power-cycle camera";
-    std::cerr << "\n    - view colour images: it works";
-    std::cerr << "\n    - view grey-scale images: it works";
-    std::cerr << "\n    - view colour images: it still displays grey-scale";
-    std::cerr << "\n";
-    std::cerr << "\n    Even in their native viewer you need to set colour image repeatedly and";
-    std::cerr << "\n    with pure luck it works, but we have not managed to do it in software.";
-    std::cerr << "\n    The remedy: power-cycle the camera";
     std::cerr << "\n";
     std::cerr << "\nExample:";
     std::cerr << "\n    $ basler-cat \"resize=0.5;timestamp;view;null\"";
@@ -467,6 +465,15 @@ template <> struct pixel_format< Pylon::CBaslerGigECamera > // todo: support mor
         }
     }
 };
+
+template< typename T, typename P >
+static void load_default_settings( T& camera, P user_set_selector_default )
+{
+    camera.UserSetSelector.SetValue( user_set_selector_default );
+    camera.UserSetLoad.Execute();
+}
+static void load_default_settings( Pylon::CBaslerGigECamera& camera ) { load_default_settings( camera, Basler_GigECameraParams::UserSetSelector_Default ); }
+static void load_default_settings( Pylon::CBaslerUsbCamera& camera ) { load_default_settings( camera, Basler_UsbCameraParams::UserSetSelector_Default ); }
 
 template < typename T, typename P >
 static void set_pixel_format( T& camera, P type )
@@ -848,6 +855,18 @@ static double get_exposure_time( const Pylon::CBaslerUsbCamera& camera ) { retur
 static double get_gain( const Pylon::CBaslerUsbCamera& camera ) { return camera.Gain(); }
 static double get_frame_rate( const Pylon::CBaslerUsbCamera& camera ) { return camera.ResultingFrameRate(); }
 
+template< typename T, typename P > static void set_binning_horizontal_mode( T& camera, P mode ) { camera.BinningHorizontalMode = mode; }
+static void set_binning_horizontal_mode_sum( Pylon::CBaslerGigECamera& camera ) { set_binning_horizontal_mode( camera, Basler_GigECameraParams::BinningHorizontalMode_Sum ); }
+static void set_binning_horizontal_mode_average( Pylon::CBaslerGigECamera& camera ) { set_binning_horizontal_mode( camera, Basler_GigECameraParams::BinningHorizontalMode_Average ); }
+static void set_binning_horizontal_mode_sum( Pylon::CBaslerUsbCamera& camera ) { set_binning_horizontal_mode( camera, Basler_UsbCameraParams::BinningHorizontalMode_Sum ); }
+static void set_binning_horizontal_mode_average( Pylon::CBaslerUsbCamera& camera ) { set_binning_horizontal_mode( camera, Basler_UsbCameraParams::BinningHorizontalMode_Average ); }
+
+template< typename T, typename P > static void set_binning_vertical_mode( T& camera, P mode ) { camera.BinningVerticalMode = mode; }
+static void set_binning_vertical_mode_sum( Pylon::CBaslerGigECamera& camera ) { set_binning_vertical_mode( camera, Basler_GigECameraParams::BinningVerticalMode_Sum ); }
+static void set_binning_vertical_mode_average( Pylon::CBaslerGigECamera& camera ) { set_binning_vertical_mode( camera, Basler_GigECameraParams::BinningVerticalMode_Average ); }
+static void set_binning_vertical_mode_sum( Pylon::CBaslerUsbCamera& camera ) { set_binning_vertical_mode( camera, Basler_UsbCameraParams::BinningVerticalMode_Sum ); }
+static void set_binning_vertical_mode_average( Pylon::CBaslerUsbCamera& camera ) { set_binning_vertical_mode( camera, Basler_UsbCameraParams::BinningVerticalMode_Average ); }
+
 template< typename T >
 static void show_config( const T& camera, const comma::command_line_options& options )
 {
@@ -939,6 +958,7 @@ static int run( T& camera, const comma::command_line_options& options )
     comma::verbose << "opening camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << "..." << std::endl;
     camera.Open();
     comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;    
+    load_default_settings( camera );
     set_pixel_format( camera, options );
     cv_mat_header = cv_mat_options.get_header();
     typename camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );
@@ -968,6 +988,42 @@ static int run( T& camera, const comma::command_line_options& options )
     comma::verbose << "set width,height to " << width << "," << height << std::endl;
 
     if( options.exists( "--packet-size" )) { set_packet_size( camera, options.value< unsigned int >( "--packet-size" )); }
+
+    if( options.exists( "--binning-horizontal" ) )
+    {
+        std::string s = options.value< std::string >( "--binning-horizontal" );
+        std::vector< std::string > v = comma::split( s, ',' );
+        camera.BinningHorizontal = boost::lexical_cast< unsigned int >( v[0] );
+        for( unsigned int i = 1 ; i < v.size(); ++i )
+        {
+            if( v[i] == "sum" ) { set_binning_horizontal_mode_sum( camera ); }
+            else if( v[i] == "average" ) { set_binning_horizontal_mode_average( camera ); }
+            else { std::cerr << "basler-cat: invalid mode for --binning-horizontal: " << v[i] << std::endl; return 1; }
+        }
+    }
+    else
+    {
+        camera.BinningHorizontal = 1;
+    }
+    if( options.exists( "--binning-vertical" ) )
+    {
+        std::string s = options.value< std::string >( "--binning-vertical" );
+        std::vector< std::string > v = comma::split( s, ',' );
+        camera.BinningVertical = boost::lexical_cast< unsigned int >( v[0] );
+        for( unsigned int i = 1 ; i < v.size(); ++i )
+        {
+            if( v[i] == "sum" ) { set_binning_vertical_mode_sum( camera ); }
+            else if( v[i] == "average" ) { set_binning_vertical_mode_average( camera ); }
+            else { std::cerr << "basler-cat: invalid mode for --binning-vertical: " << v[i] << std::endl; return 1; }
+        }
+    }
+    else
+    {
+        camera.BinningVertical = 1;
+    }
+
+    if( options.exists( "--reverse-x" ) ) { camera.ReverseX = true; }
+    if( options.exists( "--reverse-y" ) ) { camera.ReverseY = true; }
     
     // todo: giving up... the commented code throws, but failure to stop acquisition, if active
     //       seems to lead to the following scenario:

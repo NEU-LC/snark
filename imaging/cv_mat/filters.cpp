@@ -299,144 +299,113 @@ static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int si
     }
     COMMA_THROW( comma::exception, "expected a scalar of the size up to 4, got: " << size << " elements" );
 }
-
-template < typename H >
-struct pack_impl_
+template < typename H, unsigned int In, int InType, unsigned int Out, int OutType >
+struct pixel_format_impl_
 {
+    static const unsigned int ElementSize = sizeof( typename depth_traits< CV_MAT_DEPTH( InType ) >::value_t );
+    static const unsigned int InBytes = In * ElementSize;
     typedef typename impl::filters< H >::value_type value_type;
+    typedef typename depth_traits< CV_MAT_DEPTH( OutType ) >::value_t value_out_t;
+    typedef std::array< std::array< std::function< value_out_t( const unsigned char byte ) >, Out >, InBytes > transforms_t;
+    typedef std::array< std::array< std::array< value_out_t, Out >, 256 >, InBytes > lookup_table_t;
 
-    struct transform
+    // byte operations
+    struct zero { value_out_t operator()( const unsigned char byte ) const { return 0; } };
+    struct identity { value_out_t operator()( const unsigned char byte ) const { return byte; } };
+    struct shift_byte
     {
-        unsigned int index;
+        unsigned int left_shift;
+        shift_byte( unsigned int left_shift ) : left_shift(left_shift) {}
+        value_out_t operator()( const unsigned char byte ) const { return byte << left_shift; }
+    };
+    struct shift_quadbit
+    {
         unsigned int right_shift;
         unsigned int left_shift;
-        transform() : index(0), right_shift(0), left_shift(0) {}
-        transform( unsigned int index, unsigned int right_shift, unsigned int left_shift ) : index(index), right_shift(right_shift), left_shift(left_shift) {}
+        shift_quadbit( unsigned int right_shift, unsigned int left_shift ) : right_shift(right_shift), left_shift(left_shift) {}
+        value_out_t operator()( const unsigned char byte ) const { return ( byte >> right_shift & 0xF ) << left_shift; }
     };
 
-    std::vector< std::vector< transform > > transforms;
-
-    pack_impl_( const std::string& s )
+    static std::string quadbit_characters( unsigned int quadbits )
     {
-        std::vector< std::string > args = comma::split( s, ',' );
-        if( args[0] == "12" ) { if( args.size() != 4 ) { COMMA_THROW( comma::exception, "pack 12-bit expects four arguments, got: " << args.size() ); } }
-        else { COMMA_THROW( comma::exception, "only 12-bit packing is supported, got: " << args[0] ); }
-        for( unsigned i = 1; i < args.size(); ++i ) { transforms.push_back( parse( args[i] ) ); }
+        std::string c;
+        for( unsigned int i = 0; i < quadbits; ++i ) { c += 'a' + i; }
+        c += '0';
+        return c;
     }
-
-    static std::vector< transform > parse( const std::string& format )
+    static transforms_t parse( const std::array< std::string, Out >& formats )
     {
-        if( format.size() > 2 ) { COMMA_THROW( comma::exception, "expected 2 or less quadbits, got: " << format << ", quadbits: " << format.size() ); }
-        std::size_t pos = format.find_first_not_of( "abcdefgh0" );
-        if( pos != std::string::npos ) { COMMA_THROW( comma::exception, "pixel format contains invalid characters: " << format[pos] ); }
-        std::vector< transform > fx;
-        for( unsigned i = 0; i < format.size(); ++i )
+        std::string characters = quadbit_characters( InBytes * 2 );
+        transforms_t transforms;
+        std::fill_n( &transforms[0][0], InBytes * Out, zero() );
+        for( unsigned int i = 0; i < formats.size(); ++i )
         {
-            if( format[i] == '0' ) { continue; }
-            unsigned int c = format[i] - 'a';
-            fx.push_back( transform( c / 4, ( 3 - c % 4 ) * 4, ( format.size() - 1 - i ) * 4 ) );
-        }
-        return fx;
-    }
-
-    value_type operator()( const value_type m )
-    {
-        if( m.second.type() != CV_16UC1 ) { COMMA_THROW( comma::exception, "pack expects CV_16UC1(" << (int) CV_16UC1 << "), got: " << m.second.type() ); }
-        if( m.second.cols % 2 ) { COMMA_THROW( comma::exception, "column size is not divisible by 2: " << m.second.cols ); }
-        cv::Mat mat( m.second.rows, m.second.cols / 2 * 3, CV_8UC1 );
-        for( int row = 0; row < m.second.rows; ++row )
-        {
-            //const comma::uint16 *in = m.second.ptr< comma::uint16 >( row );
-            const comma::uint16 *in = reinterpret_cast< const comma::uint16 * >( m.second.ptr( row ) );
-            unsigned char *out = mat.ptr< unsigned char >( row );
-            for( int col = 0; col < m.second.cols; col += 2 )
+            std::string format = formats[i];
+            std::size_t pos = format.find_first_not_of( characters );
+            if( pos != std::string::npos) { COMMA_THROW( comma::exception, "pixel format '" << format << "' contains invalid character: " << format[pos] ); }
+            unsigned int quadbit = format.size() - 1 ;
+            for( unsigned j = 0; j < format.size(); ++j, --quadbit )
             {
-                for( std::size_t t = 0; t < transforms.size(); ++t )
+                char c = format[j];
+                if( c == '0' ) { continue; }
+                unsigned int index = ( c - 'a' ) / 2;
+                bool high_quadbit = ( c - 'a' ) % 2 == 0;
+                if( quadbit > 0 && high_quadbit && format[j + 1] == c + 1 )
                 {
-                    std::vector< transform > &fx = transforms[t];
-                    unsigned char value = 0;
-                    for( std::size_t i = 0; i < fx.size(); ++i )
+                    if( quadbit == 1 ) { transforms[ index ][ i ] = identity(); }
+                    else { transforms[ index ][ i ] = shift_byte( (quadbit - 1) * 4 ); }
+                    ++j;
+                    --quadbit;
+                }
+                else
+                {
+                    transforms[ index ][ i ] = shift_quadbit( high_quadbit ? 4 : 0, quadbit * 4 );
+                }
+            }
+        }
+        return transforms;
+    }
+    static lookup_table_t generate_lookup_table( const transforms_t& transforms )
+    {
+        lookup_table_t table;
+        for( unsigned int i = 0; i < InBytes; ++i )
+        {
+            for( unsigned int j = 0; j < 256; ++j )
+            {
+                for( unsigned int k = 0; k < Out; ++k )
+                {
+                    table[i][j][k] = transforms[i][k]( j );
+                }
+            }
+        }
+        return table;
+    }
+
+    std::string filter_name;
+    lookup_table_t table;
+    pixel_format_impl_( const std::string& filter_name, const std::array< std::string, Out >& formats ) : filter_name( filter_name ) , table( generate_lookup_table( parse( formats ) ) ) {}
+    value_type operator()( const value_type& m )
+    {
+        if( m.second.type() != InType ) { COMMA_THROW( comma::exception, filter_name << ": expected type: " << type_as_string( InType ) << " (" << InType << "), got: " << type_as_string( m.second.type() ) << " (" << m.second.type() << ")" ); }
+        if( m.second.cols % In ) { COMMA_THROW( comma::exception, filter_name << ": columns: " << m.second.cols << " is not divisible by " << In ); }
+        cv::Mat mat( m.second.rows, m.second.cols / In * Out, OutType, 0.0 );
+        unsigned int bytes = m.second.cols * ElementSize;
+        for( unsigned int i = 0; i < m.second.rows; ++i )
+        {
+            const unsigned char *in = m.second.ptr( i );
+            value_out_t *out = mat.ptr< value_out_t >( i );
+            for( unsigned int j = 0; j < bytes; j += InBytes, in += InBytes, out += Out )
+            {
+                for( unsigned int k = 0; k < Out; ++k )
+                {
+                    for( unsigned int l = 0; l < InBytes; ++l )
                     {
-                        value += ( in[ col + fx[i].index ] >> fx[i].right_shift & 0xF ) << fx[i].left_shift;
+                        out[k] |= table[l][ in[l] ][ k ];
                     }
-                    *out++ = value;
                 }
             }
         }
         return value_type( m.first, mat );
-    }
-};
-
-template < typename H >
-struct unpack_impl_
-{
-    typedef typename impl::filters< H >::value_type value_type;
-    struct transform
-    {
-        unsigned index;
-        unsigned n;
-        unsigned m;
-        transform():index(0),n(0),m(0) {}
-        transform(unsigned index,unsigned n,unsigned m):index(index),n(n),m(m){}
-//         inline unsigned fix(const unsigned char* ptr) { return ((ptr[index]>>n)&0xF)<<m; }
-    };
-    std::vector<std::vector<transform> > transforms;
-    unpack_impl_(const std::string& s)
-    {
-        std::vector<std::string> args=comma::split(s,',');
-        if(args.size()!=3) { COMMA_THROW( comma::exception, "expected three arguements, got:"<<args.size());}
-        if(args[0]!="12") { COMMA_THROW( comma::exception, "only 12 bit unpack is supported, got:"<<args[0]); }
-        for(unsigned i=1;i<=2;i++)
-        {
-            transforms.push_back(parse(args[i]));
-        }
-    }
-    static std::vector<transform> parse(const std::string& format)
-    {
-        std::size_t pos=format.find_first_not_of("abcdef0");
-        if(pos!=std::string::npos) { COMMA_THROW( comma::exception, "pixel format  contains invalid characters: "<<format[pos]);}
-        std::vector<transform> fx;
-        unsigned digit=format.size()-1;
-        for(unsigned i=0;i<format.size();i++,digit--)
-        {
-            char c=format[i];
-            if(c!='0')  //case '0': do nothing
-            {
-                c-='a';
-                unsigned index=c/2;
-                if(!(c%2)) { fx.push_back(transform(index,4,digit*4)); } //msb
-                else { fx.push_back(transform(index,0,digit*4)); } //lsb
-            }
-        }
-        return fx;
-    }
-    value_type operator()( value_type m)
-    {
-        if(m.second.type()!=CV_8UC1 && m.second.type()!=CV_16UC1) { COMMA_THROW( comma::exception, "expected CV_8UC1("<<int(CV_8UC1)<<") or CV_16UC1("<<int(CV_16UC1)<<") , got: "<< m.second.type() );}
-        //number of bytes
-        int size=m.second.cols;
-        if(m.second.type()==CV_16UC1){size*=2;}
-        if(size%3!=0) { COMMA_THROW( comma::exception, "size is not divisible by three: "<<size);}
-        cv::Mat mat(m.second.rows, (2*size)/3, CV_16UC1);
-        for(int j=0;j<m.second.rows;j++)
-        {
-            const unsigned char* ptr=m.second.ptr(j);
-            unsigned short* out_ptr=mat.ptr<unsigned short>(j);
-            for(int col=0, i=0;i<size;i+=3)
-            {
-                for(std::size_t t=0;t<transforms.size();t++)
-                {
-                    unsigned out=0;
-                    std::vector<transform>& fx=transforms[t];
-                    for(unsigned k=0;k<fx.size();k++)
-                    {
-                        out+=((ptr[i+fx[k].index]>>fx[k].n)&0xF)<<fx[k].m;
-                    }
-                    out_ptr[col++]=out;
-                }
-            }
-        }
-        return value_type(m.first, mat);
     }
 };
 
@@ -2623,12 +2592,24 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         else if( e[0] == "pack" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "pack: missing arguments" ); }
-            f.push_back( filter_type( pack_impl_< H >( e[1] ) ) );
+            std::vector< std::string > args = comma::split( e[1], ',' );
+            if( args[0] == "12" )
+            {
+                if( args.size() != 4 ) { COMMA_THROW( comma::exception, "12-bit pack expects 3 formats, got: " << args.size() - 1 ); }
+                f.push_back( filter_type( pixel_format_impl_< H, 2, CV_16UC1, 3, CV_8UC1 >( e[0], { args[1], args[2], args[3] } ) ) );
+            }
+            else { COMMA_THROW( comma::exception, "pack size not implemented: " << args[0] ); }
         }
         else if( e[0] == "unpack" )
         {
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "unpack: missing arguements"); }
-            f.push_back( filter_type( unpack_impl_< H >( e[1] ) ) );
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "unpack: missing arguments"); }
+            std::vector< std::string > args = comma::split( e[1], ',' );
+            if( args[0] == "12" )
+            {
+                if( args.size() != 3 ) { COMMA_THROW( comma::exception, "12-bit unpack expects 2 formats, got: " << args.size() - 1 ); }
+                f.push_back( filter_type( pixel_format_impl_< H, 3, CV_8UC1, 2, CV_16UC1 >( e[0], { args[1], args[2] } ) ) );
+            }
+            else { COMMA_THROW( comma::exception, "unpack size not implemented: " << args[0] ); }
         }
         else if( e[0] == "unpack12" )
         {
@@ -2877,8 +2858,8 @@ static std::string usage_impl_()
     oss << "        overlay=<image_file>[,x,y]: overlay image_file on top of current stream at optional x,y location; overlay image should have alpha channel" << std::endl;
     oss << "        pack=<bits>,<format>: pack pixel data in specified bits, example: pack=12,cd,hb,fg" << std::endl;
     oss << "            <bits>: number of bits, currently only 12-bit packing from 16-bit is supported (pack 2 pixels into 3 bytes)" << std::endl;
-    oss << "            <format>: output pixel formats in quadbits named a,b,c,d,e,f,g,h" << std::endl;
-    oss << "                where 'a' is most significant quadbit, 'd' is least significant quadbit, 'e' is most significant quadbit, 'h' is least significant quadbit" << std::endl;
+    oss << "            <format>: output pixel formats in quadbits" << std::endl;
+    oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
     oss << "                             in format <width>,<height>,<interpolation> corresponding numeric values can be used: " << cv::INTER_NEAREST << ", " << cv::INTER_LINEAR << ", " << cv::INTER_AREA << ", " << cv::INTER_CUBIC << ", " << cv::INTER_LANCZOS4 << std::endl;
@@ -2905,9 +2886,8 @@ static std::string usage_impl_()
     oss << "        undistort=<undistort map file>: undistort" << std::endl;
     oss << "        unpack=<bits>,<format>: unpack compressed pixel formats, example: unpack=12,cba0,fed0" << std::endl;
     oss << "            <bits>: number of bits, currently only 12 is supported" << std::endl;
-    oss << "            <format>: output pixels format in base 4 notation, containting letters 'a' to 'f' and '0'" << std::endl;
-    oss << "                where 'b' is 4-bit LSB of byte 0, 'a' is 4-bit MSB of byte 0, 'd' is 4-bit LSB of byte 1, etc and '0' means 4-bit zero" << std::endl;
-    oss << "                ATTENTION: base 4 notation looks swapped compared to byte order (because common PC architecture is little endian)" << std::endl;
+    oss << "            <format>: output pixel formats in quadbits" << std::endl;
+    oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,abc0,efd0" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
