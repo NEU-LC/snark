@@ -37,3 +37,8 @@ add_executable( image-pinhole image-pinhole.cpp )
 target_link_libraries( image-pinhole snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ) #target_link_libraries( image-pinhole snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} tbb )
 install( TARGETS image-pinhole RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
+# add_executable( image-pinhole-calibrate image-pinhole-calibrate.cpp )
+# target_link_libraries( image-pinhole-calibrate snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
+# install( TARGETS image-pinhole-calibrate RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+
+
