@@ -46,10 +46,10 @@
 static void usage( bool verbose )
 {
     std::cerr << std::endl;
-    std::cerr << "perform intrinsic calibration of a camera based on a test pattern" << std::endl;
+    std::cerr << "perform intrinsic calibration of a camera based on a calibration pattern" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: cat calibration_images.bin | image-pinhole-calibrate <options> > pinhole.json" << std::endl;
-    std::cerr << "       where test.bin contains serialized calibration pattern images" << std::endl;
+    std::cerr << "       where calibration-images.bin contains serialized calibration pattern images" << std::endl;
     if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; }
     else { std::cerr << "run image-pinhole-calibrate --help --verbose for more details" << std::endl; }
     std::cerr << std::endl;
@@ -58,9 +58,9 @@ static void usage( bool verbose )
     std::cerr << "    --view: view detected calibration patterns, debugging option" << std::endl;
     std::cerr << std::endl;
     std::cerr << "calibration pattern options" << std::endl;
-    std::cerr << "    --board-height,--height=<height>: number of inner corners per column on test board" << std::endl;
-    std::cerr << "    --board-width,--width=<width>: number of inner corners per row on test board" << std::endl;
-    std::cerr << "    --board-square-size,--square-size=<size>: size of a square on calibration board in user-defined metric (pixels, millimeters, etc)" << std::endl;
+    std::cerr << "    --pattern-height,--height=<height>: number of inner corners per column on calibration pattern" << std::endl;
+    std::cerr << "    --pattern-width,--width=<width>: number of inner corners per row on calibration pattern" << std::endl;
+    std::cerr << "    --pattern-square-size,--square-size=<size>: size of a square on calibration board in user-defined metric (pixels, millimeters, etc)" << std::endl;
     std::cerr << "    --pattern=<pattern>: calibration pattern: chessboard, circles-grid, asymmetric-circles-grid" << std::endl;
     std::cerr << "                         default: chessboard" << std::endl;
     std::cerr << std::endl;
@@ -75,20 +75,84 @@ static void usage( bool verbose )
     exit( 0 );
 }
 
+struct patterns { enum types { chessboard, circles_grid, asymmetric_circles_grid, invalid }; };
+
+static std::vector< cv::Point3f > pattern_corners( cv::Size pattern_size, float square_size, patterns::types pattern )
+{
+    std::vector< cv::Point3f > corners;
+    for( int i = 0; i < pattern_size.height; ++i )
+    {
+        for( int j = 0; j < pattern_size.width; ++j )
+        {
+            corners.push_back( cv::Point3f( float( patterns::asymmetric_circles_grid ? ( 2 * j + i % 2 ) * square_size : j * square_size ), float( i * square_size ), 0 ) );
+        }
+    }
+    return corners;
+}
+
+static double reprojection_error( const std::vector< std::vector< cv::Point3f > >& object_points
+                                , const std::vector< std::vector< cv::Point2f > >& image_points
+                                , const std::vector< cv::Mat >& rvecs
+                                , const std::vector< cv::Mat >& tvecs
+                                , const cv::Mat& camera_matrix
+                                , const cv::Mat& distortion_coefficients
+                                , std::vector< float >& per_view_errors )
+{
+    std::vector< cv::Point2f > image_points_2;
+    int total_points = 0;
+    double total_error = 0;
+    per_view_errors.resize( object_points.size() );
+    for( unsigned int i = 0; i < object_points.size(); ++i )
+    {
+        cv::projectPoints( cv::Mat( object_points[i] ), rvecs[i], tvecs[i], camera_matrix, distortion_coefficients, image_points_2 );
+        double err = cv::norm( cv::Mat( image_points[i] ), cv::Mat( image_points_2 ), CV_L2 );
+        unsigned int n = object_points[i].size();
+        per_view_errors[i] = std::sqrt( err * err / n );
+        total_error += err * err;
+        total_points += n;
+    }
+    return std::sqrt( total_error / total_points );
+}
+
+static bool calibrate( patterns::types pattern
+                     , int flags
+                     , const cv::Size& pattern_size
+                     , float square_size
+                     , cv::Size& image_size
+                     , cv::Mat& camera_matrix
+                     , cv::Mat& distortion_coefficients
+                     , const std::vector< std::vector< cv::Point2f > >& image_points
+                     , std::vector< cv::Mat >& rvecs
+                     , std::vector< cv:: Mat >& tvecs
+                     , std::vector< float >& reprojection_errors
+                     , double& total_average_error )
+{
+
+    camera_matrix = cv::Mat::eye( 3, 3, CV_64F );
+    if( flags & CV_CALIB_FIX_ASPECT_RATIO ) { camera_matrix.at< double >( 0, 0 ) = 1.0; }
+    distortion_coefficients = cv::Mat::zeros( 8, 1, CV_64F );
+    std::vector< std::vector< cv::Point3f > > object_points( 1 );
+    object_points[0] = pattern_corners( pattern_size, square_size, pattern );
+    object_points.resize( image_points.size(), object_points[0] );
+    double rms = cv::calibrateCamera( object_points, image_points, image_size, camera_matrix, distortion_coefficients, rvecs, tvecs, flags | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 );
+    bool ok = cv::checkRange( camera_matrix ) && cv::checkRange( distortion_coefficients );
+    total_average_error = reprojection_error( object_points, image_points, rvecs, tvecs, camera_matrix, distortion_coefficients, reprojection_errors );
+    return ok;
+}
+
 int new_main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
-        cv::Size board_size( options.value< int >( "--board-width,--width" ), options.value< int >( "--board-height,--height" ) );
-        struct patterns { enum types { chessboard, circles_grid, asymmetric_circles_grid, invalid }; };
+        cv::Size pattern_size( options.value< int >( "--pattern-width,--width" ), options.value< int >( "--pattern-height,--height" ) );
         std::string pattern_string = options.value< std::string >( "--pattern", "chessboard" );
         patterns::types pattern = pattern_string == "chessboard" ? patterns::chessboard
                                 : pattern_string == "circles-grid" ? patterns::circles_grid
                                 : pattern_string == "asymmetric-circles-grid" ? patterns::asymmetric_circles_grid
                                 : patterns::invalid;
         if( pattern == patterns::invalid ) { std::cerr << "image-pinhole-calibration: expected calibration pattern, got: \"" << pattern_string << "\"" << std::endl; }
-        float square_size = options.value< float >( "--board-square-size,--square-size", 0 ); 
+        float square_size = options.value< float >( "--pattern-square-size,--square-size", 0 ); 
         int flag = 0;
         if( options.exists( "--no-principal-point" ) ) { flag |= CV_CALIB_FIX_PRINCIPAL_POINT; }
         if( options.exists( "--no-tangential-distortion" ) ) { flag |= CV_CALIB_ZERO_TANGENT_DIST; }
@@ -101,12 +165,12 @@ int new_main( int ac, char** av )
         static const cv::Scalar red( 0, 0, 255 );
         static const cv::Scalar green( 0, 255, 0 );
         snark::cv_mat::serialization input( comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) ) );
+        snark::camera::pinhole::config_t config;
         while( !std::cin.eof() && std::cin.good() )
         {
             std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair = input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
             if( pair.second.empty() ) { break; }
-            // todo
-        }
+            
             
 //             if( mode == CAPTURING && imagePoints.size() >= (unsigned)s.nrFrames )
 //             {
@@ -120,14 +184,13 @@ int new_main( int ac, char** av )
 //                     if( imagePoints.size() > 0 )
 //                         runCalibrationAndSave(s, imageSize,  cameraMatrix, distCoeffs, imagePoints);
 //                     break;
-//             }
-//              
-//              // todo: calibrate
-//         }
-//         // todo: output calibration
-//         
-//         
-// 
+//             }            
+            
+            
+            // todo
+        }
+            
+
 //     for(int i = 0;;++i)
 //     {
 //       Mat view;
