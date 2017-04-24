@@ -35,6 +35,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/name_value/parser.h>
+#include <comma/name_value/serialize.h>
 #include "../camera/pinhole.h"
 #include "../camera/traits.h"
 #include "../cv_mat/serialization.h"
@@ -76,19 +77,19 @@ static void usage( bool verbose )
     exit( 0 );
 }
 
-struct output
+struct output_t
 {
     snark::camera::pinhole::config_t pinhole;
     double total_average_error;
     std::vector< std::string > offsets; // quick and dirty
-    output() : total_average_error() {}
+    output_t() : total_average_error() {}
 };
 
 namespace comma { namespace visiting {
 
-template <> struct traits< ::output >
+template <> struct traits< ::output_t >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const ::output& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const ::output_t& p, Visitor& v )
     {
         v.apply( "pinhole", p.pinhole );
         v.apply( "total_average_error", p.total_average_error );
@@ -144,7 +145,7 @@ static bool calibrate( const std::vector< cv::Point3f >& pattern_corners
                      , cv::Mat& camera_matrix
                      , cv::Mat& distortion_coefficients
                      , std::vector< cv::Mat >& rvecs
-                     , std::vector< cv:: Mat >& tvecs
+                     , std::vector< cv::Mat >& tvecs
                      , std::vector< float >& reprojection_errors
                      , double& total_average_error )
 {
@@ -155,7 +156,7 @@ static bool calibrate( const std::vector< cv::Point3f >& pattern_corners
     std::vector< std::vector< cv::Point3f > > object_points( 1 );
     object_points[0] = pattern_corners;
     object_points.resize( image_points.size(), object_points[0] );
-    double rms = cv::calibrateCamera( object_points, image_points, image_size, camera_matrix, distortion_coefficients, rvecs, tvecs, flags | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 );
+    cv::calibrateCamera( object_points, image_points, image_size, camera_matrix, distortion_coefficients, rvecs, tvecs, flags | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 );
     bool ok = cv::checkRange( camera_matrix ) && cv::checkRange( distortion_coefficients );
     total_average_error = reprojection_error( object_points, image_points, rvecs, tvecs, camera_matrix, distortion_coefficients, reprojection_errors );
     return ok;
@@ -174,144 +175,56 @@ int new_main( int ac, char** av )
                                 : patterns::invalid;
         if( pattern == patterns::invalid ) { std::cerr << "image-pinhole-calibration: expected calibration pattern, got: \"" << pattern_string << "\"" << std::endl; }
         float square_size = options.value< float >( "--pattern-square-size,--square-size", 0 ); 
-        int flag = 0;
-        if( options.exists( "--no-principal-point" ) ) { flag |= CV_CALIB_FIX_PRINCIPAL_POINT; }
-        if( options.exists( "--no-tangential-distortion" ) ) { flag |= CV_CALIB_ZERO_TANGENT_DIST; }
-        if( options.exists( "--no-aspect-ratio" ) ) { flag |= CV_CALIB_FIX_ASPECT_RATIO; }
+        int flags = 0;
+        if( options.exists( "--no-principal-point" ) ) { flags |= CV_CALIB_FIX_PRINCIPAL_POINT; }
+        if( options.exists( "--no-tangential-distortion" ) ) { flags |= CV_CALIB_ZERO_TANGENT_DIST; }
+        if( options.exists( "--no-aspect-ratio" ) ) { flags |= CV_CALIB_FIX_ASPECT_RATIO; }
         bool view = options.exists( "--view" );
         std::vector< std::vector< cv::Point2f > > image_points;
         cv::Mat camera_matrix;
         cv::Mat distortion_coefficients;
-        cv::Size image_size;
+        std::vector< cv::Mat > rvecs;
+        std::vector< cv::Mat > tvecs;
+        std::vector< float > reprojection_errors;
         static const cv::Scalar red( 0, 0, 255 );
         static const cv::Scalar green( 0, 255, 0 );
         snark::cv_mat::serialization input( comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) ) );
-        snark::camera::pinhole::config_t config;
         std::vector< cv::Point3f > pattern_corners = pattern_corners_( pattern, pattern_size, square_size );
+        std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair;
         while( !std::cin.eof() && std::cin.good() )
         {
-            std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair = input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
+            pair = input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
             if( pair.second.empty() ) { break; }
-            
-            
-            
-            
-            // todo
+            std::vector< cv::Point2f > points;
+            bool found = pattern == patterns::chessboard ? cv::findChessboardCorners( pair.second, pattern_size, points, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FAST_CHECK | CV_CALIB_CB_NORMALIZE_IMAGE )
+                       : pattern == patterns::circles_grid ? findCirclesGrid( view, pattern_size, points )
+                       : pattern == patterns::asymmetric_circles_grid ? findCirclesGrid( view, pattern_size, points, cv::CALIB_CB_ASYMMETRIC_GRID )
+                       : false;
+            if( found )
+            {
+                if( pattern == patterns::chessboard ) // improve found corners
+                {
+                    cv::Mat grey;
+                    cv::cvtColor( pair.second, grey, cv::COLOR_BGR2GRAY );
+                    cv::cornerSubPix( grey, points, cv::Size( 11, 11 ), cv::Size( -1, -1 ), cv::TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1 ) );
+                }
+                cv::drawChessboardCorners( pair.second, pattern_size, cv::Mat( points ), found );
+            }
         }
-            
-
-//     for(int i = 0;;++i)
-//     {
-//       Mat view;
-//       bool blinkOutput = false;
-// 
-//       view = s.nextImage();
-// 
-//       //-----  If no more image, or got enough, then stop calibration and show result -------------
-//       if( mode == CAPTURING && imagePoints.size() >= (unsigned)s.nrFrames )
-//       {
-//           if( runCalibrationAndSave(s, imageSize,  cameraMatrix, distCoeffs, imagePoints))
-//               mode = CALIBRATED;
-//           else
-//               mode = DETECTION;
-//       }
-//       if(view.empty())          // If no more images then run calibration, save and stop loop.
-//       {
-//             if( imagePoints.size() > 0 )
-//                 runCalibrationAndSave(s, imageSize,  cameraMatrix, distCoeffs, imagePoints);
-//             break;
-//       }
-// 
-// 
-//         imageSize = view.size();  // Format input image.
-//         if( s.flipVertical )    flip( view, view, 0 );
-// 
-//         vector<Point2f> pointBuf;
-// 
-//         bool found;
-//         switch( s.calibrationPattern ) // Find feature points on the input format
-//         {
-//         case Settings::CHESSBOARD:
-//             found = findChessboardCorners( view, s.boardSize, pointBuf,
-//                 CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FAST_CHECK | CV_CALIB_CB_NORMALIZE_IMAGE);
-//             break;
-//         case Settings::CIRCLES_GRID:
-//             found = findCirclesGrid( view, s.boardSize, pointBuf );
-//             break;
-//         case Settings::ASYMMETRIC_CIRCLES_GRID:
-//             found = findCirclesGrid( view, s.boardSize, pointBuf, CALIB_CB_ASYMMETRIC_GRID );
-//             break;
-//         default:
-//             found = false;
-//             break;
-//         }
-// 
-//         if ( found)                // If done with success,
-//         {
-//               // improve the found corners' coordinate accuracy for chessboard
-//                 if( s.calibrationPattern == Settings::CHESSBOARD)
-//                 {
-//                     Mat viewGray;
-//                     cvtColor(view, viewGray, COLOR_BGR2GRAY);
-//                     cornerSubPix( viewGray, pointBuf, Size(11,11),
-//                         Size(-1,-1), TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1 ));
-//                 }
-// 
-//                 if( mode == CAPTURING &&  // For camera only take new samples after delay time
-//                     (!s.inputCapture.isOpened() || clock() - prevTimestamp > s.delay*1e-3*CLOCKS_PER_SEC) )
-//                 {
-//                     imagePoints.push_back(pointBuf);
-//                     prevTimestamp = clock();
-//                     blinkOutput = s.inputCapture.isOpened();
-//                 }
-// 
-//                 // Draw the corners.
-//                 drawChessboardCorners( view, s.boardSize, Mat(pointBuf), found );
-//         }
-// 
-//         //----------------------------- Output Text ------------------------------------------------
-//         string msg = (mode == CAPTURING) ? "100/100" :
-//                       mode == CALIBRATED ? "Calibrated" : "Press 'g' to start";
-//         int baseLine = 0;
-//         Size textSize = getTextSize(msg, 1, 1, 1, &baseLine);
-//         Point textOrigin(view.cols - 2*textSize.width - 10, view.rows - 2*baseLine - 10);
-// 
-//         if( mode == CAPTURING )
-//         {
-//             if(s.showUndistorsed)
-//                 msg = format( "%d/%d Undist", (int)imagePoints.size(), s.nrFrames );
-//             else
-//                 msg = format( "%d/%d", (int)imagePoints.size(), s.nrFrames );
-//         }
-// 
-//         putText( view, msg, textOrigin, 1, 1, mode == CALIBRATED ?  GREEN : RED);
-// 
-//         if( blinkOutput )
-//             bitwise_not(view, view);
-// 
-//         //------------------------- Video capture  output  undistorted ------------------------------
-//         if( mode == CALIBRATED && s.showUndistorsed )
-//         {
-//             Mat temp = view.clone();
-//             undistort(temp, view, cameraMatrix, distCoeffs);
-//         }
-// 
-//         //------------------------------ Show image and check for input commands -------------------
-//         imshow("Image View", view);
-//         char key = (char)waitKey(s.inputCapture.isOpened() ? 50 : s.delay);
-// 
-//         if( key  == ESC_KEY )
-//             break;
-// 
-//         if( key == 'u' && mode == CALIBRATED )
-//            s.showUndistorsed = !s.showUndistorsed;
-// 
-//         if( s.inputCapture.isOpened() && key == 'g' )
-//         {
-//             mode = CAPTURING;
-//             imagePoints.clear();
-//         }
-
+        if( image_points.empty() ) { std::cerr << "image-pinhole-calibrate: did not get any image points" << std::endl; return 1; }
+        ::output_t output;
+        if( !calibrate( pattern_corners, flags, pair.second.size(), image_points, camera_matrix, distortion_coefficients, rvecs, tvecs, reprojection_errors, output.total_average_error ) ) { std::cerr << "image-pinhole-calibrate: calibration failed" << std::endl; return 1; }
+        output.pinhole.image_size.x() = pair.second.size().width;
+        output.pinhole.image_size.y() = pair.second.size().height;
+        output.pinhole.principal_point = Eigen::Vector2d( camera_matrix.at< double >( 0, 2 ), camera_matrix.at< double >( 1, 2 ) );
+        output.pinhole.focal_length; // todo
+        output.pinhole.distortion = snark::camera::pinhole::config_t::distortion_t();
+        output.pinhole.distortion->radial.k1 = distortion_coefficients.at< double >( 0 );
+        output.pinhole.distortion->radial.k2 = distortion_coefficients.at< double >( 1 );
+        output.pinhole.distortion->tangential.p1 = distortion_coefficients.at< double >( 2 );
+        output.pinhole.distortion->tangential.p2 = distortion_coefficients.at< double >( 3 );
+        output.pinhole.distortion->radial.k3 = distortion_coefficients.at< double >( 4 );
+        comma::write_json( output, std::cout );
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "image-pinhole-calibration: " << ex.what() << std::endl; }
