@@ -217,7 +217,9 @@ int new_main( int ac, char** av )
         output.pinhole.image_size.x() = pair.second.size().width;
         output.pinhole.image_size.y() = pair.second.size().height;
         output.pinhole.principal_point = Eigen::Vector2d( camera_matrix.at< double >( 0, 2 ), camera_matrix.at< double >( 1, 2 ) );
+        
         output.pinhole.focal_length; // todo
+        
         output.pinhole.distortion = snark::camera::pinhole::config_t::distortion_t();
         output.pinhole.distortion->radial.k1 = distortion_coefficients.at< double >( 0 );
         output.pinhole.distortion->radial.k2 = distortion_coefficients.at< double >( 1 );
