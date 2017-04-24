@@ -89,7 +89,7 @@ struct output_t
     snark::camera::pinhole::config_t pinhole;
     double total_average_error;
     std::vector< std::string > offsets; // quick and dirty
-    output_t() : total_average_error() {}
+    output_t() : total_average_error( 0 ) {}
 };
 
 namespace comma { namespace visiting {
