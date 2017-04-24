@@ -47,6 +47,7 @@ static void usage( bool verbose )
 {
     std::cerr << std::endl;
     std::cerr << "perform intrinsic calibration of a camera based on a calibration pattern" << std::endl;
+    std::cerr << "based on example at http://docs.opencv.org/2.4/doc/tutorials/calib3d/camera_calibration/camera_calibration.html" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: cat calibration_images.bin | image-pinhole-calibrate <options> > pinhole.json" << std::endl;
     std::cerr << "       where calibration-images.bin contains serialized calibration pattern images" << std::endl;
@@ -75,16 +76,38 @@ static void usage( bool verbose )
     exit( 0 );
 }
 
+struct output
+{
+    snark::camera::pinhole::config_t pinhole;
+    double total_average_error;
+    std::vector< std::string > offsets; // quick and dirty
+    output() : total_average_error() {}
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< ::output >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const ::output& p, Visitor& v )
+    {
+        v.apply( "pinhole", p.pinhole );
+        v.apply( "total_average_error", p.total_average_error );
+        v.apply( "offsets", p.offsets );
+    }    
+};
+
+} } // namespace comma { namespace visiting {
+
 struct patterns { enum types { chessboard, circles_grid, asymmetric_circles_grid, invalid }; };
 
-static std::vector< cv::Point3f > pattern_corners( cv::Size pattern_size, float square_size, patterns::types pattern )
+static std::vector< cv::Point3f > pattern_corners_( patterns::types pattern, const cv::Size& pattern_size, float square_size )
 {
     std::vector< cv::Point3f > corners;
     for( int i = 0; i < pattern_size.height; ++i )
     {
         for( int j = 0; j < pattern_size.width; ++j )
         {
-            corners.push_back( cv::Point3f( float( patterns::asymmetric_circles_grid ? ( 2 * j + i % 2 ) * square_size : j * square_size ), float( i * square_size ), 0 ) );
+            corners.push_back( cv::Point3f( patterns::asymmetric_circles_grid ? ( 2 * j + i % 2 ) * square_size : j * square_size, i * square_size, 0 ) );
         }
     }
     return corners;
@@ -114,14 +137,12 @@ static double reprojection_error( const std::vector< std::vector< cv::Point3f > 
     return std::sqrt( total_error / total_points );
 }
 
-static bool calibrate( patterns::types pattern
+static bool calibrate( const std::vector< cv::Point3f >& pattern_corners
                      , int flags
-                     , const cv::Size& pattern_size
-                     , float square_size
-                     , cv::Size& image_size
+                     , const cv::Size& image_size
+                     , const std::vector< std::vector< cv::Point2f > >& image_points
                      , cv::Mat& camera_matrix
                      , cv::Mat& distortion_coefficients
-                     , const std::vector< std::vector< cv::Point2f > >& image_points
                      , std::vector< cv::Mat >& rvecs
                      , std::vector< cv:: Mat >& tvecs
                      , std::vector< float >& reprojection_errors
@@ -132,7 +153,7 @@ static bool calibrate( patterns::types pattern
     if( flags & CV_CALIB_FIX_ASPECT_RATIO ) { camera_matrix.at< double >( 0, 0 ) = 1.0; }
     distortion_coefficients = cv::Mat::zeros( 8, 1, CV_64F );
     std::vector< std::vector< cv::Point3f > > object_points( 1 );
-    object_points[0] = pattern_corners( pattern_size, square_size, pattern );
+    object_points[0] = pattern_corners;
     object_points.resize( image_points.size(), object_points[0] );
     double rms = cv::calibrateCamera( object_points, image_points, image_size, camera_matrix, distortion_coefficients, rvecs, tvecs, flags | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 );
     bool ok = cv::checkRange( camera_matrix ) && cv::checkRange( distortion_coefficients );
@@ -166,25 +187,13 @@ int new_main( int ac, char** av )
         static const cv::Scalar green( 0, 255, 0 );
         snark::cv_mat::serialization input( comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) ) );
         snark::camera::pinhole::config_t config;
+        std::vector< cv::Point3f > pattern_corners = pattern_corners_( pattern, pattern_size, square_size );
         while( !std::cin.eof() && std::cin.good() )
         {
             std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair = input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
             if( pair.second.empty() ) { break; }
             
             
-//             if( mode == CAPTURING && imagePoints.size() >= (unsigned)s.nrFrames )
-//             {
-//                 if( runCalibrationAndSave(s, imageSize,  cameraMatrix, distCoeffs, imagePoints))
-//                     mode = CALIBRATED;
-//                 else
-//                     mode = DETECTION;
-//             }
-//             if(view.empty())          // If no more images then run calibration, save and stop loop.
-//             {
-//                     if( imagePoints.size() > 0 )
-//                         runCalibrationAndSave(s, imageSize,  cameraMatrix, distCoeffs, imagePoints);
-//                     break;
-//             }            
             
             
             // todo
