@@ -42,13 +42,8 @@ boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
 static Pair capture( snark::cameras::flycapture::camera& camera, const snark::cameras::flycapture::moment & when )
 { 
     static comma::signal_flag is_shutdown;
-    boost::posix_time::ptime timestamp = boost::posix_time::microsec_clock::universal_time();
     if( is_shutdown ) { reader->stop(); return Pair(); }
-    Pair rv = camera.read();
-    if ( when.value == snark::cameras::flycapture::moment::before ) { rv.first = timestamp; }
-    if ( when.value == snark::cameras::flycapture::moment::after ) { rv.first = boost::posix_time::microsec_clock::universal_time(); }
-    if ( when.value == snark::cameras::flycapture::moment::average ) { rv.first = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; }
-    return rv;
+    return camera.read( when );
 }
  
 int main( int argc, char** argv )
@@ -68,7 +63,7 @@ int main( int argc, char** argv )
             ( "serial", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera serial number; default: first available camera" )
             ( "discard", boost::program_options::value< unsigned int >( &discard ), "buffer this many frames, discard after" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
-            ( "timestamp", boost::program_options::value< std::string >( &timestamp_time_option )->default_value( "camera" ), "when to take the timestamp of the frame (before or after reading data from the camera, or the average of the two, or from the read of the camera); possible values before, after, average, camera" )
+            ( "timestamp", boost::program_options::value< std::string >( &timestamp_time_option )->default_value( "after" ), "when to take the timestamp of the frame (before or after reading data from the camera, or the average of the two); possible values before, after, average" )
             ( "list-cameras", "list all cameras and exit" )
             ( "list-attributes", "output current camera attributes" )
             ( "header", "output header only" )

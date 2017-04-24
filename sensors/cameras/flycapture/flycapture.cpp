@@ -163,7 +163,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 << "duration " << pStrobe.duration << std::endl;
         }
 
-        std::pair< boost::posix_time::ptime, cv::Mat > read()
+        // move the after/before logic for flycapture cat here
+        std::pair< boost::posix_time::ptime, cv::Mat > read( const snark::cameras::flycapture::moment & when )
         {
             cv::Mat image_;
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
@@ -176,9 +177,18 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 if( !started_ ) { result = handle_->StartCapture(); }
 // error is not checked as sometimes the camera will start correctly but return an error
                 started_ = true;
+                boost::posix_time::ptime timestamp = boost::posix_time::microsec_clock::universal_time();
                 success = collect_frame( image_, handle() , started_ );
-                pair.first = boost::posix_time::microsec_clock::universal_time();
-                if( success ) { pair.second = image_; }
+                if( success ) {
+                    pair.second = image_;
+                    switch( when.value ) {
+                        case snark::cameras::flycapture::moment::before:   pair.first = timestamp; break;
+                        case snark::cameras::flycapture::moment::after:    pair.first = boost::posix_time::microsec_clock::universal_time(); break;
+                        case snark::cameras::flycapture::moment::average:  pair.first = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; break;
+                        default:
+                            COMMA_THROW( comma::exception, "logical error, moment not specified" );
+                    }
+                }
                 retries++;
             }
             if( success ) { return pair; }
@@ -356,10 +366,11 @@ namespace snark{ namespace cameras{ namespace flycapture{
         void apply_offsets( const std::vector< unsigned int >& offsets )
         {
             if( offsets.empty() ) { return; }
+            snark::cameras::flycapture::moment when( "before" ); // does not matter, read return value is unused
             if( cameras_.size() != offsets.size() ) { COMMA_THROW( comma::exception, "expected offsets number equal to number of cameras: " << cameras_.size() << "; got: " << offsets.size() ); }
             for( unsigned int i = 0; i < offsets.size(); ++i )
             {
-                for ( unsigned int j = 0; j < offsets[i]; ++j){ const auto pair = cameras_[i]->read(); }
+                for ( unsigned int j = 0; j < offsets[i]; ++j){ const auto pair = cameras_[i]->read( when ); }
             }
         }
 
@@ -374,15 +385,15 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 boost::posix_time::ptime end = boost::posix_time::microsec_clock::universal_time();
                 timestamp = midpoint(timestamp, end);
             }
-            bool first = true;
             for (auto& camera : cameras_)
             {
-                const auto pair = camera->read();
-                if ( first && when.value == snark::cameras::flycapture::moment::camera ) { first = false; timestamp = boost::posix_time::microsec_clock::universal_time(); }
+                const auto pair = camera->read( when );
                 image_tuple.second.push_back(pair.second);
             }
-            if ( when.value == snark::cameras::flycapture::moment::after ) { timestamp = boost::posix_time::microsec_clock::universal_time(); }
-            if ( when.value == snark::cameras::flycapture::moment::average ) { timestamp = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; }
+            if ( !use_software_trigger ) {
+                if ( when.value == snark::cameras::flycapture::moment::after ) { timestamp = boost::posix_time::microsec_clock::universal_time(); }
+                if ( when.value == snark::cameras::flycapture::moment::average ) { timestamp = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; }
+            }
             image_tuple.first = timestamp;
             return image_tuple;
         }
@@ -401,7 +412,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
         camera::~camera() { }
 
-        std::pair< boost::posix_time::ptime, cv::Mat > camera::read() { return pimpl_->read(); }
+        std::pair< boost::posix_time::ptime, cv::Mat > camera::read( const snark::cameras::flycapture::moment & when ) { return pimpl_->read( when ); }
 
         void camera::close() { pimpl_->close(); }
 
