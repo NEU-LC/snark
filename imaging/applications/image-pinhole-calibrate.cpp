@@ -34,11 +34,13 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <comma/application/command_line_options.h>
+#include <comma/csv/ascii.h>
 #include <comma/name_value/parser.h>
 #include <comma/name_value/serialize.h>
 #include "../camera/pinhole.h"
 #include "../camera/traits.h"
 #include "../cv_mat/serialization.h"
+#include "../../visiting/eigen.h"
 
 #ifndef _CRT_SECURE_NO_WARNINGS
 # define _CRT_SECURE_NO_WARNINGS
@@ -151,10 +153,10 @@ static bool calibrate( const std::vector< cv::Point3f >& pattern_corners
                      , int flags
                      , cv::Mat& camera_matrix
                      , cv::Mat& distortion_coefficients
+                     , std::vector< cv::Mat >& rvecs
+                     , std::vector< cv::Mat >& tvecs
                      , double& total_average_error )
 {
-    std::vector< cv::Mat > rvecs;
-    std::vector< cv::Mat > tvecs;
     std::vector< float > reprojection_errors;
     camera_matrix = cv::Mat::eye( 3, 3, CV_64F );
     if( flags & CV_CALIB_FIX_ASPECT_RATIO ) { camera_matrix.at< double >( 0, 0 ) = 1.0; } // why??? it already is 1.0 upon initialization
@@ -164,6 +166,16 @@ static bool calibrate( const std::vector< cv::Point3f >& pattern_corners
     bool ok = cv::checkRange( camera_matrix ) && cv::checkRange( distortion_coefficients );
     total_average_error = reprojection_error( object_points, image_points, rvecs, tvecs, camera_matrix, distortion_coefficients, reprojection_errors );
     return ok;
+}
+
+static Eigen::Vector3d cv_to_eigen( const cv::Mat& m ) // quick and dirty
+{
+    switch( m.type() )
+    {
+        case CV_32FC1: return Eigen::Vector3d( m.at< float >( 0 ), m.at< float >( 1 ), m.at< float >( 2 ) );
+        case CV_64FC1: return Eigen::Vector3d( m.at< double >( 0 ), m.at< double >( 1 ), m.at< double >( 2 ) );
+        default: std::cerr << "image-pinhole-calibrate: on outputting extrinsics: expected float (CV_32FC1) or double (CV_64FC1), got type: " << m.type() << std::endl; exit( 1 );
+    }
 }
 
 int main( int ac, char** av )
@@ -230,7 +242,9 @@ int main( int ac, char** av )
         ::output_t output;
         cv::Mat camera_matrix;
         cv::Mat distortion_coefficients;
-        if( !calibrate( pattern_corners, *image_size, image_points, flags, camera_matrix, distortion_coefficients, output.total_average_error ) ) { std::cerr << "image-pinhole-calibrate: calibration failed" << std::endl; return 1; }
+        std::vector< cv::Mat > rvecs;
+        std::vector< cv::Mat > tvecs;
+        if( !calibrate( pattern_corners, *image_size, image_points, flags, camera_matrix, distortion_coefficients, rvecs, tvecs, output.total_average_error ) ) { std::cerr << "image-pinhole-calibrate: calibration failed" << std::endl; return 1; }
         for( unsigned int i = 0; i < images.size(); ++i )
         {
             cv::Mat undistorted = images[i].clone();
@@ -256,6 +270,8 @@ int main( int ac, char** av )
         output.pinhole.distortion->tangential.p1 = distortion_coefficients.at< double >( 2 );
         output.pinhole.distortion->tangential.p2 = distortion_coefficients.at< double >( 3 );
         output.pinhole.distortion->radial.k3 = distortion_coefficients.at< double >( 4 );
+        comma::csv::ascii< std::pair< Eigen::Vector3d, Eigen::Vector3d > > ascii; // quick and dirty
+        for( unsigned int i = 0; i < rvecs.size(); i++ ) { output.offsets.push_back( ascii.put( std::make_pair( cv_to_eigen( rvecs[i] ), cv_to_eigen( tvecs[i] ) ) ) ); }
         comma::write_json( output, std::cout );
         return 0;
     }
