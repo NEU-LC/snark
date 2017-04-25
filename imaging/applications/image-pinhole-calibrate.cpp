@@ -74,6 +74,7 @@ static void usage( bool verbose )
     std::cerr << "    --no-aspect-ratio: do not calibrate aspect ration, i.e. assume sensor pixels are exact squares" << std::endl;
     std::cerr << "    --no-principal-point: do not calibrate principal point, i.e. assume principal point is in the centre of the image" << std::endl;
     std::cerr << "    --no-tangential-distortion: do not calibrate tangential distortion, i.e. assume sensor plane is exactly perpendicular to camera axis" << std::endl;
+    std::cerr << "    --pixel-size=<metres>: ignored if --no-aspect-ratio specified; default: 1 (dodgy?)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "input options" << std::endl;
     std::cerr << "    --input=[<options>]: see --help --verbose for details" << std::endl;
@@ -255,15 +256,16 @@ int main( int ac, char** av )
         output.pinhole.image_size.x() = image_size->width;
         output.pinhole.image_size.y() = image_size->height;
         output.pinhole.principal_point = Eigen::Vector2d( camera_matrix.at< double >( 0, 2 ), camera_matrix.at< double >( 1, 2 ) );
-        
-        
-        // todo: focal distance
-        // todo: pixel size
-        // todo: offsets
-        // todo? --sensor-size
-        output.pinhole.focal_length = camera_matrix.at< double >( 0, 0 );
-        
-        
+        if( flags & CV_CALIB_FIX_ASPECT_RATIO )
+        {
+            output.pinhole.focal_length = camera_matrix.at< double >( 0, 0 );
+        }
+        else // todo: dodgy? review
+        {
+            double pixel_size = options.value( "--pixel-size", 1.0 );
+            output.pinhole.focal_length = camera_matrix.at< double >( 0, 0 ) * pixel_size;
+            output.pinhole.sensor_size = Eigen::Vector2d( pixel_size * output.pinhole.image_size.x(), output.pinhole.focal_length * output.pinhole.image_size.y() / camera_matrix.at< double >( 1, 1 ) );
+        }
         output.pinhole.distortion = snark::camera::pinhole::config_t::distortion_t();
         output.pinhole.distortion->radial.k1 = distortion_coefficients.at< double >( 0 );
         output.pinhole.distortion->radial.k2 = distortion_coefficients.at< double >( 1 );
