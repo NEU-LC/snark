@@ -274,7 +274,7 @@ int main( int ac, char** av )
         output.pinhole.distortion->radial.k3 = distortion_coefficients.at< double >( 4 );
         comma::csv::ascii< std::pair< Eigen::Vector3d, Eigen::Vector3d > > ascii; // quick and dirty
         for( unsigned int i = 0; i < rvecs.size(); i++ ) { output.offsets.push_back( ascii.put( std::make_pair( cv_to_eigen( rvecs[i] ), cv_to_eigen( tvecs[i] ) ) ) ); }
-        comma::write_json( output, std::cout );
+        comma::write_json( output, std::cout ); // todo: write offsets as json array (currently it outputs vector
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "image-pinhole-calibration: " << ex.what() << std::endl; }

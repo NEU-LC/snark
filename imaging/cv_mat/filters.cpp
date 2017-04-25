@@ -55,6 +55,7 @@
 #include <comma/csv/options.h>
 #include <comma/string/string.h>
 #include <comma/name_value/parser.h>
+#include <comma/name_value/serialize.h>
 #include <comma/application/verbose.h>
 #include <Eigen/Core>
 #include <opencv2/contrib/contrib.hpp>
@@ -65,6 +66,8 @@
 #include <opencv2/highgui/highgui_c.h>
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
+#include "../camera/pinhole.h"
+#include "../camera/traits.h"
 #include "../../timing/timestamped.h"
 #include "../../timing/traits.h"
 #include "filters.h"
@@ -1495,17 +1498,56 @@ class undistort_impl_
 {
     public:
         typedef typename impl::filters< H >::value_type value_type;
-        undistort_impl_( const std::string& filename ) : filename_( filename ) {}
+        undistort_impl_( const std::string& filename ) : distortion_coefficients_( 0, 0, 0, 0, 0 )
+        {
+            try
+            {
+                const std::vector< std::string >& v = comma::split( filename, ':' );
+                snark::camera::pinhole::config_t config;
+                switch( v.size() )
+                {
+                    case 1: comma::read( config, filename ); break;
+                    case 2: comma::read( config, v[0], v[1] ); break;
+                    default: COMMA_THROW( comma::exception, "undistort: expected <filename>[:<path>]; got: \"" << filename << "\"" );
+                }
+                if( config.distortion )
+                {
+                    if( config.distortion->map_filename.empty() )
+                    { 
+                        distortion_coefficients_ = config.distortion->as< cv::Vec< double, 5 > >();
+                        camera_matrix_ = config.camera_matrix();
+                    }
+                    else
+                    {
+                        filename_ = config.distortion->map_filename;
+                    }
+                }
+            }
+            catch( ... )
+            {
+                filename_ = filename;
+            }
+        }
 
         value_type operator()( value_type m )
         {
-            init_map_( m.second.rows, m.second.cols );
             value_type n( m.first, cv::Mat( m.second.size(), m.second.type(), cv::Scalar::all(0) ) );
-            cv::remap( m.second, n.second, x_, y_, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT );
+            if( filename_.empty() )
+            {
+                if( camera_matrix_.empty() ) { n.second = m.second.clone(); }
+                else { cv::undistort( m.second, n.second, camera_matrix_, distortion_coefficients_ ); }
+            }
+            else
+            {
+                init_map_( m.second.rows, m.second.cols );
+                cv::remap( m.second, n.second, x_, y_, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT );
+            }
             return n;
         }
 
     private:
+        cv::Mat camera_matrix_;
+        cv::Vec< double, 5 > distortion_coefficients_;
         std::string filename_;
         std::vector< char > xbuf_;
         std::vector< char > ybuf_;
@@ -2883,7 +2925,10 @@ static std::string usage_impl_()
     oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
-    oss << "        undistort=<undistort map file>: undistort" << std::endl;
+    oss << "        undistort=<how>: undistort" << std::endl;
+    oss << "            <how>" << std::endl;
+    oss << "                <undistort_map_filename>, e.g. map.bin" << std::endl;
+    oss << "                <pinhole_config_filename>[:<path>], e.g. config.json:camera/pinhole" << std::endl;
     oss << "        unpack=<bits>,<format>: unpack compressed pixel formats, example: unpack=12,cba0,fed0" << std::endl;
     oss << "            <bits>: number of bits, currently only 12 is supported" << std::endl;
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
