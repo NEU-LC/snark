@@ -144,24 +144,12 @@ static void usage( bool verbose = false )
     std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
     std::cerr << "\nthe USB address. Detected cameras along with their addresses and serial numbers";
     std::cerr << "\nare shown by --list-cameras --verbose.";
-    std::cerr << "\n";
-    std::cerr << "\nNote that most parameter settings (exposure, gain, etc) are sticky.";
-    std::cerr << "\nThey will persist from one run to the next.";
     if( verbose )
     {
         std::cerr << "\n";
         std::cerr << snark::cv_mat::filters::usage();
         std::cerr << snark::cv_mat::serialization::options::type_usage();
     }
-    std::cerr << "\nNote: there is a glitch or a subtle feature in basler line camera:";
-    std::cerr << "\n    - power-cycle camera";
-    std::cerr << "\n    - view colour images: it works";
-    std::cerr << "\n    - view grey-scale images: it works";
-    std::cerr << "\n    - view colour images: it still displays grey-scale";
-    std::cerr << "\n";
-    std::cerr << "\n    Even in their native viewer you need to set colour image repeatedly and";
-    std::cerr << "\n    with pure luck it works, but we have not managed to do it in software.";
-    std::cerr << "\n    The remedy: power-cycle the camera";
     std::cerr << "\n";
     std::cerr << "\nExample:";
     std::cerr << "\n    $ basler-cat \"resize=0.5;timestamp;view;null\"";
@@ -477,6 +465,15 @@ template <> struct pixel_format< Pylon::CBaslerGigECamera > // todo: support mor
         }
     }
 };
+
+template< typename T, typename P >
+static void load_default_settings( T& camera, P user_set_selector_default )
+{
+    camera.UserSetSelector.SetValue( user_set_selector_default );
+    camera.UserSetLoad.Execute();
+}
+static void load_default_settings( Pylon::CBaslerGigECamera& camera ) { load_default_settings( camera, Basler_GigECameraParams::UserSetSelector_Default ); }
+static void load_default_settings( Pylon::CBaslerUsbCamera& camera ) { load_default_settings( camera, Basler_UsbCameraParams::UserSetSelector_Default ); }
 
 template < typename T, typename P >
 static void set_pixel_format( T& camera, P type )
@@ -961,6 +958,7 @@ static int run( T& camera, const comma::command_line_options& options )
     comma::verbose << "opening camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << "..." << std::endl;
     camera.Open();
     comma::verbose << "opened camera " << camera.GetDevice()->GetDeviceInfo().GetFullName() << std::endl;    
+    load_default_settings( camera );
     set_pixel_format( camera, options );
     cv_mat_header = cv_mat_options.get_header();
     typename camera_t::StreamGrabber_t grabber( camera.GetStreamGrabber( 0 ) );

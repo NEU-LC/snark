@@ -43,8 +43,8 @@
 
 void usage(bool detail)
 {
-    std::cerr<<"    publish binary csv to ROS PointCloud2" << std::endl;
-    std::cerr<<"        input: reads binary csv from stdin" << std::endl;
+    std::cerr<<"    publish csv to ROS PointCloud2" << std::endl;
+    std::cerr<<"        input: reads csv from stdin" << std::endl;
     std::cerr<<"        output: publishes the data as sensor_msg::PointCloud2 on the specified topic in ROS" << std::endl;
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
