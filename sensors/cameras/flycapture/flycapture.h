@@ -50,24 +50,24 @@ struct moment {
         before,
         after,
         average,
-        camera
     };
 
     moments value;
-    moment( const std::string & s = "none" ) : value( s == "before" ? before : ( s == "after" ? after : ( s == "average" ? average : ( s == "camera" ? camera : none ) ) ) ) {}
+    moment( const std::string & s ) : value( s == "before" ? before : ( s == "after" ? after : ( s == "average" ? average : none ) ) ) {
+        if ( value == none ) { COMMA_THROW( comma::exception, "moment is not one of '" << list() << "'" ); }
+    }
 
     operator std::string() const
     {
         switch( value )
         {
+            case(none):    return "none";
             case(before) : return "before";
             case(after)  : return "after";
             case(average): return "average";
-            case(camera) : return "camera";
-            case(none)   : return "none";
         }
     }
-    static std::string list() { return "none,before,after,average,camera"; }
+    static std::string list() { return "before,after,average"; }
 };
 
 /// image acquisition from flycapture camera
@@ -90,7 +90,7 @@ class camera
         attributes_type attributes() const;
 
         /// get timestamped frame
-        frame_pair read();
+        frame_pair read( const snark::cameras::flycapture::moment & when );
         
         // void test();
 
