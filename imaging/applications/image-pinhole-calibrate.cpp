@@ -211,6 +211,7 @@ int main( int ac, char** av )
             std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair = input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
             if( pair.second.empty() ) { break; }
             if( image_size && *image_size != pair.second.size() ) { std::cerr << "image-pinhole-calibrate: expected all calibration images of the same size; got image " << ( count - 1 ) << " of size: " << image_size->width << "," << image_size->height << " and image " << count << " of size: " << pair.second.size().width << "," << pair.second.size().height << std::endl; return 1; }
+            //if( view ) { images.push_back( pair.second.clone() ); }
             image_size = pair.second.size();
             std::vector< cv::Point2f > points;
             bool found = pattern == patterns::chessboard ? cv::findChessboardCorners( pair.second, pattern_size, points, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FAST_CHECK | CV_CALIB_CB_NORMALIZE_IMAGE )
