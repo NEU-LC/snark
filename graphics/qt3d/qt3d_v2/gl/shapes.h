@@ -106,6 +106,15 @@ protected:
     void paint();
 };
 
+class triangles : public shape
+{
+public:
+    bool fill;
+    triangles(bool fill=false);
+protected:
+    void paint();
+};
+
 } // namespace shapes {
 
 } } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {

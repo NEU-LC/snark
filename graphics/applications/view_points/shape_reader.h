@@ -99,7 +99,7 @@ private:
 template< typename S, typename How >
 std::shared_ptr<snark::graphics::qt3d::gl::shape> ShapeReader< S, How >::make_shape()
 {
-    shape=Shapetraits< S, How >::make_shape(point_size);
+    shape=Shapetraits< S, How >::make_shape(gl_parameters(point_size,fill));
     return shape;
 }
 template< typename S, typename How >

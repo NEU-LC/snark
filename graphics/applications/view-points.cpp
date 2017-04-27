@@ -94,7 +94,7 @@ static void usage()
         "\nUnsupported features are shown in dimmed text in this help"
         "\n"
         "\nFor an example of current functionality try:"
-        "\n    test-pattern cube 100000 0.1 0.01 | view-points --fields=x,y,z,r,g,b,a"
+        "\n    snark-graphics-test-pattern cube 100000 0.1 0.01 | view-points --fields=x,y,z,r,g,b,a"
         "\n"
         "\n----------------------------------------------"
         "\n";
