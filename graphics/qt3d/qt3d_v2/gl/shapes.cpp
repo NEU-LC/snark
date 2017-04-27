@@ -111,6 +111,16 @@ void line_loop::paint()
 {
     shape::paint();
 }
+triangles::triangles(bool fill) : shape(GL_TRIANGLES),fill(fill)
+{ 
+    
+}
+void triangles::paint()
+{
+    glPolygonMode(GL_FRONT_AND_BACK,fill ? GL_FILL : GL_LINE);
+    shape::paint();
+    glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+}
 
 } // namespace shapes {
 
