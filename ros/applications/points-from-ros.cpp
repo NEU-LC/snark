@@ -63,8 +63,8 @@ void usage(bool detail)
     std::cerr << "    --output-fields; print field names and exit" << std::endl;
     std::cerr << "    --output-format; print format and exit" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    csv options --fields must be specified" << std::endl;
-    std::cerr << "    either --format or --binary option must be specified" << std::endl;
+    std::cerr << "    csv options" << std::endl;
+    std::cerr << "        either --format or --binary option must be specified" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -74,7 +74,7 @@ void usage(bool detail)
     }
     else
     {
-        std::cerr << "use -v or --verbose to see more detail" << std::endl;
+        std::cerr << "use -v or --verbose to see more detail on csv options" << std::endl;
         std::cerr << std::endl;
     }
     std::cerr << "example" << std::endl;
