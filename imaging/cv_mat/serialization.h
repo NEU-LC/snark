@@ -117,7 +117,7 @@ class serialization
         std::pair< H, cv::Mat > read( std::istream& is );
                 
         /// return last header buffer after read()
-        const char* header_buffer() const;
+        const std::vector< char >& header_buffer() const;
 
         /// write to stream
         void write( std::ostream& os, const std::pair< boost::posix_time::ptime, cv::Mat >& m, bool flush = true );
