@@ -168,7 +168,7 @@ int main( int argc, char** argv )
         if ( use_software_trigger && vm.count( "timestamp" ) ) {
             COMMA_THROW( comma::exception, "cannot specify timestamp capture moment when using software trigger" );
         }
-        snark::cameras::flycapture::moment when( timestamp_time_option );
+        snark::cameras::flycapture::camera::timestamp_policy when( timestamp_time_option );
         
         if ( vm.count( "discard" ) ) { discard = 1; }
         discard_more_than = discard;

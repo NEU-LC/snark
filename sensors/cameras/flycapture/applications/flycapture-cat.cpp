@@ -39,7 +39,7 @@
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
 boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
-static Pair capture( snark::cameras::flycapture::camera& camera, const snark::cameras::flycapture::moment & when )
+static Pair capture( snark::cameras::flycapture::camera& camera, const snark::cameras::flycapture::camera::timestamp_policy & when )
 { 
     static comma::signal_flag is_shutdown;
     if( is_shutdown ) { reader->stop(); return Pair(); }
@@ -113,7 +113,7 @@ int main( int argc, char** argv )
             }
             // attributes.insert( attribute_map.get().begin(), attribute_map.get().end() );
         }
-        snark::cameras::flycapture::moment when( timestamp_time_option );
+        snark::cameras::flycapture::camera::timestamp_policy when( timestamp_time_option );
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
         snark::cameras::flycapture::camera camera( id, attributes );
         if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }

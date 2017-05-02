@@ -45,47 +45,38 @@ namespace snark { namespace cameras { namespace flycapture {
 
 // todo
 // - moment
-//   - rename to timestamp_policy
-//   - add constructor from enumeration
-//   - move to camera::timestamp_policy
-//   - move method implementation to flycapture.cpp
+//   - rename to timestamp_policy  DONE
+//   - add constructor from enumeration  DONE
+//   - move to camera::timestamp_policy  DONE
+//   - move method implementation to flycapture.cpp  DONE
 // - camera
 //   - add constructor: camera( ..., when )
 //   - add read(), which uses 'when' given on construction    
 // - applications
 //   - fix? software trigger vs timestamp policy default
     
-struct moment {
-    // possible values for the '--timestamp=' option
-    enum moments {
-        none = 0,
-        before,
-        after,
-        average,
-    };
-
-    moments value;
-    moment( const std::string & s ) : value( s == "before" ? before : ( s == "after" ? after : ( s == "average" ? average : none ) ) ) {
-        if ( value == none ) { COMMA_THROW( comma::exception, "moment is not one of '" << list() << "'" ); }
-    }
-
-    operator std::string() const
-    {
-        switch( value )
-        {
-            case(none):    return "none";
-            case(before) : return "before";
-            case(after)  : return "after";
-            case(average): return "average";
-        }
-    }
-    static std::string list() { return "before,after,average"; }
-};
-
 /// image acquisition from flycapture camera
 class camera
 {
     public:
+        struct timestamp_policy {
+            // possible values for the image timestamp
+            enum moments {
+                none = 0,
+                before,
+                after,
+                average,
+            };
+
+            moments value;
+
+            timestamp_policy( const std::string & s );
+            timestamp_policy( moments v ) : value( v ) { }
+
+            operator std::string() const;
+            static std::string list() { return "before,after,average"; }
+        };
+
         /// attributes map type
         // typedef std::map< std::string, std::string > attributes_type;
         typedef std::vector< std::pair<std::string, std::string> > attributes_type;
@@ -102,7 +93,7 @@ class camera
         attributes_type attributes() const;
 
         /// get timestamped frame
-        frame_pair read( const snark::cameras::flycapture::moment & when );
+        frame_pair read( const camera::timestamp_policy & when );
         
         // void test();
 
@@ -139,7 +130,7 @@ class camera
                 void trigger();
 
                 /// return the images and timestamp
-                frames_pair read( const snark::cameras::flycapture::moment & when, bool use_software_trigger = true );
+                frames_pair read( const camera::timestamp_policy & when, bool use_software_trigger = true );
                 
                 /// return true, if multicam status is ok
                 bool good() const;
