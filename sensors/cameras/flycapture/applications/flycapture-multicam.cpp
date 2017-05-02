@@ -165,10 +165,11 @@ int main( int argc, char** argv )
 
         bool use_software_trigger;
         use_software_trigger_option == "hardware" ? use_software_trigger = false : use_software_trigger = true;
-        if ( use_software_trigger && vm.count( "timestamp" ) ) {
-            COMMA_THROW( comma::exception, "cannot specify timestamp capture moment when using software trigger" );
-        }
         snark::cameras::flycapture::camera::timestamp_policy when( timestamp_time_option );
+        if ( use_software_trigger ) {
+            if ( vm.count( "timestamp" ) ) { COMMA_THROW( comma::exception, "cannot specify timestamp capture moment when using software trigger" ); }
+            when.value = snark::cameras::flycapture::camera::timestamp_policy::none;
+        }
         
         if ( vm.count( "discard" ) ) { discard = 1; }
         discard_more_than = discard;

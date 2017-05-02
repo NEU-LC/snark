@@ -53,7 +53,7 @@ namespace snark { namespace cameras { namespace flycapture {
 //   - add constructor: camera( ..., when )
 //   - add read(), which uses 'when' given on construction    
 // - applications
-//   - fix? software trigger vs timestamp policy default
+//   - fix? software trigger vs timestamp policy default  DONE, no bug but made implementation clear
     
 /// image acquisition from flycapture camera
 class camera
