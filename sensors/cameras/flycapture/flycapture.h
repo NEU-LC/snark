@@ -43,6 +43,18 @@
 
 namespace snark { namespace cameras { namespace flycapture {
 
+// todo
+// - moment
+//   - rename to timestamp_policy
+//   - add constructor from enumeration
+//   - move to camera::timestamp_policy
+//   - move method implementation to flycapture.cpp
+// - camera
+//   - add constructor: camera( ..., when )
+//   - add read(), which uses 'when' given on construction    
+// - applications
+//   - fix? software trigger vs timestamp policy default
+    
 struct moment {
     // possible values for the '--timestamp=' option
     enum moments {
