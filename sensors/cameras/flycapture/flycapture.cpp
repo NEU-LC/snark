@@ -93,8 +93,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
     {
 //Note, for Point Grey, the serial number is used as ID
     public:
-        impl( unsigned int id, const attributes_type& attributes ) :
-        handle_(nullptr), id_(id), started_( false )
+        impl( unsigned int id, const attributes_type& attributes, const timestamp_policy & when ) :
+        handle_(nullptr), id_(id), started_( false ), when_( when )
         {
             initialize_();
             std::vector< unsigned int > camera_list = list_camera_serials();
@@ -163,8 +163,12 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 << "duration " << pStrobe.duration << std::endl;
         }
 
-        // move the after/before logic for flycapture cat here
-        std::pair< boost::posix_time::ptime, cv::Mat > read( const camera::timestamp_policy & when )
+        std::pair< boost::posix_time::ptime, cv::Mat > read( )
+        {
+            return read( when_ );
+        }
+
+        std::pair< boost::posix_time::ptime, cv::Mat > read( const timestamp_policy & when )
         {
             cv::Mat image_;
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
@@ -325,6 +329,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
         std::vector< char > buffer_;
         uint total_bytes_per_frame_;
         bool started_;
+        const timestamp_policy & when_;
+
         static FlyCapture2::BusManager& bus_manager()
         {
            static FlyCapture2::BusManager bm;
@@ -338,14 +344,14 @@ namespace snark{ namespace cameras{ namespace flycapture{
     class camera::multicam::impl
     {
     public:
-        impl( std::vector<camera_pair>& camera_pairs, const std::vector< unsigned int >& offsets )
-        : good( false )
+        impl( std::vector<camera_pair>& camera_pairs, const std::vector< unsigned int >& offsets, const timestamp_policy & when )
+        : good( false ), when_( when )
         {
             for (camera_pair& pair : camera_pairs)
             {
                 uint serial = pair.first;
                 const attributes_type attributes = pair.second;
-                cameras_.push_back(std::unique_ptr<camera::impl>(new camera::impl(serial, attributes)));
+                cameras_.push_back(std::unique_ptr<camera::impl>(new camera::impl(serial, attributes, when)));
             }
             if (cameras_.size()) { good = true; }
             apply_offsets( offsets );
@@ -374,6 +380,11 @@ namespace snark{ namespace cameras{ namespace flycapture{
             }
         }
 
+        camera::multicam::frames_pair read( bool use_software_trigger )
+        {
+            return read( when_, use_software_trigger );
+        }
+
         camera::multicam::frames_pair read( const camera::timestamp_policy & when, bool use_software_trigger )
         {
             if (!good) { COMMA_THROW(comma::exception, "multicam read without good cameras"); }
@@ -400,6 +411,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
         bool good;
         std::vector<std::unique_ptr<camera::impl>> cameras_;
+        const timestamp_policy & when_;
     };
 
     camera::timestamp_policy::timestamp_policy( const std::string & s )
@@ -426,11 +438,12 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
 // flycapture class
 
-        camera::camera( unsigned int id, const camera::attributes_type& attributes) : pimpl_( new impl( id, attributes ) ) {}
+        camera::camera( unsigned int id, const camera::attributes_type& attributes, const timestamp_policy & when ) : pimpl_( new impl( id, attributes, when ) ) {}
 
         camera::~camera() { }
 
         std::pair< boost::posix_time::ptime, cv::Mat > camera::read( const camera::timestamp_policy & when ) { return pimpl_->read( when ); }
+        std::pair< boost::posix_time::ptime, cv::Mat > camera::read( ) { return pimpl_->read( ); }
 
         void camera::close() { pimpl_->close(); }
 
@@ -445,7 +458,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
         camera::attributes_type camera::attributes() const { return get_attributes( pimpl_->handle() ); }
 
 // camera::multicam class
-        camera::multicam::multicam( std::vector<camera_pair>& cameras, const std::vector< unsigned int >& offsets ) : pimpl_( new multicam::impl( cameras, offsets ) ) {}
+        camera::multicam::multicam( std::vector<camera_pair>& cameras, const std::vector< unsigned int >& offsets, const timestamp_policy & when ) : pimpl_( new multicam::impl( cameras, offsets, when ) ) {}
 
         camera::multicam::~multicam() { delete pimpl_; }
 
@@ -458,6 +471,9 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
         camera::multicam::frames_pair camera::multicam::read( const camera::timestamp_policy & when, bool use_software_trigger )
         { return pimpl_->read( when, use_software_trigger ); }
+
+        camera::multicam::frames_pair camera::multicam::read( bool use_software_trigger )
+        { return pimpl_->read( use_software_trigger ); }
 
 } } } //namespace snark{ namespace cameras{ namespace flycapture{
 
