@@ -36,37 +36,6 @@
 
 namespace snark { namespace graphics { namespace qt3d { namespace gl {
 
-widget::widget(const camera_options& camera_options, QWidget *parent )
-    : QOpenGLWidget( parent ), program_( 0 ), camera_options_( camera_options ), size_( 0.4f )
-{
-}
-widget::~widget()
-{
-    cleanup();
-}
-
-QSize widget::minimumSizeHint() const
-{
-    return QSize( 50, 50 );
-}
-
-QSize widget::sizeHint() const
-{
-    return QSize( 400, 400 );
-}
-
-void widget::cleanup()
-{
-    makeCurrent();
-    for(auto& i : shapes) { i->destroy(); }
-    if(program_)
-    {
-        delete program_;
-        program_ = 0;
-    }
-    doneCurrent();
-}
-
 // If you want a good explanation of the projection, model and view matrices
 // used in the shader code (model and view combined in the mv_matrix) see
 // http://www.opengl-tutorial.org/beginners-tutorials/tutorial-3-matrices/
@@ -95,6 +64,39 @@ static const char *fragment_shader_source = R"(
        frag_color = clamp( vert_color, 0.0, 1.0 );
     }
 )";
+
+widget::widget(const camera_options& camera_options, QWidget *parent )
+    : QOpenGLWidget( parent ), program_( 0 ), camera_options_( camera_options ), size_( 0.4f )
+{
+}
+widget::~widget()
+{
+    cleanup();
+}
+
+QSize widget::minimumSizeHint() const
+{
+    return QSize( 50, 50 );
+}
+
+QSize widget::sizeHint() const
+{
+    return QSize( 400, 400 );
+}
+
+void widget::cleanup()
+{
+    makeCurrent();
+    for(auto& i : shapes) { i->destroy(); }
+    label_shader.destroy();
+    if(program_)
+    {
+        delete program_;
+        program_ = 0;
+    }
+    doneCurrent();
+}
+
 void widget::begin_update()
 {
     makeCurrent();
@@ -130,6 +132,7 @@ void widget::initializeGL()
     mv_matrix_location_ = program_->uniformLocation( "mv_matrix" );
 
     for(auto& i : shapes) { i->init(); }
+    label_shader.init();
 //     program_->release();
 
     // The camera always points along the z-axis. Pan moves the camera in x,y
@@ -170,6 +173,8 @@ void widget::paintGL()
 //     glDisable( GL_DEPTH_TEST );
 
     program_->release();
+    
+    label_shader.paint(projection_ * camera_ * world_, size());
 
     painter.endNativePainting();
 

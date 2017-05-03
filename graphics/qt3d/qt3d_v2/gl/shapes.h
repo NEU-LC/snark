@@ -86,24 +86,18 @@ class lines : public shape
 {
 public:
     lines();
-protected:
-    void paint();
 };
 
 class line_strip : public shape
 {
 public:
     line_strip();
-protected:
-    void paint();
 };
 
 class line_loop : public shape
 {
 public:
     line_loop();
-protected:
-    void paint();
 };
 
 class triangles : public shape

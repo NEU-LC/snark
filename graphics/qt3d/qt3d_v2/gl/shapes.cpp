@@ -90,31 +90,14 @@ void point::paint()
     glPointSize(point_size);
     shape::paint();
 }
-lines::lines() : shape(GL_LINES)
-{
-}
-void lines::paint()
-{
-    shape::paint();
-}
-line_strip::line_strip() : shape(GL_LINE_STRIP)
-{
-}
-void line_strip::paint()
-{
-    shape::paint();
-}
-line_loop::line_loop() : shape(GL_LINE_LOOP)
-{
-}
-void line_loop::paint()
-{
-    shape::paint();
-}
-triangles::triangles(bool fill) : shape(GL_TRIANGLES),fill(fill)
-{ 
-    
-}
+
+lines::lines() : shape(GL_LINES) { }
+
+line_strip::line_strip() : shape(GL_LINE_STRIP) { }
+
+line_loop::line_loop() : shape(GL_LINE_LOOP) { }
+
+triangles::triangles(bool fill) : shape(GL_TRIANGLES),fill(fill) { }
 void triangles::paint()
 {
     glPolygonMode(GL_FRONT_AND_BACK,fill ? GL_FILL : GL_LINE);

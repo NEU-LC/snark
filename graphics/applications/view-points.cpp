@@ -152,12 +152,13 @@ static void usage()
         "\n"
         qt55_unsupported_marker_start
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
+        qt55_unsupported_marker_end
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
         "\n    --fill: fill the shape; currently implemented only for triangles"
+        qt55_unsupported_marker_start
         "\n    --label <label>: text label displayed next to the latest point"
         qt55_unsupported_marker_end
         "\n    --no-stdin: do not read from stdin"
-        qt55_unsupported_marker_start
         "\n    --pass-through,--pass; pass input data to stdout"
         "\n    --point-size,--weight <point size>: default: 1"
         "\n    --shape <shape>: \"point\", \"extents\", \"line\", \"label\"; default \"point\""
@@ -169,13 +170,16 @@ static void usage()
         "\n                     \"ellipse\": e.g. --shape=ellipse --fields=,,center,orientation,minor,major,"
         "\n                                  orientation: roll,pitch,yaw; default: in x,y plane"
         "\n                     \"extents\": e.g. --shape=extents --fields=,,min,max,,,"
+        qt55_unsupported_marker_start
         "\n                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label"
+        qt55_unsupported_marker_end
         "\n                     \"line\": e.g. --shape=line --fields=,,first,second,,,"
         "\n                     \"lines\": connect all points of a block from first to the last; fields same as for 'point'"
         "\n                     \"loop\": connect all points of a block; fields same as for 'point'"
         "\n                     \"triangle\": e.g. --shape=triangle --fields=,,corners,,,"
         "\n                                     or --shape=triangle --fields=,,corners[0],,,corners[1],,,corners[2],,,"
         "\n                                     or --shape=triangle --fields=,,corners[0]/x,,corners[0]/y,,corners[0]/z,,,,corners[1],,,corners[2],,, etc"
+        qt55_unsupported_marker_start
         "\n                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
         "\n                     \"    <options>"
         "\n                     \"        flip\": flip the model around the x-axis"
@@ -186,8 +190,10 @@ static void usage()
         "\n                                <pixel size>: single pixel size in metres"
         "\n                            note 1: just like for the cad models, the images will be pinned to the latest point in the stream"
         "\n                            note 2: specify id in fields to switch between multiple images, see examples below"
+        qt55_unsupported_marker_end
         "\n    --size <size>: render last <size> points (or other shapes)"
         "\n                   default 2000000 for points, for 200000 for other shapes"
+        qt55_unsupported_marker_start
         "\n    --title <title>: title for source, defaults to filename"
         "\n                     if set to \"none\" don't show source in selection box"
         "\n                     (but still display data and checkbox)"
@@ -226,9 +232,7 @@ static void usage()
         "\n        default: x,y,z"
         "\n        x,y,z: coordinates (%d in binary)"
         "\n        id: if present, colour by id (%ui in binary)"
-        qt55_unsupported_marker_start
         "\n        block: if present, clear screen once block id changes (%ui in binary)"
-        qt55_unsupported_marker_end
         "\n        r,g,b: if present, specify RGB colour (0-255; %uc in binary)"
         "\n        a: if present, specifies colour transparency (0-255, %uc in binary); default 255"
         "\n        scalar: if present, colour by scalar"
@@ -239,8 +243,8 @@ static void usage()
         "\n        label: text label (currenly implemented for ascii only)"
         "\n        roll,pitch,yaw: if present, show orientation"
         "\n"
-        "\n    most of the options can be set for individual files (see examples)"
         qt55_unsupported_marker_end
+        "\n    most of the options can be set for individual files (see examples)"
         "\n";
         
     static const char * const usage_examples = 
@@ -259,14 +263,12 @@ static void usage()
         "\n    view points from file:"
         "\n        view-points xyz.csv"
         "\n"
-        qt55_unsupported_marker_start
         "\n    hint that the file contains not more than 200000 points"
         "\n        cat $(ls *.csv) | view-points --size=200000"
         "\n"
         "\n    view points from all the binary files in the directory"
         "\n        cat $(ls *.bin) | view-points --size=200000 --binary \"%d%d%d\""
         "\n"
-        qt55_unsupported_marker_end
         "\n    colour points"
         "\n        view-points --colour blue $(ls labeled.*.csv)"
         "\n"
@@ -289,9 +291,11 @@ static void usage()
         "\n    specify fixed scene radius explicitly:"
         "\n        cat xyz.csv | view-points --scene-radius=100"
         "\n"
+        qt55_unsupported_marker_end
         "\n    passing input data through:"
         "\n        cat xyz.csv | view-points \"-;pass-through\" scan.csv"
         "\n"
+        qt55_unsupported_marker_start
         "\nusing images"
         "\n    show image with given position"
         "\n        echo 0,0,0 | view-points \"-;shape=image.jpg\""

@@ -108,7 +108,7 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t();
+        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::line_strip());
     }
 #endif
 
@@ -136,10 +136,20 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
         buffer.add( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), color ), block );
         buffer.add( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), color ), block );
         buffer.add( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), color ), block );
+        buffer.add( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), color ), block );
+        
         buffer.add( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), color ), block );
         buffer.add( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), color ), block );
         buffer.add( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), color ), block );
         buffer.add( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), color ), block );
+        buffer.add( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), color ), block );
+        
+        buffer.add( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), color ), block );
+        buffer.add( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), color ), block );
+        buffer.add( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), color ), block );
+        buffer.add( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), color ), block );
+        buffer.add( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), color ), block );
+        buffer.add( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), color ), block );
         #endif
 
         extents = extents
@@ -289,7 +299,7 @@ struct Shapetraits< Ellipse< Size > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t();
+        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::line_loop());
     }
 #endif
 
@@ -313,7 +323,7 @@ struct Shapetraits< Ellipse< Size > >
             #if Qt3D_VERSION==1
             buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
             #else
-            buffer.add( vertex_t( Eigen::Vector3f( point.x(), point.y(), point.z() ), color ), block );
+            buffer.add( vertex_t( point, color ), block );
             #endif
             extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
         }
@@ -354,7 +364,7 @@ struct Shapetraits< arc< Size > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t();
+        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::line_strip());
     }
 #endif
 
@@ -375,7 +385,7 @@ struct Shapetraits< arc< Size > >
                 #if Qt3D_VERSION==1
                 buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
                 #else
-                buffer.add( vertex_t( Eigen::Vector3f( point.x(), point.y(), point.z() ), color ), block );
+                buffer.add( vertex_t( point, color ), block );
                 #endif
                 extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
             }
@@ -416,7 +426,7 @@ struct Shapetraits< arc< Size > >
             #if Qt3D_VERSION==1
             buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
             #else
-            buffer.add( vertex_t( Eigen::Vector3f( point.x(), point.y(), point.z() ), color ), block );
+            buffer.add( vertex_t( point, color ), block );
             #endif
             extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
         }

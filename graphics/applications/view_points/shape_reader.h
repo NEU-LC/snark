@@ -60,9 +60,6 @@ class ShapeReader : public Reader
         bool read_once();
         #if Qt3D_VERSION==1
         void render( QGLPainter *painter = NULL );
-        #else
-        const char* buffer_data() const { return (char *)buffer_.values().data(); }
-        std::size_t buffer_size() const { return buffer_.size(); }
         #endif
         bool empty() const;
 
