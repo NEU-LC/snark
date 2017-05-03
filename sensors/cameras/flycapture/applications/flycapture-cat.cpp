@@ -39,11 +39,11 @@
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
 boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
-static Pair capture( snark::cameras::flycapture::camera& camera, const snark::cameras::flycapture::moment & when )
+static Pair capture( snark::cameras::flycapture::camera& camera )
 { 
     static comma::signal_flag is_shutdown;
     if( is_shutdown ) { reader->stop(); return Pair(); }
-    return camera.read( when );
+    return camera.read( );
 }
  
 int main( int argc, char** argv )
@@ -113,9 +113,9 @@ int main( int argc, char** argv )
             }
             // attributes.insert( attribute_map.get().begin(), attribute_map.get().end() );
         }
-        snark::cameras::flycapture::moment when( timestamp_time_option );
+        snark::cameras::flycapture::camera::timestamp_policy when( timestamp_time_option );
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
-        snark::cameras::flycapture::camera camera( id, attributes );
+        snark::cameras::flycapture::camera camera( id, attributes, when );
         if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
         if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
@@ -152,7 +152,7 @@ int main( int argc, char** argv )
         {
             serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) );
         }
-        reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ), boost::cref( when ) ), discard ) );
+        reader.reset( new snark::tbb::bursty_reader< Pair >( boost::bind( &capture, boost::ref( camera ) ), discard ) );
         snark::imaging::applications::pipeline pipeline( *serialization, filters, *reader );
         pipeline.run();
         return 0;

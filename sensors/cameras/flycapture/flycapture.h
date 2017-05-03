@@ -43,37 +43,40 @@
 
 namespace snark { namespace cameras { namespace flycapture {
 
-struct moment {
-    // possible values for the '--timestamp=' option
-    enum moments {
-        none = 0,
-        before,
-        after,
-        average,
-    };
-
-    moments value;
-    moment( const std::string & s ) : value( s == "before" ? before : ( s == "after" ? after : ( s == "average" ? average : none ) ) ) {
-        if ( value == none ) { COMMA_THROW( comma::exception, "moment is not one of '" << list() << "'" ); }
-    }
-
-    operator std::string() const
-    {
-        switch( value )
-        {
-            case(none):    return "none";
-            case(before) : return "before";
-            case(after)  : return "after";
-            case(average): return "average";
-        }
-    }
-    static std::string list() { return "before,after,average"; }
-};
+// todo
+// - moment
+//   - rename to timestamp_policy  DONE
+//   - add constructor from enumeration  DONE
+//   - move to camera::timestamp_policy  DONE
+//   - move method implementation to flycapture.cpp  DONE
+// - camera
+//   - add constructor: camera( ..., when )  DONE
+//   - add read(), which uses 'when' given on construction  DONE
+// - applications
+//   - fix? software trigger vs timestamp policy default  DONE, no bug but made implementation clear
 
 /// image acquisition from flycapture camera
 class camera
 {
     public:
+        struct timestamp_policy {
+            // possible values for the image timestamp
+            enum moments {
+                none = 0,
+                before,
+                after,
+                average,
+            };
+
+            moments value;
+
+            timestamp_policy( const std::string & s );
+            timestamp_policy( moments v ) : value( v ) { }
+
+            operator std::string() const;
+            static std::string list() { return "before,after,average"; }
+        };
+
         /// attributes map type
         // typedef std::map< std::string, std::string > attributes_type;
         typedef std::vector< std::pair<std::string, std::string> > attributes_type;
@@ -81,7 +84,7 @@ class camera
         typedef std::unique_ptr<FlyCapture2::CameraBase> camerabase_ptr;
         
         /// constructor; default id: connect to any available camera
-        camera( unsigned int id = 0, const attributes_type& attributes = attributes_type());
+        camera( unsigned int id, const attributes_type& attributes, const timestamp_policy & when );
 
         /// destructor
         ~camera();
@@ -90,7 +93,8 @@ class camera
         attributes_type attributes() const;
 
         /// get timestamped frame
-        frame_pair read( const snark::cameras::flycapture::moment & when );
+        frame_pair read( );
+        frame_pair read( const timestamp_policy & when );
         
         // void test();
 
@@ -118,7 +122,7 @@ class camera
                 typedef std::pair<boost::posix_time::ptime, std::vector<cv::Mat>> frames_pair;
 
                 /// constructor: start capture, call multicam on frame update
-                multicam( std::vector<camera_pair>& cameras, const std::vector< unsigned int >& offsets );
+                multicam( std::vector<camera_pair>& cameras, const std::vector< unsigned int >& offsets, const timestamp_policy & when );
 
                 /// destructor: stop capture
                 ~multicam();
@@ -127,7 +131,8 @@ class camera
                 void trigger();
 
                 /// return the images and timestamp
-                frames_pair read( const snark::cameras::flycapture::moment & when, bool use_software_trigger = true );
+                frames_pair read( bool use_software_trigger = true );
+                frames_pair read( const timestamp_policy & when, bool use_software_trigger = true );
                 
                 /// return true, if multicam status is ok
                 bool good() const;

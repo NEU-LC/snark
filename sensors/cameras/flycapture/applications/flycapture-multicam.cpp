@@ -114,8 +114,8 @@ int main( int argc, char** argv )
             for (const uint serial : snark::cameras::flycapture::camera::list_camera_serials())
             {
                 std::cout << snark::cameras::flycapture::camera::describe_camera(serial) << std::endl;
-                std::unique_ptr<snark::cameras::flycapture::camera> camera;
-                camera.reset(new snark::cameras::flycapture::camera(serial));
+                std::unique_ptr< snark::cameras::flycapture::camera > camera;
+                camera.reset( new snark::cameras::flycapture::camera( serial, snark::cameras::flycapture::camera::attributes_type(), snark::cameras::flycapture::camera::timestamp_policy( snark::cameras::flycapture::camera::timestamp_policy::none ) ) );
                 const auto& attributes = camera->attributes(); // quick and dirty
                 for( snark::cameras::flycapture::camera::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
                 {
@@ -165,10 +165,11 @@ int main( int argc, char** argv )
 
         bool use_software_trigger;
         use_software_trigger_option == "hardware" ? use_software_trigger = false : use_software_trigger = true;
-        if ( use_software_trigger && vm.count( "timestamp" ) ) {
-            COMMA_THROW( comma::exception, "cannot specify timestamp capture moment when using software trigger" );
+        snark::cameras::flycapture::camera::timestamp_policy when( timestamp_time_option );
+        if ( use_software_trigger ) {
+            if ( vm.count( "timestamp" ) ) { COMMA_THROW( comma::exception, "cannot specify timestamp capture moment when using software trigger" ); }
+            when.value = snark::cameras::flycapture::camera::timestamp_policy::none;
         }
-        snark::cameras::flycapture::moment when( timestamp_time_option );
         
         if ( vm.count( "discard" ) ) { discard = 1; }
         discard_more_than = discard;
@@ -187,7 +188,7 @@ int main( int argc, char** argv )
         { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }       
         
         if( verbose ) { std::cerr << "flycapture-multicam: connecting..." << std::endl; }
-        multicam.reset( new snark::cameras::flycapture::camera::multicam( cameras, offsets ) );
+        multicam.reset( new snark::cameras::flycapture::camera::multicam( cameras, offsets, when ) );
         if( verbose ) { std::cerr << "flycapture-multicam: connected" << std::endl; }
 
         static std::unique_ptr<cv::Mat>  output_image;
