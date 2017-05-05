@@ -171,10 +171,35 @@ template <> struct traits< snark::kinect::point >
 
 } } // namespace comma { namespace visiting {
 
-std::string serial;
+
+// create a custom logger
+/// [logger]
+#include <fstream>
+#include <cstdlib>
+class CowboxLogger: public libfreenect2::Logger
+{
+private:
+  std::string serial_;
+public:
+  CowboxLogger(Level level, std::string serial)
+  {
+    level_ = level;
+    serial_ = serial;
+  }
+  void setSerial(std::string serial){ serial_ = serial; }
+  virtual void log(Level level, const std::string &message)
+  {
+    std::cerr << "kinect-cat: " << serial_ << " :libfreenect2: [" << level2str(level) << "] " << message << std::endl;
+  }
+};
+/// [logger]
+
+
+std::string serial = "";
 
 int main( int ac, char** av )
 {
+	CowboxLogger *logger = new CowboxLogger(libfreenect2::Logger::Debug, serial);
     try
     {
         comma::command_line_options options( ac, av, usage );
@@ -188,7 +213,7 @@ int main( int ac, char** av )
         comma::csv::output_stream< snark::kinect::point > ostream( std::cout, csv );
         snark::kinect::camera camera;
 
-        libfreenect2::setGlobalLogger(libfreenect2::createConsoleLogger(libfreenect2::Logger::None));
+        libfreenect2::setGlobalLogger(logger);
         /// [context]
 
         // struct device
@@ -209,7 +234,6 @@ int main( int ac, char** av )
         libfreenect2::PacketPipeline *pipeline = 0;
 
         /// [context]
-        serial = "";
         /// [discovery]
         if(freenect2.enumerateDevices() == 0)
         {
@@ -242,6 +266,7 @@ int main( int ac, char** av )
             serial = freenect2.getDefaultDeviceSerialNumber();
         }
 
+        logger->setSerial(serial);
         int deviceId = -1;
         if( options.exists( "--cuda" ))
         {
@@ -553,7 +578,7 @@ int main( int ac, char** av )
     catch( std::exception& ex ) { std::cerr << "kinect-cat: " << serial << ": " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "kinect-cat: " << serial << ": kinect-cat: unknown exception" << std::endl; }
 
-
+    delete logger;
     // todo? if dev is open, do you need to stop and close it before exiting?
 
     return 1;
