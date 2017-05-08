@@ -7,9 +7,9 @@ source $( type -p comma-application-util )
 function description()
 {
     cat <<EOF
---from=<pan>,<tilt>
---to=<pan>,<tilt>
---step=<pan>,<tilt>
+--from=<pan_tilt>; where <pan_tilt> "<pan>,<tilt>"
+--to=<pan_tilt>; where <pan_tilt> "<pan>,<tilt>"
+--step=<pan_tilt>; where <pan_tilt>: "<pan>,<tilt>"
 --loop; return to start
 EOF
 }
