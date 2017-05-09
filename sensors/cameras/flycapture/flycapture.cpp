@@ -93,8 +93,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
     {
 //Note, for Point Grey, the serial number is used as ID
     public:
-        impl( unsigned int id, const attributes_type& attributes ) :
-        handle_(nullptr), id_(id), started_( false )
+        impl( unsigned int id, const attributes_type& attributes, const timestamp_policy & when ) :
+        handle_(nullptr), id_(id), started_( false ), when_( when )
         {
             initialize_();
             std::vector< unsigned int > camera_list = list_camera_serials();
@@ -163,7 +163,12 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 << "duration " << pStrobe.duration << std::endl;
         }
 
-        std::pair< boost::posix_time::ptime, cv::Mat > read()
+        std::pair< boost::posix_time::ptime, cv::Mat > read( )
+        {
+            return read( when_ );
+        }
+
+        std::pair< boost::posix_time::ptime, cv::Mat > read( const timestamp_policy & when )
         {
             cv::Mat image_;
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
@@ -176,9 +181,18 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 if( !started_ ) { result = handle_->StartCapture(); }
 // error is not checked as sometimes the camera will start correctly but return an error
                 started_ = true;
+                boost::posix_time::ptime timestamp = boost::posix_time::microsec_clock::universal_time();
                 success = collect_frame( image_, handle() , started_ );
-                pair.first = boost::posix_time::microsec_clock::universal_time();
-                if( success ) { pair.second = image_; }
+                if( success ) {
+                    pair.second = image_;
+                    switch( when.value ) {
+                        case camera::timestamp_policy::before:   pair.first = timestamp; break;
+                        case camera::timestamp_policy::after:    pair.first = boost::posix_time::microsec_clock::universal_time(); break;
+                        case camera::timestamp_policy::average:  pair.first = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; break;
+                        default:
+                            COMMA_THROW( comma::exception, "logical error, moment not specified" );
+                    }
+                }
                 retries++;
             }
             if( success ) { return pair; }
@@ -315,6 +329,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
         std::vector< char > buffer_;
         uint total_bytes_per_frame_;
         bool started_;
+        const timestamp_policy & when_;
+
         static FlyCapture2::BusManager& bus_manager()
         {
            static FlyCapture2::BusManager bm;
@@ -328,14 +344,14 @@ namespace snark{ namespace cameras{ namespace flycapture{
     class camera::multicam::impl
     {
     public:
-        impl( std::vector<camera_pair>& camera_pairs, const std::vector< unsigned int >& offsets )
-        : good( false )
+        impl( std::vector<camera_pair>& camera_pairs, const std::vector< unsigned int >& offsets, const timestamp_policy & when )
+        : good( false ), when_( when )
         {
             for (camera_pair& pair : camera_pairs)
             {
                 uint serial = pair.first;
                 const attributes_type attributes = pair.second;
-                cameras_.push_back(std::unique_ptr<camera::impl>(new camera::impl(serial, attributes)));
+                cameras_.push_back(std::unique_ptr<camera::impl>(new camera::impl(serial, attributes, when)));
             }
             if (cameras_.size()) { good = true; }
             apply_offsets( offsets );
@@ -356,14 +372,20 @@ namespace snark{ namespace cameras{ namespace flycapture{
         void apply_offsets( const std::vector< unsigned int >& offsets )
         {
             if( offsets.empty() ) { return; }
+            camera::timestamp_policy when( camera::timestamp_policy::before ); // does not matter, read return value is unused
             if( cameras_.size() != offsets.size() ) { COMMA_THROW( comma::exception, "expected offsets number equal to number of cameras: " << cameras_.size() << "; got: " << offsets.size() ); }
             for( unsigned int i = 0; i < offsets.size(); ++i )
             {
-                for ( unsigned int j = 0; j < offsets[i]; ++j){ const auto pair = cameras_[i]->read(); }
+                for ( unsigned int j = 0; j < offsets[i]; ++j){ const auto pair = cameras_[i]->read( when ); }
             }
         }
 
-        camera::multicam::frames_pair read( const snark::cameras::flycapture::moment & when, bool use_software_trigger )
+        camera::multicam::frames_pair read( bool use_software_trigger )
+        {
+            return read( when_, use_software_trigger );
+        }
+
+        camera::multicam::frames_pair read( const camera::timestamp_policy & when, bool use_software_trigger )
         {
             if (!good) { COMMA_THROW(comma::exception, "multicam read without good cameras"); }
             camera::multicam::frames_pair image_tuple;
@@ -374,22 +396,41 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 boost::posix_time::ptime end = boost::posix_time::microsec_clock::universal_time();
                 timestamp = midpoint(timestamp, end);
             }
-            bool first = true;
             for (auto& camera : cameras_)
             {
-                const auto pair = camera->read();
-                if ( first && when.value == snark::cameras::flycapture::moment::camera ) { first = false; timestamp = boost::posix_time::microsec_clock::universal_time(); }
+                const auto pair = camera->read( when );
                 image_tuple.second.push_back(pair.second);
             }
-            if ( when.value == snark::cameras::flycapture::moment::after ) { timestamp = boost::posix_time::microsec_clock::universal_time(); }
-            if ( when.value == snark::cameras::flycapture::moment::average ) { timestamp = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; }
+            if ( !use_software_trigger ) {
+                if ( when.value == camera::timestamp_policy::after ) { timestamp = boost::posix_time::microsec_clock::universal_time(); }
+                if ( when.value == camera::timestamp_policy::average ) { timestamp = timestamp + ( boost::posix_time::microsec_clock::universal_time() - timestamp ) / 2.0; }
+            }
             image_tuple.first = timestamp;
             return image_tuple;
         }
 
         bool good;
         std::vector<std::unique_ptr<camera::impl>> cameras_;
+        const timestamp_policy & when_;
     };
+
+    camera::timestamp_policy::timestamp_policy( const std::string & s )
+        : value( s == "before" ? before : ( s == "after" ? after : ( s == "average" ? average : none ) ) )
+    {
+        if ( value == none ) { COMMA_THROW( comma::exception, "timestamp policy is not one of '" << list() << "'" ); }
+    }
+
+    camera::timestamp_policy::operator std::string() const
+    {
+        switch( value )
+        {
+            case none   : return "none";
+            case before : return "before";
+            case after  : return "after";
+            case average: return "average";
+        }
+        return "none"; // to avoid a warning
+    }
     
 } } } //namespace snark{ namespace cameras{ namespace flycapture{
 
@@ -397,11 +438,12 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
 // flycapture class
 
-        camera::camera( unsigned int id, const camera::attributes_type& attributes) : pimpl_( new impl( id, attributes ) ) {}
+        camera::camera( unsigned int id, const camera::attributes_type& attributes, const timestamp_policy & when ) : pimpl_( new impl( id, attributes, when ) ) {}
 
         camera::~camera() { }
 
-        std::pair< boost::posix_time::ptime, cv::Mat > camera::read() { return pimpl_->read(); }
+        std::pair< boost::posix_time::ptime, cv::Mat > camera::read( const camera::timestamp_policy & when ) { return pimpl_->read( when ); }
+        std::pair< boost::posix_time::ptime, cv::Mat > camera::read( ) { return pimpl_->read( ); }
 
         void camera::close() { pimpl_->close(); }
 
@@ -416,7 +458,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
         camera::attributes_type camera::attributes() const { return get_attributes( pimpl_->handle() ); }
 
 // camera::multicam class
-        camera::multicam::multicam( std::vector<camera_pair>& cameras, const std::vector< unsigned int >& offsets ) : pimpl_( new multicam::impl( cameras, offsets ) ) {}
+        camera::multicam::multicam( std::vector<camera_pair>& cameras, const std::vector< unsigned int >& offsets, const timestamp_policy & when ) : pimpl_( new multicam::impl( cameras, offsets, when ) ) {}
 
         camera::multicam::~multicam() { delete pimpl_; }
 
@@ -427,8 +469,11 @@ namespace snark{ namespace cameras{ namespace flycapture{
         void camera::multicam::trigger()
         { pimpl_->trigger(); }
 
-        camera::multicam::frames_pair camera::multicam::read( const snark::cameras::flycapture::moment & when, bool use_software_trigger )
+        camera::multicam::frames_pair camera::multicam::read( const camera::timestamp_policy & when, bool use_software_trigger )
         { return pimpl_->read( when, use_software_trigger ); }
+
+        camera::multicam::frames_pair camera::multicam::read( bool use_software_trigger )
+        { return pimpl_->read( use_software_trigger ); }
 
 } } } //namespace snark{ namespace cameras{ namespace flycapture{
 

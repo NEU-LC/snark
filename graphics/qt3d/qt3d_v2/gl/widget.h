@@ -37,6 +37,7 @@
 #include <QMatrix4x4>
 #include "../../camera_options.h"
 #include "shapes.h"
+#include "label_shader.h"
 #include <vector>
 #include <memory>
 
@@ -56,6 +57,8 @@ public:
     QSize sizeHint() const Q_DECL_OVERRIDE;
 
     std::vector<std::shared_ptr<shape>> shapes;
+    gl::label_shader label_shader;
+    
     void begin_update();
     void end_update();
 public slots:

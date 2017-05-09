@@ -46,6 +46,7 @@ void usage(bool detail)
     std::cerr<<"    publish csv to ROS PointCloud2" << std::endl;
     std::cerr<<"        input: reads csv from stdin" << std::endl;
     std::cerr<<"        output: publishes the data as sensor_msg::PointCloud2 on the specified topic in ROS" << std::endl;
+    std::cerr<<"        if block field is present, then groups all continious records with the same block number as one ros message" << std::endl;
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
     std::cerr << std::endl;
@@ -56,9 +57,11 @@ void usage(bool detail)
     std::cerr << "    --queue-size=[<n>]: ROS publisher queue size, default 1" << std::endl;
     std::cerr << "    --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
     std::cerr << "    --hang-on; waits about three seconds before exiting so that subscribers can receive the last message" << std::endl;
+    std::cerr << "    --all; sends all the records as one ros message (when no block field), otherwise send each record as a message" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    csv options --fields must be specified" << std::endl;
-    std::cerr << "    either --format or --binary option must be specified" << std::endl;
+    std::cerr << "    csv options" << std::endl;
+    std::cerr << "        --fields: default: x,y,z" << std::endl;
+    std::cerr << "        either --format or --binary option must be specified" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -68,7 +71,7 @@ void usage(bool detail)
     }
     else
     {
-        std::cerr << "use -v or --verbose to see more detail" << std::endl;
+        std::cerr << "use -v or --verbose to see more detail on csv options" << std::endl;
         std::cerr << std::endl;
     }
     std::cerr << "example" << std::endl;
@@ -182,7 +185,54 @@ template <> struct traits< record >
 
 } } // namespace comma { namespace visiting {
     
-
+struct points
+{
+    std::vector<record> records;
+    comma::csv::format format;
+    snark::ros::point_cloud u;
+    std::size_t data_size;
+    bool ascii;
+    //const comma::command_line_options& options
+    points(const comma::csv::options& csv, const std::string& format_str) : format(format_str), u(csv.fields,format.expanded_string()), data_size(format.size()), ascii(!csv.binary())
+    {
+        
+    }
+    void send(ros::Publisher& publisher)
+    {
+        //create msg
+        sensor_msgs::PointCloud2 msg=u.create_msg(records.size());
+        //fill in
+        msg.header.stamp=::ros::Time::fromBoost(records[0].t);
+        msg.header.seq=records[0].block;
+        std::size_t offset=0;
+        for(const auto& i : records)
+        {
+            std::memcpy(&msg.data[offset],&i.data[0],data_size);
+            offset+=data_size;
+        }
+        //send
+        comma::verbose<<"publishing msg "<<records.size()<<std::endl;
+        publisher.publish(msg);
+        ros::spinOnce();
+        records.clear();
+    }
+    void push_back(const comma::csv::input_stream<record>& is, const record& p)
+    {
+        records.push_back(p);
+        records.back().data.resize(data_size);
+        if(ascii)
+        {
+            std::string buf=format.csv_to_bin(is.ascii().last());
+            if(buf.size()!=data_size) { COMMA_THROW(comma::exception,"csv_to_bin size mismatch "<<buf.size()<<"; "<<data_size);} 
+            std::memcpy(&records.back().data[0],buf.data(),data_size);
+        }
+        else
+        {
+            std::memcpy(&records.back().data[0],is.binary().last(),data_size);
+        }
+    }
+};
+    
 int main( int argc, char** argv )
 {
     try
@@ -193,56 +243,31 @@ int main( int argc, char** argv )
         csv.full_xpath=true;
         std::string topic=options.value<std::string>("--topic");
         unsigned queue_size=options.value<unsigned>("--queue-size",1);
-        comma::csv::format format(csv.binary() ? csv.format() : options.value<std::string>("--format"));
-        snark::ros::point_cloud u(csv.fields,format.expanded_string());
+//         comma::csv::format format(csv.binary() ? csv.format() : options.value<std::string>("--format"));
+        if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+        bool has_block=csv.has_field("block");
+        bool all=options.exists("--all");
         int arrrgc=1;
         ros::init(arrrgc, argv, "points_to_ros");
         ros::NodeHandle ros_node;
         ros::Publisher publisher=ros_node.advertise<sensor_msgs::PointCloud2>(topic, queue_size,options.exists("--latch"));
         ros::spinOnce();
-        std::vector<record> records;
         comma::csv::input_stream<record> is(std::cin, csv);
         unsigned block=0;
-        std::size_t data_size=format.size();
-        bool ascii=!csv.binary();
+        points points(csv,csv.binary() ? csv.format().string() : options.value<std::string>("--format"));
         while(std::cin.good())
         {
             //read binary from input
             const record* p=is.read();
-            if ( (!p || block != p->block) && !records.empty())
+            if ( ( !p || block != p->block) && !points.records.empty())
             {
                 //send the message
-                //create msg
-                sensor_msgs::PointCloud2 msg=u.create_msg(records.size());
-                //fill in
-                msg.header.stamp=::ros::Time::fromBoost(records[0].t);
-                msg.header.seq=records[0].block;
-                std::size_t offset=0;
-                for(const auto& i : records)
-                {
-                    std::memcpy(&msg.data[offset],&i.data[0],data_size);
-                    offset+=data_size;
-                }
-                //send
-                comma::verbose<<"publishing msg "<<records.size()<<std::endl;
-                publisher.publish(msg);
-                ros::spinOnce();
-                records.clear();
+                points.send(publisher);
             }
             if( !p ) { break; }
             block=p->block;
-            records.push_back(*p);
-            records.back().data.resize(data_size);
-            if(ascii)
-            {
-                std::string buf=format.csv_to_bin(is.ascii().last());
-                if(buf.size()!=data_size) { COMMA_THROW(comma::exception,"csv_to_bin size mismatch "<<buf.size()<<"; "<<data_size);} 
-                std::memcpy(&records.back().data[0],buf.data(),data_size);
-            }
-            else
-            {
-                std::memcpy(&records.back().data[0],is.binary().last(),data_size);
-            }
+            points.push_back(is,*p);
+            if( !has_block && !all ) { points.send(publisher); }
         }
         if(options.exists("--hang-on"))
         {

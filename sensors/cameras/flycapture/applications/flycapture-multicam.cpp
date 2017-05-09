@@ -70,7 +70,7 @@ int main( int argc, char** argv )
             ( "trigger", boost::program_options::value< std::string >( &use_software_trigger_option )->default_value( "software" ), "sets trigger type software|hardware" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             ( "offsets,o", boost::program_options::value< std::string >( &offsets_option ), "frame offsets for each camera to synchronise images e.g. --offsets=0,1 to skip first image on second camera" )
-            ( "timestamp", boost::program_options::value< std::string >( &timestamp_time_option )->default_value( "before" ), "when to take the timestamp of the frame (before or after reading data from the camera, or the average of the two, or from the read of the first camera); possible values before, after, average, camera" )
+            ( "timestamp", boost::program_options::value< std::string >( &timestamp_time_option )->default_value( "before" ), "when to take the timestamp of the frame (before or after reading data from the camera, or the average of the two); possible values before, after, average" )
             ( "list-cameras", "list all cameras and exit" )
             ( "list-attributes", "output current camera attributes" )
             ( "verbose,v", "be more verbose" )
@@ -114,8 +114,8 @@ int main( int argc, char** argv )
             for (const uint serial : snark::cameras::flycapture::camera::list_camera_serials())
             {
                 std::cout << snark::cameras::flycapture::camera::describe_camera(serial) << std::endl;
-                std::unique_ptr<snark::cameras::flycapture::camera> camera;
-                camera.reset(new snark::cameras::flycapture::camera(serial));
+                std::unique_ptr< snark::cameras::flycapture::camera > camera;
+                camera.reset( new snark::cameras::flycapture::camera( serial, snark::cameras::flycapture::camera::attributes_type(), snark::cameras::flycapture::camera::timestamp_policy( snark::cameras::flycapture::camera::timestamp_policy::none ) ) );
                 const auto& attributes = camera->attributes(); // quick and dirty
                 for( snark::cameras::flycapture::camera::attributes_type::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
                 {
@@ -165,9 +165,10 @@ int main( int argc, char** argv )
 
         bool use_software_trigger;
         use_software_trigger_option == "hardware" ? use_software_trigger = false : use_software_trigger = true;
-        snark::cameras::flycapture::moment when( timestamp_time_option );
-        if ( use_software_trigger && when.value != snark::cameras::flycapture::moment::none ) {
-            COMMA_THROW( comma::exception, "cannot specify timestamp capture moment when using software trigger" );
+        snark::cameras::flycapture::camera::timestamp_policy when( timestamp_time_option );
+        if ( use_software_trigger ) {
+            if ( vm.count( "timestamp" ) ) { COMMA_THROW( comma::exception, "cannot specify timestamp capture moment when using software trigger" ); }
+            when.value = snark::cameras::flycapture::camera::timestamp_policy::none;
         }
         
         if ( vm.count( "discard" ) ) { discard = 1; }
@@ -187,7 +188,7 @@ int main( int argc, char** argv )
         { serialization.reset( new snark::cv_mat::serialization( fields, format, vm.count( "header" ) ) ); }       
         
         if( verbose ) { std::cerr << "flycapture-multicam: connecting..." << std::endl; }
-        multicam.reset( new snark::cameras::flycapture::camera::multicam( cameras, offsets ) );
+        multicam.reset( new snark::cameras::flycapture::camera::multicam( cameras, offsets, when ) );
         if( verbose ) { std::cerr << "flycapture-multicam: connected" << std::endl; }
 
         static std::unique_ptr<cv::Mat>  output_image;

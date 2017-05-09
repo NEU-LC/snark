@@ -7,9 +7,9 @@ source $( type -p comma-application-util )
 function description()
 {
     cat <<EOF
---from=<pan>,<tilt>
---to=<pan>,<tilt>
---step=<pan>,<tilt>
+--from=<pan-tilt>
+--to=<pan-tilt>
+--step=<pan-tilt>
 --loop; return to start
 EOF
 }
@@ -24,6 +24,8 @@ Usage: $scriptname <options>
 
 Options
 $( description | sed 's/^/    /' )
+
+    where <pan-tilt> are comma-separated pan and tilt values
 
 Example
     $scriptname --from=-20,0 --to=20,45 --step=5,5
