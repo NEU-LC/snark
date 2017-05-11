@@ -1136,6 +1136,15 @@ static void encode_impl_check_type( const typename impl::filters< H >::value_typ
     if( size == 2 && !( type == "tiff" || type == "tif" || type == "png" || type == "jp2" ) ) { COMMA_THROW( comma::exception, "cannot convert 16-bit image to type " << type << "; use tif or png instead" ); }
 }
 
+static std::vector<int> imwrite_params( const std::string& type, const int quality)
+{
+    std::vector<int> params;
+    if ( type == "jpg" ) { params.push_back(CV_IMWRITE_JPEG_QUALITY); }
+    else { COMMA_THROW( comma::exception, "quality only supported for jpg images, not for \"" << type << "\" yet" ); }
+    params.push_back(quality);
+    return params;
+}
+
 template < typename H >
 struct encode_impl_ { 
     typedef typename impl::filters< H >::value_type value_type;
@@ -1143,13 +1152,15 @@ struct encode_impl_ {
     const get_timestamp_functor get_timestamp_;
     
     encode_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
-    value_type operator()( const value_type& m, const std::string& type )
+    value_type operator()( const value_type& m, const std::string& type, const boost::optional<int>& quality )
     {
         if( is_empty< H >( m, get_timestamp_ ) ) { return m; }
         encode_impl_check_type< H >( m, type );
         std::vector< unsigned char > buffer;
+        std::vector<int> params;
+        if (quality) { params = imwrite_params(type, *quality); }
         std::string format = "." + type;
-        cv::imencode( format, m.second, buffer );
+        cv::imencode( format, m.second, buffer, params );
         typename impl::filters< H >::value_type p;
         p.first = m.first;
         p.second = cv::Mat( buffer.size(), 1, CV_8UC1 );
@@ -1244,9 +1255,11 @@ struct grab_impl_ {
     const get_timestamp_functor get_timestamp_;
     
     grab_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
-    value_type operator()( value_type m, const std::string& type )
+    value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
-        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second );
+        std::vector<int> params;
+        if (quality) { params = imwrite_params(type, *quality); }
+        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second, params );
         return typename impl::filters< H >::value_type(); // HACK to notify application to exit
     }
 };
@@ -1258,10 +1271,12 @@ struct file_impl_ {
     const get_timestamp_functor get_timestamp_;
     
     file_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
-    value_type operator()( value_type m, const std::string& type )
+    value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
         encode_impl_check_type< H >( m, type );
-        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second );
+        std::vector<int> params;
+        if (quality) { params = imwrite_params(type, *quality); }
+        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second, params );
         return m;
     }
 };
@@ -2740,20 +2755,26 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                 if( next_filter != "head" ) COMMA_THROW( comma::exception, "cannot have a filter after encode unless next filter is head" );
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
-            std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s ), false ) );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            boost::optional < int > quality;
+            if (s.size()> 1) { quality = boost::lexical_cast<int>(s[1]); }
+            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s[0], quality ), false ) );
         }
         else if( e[0] == "grab" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
-            std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >(get_timestamp), _1, s ) ) );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            boost::optional < int > quality;
+            if (s.size() == 1) { quality = boost::lexical_cast<int>(s[1]); }
+            f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >(get_timestamp), _1, s[0], quality ) ) );
         }
         else if( e[0] == "file" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
-            std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >(get_timestamp), _1, s ) ) );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            boost::optional < int > quality;
+            if (s.size()> 1) { quality = boost::lexical_cast<int>(s[1]); }
+            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >(get_timestamp), _1, s[0], quality ) ) );
         }
         else if( e[0] == "histogram" )
         {
@@ -2848,7 +2869,8 @@ static std::string usage_impl_()
     oss << "            <horizontal>: if present, tiles will be stacked horizontally (by default, vertical stacking is used)" << std::endl;
     oss << "            example: \"crop-tile=2,5,1,0,1,4&horizontal\"" << std::endl;
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
-    oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "        encode=<format>[,<quality>]: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "                                     <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
     oss << "            options: inverse: do inverse fft" << std::endl;
@@ -2856,10 +2878,12 @@ static std::string usage_impl_()
     oss << "                     magnitude: output magnitude only" << std::endl;
     oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
     oss << "                      cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
-    oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "        file=<format>[,<quality>]: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
-    oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
+    oss << "        grab=<format>[,<quality>]: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
+    oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;

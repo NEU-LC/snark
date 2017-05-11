@@ -77,12 +77,12 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "read pixel coordinates and values, output images in the format readable by cv-cat" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: image-to-csv <options>" << std::endl
+    std::cerr << "usage: image-from-csv <options>" << std::endl
               << std::endl
               << "options" << std::endl
               << "    --help,-h: show help; --help --verbose: more help" << std::endl
               << "    --from,--begin,--origin=[<x>,<y>]: offset pixel coordinates by a given offset; default: 0,0" << std::endl
-              << "    --output: output options, same as --input for image-to-csv or cv-cat (see --help --verbose)" << std::endl
+              << "    --output: output options, same as --input for image-from-csv or cv-cat (see --help --verbose)" << std::endl
               << "    --verbose,-v: more output" << std::endl
               << std::endl
               << "fields: t,x,y,r,g,b,block or t,x,y,grey,block" << std::endl
@@ -146,7 +146,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv( options );
-        if( csv.fields.empty() ) { std::cerr << "image-to-csv: please specify --fields" << std::endl; return 1; }
+        if( csv.fields.empty() ) { std::cerr << "image-from-csv: please specify --fields" << std::endl; return 1; }
         std::vector< std::string > v = comma::split( csv.fields, ',' );
         input_t sample;
         bool is_greyscale = true;
@@ -160,12 +160,12 @@ int main( int ac, char** av )
             else if( v[i] == "a" ) { v[i] = "channels[3]"; is_greyscale = false; has_alpha = true; }
         }
         csv.fields = comma::join( v, ',' );
-        if( has_alpha ) { std::cerr << "image-to-csv: alpha support: todo" << std::endl; return 1; }
+        if( has_alpha ) { std::cerr << "image-from-csv: alpha support: todo" << std::endl; return 1; }
         std::string offset_string = options.value< std::string >( "--from,--begin,--origin", "0,0" );
         const std::vector< std::string >& w = comma::split( offset_string, ',' );
-        if( w.size() != 2 ) { std::cerr << "image-to-csv: --from: expected <x>,<y>; got: \"" << offset_string << "\"" << std::endl; return 1; }
+        if( w.size() != 2 ) { std::cerr << "image-from-csv: --from: expected <x>,<y>; got: \"" << offset_string << "\"" << std::endl; return 1; }
         std::pair< double, double > offset( boost::lexical_cast< double >( w[0] ), boost::lexical_cast< double >( w[1] ) ); // todo: quick and dirty; use better types
-        if( is_greyscale && has_alpha ) { std::cerr << "image-to-csv: warning: found alpha channel for a greyscale image; not implemented; ignored" << std::endl; }
+        if( is_greyscale && has_alpha ) { std::cerr << "image-from-csv: warning: found alpha channel for a greyscale image; not implemented; ignored" << std::endl; }
         sample.channels.resize( is_greyscale ? 1 : has_alpha ? 4 : 3 );
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value<std::string>("--output" ) );
         // todo: check whether output type matches fields
