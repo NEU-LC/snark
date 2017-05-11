@@ -58,10 +58,11 @@ struct limit
 {
     double min;
     double max;
+    bool   inclusive;
 
-    limit() : min(0), max(0) { }
-    limit( const double m ) : min(-m), max(m) { }
-    limit( const double min, const double max ) : min(min), max(max) { }
+    limit() : min( 0 ), max( 0 ), inclusive( true ) { }
+    limit( const double m, bool inclusive = true ) : min( -m ), max( m ), inclusive( inclusive )  { }
+    limit( const double min, const double max, bool inclusive ) : min( min ), max( max ), inclusive( inclusive ) { }
 };
 
 /// returned turnrate is in radians

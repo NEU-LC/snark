@@ -12,12 +12,14 @@ template <> struct traits< snark::wheels::limit >
     {
         v.apply( "min", t.min );
         v.apply( "max", t.max );
+        v.apply( "inclusive", t.inclusive );
     }
 
     template < typename K, typename V > static void visit( const K& key, const snark::wheels::limit& t, V& v )
     {
         v.apply( "min", t.min );
         v.apply( "max", t.max );
+        v.apply( "inclusive", t.inclusive );
     }
 };
 
