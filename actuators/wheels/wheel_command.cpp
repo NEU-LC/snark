@@ -34,21 +34,22 @@
 
 namespace {
 
-void apply_limit( bool& io_positive_direction, snark::wheels::wheel_command& i_command, snark::wheels::limit const& i_angle_limit, bool const wrapped = false )
+bool apply_limit_reverses_direction( snark::wheels::wheel_command& i_command, snark::wheels::limit const& i_angle_limit, bool const wrapped = false )
 {
+    bool direction_reversed = false;
     if( wrapped )
     {
-        if( i_angle_limit.inclusive )
+        if( i_angle_limit.min <= i_angle_limit.max )
         {
             if( comma::math::less( i_angle_limit.max, i_command.turnrate, 1e-9 ) )
             {
                 i_command.turnrate -= M_PI;
-                io_positive_direction = !io_positive_direction;
+                direction_reversed = !direction_reversed;
             }
             if( comma::math::less( i_command.turnrate, i_angle_limit.min, 1e-9 ) )
             {
                 i_command.turnrate += M_PI;
-                io_positive_direction = !io_positive_direction;
+                direction_reversed = !direction_reversed;
             }
             if( i_command.turnrate > M_PI ) { i_command.turnrate -= 2 * M_PI; }
             else if( i_command.turnrate < -M_PI ) { i_command.turnrate += 2 * M_PI; }
@@ -56,29 +57,22 @@ void apply_limit( bool& io_positive_direction, snark::wheels::wheel_command& i_c
             if( comma::math::less( i_angle_limit.max, i_command.turnrate, 1e-9 ) ||
                     comma::math::less( i_command.turnrate, i_angle_limit.min, 1e-9 ) )
             {
-                COMMA_THROW( comma::exception, "angle is outside limit of " << i_angle_limit.min << " and " << i_angle_limit.max );
+                COMMA_THROW( comma::exception, "angle is not between " << i_angle_limit.min << " and " << i_angle_limit.max );
             }
         }
         else
         {
-            if( comma::math::less( i_angle_limit.min, i_command.turnrate, 1e-9 ) )
+            if( comma::math::less( i_command.turnrate, i_angle_limit.min, 1e-9 ) && 
+                comma::math::less( i_angle_limit.max, i_command.turnrate, 1e-9 ) )
             {
-                i_command.turnrate -= M_PI;
-                io_positive_direction = !io_positive_direction;
+                i_command.turnrate += ( i_command.turnrate <= 0 ? M_PI : -M_PI );
+                direction_reversed = !direction_reversed;
             }
 
-            if( comma::math::less( i_command.turnrate, i_angle_limit.max, 1e-9 ) )
+            if( comma::math::less( i_command.turnrate, i_angle_limit.min, 1e-9 ) && 
+                comma::math::less( i_angle_limit.max, i_command.turnrate, 1e-9 ) )
             {
-                i_command.turnrate += M_PI;
-                io_positive_direction = !io_positive_direction;
-            }
-            if( i_command.turnrate > M_PI ) { i_command.turnrate -= 2 * M_PI; }
-            else if( i_command.turnrate < -M_PI ) { i_command.turnrate += 2 * M_PI; }
-
-            if( comma::math::less( i_angle_limit.min, i_command.turnrate, 1e-9 ) ||
-                    comma::math::less( i_command.turnrate, i_angle_limit.max, 1e-9 ) )
-            {
-                COMMA_THROW( comma::exception, "angle is inside limit of " << i_angle_limit.min << " and " << i_angle_limit.max );
+                COMMA_THROW( comma::exception, "angle is not between " << i_angle_limit.min << " and " << i_angle_limit.max );
             }
         }
     }
@@ -87,13 +81,13 @@ void apply_limit( bool& io_positive_direction, snark::wheels::wheel_command& i_c
         while( comma::math::less( i_angle_limit.max, i_command.turnrate, 1e-9 ) )
         {
             i_command.turnrate -= M_PI;
-            io_positive_direction = !io_positive_direction;
+            direction_reversed = !direction_reversed;
         }
 
         while( comma::math::less( i_command.turnrate, i_angle_limit.min, 1e-9 ) )
         {
             i_command.turnrate += M_PI;
-            io_positive_direction = !io_positive_direction;
+            direction_reversed = !direction_reversed;
         }
 
         if( comma::math::less( i_angle_limit.max, i_command.turnrate, 1e-9 ) ||
@@ -102,6 +96,7 @@ void apply_limit( bool& io_positive_direction, snark::wheels::wheel_command& i_c
             COMMA_THROW( comma::exception, "angle is outside limit of " << i_angle_limit.min << " and " << i_angle_limit.max );
         }
     }
+    return direction_reversed;
 }
 
 }
@@ -183,7 +178,7 @@ wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix
             command.turnrate = *current_angle + delta;
             if( command.turnrate > M_PI ) { command.turnrate -= 2 * M_PI; }
             else if( command.turnrate < -M_PI ) { command.turnrate += 2 * M_PI; }
-            if( angle_limit ) apply_limit( positive_direction, command, *angle_limit, true );
+            if( angle_limit ) positive_direction = positive_direction != apply_limit_reverses_direction( command, *angle_limit, true );
             command.velocity = positive_direction ? positive_velocity : negative_velocity;
             return command;
         }
@@ -206,7 +201,7 @@ wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix
         }
         command.turnrate = *current_angle + delta;
     }
-    if( angle_limit ) apply_limit( positive_direction, command, *angle_limit );
+    if( angle_limit ) positive_direction = positive_direction != apply_limit_reverses_direction( command, *angle_limit );
     command.velocity = positive_direction ? positive_velocity : negative_velocity;
 
     return command;
