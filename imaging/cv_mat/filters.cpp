@@ -393,7 +393,7 @@ struct pixel_format_impl_
         if( m.second.cols % In ) { COMMA_THROW( comma::exception, filter_name << ": columns: " << m.second.cols << " is not divisible by " << In ); }
         cv::Mat mat( m.second.rows, m.second.cols / In * Out, OutType, 0.0 );
         unsigned int bytes = m.second.cols * ElementSize;
-        for( unsigned int i = 0; i < m.second.rows; ++i )
+        for( unsigned int i = 0; int( i ) < m.second.rows; ++i )
         {
             const unsigned char *in = m.second.ptr( i );
             value_out_t *out = mat.ptr< value_out_t >( i );
@@ -2464,6 +2464,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     }
     if(e[0]=="normalize")
     {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify parameter: expected normalize=<how>" ); }
         if(e[1]=="max") { return normalize_max_impl_< H >; }
         else if(e[1]=="sum") { return normalize_sum_impl_< H >; }
         else if(e[1]=="all") { return normalize_cv_impl_< H >; }
