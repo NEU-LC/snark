@@ -268,6 +268,7 @@ int main( int ac, char** av )
 
         logger->setSerial(serial);
         int deviceId = -1;
+#ifdef LIBFREENECT2_WITH_CUDA_SUPPORT
         if( options.exists( "--cuda" ))
         {
             //std::cerr << "kinect-cat: here, pipeline: " << pipeline << std::endl;
@@ -286,7 +287,10 @@ int main( int ac, char** av )
                 std::cerr << "kinect-cat: " << serial << ": Using cudakde pipeline" << std::endl;
             }
         }
-        else if( options.exists( "--cl" ))
+        else 
+#endif // def LIBFREENECT2_WITH_CUDA_SUPPORT
+#ifdef LIBFREENECT2_WITH_OPENCL_SUPPORT
+        if( options.exists( "--cl" ))
         {
             if(!pipeline)
             {
@@ -302,7 +306,10 @@ int main( int ac, char** av )
                 std::cerr << "kinect-cat: " << serial << ": Using clkde pipeline" << std::endl;
             }
         }
-        else if( options.exists( "--gl" ))
+        else 
+#endif // def LIBFREENECT2_WITH_OPENCL_SUPPORT
+#ifdef LIBFREENECT2_WITH_OPENGL_SUPPORT
+        if( options.exists( "--gl" ))
         {
             if(!pipeline)
             {
@@ -310,13 +317,12 @@ int main( int ac, char** av )
                 std::cerr << "kinect-cat: " << serial << ": Using gl pipeline" << std::endl;
             }
         }
-        else
+        else 
+#endif // def LIBFREENECT2_WITH_OPENGL_SUPPORT
+        if(!pipeline)
         {
-            if(!pipeline)
-            {
-                pipeline = new libfreenect2::CpuPacketPipeline();
-                std::cerr << "kinect-cat: " << serial << ": Using cpu pipeline" << std::endl;
-            }
+            pipeline = new libfreenect2::CpuPacketPipeline();
+            std::cerr << "kinect-cat: " << serial << ": Using cpu pipeline" << std::endl;
         }
 
 
