@@ -140,44 +140,50 @@ namespace {
 
 } // anonymous
 
-//namespace comma { namespace visiting {
-//    
-//template < typename T > struct traits< typename pixel< T > >
-//{
-//    template < typename Key, class Visitor >
-//    static void visit( const Key&, pixel< T > & p, Visitor& v )
-//    {
-//        v.apply( "channel0", p.channel0 );
-//        v.apply( "channel1", p.channel1 );
-//        v.apply( "channel2", p.channel2 );
-//    }
-//    
-//    template < typename Key, class Visitor >
-//    static void visit( const Key&, const pixel< T > & p, Visitor& v )
-//    {
-//        v.apply( "channel0", p.channel0 );
-//        v.apply( "channel1", p.channel1 );
-//        v.apply( "channel2", p.channel2 );
-//    }
-//};
-//
-//} } // namespace comma { namespace visiting {
+namespace comma { namespace visiting {
+
+template < typename T > struct traits< pixel< T > >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, pixel< T > & p, Visitor& v )
+    {
+        v.apply( "channel0", p.channel0 );
+        v.apply( "channel1", p.channel1 );
+        v.apply( "channel2", p.channel2 );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const pixel< T > & p, Visitor& v )
+    {
+        v.apply( "channel0", p.channel0 );
+        v.apply( "channel1", p.channel1 );
+        v.apply( "channel2", p.channel2 );
+    }
+};
+
+} } // namespace comma { namespace visiting {
 
 int main( int ac, char** av )
 {
     {
         pixel< float > i(0.1, 0.2, 0.3);
         pixel< float > o = to_ycrcb< float, float >( i );
+        comma::csv::output_stream< pixel< float > > os( std::cout );
+        os.write( o );
     }
     {
         pixel< float > i(0.1, 0.2, 0.3);
         pixel< double > o = to_ycrcb< float, double >( i );
+        comma::csv::output_stream< pixel< double > > os( std::cout );
+        os.write( o );
     }
     {
         pixel< float > i(0.1, 0.2, 0.3);
         pixel< unsigned char > o = to_ycrcb< float, unsigned char >( i );
+        comma::csv::output_stream< pixel< unsigned char > > os( std::cout );
+        os.write( o );
     }
-#if 0 
+#if 0
     try
     {
         comma::command_line_options options( ac, av, usage );
