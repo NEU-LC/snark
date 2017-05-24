@@ -24,13 +24,15 @@
 #include "../../imaging/cv_mat/serialization.h"
 // #include "../../visiting/eigen.h"
 
+#include <type_traits>
+
 const char* name = "image-color-calc: ";
 const char* default_input_fields = "min/x,min/y,max/x,max/y,t,rows,cols,type";
 
 static void usage( bool verbose=false )
 {
     std::cerr << std::endl;
-    std::cerr << name << "perform conversion between RGB and YCrCb color spaces on image streams." << std::endl;
+    std::cerr << name << "perform conversion between RGB and YCrCb color spaces on input streams." << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: cat input.bin | image-color-calc <operation> [<options>] > output.bin " << std::endl;
     std::cerr << std::endl;
@@ -82,55 +84,100 @@ static void usage( bool verbose=false )
     exit( 0 );
 }
 
-struct extents
-{
-    cv::Point2i min;
-    cv::Point2i max;
-};
+namespace {
 
-namespace comma { namespace visiting {
-    
-template <> struct traits< cv::Point2i >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, cv::Point2i& p, Visitor& v )
+    bool verbose = false;
+
+    // do not call fields RGB because can contain YCrCb or any other color space
+    template< typename T >
+    struct pixel
     {
-        v.apply( "x", p.x );
-        v.apply( "y", p.y );
-    }
-    
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const cv::Point2i& p, Visitor& v )
+        T channel0;
+        T channel1;
+        T channel2;
+        pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( c0 ), channel1( c1 ), channel2( c2 ) {}
+    };
+
+    template< typename i, bool i_is_float, typename o, bool o_is_float  >
+    struct converter
     {
-        v.apply( "x", p.x );
-        v.apply( "y", p.y );
-    }
-};
+        static pixel< o > to_ycrcb( const pixel< i > & p );
+    };
 
-template <> struct traits< ::extents >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, ::extents& p, Visitor& v )
+    template< typename i, typename o >
+    pixel< o > to_ycrcb( const pixel< i > & p )
     {
-        v.apply( "min", p.min );
-        v.apply( "max", p.max );
-    }
+        return converter< i, std::is_floating_point< i >::value, o, std::is_floating_point< o >::value >::to_ycrcb( p );
+    };
 
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const ::extents& p, Visitor& v )
+    // float-to-float, double-to-double, and crosses
+    template< typename i, typename o >
+    struct converter< i, true, o, true >
     {
-        v.apply( "min", p.min );
-        v.apply( "max", p.max );
-    }
-};
+        static pixel< o > to_ycrcb( const pixel< i > & p )
+        {
+            typedef typename std::conditional< sizeof(o) <= sizeof(i), i, o >::type l;
+            return pixel< o >( o(  l(0.299)    * l(p.channel0) + l(0.587)    * l(p.channel1) + l(0.114)    * l(p.channel2) )
+                             , o( -l(0.168736) * l(p.channel0) - l(0.331264) * l(p.channel1) + l(0.5)      * l(p.channel2) )
+                             , o(  l(0.5)      * l(p.channel0) - l(0.418688) * l(p.channel1) - l(0.081312) * l(p.channel2) ) );
+        }
+    };
 
-} } // namespace comma { namespace visiting {
+    // floating-point-to-ub
+    template< typename f >
+    struct converter< f, true, unsigned char, false >
+    {
+        static pixel< unsigned char > to_ycrcb( const pixel< f > & p )
+        {
+            typedef unsigned char ub;
+            return pixel< ub >(  16 + ub(  65.481 * p.channel0 + 128.553 * p.channel1 + 24.966 * p.channel2 )
+                              , 128 + ub( -37.797 * p.channel0 - 74.203  * p.channel1 + 112.0  * p.channel2 )
+                              , 128 + ub( 112.0   * p.channel0 - 93.786  * p.channel1 - 18.214 * p.channel2 ) );
+        }
+    };
 
-static bool verbose = false;
+    // use for float-to-ub, double-to-ub
+
+} // anonymous
+
+//namespace comma { namespace visiting {
+//    
+//template < typename T > struct traits< typename pixel< T > >
+//{
+//    template < typename Key, class Visitor >
+//    static void visit( const Key&, pixel< T > & p, Visitor& v )
+//    {
+//        v.apply( "channel0", p.channel0 );
+//        v.apply( "channel1", p.channel1 );
+//        v.apply( "channel2", p.channel2 );
+//    }
+//    
+//    template < typename Key, class Visitor >
+//    static void visit( const Key&, const pixel< T > & p, Visitor& v )
+//    {
+//        v.apply( "channel0", p.channel0 );
+//        v.apply( "channel1", p.channel1 );
+//        v.apply( "channel2", p.channel2 );
+//    }
+//};
+//
+//} } // namespace comma { namespace visiting {
 
 int main( int ac, char** av )
 {
-    
+    {
+        pixel< float > i(0.1, 0.2, 0.3);
+        pixel< float > o = to_ycrcb< float, float >( i );
+    }
+    {
+        pixel< float > i(0.1, 0.2, 0.3);
+        pixel< double > o = to_ycrcb< float, double >( i );
+    }
+    {
+        pixel< float > i(0.1, 0.2, 0.3);
+        pixel< unsigned char > o = to_ycrcb< float, unsigned char >( i );
+    }
+#if 0 
     try
     {
         comma::command_line_options options( ac, av, usage );
@@ -281,6 +328,7 @@ int main( int ac, char** av )
     }
     catch( std::exception& ex ) { std::cerr << "image-calc: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "image-calc: unknown exception" << std::endl; }
+#endif
     return 1;
 }
 
