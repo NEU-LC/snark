@@ -33,19 +33,19 @@ namespace {
     void usage( bool verbose = false )
     {
         std::cerr << std::endl;
-        std::cerr << name << "perform conversion between RGB and YCrCb color spaces on input streams." << std::endl;
+        std::cerr << name << "perform conversion between RGB, YCbCr, and YPbPr color spaces on input streams." << std::endl;
         std::cerr << std::endl;
         std::cerr << "usage: cat input.bin | image-color-calc <operation> [<options>] > output.bin " << std::endl;
         std::cerr << std::endl;
         std::cerr << "operations" << std::endl;
         std::cerr << "  convert" << std::endl;
-        std::cerr << "      conversion between RGB and YCrCb colorspaces" << std::endl;
+        std::cerr << "      conversion between RGB and YCbCr colorspaces" << std::endl;
         std::cerr << std::endl;
         std::cerr << "options (operation-dependent)" << std::endl;
         std::cerr << std::endl;
         std::cerr << "convert" << std::endl;
-        std::cerr << "    --to=<colorspace>; default=YCrCb; direction of conversion, RGB or YCrCb (case-insensitive)" << std::endl;
-        std::cerr << "    --from=<colorspace>; default=RGB; input colorspace, RGB or YCrCb (case-insensitive), opposite to direction of conversion" << std::endl;
+        std::cerr << "    --to=<colorspace>; default=YCbCr; direction of conversion, RGB, YCbCr, YPbPr (case-insensitive)" << std::endl;
+        std::cerr << "    --from=<colorspace>; default=RGB; input colorspace, RGB or YCbCr (case-insensitive), opposite to direction of conversion" << std::endl;
     //    std::cerr << "    --header=[fields=<f>[;binary=<b>]]; input image is prepended with header that is omitted from conversion" << std::endl;
     //    std::cerr << "    --rows=<count>; default=1; the number of rows in the image" << std::endl;
     //    std::cerr << "    --cols,--columns=<count>; default=1; the number of columns in the image" << std::endl;
@@ -60,12 +60,12 @@ namespace {
         std::cerr << std::endl;
         std::cerr << "examples" << std::endl;
         std::cerr << "    convert" << std::endl;
-        std::cerr << "        most simple, RGR to YCrCb (default), assume ub data" << std::endl;
+        std::cerr << "        most simple, RGR to YCbCr (default), assume ub data" << std::endl;
         std::cerr << "            echo 1,2,3 | image-color-calc convert" << std::endl;
         std::cerr << "        input precision ambiguous, define explicitly; same default conversion applied" << std::endl;
         std::cerr << "            echo 1,0.2,0.3 | image-color-calc convert --format=3d" << std::endl;
         std::cerr << "        explicit conversion direction; '--to=RGB' would do the same" << std::endl;
-        std::cerr << "            echo 1,0.2,0.3 | image-color-calc convert --from=YCrCb" << std::endl;
+        std::cerr << "            echo 1,0.2,0.3 | image-color-calc convert --from=YCbCr" << std::endl;
         std::cerr << "        handle binary, apply default conversion" << std::endl;
         std::cerr << "            echo 1,0.2,0.3 | csv-to-bin 3f | image-color-calc convert --binary=3f" << std::endl;
     //    std::cerr << "        input data have headers; skip header, apply default conversion to data" << std::endl;
@@ -74,14 +74,14 @@ namespace {
     //    std::cerr << "            ... | image-color-calc convert --header=\"fields=id,t;binary=ui,t\" --count=$(( 100 * 200 ))" << std::endl;
     //    std::cerr << "        special fields in the header; rows, columns and format are taken from the header, cannot be given explicitly" << std::endl;
     //    std::cerr << "            ... | image-color-calc convert --header=\"fields=t,rows,cols,type;binary=t,3ui\"" << std::endl;
-        std::cerr << "        using fields to select values to convert; RGB values 1,2,3 are converted to YCrCb" << std::endl;
+        std::cerr << "        using fields to select values to convert; RGB values 1,2,3 are converted to YCbCr" << std::endl;
         std::cerr << "            echo 'value',1,2,3,20170101T000000 | image-color-calc convert --fields=name,r,g,b,t" << std::endl;
-        std::cerr << "        field names select conversion from YCrCb to RGB, precision explicitly hinted" << std::endl;
+        std::cerr << "        field names select conversion from YCbCr to RGB, precision explicitly hinted" << std::endl;
         std::cerr << "            echo 'value',1,2,3,20170101T000000 | image-color-calc convert --fields=name,y,cr,cb,t --format=,3ui," << std::endl;
         std::cerr << "        same example on binary data" << std::endl;
         std::cerr << "            echo 'value',1,2,3,20170101T000000 | csv-to-bin s[10],3ui,t | image-color-calc convert --fields=name,y,cr,cb,t --binary=s[10],3ui,t" << std::endl;
         std::cerr << "        using neutral field names to select values to convert and explicitly define conversion" << std::endl;
-        std::cerr << "            echo 'value',1,2,3,20170101T000000 | image-color-calc convert --fields=name,channel0,channel1,channel2,t --to=ycrcb" << std::endl;
+        std::cerr << "            echo 'value',1,2,3,20170101T000000 | image-color-calc convert --fields=name,channel0,channel1,channel2,t --to=ycbcr" << std::endl;
         std::cerr << std::endl;
         exit( 0 );
     }
@@ -92,18 +92,20 @@ namespace {
         enum cspace {
             none = 0,
             rgb,
-            ycrcb
+            ycbcr,
+            ypbpr
         };
 
         cspace value;
-        colorspace( const std::string & s ) : value( boost::iequals( s, "rgb" ) ? rgb : ( boost::iequals( s, "ycrcb" ) ? ycrcb : none ) ) { }
+        colorspace( const std::string & s ) : value( boost::iequals( s, "rgb" ) ? rgb : ( boost::iequals( s, "ycbcr" ) ? ycbcr : ( boost::iequals( s, "ypbpr" ) ? ypbpr : none ) ) ) { }
         colorspace( colorspace::cspace v ) : value( v ) { }
 
         operator std::string() const {
             switch( value ) {
                 case( none ):  return "none";  break;
                 case( rgb ):   return "rgb";   break;
-                case( ycrcb ): return "ycrcb"; break;
+                case( ycbcr ): return "ycbcr"; break;
+                case( ypbpr ): return "ypbpr"; break;
             }
             return "none"; // avoid a warning
         };
@@ -112,7 +114,8 @@ namespace {
         {
             static std::map< cspace, std::vector< std::string > > m = {
                 { rgb, comma::split( "r,g,b" , ',' ) },
-                { ycrcb, comma::split( "y,cr,cb", ',' ) },
+                { ycbcr, comma::split( "y,cb,cr", ',' ) },
+                { ypbpr, comma::split( "y,pb,pr", ',' ) },
                 { none, comma::split( "channel0,channel1,channel2", ',' ) }
             };
             return m[ c ];
@@ -121,11 +124,10 @@ namespace {
         void set_to_opposite_if_not_given( const colorspace & other )
         {
             if ( value != colorspace::none ) { return; }
-            // this simple logic would break if we have more then 2 colorspaces
             switch ( other.value ) {
-                case colorspace::rgb:    value = colorspace::ycrcb; break;
-                case colorspace::ycrcb:  value = colorspace::rgb;   break;
-                case colorspace::none:
+                case colorspace::rgb:    value = colorspace::ycbcr; break;
+                case colorspace::ycbcr:  value = colorspace::rgb;   break;
+                default:
                     COMMA_THROW( comma::exception, "cannot set the colorspace value to the opposite of " << std::string( other ) );
             }
         }
@@ -137,7 +139,7 @@ namespace {
         return os;
     }
 
-    // do not call fields RGB because can contain YCrCb or any other color space
+    // do not call fields RGB because can contain YCbCr or any other color space
     template< typename T >
     struct pixel
     {
@@ -187,7 +189,8 @@ namespace {
 
     // to continue, ub-to-floating-point, longer integers (short, int)?
 
-    void convert( const colorspace & from, const colorspace & to, const comma::csv::options & csv )
+    template< typename i, typename o >
+    int convert( const comma::csv::options & csv )
     {
         if ( csv.binary() )
         {
@@ -196,19 +199,20 @@ namespace {
             _setmode( _fileno( stdout ), _O_BINARY );
             #endif
         }
-        comma::csv::input_stream<  pixel< float > > is( std::cin, csv );
+        comma::csv::input_stream<  pixel< i > > is( std::cin, csv );
         comma::csv::options output_csv;
         output_csv.flush = csv.flush;
-        if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< unsigned char > >() ); }
-        comma::csv::output_stream< pixel< unsigned char > > os( std::cout, output_csv );
-        comma::csv::tied< pixel< float >, pixel< unsigned char > > tied( is, os );
+        if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< o > >() ); }
+        comma::csv::output_stream< pixel< o > > os( std::cout, output_csv );
+        comma::csv::tied< pixel< i >, pixel< o > > tied( is, os );
         while( is.ready() || std::cin.good() )
         {
-            const pixel< float > * p = is.read();
+            const pixel< i > * p = is.read();
             if( !p ) { break; }
-            tied.append( to_ycrcb< float, unsigned char >( *p ) );
+            tied.append( to_ycrcb< i, o >( *p ) );
             if ( output_csv.flush ) { std::cout.flush(); }
         }
+        return 0;
     }
 
     bool fields_have_required( const std::vector< std::string > & fields, const std::vector< std::string > & required )
@@ -335,7 +339,7 @@ int main( int ac, char** av )
         } else {
             if ( options.exists( "--fields,-f" ) )
             {
-                std::vector< colorspace > spaces = { colorspace( colorspace::rgb ), colorspace( colorspace::ycrcb ) };
+                std::vector< colorspace > spaces = { colorspace( colorspace::rgb ), colorspace( colorspace::ycbcr ), colorspace( colorspace::ypbpr ) };
                 fromc = get_colorspace_from_fields( fields, spaces );
                 // now fromc cannot be none
                 rename_fields_to_channels( fields, fromc );
@@ -343,20 +347,41 @@ int main( int ac, char** av )
                 toc.set_to_opposite_if_not_given( fromc );
             } else {
                 // '--from' not given, '--fields' not given, infer from '--to'
-                // this simple logic would break if there are more than 2 colorspaces
                 switch ( toc.value ) {
-                    case colorspace::rgb:   fromc.value = colorspace::ycrcb; break;
-                    case colorspace::ycrcb: fromc.value = colorspace::rgb;   break;
+                    case colorspace::rgb:   fromc.value = colorspace::ycbcr; break;
+                    case colorspace::ycbcr: fromc.value = colorspace::rgb;   break;
+                    case colorspace::ypbpr: fromc.value = colorspace::rgb;   break;
                     case colorspace::none:
                         // last resort, all defaults
                         fromc.value = colorspace::rgb;
-                        toc.value = colorspace::ycrcb;
+                        toc.value = colorspace::ycbcr;
                         break;
                 }
                 csv.fields = "channel0,channel1,channel2";
             }
         }
-        convert( fromc, toc, csv );
+        if ( csv.binary() ) {
+            // assume all fields have same size
+            size_t first_field = std::distance( fields.begin(), std::find( fields.begin(), fields.end(), "channel0" ) );
+            comma::csv::format::element e = csv.format().offset( first_field );
+            if ( fromc.value == colorspace::rgb && toc.value == colorspace::ycbcr ) {
+                if ( e.type == comma::csv::format::float_t ) { return convert< float, unsigned char >( csv ); }
+                if ( e.type == comma::csv::format::double_t ) { return convert< double, unsigned char >( csv ); }
+                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( e.type ) << " RGB data is not supported" );
+            }
+            if ( fromc.value == colorspace::rgb && toc.value == colorspace::ypbpr ) {
+                return convert< float, float >( csv );
+                if ( e.type == comma::csv::format::float_t ) { return convert< float, float >( csv ); }
+                if ( e.type == comma::csv::format::double_t ) { return convert< double, double >( csv ); }
+                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( e.type ) << " RGB data is not supported" );
+            }
+        } else {
+            // hope for the best
+            std::cerr << name << "warning, assume ascii input is analog RGB (floating-point, 0-to-1)" << std::endl;
+            if ( fromc.value == colorspace::rgb && toc.value == colorspace::ycbcr ) { return convert< float, unsigned char >( csv ); }
+            if ( fromc.value == colorspace::rgb && toc.value == colorspace::ypbpr ) { return convert< float, float >( csv ); }
+            COMMA_THROW( comma::exception, "not yet implemented" );
+        }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << name << ex.what() << std::endl; }
