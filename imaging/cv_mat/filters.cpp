@@ -2829,6 +2829,30 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter_type( boost::bind< value_type_t >( head_impl_< H >, _1, n ), false ) );
         }
+        else if( e[0] == "rotate90" )
+        {
+            int n = ( e.size() > 1 ? boost::lexical_cast< int >( e[1] ) : 1 ) % 4;
+            if( n < 0 ) { n += 4; }
+            std::vector< std::string > filters;
+            switch( n )
+            {
+                case 1: 
+                    filters.push_back( "transpose" );
+                    filters.push_back( "flop" );
+                    break;
+                case 2:
+                    filters.push_back( "flip" );
+                    filters.push_back( "flop" );
+                    break;
+                case 3:
+                    filters.push_back( "transpose" );
+                    filters.push_back( "flip" );
+                    break;
+                default:
+                    break;
+            }
+            for( std::string s : filters ) { f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( { s }, get_timestamp ) ) ); }
+        }
         else
         {
             f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor(e, get_timestamp) ) );
@@ -2939,6 +2963,7 @@ static std::string usage_impl_()
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
+    oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
