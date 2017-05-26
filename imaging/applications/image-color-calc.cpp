@@ -187,6 +187,30 @@ namespace {
 
     // to continue, ub-to-floating-point, longer integers (short, int)?
 
+    void convert( const colorspace & from, const colorspace & to, const comma::csv::options & csv )
+    {
+        if ( csv.binary() )
+        {
+            #ifdef WIN32
+            _setmode( _fileno( stdin ), _O_BINARY );
+            _setmode( _fileno( stdout ), _O_BINARY );
+            #endif
+        }
+        comma::csv::input_stream<  pixel< float > > is( std::cin, csv );
+        comma::csv::options output_csv;
+        output_csv.flush = csv.flush;
+        if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< unsigned char > >() ); }
+        comma::csv::output_stream< pixel< unsigned char > > os( std::cout, output_csv );
+        comma::csv::tied< pixel< float >, pixel< unsigned char > > tied( is, os );
+        while( is.ready() || std::cin.good() )
+        {
+            const pixel< float > * p = is.read();
+            if( !p ) { break; }
+            tied.append( to_ycrcb< float, unsigned char >( *p ) );
+            if ( output_csv.flush ) { std::cout.flush(); }
+        }
+    }
+
     bool fields_have_required( const std::vector< std::string > & fields, const std::vector< std::string > & required )
     {
         for ( const auto & r : required ) {
@@ -257,6 +281,7 @@ template < typename T > struct traits< pixel< T > >
 
 int main( int ac, char** av )
 {
+#if 0
     {
         pixel< float > i(0.1, 0.2, 0.3);
         pixel< float > o = to_ycrcb< float, float >( i );
@@ -275,10 +300,12 @@ int main( int ac, char** av )
         comma::csv::output_stream< pixel< unsigned char > > os( std::cout );
         os.write( o );
     }
+#endif
     try
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv( options );
+        if ( !csv.binary() && options.exists( "--format" ) ) { csv.format( options.value< std::string >( "--format" ) ); }
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields", "--fields,-f,--binary,-b,--format,--to,--from");
@@ -329,144 +356,7 @@ int main( int ac, char** av )
                 csv.fields = "channel0,channel1,channel2";
             }
         }
-        std::cerr << "convert from " << fromc << " to " << toc << " using input fields " << csv.fields << std::endl;
-#if 0
-        if( operation == "mean" )
-        {
-            if( csv.fields.empty() ) { csv.fields = "t,rows,cols,type"; }
-            if( !csv.binary() ) { csv.format( "t,3ui" ); }
-            snark::cv_mat::serialization serialization( csv.fields, csv.format() );
-            while( std::cin.good() && !std::cin.eof() )
-            {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
-                if( p.second.empty() ) { return 0; }
-                cv::Scalar mean = cv::mean( p.second );
-                std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
-                for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); }
-                std::cout.flush();
-            }
-            return 0;
-        }
-        if( operation == "header" || operation == "format" )
-        {
-            if( csv.fields.empty() ) { csv.fields = "t,rows,cols,type" ; }
-            if( !csv.binary() ) { csv.format("t,3ui"); }
-            
-            if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
-            if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
-        }
-        else if( operation == "roi" )
-        {
-            if( csv.fields.empty() ) { csv.fields = default_input_fields ; }
-            if( !csv.binary() ) { csv.format("4i,t,3ui"); }
-            if( options.exists("--input-fields,--output-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
-            if( options.exists("--input-format,--output-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
-        }
-        
-        if( verbose )
-        {
-            std::cerr << name << "fields: " << csv.fields << std::endl;
-            std::cerr << name << "format: " << csv.format().string() << std::endl;
-        }
-            
-        snark::cv_mat::serialization serialization( csv.fields, csv.format() ); // todo?
-        
-        if( operation == "header" )
-        {
-            if( options.exists("--output-fields") ) { std::cout << "rows,cols,type" << std::endl;  exit(0); }
-            
-            if( std::cin.good() && !std::cin.eof() )
-            {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
-                if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
-                
-                comma::csv::options out;
-                out.fields = "rows,cols,type";
-                comma::csv::output_stream< serialization::header > ascii( std::cout, out );
-                ascii.write( serialization.get_header( &serialization.header_buffer()[0] ) );
-            }
-            else{ std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
-        }
-        else if( operation == "format" )
-        {
-            if( std::cin.good() && !std::cin.eof() )
-            {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
-                if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
-                
-                serialization::header header = serialization.get_header( &serialization.header_buffer()[0] );
-                
-                comma::csv::format format = csv.format();
-                format += "s[" + boost::lexical_cast<std::string>( comma::uint64(header.rows) * header.cols * p.second.elemSize() )  + "]";
-                std::cout << format.string() << std::endl;
-            }
-            else{ std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
-        }
-        else if( operation == "roi" )
-        {
-            
-            comma::csv::binary< ::extents > binary( csv );
-            bool flush = options.exists("--flush");
-            bool show_partial = options.exists("--show-partial");
-            
-            if( verbose ) { std::cerr << name << "show partial: " << show_partial << std::endl; }
-            
-            ::extents ext;
-            cv::Mat mask;
-            comma::uint64 count = 0;
-            while( std::cin.good() && !std::cin.eof() )
-            {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
-                cv::Mat& mat = p.second;
-                if( mat.empty() ) { break; }
-                
-                ++count;
-                
-                binary.get( ext, &serialization.header_buffer()[0] );
-                if(verbose && mask.rows == 0) // Will only trigger once
-                {
-                    serialization::header header = serialization.get_header( &serialization.header_buffer()[0] );
-                    std::cerr << name << "min & max: " << ext.min << " " << ext.max << std::endl;
-                    std::cerr << name << "rows & cols: " << header.rows << ' ' << header.cols << std::endl;
-                }
-                
-                // If image size changed
-                if( mask.rows != mat.rows || mask.cols != mat.cols ) { mask = cv::Mat::ones(mat.rows, mat.cols, CV_8U); }  // all ones, must be CV_U8 for setTo
-                
-                // roi not in image at all
-                if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows ) { continue; }
-                    
-                
-                // Clip roi to fit in the image
-                if( show_partial )
-                {
-                    if( ext.min.x < 0 ) { ext.min.x = 0; }
-                    if( ext.max.x >= mat.cols ) { ext.max.x = mat.cols-1; }
-                    if( ext.min.y < 0 ) { ext.min.y = 0; }
-                    if( ext.max.y >= mat.rows ) { ext.max.y = mat.rows-1; }
-                }
-                
-                int width = ext.max.x - ext.min.x;
-                int height = ext.max.y - ext.min.y;
-                // Mask to set anything not in the ROI to 0
-                if( width < 0 || height < 0 ) {
-                    std::cerr << name << "roi's width and height can not be negative. Failed on image/frame number: " << count 
-                        << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1;
-                }
-                
-                if( ext.min.x >= 0 && ext.min.y >=0 
-                    && (ext.min.x + width < mat.cols) && (ext.min.y + height < mat.rows) 
-                ) 
-                {
-                    mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(0);
-                    mat.setTo( cv::Scalar(0), mask );
-                    mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(1);
-                    serialization.write(std::cout, p, flush );
-                }
-            }
-        }
-        else { std::cerr << name << "unknown operation: " << operation << std::endl; return 1; }
-#endif
+        convert( fromc, toc, csv );
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << name << ex.what() << std::endl; }
