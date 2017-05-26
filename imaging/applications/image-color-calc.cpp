@@ -33,55 +33,58 @@ namespace {
     void usage( bool verbose = false )
     {
         std::cerr << std::endl;
-        std::cerr << name << "perform conversion between RGB, YCbCr, and YPbPr color spaces on input streams." << std::endl;
+        std::cerr << name << "perform conversion between RGB, YCbCr, YPbPr and other colorspaces on input streams." << std::endl;
         std::cerr << std::endl;
-        std::cerr << "usage: cat input.bin | image-color-calc <operation> [<options>] > output.bin " << std::endl;
+        std::cerr << "usage: cat input.bin | image-color-calc [<options>] > output.bin " << std::endl;
         std::cerr << std::endl;
-        std::cerr << "operations" << std::endl;
-        std::cerr << "  convert" << std::endl;
-        std::cerr << "      conversion between RGB and YCbCr colorspaces" << std::endl;
+        std::cerr << "colorspace names:" << std::endl;
+        std::cerr << "    rgb     - red-green-blue, eigher floating-point values from 0 to 1 or digital, 8-bit values" << std::endl;
+        std::cerr << "    ypbpr   - analog luma and chroma, floating-point values from 0 to 1" << std::endl;
+        std::cerr << "    ycbcr   - digital luma and chroma, 8-bit values between 0 and 255 (minus footroom and headroom)" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "options (operation-dependent)" << std::endl;
-        std::cerr << std::endl;
-        std::cerr << "convert" << std::endl;
-        std::cerr << "    --to=<colorspace>; default=YCbCr; direction of conversion, RGB, YCbCr, YPbPr (case-insensitive)" << std::endl;
-        std::cerr << "    --from=<colorspace>; default=RGB; input colorspace, RGB or YCbCr (case-insensitive), opposite to direction of conversion" << std::endl;
-    //    std::cerr << "    --header=[fields=<f>[;binary=<b>]]; input image is prepended with header that is omitted from conversion" << std::endl;
-    //    std::cerr << "    --rows=<count>; default=1; the number of rows in the image" << std::endl;
-    //    std::cerr << "    --cols,--columns=<count>; default=1; the number of columns in the image" << std::endl;
-    //    std::cerr << "    --count,--size=<size>; default=1; the number of pixels in the image, rows times columns" << std::endl;
+        std::cerr << "options to select conversion" << std::endl;
+        std::cerr << "    --from=<colorspace>; input colorspace" << std::endl;
+        std::cerr << "    --to=<colorspace>; destination colorspace" << std::endl;
         std::cerr << std::endl;
         std::cerr << "general options" << std::endl;
         std::cerr << "    --binary=[<format>]: binary format of input stream" << std::endl;
-        std::cerr << "    --format=[<format>]: format hint for ascii input (as coefficients for conversion depend on data type)" << std::endl;
-        std::cerr << "    --fields=[<fields>]; default: operation-dependent" << std::endl;
+        std::cerr << "    --format=[<format>]: format hint for ascii input stream; required if input value can be analog or digital" << std::endl;
+        std::cerr << "    --fields=[<fields>]; default: colorspace-dependent" << std::endl;
         std::cerr << "    --flush; flush after every line or binary record" << std::endl;
-        std::cerr << "    --input-fields; show default field names (depend on operation and direction of conversion) and exit" << std::endl;
+        std::cerr << "    --input-fields; show input field names for the given --from and exit" << std::endl;
+        std::cerr << "    --input-format; show input format for the given --from and exit" << std::endl;
+        std::cerr << "    --output-fields; show output field names for the given --to and exit" << std::endl;
+        std::cerr << "    --output-format; show output format for the given --to and exit" << std::endl;
         std::cerr << std::endl;
         std::cerr << "examples" << std::endl;
-        std::cerr << "    convert" << std::endl;
-        std::cerr << "        most simple, RGR to YCbCr (default), assume ub data" << std::endl;
-        std::cerr << "            echo 1,2,3 | image-color-calc convert" << std::endl;
-        std::cerr << "        input precision ambiguous, define explicitly; same default conversion applied" << std::endl;
-        std::cerr << "            echo 1,0.2,0.3 | image-color-calc convert --format=3d" << std::endl;
-        std::cerr << "        explicit conversion direction; '--to=RGB' would do the same" << std::endl;
-        std::cerr << "            echo 1,0.2,0.3 | image-color-calc convert --from=YCbCr" << std::endl;
-        std::cerr << "        handle binary, apply default conversion" << std::endl;
-        std::cerr << "            echo 1,0.2,0.3 | csv-to-bin 3f | image-color-calc convert --binary=3f" << std::endl;
-    //    std::cerr << "        input data have headers; skip header, apply default conversion to data" << std::endl;
-    //    std::cerr << "            ... | image-color-calc convert --header=\"fields=id,t;binary=ui,t\" --rows=100 --cols=200" << std::endl;
-    //    std::cerr << "        alternative form of the same" << std::endl;
-    //    std::cerr << "            ... | image-color-calc convert --header=\"fields=id,t;binary=ui,t\" --count=$(( 100 * 200 ))" << std::endl;
-    //    std::cerr << "        special fields in the header; rows, columns and format are taken from the header, cannot be given explicitly" << std::endl;
-    //    std::cerr << "            ... | image-color-calc convert --header=\"fields=t,rows,cols,type;binary=t,3ui\"" << std::endl;
-        std::cerr << "        using fields to select values to convert; RGB values 1,2,3 are converted to YCbCr" << std::endl;
-        std::cerr << "            echo 'value',1,2,3,20170101T000000 | image-color-calc convert --fields=name,r,g,b,t" << std::endl;
-        std::cerr << "        field names select conversion from YCbCr to RGB, precision explicitly hinted" << std::endl;
-        std::cerr << "            echo 'value',1,2,3,20170101T000000 | image-color-calc convert --fields=name,y,cr,cb,t --format=,3ui," << std::endl;
-        std::cerr << "        same example on binary data" << std::endl;
-        std::cerr << "            echo 'value',1,2,3,20170101T000000 | csv-to-bin s[10],3ui,t | image-color-calc convert --fields=name,y,cr,cb,t --binary=s[10],3ui,t" << std::endl;
-        std::cerr << "        using neutral field names to select values to convert and explicitly define conversion" << std::endl;
-        std::cerr << "            echo 'value',1,2,3,20170101T000000 | image-color-calc convert --fields=name,channel0,channel1,channel2,t --to=ycbcr" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    RGR to YCbCr; explicit format mandatory to define input as 8-bit digital" << std::endl;
+        std::cerr << "        echo 1,2,3 \\" << std::endl;
+        std::cerr << "            | image-color-calc --from rgb --to ycbcr --format=3ub" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    same direction but input is analog, a value from 0 to 1" << std::endl;
+        std::cerr << "        echo 1,0.2,0.3 \\" << std::endl;
+        std::cerr << "            | image-color-calc --from rgb --to ycbcr --format=3f" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    handle binary, same conversion as above" << std::endl;
+        std::cerr << "        echo 1,0.2,0.3 | csv-to-bin 3f \\" << std::endl;
+        std::cerr << "            | image-color-calc --from=rgb --to=ycbcr --binary=3f" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    using fields to select values to convert, no --from needed; digital RGB values 128,128,128 are converted to YCbCr" << std::endl;
+        std::cerr << "        echo 'value',128,128,128,20170101T000000 \\" << std::endl;
+        std::cerr << "            | image-color-calc --fields=name,r,g,b,t --format=,3ub, --to=ycbcr" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    field names select conversion from YCbCr to RGB (digital, 8-bit); input format is known from the colorspace name" << std::endl;
+        std::cerr << "        echo 'value',0.1,0.2,0.3,20170101T000000 \\" << std::endl;
+        std::cerr << "            | image-color-calc --fields=name,y,cb,cr,t --to rgb" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    same example on binary data" << std::endl;
+        std::cerr << "        echo 'value',0.1,0.2,0.3,20170101T000000 \\" << std::endl;
+        std::cerr << "            | csv-to-bin s[10],3ui,t | image-color-calc convert --fields=name,y,cr,cb,t --binary=s[10],3ui,t --to rgb" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    using neutral field names to select values to convert and explicitly define conversion" << std::endl;
+        std::cerr << "        echo 'value',1,2,3,20170101T000000 \\" << std::endl;
+        std::cerr << "            | image-color-calc convert --fields=name,channel0,channel1,channel2,t --from rgb --format 3ub --to=ycbcr" << std::endl;
         std::cerr << std::endl;
         exit( 0 );
     }
@@ -139,7 +142,7 @@ namespace {
         return os;
     }
 
-    // do not call fields RGB because can contain YCbCr or any other color space
+    // do not call fields RGB because can contain YCbCr or any other colorspace
     template< typename T >
     struct pixel
     {
