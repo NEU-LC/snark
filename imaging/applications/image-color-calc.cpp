@@ -184,9 +184,9 @@ namespace {
         static pixel< unsigned char > to_ycrcb( const pixel< f > & p )
         {
             typedef unsigned char ub;
-            return pixel< ub >(  16 + ub(  65.481 * p.channel0 + 128.553 * p.channel1 + 24.966 * p.channel2 )
-                              , 128 + ub( -37.797 * p.channel0 - 74.203  * p.channel1 + 112.0  * p.channel2 )
-                              , 128 + ub( 112.0   * p.channel0 - 93.786  * p.channel1 - 18.214 * p.channel2 ) );
+            return pixel< ub >(  16 + ub(  65.481 * p.channel0 + 128.553 * p.channel1 +  24.966 * p.channel2 )
+                              , 128 + ub( -37.797 * p.channel0 -  74.203 * p.channel1 + 112.0   * p.channel2 )
+                              , 128 + ub( 112.0   * p.channel0 -  93.786 * p.channel1 -  18.214 * p.channel2 ) );
         }
     };
 
@@ -387,7 +387,7 @@ int main( int ac, char** av )
         }
         return 0;
     }
-    catch( std::exception& ex ) { std::cerr << name << ex.what() << std::endl; }
+    catch( std::exception & ex ) { std::cerr << name << ex.what() << std::endl; }
     catch( ... ) { std::cerr << name << "unknown exception" << std::endl; }
     return 1;
 }
