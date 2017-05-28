@@ -37,9 +37,9 @@ namespace {
         std::cerr << "usage: cat input.bin | image-color-calc [<options>] > output.bin " << std::endl;
         std::cerr << std::endl;
         std::cerr << "colorspace names:" << std::endl;
-        std::cerr << "    rgb     - red-green-blue, eigher floating-point values from 0 to 1 or digital, 8-bit values" << std::endl;
-        std::cerr << "    ypbpr   - analog luma and chroma, floating-point values from 0 to 1" << std::endl;
-        std::cerr << "    ycbcr   - digital luma and chroma, 8-bit values between 0 and 255 (minus footroom and headroom)" << std::endl;
+        std::cerr << "    rgb     - red-green-blue, eigher floating-point values from 0 to 1 (f or d format) or digital, 8-bit values (ub)" << std::endl;
+        std::cerr << "    ypbpr   - analog luma and chroma, floating-point values from 0 to 1 (f or d)" << std::endl;
+        std::cerr << "    ycbcr   - digital luma and chroma, 8-bit values between 0 and 255 (minus footroom and headroom), ub format" << std::endl;
         std::cerr << std::endl;
         std::cerr << "options to select conversion" << std::endl;
         std::cerr << "    --from=[<colorspace>]; input colorspace, optional, alternatively can be inferred from fields" << std::endl;
@@ -51,9 +51,7 @@ namespace {
         std::cerr << "    --fields=[<fields>]; default: colorspace-dependent" << std::endl;
         std::cerr << "    --flush; flush after every line or binary record" << std::endl;
         std::cerr << "    --input-fields; show input field names for the given --from and exit" << std::endl;
-        std::cerr << "    --input-format; show input format for the given --from and exit" << std::endl;
         std::cerr << "    --output-fields; show output field names for the given --to and exit" << std::endl;
-        std::cerr << "    --output-format; show output format for the given --to and exit" << std::endl;
         std::cerr << std::endl;
         std::cerr << "examples" << std::endl;
         std::cerr << std::endl;
@@ -338,7 +336,7 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
-        std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields, --input-format, --output-fields, --output-format", "--fields,-f,--binary,-b,--format,--to,--from");
+        std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--output-fields", "--fields,-f,--binary,-b,--format,--to,--from");
         if( !unnamed.empty() ) { std::cerr << name << "cannot parse command-line arguments '" << comma::join( unnamed, ',' ) << "'" << std::endl; return 1;  }
 
         // the user may specify the input for conversion by two ways
@@ -346,9 +344,11 @@ int main( int ac, char** av )
         //     if fields are not given, fields are set to the from-specific defaults
         //     if fields are given, the required fields must be present (and renamed if needed)
         // otherwise, if --fields is given, infer the from colorspace from fields
+        colorspace fromc( options.value< std::string >( "--from", "none" ) );
+        if ( options.exists( "--input-fields" ) ) { std::cout << comma::join( colorspace::field_names( fromc.value ), ',' ) << std::endl; return 0; }
         colorspace toc( options.value< std::string >( "--to", "none" ) );
         if ( toc.value == colorspace::none ) { COMMA_THROW( comma::exception, "must provide destination colorspace using '--to'" ); }
-        colorspace fromc( options.value< std::string >( "--from", "none" ) );
+        if ( options.exists( "--output-fields" ) ) { std::cout << comma::join( colorspace::field_names( toc.value ), ',' ) << std::endl; return 0; }
         std::vector< std::string > fields = comma::split( csv.fields, csv.delimiter );
         if ( fromc.value != colorspace::none ) {
             if ( options.exists( "--fields,-f" ) )
