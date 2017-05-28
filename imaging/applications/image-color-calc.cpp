@@ -74,16 +74,17 @@ namespace {
         std::cerr << "            | image-color-calc --fields=name,r,g,b,t --format=s[10],3ub,t --to=ycbcr" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    field names select conversion from ycbcr to rgb (digital, 8-bit); input format is known from the colorspace name" << std::endl;
-        std::cerr << "        echo 'value',0.1,0.2,0.3,20170101T000000 \\" << std::endl;
+        std::cerr << "        echo 'value',30,40,50,20170101T000000 \\" << std::endl;
         std::cerr << "            | image-color-calc --fields=name,y,cb,cr,t --to rgb" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    same example on binary data" << std::endl;
-        std::cerr << "        echo 'value',0.1,0.2,0.3,20170101T000000 \\" << std::endl;
-        std::cerr << "            | csv-to-bin s[10],3ui,t | image-color-calc convert --fields=name,y,cr,cb,t --binary=s[10],3ui,t --to rgb" << std::endl;
+        std::cerr << "        echo 'value',30,40,50,20170101T000000 \\" << std::endl;
+        std::cerr << "            | csv-to-bin s[10],3ub,t | image-color-calc --fields=name,y,cb,cr,t --binary=s[10],3ub,t --to rgb \\" << std::endl;
+        std::cerr << "            | csv-from-bin s[10],3ub,t,3ub" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    using neutral field names to select values to convert and explicitly define conversion" << std::endl;
         std::cerr << "        echo 'value',1,2,3,20170101T000000 \\" << std::endl;
-        std::cerr << "            | image-color-calc convert --fields=name,channel0,channel1,channel2,t --from rgb --format 3ub --to=ycbcr" << std::endl;
+        std::cerr << "            | image-color-calc --fields=name,channel0,channel1,channel2,t --from rgb --format 3ub --to=ycbcr" << std::endl;
         std::cerr << std::endl;
         exit( 0 );
     }
