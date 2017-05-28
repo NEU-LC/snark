@@ -314,11 +314,8 @@ int main( int ac, char** av )
         if ( !csv.binary() && options.exists( "--format" ) ) { csv.format( options.value< std::string >( "--format" ) ); }
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields", "--fields,-f,--binary,-b,--format,--to,--from");
-        if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
-        if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
-        std::string operation = ops.front();
-        std::vector< std::string > fields = comma::split( csv.fields, csv.delimiter );
+        std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields, --input-format, --output-fields, --output-format", "--fields,-f,--binary,-b,--format,--to,--from");
+        if( !unnamed.empty() ) { std::cerr << name << "cannot parse command-line arguments '" << comma::join( unnamed, ',' ) << "'" << std::endl; return 1;  }
 
         // the user may specify the direction of conversion by many ways
         // if --from is specified:
@@ -329,6 +326,7 @@ int main( int ac, char** av )
         // finally, if none of the above, apply defaults
         colorspace toc( options.value< std::string >( "--to", "none" ) );
         colorspace fromc( options.value< std::string >( "--from", "none" ) );
+        std::vector< std::string > fields = comma::split( csv.fields, csv.delimiter );
         if ( fromc.value != colorspace::none ) {
             if ( options.exists( "--fields,-f" ) )
             {
