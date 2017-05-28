@@ -173,9 +173,10 @@ namespace {
         static pixel< unsigned char > to( const pixel< it > & p )
         {
             typedef unsigned char ub;
-            return pixel< ub >(  16 + ub(  65.481 * p.channel0 + 128.553 * p.channel1 +  24.966 * p.channel2 )
-                              , 128 + ub( -37.797 * p.channel0 -  74.203 * p.channel1 + 112.0   * p.channel2 )
-                              , 128 + ub( 112.0   * p.channel0 -  93.786 * p.channel1 -  18.214 * p.channel2 ) );
+            auto rub = []( it v ){ return ub( std::round( v ) ); };
+            return pixel< ub >(  16 + rub(  65.481 * p.channel0 + 128.553 * p.channel1 +  24.966 * p.channel2 )
+                              , 128 + rub( -37.797 * p.channel0 -  74.203 * p.channel1 + 112.0   * p.channel2 )
+                              , 128 + rub( 112.0   * p.channel0 -  93.786 * p.channel1 -  18.214 * p.channel2 ) );
         }
     };
 
@@ -186,9 +187,10 @@ namespace {
         static pixel< unsigned char > to( const pixel< unsigned char > & p )
         {
             typedef unsigned char ub;
-            return pixel< ub >( ub(  16 + (  65.738 * p.channel0 + 129.057 * p.channel1 +  25.064 * p.channel2 ) / 256. )
-                              , ub( 128 + ( -37.945 * p.channel0 -  74.494 * p.channel1 + 112.439 * p.channel2 ) / 256. )
-                              , ub( 128 + ( 112.439 * p.channel0 -  94.154 * p.channel1 -  18.258 * p.channel2 ) / 256. ) );
+            auto rub = []( double v ){ return ub( std::round( v ) ); };
+            return pixel< ub >( rub(  16 + (  65.738 * p.channel0 + 129.057 * p.channel1 +  25.064 * p.channel2 ) / 256. )
+                              , rub( 128 + ( -37.945 * p.channel0 -  74.494 * p.channel1 + 112.439 * p.channel2 ) / 256. )
+                              , rub( 128 + ( 112.439 * p.channel0 -  94.154 * p.channel1 -  18.258 * p.channel2 ) / 256. ) );
         }
     };
 
@@ -199,9 +201,10 @@ namespace {
         static pixel< unsigned char > to( const pixel< unsigned char > & p )
         {
             typedef unsigned char ub;
-            return pixel< ub >( ub( 255/219. * ( p.channel0 - 16 )                                                     + 255/112.*0.701             * ( p.channel2 - 128 ) )
-                              , ub( 255/219. * ( p.channel0 - 16 ) - 255/112.*0.886*0.114/0.587 * ( p.channel1 - 128 ) - 255/112.*0.701*0.299/0.587 * ( p.channel2 - 128 ) )
-                              , ub( 255/219. * ( p.channel0 - 16 ) + 255/112.*0.886             * ( p.channel1 - 128 )                                                     ) );
+            auto rub = []( double v ){ return ub( std::round( v ) ); };
+            return pixel< ub >( rub( 255/219. * ( p.channel0 - 16 )                                                     + 255/112.*0.701             * ( p.channel2 - 128 ) )
+                              , rub( 255/219. * ( p.channel0 - 16 ) - 255/112.*0.886*0.114/0.587 * ( p.channel1 - 128 ) - 255/112.*0.701*0.299/0.587 * ( p.channel2 - 128 ) )
+                              , rub( 255/219. * ( p.channel0 - 16 ) + 255/112.*0.886             * ( p.channel1 - 128 )                                                     ) );
         }
     };
 
