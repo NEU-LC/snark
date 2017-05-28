@@ -1,0 +1,20 @@
+ascii/command[0]="echo 0,0,0 | image-color-calc --from rgb --to ycbcr --format=3ub"
+ascii/command[1]="echo 255,255,255 | image-color-calc --from rgb --to ycbcr --format=3ub"
+
+ascii/command[2]="echo 0,0,0 | image-color-calc --from rgb --to ycbcr --format=3f"
+ascii/command[3]="echo 1,1,1 | image-color-calc --from rgb --to ycbcr --format=3f"
+
+ascii/command[4]="echo 0,0,0 | image-color-calc --from rgb --to ycbcr --format=3d"
+ascii/command[5]="echo 1,1,1 | image-color-calc --from rgb --to ycbcr --format=3d"
+
+ascii/failure[0]="echo 1,1,1 | image-color-calc --from rgb --to ycbcr"
+ascii/failure[1]="echo 0.1,0.1,0.1 | image-color-calc --from rgb --to ycbcr --format=3ub"
+
+binary/command[0]="echo 0,0,0 | csv-to-bin 3ub | image-color-calc --from rgb --to ycbcr --binary=3ub | csv-from-bin 3ub,3ub"
+binary/command[1]="echo 255,255,255 | csv-to-bin 3ub | image-color-calc --from rgb --to ycbcr --binary=3ub | csv-from-bin 3ub,3ub"
+
+binary/command[2]="echo 0,0,0 | csv-to-bin 3f | image-color-calc --from rgb --to ycbcr --binary=3f | csv-from-bin 3f,3ub"
+binary/command[3]="echo 1,1,1 | csv-to-bin 3f | image-color-calc --from rgb --to ycbcr --binary=3f | csv-from-bin 3f,3ub"
+
+binary/command[4]="echo 0,0,0 | csv-to-bin 3d | image-color-calc --from rgb --to ycbcr --binary=3d | csv-from-bin 3d,3ub"
+binary/command[5]="echo 1,1,1 | csv-to-bin 3d | image-color-calc --from rgb --to ycbcr --binary=3d | csv-from-bin 3d,3ub"
