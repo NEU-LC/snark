@@ -41,8 +41,8 @@ namespace {
         std::cerr << "    ycbcr   - digital luma and chroma, 8-bit values between 0 and 255 (minus footroom and headroom)" << std::endl;
         std::cerr << std::endl;
         std::cerr << "options to select conversion" << std::endl;
-        std::cerr << "    --from=<colorspace>; input colorspace" << std::endl;
-        std::cerr << "    --to=<colorspace>; destination colorspace" << std::endl;
+        std::cerr << "    --from=[<colorspace>]; input colorspace, optional, alternatively can be inferred from fields" << std::endl;
+        std::cerr << "    --to=<colorspace>; destination colorspace, mandatory" << std::endl;
         std::cerr << std::endl;
         std::cerr << "general options" << std::endl;
         std::cerr << "    --binary=[<format>]: binary format of input stream" << std::endl;
@@ -121,17 +121,6 @@ namespace {
                 { none, comma::split( "channel0,channel1,channel2", ',' ) }
             };
             return m[ c ];
-        }
-
-        void set_to_opposite_if_not_given( const colorspace & other )
-        {
-            if ( value != colorspace::none ) { return; }
-            switch ( other.value ) {
-                case colorspace::rgb:    value = colorspace::ycbcr; break;
-                case colorspace::ycbcr:  value = colorspace::rgb;   break;
-                default:
-                    COMMA_THROW( comma::exception, "cannot set the colorspace value to the opposite of " << std::string( other ) );
-            }
         }
     };
 
@@ -317,25 +306,23 @@ int main( int ac, char** av )
         std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields, --input-format, --output-fields, --output-format", "--fields,-f,--binary,-b,--format,--to,--from");
         if( !unnamed.empty() ) { std::cerr << name << "cannot parse command-line arguments '" << comma::join( unnamed, ',' ) << "'" << std::endl; return 1;  }
 
-        // the user may specify the direction of conversion by many ways
+        // the user may specify the input for conversion by two ways
         // if --from is specified:
         //     if fields are not given, fields are set to the from-specific defaults
         //     if fields are given, the required fields must be present (and renamed if needed)
         // otherwise, if --fields is given, infer the from colorspace from fields
-        // otherwise, if --to is given, infer the fields and from colorspace from --to
-        // finally, if none of the above, apply defaults
         colorspace toc( options.value< std::string >( "--to", "none" ) );
+        if ( toc.value == colorspace::none ) { COMMA_THROW( comma::exception, "must provide destination colorspace using '--to'" ); }
         colorspace fromc( options.value< std::string >( "--from", "none" ) );
         std::vector< std::string > fields = comma::split( csv.fields, csv.delimiter );
         if ( fromc.value != colorspace::none ) {
             if ( options.exists( "--fields,-f" ) )
             {
                 setup_fields_for_colorspace( fields, fromc );
-                csv.fields = comma::join( fields, ',' );
             } else {
-                csv.fields = "channel0,channel1,channel2";
+                fields = { "channel0", "channel1", "channel2" };
             }
-            toc.set_to_opposite_if_not_given( fromc );
+            csv.fields = comma::join( fields, ',' );
         } else {
             if ( options.exists( "--fields,-f" ) )
             {
@@ -344,20 +331,8 @@ int main( int ac, char** av )
                 // now fromc cannot be none
                 rename_fields_to_channels( fields, fromc );
                 csv.fields = comma::join( fields, ',' );
-                toc.set_to_opposite_if_not_given( fromc );
             } else {
-                // '--from' not given, '--fields' not given, infer from '--to'
-                switch ( toc.value ) {
-                    case colorspace::rgb:   fromc.value = colorspace::ycbcr; break;
-                    case colorspace::ycbcr: fromc.value = colorspace::rgb;   break;
-                    case colorspace::ypbpr: fromc.value = colorspace::rgb;   break;
-                    case colorspace::none:
-                        // last resort, all defaults
-                        fromc.value = colorspace::rgb;
-                        toc.value = colorspace::ycbcr;
-                        break;
-                }
-                csv.fields = "channel0,channel1,channel2";
+                COMMA_THROW( comma::exception, "neither '--from' nor '--fields' are given, cannot determine the input colorspace" );
             }
         }
         if ( csv.binary() ) {
