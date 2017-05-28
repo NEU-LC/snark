@@ -154,20 +154,20 @@ namespace {
     template< typename i, bool i_is_float, typename o, bool o_is_float  >
     struct converter
     {
-        static pixel< o > to_ycrcb( const pixel< i > & p );
+        static pixel< o > to_ycbcr( const pixel< i > & p );
     };
 
     template< typename i, typename o >
-    pixel< o > to_ycrcb( const pixel< i > & p )
+    pixel< o > to_ycbcr( const pixel< i > & p )
     {
-        return converter< i, std::is_floating_point< i >::value, o, std::is_floating_point< o >::value >::to_ycrcb( p );
+        return converter< i, std::is_floating_point< i >::value, o, std::is_floating_point< o >::value >::to_ycbcr( p );
     };
 
     // float-to-float, double-to-double, and crosses
     template< typename i, typename o >
     struct converter< i, true, o, true >
     {
-        static pixel< o > to_ycrcb( const pixel< i > & p )
+        static pixel< o > to_ycbcr( const pixel< i > & p )
         {
             typedef typename std::conditional< sizeof(o) <= sizeof(i), i, o >::type l;
             return pixel< o >( o(  l(0.299)    * l(p.channel0) + l(0.587)    * l(p.channel1) + l(0.114)    * l(p.channel2) )
@@ -180,7 +180,7 @@ namespace {
     template< typename f >
     struct converter< f, true, unsigned char, false >
     {
-        static pixel< unsigned char > to_ycrcb( const pixel< f > & p )
+        static pixel< unsigned char > to_ycbcr( const pixel< f > & p )
         {
             typedef unsigned char ub;
             return pixel< ub >(  16 + ub(  65.481 * p.channel0 + 128.553 * p.channel1 +  24.966 * p.channel2 )
@@ -211,7 +211,7 @@ namespace {
         {
             const pixel< i > * p = is.read();
             if( !p ) { break; }
-            tied.append( to_ycrcb< i, o >( *p ) );
+            tied.append( to_ycbcr< i, o >( *p ) );
             if ( output_csv.flush ) { std::cout.flush(); }
         }
         return 0;
@@ -290,19 +290,19 @@ int main( int ac, char** av )
 #if 0
     {
         pixel< float > i(0.1, 0.2, 0.3);
-        pixel< float > o = to_ycrcb< float, float >( i );
+        pixel< float > o = to_ycbcr< float, float >( i );
         comma::csv::output_stream< pixel< float > > os( std::cout );
         os.write( o );
     }
     {
         pixel< float > i(0.1, 0.2, 0.3);
-        pixel< double > o = to_ycrcb< float, double >( i );
+        pixel< double > o = to_ycbcr< float, double >( i );
         comma::csv::output_stream< pixel< double > > os( std::cout );
         os.write( o );
     }
     {
         pixel< float > i(0.1, 0.2, 0.3);
-        pixel< unsigned char > o = to_ycrcb< float, unsigned char >( i );
+        pixel< unsigned char > o = to_ycbcr< float, unsigned char >( i );
         comma::csv::output_stream< pixel< unsigned char > > os( std::cout );
         os.write( o );
     }
