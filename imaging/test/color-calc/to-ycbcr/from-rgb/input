@@ -7,8 +7,13 @@ ascii/command[3]="echo 1,1,1 | image-color-calc --from rgb --to ycbcr --format=3
 ascii/command[4]="echo 0,0,0 | image-color-calc --from rgb --to ycbcr --format=3d"
 ascii/command[5]="echo 1,1,1 | image-color-calc --from rgb --to ycbcr --format=3d"
 
-ascii/failure[0]="echo 1,1,1 | image-color-calc --from rgb --to ycbcr"
-ascii/failure[1]="echo 0.1,0.1,0.1 | image-color-calc --from rgb --to ycbcr --format=3ub"
+ascii/command[6]="echo 0,0,0 | image-color-calc --fields r,g,b --to ycbcr --format=3d"
+ascii/command[7]="echo name,1,1,20170102T030405,1 | image-color-calc --fields name,r,g,t,b --to ycbcr --format=s[10],2d,t,d"
+
+ascii/command[8]="echo 78,134,31 | image-color-calc --fields r,g,b --to ycbcr --format=3ub"
+
+failure/command[0]="echo 1,1,1 | image-color-calc --from rgb --to ycbcr"
+failure/command[1]="echo 0.1,0.1,0.1 | image-color-calc --from rgb --to ycbcr --format=3ub"
 
 binary/command[0]="echo 0,0,0 | csv-to-bin 3ub | image-color-calc --from rgb --to ycbcr --binary=3ub | csv-from-bin 3ub,3ub"
 binary/command[1]="echo 255,255,255 | csv-to-bin 3ub | image-color-calc --from rgb --to ycbcr --binary=3ub | csv-from-bin 3ub,3ub"

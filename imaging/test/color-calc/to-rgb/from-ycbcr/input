@@ -1,0 +1,10 @@
+ascii/command[0]="echo 107,91,111 | image-color-calc --from ycbcr --to rgb"
+ascii/command[1]="echo 107,91,111 | image-color-calc --fields y,cb,cr --to rgb"
+ascii/command[2]="echo foo,107,20170102T030405,91,111 | image-color-calc --fields name,y,t,cb,cr --to rgb"
+
+failure/command[0]="echo 107,91,111 | image-color-calc --fields y,cb,a --to rgb"
+failure/command[1]="echo 107,91,111 | image-color-calc --fields y,cb,cr --to ypbpr"
+
+binary/command[0]="echo 107,91,111 | csv-to-bin 3ub | image-color-calc --from ycbcr --to rgb --binary=3ub | csv-from-bin 3ub,3ub"
+binary/command[1]="echo 107,91,111 | csv-to-bin 3ub | image-color-calc --fields y,cb,cr --to rgb --binary=3ub | csv-from-bin 3ub,3ub"
+binary/command[2]="echo foo,107,20170102T030405,91,111 | csv-to-bin s[10],ub,t,2ub | image-color-calc --fields name,y,t,cb,cr --to rgb --binary=s[10],ub,t,2ub | csv-from-bin s[10],ub,t,2ub,3ub"
