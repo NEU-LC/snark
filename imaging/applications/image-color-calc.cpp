@@ -181,7 +181,7 @@ namespace {
     // to continue, ub-to-floating-point, longer integers (short, int)?
 
     template< typename i, typename o >
-    int convert( const comma::csv::options & csv )
+    void convert( const comma::csv::options & csv )
     {
         if ( csv.binary() )
         {
@@ -203,7 +203,23 @@ namespace {
             tied.append( to_ycbcr< i, o >( *p ) );
             if ( output_csv.flush ) { std::cout.flush(); }
         }
-        return 0;
+    }
+
+    void from_rgb( const colorspace & toc, comma::csv::format::types_enum e, const comma::csv::options & csv )
+    {
+        switch( toc.value ) {
+            case colorspace::ycbcr:
+                if ( e == comma::csv::format::uint8 ) { convert< unsigned char, unsigned char >( csv ); return; }
+                if ( e == comma::csv::format::float_t ) { convert< float, unsigned char >( csv ); return; }
+                if ( e == comma::csv::format::double_t ) { convert< double, unsigned char >( csv ); return; }
+                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( e ) << " rgb to " << toc << " is not supported" );
+            case colorspace::ypbpr:
+                if ( e == comma::csv::format::float_t ) { convert< float, float >( csv ); return; }
+                if ( e == comma::csv::format::double_t ) { convert< double, double >( csv ); return; }
+                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( e ) << " rgb to " << toc << " is not supported" );
+            default:
+                COMMA_THROW( comma::exception, "conversion from rgb to " << toc << " is not implemented yet" );
+        }
     }
 
     bool fields_have_required( const std::vector< std::string > & fields, const std::vector< std::string > & required )
@@ -300,7 +316,6 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv( options );
-        if ( !csv.binary() && options.exists( "--format" ) ) { csv.format( options.value< std::string >( "--format" ) ); }
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields, --input-format, --output-fields, --output-format", "--fields,-f,--binary,-b,--format,--to,--from");
@@ -335,27 +350,19 @@ int main( int ac, char** av )
                 COMMA_THROW( comma::exception, "neither '--from' nor '--fields' are given, cannot determine the input colorspace" );
             }
         }
-        if ( csv.binary() ) {
-            // assume all fields have same size
-            size_t first_field = std::distance( fields.begin(), std::find( fields.begin(), fields.end(), "channel0" ) );
-            comma::csv::format::element e = csv.format().offset( first_field );
-            if ( fromc.value == colorspace::rgb && toc.value == colorspace::ycbcr ) {
-                if ( e.type == comma::csv::format::float_t ) { return convert< float, unsigned char >( csv ); }
-                if ( e.type == comma::csv::format::double_t ) { return convert< double, unsigned char >( csv ); }
-                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( e.type ) << " RGB data is not supported" );
-            }
-            if ( fromc.value == colorspace::rgb && toc.value == colorspace::ypbpr ) {
-                return convert< float, float >( csv );
-                if ( e.type == comma::csv::format::float_t ) { return convert< float, float >( csv ); }
-                if ( e.type == comma::csv::format::double_t ) { return convert< double, double >( csv ); }
-                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( e.type ) << " RGB data is not supported" );
-            }
-        } else {
-            // hope for the best
-            std::cerr << name << "warning, assume ascii input is analog RGB (floating-point, 0-to-1)" << std::endl;
-            if ( fromc.value == colorspace::rgb && toc.value == colorspace::ycbcr ) { return convert< float, unsigned char >( csv ); }
-            if ( fromc.value == colorspace::rgb && toc.value == colorspace::ypbpr ) { return convert< float, float >( csv ); }
-            COMMA_THROW( comma::exception, "not yet implemented" );
+        if ( verbose ) { std::cerr << name << "convert from " << fromc << " to " << toc << " colorspace using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
+        switch ( fromc.value ) {
+            case colorspace::rgb:
+                {
+                    if ( !csv.binary() && !options.exists( "--format" ) ) { COMMA_THROW( comma::exception, "must supply '--format' for ASCII rgb inputs" ); }
+                    const comma::csv::format & format = csv.binary() ? csv.format() : comma::csv::format( options.value< std::string >( "--format" ) );
+                    // assume all input fields have same size
+                    size_t first_field = std::distance( fields.begin(), std::find( fields.begin(), fields.end(), "channel0" ) );
+                    from_rgb( toc, format.offset( first_field ).type, csv );
+                }
+                break;
+            default:
+                COMMA_THROW( comma::exception, "conversion from " << fromc << " to " << toc << " is not implemented yet" );
         }
         return 0;
     }
