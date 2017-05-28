@@ -222,6 +222,8 @@ namespace {
         }
     }
 
+    // the methods below are for parsing the command line
+
     bool fields_have_required( const std::vector< std::string > & fields, const std::vector< std::string > & required )
     {
         for ( const auto & r : required ) {
@@ -292,26 +294,6 @@ template < typename T > struct traits< pixel< T > >
 
 int main( int ac, char** av )
 {
-#if 0
-    {
-        pixel< float > i(0.1, 0.2, 0.3);
-        pixel< float > o = to_ycbcr< float, float >( i );
-        comma::csv::output_stream< pixel< float > > os( std::cout );
-        os.write( o );
-    }
-    {
-        pixel< float > i(0.1, 0.2, 0.3);
-        pixel< double > o = to_ycbcr< float, double >( i );
-        comma::csv::output_stream< pixel< double > > os( std::cout );
-        os.write( o );
-    }
-    {
-        pixel< float > i(0.1, 0.2, 0.3);
-        pixel< unsigned char > o = to_ycbcr< float, unsigned char >( i );
-        comma::csv::output_stream< pixel< unsigned char > > os( std::cout );
-        os.write( o );
-    }
-#endif
     try
     {
         comma::command_line_options options( ac, av, usage );
@@ -350,6 +332,8 @@ int main( int ac, char** av )
                 COMMA_THROW( comma::exception, "neither '--from' nor '--fields' are given, cannot determine the input colorspace" );
             }
         }
+
+        // the actual processing is done below
         if ( verbose ) { std::cerr << name << "convert from " << fromc << " to " << toc << " colorspace using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
         switch ( fromc.value ) {
             case colorspace::rgb:
