@@ -21,6 +21,7 @@
 #include <comma/string/string.h>
 
 #include <type_traits>
+#include <boost/static_assert.hpp>
 
 namespace {
 
@@ -141,36 +142,35 @@ namespace {
         pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( c0 ), channel1( c1 ), channel2( c2 ) {}
     };
 
-    template< typename i, bool i_is_float, typename o, bool o_is_float  >
+    // general template, never defined
+    // keep the precision explicit because some of the colorspaces may exist in multiple formats
+    // (most are 1-to-1, so this is excessive in general)
+    template< colorspace::cspace ic, typename it, colorspace::cspace oc, typename ot  >
     struct converter
     {
-        static pixel< o > to_ycbcr( const pixel< i > & p );
+        static pixel< ot > to( const pixel< it > & p );
     };
 
-    template< typename i, typename o >
-    pixel< o > to_ycbcr( const pixel< i > & p )
+    // analog YPbPr from analog RGB (float-to-float, double-to-double, and crosses)
+    template< typename it, typename ot >
+    struct converter< colorspace::rgb, it, colorspace::ypbpr, ot >
     {
-        return converter< i, std::is_floating_point< i >::value, o, std::is_floating_point< o >::value >::to_ycbcr( p );
-    };
-
-    // float-to-float, double-to-double, and crosses
-    template< typename i, typename o >
-    struct converter< i, true, o, true >
-    {
-        static pixel< o > to_ycbcr( const pixel< i > & p )
+        static pixel< ot > to( const pixel< it > & p )
         {
-            typedef typename std::conditional< sizeof(o) <= sizeof(i), i, o >::type l;
-            return pixel< o >( o(  l(0.299)    * l(p.channel0) + l(0.587)    * l(p.channel1) + l(0.114)    * l(p.channel2) )
-                             , o( -l(0.168736) * l(p.channel0) - l(0.331264) * l(p.channel1) + l(0.5)      * l(p.channel2) )
-                             , o(  l(0.5)      * l(p.channel0) - l(0.418688) * l(p.channel1) - l(0.081312) * l(p.channel2) ) );
+            BOOST_STATIC_ASSERT( std::is_floating_point< it >::value );
+            BOOST_STATIC_ASSERT( std::is_floating_point< ot >::value );
+            typedef typename std::conditional< sizeof(ot) <= sizeof(it), it, ot >::type l;
+            return pixel< ot >( ot(  l(0.299)    * l(p.channel0) + l(0.587)    * l(p.channel1) + l(0.114)    * l(p.channel2) )
+                              , ot( -l(0.168736) * l(p.channel0) - l(0.331264) * l(p.channel1) + l(0.5)      * l(p.channel2) )
+                              , ot(  l(0.5)      * l(p.channel0) - l(0.418688) * l(p.channel1) - l(0.081312) * l(p.channel2) ) );
         }
     };
 
-    // floating-point-to-ub
-    template< typename f >
-    struct converter< f, true, unsigned char, false >
+    // digital YCbCr from analog RGB (floating-point-to-ub)
+    template< typename it >
+    struct converter< colorspace::rgb, it, colorspace::ycbcr, unsigned char >
     {
-        static pixel< unsigned char > to_ycbcr( const pixel< f > & p )
+        static pixel< unsigned char > to( const pixel< it > & p )
         {
             typedef unsigned char ub;
             return pixel< ub >(  16 + ub(  65.481 * p.channel0 + 128.553 * p.channel1 +  24.966 * p.channel2 )
@@ -179,9 +179,33 @@ namespace {
         }
     };
 
-    // to continue, ub-to-floating-point, longer integers (short, int)?
+    // digital YCbCr from digital RGB (ub-to-ub)
+    template< >
+    struct converter< colorspace::rgb, unsigned char, colorspace::ycbcr, unsigned char >
+    {
+        static pixel< unsigned char > to( const pixel< unsigned char > & p )
+        {
+            typedef unsigned char ub;
+            return pixel< ub >( ub(  16 + (  65.738 * p.channel0 + 129.057 * p.channel1 +  25.064 * p.channel2 ) / 256. )
+                              , ub( 128 + ( -37.945 * p.channel0 -  74.494 * p.channel1 + 112.439 * p.channel2 ) / 256. )
+                              , ub( 128 + ( 112.439 * p.channel0 -  94.154 * p.channel1 -  18.258 * p.channel2 ) / 256. ) );
+        }
+    };
 
-    template< typename i, typename o >
+    // digital RGB from digital YCbCr (ub-to-ub)
+    template< >
+    struct converter< colorspace::ycbcr, unsigned char, colorspace::rgb, unsigned char >
+    {
+        static pixel< unsigned char > to( const pixel< unsigned char > & p )
+        {
+            typedef unsigned char ub;
+            return pixel< ub >( ub( 255/219. * ( p.channel0 - 16 )                                                     + 255/112.*0.701             * ( p.channel2 - 128 ) )
+                              , ub( 255/219. * ( p.channel0 - 16 ) - 255/112.*0.886*0.114/0.587 * ( p.channel1 - 128 ) - 255/112.*0.701*0.299/0.587 * ( p.channel2 - 128 ) )
+                              , ub( 255/219. * ( p.channel0 - 16 ) + 255/112.*0.886             * ( p.channel1 - 128 )                                                     ) );
+        }
+    };
+
+    template< colorspace::cspace ic, typename it, colorspace::cspace oc, typename ot >
     void convert( const comma::csv::options & csv )
     {
         if ( csv.binary() )
@@ -191,35 +215,45 @@ namespace {
             _setmode( _fileno( stdout ), _O_BINARY );
             #endif
         }
-        comma::csv::input_stream<  pixel< i > > is( std::cin, csv );
+        comma::csv::input_stream<  pixel< it > > is( std::cin, csv );
         comma::csv::options output_csv;
         output_csv.flush = csv.flush;
-        if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< o > >() ); }
-        comma::csv::output_stream< pixel< o > > os( std::cout, output_csv );
-        comma::csv::tied< pixel< i >, pixel< o > > tied( is, os );
+        if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< ot > >() ); }
+        comma::csv::output_stream< pixel< ot > > os( std::cout, output_csv );
+        comma::csv::tied< pixel< it >, pixel< ot > > tied( is, os );
         while( is.ready() || std::cin.good() )
         {
-            const pixel< i > * p = is.read();
+            const pixel< it > * p = is.read();
             if( !p ) { break; }
-            tied.append( to_ycbcr< i, o >( *p ) );
+            tied.append( converter< ic, it, oc, ot >::to( *p ) );
             if ( output_csv.flush ) { std::cout.flush(); }
         }
     }
 
-    void from_rgb( const colorspace & toc, comma::csv::format::types_enum e, const comma::csv::options & csv )
+    void from_rgb( const colorspace & toc, comma::csv::format::types_enum it, const comma::csv::options & csv )
     {
         switch( toc.value ) {
             case colorspace::ycbcr:
-                if ( e == comma::csv::format::uint8 ) { convert< unsigned char, unsigned char >( csv ); return; }
-                if ( e == comma::csv::format::float_t ) { convert< float, unsigned char >( csv ); return; }
-                if ( e == comma::csv::format::double_t ) { convert< double, unsigned char >( csv ); return; }
-                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( e ) << " rgb to " << toc << " is not supported" );
+                if ( it == comma::csv::format::uint8 ) { convert< colorspace::rgb, unsigned char, colorspace::ycbcr, unsigned char >( csv ); return; }
+                if ( it == comma::csv::format::float_t ) { convert< colorspace::rgb, float, colorspace::ycbcr, unsigned char >( csv ); return; }
+                if ( it == comma::csv::format::double_t ) { convert< colorspace::rgb, double, colorspace::ycbcr, unsigned char >( csv ); return; }
+                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( it ) << " rgb to " << toc << " is not supported" );
             case colorspace::ypbpr:
-                if ( e == comma::csv::format::float_t ) { convert< float, float >( csv ); return; }
-                if ( e == comma::csv::format::double_t ) { convert< double, double >( csv ); return; }
-                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( e ) << " rgb to " << toc << " is not supported" );
+                if ( it == comma::csv::format::float_t ) { convert< colorspace::rgb, float, colorspace::ypbpr, float >( csv ); return; }
+                if ( it == comma::csv::format::double_t ) { convert< colorspace::rgb, double, colorspace::ypbpr, double >( csv ); return; }
+                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( it ) << " rgb to " << toc << " is not supported" );
             default:
                 COMMA_THROW( comma::exception, "conversion from rgb to " << toc << " is not implemented yet" );
+        }
+    }
+
+    void from_ycbcr( const colorspace & toc, const comma::csv::options & csv )
+    {
+        switch ( toc.value ) {
+            case colorspace::rgb:
+                convert< colorspace::ycbcr, unsigned char, colorspace::rgb, unsigned char >( csv ); return;
+            default:
+                COMMA_THROW( comma::exception, "conversion from ycbcr to " << toc << " is not implemented yet" );
         }
     }
 
@@ -345,6 +379,9 @@ int main( int ac, char** av )
                     size_t first_field = std::distance( fields.begin(), std::find( fields.begin(), fields.end(), "channel0" ) );
                     from_rgb( toc, format.offset( first_field ).type, csv );
                 }
+                break;
+            case colorspace::ycbcr:
+                from_ycbcr( toc, csv );
                 break;
             default:
                 COMMA_THROW( comma::exception, "conversion from " << fromc << " to " << toc << " is not implemented yet" );
