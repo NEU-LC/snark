@@ -20,8 +20,6 @@
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 
-#include <boost/algorithm/string/predicate.hpp>
-
 #include <type_traits>
 
 namespace {
@@ -33,7 +31,7 @@ namespace {
     void usage( bool verbose = false )
     {
         std::cerr << std::endl;
-        std::cerr << name << "perform conversion between RGB, YCbCr, YPbPr and other colorspaces on input streams." << std::endl;
+        std::cerr << name << "perform conversion between rgb, ycbcr, ypbpr and other colorspaces on input streams." << std::endl;
         std::cerr << std::endl;
         std::cerr << "usage: cat input.bin | image-color-calc [<options>] > output.bin " << std::endl;
         std::cerr << std::endl;
@@ -58,7 +56,7 @@ namespace {
         std::cerr << std::endl;
         std::cerr << "examples" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    RGR to YCbCr; explicit format mandatory to define input as 8-bit digital" << std::endl;
+        std::cerr << "    rgb to ycbcr; explicit format mandatory to define input as 8-bit digital" << std::endl;
         std::cerr << "        echo 1,2,3 \\" << std::endl;
         std::cerr << "            | image-color-calc --from rgb --to ycbcr --format=3ub" << std::endl;
         std::cerr << std::endl;
@@ -68,13 +66,14 @@ namespace {
         std::cerr << std::endl;
         std::cerr << "    handle binary, same conversion as above" << std::endl;
         std::cerr << "        echo 1,0.2,0.3 | csv-to-bin 3f \\" << std::endl;
-        std::cerr << "            | image-color-calc --from=rgb --to=ycbcr --binary=3f" << std::endl;
+        std::cerr << "            | image-color-calc --from=rgb --to=ycbcr --binary=3f \\" << std::endl;
+        std::cerr << "            | csv-from-bin 3f,3ub" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    using fields to select values to convert, no --from needed; digital RGB values 128,128,128 are converted to YCbCr" << std::endl;
+        std::cerr << "    using fields to select values to convert, no --from needed; digital rgb values 128,128,128 are converted to ycbcr" << std::endl;
         std::cerr << "        echo 'value',128,128,128,20170101T000000 \\" << std::endl;
-        std::cerr << "            | image-color-calc --fields=name,r,g,b,t --format=,3ub, --to=ycbcr" << std::endl;
+        std::cerr << "            | image-color-calc --fields=name,r,g,b,t --format=s[10],3ub,t --to=ycbcr" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    field names select conversion from YCbCr to RGB (digital, 8-bit); input format is known from the colorspace name" << std::endl;
+        std::cerr << "    field names select conversion from ycbcr to rgb (digital, 8-bit); input format is known from the colorspace name" << std::endl;
         std::cerr << "        echo 'value',0.1,0.2,0.3,20170101T000000 \\" << std::endl;
         std::cerr << "            | image-color-calc --fields=name,y,cb,cr,t --to rgb" << std::endl;
         std::cerr << std::endl;
@@ -100,7 +99,7 @@ namespace {
         };
 
         cspace value;
-        colorspace( const std::string & s ) : value( boost::iequals( s, "rgb" ) ? rgb : ( boost::iequals( s, "ycbcr" ) ? ycbcr : ( boost::iequals( s, "ypbpr" ) ? ypbpr : none ) ) ) { }
+        colorspace( const std::string & s ) : value( s == "rgb" ? rgb : ( s == "ycbcr" ? ycbcr : ( s == "ypbpr" ? ypbpr : none ) ) ) { }
         colorspace( colorspace::cspace v ) : value( v ) { }
 
         operator std::string() const {
@@ -142,7 +141,7 @@ namespace {
         return os;
     }
 
-    // do not call fields RGB because can contain YCbCr or any other colorspace
+    // do not call fields rgb because can contain ycbcr or any other colorspace
     template< typename T >
     struct pixel
     {
