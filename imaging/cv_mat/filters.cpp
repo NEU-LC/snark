@@ -3090,7 +3090,7 @@ static std::string usage_impl_()
     oss << "    morphology operations:" << std::endl;
     oss << "        erode; apply erosion with a 3x3 square structuring element anchored at the center (default)" << std::endl;
     oss << "        erode=<parameters>; apply erosion with a custom structuring element" << std::endl;
-    oss << "        dilate[=parameters]; apply dilations with the given parameters; arguments and naming conventions are the same as for the erode operation" << std::endl;
+    oss << "        dilate[=<parameters>]; apply dilations with the given parameters; arguments and naming conventions are the same as for erode" << std::endl;
     oss << "            <parameters> for the erode and dilate operations:" << std::endl;
     oss << "                erode=rectangle:size/x,size/y,anchor/x,anchor/y; apply erosion with a rectangular structuring element" << std::endl;
     oss << "                erode=square:size/x,anchor/x; apply erosion with a square structuring element of custom size" << std::endl;
