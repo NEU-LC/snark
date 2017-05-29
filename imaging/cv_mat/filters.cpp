@@ -149,6 +149,55 @@ namespace {
         }
     };
 
+    const std::map< std::string, int > morphology_operations = { { "erode", cv::MORPH_ERODE }
+                                                               , { "erosion", cv::MORPH_ERODE }
+                                                               , { "dilate", cv::MORPH_DILATE }
+                                                               , { "dilation", cv::MORPH_DILATE }
+                                                               , { "open", cv::MORPH_OPEN }
+                                                               , { "opening", cv::MORPH_OPEN }
+                                                               , { "close", cv::MORPH_CLOSE }
+                                                               , { "closing", cv::MORPH_CLOSE }
+                                                               , { "gradient", cv::MORPH_GRADIENT }
+                                                               , { "tophat", cv::MORPH_TOPHAT }
+                                                               , { "blackhat", cv::MORPH_BLACKHAT } };
+
+    cv::Mat parse_structuring_element( const std::vector< std::string > & e )
+    {
+        if ( e.size() > 1 )
+        {
+            size_t colon = e[1].find( ':' );
+            if ( colon == std::string::npos ) { COMMA_THROW( comma::exception, "parameters missing for the " << e[0] << " operation, see '--help'" ); }
+            const std::string & eltype = e[1].substr( 0, colon );
+            const std::vector< std::string > & p = comma::split( e[1].substr( colon + 1 ), ',' );
+            if ( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) {
+                if ( p.size() != 4 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
+                size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
+                size_t size_y = ( p[1].empty() ? size_x : boost::lexical_cast< int >( p[1] ) );
+                size_t anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
+                size_t anchor_y = ( p[3].empty() ? anchor_x : boost::lexical_cast< int >( p[2] ) );
+                if ( eltype == "rectangle" ) {
+                    return cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
+                } else if ( eltype == "ellipse" ) {
+                    return cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
+                } else {
+                    return cv::getStructuringElement( cv::MORPH_CROSS, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
+                }
+            } else if ( eltype == "square" || eltype == "circle" ) {
+                if ( p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 2 parameters" ); }
+                size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
+                size_t anchor_x = ( p[1].empty() ? -1 : boost::lexical_cast< int >( p[1] ) );
+                if ( eltype == "square" ) {
+                    return cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
+                } else {
+                    return cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
+                }
+            } else {
+                COMMA_THROW( comma::exception, "the '" << eltype << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
+            }
+        }
+        return cv::Mat();
+    }
+
 } // anonymous
 
 namespace snark{ namespace cv_mat {
@@ -1875,15 +1924,11 @@ static typename impl::filters< H >::value_type ratio_impl_( const typename impl:
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type erode_impl_( const typename impl::filters< H >::value_type m, const std::string & opname, const cv::Mat & element )
+static typename impl::filters< H >::value_type morphology_impl_( const typename impl::filters< H >::value_type m, int op, const cv::Mat & element )
 {
-    cv::Mat result;
-    if ( opname == "erode" ) {
-        cv::erode( m.second, result, element );
-    } else {
-        cv::dilate( m.second, result, element );
-    }
-    return typename impl::filters< H >::value_type( m.first, result );
+    typename impl::filters< H >::value_type result( m.first, cv::Mat() );
+    cv::morphologyEx( m.second, result.second, op, element );
+    return result;
 }
 
 static double max_value(int depth)
@@ -2598,42 +2643,9 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
         return boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] );
     }
-    if( e[0] == "erode" || e[0] == "dilate" )
+    if( morphology_operations.find( e[0] ) != morphology_operations.end() )
     {
-        cv::Mat element;
-        if ( e.size() > 1 )
-        {
-            size_t colon = e[1].find( ':' );
-            if ( colon == std::string::npos ) { COMMA_THROW( comma::exception, "parameters missing for the " << e[0] << " operation, see '--help'" ); }
-            const std::string & eltype = e[1].substr( 0, colon );
-            const std::vector< std::string > & p = comma::split( e[1].substr( colon + 1 ), ',' );
-            if ( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) {
-                if ( p.size() != 4 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
-                size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
-                size_t size_y = ( p[1].empty() ? size_x : boost::lexical_cast< int >( p[1] ) );
-                size_t anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
-                size_t anchor_y = ( p[3].empty() ? anchor_x : boost::lexical_cast< int >( p[2] ) );
-                if ( eltype == "rectangle" ) {
-                    element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
-                } else if ( eltype == "ellipse" ) {
-                    element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
-                } else {
-                    element = cv::getStructuringElement( cv::MORPH_CROSS, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
-                }
-            } else if ( eltype == "square" || eltype == "circle" ) {
-                if ( p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 2 parameters" ); }
-                size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
-                size_t anchor_x = ( p[1].empty() ? -1 : boost::lexical_cast< int >( p[1] ) );
-                if ( eltype == "square" ) {
-                    element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
-                } else {
-                    element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
-                }
-            } else {
-                COMMA_THROW( comma::exception, "the '" << eltype << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
-            }
-        }
-        return boost::bind< value_type_t >( erode_impl_< H >, _1, e[0], element );
+        return boost::bind< value_type_t >( morphology_impl_< H >, _1, morphology_operations.at( e[0] ), parse_structuring_element( e ) );
     }
     if( e[0] == "overlay" )
     {
@@ -3090,7 +3102,14 @@ static std::string usage_impl_()
     oss << "    morphology operations:" << std::endl;
     oss << "        erode; apply erosion with a 3x3 square structuring element anchored at the center (default)" << std::endl;
     oss << "        erode=<parameters>; apply erosion with a custom structuring element" << std::endl;
-    oss << "        dilate[=<parameters>]; apply dilations with the given parameters; arguments and naming conventions are the same as for erode" << std::endl;
+    oss << "        erosion[=<parameters>]; synonym for erode=..." << std::endl;
+    oss << "        dilate[=<parameters>]; apply dilation with the given parameters; arguments and naming conventions are the same as for erode" << std::endl;
+    oss << "        dilation[=<parameters>]; synonym for dilate=..." << std::endl;
+    oss << "        opening[=<parameters>]; apply opening with the given parameters; arguments and naming conventions are the same as for erode" << std::endl;
+    oss << "        closing[=<parameters>]; apply closing with the given parameters; arguments and naming conventions are the same as for erode" << std::endl;
+    oss << "        gradient[=<parameters>]; apply morphological gradient with the given parameters; arguments and naming conventions are the same as for erode" << std::endl;
+    oss << "        tophat[=<parameters>]; apply top-hat operation with the given parameters; arguments and naming conventions are the same as for erode" << std::endl;
+    oss << "        blackhat[=<parameters>]; apply black-hat operation with the given parameters; arguments and naming conventions are the same as for erode" << std::endl;
     oss << "            <parameters> for the erode and dilate operations:" << std::endl;
     oss << "                erode=rectangle:size/x,size/y,anchor/x,anchor/y; apply erosion with a rectangular structuring element" << std::endl;
     oss << "                erode=square:size/x,anchor/x; apply erosion with a square structuring element of custom size" << std::endl;
