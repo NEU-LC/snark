@@ -1874,6 +1874,12 @@ static typename impl::filters< H >::value_type ratio_impl_( const typename impl:
     COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
 
+template < typename H >
+static typename impl::filters< H >::value_type erode_impl_( const typename impl::filters< H >::value_type m, const std::string & opname, const cv::Mat & element )
+{
+    return m;
+}
+
 static double max_value(int depth)
 {
     switch(depth)
@@ -2586,6 +2592,24 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
         return boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] );
     }
+    if( e[0] == "erode" )
+    {
+        const std::vector< std::string > & s = comma::split( e[1], ',' );
+        cv::Mat element;
+        if ( !s.empty() )
+        {
+            const std::string & type = s[0];
+            if ( type == "rectangle" ) {
+            } else if ( type == "square" ) {
+            } else if ( type == "ellipse" ) {
+            } else if ( type == "circle" ) {
+            } else if ( type == "cross" ) {
+            } else {
+                COMMA_THROW( comma::exception, "the '" << type << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
+            }
+        }
+        return boost::bind< value_type_t >( erode_impl_< H >, _1, e[0], element );
+    }
     if( e[0] == "overlay" )
     {
         if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected file name (and optional x,y) with the overlay, e.g. overlay=a.svg" ); }
@@ -3037,6 +3061,22 @@ static std::string usage_impl_()
     oss << "            example: \"linear-combination=-r+2g-b\", highlights the green channel" << std::endl;
     oss << "            naming conventions are the same as for the ratio operation; use '--help filters::linear-combination' for more examples and a detailed syntax explanation" << std::endl;
     oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
+    oss << std::endl;
+    oss << "    morphology operations:" << std::endl;
+    oss << "        erode=rectangle:size/x,size/y,anchor/x,anchor/y; apply erosion with a rectangular structuring element" << std::endl;
+    oss << "        erode=square:size/x,anchor/x; apply erosion with a square structuring element of custom size" << std::endl;
+    oss << "        erode; apply erosion with a 3x3 square structuring element anchored at the center" << std::endl;
+    oss << "        erode=ellipse:size/x,size/y,anchor/x,anchor/y; apply erosion with an elliptic structuring element" << std::endl;
+    oss << "        erode=circle:size/x,anchor/x; apply erosion with a circular structuring element" << std::endl;
+    oss << "        erode=cross:size/x,size/y,anchor/x,anchor/y; apply erosion with a circular structuring element" << std::endl;
+    oss << "            any of the parameters after the '=' sign can be omitted (empty csv field) to use the defaults:" << std::endl;
+    oss << "                - size/y = size/x:" << std::endl;
+    oss << "                - size/x = 3:" << std::endl;
+    oss << "                - anchor/x = center in x" << std::endl;
+    oss << "                - anchor/y = center in y" << std::endl;
+    oss << "        examples: \"erode=rectangle:5,3\"; apply erosion with a 5x3 rectangle anchored at the center" << std::endl;
+    oss << "                  \"erode=rectangle:5,,1,1\"; apply erosion with a 5x5 square and custom off-center anchor" << std::endl;
+    oss << "                  \"erode=cross:5,,,\"; apply erosion with a 5x5 cross anchored at the center" << std::endl;
     oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
