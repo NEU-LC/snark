@@ -1877,7 +1877,13 @@ static typename impl::filters< H >::value_type ratio_impl_( const typename impl:
 template < typename H >
 static typename impl::filters< H >::value_type erode_impl_( const typename impl::filters< H >::value_type m, const std::string & opname, const cv::Mat & element )
 {
-    return m;
+    cv::Mat result;
+    if ( opname == "erode" ) {
+        cv::erode( m.second, result, element );
+    } else {
+        cv::dilate( m.second, result, element );
+    }
+    return typename impl::filters< H >::value_type( m.first, result );
 }
 
 static double max_value(int depth)
@@ -2592,20 +2598,39 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
         return boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] );
     }
-    if( e[0] == "erode" )
+    if( e[0] == "erode" || e[0] == "dilate" )
     {
-        const std::vector< std::string > & s = comma::split( e[1], ',' );
         cv::Mat element;
-        if ( !s.empty() )
+        if ( e.size() > 1 )
         {
-            const std::string & type = s[0];
-            if ( type == "rectangle" ) {
-            } else if ( type == "square" ) {
-            } else if ( type == "ellipse" ) {
-            } else if ( type == "circle" ) {
-            } else if ( type == "cross" ) {
+            size_t colon = e[1].find( ':' );
+            if ( colon == std::string::npos ) { COMMA_THROW( comma::exception, "parameters missing for the " << e[0] << " operation, see '--help'" ); }
+            const std::string & eltype = e[1].substr( 0, colon );
+            const std::vector< std::string > & p = comma::split( e[1].substr( colon + 1 ), ',' );
+            if ( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) {
+                if ( p.size() != 4 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
+                size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
+                size_t size_y = ( p[1].empty() ? size_x : boost::lexical_cast< int >( p[1] ) );
+                size_t anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
+                size_t anchor_y = ( p[3].empty() ? anchor_x : boost::lexical_cast< int >( p[2] ) );
+                if ( eltype == "rectangle" ) {
+                    element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
+                } else if ( eltype == "ellipse" ) {
+                    element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
+                } else {
+                    element = cv::getStructuringElement( cv::MORPH_CROSS, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
+                }
+            } else if ( eltype == "square" || eltype == "circle" ) {
+                if ( p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
+                size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
+                size_t anchor_x = ( p[1].empty() ? -1 : boost::lexical_cast< int >( p[1] ) );
+                if ( eltype == "square" ) {
+                    element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
+                } else {
+                    element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
+                }
             } else {
-                COMMA_THROW( comma::exception, "the '" << type << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
+                COMMA_THROW( comma::exception, "the '" << eltype << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
             }
         }
         return boost::bind< value_type_t >( erode_impl_< H >, _1, e[0], element );
@@ -3063,20 +3088,23 @@ static std::string usage_impl_()
     oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
     oss << std::endl;
     oss << "    morphology operations:" << std::endl;
+    oss << "        erode; apply erosion with a 3x3 square structuring element anchored at the center" << std::endl;
     oss << "        erode=rectangle:size/x,size/y,anchor/x,anchor/y; apply erosion with a rectangular structuring element" << std::endl;
     oss << "        erode=square:size/x,anchor/x; apply erosion with a square structuring element of custom size" << std::endl;
-    oss << "        erode; apply erosion with a 3x3 square structuring element anchored at the center" << std::endl;
     oss << "        erode=ellipse:size/x,size/y,anchor/x,anchor/y; apply erosion with an elliptic structuring element" << std::endl;
     oss << "        erode=circle:size/x,anchor/x; apply erosion with a circular structuring element" << std::endl;
     oss << "        erode=cross:size/x,size/y,anchor/x,anchor/y; apply erosion with a circular structuring element" << std::endl;
-    oss << "            any of the parameters after the '=' sign can be omitted (empty csv field) to use the defaults:" << std::endl;
+    oss << "            note that the value of the size/x, size/y parameters gives a HALF-size of the respective shape, e.g., square:3 has a size of 2*3 + 1 = 7" << std::endl;
+    oss << "            any of the parameters after the ':' separator can be omitted (left as an empty csv field) to use the defaults:" << std::endl;
     oss << "                - size/y = size/x:" << std::endl;
     oss << "                - size/x = 3:" << std::endl;
     oss << "                - anchor/x = center in x" << std::endl;
-    oss << "                - anchor/y = center in y" << std::endl;
-    oss << "        examples: \"erode=rectangle:5,3\"; apply erosion with a 5x3 rectangle anchored at the center" << std::endl;
-    oss << "                  \"erode=rectangle:5,,1,1\"; apply erosion with a 5x5 square and custom off-center anchor" << std::endl;
-    oss << "                  \"erode=cross:5,,,\"; apply erosion with a 5x5 cross anchored at the center" << std::endl;
+    oss << "                - anchor/y = anchor/x" << std::endl;
+    oss << "            anchor value of -1 is interpreted as the center of the element" << std::endl;
+    oss << "            examples: \"erode=rectangle:2,1\"; apply erosion with a 5x3 rectangle anchored at the center" << std::endl;
+    oss << "                      \"erode=rectangle:5,,1,1\"; apply erosion with a 11x11 square and custom off-center anchor" << std::endl;
+    oss << "                      \"erode=cross:3,,,\"; apply erosion with a 7x7 cross anchored at the center" << std::endl;
+    oss << "        dilate[=parameters]; apply dilations with the given parameters; arguments and naming conventions are the same as for the erode operation" << std::endl;
     oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
