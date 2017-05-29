@@ -2621,7 +2621,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
                     element = cv::getStructuringElement( cv::MORPH_CROSS, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
                 }
             } else if ( eltype == "square" || eltype == "circle" ) {
-                if ( p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
+                if ( p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 2 parameters" ); }
                 size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
                 size_t anchor_x = ( p[1].empty() ? -1 : boost::lexical_cast< int >( p[1] ) );
                 if ( eltype == "square" ) {
