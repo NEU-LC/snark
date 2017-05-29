@@ -128,6 +128,7 @@ static bool verbose = false;
 
 int main( int ac, char** av )
 {
+    
     try
     {
         comma::command_line_options options( ac, av, usage );

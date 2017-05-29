@@ -31,6 +31,7 @@
 /// @author Vsevolod Vlaskine
 
 #include <algorithm>
+#include <cmath>
 #include <boost/array.hpp>
 #include <boost/lexical_cast.hpp>
 #include <qnamespace.h>
@@ -91,27 +92,13 @@ static color_t multiply( const color_t& color, double scalar )
 #endif
 }
 
-#if Qt3D_VERSION==1
-static unsigned int threshold( unsigned int i, unsigned int threshold )
-{
-    if( i > threshold )
-    {
-        return threshold;
-    }
-    else
-    {
-        return i;
-    }
-}
-#endif
-
 static color_t add( const color_t& a, const color_t& b )
 {
 #if Qt3D_VERSION==1
-    unsigned int red = threshold( a.red() + b.red(), 255 );
-    unsigned int green = threshold( a.green() + b.green(), 255 );
-    unsigned int blue = threshold( a.blue() + b.blue(), 255 );
-    unsigned int alpha = threshold( a.alpha() + b.alpha(), 255 );
+    unsigned int red = std::min( a.red() + b.red(), 255 );
+    unsigned int green = std::min( a.green() + b.green(), 255 );
+    unsigned int blue = std::min( a.blue() + b.blue(), 255 );
+    unsigned int alpha = std::min( a.alpha() + b.alpha(), 255 );
     return color_t( red, green, blue, alpha );
 #else
     return a + b;

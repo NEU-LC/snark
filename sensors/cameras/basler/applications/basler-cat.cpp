@@ -85,7 +85,6 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                 default: unlimited";
     std::cerr << "\n    --list-cameras               output camera list and exit";
     std::cerr << "\n                                 add --verbose for more detail";
-    std::cerr << "\n                                 default: max";
     std::cerr << "\n    --frame-trigger=[<type>]     'line1', 'line2', 'line3', 'encoder'";
     std::cerr << "\n    --line-trigger=[<type>]      'line1', 'line2', 'line3', 'encoder'";
     std::cerr << "\n    --line-rate=[<num>]          line acquisition rate";
@@ -103,6 +102,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                 default: " << default_header_fields;
     std::cerr << "\n    --header-only                output header only";
     std::cerr << "\n    --height=[<pixels>]          number of lines in frame (in chunk mode always 1)";
+    std::cerr << "\n                                 default: max";
     std::cerr << "\n    --no-header                  output image data only";
     std::cerr << "\n    --pixel-format=[<format>]    pixel format; lower case accepted; currently supported formats:";
     std::cerr << "\n                                     gige cameras";

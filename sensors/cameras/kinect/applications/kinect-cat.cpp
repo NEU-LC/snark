@@ -171,10 +171,35 @@ template <> struct traits< snark::kinect::point >
 
 } } // namespace comma { namespace visiting {
 
-std::string serial;
+
+// create a custom logger
+/// [logger]
+#include <fstream>
+#include <cstdlib>
+class CowboxLogger: public libfreenect2::Logger
+{
+private:
+  std::string serial_;
+public:
+  CowboxLogger(Level level, std::string serial)
+  {
+    level_ = level;
+    serial_ = serial;
+  }
+  void setSerial(std::string serial){ serial_ = serial; }
+  virtual void log(Level level, const std::string &message)
+  {
+    std::cerr << "kinect-cat: " << serial_ << " :libfreenect2: [" << level2str(level) << "] " << message << std::endl;
+  }
+};
+/// [logger]
+
+
+std::string serial = "";
 
 int main( int ac, char** av )
 {
+	CowboxLogger *logger = new CowboxLogger(libfreenect2::Logger::Debug, serial);
     try
     {
         comma::command_line_options options( ac, av, usage );
@@ -188,7 +213,7 @@ int main( int ac, char** av )
         comma::csv::output_stream< snark::kinect::point > ostream( std::cout, csv );
         snark::kinect::camera camera;
 
-        libfreenect2::setGlobalLogger(libfreenect2::createConsoleLogger(libfreenect2::Logger::None));
+        libfreenect2::setGlobalLogger(logger);
         /// [context]
 
         // struct device
@@ -209,7 +234,6 @@ int main( int ac, char** av )
         libfreenect2::PacketPipeline *pipeline = 0;
 
         /// [context]
-        serial = "";
         /// [discovery]
         if(freenect2.enumerateDevices() == 0)
         {
@@ -242,7 +266,9 @@ int main( int ac, char** av )
             serial = freenect2.getDefaultDeviceSerialNumber();
         }
 
+        logger->setSerial(serial);
         int deviceId = -1;
+#ifdef LIBFREENECT2_WITH_CUDA_SUPPORT
         if( options.exists( "--cuda" ))
         {
             //std::cerr << "kinect-cat: here, pipeline: " << pipeline << std::endl;
@@ -261,7 +287,10 @@ int main( int ac, char** av )
                 std::cerr << "kinect-cat: " << serial << ": Using cudakde pipeline" << std::endl;
             }
         }
-        else if( options.exists( "--cl" ))
+        else 
+#endif // def LIBFREENECT2_WITH_CUDA_SUPPORT
+#ifdef LIBFREENECT2_WITH_OPENCL_SUPPORT
+        if( options.exists( "--cl" ))
         {
             if(!pipeline)
             {
@@ -277,7 +306,10 @@ int main( int ac, char** av )
                 std::cerr << "kinect-cat: " << serial << ": Using clkde pipeline" << std::endl;
             }
         }
-        else if( options.exists( "--gl" ))
+        else 
+#endif // def LIBFREENECT2_WITH_OPENCL_SUPPORT
+#ifdef LIBFREENECT2_WITH_OPENGL_SUPPORT
+        if( options.exists( "--gl" ))
         {
             if(!pipeline)
             {
@@ -285,13 +317,12 @@ int main( int ac, char** av )
                 std::cerr << "kinect-cat: " << serial << ": Using gl pipeline" << std::endl;
             }
         }
-        else
+        else 
+#endif // def LIBFREENECT2_WITH_OPENGL_SUPPORT
+        if(!pipeline)
         {
-            if(!pipeline)
-            {
-                pipeline = new libfreenect2::CpuPacketPipeline();
-                std::cerr << "kinect-cat: " << serial << ": Using cpu pipeline" << std::endl;
-            }
+            pipeline = new libfreenect2::CpuPacketPipeline();
+            std::cerr << "kinect-cat: " << serial << ": Using cpu pipeline" << std::endl;
         }
 
 
@@ -553,7 +584,7 @@ int main( int ac, char** av )
     catch( std::exception& ex ) { std::cerr << "kinect-cat: " << serial << ": " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "kinect-cat: " << serial << ": kinect-cat: unknown exception" << std::endl; }
 
-
+    delete logger;
     // todo? if dev is open, do you need to stop and close it before exiting?
 
     return 1;

@@ -393,7 +393,7 @@ struct pixel_format_impl_
         if( m.second.cols % In ) { COMMA_THROW( comma::exception, filter_name << ": columns: " << m.second.cols << " is not divisible by " << In ); }
         cv::Mat mat( m.second.rows, m.second.cols / In * Out, OutType, 0.0 );
         unsigned int bytes = m.second.cols * ElementSize;
-        for( unsigned int i = 0; i < m.second.rows; ++i )
+        for( unsigned int i = 0; int( i ) < m.second.rows; ++i )
         {
             const unsigned char *in = m.second.ptr( i );
             value_out_t *out = mat.ptr< value_out_t >( i );
@@ -1136,6 +1136,15 @@ static void encode_impl_check_type( const typename impl::filters< H >::value_typ
     if( size == 2 && !( type == "tiff" || type == "tif" || type == "png" || type == "jp2" ) ) { COMMA_THROW( comma::exception, "cannot convert 16-bit image to type " << type << "; use tif or png instead" ); }
 }
 
+static std::vector<int> imwrite_params( const std::string& type, const int quality)
+{
+    std::vector<int> params;
+    if ( type == "jpg" ) { params.push_back(CV_IMWRITE_JPEG_QUALITY); }
+    else { COMMA_THROW( comma::exception, "quality only supported for jpg images, not for \"" << type << "\" yet" ); }
+    params.push_back(quality);
+    return params;
+}
+
 template < typename H >
 struct encode_impl_ { 
     typedef typename impl::filters< H >::value_type value_type;
@@ -1143,13 +1152,15 @@ struct encode_impl_ {
     const get_timestamp_functor get_timestamp_;
     
     encode_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
-    value_type operator()( const value_type& m, const std::string& type )
+    value_type operator()( const value_type& m, const std::string& type, const boost::optional<int>& quality )
     {
         if( is_empty< H >( m, get_timestamp_ ) ) { return m; }
         encode_impl_check_type< H >( m, type );
         std::vector< unsigned char > buffer;
+        std::vector<int> params;
+        if (quality) { params = imwrite_params(type, *quality); }
         std::string format = "." + type;
-        cv::imencode( format, m.second, buffer );
+        cv::imencode( format, m.second, buffer, params );
         typename impl::filters< H >::value_type p;
         p.first = m.first;
         p.second = cv::Mat( buffer.size(), 1, CV_8UC1 );
@@ -1244,9 +1255,11 @@ struct grab_impl_ {
     const get_timestamp_functor get_timestamp_;
     
     grab_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
-    value_type operator()( value_type m, const std::string& type )
+    value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
-        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second );
+        std::vector<int> params;
+        if (quality) { params = imwrite_params(type, *quality); }
+        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second, params );
         return typename impl::filters< H >::value_type(); // HACK to notify application to exit
     }
 };
@@ -1258,10 +1271,12 @@ struct file_impl_ {
     const get_timestamp_functor get_timestamp_;
     
     file_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
-    value_type operator()( value_type m, const std::string& type )
+    value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
         encode_impl_check_type< H >( m, type );
-        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second );
+        std::vector<int> params;
+        if (quality) { params = imwrite_params(type, *quality); }
+        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second, params );
         return m;
     }
 };
@@ -1859,6 +1874,18 @@ static typename impl::filters< H >::value_type ratio_impl_( const typename impl:
     COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
 
+template < typename H >
+static typename impl::filters< H >::value_type erode_impl_( const typename impl::filters< H >::value_type m, const std::string & opname, const cv::Mat & element )
+{
+    cv::Mat result;
+    if ( opname == "erode" ) {
+        cv::erode( m.second, result, element );
+    } else {
+        cv::dilate( m.second, result, element );
+    }
+    return typename impl::filters< H >::value_type( m.first, result );
+}
+
 static double max_value(int depth)
 {
     switch(depth)
@@ -2449,6 +2476,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     }
     if(e[0]=="normalize")
     {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify parameter: expected normalize=<how>" ); }
         if(e[1]=="max") { return normalize_max_impl_< H >; }
         else if(e[1]=="sum") { return normalize_sum_impl_< H >; }
         else if(e[1]=="all") { return normalize_cv_impl_< H >; }
@@ -2569,6 +2597,43 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         std::vector< double > denominator( r.denominator.terms.size() );
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
         return boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] );
+    }
+    if( e[0] == "erode" || e[0] == "dilate" )
+    {
+        cv::Mat element;
+        if ( e.size() > 1 )
+        {
+            size_t colon = e[1].find( ':' );
+            if ( colon == std::string::npos ) { COMMA_THROW( comma::exception, "parameters missing for the " << e[0] << " operation, see '--help'" ); }
+            const std::string & eltype = e[1].substr( 0, colon );
+            const std::vector< std::string > & p = comma::split( e[1].substr( colon + 1 ), ',' );
+            if ( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) {
+                if ( p.size() != 4 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
+                size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
+                size_t size_y = ( p[1].empty() ? size_x : boost::lexical_cast< int >( p[1] ) );
+                size_t anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
+                size_t anchor_y = ( p[3].empty() ? anchor_x : boost::lexical_cast< int >( p[2] ) );
+                if ( eltype == "rectangle" ) {
+                    element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
+                } else if ( eltype == "ellipse" ) {
+                    element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
+                } else {
+                    element = cv::getStructuringElement( cv::MORPH_CROSS, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
+                }
+            } else if ( eltype == "square" || eltype == "circle" ) {
+                if ( p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
+                size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
+                size_t anchor_x = ( p[1].empty() ? -1 : boost::lexical_cast< int >( p[1] ) );
+                if ( eltype == "square" ) {
+                    element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
+                } else {
+                    element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
+                }
+            } else {
+                COMMA_THROW( comma::exception, "the '" << eltype << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
+            }
+        }
+        return boost::bind< value_type_t >( erode_impl_< H >, _1, e[0], element );
     }
     if( e[0] == "overlay" )
     {
@@ -2740,20 +2805,26 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                 if( next_filter != "head" ) COMMA_THROW( comma::exception, "cannot have a filter after encode unless next filter is head" );
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
-            std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s ), false ) );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            boost::optional < int > quality;
+            if (s.size()> 1) { quality = boost::lexical_cast<int>(s[1]); }
+            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s[0], quality ), false ) );
         }
         else if( e[0] == "grab" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
-            std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >(get_timestamp), _1, s ) ) );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            boost::optional < int > quality;
+            if (s.size() == 1) { quality = boost::lexical_cast<int>(s[1]); }
+            f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >(get_timestamp), _1, s[0], quality ) ) );
         }
         else if( e[0] == "file" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
-            std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >(get_timestamp), _1, s ) ) );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            boost::optional < int > quality;
+            if (s.size()> 1) { quality = boost::lexical_cast<int>(s[1]); }
+            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >(get_timestamp), _1, s[0], quality ) ) );
         }
         else if( e[0] == "histogram" )
         {
@@ -2807,6 +2878,30 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter_type( boost::bind< value_type_t >( head_impl_< H >, _1, n ), false ) );
         }
+        else if( e[0] == "rotate90" )
+        {
+            int n = ( e.size() > 1 ? boost::lexical_cast< int >( e[1] ) : 1 ) % 4;
+            if( n < 0 ) { n += 4; }
+            std::vector< std::string > filters;
+            switch( n )
+            {
+                case 1: 
+                    filters.push_back( "transpose" );
+                    filters.push_back( "flop" );
+                    break;
+                case 2:
+                    filters.push_back( "flip" );
+                    filters.push_back( "flop" );
+                    break;
+                case 3:
+                    filters.push_back( "transpose" );
+                    filters.push_back( "flip" );
+                    break;
+                default:
+                    break;
+            }
+            for( std::string s : filters ) { f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( { s }, get_timestamp ) ) ); }
+        }
         else
         {
             f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor(e, get_timestamp) ) );
@@ -2848,7 +2943,8 @@ static std::string usage_impl_()
     oss << "            <horizontal>: if present, tiles will be stacked horizontally (by default, vertical stacking is used)" << std::endl;
     oss << "            example: \"crop-tile=2,5,1,0,1,4&horizontal\"" << std::endl;
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
-    oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "        encode=<format>[,<quality>]: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "                                     <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
     oss << "            options: inverse: do inverse fft" << std::endl;
@@ -2856,10 +2952,12 @@ static std::string usage_impl_()
     oss << "                     magnitude: output magnitude only" << std::endl;
     oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
     oss << "                      cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
-    oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "        file=<format>[,<quality>]: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
-    oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
+    oss << "        grab=<format>[,<quality>]: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
+    oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
@@ -2914,6 +3012,7 @@ static std::string usage_impl_()
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
+    oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
@@ -2987,6 +3086,25 @@ static std::string usage_impl_()
     oss << "            example: \"linear-combination=-r+2g-b\", highlights the green channel" << std::endl;
     oss << "            naming conventions are the same as for the ratio operation; use '--help filters::linear-combination' for more examples and a detailed syntax explanation" << std::endl;
     oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
+    oss << std::endl;
+    oss << "    morphology operations:" << std::endl;
+    oss << "        erode; apply erosion with a 3x3 square structuring element anchored at the center" << std::endl;
+    oss << "        erode=rectangle:size/x,size/y,anchor/x,anchor/y; apply erosion with a rectangular structuring element" << std::endl;
+    oss << "        erode=square:size/x,anchor/x; apply erosion with a square structuring element of custom size" << std::endl;
+    oss << "        erode=ellipse:size/x,size/y,anchor/x,anchor/y; apply erosion with an elliptic structuring element" << std::endl;
+    oss << "        erode=circle:size/x,anchor/x; apply erosion with a circular structuring element" << std::endl;
+    oss << "        erode=cross:size/x,size/y,anchor/x,anchor/y; apply erosion with a circular structuring element" << std::endl;
+    oss << "            note that the value of the size/x, size/y parameters gives a HALF-size of the respective shape, e.g., square:3 has a size of 2*3 + 1 = 7" << std::endl;
+    oss << "            any of the parameters after the ':' separator can be omitted (left as an empty csv field) to use the defaults:" << std::endl;
+    oss << "                - size/y = size/x:" << std::endl;
+    oss << "                - size/x = 3:" << std::endl;
+    oss << "                - anchor/x = center in x" << std::endl;
+    oss << "                - anchor/y = anchor/x" << std::endl;
+    oss << "            anchor value of -1 is interpreted as the center of the element" << std::endl;
+    oss << "            examples: \"erode=rectangle:2,1\"; apply erosion with a 5x3 rectangle anchored at the center" << std::endl;
+    oss << "                      \"erode=rectangle:5,,1,1\"; apply erosion with a 11x11 square and custom off-center anchor" << std::endl;
+    oss << "                      \"erode=cross:3,,,\"; apply erosion with a 7x7 cross anchored at the center" << std::endl;
+    oss << "        dilate[=parameters]; apply dilations with the given parameters; arguments and naming conventions are the same as for the erode operation" << std::endl;
     oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;

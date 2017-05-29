@@ -16,6 +16,9 @@ TARGET_LINK_LIBRARIES( cv-cat snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS
 ADD_EXECUTABLE( cv-calc cv-calc.cpp )
 TARGET_LINK_LIBRARIES( cv-calc snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
 
+ADD_EXECUTABLE( image-color-calc image-color-calc.cpp )
+TARGET_LINK_LIBRARIES( image-color-calc snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
+
 add_executable( image-from-csv image-from-csv.cpp )
 target_link_libraries( image-from-csv snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
 install( TARGETS image-from-csv RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
@@ -29,7 +32,7 @@ TARGET_LINK_LIBRARIES( image-accumulate snark_imaging ${comma_ALL_LIBRARIES} ${O
 ADD_EXECUTABLE( stereo-to-points stereo-to-points.cpp ${stereo_source}  )
 TARGET_LINK_LIBRARIES( stereo-to-points snark_imaging snark_math ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
 
-INSTALL( TARGETS image-undistort-map cv-cat cv-calc image-accumulate stereo-to-points image-to-csv
+INSTALL( TARGETS image-undistort-map cv-cat cv-calc image-accumulate image-color-calc stereo-to-points image-to-csv
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
          

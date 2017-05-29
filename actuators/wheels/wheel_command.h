@@ -54,14 +54,16 @@ struct wheel_command
     double turnrate; // radians
 };
 
+// angle limits from a start angle (min) to the end angle (max) in counter clockwise direction, where min,max in [-pi,pi].
+// It is possible that min > max, for example a limit of [pi/2,-pi/2] implies [90,270] limit in degrees.
 struct limit
 {
     double min;
     double max;
 
-    limit() : min(0), max(0) { }
-    limit( const double m ) : min(-m), max(m) { }
-    limit( const double min, const double max ) : min(min), max(max) { }
+    limit() : min( 0 ), max( 0 ) { }
+    limit( const double m ) : min( -m ), max( m ) { }
+    limit( const double min, const double max ) : min( min ), max( max ) { }
 };
 
 /// returned turnrate is in radians
