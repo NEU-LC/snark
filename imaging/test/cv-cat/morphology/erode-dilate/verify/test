@@ -1,0 +1,53 @@
+#!/bin/bash
+
+source $( which comma-application-util ) || exit 1
+
+comma_path_value_to_var --prefix=input
+
+[[ "$input_operation" == "erode" || "$input_operation" == "dilate" ]] || exit 1
+
+function generate()
+{
+    local size=$1
+    python -c "
+def generate( size ):
+    for i in range( size ):
+        for j in range( size ):
+            white = i > size / 4 and i < 3*size/4 and j > size/4 and j < 3*size/4
+            value = white and 255 or 0
+            print '%d,%d,%d' % ( j,i,value )
+
+if __name__ == '__main__':
+    generate( $size )
+"
+}
+export -f generate
+declare -r generate
+
+output_dir="output"
+mkdir -p "$output_dir" || exit 1
+
+echo "size=$input_size"
+size0_25=$( python -c "print $input_size/4" )
+echo "limit/lower=$size0_25"
+size0_75=$( python -c "print 3*$input_size/4" )
+echo "limit/upper=$size0_75"
+
+generate $input_size > "$output_dir/square.csv"
+comma_status_ok || exit 1
+cat "$output_dir/square.csv" | image-from-csv --fields=x,y,grey --output="rows=$input_size;cols=$input_size;type=ub" | cv-cat --output=no-header "encode=png" > "$output_dir/square.png"
+comma_status_ok || exit 1
+
+cat "$output_dir/square.csv" \
+    | name-value-from-csv x,y,v --prefix="original" --indices x,y \
+    | csv-quote --delimiter='=' --unquote
+comma_status_ok || exit 1
+
+cv-cat --file "$output_dir/square.png" "$input_operation;encode=png" --output no-header > "$output_dir/result.png"
+comma_status_ok || exit 1
+cv-cat --file "$output_dir/result.png" | image-to-csv | csv-shuffle --fields=t,x,y,r,g,b --output-fields=x,y,r > "$output_dir/result.csv"
+comma_status_ok || exit 1
+cat "$output_dir/result.csv" \
+    | name-value-from-csv x,y,v --prefix="result" --indices x,y \
+    | csv-quote --delimiter='=' --unquote
+comma_status_ok || exit 1

@@ -1,0 +1,27 @@
+#python
+
+expect int( none[0]/output ) == size
+expect none[0]/status=0
+
+for i in range(number_of(rectangle)):
+    expect int( rectangle[i]/output ) == size
+    expect rectangle[i]/status=0
+
+for i in range(number_of(square)):
+    expect int( square[i]/output ) == size
+    expect square[i]/status=0
+
+for i in range(number_of(ellipse)):
+    expect int( ellipse[i]/output ) == size
+    expect ellipse[i]/status=0
+
+for i in range(number_of(circle)):
+    expect int( circle[i]/output ) == size
+    expect circle[i]/status=0
+
+for i in range(number_of(cross)):
+    expect int( cross[i]/output ) == size
+    expect cross[i]/status=0
+
+#for i in range(number_of(failure)):
+#    expect failure[i]/status=1
