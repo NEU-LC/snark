@@ -2621,7 +2621,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
                     element = cv::getStructuringElement( cv::MORPH_CROSS, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
                 }
             } else if ( eltype == "square" || eltype == "circle" ) {
-                if ( p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
+                if ( p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 2 parameters" ); }
                 size_t size_x = ( p[0].empty() ? 3 : boost::lexical_cast< int >( p[0] ) );
                 size_t anchor_x = ( p[1].empty() ? -1 : boost::lexical_cast< int >( p[1] ) );
                 if ( eltype == "square" ) {
@@ -3088,23 +3088,25 @@ static std::string usage_impl_()
     oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
     oss << std::endl;
     oss << "    morphology operations:" << std::endl;
-    oss << "        erode; apply erosion with a 3x3 square structuring element anchored at the center" << std::endl;
-    oss << "        erode=rectangle:size/x,size/y,anchor/x,anchor/y; apply erosion with a rectangular structuring element" << std::endl;
-    oss << "        erode=square:size/x,anchor/x; apply erosion with a square structuring element of custom size" << std::endl;
-    oss << "        erode=ellipse:size/x,size/y,anchor/x,anchor/y; apply erosion with an elliptic structuring element" << std::endl;
-    oss << "        erode=circle:size/x,anchor/x; apply erosion with a circular structuring element" << std::endl;
-    oss << "        erode=cross:size/x,size/y,anchor/x,anchor/y; apply erosion with a circular structuring element" << std::endl;
-    oss << "            note that the value of the size/x, size/y parameters gives a HALF-size of the respective shape, e.g., square:3 has a size of 2*3 + 1 = 7" << std::endl;
-    oss << "            any of the parameters after the ':' separator can be omitted (left as an empty csv field) to use the defaults:" << std::endl;
-    oss << "                - size/y = size/x:" << std::endl;
-    oss << "                - size/x = 3:" << std::endl;
-    oss << "                - anchor/x = center in x" << std::endl;
-    oss << "                - anchor/y = anchor/x" << std::endl;
-    oss << "            anchor value of -1 is interpreted as the center of the element" << std::endl;
+    oss << "        erode; apply erosion with a 3x3 square structuring element anchored at the center (default)" << std::endl;
+    oss << "        erode=<parameters>; apply erosion with a custom structuring element" << std::endl;
+    oss << "        dilate[=<parameters>]; apply dilations with the given parameters; arguments and naming conventions are the same as for erode" << std::endl;
+    oss << "            <parameters> for the erode and dilate operations:" << std::endl;
+    oss << "                erode=rectangle:size/x,size/y,anchor/x,anchor/y; apply erosion with a rectangular structuring element" << std::endl;
+    oss << "                erode=square:size/x,anchor/x; apply erosion with a square structuring element of custom size" << std::endl;
+    oss << "                erode=ellipse:size/x,size/y,anchor/x,anchor/y; apply erosion with an elliptic structuring element" << std::endl;
+    oss << "                erode=circle:size/x,anchor/x; apply erosion with a circular structuring element" << std::endl;
+    oss << "                erode=cross:size/x,size/y,anchor/x,anchor/y; apply erosion with a circular structuring element" << std::endl;
+    oss << "                    note that the value of the size/x, size/y parameters gives a HALF-size of the respective shape, e.g., square:3 has a size of 2*3 + 1 = 7" << std::endl;
+    oss << "                    any of the parameters after the ':' separator can be omitted (left as an empty csv field) to use the defaults:" << std::endl;
+    oss << "                        - size/x = 3:" << std::endl;
+    oss << "                        - size/y = size/x:" << std::endl;
+    oss << "                        - anchor/x = center in x" << std::endl;
+    oss << "                        - anchor/y = anchor/x" << std::endl;
+    oss << "                    anchor value of -1 is interpreted as the center of the element" << std::endl;
     oss << "            examples: \"erode=rectangle:2,1\"; apply erosion with a 5x3 rectangle anchored at the center" << std::endl;
     oss << "                      \"erode=rectangle:5,,1,1\"; apply erosion with a 11x11 square and custom off-center anchor" << std::endl;
-    oss << "                      \"erode=cross:3,,,\"; apply erosion with a 7x7 cross anchored at the center" << std::endl;
-    oss << "        dilate[=parameters]; apply dilations with the given parameters; arguments and naming conventions are the same as for the erode operation" << std::endl;
+    oss << "                      \"dilate=cross:3,,,\"; apply dilation with a 7x7 cross anchored at the center" << std::endl;
     oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
