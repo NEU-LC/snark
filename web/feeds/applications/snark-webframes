@@ -34,7 +34,8 @@ notes:
     3) 'command' is a bash pipeline that reads data from e.g. a port on a robot and outputs a frame, e.g. text, value, or image
     4) if 'address' and 'port' are given in robot config or publish config,
        the 'command' is assumed to expect data from the given tcp address and port (default address: 'localhost' )
-    5) 'timeout' is the number of seconds after which the bash pipeline will time out (default: {timeout} seconds)
+    5) Currently snark-webframes accept request only query parameters (using GET) to submit form.
+    6) 'timeout' is the number of seconds after which the bash pipeline will time out (default: {timeout} seconds)
 """.format( content_type=HTTP_PLAIN_TEXT, timeout=DEFAULT_TIMEOUT ) + \
 """
 web.backend.json:
