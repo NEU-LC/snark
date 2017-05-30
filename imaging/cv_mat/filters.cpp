@@ -160,7 +160,7 @@ namespace {
 //   - specify full size, not half-size  DONE
 //   - fix help  DONE
 //   - fix default values in help  DONE
-    
+
     const std::map< std::string, int > morphology_operations = { { "erode", cv::MORPH_ERODE }
                                                                , { "erosion", cv::MORPH_ERODE }
                                                                , { "dilate", cv::MORPH_DILATE }
@@ -215,7 +215,7 @@ static bool is_empty( typename impl::filters< H >::value_type m, const typename 
 static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension )
 {
     std::ostringstream ss;
-    ss << boost::posix_time::to_iso_string( t ) << '.' << extension; 
+    ss << boost::posix_time::to_iso_string( t ) << '.' << extension;
     return ss.str();
 }
 
@@ -331,7 +331,7 @@ unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid comp
 template < typename H >
 struct cvt_color_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type m, unsigned int which )
     {
         value_type n;
@@ -531,7 +531,7 @@ static unsigned int sum_up( unsigned int v, const stripe_t & s ){ return v + s.s
 template < typename H >
 struct crop_cols_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, const std::vector< stripe_t > & cols )
     {
         unsigned int h = input.second.rows;
@@ -551,7 +551,7 @@ struct crop_cols_impl_ {
 template < typename H >
 struct crop_rows_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, const std::vector< stripe_t > & rows )
     {
         unsigned int w = input.second.cols;
@@ -573,7 +573,7 @@ static const int bands_method_default = CV_REDUCE_AVG;
 template < typename H >
 struct bands_to_cols_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, bool bands_to_cols, const std::vector< stripe_t > & bands, int cv_reduce_method, int cv_reduce_dtype = -1 )
     {
         unsigned int w = input.second.cols;
@@ -607,15 +607,15 @@ struct bands_to_cols_impl_ {
 template < typename H >
 struct cols_to_channels_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, bool cols_to_channels, const std::vector< unsigned int > & values, double padding_value, unsigned int repeat )
     {
         if ( input.second.channels() != 1 ) { COMMA_THROW( comma::exception, "input image for cols-to-channels operation must have a single channel" ); }
         std::string element = cols_to_channels ? "column" : "row";
-    
+
         unsigned int w = input.second.cols;
         unsigned int h = input.second.rows;
-    
+
         unsigned int min_element = *std::min_element( values.begin(), values.end() );
         if ( min_element >= ( cols_to_channels ? w : h ) ) { COMMA_THROW( comma::exception, "the first output " << element << " is outside of the input image" ); }
         unsigned int output_w = cols_to_channels
@@ -627,11 +627,11 @@ struct cols_to_channels_impl_ {
         unsigned int output_c = values.size() == 2 ? 3 : values.size();
         unsigned int output_t = CV_MAKETYPE( input.second.depth(), output_c );
         value_type output( input.first, cv::Mat( output_h, output_w, output_t ) );
-    
+
         std::vector< int > from_to;
         from_to.reserve( 2 * output_c );
         for ( size_t i = 0; i < output_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
-    
+
         std::vector< cv::Mat > src( output_c );
         std::vector< cv::Mat > dst( 1 );
         cv::Mat padding = ( cols_to_channels
@@ -665,22 +665,22 @@ struct cols_to_channels_impl_ {
 template < typename H >
 struct channels_to_cols_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, bool channels_to_cols )
     {
         unsigned int w = input.second.cols;
         unsigned int h = input.second.rows;
-    
+
         unsigned int input_c = input.second.channels();
         unsigned int output_t = CV_MAKETYPE( input.second.depth(), 1 );
         value_type output( input.first, cv::Mat( channels_to_cols ? h : input_c * h
                                                         , channels_to_cols ? input_c * w : w
                                                         , output_t ) );
-    
+
         std::vector< int > from_to;
         from_to.reserve( 2 * input_c );
         for ( size_t i = 0; i < input_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
-    
+
         std::vector< cv::Mat > src( 1 );
         std::vector< cv::Mat > dst( input_c );
         for ( unsigned int ipos = 0; ipos < ( channels_to_cols ? w : h ) ; ++ipos )
@@ -696,7 +696,7 @@ struct channels_to_cols_impl_ {
                                           : cv::Rect( 0, ipos, w, 1 ) );
             cv::mixChannels( src, dst, &from_to[0], input_c );
         }
-    
+
         return output;
     }
 };
@@ -794,7 +794,7 @@ static typename impl::filters< H >::value_type colour_map_impl_( typename impl::
 
 template < typename H >
 struct mask_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     value_type operator()( value_type m, boost::function< value_type( value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
     {
         value_type n;
@@ -804,7 +804,7 @@ struct mask_impl_ {
         m.second.copyTo( n.second, f );
         return n;
     }
-    
+
 };
 
 struct blur_t
@@ -954,7 +954,7 @@ static typename impl::filters< H >::value_type split_impl_( typename impl::filte
 
 template < typename H >
 class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex is non-copyable
-{            
+{
     public:
         typedef typename impl::filters< H >::value_type value_type;
         typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
@@ -966,23 +966,23 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
         log_impl_( const std::string& directory, unsigned int size, bool index, const get_timestamp_functor& get_timestamp ) : logger_( new logger( directory, size, index, get_timestamp ) ) {}
 
         value_type operator()( value_type m ) { return logger_->operator()( m ); }
-        
+
         class logger
         {
             public:
 
-                logger( const std::string& filename, const get_timestamp_functor& get_timestamp ) 
+                logger( const std::string& filename, const get_timestamp_functor& get_timestamp )
                     : ofstream_( new std::ofstream( &filename[0] ) )
-                    , serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ), get_timestamp_(get_timestamp) 
-                { 
-                    if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } 
+                    , serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ), get_timestamp_(get_timestamp)
+                {
+                    if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
                 }
 
-                logger( const std::string& directory, boost::posix_time::time_duration period, bool index, const get_timestamp_functor& get_timestamp ) 
+                logger( const std::string& directory, boost::posix_time::time_duration period, bool index, const get_timestamp_functor& get_timestamp )
                     : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) )
                     , period_( period ), size_( 0 ), count_( 0 ), index_(index, directory), get_timestamp_(get_timestamp) { }
 
-                logger( const std::string& directory, unsigned int size, bool index, const get_timestamp_functor& get_timestamp ) 
+                logger( const std::string& directory, unsigned int size, bool index, const get_timestamp_functor& get_timestamp )
                     : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) )
                     , size_( size ), count_( 0 ), index_(index, directory), get_timestamp_(get_timestamp) { }
 
@@ -1006,7 +1006,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
 //                     index_.write( m, writer< H >::size( serialization_, m ) );
                     return m;
                 }
-                
+
                 struct indexer
                 {
                     boost::posix_time::ptime t;
@@ -1014,9 +1014,9 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     comma::uint64 offset;
                     boost::scoped_ptr< std::ofstream > filestream;
                     boost::scoped_ptr< comma::csv::binary_output_stream< indexer > > csv_stream;
-                    
+
                     indexer( ) : file( 0 ), offset( 0 ) {}
-                    
+
                     indexer( bool enabled, const std::string& directory ) : file ( 0 ), offset( 0 )
                     {
                         if( !enabled ) { return; }
@@ -1025,23 +1025,23 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                         if( !filestream->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << index_file << "\"" ); }
                         csv_stream.reset( new comma::csv::binary_output_stream< indexer >( *filestream ) );
                     }
-                    
+
                     ~indexer() { if ( filestream ) { filestream->close(); } }
-                    
+
                     void increment_file() { ++file; offset = 0; }
-                    
+
                     void write( const boost::posix_time::ptime& time, const value_type& m, std::size_t size )
                     {
                         t = time;
-                        if( csv_stream ) 
-                        { 
+                        if( csv_stream )
+                        {
                             csv_stream->write( *this );
-                            csv_stream->flush(); 
+                            csv_stream->flush();
                         }
                         offset += size;
                     }
                 };
-                
+
             private:
                 boost::mutex mutex_;
                 std::string directory_;
@@ -1076,7 +1076,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     index_.increment_file();
                 }
         };
-        
+
     private:
         boost::shared_ptr< logger > logger_; // todo: watch performance
 };
@@ -1095,10 +1095,10 @@ static typename impl::filters< H >::value_type merge_impl_( typename impl::filte
 
 template < typename H >
 struct view_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     view_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, std::string name, unsigned int delay )
     {
@@ -1197,11 +1197,11 @@ static std::vector<int> imwrite_params( const std::string& type, const int quali
 }
 
 template < typename H >
-struct encode_impl_ { 
+struct encode_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     encode_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
     value_type operator()( const value_type& m, const std::string& type, const boost::optional<int>& quality )
     {
@@ -1234,9 +1234,9 @@ struct histogram_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     histogram_impl_( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
-    
+
     value_type operator()( value_type m )
     {
         static comma::csv::output_stream< serialization::header > os( std::cout, make_header_csv() ); // todo: quick and dirty; generalize imaging::serialization::pipeline
@@ -1283,10 +1283,10 @@ template < typename T > static T cv_read_( const std::string& filename = "", con
 
 template < typename H >
 struct simple_blob_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     simple_blob_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( const value_type& m, const cv::SimpleBlobDetector::Params& params, bool is_binary )
     {
@@ -1301,10 +1301,10 @@ struct simple_blob_impl_ {
 
 template < typename H >
 struct grab_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     grab_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
@@ -1317,10 +1317,10 @@ struct grab_impl_ {
 
 template < typename H >
 struct file_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     file_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
@@ -1337,9 +1337,9 @@ struct timestamp_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     timestamp_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
-    
+
     value_type operator()( value_type m )
     {
         cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
@@ -1579,7 +1579,7 @@ class undistort_impl_
                 if( config.distortion )
                 {
                     if( config.distortion->map_filename.empty() )
-                    { 
+                    {
                         distortion_coefficients_ = config.distortion->as< cv::Vec< double, 5 > >();
                         camera_matrix_ = config.camera_matrix();
                     }
@@ -1964,7 +1964,7 @@ struct overlay_impl_
     cv::Mat overlay;
     int alpha;
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     overlay_impl_(const std::string& image_file, int a, int b) : x(a), y(b), alpha(0)
     {
 //         comma::verbose<<"overlay_impl_: image_file "<<image_file<<std::endl;
@@ -2116,7 +2116,7 @@ struct load_impl_
 {
     typedef typename impl::filters< H >::value_type value_type;
     value_type value;
-    
+
     load_impl_( const std::string& filename )
     {
         const std::vector< std::string >& v = comma::split( filename, '.' );
@@ -2134,7 +2134,7 @@ struct load_impl_
         }
         if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
     }
-    
+
     value_type operator()( value_type ) { return value; }
 };
 
@@ -2448,7 +2448,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         boost::optional< double > offset( 0.0 );
         if ( w.size() > 1 ) {
             if ( w[1] == "normalize" ) {
-                if ( w.size() != 2 ) { COMMA_THROW( comma::exception, "normalized scale takes no extra parameters" ); } 
+                if ( w.size() != 2 ) { COMMA_THROW( comma::exception, "normalized scale takes no extra parameters" ); }
                 scale = boost::none;
                 offset = boost::none;
             } else {
@@ -2560,7 +2560,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         const std::vector< std::string >& s = comma::split( e[1], ',' );
         if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected blur=<blur_type>,<blur_type_parameters>" ); }
-        
+
         blur_t params;
         params.blur_type = blur_t::from_string(s[0]);
         if (s[0] == "box")
@@ -2584,7 +2584,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
             { COMMA_THROW( comma::exception, "blur=bilateral expected 3 parameters" ); }
             params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
             params.sigma_space = boost::lexical_cast< double >( s[2] );
-            params.sigma_colour = boost::lexical_cast< double >( s[3] ); 
+            params.sigma_colour = boost::lexical_cast< double >( s[3] );
         }
         else if (s[0] == "adaptive-bilateral")
         {
@@ -2689,7 +2689,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
 {
     typedef typename impl::filters< H >::value_type value_type_t;
     typedef typename impl::filters< H >::filter_type filter_type;
-    
+
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter_type > f;
     if( how == "" ) { return f; }
@@ -2745,7 +2745,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             bool index = false;
             if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "please specify log=<filename> or log=<directory>[,<options>]" ); }
             const std::vector< std::string >& w = comma::split( e[1], ',' );
-            
+
             std::string file = w[0];
             for ( std::size_t option = 1; option < w.size(); ++option )
             {
@@ -2771,17 +2771,17 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                     COMMA_THROW( comma::exception, "log: expected \"index\", \"period\" or \"size\"; got: \"" << u[0] << "\"" );
                 }
             }
-            if (period) 
-            {   
+            if (period)
+            {
                 unsigned int seconds = static_cast< unsigned int >( *period );
-                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index, get_timestamp ), false ) ); 
+                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index, get_timestamp ), false ) );
             }
             else if ( size )
-            { 
+            {
                 f.push_back( filter_type( log_impl_< H >( file, *size, index, get_timestamp), false ) );
-            } 
+            }
             else
-            { 
+            {
                 if( index ) { COMMA_THROW( comma::exception, "log: index should be specified with directory and period or size, not with filename" );  }
                 f.push_back( filter_type( log_impl_< H >( file, get_timestamp ), false ) );
             }
@@ -2899,7 +2899,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             std::vector< std::string > filters;
             switch( n )
             {
-                case 1: 
+                case 1:
                     filters.push_back( "transpose" );
                     filters.push_back( "flop" );
                     break;
