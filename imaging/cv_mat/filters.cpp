@@ -157,9 +157,9 @@ namespace {
 //   - announce
 // - use ',' instead of ':'  DONE
 // - size
-//   - specify full size, not half-size
-//   - fix help
-//   - fix default values in help
+//   - specify full size, not half-size  DONE
+//   - fix help  DONE
+//   - fix default values in help  DONE
     
     const std::map< std::string, int > morphology_operations = { { "erode", cv::MORPH_ERODE }
                                                                , { "erosion", cv::MORPH_ERODE }
@@ -180,27 +180,19 @@ namespace {
             const std::vector< std::string > & p = comma::split( e[1], ',' );
             const std::string & eltype = p[0];
             if ( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) {
-                if ( eltype == "rectangle" ) {
-                    return cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
-                } else if ( eltype == "ellipse" ) {
-                    return cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
-                } else {
-                    return cv::getStructuringElement( cv::MORPH_CROSS, cv::Size( 2 * size_x + 1, 2 * size_y + 1 ), cv::Point( anchor_x, anchor_y ) );
-                }
                 if ( p.size() != 5 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
                 int size_y = ( p[2].empty() ? size_x : boost::lexical_cast< int >( p[2] ) );
                 int anchor_x = ( p[3].empty() ? -1 : boost::lexical_cast< int >( p[3] ) );
                 int anchor_y = ( p[4].empty() ? anchor_x : boost::lexical_cast< int >( p[4] ) );
+                int shape = ( eltype == "rectangle" ? cv::MORPH_RECT : ( eltype == "ellipse" ? cv::MORPH_ELLIPSE : cv::MORPH_CROSS ) );
+                return cv::getStructuringElement( shape, cv::Size( size_x, size_y ), cv::Point( anchor_x, anchor_y ) );
             } else if ( eltype == "square" || eltype == "circle" ) {
-                if ( eltype == "square" ) {
-                    return cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
-                } else {
-                    return cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2 * size_x + 1, 2 * size_x + 1 ), cv::Point( anchor_x, anchor_x ) );
-                }
                 if ( p.size() != 3 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 2 parameters" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
                 int anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
+                int shape = ( eltype == "square" ? cv::MORPH_RECT : cv::MORPH_ELLIPSE );
+                return cv::getStructuringElement( shape, cv::Size( size_x, size_x ), cv::Point( anchor_x, anchor_x ) );
             } else {
                 COMMA_THROW( comma::exception, "the '" << eltype << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
             }
@@ -3119,12 +3111,12 @@ static std::string usage_impl_()
     oss << "        tophat[=<parameters>]; apply top-hat operation with the given parameters" << std::endl;
     oss << std::endl;
     oss << "            <parameters> for all the above operations have the same syntax; erode as an example is shown below:" << std::endl;
-    oss << "                    note that the value of the size/x, size/y parameters gives a HALF-size of the respective shape, e.g., square:3 has a size of 2*3 + 1 = 7" << std::endl;
     oss << "                erode=rectangle,<size/x>,<size/y>,<anchor/x>,<anchor/y>; apply erosion with a rectangular structuring element" << std::endl;
     oss << "                erode=square,<size/x>,<anchor/x>; apply erosion with a square structuring element of custom size" << std::endl;
     oss << "                erode=ellipse,<size/x>,<size/y>,<anchor/x>,<anchor/y>; apply erosion with an elliptic structuring element" << std::endl;
     oss << "                erode=circle,<size/x>,<anchor/x>; apply erosion with a circular structuring element" << std::endl;
     oss << "                erode=cross,<size/x>,<size/y>,<anchor/x>,<anchor/y>; apply erosion with a circular structuring element" << std::endl;
+    oss << "                    note that the structuring element shall usually be symmetric, and therefore, size/s,size/y shall be odd" << std::endl;
     oss << "                    any of the parameters after the shape name can be omitted (left as an empty csv field) to use the defaults:" << std::endl;
     oss << "                        - size/x = 3:" << std::endl;
     oss << "                        - size/y = size/x:" << std::endl;
@@ -3132,10 +3124,10 @@ static std::string usage_impl_()
     oss << "                        - anchor/y = anchor/x" << std::endl;
     oss << "                    anchor value of -1 is interpreted as the center of the element" << std::endl;
     oss << std::endl;
-    oss << "            examples: \"erode=rectangle,2,1,,\"; apply erosion with a 5x3 rectangle anchored at the center" << std::endl;
+    oss << "            examples: \"erode=rectangle,5,3,,\"; apply erosion with a 5x3 rectangle anchored at the center" << std::endl;
     oss << "                      \"close\"; apply closing with a 3x3 square structuring element anchored at the center (default)" << std::endl;
-    oss << "                      \"tophat=rectangle,5,,1,1\"; apply tophat with a 11x11 square and custom off-center anchor" << std::endl;
-    oss << "                      \"dilate=cross,3,,,\"; apply dilation with a 7x7 cross anchored at the center" << std::endl;
+    oss << "                      \"tophat=rectangle,11,,3,3\"; apply tophat with a 11x11 square and custom off-center anchor" << std::endl;
+    oss << "                      \"dilate=cross,7,,,\"; apply dilation with a 7x7 cross anchored at the center" << std::endl;
     oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
