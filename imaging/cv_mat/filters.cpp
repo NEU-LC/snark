@@ -149,6 +149,18 @@ namespace {
         }
     };
 
+// todo
+// - comma, snark: c++11, c++14
+//   - shrimp littleboard: compiler version, if c++11 not supported, regroup
+//   - tear down c++11 option
+//   - always check what flag to use
+//   - announce
+// - use ',' instead of ':'
+// - size
+//   - specify full size, not half-size
+//   - fix help
+//   - fix default values in help
+    
     const std::map< std::string, int > morphology_operations = { { "erode", cv::MORPH_ERODE }
                                                                , { "erosion", cv::MORPH_ERODE }
                                                                , { "dilate", cv::MORPH_DILATE }
@@ -3100,23 +3112,20 @@ static std::string usage_impl_()
     oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
     oss << std::endl;
     oss << "    morphology operations:" << std::endl;
-    oss << "        erode[=<parameters>]; apply erosion with a custom structuring element" << std::endl;
-    oss << "        erosion[=<parameters>]; synonym for erode=..." << std::endl;
-    oss << "        dilate[=<parameters>]; apply dilation with the given parameters" << std::endl;
-    oss << "        dilation[=<parameters>]; synonym for dilate=..." << std::endl;
-    oss << "        open[=<parameters>]; apply opening with the given parameters" << std::endl;
-    oss << "        opening[=<parameters>]; synonym for open=..." << std::endl;
-    oss << "        close[=<parameters>]; apply closing with the given parameters" << std::endl;
-    oss << "        closing[=<parameters>]; synonym for close=..." << std::endl;
-    oss << "        gradient[=<parameters>]; apply morphological gradient with the given parameters" << std::endl;
-    oss << "        tophat[=<parameters>]; apply top-hat operation with the given parameters" << std::endl;
     oss << "        blackhat[=<parameters>]; apply black-hat operation with the given parameters" << std::endl;
-    oss << "            <parameters> for all the above operations have the same syntax; erode is shown below:" << std::endl;
-    oss << "                erode=rectangle:size/x,size/y,anchor/x,anchor/y; apply erosion with a rectangular structuring element" << std::endl;
-    oss << "                erode=square:size/x,anchor/x; apply erosion with a square structuring element of custom size" << std::endl;
-    oss << "                erode=ellipse:size/x,size/y,anchor/x,anchor/y; apply erosion with an elliptic structuring element" << std::endl;
-    oss << "                erode=circle:size/x,anchor/x; apply erosion with a circular structuring element" << std::endl;
-    oss << "                erode=cross:size/x,size/y,anchor/x,anchor/y; apply erosion with a circular structuring element" << std::endl;
+    oss << "        close[=<parameters>], closing[=<parameters>]; apply closing with the given parameters" << std::endl;
+    oss << "        dilate[=<parameters>], dilation[=<parameters>]; apply dilation with the given parameters" << std::endl;
+    oss << "        erode[=<parameters>], erosion[=<parameters>]; apply erosion with a custom structuring element" << std::endl;
+    oss << "        gradient[=<parameters>]; apply morphological gradient with the given parameters" << std::endl;
+    oss << "        open[=<parameters>], opening[=<parameters>]; apply opening with the given parameters" << std::endl;
+    oss << "        tophat[=<parameters>]; apply top-hat operation with the given parameters" << std::endl;
+    oss << std::endl;
+    oss << "            <parameters> for all the above operations have the same syntax; erode as an example is shown below:" << std::endl;
+    oss << "                erode=rectangle:<size/x>,<size/y>,<anchor/x>,<anchor/y>; apply erosion with a rectangular structuring element" << std::endl;
+    oss << "                erode=square:<size/x>,<anchor/x>; apply erosion with a square structuring element of custom size" << std::endl;
+    oss << "                erode=ellipse:<size/x>,<size/y>,<anchor/x>,<anchor/y>; apply erosion with an elliptic structuring element" << std::endl;
+    oss << "                erode=circle:<size/x>,<anchor/x>; apply erosion with a circular structuring element" << std::endl;
+    oss << "                erode=cross:<size/x>,<size/y>,<anchor/x>,<anchor/y>; apply erosion with a circular structuring element" << std::endl;
     oss << "                    note that the value of the size/x, size/y parameters gives a HALF-size of the respective shape, e.g., square:3 has a size of 2*3 + 1 = 7" << std::endl;
     oss << "                    any of the parameters after the ':' separator can be omitted (left as an empty csv field) to use the defaults:" << std::endl;
     oss << "                        - size/x = 3:" << std::endl;
