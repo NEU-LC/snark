@@ -23,10 +23,20 @@
 #include <type_traits>
 #include <boost/static_assert.hpp>
 
+// todo
+// - <operation> (for now only one operation: convert)
+// - remove --format
+// - implement something like: image-color-calc convert --from rgb,0-255 --to ypbpr
+//                                                      --from rgb,uw --to ypbpr,d
+//                                                      --from rgb,f --to ypbpr
+//   support ub, etc as shorthand
+// - on error, print erroneous values
+// - pixel: use vector instead of channel0, channel1, etc or pixel type templated by colourspace with array for channels
+
 namespace {
 
     bool verbose = false;
-
+    
     const char* name = "image-color-calc: ";
 
     void usage( bool verbose = false )
@@ -34,7 +44,7 @@ namespace {
         std::cerr << std::endl;
         std::cerr << name << "perform conversion between rgb, ycbcr, ypbpr and other colorspaces on input streams." << std::endl;
         std::cerr << std::endl;
-        std::cerr << "usage: cat input.bin | image-color-calc [<options>] > output.bin " << std::endl;
+        std::cerr << "usage: cat input.bin | image-color-calc <operation> [<options>] > output.bin " << std::endl;
         std::cerr << std::endl;
         std::cerr << "colorspace names:" << std::endl;
         std::cerr << "    rgb     - red-green-blue, eigher floating-point values from 0 to 1 (f or d format) or digital, 8-bit values (ub)" << std::endl;
@@ -46,12 +56,12 @@ namespace {
         std::cerr << "    --to=<colorspace>; destination colorspace, mandatory" << std::endl;
         std::cerr << std::endl;
         std::cerr << "general options" << std::endl;
-        std::cerr << "    --binary=[<format>]: binary format of input stream" << std::endl;
         std::cerr << "    --format=[<format>]: format hint for ascii input stream; required if input value can be analog or digital" << std::endl;
-        std::cerr << "    --fields=[<fields>]; default: colorspace-dependent" << std::endl;
-        std::cerr << "    --flush; flush after every line or binary record" << std::endl;
         std::cerr << "    --input-fields; show input field names for the given --from and exit" << std::endl;
         std::cerr << "    --output-fields; show output field names for the given --to and exit" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "csv options" << std::endl;
+        if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; } else { std::cerr << "    run --help --verbose for details..." << std::endl; }
         std::cerr << std::endl;
         std::cerr << "examples" << std::endl;
         std::cerr << std::endl;
@@ -209,13 +219,6 @@ namespace {
     template< colorspace::cspace ic, typename it, colorspace::cspace oc, typename ot >
     void convert( const comma::csv::options & csv )
     {
-        if ( csv.binary() )
-        {
-            #ifdef WIN32
-            _setmode( _fileno( stdin ), _O_BINARY );
-            _setmode( _fileno( stdout ), _O_BINARY );
-            #endif
-        }
         comma::csv::input_stream<  pixel< it > > is( std::cin, csv );
         comma::csv::options output_csv;
         output_csv.flush = csv.flush;
