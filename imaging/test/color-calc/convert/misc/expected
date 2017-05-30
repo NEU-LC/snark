@@ -18,3 +18,6 @@ query/command[4]/status=0
 
 query/command[5]/output="y,pb,pr"
 query/command[5]/status=0
+
+failure/command[0]/status=1
+failure/command[1]/status=1

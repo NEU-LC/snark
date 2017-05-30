@@ -24,7 +24,7 @@
 #include <boost/static_assert.hpp>
 
 // todo
-// - <operation> (for now only one operation: convert)
+// - <operation> (for now only one operation: convert)  DONE
 // - remove --format
 // - implement something like: image-color-calc convert --from rgb,0-255 --to ypbpr
 //                                                      --from rgb,uw --to ypbpr,d
@@ -42,16 +42,22 @@ namespace {
     void usage( bool verbose = false )
     {
         std::cerr << std::endl;
-        std::cerr << name << "perform conversion between rgb, ycbcr, ypbpr and other colorspaces on input streams." << std::endl;
+        std::cerr << name << "perform various color transformations on input images" << std::endl;
         std::cerr << std::endl;
         std::cerr << "usage: cat input.bin | image-color-calc <operation> [<options>] > output.bin " << std::endl;
         std::cerr << std::endl;
-        std::cerr << "colorspace names:" << std::endl;
-        std::cerr << "    rgb     - red-green-blue, eigher floating-point values from 0 to 1 (f or d format) or digital, 8-bit values (ub)" << std::endl;
-        std::cerr << "    ypbpr   - analog luma and chroma, floating-point values from 0 to 1 (f or d)" << std::endl;
-        std::cerr << "    ycbcr   - digital luma and chroma, 8-bit values between 0 and 255 (minus footroom and headroom), ub format" << std::endl;
+        std::cerr << "operations:" << std::endl;
+        std::cerr << "    convert" << std::endl;
+        std::cerr << "        perform conversion between rgb, ycbcr, ypbpr and other colorspaces on input streams" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "options to select conversion" << std::endl;
+        std::cerr << "    colorspace names:" << std::endl;
+        std::cerr << "        rgb     - red-green-blue, eigher floating-point values from 0 to 1 (f or d format) or digital, 8-bit values (ub)" << std::endl;
+        std::cerr << "        ypbpr   - analog luma and chroma, floating-point values from 0 to 1 (f or d)" << std::endl;
+        std::cerr << "        ycbcr   - digital luma and chroma, 8-bit values between 0 and 255 (minus footroom and headroom), ub format" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "options" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "convert options" << std::endl;
         std::cerr << "    --from=[<colorspace>]; input colorspace, optional, alternatively can be inferred from fields" << std::endl;
         std::cerr << "    --to=<colorspace>; destination colorspace, mandatory" << std::endl;
         std::cerr << std::endl;
@@ -61,39 +67,39 @@ namespace {
         std::cerr << "    --output-fields; show output field names for the given --to and exit" << std::endl;
         std::cerr << std::endl;
         std::cerr << "csv options" << std::endl;
-        if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; } else { std::cerr << "    run --help --verbose for details..." << std::endl; }
-        std::cerr << std::endl;
+        if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; } else { std::cerr << "    run --help --verbose for details..." << std::endl << std::endl; }
         std::cerr << "examples" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    rgb to ycbcr; explicit format mandatory to define input as 8-bit digital" << std::endl;
-        std::cerr << "        echo 1,2,3 \\" << std::endl;
-        std::cerr << "            | image-color-calc --from rgb --to ycbcr --format=3ub" << std::endl;
+        std::cerr << "    convert" << std::endl;
+        std::cerr << "        rgb to ycbcr; explicit format mandatory to define input as 8-bit digital" << std::endl;
+        std::cerr << "            echo 1,2,3 \\" << std::endl;
+        std::cerr << "                | image-color-calc --from rgb --to ycbcr --format=3ub" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    same direction but input is analog, a value from 0 to 1" << std::endl;
-        std::cerr << "        echo 1,0.2,0.3 \\" << std::endl;
-        std::cerr << "            | image-color-calc --from rgb --to ycbcr --format=3f" << std::endl;
+        std::cerr << "        same direction but input is analog, a value from 0 to 1" << std::endl;
+        std::cerr << "            echo 1,0.2,0.3 \\" << std::endl;
+        std::cerr << "                | image-color-calc --from rgb --to ycbcr --format=3f" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    handle binary, same conversion as above" << std::endl;
-        std::cerr << "        echo 1,0.2,0.3 | csv-to-bin 3f \\" << std::endl;
-        std::cerr << "            | image-color-calc --from=rgb --to=ycbcr --binary=3f \\" << std::endl;
-        std::cerr << "            | csv-from-bin 3f,3ub" << std::endl;
+        std::cerr << "        handle binary, same conversion as above" << std::endl;
+        std::cerr << "            echo 1,0.2,0.3 | csv-to-bin 3f \\" << std::endl;
+        std::cerr << "                | image-color-calc --from=rgb --to=ycbcr --binary=3f \\" << std::endl;
+        std::cerr << "                | csv-from-bin 3f,3ub" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    using fields to select values to convert, no --from needed; digital rgb values 128,128,128 are converted to ycbcr" << std::endl;
-        std::cerr << "        echo 'value',128,128,128,20170101T000000 \\" << std::endl;
-        std::cerr << "            | image-color-calc --fields=name,r,g,b,t --format=s[10],3ub,t --to=ycbcr" << std::endl;
+        std::cerr << "        using fields to select values to convert, no --from needed; digital rgb values 128,128,128 are converted to ycbcr" << std::endl;
+        std::cerr << "            echo 'value',128,128,128,20170101T000000 \\" << std::endl;
+        std::cerr << "                | image-color-calc --fields=name,r,g,b,t --format=s[10],3ub,t --to=ycbcr" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    field names select conversion from ycbcr to rgb (digital, 8-bit); input format is known from the colorspace name" << std::endl;
-        std::cerr << "        echo 'value',30,40,50,20170101T000000 \\" << std::endl;
-        std::cerr << "            | image-color-calc --fields=name,y,cb,cr,t --to rgb" << std::endl;
+        std::cerr << "        field names select conversion from ycbcr to rgb (digital, 8-bit); input format is known from the colorspace name" << std::endl;
+        std::cerr << "            echo 'value',30,40,50,20170101T000000 \\" << std::endl;
+        std::cerr << "                | image-color-calc --fields=name,y,cb,cr,t --to rgb" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    same example on binary data" << std::endl;
-        std::cerr << "        echo 'value',30,40,50,20170101T000000 \\" << std::endl;
-        std::cerr << "            | csv-to-bin s[10],3ub,t | image-color-calc --fields=name,y,cb,cr,t --binary=s[10],3ub,t --to rgb \\" << std::endl;
-        std::cerr << "            | csv-from-bin s[10],3ub,t,3ub" << std::endl;
+        std::cerr << "        same example on binary data" << std::endl;
+        std::cerr << "            echo 'value',30,40,50,20170101T000000 \\" << std::endl;
+        std::cerr << "                | csv-to-bin s[10],3ub,t | image-color-calc --fields=name,y,cb,cr,t --binary=s[10],3ub,t --to rgb \\" << std::endl;
+        std::cerr << "                | csv-from-bin s[10],3ub,t,3ub" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "    using neutral field names to select values to convert and explicitly define conversion" << std::endl;
-        std::cerr << "        echo 'value',1,2,3,20170101T000000 \\" << std::endl;
-        std::cerr << "            | image-color-calc --fields=name,channel0,channel1,channel2,t --from rgb --format 3ub --to=ycbcr" << std::endl;
+        std::cerr << "        using neutral field names to select values to convert and explicitly define conversion" << std::endl;
+        std::cerr << "            echo 'value',1,2,3,20170101T000000 \\" << std::endl;
+        std::cerr << "                | image-color-calc --fields=name,channel0,channel1,channel2,t --from rgb --format 3ub --to=ycbcr" << std::endl;
         std::cerr << std::endl;
         exit( 0 );
     }
@@ -340,59 +346,66 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--output-fields", "--fields,-f,--binary,-b,--format,--to,--from");
-        if( !unnamed.empty() ) { std::cerr << name << "cannot parse command-line arguments '" << comma::join( unnamed, ',' ) << "'" << std::endl; return 1;  }
+        if( 1 != unnamed.size() ) { std::cerr << name << "cannot extract the operation from the command-line arguments '" << options.string() << "'" << std::endl; return 1;  }
 
-        // the user may specify the input for conversion by two ways
-        // if --from is specified:
-        //     if fields are not given, fields are set to the from-specific defaults
-        //     if fields are given, the required fields must be present (and renamed if needed)
-        // otherwise, if --fields is given, infer the from colorspace from fields
-        colorspace fromc( options.value< std::string >( "--from", "none" ) );
-        if ( options.exists( "--input-fields" ) ) { std::cout << comma::join( colorspace::field_names( fromc.value ), ',' ) << std::endl; return 0; }
-        colorspace toc( options.value< std::string >( "--to", "none" ) );
-        if ( toc.value == colorspace::none ) { COMMA_THROW( comma::exception, "must provide destination colorspace using '--to'" ); }
-        if ( options.exists( "--output-fields" ) ) { std::cout << comma::join( colorspace::field_names( toc.value ), ',' ) << std::endl; return 0; }
-        std::vector< std::string > fields = comma::split( csv.fields, csv.delimiter );
-        if ( fromc.value != colorspace::none ) {
-            if ( options.exists( "--fields,-f" ) )
-            {
-                setup_fields_for_colorspace( fields, fromc );
-            } else {
-                fields = { "channel0", "channel1", "channel2" };
-            }
-            csv.fields = comma::join( fields, ',' );
-        } else {
-            if ( options.exists( "--fields,-f" ) )
-            {
-                std::vector< colorspace > spaces = { colorspace( colorspace::rgb ), colorspace( colorspace::ycbcr ), colorspace( colorspace::ypbpr ) };
-                fromc = get_colorspace_from_fields( fields, spaces );
-                // now fromc cannot be none
-                rename_fields_to_channels( fields, fromc );
+        const std::string & operation = unnamed[0];
+        if ( operation == "convert" )
+        {
+            // the user may specify the input for conversion by two ways
+            // if --from is specified:
+            //     if fields are not given, fields are set to the from-specific defaults
+            //     if fields are given, the required fields must be present (and renamed if needed)
+            // otherwise, if --fields is given, infer the from colorspace from fields
+            colorspace fromc( options.value< std::string >( "--from", "none" ) );
+            if ( options.exists( "--input-fields" ) ) { std::cout << comma::join( colorspace::field_names( fromc.value ), ',' ) << std::endl; return 0; }
+            colorspace toc( options.value< std::string >( "--to", "none" ) );
+            if ( toc.value == colorspace::none ) { COMMA_THROW( comma::exception, "must provide destination colorspace using '--to'" ); }
+            if ( options.exists( "--output-fields" ) ) { std::cout << comma::join( colorspace::field_names( toc.value ), ',' ) << std::endl; return 0; }
+            std::vector< std::string > fields = comma::split( csv.fields, csv.delimiter );
+            if ( fromc.value != colorspace::none ) {
+                if ( options.exists( "--fields,-f" ) )
+                {
+                    setup_fields_for_colorspace( fields, fromc );
+                } else {
+                    fields = { "channel0", "channel1", "channel2" };
+                }
                 csv.fields = comma::join( fields, ',' );
             } else {
-                COMMA_THROW( comma::exception, "neither '--from' nor '--fields' are given, cannot determine the input colorspace" );
-            }
-        }
-
-        // the actual processing is done below
-        if ( verbose ) { std::cerr << name << "convert from " << fromc << " to " << toc << " colorspace using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
-        switch ( fromc.value ) {
-            case colorspace::rgb:
+                if ( options.exists( "--fields,-f" ) )
                 {
-                    if ( !csv.binary() && !options.exists( "--format" ) ) { COMMA_THROW( comma::exception, "must supply '--format' for ASCII rgb inputs" ); }
-                    const comma::csv::format & format = csv.binary() ? csv.format() : comma::csv::format( options.value< std::string >( "--format" ) );
-                    // assume all input fields have same size
-                    size_t first_field = std::distance( fields.begin(), std::find( fields.begin(), fields.end(), "channel0" ) );
-                    from_rgb( toc, format.offset( first_field ).type, csv );
+                    std::vector< colorspace > spaces = { colorspace( colorspace::rgb ), colorspace( colorspace::ycbcr ), colorspace( colorspace::ypbpr ) };
+                    fromc = get_colorspace_from_fields( fields, spaces );
+                    // now fromc cannot be none
+                    rename_fields_to_channels( fields, fromc );
+                    csv.fields = comma::join( fields, ',' );
+                } else {
+                    COMMA_THROW( comma::exception, "neither '--from' nor '--fields' are given, cannot determine the input colorspace" );
                 }
-                break;
-            case colorspace::ycbcr:
-                from_ycbcr( toc, csv );
-                break;
-            default:
-                COMMA_THROW( comma::exception, "conversion from " << fromc << " to " << toc << " is not implemented yet" );
+            }
+
+            // the actual processing is done below
+            if ( verbose ) { std::cerr << name << "convert from " << fromc << " to " << toc << " colorspace using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
+            switch ( fromc.value ) {
+                case colorspace::rgb:
+                    {
+                        if ( !csv.binary() && !options.exists( "--format" ) ) { COMMA_THROW( comma::exception, "must supply '--format' for ASCII rgb inputs" ); }
+                        const comma::csv::format & format = csv.binary() ? csv.format() : comma::csv::format( options.value< std::string >( "--format" ) );
+                        // assume all input fields have same size
+                        size_t first_field = std::distance( fields.begin(), std::find( fields.begin(), fields.end(), "channel0" ) );
+                        from_rgb( toc, format.offset( first_field ).type, csv );
+                    }
+                    break;
+                case colorspace::ycbcr:
+                    from_ycbcr( toc, csv );
+                    break;
+                default:
+                    COMMA_THROW( comma::exception, "conversion from " << fromc << " to " << toc << " is not implemented yet" );
+            }
+            return 0;
+        } else {
+            std::cerr << name << "unknown operation '" << operation << "', not one of: convert" << std::endl;
+            return 1;
         }
-        return 0;
     }
     catch( std::exception & ex ) { std::cerr << name << ex.what() << std::endl; }
     catch( ... ) { std::cerr << name << "unknown exception" << std::endl; }
