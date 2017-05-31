@@ -183,6 +183,7 @@ namespace {
                 if ( p.size() != 5 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
                 int size_y = ( p[2].empty() ? size_x : boost::lexical_cast< int >( p[2] ) );
+                if ( size_x == 1 && size_y == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
                 int anchor_x = ( p[3].empty() ? -1 : boost::lexical_cast< int >( p[3] ) );
                 int anchor_y = ( p[4].empty() ? anchor_x : boost::lexical_cast< int >( p[4] ) );
                 int shape = ( eltype == "rectangle" ? cv::MORPH_RECT : ( eltype == "ellipse" ? cv::MORPH_ELLIPSE : cv::MORPH_CROSS ) );
@@ -190,6 +191,7 @@ namespace {
             } else if ( eltype == "square" || eltype == "circle" ) {
                 if ( p.size() != 3 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 2 parameters" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
+                if ( size_x == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
                 int anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
                 int shape = ( eltype == "square" ? cv::MORPH_RECT : cv::MORPH_ELLIPSE );
                 return cv::getStructuringElement( shape, cv::Size( size_x, size_x ), cv::Point( anchor_x, anchor_x ) );
