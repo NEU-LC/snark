@@ -2676,7 +2676,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         return boost::bind< value_type_t >( morphology_impl_< H >, _1, morphology_operations.at( e[0] ), parse_structuring_element( e ) );
     }
-    if( e[0] == "skeleton" )
+    if( e[0] == "skeleton" || e[0] == "thinning" )
     {
         return boost::bind< value_type_t >( skeleton_impl_< H >, _1, parse_structuring_element( e ) );
     }
@@ -3141,7 +3141,7 @@ static std::string usage_impl_()
     oss << "        open[=<parameters>], opening[=<parameters>]; apply opening with the given parameters" << std::endl;
     oss << "        tophat[=<parameters>]; apply top-hat operation with the given parameters" << std::endl;
     oss << "    extended morphology operations that are implemented on top of OpenCV capabilities:" << std::endl;
-    oss << "        skeleton[=<parameters>]; apply skeleton (thinning) operation with the given parameters" << std::endl;
+    oss << "        skeleton[=<parameters>], thinning[=<parameters>]; apply skeletonization (thinning) with the given parameters" << std::endl;
     oss << std::endl;
     oss << "            <parameters> for all the above operations have the same syntax; erode as an example is shown below:" << std::endl;
     oss << "                erode=rectangle,<size/x>,<size/y>,<anchor/x>,<anchor/y>; apply erosion with a rectangular structuring element" << std::endl;
