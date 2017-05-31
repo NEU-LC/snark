@@ -183,6 +183,7 @@ namespace {
                 if ( p.size() != 5 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 4 parameters" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
                 int size_y = ( p[2].empty() ? size_x : boost::lexical_cast< int >( p[2] ) );
+                if ( size_x == 1 && size_y == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
                 int anchor_x = ( p[3].empty() ? -1 : boost::lexical_cast< int >( p[3] ) );
                 int anchor_y = ( p[4].empty() ? anchor_x : boost::lexical_cast< int >( p[4] ) );
                 int shape = ( eltype == "rectangle" ? cv::MORPH_RECT : ( eltype == "ellipse" ? cv::MORPH_ELLIPSE : cv::MORPH_CROSS ) );
@@ -190,6 +191,7 @@ namespace {
             } else if ( eltype == "square" || eltype == "circle" ) {
                 if ( p.size() != 3 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 2 parameters" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
+                if ( size_x == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
                 int anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
                 int shape = ( eltype == "square" ? cv::MORPH_RECT : cv::MORPH_ELLIPSE );
                 return cv::getStructuringElement( shape, cv::Size( size_x, size_x ), cv::Point( anchor_x, anchor_x ) );
@@ -1933,6 +1935,31 @@ static typename impl::filters< H >::value_type morphology_impl_( const typename 
     return result;
 }
 
+template < typename H >
+static typename impl::filters< H >::value_type skeleton_impl_( const typename impl::filters< H >::value_type m, const cv::Mat & element )
+{
+    if ( m.second.channels() != 1 ) { COMMA_THROW( comma::exception, "skeleton operations supports only single-channel (grey-scale) images" ); }
+    typename impl::filters< H >::value_type result( m.first, cv::Mat( m.second.size(), CV_8UC1, cv::Scalar(0) ) );
+    cv::Mat temp, eroded, img;
+    m.second.copyTo( img );
+    bool done = false;
+    size_t iter = 0;
+    do
+    {
+        cv::erode( img, eroded, element );
+        cv::dilate( eroded, temp, element );
+        cv::subtract( img, temp, temp );
+        cv::bitwise_or( result.second, temp, result.second );
+        eroded.copyTo( img );
+
+        double min, max;
+        cv::minMaxLoc( img, &min, &max );
+        done = ( min == max );
+        if ( ++iter > 1000 ) { COMMA_THROW( comma::exception, "skeleton did not converge after " << iter << " iterations" ); }
+    } while ( !done );
+    return result;
+}
+
 static double max_value(int depth)
 {
     switch(depth)
@@ -2649,6 +2676,10 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         return boost::bind< value_type_t >( morphology_impl_< H >, _1, morphology_operations.at( e[0] ), parse_structuring_element( e ) );
     }
+    if( e[0] == "skeleton" || e[0] == "thinning" )
+    {
+        return boost::bind< value_type_t >( skeleton_impl_< H >, _1, parse_structuring_element( e ) );
+    }
     if( e[0] == "overlay" )
     {
         if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected file name (and optional x,y) with the overlay, e.g. overlay=a.svg" ); }
@@ -3109,6 +3140,8 @@ static std::string usage_impl_()
     oss << "        gradient[=<parameters>]; apply morphological gradient with the given parameters" << std::endl;
     oss << "        open[=<parameters>], opening[=<parameters>]; apply opening with the given parameters" << std::endl;
     oss << "        tophat[=<parameters>]; apply top-hat operation with the given parameters" << std::endl;
+    oss << "    extended morphology operations that are implemented on top of OpenCV capabilities:" << std::endl;
+    oss << "        skeleton[=<parameters>], thinning[=<parameters>]; apply skeletonization (thinning) with the given parameters" << std::endl;
     oss << std::endl;
     oss << "            <parameters> for all the above operations have the same syntax; erode as an example is shown below:" << std::endl;
     oss << "                erode=rectangle,<size/x>,<size/y>,<anchor/x>,<anchor/y>; apply erosion with a rectangular structuring element" << std::endl;
