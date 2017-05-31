@@ -1935,6 +1935,31 @@ static typename impl::filters< H >::value_type morphology_impl_( const typename 
     return result;
 }
 
+template < typename H >
+static typename impl::filters< H >::value_type skeleton_impl_( const typename impl::filters< H >::value_type m, const cv::Mat & element )
+{
+    if ( m.second.channels() != 1 ) { COMMA_THROW( comma::exception, "skeleton operations supports only single-channel (grey-scale) images" ); }
+    typename impl::filters< H >::value_type result( m.first, cv::Mat( m.second.size(), CV_8UC1, cv::Scalar(0) ) );
+    cv::Mat temp, eroded, img;
+    m.second.copyTo( img );
+    bool done = false;
+    size_t iter = 0;
+    do
+    {
+        cv::erode( img, eroded, element );
+        cv::dilate( eroded, temp, element );
+        cv::subtract( img, temp, temp );
+        cv::bitwise_or( result.second, temp, result.second );
+        eroded.copyTo( img );
+
+        double min, max;
+        cv::minMaxLoc( img, &min, &max );
+        done = ( min == max );
+        if ( ++iter > 1000 ) { COMMA_THROW( comma::exception, "skeleton did not converge after " << iter << " iterations" ); }
+    } while ( !done );
+    return result;
+}
+
 static double max_value(int depth)
 {
     switch(depth)
@@ -2651,6 +2676,10 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         return boost::bind< value_type_t >( morphology_impl_< H >, _1, morphology_operations.at( e[0] ), parse_structuring_element( e ) );
     }
+    if( e[0] == "skeleton" )
+    {
+        return boost::bind< value_type_t >( skeleton_impl_< H >, _1, parse_structuring_element( e ) );
+    }
     if( e[0] == "overlay" )
     {
         if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected file name (and optional x,y) with the overlay, e.g. overlay=a.svg" ); }
@@ -3111,6 +3140,8 @@ static std::string usage_impl_()
     oss << "        gradient[=<parameters>]; apply morphological gradient with the given parameters" << std::endl;
     oss << "        open[=<parameters>], opening[=<parameters>]; apply opening with the given parameters" << std::endl;
     oss << "        tophat[=<parameters>]; apply top-hat operation with the given parameters" << std::endl;
+    oss << "    extended morphology operations that are implemented on top of OpenCV capabilities:" << std::endl;
+    oss << "        skeleton[=<parameters>]; apply skeleton (thinning) operation with the given parameters" << std::endl;
     oss << std::endl;
     oss << "            <parameters> for all the above operations have the same syntax; erode as an example is shown below:" << std::endl;
     oss << "                erode=rectangle,<size/x>,<size/y>,<anchor/x>,<anchor/y>; apply erosion with a rectangular structuring element" << std::endl;
