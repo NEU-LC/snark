@@ -1,6 +1,5 @@
 #include "label_shader.h"
 #include <QOpenGLPaintDevice>
-#include <QPainter>
 #include <iostream>
 
 namespace snark { namespace graphics { namespace qt3d { namespace gl {
@@ -68,14 +67,23 @@ label_vertex::label_vertex(float x,float y,float z,float ox, float oy,float w,fl
 
 label_shader::label_shader()
 {
-    labels.push_back(std::shared_ptr<label>(new label()));
+//     labels.push_back(std::shared_ptr<label>(new label()));
     
 }
 label_shader::~label_shader()
 {
     
 }
-
+void label_shader::clear()
+{
+    for(auto& i : labels) { i->destroy(); }
+    labels.clear();
+}
+void label_shader::update()
+{
+    for(auto& i : labels) { i->update(); }
+    
+}
 void label_shader::init()
 {
 //     std::cerr<<"label_shader::init"<<std::endl;
@@ -142,23 +150,23 @@ void label::resize(int w,int h)
 {
     if(width!=w || height!=h)
     {
-        std::cerr<<"label::resize"<<std::endl;
         width=w;
         height=h;
+//         std::cerr<<"label::resize "<<width<<","<<height<<std::endl;
         QOpenGLFramebufferObjectFormat format;
         format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
         fbo.reset(new QOpenGLFramebufferObject(width, height, format));
     }
 }
-//updates quad buffer
-void label::update(float x,float y,float z,int w,int h)
-{
-    resize(w,h);
-    update(x,y,z);
-}
+// //updates quad buffer
+// void label::update(float x,float y,float z,int w,int h)
+// {
+//     resize(w,h);
+//     update(x,y,z);
+// }
 void label::update(float x,float y,float z)
 {
-    std::cerr<<"label::update "<<width<<", "<<height<<std::endl;
+//     std::cerr<<"label::update "<<width<<", "<<height<<std::endl;
     quad.clear();
     quad.push_back(label_vertex(x,y,z,0,0,width,height));
     quad.push_back(label_vertex(x,y,z,1,0,width,height));
@@ -175,9 +183,9 @@ void label::paint()
 {
     if(fbo)
     {
-        static int counter=0;
-        if(counter++<2)
-            std::cerr<<"label_shader::paint"<<std::endl;
+//         static int counter=0;
+//         if(counter++<2)
+//             std::cerr<<"label_shader::paint"<<std::endl;
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, fbo->texture());
         
@@ -189,27 +197,32 @@ void label::paint()
 
 void label::draw()    //draw to texture
 {
-    // TODO remove sample test draw, maybe declare abstract
     if(fbo)
     {
-        std::cerr<<"label_shader::draw"<<std::endl;
+//         std::cerr<<"label_shader::draw"<<std::endl;
         fbo->bind();
         
         QOpenGLPaintDevice paint_dev(width, height);
         QPainter painter(&paint_dev);
-        painter.setFont(QFont("System",32));
-    //     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
-        painter.fillRect(0,0,width,height,Qt::green);
-//         painter.setBackgroundMode(Qt::OpaqueMode);
-//         painter.setBackground(QBrush(Qt::green));
-        painter.setPen( Qt::blue );
-        painter.drawText(QRect(2,4,width, height), Qt::AlignTop, "Boo!");
-        painter.end();
-//         QImage image2 = fbo->toImage();
-//         image2.save("/home/navid/data/snark/view-points/bla4.png");
+        draw(painter);
         fbo->release();
     }
 }
+/*
+void label::draw(QPainter& painter)
+{
+    painter.setFont(QFont("System",32));
+//     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
+    painter.fillRect(0,0,width,height,Qt::green);
+//         painter.setBackgroundMode(Qt::OpaqueMode);
+//         painter.setBackground(QBrush(Qt::green));
+    painter.setPen( Qt::blue );
+    painter.drawText(QRect(2,4,width, height), Qt::AlignTop, "Boo!");
+    painter.end();
+//         QImage image2 = fbo->toImage();
+//         image2.save("/home/navid/data/snark/view-points/bla4.png");
+}
+*/
 void label::destroy()
 {
     fbo.release();

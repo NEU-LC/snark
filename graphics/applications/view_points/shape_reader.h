@@ -66,9 +66,12 @@ class ShapeReader : public Reader
 #if Qt3D_VERSION==2
 public:
     std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape();
+    std::shared_ptr<snark::graphics::qt3d::gl::label_shader> make_label_shader();
     void update_shape();
+    void update_labels();
 private:
     std::shared_ptr<snark::graphics::qt3d::gl::shape> shape;
+    std::shared_ptr<snark::graphics::qt3d::gl::label_shader> label_shader;
 #endif
 
     private:
@@ -79,17 +82,15 @@ private:
         boost::scoped_ptr< comma::csv::passed< ShapeWithId< S > > > m_passed;
         block_buffer< vertex_t > buffer_;
 
-        #if Qt3D_VERSION==1
         struct label_t_ // quick and dirty
         {
             Eigen::Vector3d position;
-            QColor4ub color;
+            color_t color;
             std::string text;
             label_t_() {}
-            label_t_( const Eigen::Vector3d& position, const QColor4ub& color, const std::string& text ) : position( position ), color( color ), text( text ) {}
+            label_t_( const Eigen::Vector3d& position, const color_t& color, const std::string& text ) : position( position ), color( color ), text( text ) {}
         };
         block_buffer< label_t_ > labels_;
-        #endif
         ShapeWithId< S > sample_;
 };
 #if Qt3D_VERSION==2
@@ -100,9 +101,31 @@ std::shared_ptr<snark::graphics::qt3d::gl::shape> ShapeReader< S, How >::make_sh
     return shape;
 }
 template< typename S, typename How >
+std::shared_ptr<snark::graphics::qt3d::gl::label_shader> ShapeReader< S, How >::make_label_shader()
+{
+    label_shader=std::shared_ptr<snark::graphics::qt3d::gl::label_shader>(new snark::graphics::qt3d::gl::label_shader());
+    return label_shader;
+}
+template< typename S, typename How >
 void ShapeReader< S, How >::update_shape()
 {
     if(shape) { shape->update(buffer_.values().data(),buffer_.size()); }
+}
+
+template< typename S, typename How >
+void ShapeReader< S, How >::update_labels()
+{
+    label_shader->clear();
+    label_shader->labels.reserve(labels_.size());
+    for( unsigned int i = 0; i < labels_.size(); i++ )
+    {
+        if(!labels_.values()[i].text.empty())
+        {
+            label_shader->labels.push_back(std::shared_ptr<snark::graphics::qt3d::gl::label>(
+                new snark::graphics::qt3d::gl::text_label( labels_.values()[i].position - m_offset, labels_.values()[i].text, labels_.values()[i].color )));
+        }
+    }
+    label_shader->update();
 }
 #endif
 
@@ -120,6 +143,7 @@ template< typename S, typename How >
 ShapeReader< S, How >::ShapeReader( const reader_parameters& params, colored* c, const S& sample  )
     : Reader( params, c )
     , buffer_( size * Shapetraits< S, How >::size )
+    , labels_( size )
     , sample_( sample )
 {
 }
@@ -138,16 +162,12 @@ inline std::size_t ShapeReader< S, How >::update( const Eigen::Vector3d& offset 
     for( typename deque_t_::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
     {
         Shapetraits< S, How >::update( it->shape, offset, it->color, it->block, buffer_, m_extents );
-        #if Qt3D_VERSION==1
         labels_.add( label_t_( Shapetraits< S, How >::center( it->shape ), it->color, it->label ), it->block );
-        #endif
     }
     if( m_shutdown )
     {
         buffer_.toggle();
-        #if Qt3D_VERSION==1
         labels_.toggle();
-        #endif
     }
     std::size_t s = m_deque.size();
     m_deque.clear();

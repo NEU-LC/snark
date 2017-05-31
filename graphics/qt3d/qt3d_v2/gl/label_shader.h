@@ -5,7 +5,7 @@
 #include <QOpenGLBuffer>
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLFramebufferObject>
-// #include <QPainter>
+#include <QPainter>
 #include <Eigen/Core>
 #include <memory>
 #include <boost/array.hpp>
@@ -29,13 +29,31 @@ class label : protected QOpenGLFunctions
 public:
     label();
     virtual ~label();
-    virtual void update(float x,float y,float z);
-    virtual void update(float x,float y,float z,int width,int height);
+    virtual void update()=0;
+//     {
+//         init();
+//         resize(w,h);
+//         update(x,y,z);
+//         draw();
+//     }
+    /// update position vertex
+    void update(float x,float y,float z);
+    /// resize texture buffer
     void resize(int width,int height);
+    /// resize and update position
+//     void update(float x,float y,float z,int w,int h)
+//     {
+//         resize(w,h);
+//         update(x,y,z);
+//     }
 protected:
+    /// draw the label
+    virtual void draw(QPainter& painter)=0;
+    
+    //no need to override these
     virtual void init();
     virtual void paint();
-    virtual void draw();
+    void draw();
     virtual void destroy();
     
     QOpenGLVertexArrayObject vao;
@@ -46,13 +64,15 @@ protected:
     int width;
     int height;
 };
-    
+
 class label_shader : protected QOpenGLFunctions
 {
     friend class widget;
 public:
     label_shader();
     virtual ~label_shader();
+    void clear();   //delete labels
+    void update();  //init and update all added labels
     std::vector<std::shared_ptr<label>> labels;
 
 protected:

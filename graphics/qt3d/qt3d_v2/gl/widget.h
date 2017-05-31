@@ -57,7 +57,7 @@ public:
     QSize sizeHint() const Q_DECL_OVERRIDE;
 
     std::vector<std::shared_ptr<shape>> shapes;
-    gl::label_shader label_shader;
+    std::vector<std::shared_ptr<label_shader>> label_shaders;
     
     void begin_update();
     void end_update();

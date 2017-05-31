@@ -88,7 +88,7 @@ void widget::cleanup()
 {
     makeCurrent();
     for(auto& i : shapes) { i->destroy(); }
-    label_shader.destroy();
+    for(auto& i : label_shaders) { i->destroy(); }
     if(program_)
     {
         delete program_;
@@ -132,7 +132,7 @@ void widget::initializeGL()
     mv_matrix_location_ = program_->uniformLocation( "mv_matrix" );
 
     for(auto& i : shapes) { i->init(); }
-    label_shader.init();
+    for(auto& i : label_shaders) { i->init(); }
 //     program_->release();
 
     // The camera always points along the z-axis. Pan moves the camera in x,y
@@ -174,7 +174,7 @@ void widget::paintGL()
 
     program_->release();
     
-    label_shader.paint(projection_ * camera_ * world_, size());
+    for(auto& i : label_shaders) { i->paint(projection_ * camera_ * world_, size()); }
 
     painter.endNativePainting();
 
