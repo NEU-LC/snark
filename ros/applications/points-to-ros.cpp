@@ -197,13 +197,14 @@ struct points
     {
         
     }
-    void send(ros::Publisher& publisher)
+    void send(ros::Publisher& publisher,const std::string& frame_id)
     {
         //create msg
         sensor_msgs::PointCloud2 msg=u.create_msg(records.size());
         //fill in
         msg.header.stamp=::ros::Time::fromBoost(records[0].t);
         msg.header.seq=records[0].block;
+        msg.header.frame_id=frame_id;
         std::size_t offset=0;
         for(const auto& i : records)
         {
@@ -247,6 +248,7 @@ int main( int argc, char** argv )
         if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
         bool has_block=csv.has_field("block");
         bool all=options.exists("--all");
+        std::string frame_id=options.value<std::string>("--frame","");
         int arrrgc=1;
         ros::init(arrrgc, argv, "points_to_ros");
         ros::NodeHandle ros_node;
@@ -262,12 +264,12 @@ int main( int argc, char** argv )
             if ( ( !p || block != p->block) && !points.records.empty())
             {
                 //send the message
-                points.send(publisher);
+                points.send(publisher,frame_id);
             }
             if( !p ) { break; }
             block=p->block;
             points.push_back(is,*p);
-            if( !has_block && !all ) { points.send(publisher); }
+            if( !has_block && !all ) { points.send(publisher,frame_id); }
         }
         if(options.exists("--hang-on"))
         {

@@ -1326,6 +1326,7 @@ struct file_impl_ {
     file_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
+        if(m.second.empty()) { return m; }
         encode_impl_check_type< H >( m, type );
         std::vector<int> params;
         if (quality) { params = imwrite_params(type, *quality); }
@@ -2918,7 +2919,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if( i < v.size() - 1 )
             {
                 std::string next_filter = comma::split( v[i+1], '=' )[0];
-                if( next_filter != "null" && next_filter != "encode" ) { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode" ); }
+                if( next_filter != "null" && next_filter != "encode" && next_filter != "file") { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode or file" ); }
             }
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter_type( boost::bind< value_type_t >( head_impl_< H >, _1, n ), false ) );

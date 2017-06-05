@@ -91,7 +91,21 @@ void point::paint()
     shape::paint();
 }
 
-lines::lines() : shape(GL_LINES) { }
+lines::lines(float line_width) : shape(GL_LINES),line_width(line_width) { }
+void lines::paint()
+{
+    if(line_width!=1)
+    {
+//         std::cerr<<"lines::paint"
+        glLineWidth(line_width);
+        glEnable(GL_LINE_SMOOTH);
+    }
+    shape::paint();
+
+// //if not supported by vga
+// GLfloat lineWidthRange[2];
+// glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
+}
 
 line_strip::line_strip() : shape(GL_LINE_STRIP) { }
 

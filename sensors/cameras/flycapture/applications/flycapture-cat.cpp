@@ -35,6 +35,7 @@
 #include <comma/name_value/map.h>
 #include "../../../../imaging/cv_mat/pipeline.h"
 #include "../flycapture.h"
+#include "../helpers.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
@@ -116,7 +117,10 @@ int main( int argc, char** argv )
         snark::cameras::flycapture::camera::timestamp_policy when( timestamp_time_option );
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
         snark::cameras::flycapture::camera camera( id, attributes, when );
-        if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
+        if( verbose )
+        {
+            std::cerr << "flycapture-cat: connected to " << snark::cameras::flycapture::get_interface_string(camera.get_interface())
+                << " camera " << camera.id() << std::endl; }
         if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )

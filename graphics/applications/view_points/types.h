@@ -41,9 +41,24 @@ namespace snark { namespace graphics { namespace view {
     
 #if Qt3D_VERSION==1
 typedef QColor4ub color_t;
-    
-#else
+#define COLOR_RED   Qt::red
+#define COLOR_GREEN Qt::green
+#define COLOR_BLUE  Qt::blue
+
+#elif Qt3D_VERSION==2
+
 typedef snark::graphics::qt3d::gl::color_t color_t;
+
+struct stock
+{
+    const static color_t red;
+    const static color_t green;
+    const static color_t blue;
+};
+
+#define COLOR_RED   stock::red
+#define COLOR_GREEN stock::green
+#define COLOR_BLUE  stock::blue
 
 #endif
 

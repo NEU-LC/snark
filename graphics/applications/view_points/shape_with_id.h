@@ -59,6 +59,8 @@ struct vertex_t
     vertex_t() {}
     vertex_t( const QVector3D& position, const QColor4ub& color )
         : position( position ), color( color ) {}
+    vertex_t(const Eigen::Vector3f& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
+    vertex_t(const Eigen::Vector3d& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
 };
 #else
 typedef qt3d::gl::vertex_t vertex_t;
@@ -555,6 +557,63 @@ struct Shapetraits< Eigen::Vector3d, How >
     static const Eigen::Vector3d& center( const Eigen::Vector3d& point ) { return point; }
 };
 
+
+struct axis
+{
+    Eigen::Vector3d position;
+    Eigen::Vector3d orientation;
+    double length;
+    axis() : position( 0, 0, 0 ), orientation( 0, 0, 0 ), length(1) {}
+};
+
+
+template<>
+struct Shapetraits< axis >
+{
+    static const unsigned int size = 6;
+#if Qt3D_VERSION==2
+    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
+    {
+        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::lines(gl.point_size));
+    }
+#endif
+
+    static void update( const axis& axis, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
+                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
+    {
+        Eigen::Vector3d pos=axis.position - offset;
+        Eigen::Matrix3d ori=rotation_matrix::rotation( axis.orientation );
+        Eigen::Vector3d una(axis.length,0,0);
+        Eigen::Vector3d p=pos + ori*una;
+        buffer.add( vertex_t(pos,COLOR_RED),block);
+        buffer.add( vertex_t(p,COLOR_RED),block);
+//         ori=rotation_matrix::rotation( Eigen::Vector3d(axis.orientation.x(), axis.orientation.y()+M_PI/2, axis.orientation.z()));
+        Eigen::Matrix3d y_r=rotation_matrix::rotation(Eigen::Vector3d(0,0,M_PI/2));
+        p=pos+ori*y_r*una;
+        buffer.add( vertex_t(pos,COLOR_GREEN),block);
+        buffer.add( vertex_t(p,COLOR_GREEN),block);
+//         ori=rotation_matrix::rotation( Eigen::Vector3d(axis.orientation.x(), axis.orientation.y(), axis.orientation.z()+M_PI/2));
+        Eigen::Matrix3d z_r=rotation_matrix::rotation(Eigen::Vector3d(0,M_PI/2,0));
+        p=pos+ori*z_r*una;
+        buffer.add( vertex_t(pos,COLOR_BLUE),block);
+        buffer.add( vertex_t(p,COLOR_BLUE),block);
+
+        extents = extents ? extents->hull( pos.cast<float>() ) : snark::math::closed_interval< float, 3 >( pos.cast<float>() );
+    }
+
+    #if Qt3D_VERSION==1
+    static void draw( QGLPainter* painter, unsigned int size, bool fill )
+    {
+        painter->draw(QGL::Lines, size);
+    }
+    #endif
+
+    static const Eigen::Vector3d& somePoint( const axis& axis ) { return axis.position; }
+
+    static Eigen::Vector3d center( const axis& axis ) { return axis.position; }
+};
+
+
 } } } // namespace snark { namespace graphics { namespace view {
 
 namespace comma { namespace visiting {
@@ -690,5 +749,26 @@ template < std::size_t Size > struct traits< snark::graphics::view::loop< Size >
         v.apply( "corners", p.corners );
     }
 };
+
+template<>
+struct traits< snark::graphics::view::axis >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, snark::graphics::view::axis& p, Visitor& v )
+    {
+        v.apply( "position", p.position );
+        v.apply( "orientation", p.orientation );
+        v.apply( "length", p.length );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const snark::graphics::view::axis& p, Visitor& v )
+    {
+        v.apply( "position", p.position );
+        v.apply( "orientation", p.orientation );
+        v.apply( "length", p.length );
+    }
+};
+
 
 } } // namespace comma { namespace visiting {
