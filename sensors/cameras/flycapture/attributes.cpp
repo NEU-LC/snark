@@ -113,6 +113,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
         FlyCapture2::Error error;
         if (FlyCapture2::GigECamera* camera = dynamic_cast<FlyCapture2::GigECamera*>(handle))
         { // GigE-only properties
+            //std::cerr << "trying GigECamera for key " << key << std::endl;
             FlyCapture2::GigEImageSettings image_settings;
             FlyCapture2::GigEImageSettingsInfo image_settings_info;
             assert_ok(camera->GetGigEImageSettings(&image_settings), "couldn't get GigE image settings");
@@ -129,6 +130,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
         }
         else if(FlyCapture2::Camera* camera = dynamic_cast<FlyCapture2::Camera*>(handle)) // Serial or USB Camera
         {
+            //std::cerr << "trying Camera for key " << key << std::endl;
             FlyCapture2::Format7Info format_info;
             FlyCapture2::Format7ImageSettings pImageSettings;
             FlyCapture2::Error error;
@@ -188,6 +190,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
     void set_attribute( FlyCapture2::CameraBase* handle, const std::string& key, const std::string& value )
     {
+        //std::cerr << "trying CameraBase::set_attribute for key " << key << std::endl;
         FlyCapture2::Error error;
         FlyCapture2::TriggerMode trigger_mode;
         assert_ok(handle->GetTriggerMode(&trigger_mode), "error getting attributes from camera.");
@@ -245,6 +248,14 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 }                
                 assert_ok(handle->SetProperty( &cam_prop ), "Error setting attributes");
             }
+        } else if (FlyCapture2::GigECamera* camera = dynamic_cast<FlyCapture2::GigECamera*>(handle)){
+            set_attribute(camera, key, value);
+            return;
+        }
+        else if (FlyCapture2::Camera* camera = dynamic_cast<FlyCapture2::Camera*>(handle))
+        {
+            set_attribute(camera, key, value);
+            return;
         } else {
             COMMA_THROW( comma::exception,  "Error: property '" << key << "' not found!" );
         }
@@ -253,6 +264,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
     void set_attribute( FlyCapture2::Camera* handle, const std::string& key, const std::string& value )
     {
+        //std::cerr << "trying Camera::set_attribute for key " << key << std::endl;
         FlyCapture2::Error error;
         FlyCapture2::Format7ImageSettings image_settings;
         FlyCapture2::Format7Info image_settings_info;
@@ -301,8 +313,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 { image_settings.pixelFormat = pixel_format_map.right.at( value ); }
             else { COMMA_THROW( comma::exception, "Error: invalid pixel format."); }
         } else {
-            set_attribute(dynamic_cast<FlyCapture2::CameraBase*>(handle), key, value);
-            return;
+            COMMA_THROW( comma::exception,  "Error: property '" << key << "' not found!" );
         }
 
         bool is_valid_settings;
@@ -321,6 +332,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
     void set_attribute( FlyCapture2::GigECamera* handle, const std::string& key, const std::string& value )
     {
+        //std::cerr << "trying GigECamera::set_attribute for key " << key << std::endl;
         FlyCapture2::Error error;
         FlyCapture2::GigEImageSettings image_settings;
         FlyCapture2::GigEImageSettingsInfo image_settings_info;
@@ -352,8 +364,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 { image_settings.pixelFormat = pixel_format_map.right.at( value ); }
             else { COMMA_THROW( comma::exception, "Error: invalid pixel format."); }
         } else {
-            set_attribute(dynamic_cast<FlyCapture2::CameraBase*>(handle), key, value);
-            return;
+            COMMA_THROW( comma::exception,  "Error: property '" << key << "' not found!" );
         }
         //Handle errors here, the SDK should do out of bounds checking 
 

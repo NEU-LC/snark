@@ -92,6 +92,9 @@ class camera
         /// return attributes
         attributes_type attributes() const;
 
+        /// return camera interface
+        FlyCapture2::InterfaceType get_interface() const;
+
         /// get timestamped frame
         frame_pair read( );
         frame_pair read( const timestamp_policy & when );
@@ -109,8 +112,6 @@ class camera
 
         /// list cameras
         static std::vector< unsigned int > list_camera_serials();
-
-        static FlyCapture2::InterfaceType get_camera_interface(unsigned int serial);
 
         static const std::string describe_camera(unsigned int serial);
 
