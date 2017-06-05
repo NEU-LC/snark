@@ -504,6 +504,10 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     {
         if( param.options.fields == "" ) { param.options.fields="corners"; }
     }
+    else if(shape=="axis")
+    {
+        if( param.options.fields == "" ) { param.options.fields="position,orientation"; }
+    }
     else
     {
         if( param.options.fields == "" ) { param.options.fields="point,orientation"; param.options.full_xpath = true; }
@@ -608,6 +612,16 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( viewer, param, colored, label, sample ) );
         #else
         std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( param, colored, sample ) );
+        #endif
+        reader->show( show );
+        return reader;
+    }
+    else if(shape=="axis")
+    {
+        #if Qt3D_VERSION==1
+        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader<snark::graphics::view::axis>( viewer, param, colored, label ) );
+        #else
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader<snark::graphics::view::axis>( param, colored ) );
         #endif
         reader->show( show );
         return reader;

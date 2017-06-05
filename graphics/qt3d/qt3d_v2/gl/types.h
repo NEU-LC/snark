@@ -105,6 +105,8 @@ struct vertex_t
     vertex_t():point_size(1) {}
     vertex_t( const Eigen::Vector3f& position, const color_t& color,GLfloat point_size=1)
         : position( position ), color( color ),point_size(point_size) {}
+    vertex_t( const Eigen::Vector3d& p, const color_t& color,GLfloat point_size=1)
+        : position( p.cast<float>() ), color( color ),point_size(point_size) {}
 //     vertex_t( const Eigen::Vector3f& position, const QColor& color )
 //         : position( position ), color( color ),point_size(5) {}
 };

@@ -82,18 +82,24 @@ protected:
     void paint();
 };
 
+/// Two vertices per line. Vertices 0 and 1 are considered a line. Vertices 2 and 3 are considered a line, etc.
 class lines : public shape
 {
+    float line_width;
 public:
-    lines();
+    lines(float line_width=1);
+protected:
+    void paint();
 };
 
+/// The adjacent vertices are considered lines. Vertice 0 and 1; then vertices 1 and 2, etc.
 class line_strip : public shape
 {
 public:
     line_strip();
 };
 
+/// The adjacent vertices are considered lines (similar to line_strip) and then last vertice and first to close the loop
 class line_loop : public shape
 {
 public:
