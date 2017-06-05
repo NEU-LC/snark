@@ -304,6 +304,11 @@ int main( int ac, char** av )
         wayline_follower follower( mode, proximity, use_past_endpoint, strict );
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
+            
+            if ( !input_stream.ready() && !feedback_stream.ready() )
+            {
+                select.wait( boost::posix_time::milliseconds( 1 ) );
+            }
             // todo? don't do select.check() on stdin in the loop or do it only in "dynamic" mode?
             while( !is_shutdown && ( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ) ) ) )
             {
