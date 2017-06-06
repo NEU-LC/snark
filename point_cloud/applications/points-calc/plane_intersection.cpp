@@ -190,23 +190,34 @@ std::string traits::usage()
 {
     std::ostringstream oss;
     oss
-        << "    plane-intersection: read points and plane from stdin, output intersection of the ray with the plane" << std::endl
+        << "    plane-intersection" << std::endl
+        << "        read points and plane from stdin, output intersection of the ray with" << std::endl
+        << "        the plane" << std::endl
+        << std::endl
         << "        input fields: " << comma::join( comma::csv::names< ::plane_intersection::input_t >(true), ',' ) << std::endl
-        << "            first and second are two points on the line; the plane passes through the plane/point and is perpendicular to the direction vector plane/normal" << std::endl
+        << "            first and second are two points on the line; the plane passes" << std::endl
+        << "            through the plane/point and is perpendicular to the direction" << std::endl
+        << "            vector plane/normal" << std::endl
         << std::endl;
     oss
         << "        options:" << std::endl
-        << "            --discard-collinear: don't output records when line is in parallel with plane (when not sepcified it outputs <inf,inf,inf>)" << std::endl
-        << "            --plane=<" << comma::join( comma::csv::names< ::plane_intersection::plane_t >(true), ',') <<  ">: default values for plane" << std::endl
-        << "                if --plane specified, default fields for input are: " << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  std::endl
-        << "            --line=<" << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  ">: default values for line" << std::endl
+        << "            --discard-collinear: don't output records when line is in parallel" << std::endl
+        << "                    with plane (when not sepcified it outputs <inf,inf,inf>)" << std::endl
+        << "            --plane=<" << comma::join( comma::csv::names< ::plane_intersection::plane_t >(true), ',') <<  ">:" << std::endl
+        << "                default values for plane" << std::endl
+        << "                if --plane specified, default fields for input are:" << std::endl
+        << "                    " << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  std::endl
+        << "            --line=<" << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  ">:" << std::endl
+        << "                default values for line" << std::endl
         << "            --input-fields: print default input field names" << std::endl
         << std::endl;
     oss
         << "        example:" << std::endl
-        << "            to find intersection of a line going from 0,0,0 to 1,1,1 and a plane at 0,0,4 perpendicular to z axis:" << std::endl
-        << "                echo 1,1,1,4 | points-calc plane-intersection --plane=0,0,0,0,0,1 --fields=second,plane/point/z" << std::endl
-        << "            outputs:  1,1,1,4,4,4,4" << std::endl;
+        << "            to find intersection of a line going from 0,0,0 to 1,1,1" << std::endl
+        << "            and a plane at 0,0,4 perpendicular to z axis:" << std::endl
+        << "                echo 1,1,1,4 | points-calc plane-intersection \\" << std::endl
+        << "                               --plane=0,0,0,0,0,1 --fields=second,plane/point/z" << std::endl
+        << "            outputs: 1,1,1,4,4,4,4" << std::endl;
     return oss.str();
 }
 
