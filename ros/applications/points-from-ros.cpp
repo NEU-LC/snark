@@ -296,7 +296,7 @@ int main( int argc, char** argv )
         std::string topic=options.value<std::string>("--topic");
         unsigned queue_size=options.value<unsigned>("--queue-size",1);
         int arrrgc=1;
-        ros::init(arrrgc, argv,"points_from_ros");
+        ros::init(arrrgc, argv,"points_from_ros", ros::init_options::AnonymousName);
         ros::NodeHandle ros_node;
         points points(options);
         ros::Subscriber subsriber=ros_node.subscribe(topic,queue_size,&points::process,&points);

@@ -250,7 +250,7 @@ int main( int argc, char** argv )
         bool all=options.exists("--all");
         std::string frame_id=options.value<std::string>("--frame","");
         int arrrgc=1;
-        ros::init(arrrgc, argv, "points_to_ros");
+        ros::init(arrrgc, argv, "points_to_ros", ros::init_options::AnonymousName);
         ros::NodeHandle ros_node;
         ros::Publisher publisher=ros_node.advertise<sensor_msgs::PointCloud2>(topic, queue_size,options.exists("--latch"));
         ros::spinOnce();
