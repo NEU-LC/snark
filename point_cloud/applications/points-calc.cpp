@@ -60,6 +60,10 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "take coordinates from stdin, perform calculations, and output result to stdout" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "usage" << std::endl;
+    std::cerr << "    points-calc <operation> [<options>]" << std::endl;
+    std::cerr << "    points-calc --help" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "usage examples" << std::endl;
     std::cerr << "    cat points.csv | points-calc distance > results.csv" << std::endl;
     std::cerr << "    echo -e \"0\\n1\\n3\\n6\" | points-calc distance --fields x --next" << std::endl;
@@ -86,6 +90,16 @@ static void usage( bool more = false )
     std::cerr << "    project-onto-plane" << std::endl;
     std::cerr << "    thin" << std::endl;
     vector_calc::usage_list_operations();
+    std::cerr << std::endl;
+    std::cerr << "general options" << std::endl;
+    std::cerr << "    usage: points-calc <option>" << std::endl;
+    std::cerr << "    --help,-h: show help" << std::endl;
+    std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "common operation options" << std::endl;
+    std::cerr << "    usage: points-calc <operation> <option>" << std::endl;
+    std::cerr << "    --output-fields: print output field names and exit" << std::endl;
+    std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operation details" << std::endl;
     std::cerr << "    angle-axis: angle-axis between subsequent points or, if input is pairs," << std::endl;

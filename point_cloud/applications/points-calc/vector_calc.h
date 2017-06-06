@@ -41,8 +41,6 @@ struct vector_calc
         std::cerr << "    vector calculations: following operations perform calculations on 3d vectors and scalars" << std::endl;
         std::cerr << "        common options:" << std::endl;
         std::cerr << "            --input-fields: print input field names and exit" << std::endl;
-        std::cerr << "            --output-fields: print output field names and exit" << std::endl;
-        std::cerr << "            --output-format: print output format and exit" << std::endl;
         std::cerr << "    " << std::endl;
         std::cerr << "        cross: calculate vector cross product; output: vector" << std::endl;
         std::cerr << "            input fields: v, u" << std::endl;

@@ -201,8 +201,6 @@ std::string traits::usage()
         << "                if --plane specified, default fields for input are: " << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  std::endl
         << "            --line=<" << comma::join( comma::csv::names< ::plane_intersection::line_t >(true), ',') <<  ">: default values for line" << std::endl
         << "            --input-fields: print default input field names" << std::endl
-        << "            --output-fields: print output field names" << std::endl
-        << "            --output-format: print output fields format" << std::endl
         << std::endl;
     oss
         << "        example:" << std::endl
