@@ -68,7 +68,6 @@ static void usage( bool verbose = false )
     std::cerr << "    cat points.csv | points-calc distance > results.csv" << std::endl;
     std::cerr << "    echo -e \"0\\n1\\n3\\n6\" | points-calc distance --fields x --next" << std::endl;
     std::cerr << "    cat points.csv | points-calc cumulative-distance > results.csv" << std::endl;
-    std::cerr << "    cat points.csv | points-calc thin --resolution <resolution> > results.csv" << std::endl;
     std::cerr << "    cat points.csv | points-calc discretise --step <step> > results.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
@@ -248,11 +247,12 @@ static void usage( bool verbose = false )
     std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
     std::cerr << "    thin" << std::endl;
-    std::cerr << "        read input data and thin them down by the given --resolution" << std::endl;
+    std::cerr << "        read input data and thin them down" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options:" << std::endl;
+    std::cerr << "            --linear: assume data is linear" << std::endl;
     std::cerr << "            --resolution=<distance>: minimum distance from one point to the next" << std::endl;
     std::cerr << std::endl;
     vector_calc::usage();
@@ -795,7 +795,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
@@ -870,6 +870,7 @@ int main( int ac, char** av )
         }
         if( operation == "thin" )
         {
+            if( !options.exists( "--linear" )) { COMMA_THROW( comma::exception, "thin operation requires --linear flag" ); }
             if( !options.exists( "--resolution" ) ) { std::cerr << "points-calc: --resolution is not specified " << std::endl; return 1; }
             double resolution = options.value( "--resolution" , 0.0 );
             thin( resolution );
