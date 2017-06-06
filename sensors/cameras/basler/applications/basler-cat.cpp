@@ -52,7 +52,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --address --serial-number --list-cameras"
         " --discard --buffer"
         " --fields -f"
-        " --image-type"
+        " --pixel-format"
         " --offset-x --offset-y --width --height"
         " --frame-trigger --line-trigger --line-rate"
         " --encoder-ticks"
