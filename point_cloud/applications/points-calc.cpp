@@ -55,7 +55,7 @@ typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
 
 static comma::csv::ascii< Eigen::Vector3d > ascii;
 
-static void usage( bool more = false )
+static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
     std::cerr << "take coordinates from stdin, perform calculations, and output result to stdout" << std::endl;
@@ -93,7 +93,7 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "general options" << std::endl;
     std::cerr << "    usage: points-calc <option>" << std::endl;
-    std::cerr << "    --help,-h: show help" << std::endl;
+    std::cerr << "    --help,-h: show help, --verbose for more detailed help" << std::endl;
     std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
     std::cerr << std::endl;
     std::cerr << "common operation options" << std::endl;
@@ -101,6 +101,11 @@ static void usage( bool more = false )
     std::cerr << "    --output-fields: print output field names and exit" << std::endl;
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << std::endl;
+    if( verbose )
+    {
+        std::cerr << "csv options:" << std::endl;
+        std::cerr << comma::csv::options::usage() << std::endl;
+    }
     std::cerr << "operation details" << std::endl;
     std::cerr << "    angle-axis: angle-axis between subsequent points or, if input is pairs," << std::endl;
     std::cerr << "                between the points of the same record." << std::endl;
