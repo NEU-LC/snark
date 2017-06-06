@@ -103,7 +103,10 @@ namespace snark{ namespace cameras{ namespace flycapture{
             { COMMA_THROW(comma::exception, "couldn't find camera with serial " + std::to_string(id)); }
             if (!connect(id, handle_, guid_)) 
             { COMMA_THROW(comma::exception, "couldn't connect to serial " + std::to_string(id)); }
-
+            assert_ok(
+                bus_manager().GetInterfaceTypeFromGuid( &guid_, &interface_ ),
+                "cannot determine interface for camera with serial " + std::to_string(id)
+            );
 //Get Point grey unique id (guid) from serial number. guid does not exist in CameraInfo, and so it does not appear in the camera list
             for( attributes_type::const_iterator i = attributes.begin(); i != attributes.end(); ++i )
             {
@@ -162,6 +165,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 << "delay " << pStrobe.delay << std::endl
                 << "duration " << pStrobe.duration << std::endl;
         }
+
+        FlyCapture2::InterfaceType get_interface() const { return interface_; }
 
         std::pair< boost::posix_time::ptime, cv::Mat > read( )
         {
@@ -330,6 +335,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
         uint total_bytes_per_frame_;
         bool started_;
         const timestamp_policy & when_;
+        FlyCapture2::InterfaceType interface_;
 
         static FlyCapture2::BusManager& bus_manager()
         {
@@ -441,6 +447,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
         camera::camera( unsigned int id, const camera::attributes_type& attributes, const timestamp_policy & when ) : pimpl_( new impl( id, attributes, when ) ) {}
 
         camera::~camera() { }
+
+        FlyCapture2::InterfaceType camera::get_interface() const { return pimpl_->get_interface(); }
 
         std::pair< boost::posix_time::ptime, cv::Mat > camera::read( const camera::timestamp_policy & when ) { return pimpl_->read( when ); }
         std::pair< boost::posix_time::ptime, cv::Mat > camera::read( ) { return pimpl_->read( ); }
