@@ -252,6 +252,9 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
+    std::cerr << "        options:" << std::endl;
+    std::cerr << "            --resolution=<distance>: minimum distance from one point to the next" << std::endl;
+    std::cerr << std::endl;
     vector_calc::usage();
     exit( 0 );
 }
