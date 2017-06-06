@@ -55,6 +55,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "serialization options" << std::endl;
     if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
+    std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
