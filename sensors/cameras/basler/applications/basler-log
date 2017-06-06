@@ -81,7 +81,7 @@ function config_sample()
         "fields": "t",
         "image-size": "1280,480",
         "image-offset": "0,0",
-        "image-type": "ub",
+        "pixel-format": "Mono8",
 
         "device":
         {
@@ -133,7 +133,7 @@ args=
 [[ $width ]] && args+=" --width=$width"
 [[ $offset_x ]] && args+=" --offset-x=$offset_x"
 [[ $offset_y ]] && args+=" --offset-y=$offset_y"
-[[ $config_image_type ]] && args+=" --image-type $config_image_type"
+[[ $config_pixel_format ]] && args+=" --pixel-format $config_pixel_format"
 [[ $config_gige_packet_size ]] && args+=" --packet-size=$config_gige_packet_size"
 [[ $options_verbose ]] && args+=" --verbose"
 args=${args# }
