@@ -56,10 +56,9 @@ TextureReader::image_::image_( const TextureReader::image_options& o ) : image( 
     node->setMaterial( &material );
 }
 
-TextureReader::TextureReader( QGLView& viewer
-                            , const reader_parameters& params
+TextureReader::TextureReader( const reader_parameters& params
                             , const std::vector< image_options >& io )
-    : Reader( viewer, reader_parameters( params ), NULL, "", Eigen::Vector3d( 0, 1, 1 ) )
+    : Reader( reader_parameters( params ), NULL, "", Eigen::Vector3d( 0, 1, 1 ) )
 {
     for( unsigned int i = 0; i < io.size(); ++i ) { images_.push_back( new image_( io[i] ) ); }
 }
@@ -82,7 +81,7 @@ const Eigen::Vector3d& TextureReader::somePoint() const
     return *m_point;
 }
 
-void TextureReader::render( QGLPainter* painter )
+void TextureReader::render( Viewer& viewer, QGLPainter* painter )
 {
     if( !m_point ) { return; }
     comma::uint32 id = id_;

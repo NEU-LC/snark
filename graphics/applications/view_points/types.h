@@ -29,6 +29,8 @@
 
 #pragma once
 
+#include <Eigen/Core>
+
 #if Qt3D_VERSION==1
 #include <Qt3D/qcolor4ub.h>
 
@@ -75,6 +77,15 @@ public:
     virtual void tick()=0;
 };
 
+/// text label with 3d position
+struct label_t
+{
+    Eigen::Vector3d position;
+    color_t color;
+    std::string text;
+    label_t() { }
+    label_t( const Eigen::Vector3d& position, const color_t& color, const std::string& text ) : position( position ), color( color ), text( text ) { }
+};
 
 
     
