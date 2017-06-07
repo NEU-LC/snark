@@ -29,7 +29,6 @@
 
 
 #include <boost/program_options.hpp>
-#include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
@@ -41,12 +40,10 @@ typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
 boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
 static Pair capture( snark::cameras::flycapture::camera& camera )
-{ 
-    static comma::signal_flag is_shutdown;
-    if( is_shutdown ) { reader->stop(); return Pair(); }
+{
     return camera.read( );
 }
- 
+
 int main( int argc, char** argv )
 {
     try
