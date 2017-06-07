@@ -179,6 +179,13 @@ static void usage()
         "\n                     \"triangle\": e.g. --shape=triangle --fields=,,corners,,,"
         "\n                                     or --shape=triangle --fields=,,corners[0],,,corners[1],,,corners[2],,,"
         "\n                                     or --shape=triangle --fields=,,corners[0]/x,,corners[0]/y,,corners[0]/z,,,,corners[1],,,corners[2],,, etc"
+        "\n                     \"axis\": draws three axis lines in red/green/blue using position and orientation e.g. --shape=axis --fields=position,orientation"
+        "\n                                     fields: position,orientation,length,label"
+        "\n                                         default fields: position,orientation"
+        "\n                                         position: x,y,z or position/x,position/y,position/z"
+        "\n                                         orientation: roll,pitch,yaw or orientation/roll,orientation/pitch,orientation/yaw"
+        "\n                                         length: length of each axis line"
+        "\n                                     options: --weight or --point-size can be used for line thickness"
         qt55_unsupported_marker_start
         "\n                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
         "\n                     \"    <options>"
@@ -507,6 +514,13 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     else if(shape=="axis")
     {
         if( param.options.fields == "" ) { param.options.fields="position,orientation"; }
+        std::vector< std::string > v = comma::split( param.options.fields, ',' );
+        for( std::size_t i = 0; i < v.size(); ++i )
+        {
+            if( v[i] == "x" || v[i] == "y" || v[i] == "z" ) { v[i] = "position/" + v[i]; }
+            else if( v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "orientation/" + v[i]; }
+        }
+        param.options.fields = comma::join( v, ',' );
     }
     else
     {

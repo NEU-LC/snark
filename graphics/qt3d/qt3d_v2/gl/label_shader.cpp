@@ -205,6 +205,7 @@ void label::draw()    //draw to texture
         QOpenGLPaintDevice paint_dev(width, height);
         QPainter painter(&paint_dev);
         draw(painter);
+        painter.end();
         fbo->release();
     }
 }

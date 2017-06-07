@@ -39,7 +39,6 @@ void text_label::draw(QPainter& painter)
 //     painter.fillRect(0,0,width,height,Qt::green);
     painter.setPen( QColor(color.rgba[0]*255, color.rgba[1]*255, color.rgba[2]*255, color.rgba[3]*255 ) );
     painter.drawText(QRect(2,4,width, height), Qt::AlignTop, QString(text.data()));
-    painter.end();
 }
 
 } } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {

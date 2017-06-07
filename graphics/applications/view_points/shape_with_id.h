@@ -48,6 +48,8 @@
 #endif
 #include <memory>
 #include "types.h"
+#include <snark/math/roll_pitch_yaw.h>
+#include <snark/visiting/traits.h>
 
 namespace snark { namespace graphics { namespace view {
 
@@ -561,7 +563,7 @@ struct Shapetraits< Eigen::Vector3d, How >
 struct axis
 {
     Eigen::Vector3d position;
-    Eigen::Vector3d orientation;
+    snark::roll_pitch_yaw orientation;
     double length;
     axis() : position( 0, 0, 0 ), orientation( 0, 0, 0 ), length(1) {}
 };
