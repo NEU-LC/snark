@@ -27,13 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <comma/visiting/traits.h>
-#include <comma/csv/stream.h>
-#include <comma/string/string.h>
-#include <comma/base/types.h>
+#include "../color/colorspace.h"
+#include "../color/pixel.h"
+#include "../color/traits.h"
 
-#include <type_traits>
-#include <boost/static_assert.hpp>
+#include <comma/csv/stream.h>
 
 // todo
 // - <operation> (for now only one operation: convert)  DONE
@@ -152,135 +150,6 @@ namespace {
         }
         exit( 0 );
     }
-
-    // enums do not have ctors, sigh
-    struct colorspace
-    {
-        enum cspace {
-            none = 0,
-            rgb,
-            ycbcr,
-            ypbpr
-        };
-
-        cspace value;
-        colorspace( const std::string & s ) : value( s == "rgb" ? rgb : ( s == "ycbcr" ? ycbcr : ( s == "ypbpr" ? ypbpr : none ) ) ) { }
-        colorspace( colorspace::cspace v ) : value( v ) { }
-
-        operator cspace() const { return value; }
-
-        operator std::string() const {
-            switch( value ) {
-                case( none ):  return "none";  break;
-                case( rgb ):   return "rgb";   break;
-                case( ycbcr ): return "ycbcr"; break;
-                case( ypbpr ): return "ypbpr"; break;
-            }
-            return "none"; // avoid a warning
-        };
-
-        static std::vector< std::string > & field_names( cspace c )
-        {
-            static std::map< cspace, std::vector< std::string > > m = {
-                { rgb,   comma::split( "r,g,b" , ',' ) },
-                { ycbcr, comma::split( "y,cb,cr", ',' ) },
-                { ypbpr, comma::split( "y,pb,pr", ',' ) },
-                { none,  comma::split( "channel0,channel1,channel2", ',' ) }
-            };
-            return m[ c ];
-        }
-
-        static std::string & default_type( cspace c )
-        {
-            static std::map< cspace, std::string > m = {
-                { rgb,   "ub" },
-                { ycbcr, "ub" },
-                { ypbpr, "f" },
-                { none,  "" }
-            };
-            return m[ c ];
-        }
-    };
-
-    std::ostream & operator<<( std::ostream & os, const colorspace & c )
-    {
-        os << std::string( c );
-        return os;
-    }
-
-    enum range {
-        ub = 0,   // 0 - 255
-        uw,       // 0 - 65535
-        ui,       // 0 - 4294967295
-        f,        // 0 - 1
-        d         // 0 - 1
-    };
-
-    template< range R > struct range_traits;
-    template<> struct range_traits< ub > { typedef unsigned char value_t; };
-    template<> struct range_traits< uw > { typedef comma::uint16 value_t; };
-    template<> struct range_traits< ui > { typedef comma::uint32 value_t; };
-    template<> struct range_traits< f >  { typedef float         value_t; };
-    template<> struct range_traits< d >  { typedef double        value_t; };
-
-    template< range R >
-    struct limits
-    {
-        typedef typename range_traits< R >::value_t value_t;
-        static constexpr double upper() { return std::is_floating_point< value_t >::value ? 1.0 : double( std::numeric_limits< value_t >::max() ); }
-        static constexpr double lower() { return 0.0; }
-    };
-
-    template< typename T, range R >
-    T trim( T t ) {
-        double dt = double(t);
-        return dt < limits< R >::lower() ? static_cast< T >( limits< R >::lower() ) : ( dt > limits< R >::upper() ? static_cast< T >( limits< R >::upper() ) : t );
-    }
-
-    // Sf - storage from, Rf - range from, St - storage to, Rt - range to
-    // template< typename Sf, range Rf, typename St, range Rt >
-    // St scale( typename enable_if< std::is_integral< T >::value, T >::type & from );
-
-    template< typename T, range R >
-    void assert_compatible( typename std::enable_if< std::is_integral< T >::value, T >::type t
-                          , typename std::enable_if< std::is_integral< typename range_traits< R >::value_t >::value, typename range_traits< R >::value_t >::type r )
-    {
-        static_assert( std::numeric_limits< T >::max() >= std::numeric_limits< typename range_traits< R >::value_t >::max(), "cannot store value of larger range in smaller type" );
-    }
-
-    template< typename T, range R >
-    void assert_compatible( typename std::enable_if< std::is_integral< T >::value, T >::type t
-                          , typename std::enable_if< std::is_floating_point< typename range_traits< R >::value_t >::value, typename range_traits< R >::value_t >::type r )
-    {
-        static_assert( !std::is_floating_point< typename range_traits< R >::value_t >::value, "cannot store value of floating-point range in integer type" );
-    }
-
-    template< typename T, range R >
-    void assert_compatible( typename std::enable_if< std::is_floating_point< T >::value, T >::type t
-                          , typename std::enable_if< std::is_floating_point< typename range_traits< R >::value_t >::value, typename range_traits< R >::value_t >::type r )
-    { }
-
-    template< typename T, range R >
-    void assert_compatible( typename std::enable_if< std::is_floating_point< T >::value, T >::type t
-                          , typename std::enable_if< std::is_integral< typename range_traits< R >::value_t >::value, typename range_traits< R >::value_t >::type r )
-    { }
-
-    // do not call fields rgb because can contain ycbcr or any other colorspace
-    // template by storage type T to facilitate seamless binary output
-    // tempate by range type R to rescale automatically between ranges
-    template< typename T, range R >
-    struct pixel
-    {
-        T channel0;
-        T channel1;
-        T channel2;
-        pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( trim< T, R >( c0 ) ), channel1( trim< T, R >( c1 ) ), channel2( trim< T, R >( c2 ) ) {
-            assert_compatible< T, R >( channel0, typename range_traits< R >::value_t( 0 ) );
-        }
-
-        // template< typename S, range Q >
-        // pixel( const pixel< S, Q > & rhs ) : channel0( scale< S, Q, T, R >::conv( rhs.channel0 ) ), channel1( scale< S, Q, T, R >::conv( rhs.channel1 ) ), channel2( scale< S, Q, T, R >::conv( rhs.channel2 ) ) {}
-    };
 
 #if 0
     template< typename T >
@@ -414,7 +283,6 @@ namespace {
                 COMMA_THROW( comma::exception, "conversion from ycbcr to " << toc << " is not implemented yet" );
         }
     }
-#endif
 
     // the methods below are for parsing the command line
 
@@ -460,31 +328,9 @@ namespace {
         colorspace found = get_colorspace_from_fields( fields, spaces );
         if ( found.value != colorspace::none ) { rename_fields_to_channels( fields, c ); }
     }
+#endif
 
 } // anonymous
-
-namespace comma { namespace visiting {
-
-template < typename T, range R > struct traits< pixel< T, R > >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, pixel< T, R > & p, Visitor& v )
-    {
-        v.apply( "channel0", p.channel0 );
-        v.apply( "channel1", p.channel1 );
-        v.apply( "channel2", p.channel2 );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const pixel< T, R > & p, Visitor& v )
-    {
-        v.apply( "channel0", p.channel0 );
-        v.apply( "channel1", p.channel1 );
-        v.apply( "channel2", p.channel2 );
-    }
-};
-
-} } // namespace comma { namespace visiting {
 
 int main( int ac, char** av )
 {
@@ -500,6 +346,7 @@ int main( int ac, char** av )
         const std::string & operation = unnamed[0];
         if ( operation == "convert" )
         {
+            using namespace snark::imaging;
             {
                 pixel< unsigned char, ub > p0;
                 pixel< comma::uint16, ub > p1;
