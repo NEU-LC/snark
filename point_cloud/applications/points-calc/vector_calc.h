@@ -38,12 +38,12 @@ struct vector_calc
     typedef Eigen::Vector3d vector;
     static void usage()
     {
-        std::cerr << "    vector calculations: following operations perform calculations on 3d vectors and scalars" << std::endl;
+        std::cerr << "    vector calculations" << std::endl;
+        std::cerr << "        following operations perform calculations on 3d vectors and scalars" << std::endl;
+        std::cerr << std::endl;
         std::cerr << "        common options:" << std::endl;
         std::cerr << "            --input-fields: print input field names and exit" << std::endl;
-        std::cerr << "            --output-fields: print output field names and exit" << std::endl;
-        std::cerr << "            --output-format: print output format and exit" << std::endl;
-        std::cerr << "    " << std::endl;
+        std::cerr << std::endl;
         std::cerr << "        cross: calculate vector cross product; output: vector" << std::endl;
         std::cerr << "            input fields: v, u" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
@@ -57,18 +57,20 @@ struct vector_calc
         std::cerr << "        norm: calculate vector's norm " << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
         std::cerr << "            --square: calculate norm square" << std::endl;
-        std::cerr << "            --invert: calculate invert of norm; use with --square for invert of norm square" << std::endl;
+        std::cerr << "            --invert: calculate invert of norm;" << std::endl;
+        std::cerr << "                      use with --square for invert of norm square" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        scale: calculate multiplication of scalar and vector;output vector" << std::endl;
         std::cerr << "            input fields:  v,a (scalar)" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
         std::cerr << "            --scalar: default value for a" << std::endl;
-        std::cerr << "            --invert: invert the scalar first and then multiply it by vector, i.e. (1/a)*v" << std::endl;
+        std::cerr << "            --invert: invert the scalar first and then multiply it by vector" << std::endl;
+        std::cerr << "                      i.e. (1/a)*v" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        normalize: calculate normalized vector" << std::endl;
         std::cerr << "            input fields:  v" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
-        std::cerr << "" << std::endl;
+        std::cerr << std::endl;
         std::cerr << "        add: add two vectors: v + u " << std::endl;
         std::cerr << "            input fields: v, u" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
