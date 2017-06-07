@@ -595,12 +595,13 @@ struct Shapetraits< axis >
         buffer.add( vertex_t(pos,COLOR_GREEN),block);
         buffer.add( vertex_t(p,COLOR_GREEN),block);
 //         ori=rotation_matrix::rotation( Eigen::Vector3d(axis.orientation.x(), axis.orientation.y(), axis.orientation.z()+M_PI/2));
-        Eigen::Matrix3d z_r=rotation_matrix::rotation(Eigen::Vector3d(0,M_PI/2,0));
+        Eigen::Matrix3d z_r=rotation_matrix::rotation(Eigen::Vector3d(0,-M_PI/2,0));
         p=pos+ori*z_r*una;
         buffer.add( vertex_t(pos,COLOR_BLUE),block);
         buffer.add( vertex_t(p,COLOR_BLUE),block);
 
         extents = extents ? extents->hull( pos.cast<float>() ) : snark::math::closed_interval< float, 3 >( pos.cast<float>() );
+        extents->hull( p.cast<float>() );
     }
 
     #if Qt3D_VERSION==1
