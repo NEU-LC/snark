@@ -893,6 +893,7 @@ static void show_config( const T& camera, const comma::command_line_options& opt
         std::cerr << std::endl;
 
         std::cerr << "basler-cat: payload size: " << camera.PayloadSize() << " bytes" << std::endl;
+        std::cerr << "basler-cat: pixel format: " << pixel_format< T >::to_string( camera.PixelFormat() ) << std::endl;
     }
 }
 
