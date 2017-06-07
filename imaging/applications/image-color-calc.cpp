@@ -19,6 +19,7 @@
 #include <comma/visiting/traits.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
+#include <comma/base/types.h>
 
 #include <type_traits>
 #include <boost/static_assert.hpp>
@@ -196,15 +197,101 @@ namespace {
         return os;
     }
 
+    enum range {
+        ub = 0,   // 0 - 255
+        uw,       // 0 - 65535
+        ui,       // 0 - 4294967295
+        f,        // 0 - 1
+        d         // 0 - 1
+    };
+
+    template< range R > struct range_traits;
+    template<> struct range_traits< ub > { typedef unsigned char value_t; };
+    template<> struct range_traits< uw > { typedef comma::uint16 value_t; };
+    template<> struct range_traits< ui > { typedef comma::uint32 value_t; };
+    template<> struct range_traits< f >  { typedef float         value_t; };
+    template<> struct range_traits< d >  { typedef double        value_t; };
+
+    template< range R >
+    struct limits
+    {
+        typedef typename range_traits< R >::value_t value_t;
+        static constexpr double upper() { return std::is_floating_point< value_t >::value ? 1.0 : double( std::numeric_limits< value_t >::max() ); }
+        static constexpr double lower() { return 0.0; }
+    };
+
+    template< typename T, range R >
+    T trim( T t ) {
+        double dt = double(t);
+        return dt < limits< R >::lower() ? static_cast< T >( limits< R >::lower() ) : ( dt > limits< R >::upper() ? static_cast< T >( limits< R >::upper() ) : t );
+    }
+
+    // Sf - storage from, Rf - range from, St - storage to, Rt - range to
+    // template< typename Sf, range Rf, typename St, range Rt >
+    // St scale( typename enable_if< std::is_integral< T >::value, T >::type & from );
+
+    template< typename T, range R >
+    void assert_compatible( typename std::enable_if< std::is_integral< T >::value, T >::type t
+                          , typename std::enable_if< std::is_integral< typename range_traits< R >::value_t >::value, typename range_traits< R >::value_t >::type r )
+    {
+        static_assert( std::numeric_limits< T >::max() >= std::numeric_limits< typename range_traits< R >::value_t >::max(), "cannot store value of larger range in smaller type" );
+    }
+
+    template< typename T, range R >
+    void assert_compatible( typename std::enable_if< std::is_integral< T >::value, T >::type t
+                          , typename std::enable_if< std::is_floating_point< typename range_traits< R >::value_t >::value, typename range_traits< R >::value_t >::type r )
+    {
+        static_assert( !std::is_floating_point< typename range_traits< R >::value_t >::value, "cannot store value of floating-point range in integer type" );
+    }
+
+    template< typename T, range R >
+    void assert_compatible( typename std::enable_if< std::is_floating_point< T >::value, T >::type t
+                          , typename std::enable_if< std::is_floating_point< typename range_traits< R >::value_t >::value, typename range_traits< R >::value_t >::type r )
+    { }
+
+    template< typename T, range R >
+    void assert_compatible( typename std::enable_if< std::is_floating_point< T >::value, T >::type t
+                          , typename std::enable_if< std::is_integral< typename range_traits< R >::value_t >::value, typename range_traits< R >::value_t >::type r )
+    { }
+
     // do not call fields rgb because can contain ycbcr or any other colorspace
-    template< typename T >
+    // template by storage type T to facilitate seamless binary output
+    // tempate by range type R to rescale automatically between ranges
+    template< typename T, range R >
     struct pixel
     {
         T channel0;
         T channel1;
         T channel2;
-        pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( c0 ), channel1( c1 ), channel2( c2 ) {}
+        pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( trim< T, R >( c0 ) ), channel1( trim< T, R >( c1 ) ), channel2( trim< T, R >( c2 ) ) {
+            assert_compatible< T, R >( channel0, typename range_traits< R >::value_t( 0 ) );
+        }
+
+        // template< typename S, range Q >
+        // pixel( const pixel< S, Q > & rhs ) : channel0( scale< S, Q, T, R >::conv( rhs.channel0 ) ), channel1( scale< S, Q, T, R >::conv( rhs.channel1 ) ), channel2( scale< S, Q, T, R >::conv( rhs.channel2 ) ) {}
     };
+
+#if 0
+    template< typename T >
+    pixel< T, ub >::pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( limits< T, ub >::trim( c0 ) ), channel1( limits< T, ub >::trim( c1 ) ), channel2( limits< T, ub >::trim( c2 ) ) {}
+
+    template< typename T >
+    pixel< T, uw >::pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( limits< T, uw >::trim( c0 ) ), channel1( limits< T, uw >::trim( c1 ) ), channel2( limits< T, uw >::trim( c2 ) ) {
+        static_assert( !std::is_same< typename range_traits< ub >::value, T >::value, "cannot store value of uw range in ub variable" );
+    }
+
+    template< typename T >
+    pixel< T, ui >::pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( limits< T, ui >::trim( c0 ) ), channel1( limits< T, ui >::trim( c1 ) ), channel2( limits< T, ui >::trim( c2 ) ) {
+        static_assert( !std::is_same< typename range_traits< ub >::value, T >::value, "cannot store value of ui range in ub variable" );
+        static_assert( !std::is_same< typename range_traits< uw >::value, T >::value, "cannot store value of ui range in uw variable" );
+    }
+
+    template< typename T >
+    pixel< T, f >::pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( limits< T, f >::trim( c0 ) ), channel1( limits< T, f >::trim( c1 ) ), channel2( limits< T, f >::trim( c2 ) ) {
+        static_assert( !std::is_same< typename range_traits< ub >::value, T >::value, "cannot store value of f range in ub variable" );
+        static_assert( !std::is_same< typename range_traits< uw >::value, T >::value, "cannot store value of f range in uw variable" );
+        static_assert( !std::is_same< typename range_traits< ui >::value, T >::value, "cannot store value of f range in ui variable" );
+    }
 
     // general template, never defined
     // keep the precision explicit because some of the colorspaces may exist in multiple formats
@@ -316,6 +403,7 @@ namespace {
                 COMMA_THROW( comma::exception, "conversion from ycbcr to " << toc << " is not implemented yet" );
         }
     }
+#endif
 
     // the methods below are for parsing the command line
 
@@ -366,10 +454,10 @@ namespace {
 
 namespace comma { namespace visiting {
 
-template < typename T > struct traits< pixel< T > >
+template < typename T, range R > struct traits< pixel< T, R > >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, pixel< T > & p, Visitor& v )
+    static void visit( const Key&, pixel< T, R > & p, Visitor& v )
     {
         v.apply( "channel0", p.channel0 );
         v.apply( "channel1", p.channel1 );
@@ -377,7 +465,7 @@ template < typename T > struct traits< pixel< T > >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const pixel< T > & p, Visitor& v )
+    static void visit( const Key&, const pixel< T, R > & p, Visitor& v )
     {
         v.apply( "channel0", p.channel0 );
         v.apply( "channel1", p.channel1 );
@@ -401,6 +489,42 @@ int main( int ac, char** av )
         const std::string & operation = unnamed[0];
         if ( operation == "convert" )
         {
+            {
+                pixel< unsigned char, ub > p0;
+                pixel< comma::uint16, ub > p1;
+                pixel< comma::uint32, ub > p2;
+                pixel< float,         ub > p3;
+                pixel< double,        ub > p4;
+            }
+            {
+                // pixel< unsigned char, uw > p0;
+                pixel< comma::uint16, uw > p1;
+                pixel< comma::uint32, uw > p2;
+                pixel< float,         uw > p3;
+                pixel< double,        uw > p4;
+            }
+            {
+                // pixel< unsigned char, ui > p0;
+                // pixel< comma::uint16, ui > p1;
+                pixel< comma::uint32, ui > p2;
+                pixel< float,         ui > p3;
+                pixel< double,        ui > p4;
+            }
+            {
+                // pixel< unsigned char,  f > p0;
+                // pixel< comma::uint16,  f > p1;
+                // pixel< comma::uint32,  f > p2;
+                pixel< float,          f > p3;
+                pixel< double,         f > p4;
+            }
+            {
+                // pixel< unsigned char,  d > p0;
+                // pixel< comma::uint16,  d > p1;
+                // pixel< comma::uint32,  d > p2;
+                pixel< float,          d > p3;
+                pixel< double,         d > p4;
+            }
+#if 0
             // the user may specify the input for conversion by two ways
             // if --from is specified:
             //     if fields are not given, fields are set to the from-specific defaults
@@ -451,6 +575,7 @@ int main( int ac, char** av )
                 default:
                     COMMA_THROW( comma::exception, "conversion from " << fromc << " to " << toc << " is not implemented yet" );
             }
+#endif
             return 0;
         } else {
             std::cerr << name << "unknown operation '" << operation << "', not one of: convert" << std::endl;
