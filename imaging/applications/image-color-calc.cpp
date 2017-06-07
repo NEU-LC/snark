@@ -346,42 +346,6 @@ int main( int ac, char** av )
         const std::string & operation = unnamed[0];
         if ( operation == "convert" )
         {
-            using namespace snark::imaging;
-            {
-                pixel< unsigned char, ub > p0;
-                pixel< comma::uint16, ub > p1;
-                pixel< comma::uint32, ub > p2;
-                pixel< float,         ub > p3;
-                pixel< double,        ub > p4;
-            }
-            {
-                // pixel< unsigned char, uw > p0;
-                pixel< comma::uint16, uw > p1;
-                pixel< comma::uint32, uw > p2;
-                pixel< float,         uw > p3;
-                pixel< double,        uw > p4;
-            }
-            {
-                // pixel< unsigned char, ui > p0;
-                // pixel< comma::uint16, ui > p1;
-                pixel< comma::uint32, ui > p2;
-                pixel< float,         ui > p3;
-                pixel< double,        ui > p4;
-            }
-            {
-                // pixel< unsigned char,  f > p0;
-                // pixel< comma::uint16,  f > p1;
-                // pixel< comma::uint32,  f > p2;
-                pixel< float,          f > p3;
-                pixel< double,         f > p4;
-            }
-            {
-                // pixel< unsigned char,  d > p0;
-                // pixel< comma::uint16,  d > p1;
-                // pixel< comma::uint32,  d > p2;
-                pixel< float,          d > p3;
-                pixel< double,         d > p4;
-            }
 #if 0
             // the user may specify the input for conversion by two ways
             // if --from is specified:
