@@ -155,6 +155,8 @@ namespace {
         colorspace( const std::string & s ) : value( s == "rgb" ? rgb : ( s == "ycbcr" ? ycbcr : ( s == "ypbpr" ? ypbpr : none ) ) ) { }
         colorspace( colorspace::cspace v ) : value( v ) { }
 
+        operator cspace() const { return value; }
+
         operator std::string() const {
             switch( value ) {
                 case( none ):  return "none";  break;
@@ -165,13 +167,24 @@ namespace {
             return "none"; // avoid a warning
         };
 
-        static std::vector< std::string > field_names( cspace c )
+        static std::vector< std::string > & field_names( cspace c )
         {
             static std::map< cspace, std::vector< std::string > > m = {
-                { rgb, comma::split( "r,g,b" , ',' ) },
+                { rgb,   comma::split( "r,g,b" , ',' ) },
                 { ycbcr, comma::split( "y,cb,cr", ',' ) },
                 { ypbpr, comma::split( "y,pb,pr", ',' ) },
-                { none, comma::split( "channel0,channel1,channel2", ',' ) }
+                { none,  comma::split( "channel0,channel1,channel2", ',' ) }
+            };
+            return m[ c ];
+        }
+
+        static std::string & default_type( cspace c )
+        {
+            static std::map< cspace, std::string > m = {
+                { rgb,   "ub" },
+                { ycbcr, "ub" },
+                { ypbpr, "f" },
+                { none,  "" }
             };
             return m[ c ];
         }
