@@ -55,6 +55,8 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --header-only --no-header"
         " --offset-x --offset-y --width --height"
         " --pixel-format"
+        " --reverse-x --reverse-y"
+        " --binning-horizontal --binning-vertical"
         " --frame-rate --exposure --gain"
         " --discard --buffer"
         " --frame-trigger --line-trigger --line-rate"
