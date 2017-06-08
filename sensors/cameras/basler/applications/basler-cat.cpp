@@ -48,7 +48,7 @@ static const char* default_header_fields = "t,rows,cols,type";
 static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char* completion_options =
-        " --help -h --verbose -v"
+        " --help -h --help-filters --help-types --verbose -v"
         " --address --serial-number --list-cameras"
         " --test-image"
         " --fields -f"
@@ -79,6 +79,8 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\ngeneral options";
     std::cerr << "\n    --help,-h                    display help message";
+    std::cerr << "\n    --help-filters               show help on filters";
+    std::cerr << "\n    --help-types                 show help on image types";
     std::cerr << "\n    --address=[<address>]        camera address; default: first available";
     std::cerr << "\n    --serial-number=[<num>]      camera serial number, alternative to --address";
     std::cerr << "\n    --list-cameras               output camera list and exit";
@@ -148,7 +150,8 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --num-cameras=<num>             auto-set inter-packet delay";
     std::cerr << "\n";
     std::cerr << "\nfilters";
-    std::cerr << "\n    See \"cv-cat --help --verbose\" for a list of supported filters.";
+    std::cerr << "\n    See \"basler-cat --help-filters\" for a list of supported filters";
+    std::cerr << "\n    or \"cv-cat --help --verbose\" much more information on filtering.";
     std::cerr << "\n";
     std::cerr << "\nBy default basler-cat will connect to the first device it finds. To choose a";
     std::cerr << "\nspecific camera use the --address or --serial-number options. For GigE cameras ";
@@ -197,9 +200,11 @@ static void usage( bool verbose = false )
         std::cerr << "\n";
         std::cerr << "\n    The formula assumes a one byte pixel format, so if you have something";
         std::cerr << "\n    different you will need to adjust appropriately (scale up).";
-        std::cerr << "\n\n";
-        std::cerr << snark::cv_mat::filters::usage();
-        std::cerr << snark::cv_mat::serialization::options::type_usage();
+        std::cerr << "\n";
+        std::cerr << "\nFor help on filters or image types try:";
+        std::cerr << "\n    basler-cat --help-filters";
+        std::cerr << "\n    basler-cat --help-types";
+        std::cerr << "\n";
     }
     std::cerr << "\nExample:";
     std::cerr << "\n    $ basler-cat \"resize=0.5;timestamp;view;null\"";
@@ -1187,6 +1192,9 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" )) bash_completion( argc, argv );
+        if( options.exists( "--help-filters" )) { std::cerr << snark::cv_mat::filters::usage(); return 0; }
+        if( options.exists( "--help-types" )) { std::cerr << snark::cv_mat::serialization::options::type_usage(); return 0; }
+
         Pylon::PylonAutoInitTerm auto_init_term;
         if( options.exists( "--list-cameras" ) ) { list_cameras(); return 0; }
         comma::verbose << "PYLON_ROOT=" << ::getenv( "PYLON_ROOT" ) << std::endl;
