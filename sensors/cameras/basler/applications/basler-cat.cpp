@@ -230,7 +230,7 @@ struct Counters
     comma::uint64 line_count; // overall line count
     comma::uint32 line; // line number in one motor revolution
 
-    Counters() : line( 0 ), ticks( 0 ), line_count( 0 ) {}
+    Counters() : ticks( 0 ), line_count( 0 ), line( 0 ) {}
 };
 
 struct Header // quick and dirty
@@ -619,7 +619,6 @@ static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::co
         {
             camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_FrameStart;
             camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
-            Basler_GigECameraParams::TriggerSourceEnums t;
             if( frame_trigger == "line1" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line1; }
             if( frame_trigger == "line2" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line2; }
             if( frame_trigger == "line3" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line3; }
@@ -660,7 +659,6 @@ static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::co
         {
             camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_LineStart;
             camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
-            Basler_GigECameraParams::TriggerSourceEnums t;
             if( line_trigger == "line1" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line1; }
             else if( line_trigger == "line2" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line2; }
             else if( line_trigger == "line3" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line3; }
@@ -782,9 +780,7 @@ static void set_gain( Pylon::CBaslerUsbCamera& camera, const comma::command_line
 static void set_line_rate( Pylon::CBaslerGigECamera& camera, unsigned int line_rate ) { camera.AcquisitionLineRateAbs = line_rate; }
 static void set_line_rate( Pylon::CBaslerUsbCamera& camera, unsigned int ) { COMMA_THROW( comma::exception, "--line-rate not supported for USB cameras" ); }
 static void set_packet_size( Pylon::CBaslerGigECamera& camera, unsigned int packet_size ) { camera.GevSCPSPacketSize = packet_size; }
-static void set_packet_size( Pylon::CBaslerUsbCamera& camera, unsigned int ) { COMMA_THROW( comma::exception, "--packet-size not supported for USB cameras" ); }
 static void set_inter_packet_delay( Pylon::CBaslerGigECamera& camera, unsigned int inter_packet_delay ) { camera.GevSCPD = inter_packet_delay; }
-static void set_inter_packet_delay( Pylon::CBaslerUsbCamera& camera, unsigned int ) { COMMA_THROW( comma::exception, "--inter-packet-delay not supported for USB cameras" ); }
 static void set_socket_buffer_size( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber, unsigned int socket_buffer_size ) { grabber.SocketBufferSize = socket_buffer_size; }
 static void set_socket_buffer_size( Pylon::CBaslerUsbCamera::StreamGrabber_t&, unsigned int ) {}
 
