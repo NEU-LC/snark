@@ -50,6 +50,7 @@
 #include "types.h"
 #include <snark/math/roll_pitch_yaw.h>
 #include <snark/visiting/traits.h>
+#include "traits.h"
 
 namespace snark { namespace graphics { namespace view {
 
@@ -620,34 +621,6 @@ struct Shapetraits< axis >
 } } } // namespace snark { namespace graphics { namespace view {
 
 namespace comma { namespace visiting {
-
-#if Qt3D_VERSION==1
-template <> struct traits< QColor4ub >
-{
-    template < typename Key, class Visitor >
-    static void visit( Key, QColor4ub& p, Visitor& v )
-    {
-        unsigned char red = 0;
-        unsigned char green = 0;
-        unsigned char blue = 0;
-        unsigned char alpha = 255;
-        v.apply( "r", red );
-        v.apply( "g", green );
-        v.apply( "b", blue );
-        v.apply( "a", alpha );
-        p = QColor4ub( red, green, blue, alpha );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( Key, const QColor4ub& p, Visitor& v )
-    {
-        v.apply( "r", p.red() );
-        v.apply( "g", p.green() );
-        v.apply( "b", p.blue() );
-        v.apply( "a", p.alpha() );
-    }
-};
-#endif
 
 template < typename S > struct traits< snark::graphics::view::ShapeWithId< S > >
 {
