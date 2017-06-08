@@ -491,6 +491,7 @@ struct axis
     Eigen::Vector3d position;
     snark::roll_pitch_yaw orientation;
     double length;
+    std::string axis_label;
     axis() : position( 0, 0, 0 ), orientation( 0, 0, 0 ), length(1) {}
 };
 
@@ -508,22 +509,26 @@ struct Shapetraits< axis >
 
     static void update(shape_reader_base& reader, const ShapeWithId<axis>& s)
     {
+        std::vector<std::string> v=comma::split(s.shape.axis_label,';');
         Eigen::Vector3d pos=s.shape.position - reader.offset();
         Eigen::Matrix3d ori=rotation_matrix::rotation( s.shape.orientation );
         Eigen::Vector3d una(s.shape.length,0,0);
         Eigen::Vector3d p=pos + ori*una;
         reader.add_vertex( vertex_t(pos,COLOR_RED),s.block);
         reader.add_vertex( vertex_t(p,COLOR_RED),s.block);
+        if(v.size()>0) { reader.add_label(label_t(p,COLOR_RED,v[0]),s.block); }
 
         Eigen::Matrix3d y_r=rotation_matrix::rotation(Eigen::Vector3d(0,0,M_PI/2));
         p=pos+ori*y_r*una;
         reader.add_vertex( vertex_t(pos,COLOR_GREEN),s.block);
         reader.add_vertex( vertex_t(p,COLOR_GREEN),s.block);
+        if(v.size()>1) { reader.add_label(label_t(p,COLOR_GREEN,v[1]),s.block); }
 
         Eigen::Matrix3d z_r=rotation_matrix::rotation(Eigen::Vector3d(0,-M_PI/2,0));
         p=pos+ori*z_r*una;
         reader.add_vertex( vertex_t(pos,COLOR_BLUE),s.block);
         reader.add_vertex( vertex_t(p,COLOR_BLUE),s.block);
+        if(v.size()>2) { reader.add_label(label_t(p,COLOR_BLUE,v[2]),s.block); }
 
         reader.extent_hull(pos.cast<float>());
         reader.extent_hull( p.cast<float>() );
@@ -659,6 +664,7 @@ struct traits< snark::graphics::view::axis >
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
         v.apply( "length", p.length );
+        v.apply( "axis_label", p.axis_label );
     }
 
     template < typename Key, class Visitor >
@@ -667,6 +673,7 @@ struct traits< snark::graphics::view::axis >
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
         v.apply( "length", p.length );
+        v.apply( "axis_label", p.axis_label );
     }
 };
 
