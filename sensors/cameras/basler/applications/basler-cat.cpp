@@ -278,84 +278,6 @@ static void output_result_status( const Pylon::GrabResult& result )
                                              result.Status() == Pylon::Failed ? "failed" : "unknown" ) << std::endl;
 }
 
-template < typename T, typename P >
-static P capture( T& camera, typename T::StreamGrabber_t& grabber )
-{
-    /// @todo if color spatial correction implemented, mind the following:
-    ///
-    /// Runner_Users_manual.pdf, 8.2.2.3:
-    ///
-    /// If you are using a color camera, you have spatial correction enabled
-    /// and you have the frame start trigger mode set to off, you must discard
-    /// the first n x 2 lines from the first frame transmitted by the camera
-    /// after an acquisition start command is issued (where n is the absolute
-    /// value of the current spatial correction parameter setting).
-    ///
-    /// If you have spatial correction enabled and you have the frame start
-    /// trigger mode set to on, you must discard the first n x 2 lines from
-    /// each frame transmitted by the camera.
-
-    static const unsigned int retries = 10; // quick and dirty: arbitrary
-    for( unsigned int i = 0; i < retries; ++i )
-    {
-        static comma::signal_flag is_shutdown;
-        if( is_shutdown ) { return P(); }
-        Pylon::GrabResult result;
-        //camera.AcquisitionStart.Execute(); // acquire single image (since acquisition mode set so)
-        if( !grabber.GetWaitObject().Wait( timeout ) ) // quick and dirty: arbitrary timeout
-        {
-            std::cerr << "basler-cat: timeout" << std::endl;
-            grabber.CancelGrab();
-            while( grabber.RetrieveResult( result ) ); // get all buffers back
-            return P();
-        }
-        boost::posix_time::ptime current_time = boost::get_system_time();
-        grabber.RetrieveResult( result );
-        if( !result.Succeeded() )
-        {
-            std::cerr << "basler-cat: acquisition failed" << std::endl;
-            output_result_status( result );
-            std::cerr << "            run \"basler-cat --verbose\" and check your --packet-size settings" << std::endl;
-            std::cerr << "            if you have multiple cameras also look at --inter-packet-delay" << std::endl;
-            continue;
-        }
-        P pair;
-        pair.second = cv::Mat( result.GetSizeY(), is_packed ? ( ( result.GetSizeX() * 3 ) / 2 ) : result.GetSizeX(), cv_mat_header.type ); // todo: seriously quick and dirty, does not scale to Mono10p; implement packed bytes layout properly 
-        ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
-        // quick and dirty for now: rgb are not contiguous in basler camera frame
-        if( cv_mat_header.type == CV_8UC3 || cv_mat_header.type == CV_16UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
-        set< T >( pair.first, current_time, result, camera );
-        grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
-        return pair;
-    }
-    return P();
-}
-
-static void write( const chunk_pair_t& p )
-{
-    if( p.second.empty() || !std::cout.good() ) { return; }
-    static comma::csv::binary_output_stream< Header > ostream( std::cout, csv );
-    static Header header( cv_mat_header );
-    header.header.timestamp = p.first.timestamp;
-    header.counters.ticks = p.first.ticks;
-    static ChunkData first_chunk_data;
-    if( first_chunk_data.timestamp.is_not_a_date_time() )
-    {
-        first_chunk_data = p.first;
-        header.counters.adjusted_timestamp = p.first.timestamp;
-    }
-    else
-    {
-        static const double factor = 8.0 / 1000; // 8ns per tick
-        header.counters.adjusted_timestamp = first_chunk_data.timestamp + boost::posix_time::microseconds( factor * first_chunk_data.ticks ); // todo: factor in network delay?
-    }
-    header.counters.line_count += p.first.line_trigger_ignored + 1;
-    header.counters.line = header.counters.line_count % encoder_ticks;
-    ostream.write( header );
-    std::cout.write( ( const char* )( p.second.datastart ), p.second.dataend - p.second.datastart );
-    std::cout.flush();
-}
-
 template < typename T > struct pixel_format;
 
 template <> struct pixel_format< Pylon::CBaslerUsbCamera > // todo: support more formats
@@ -926,6 +848,83 @@ static void show_config( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber )
 }
 
 static void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber ) { comma::verbose << "max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl; }
+
+template < typename T, typename P >
+static P capture( T& camera, typename T::StreamGrabber_t& grabber )
+{
+    /// @todo if color spatial correction implemented, mind the following:
+    ///
+    /// Runner_Users_manual.pdf, 8.2.2.3:
+    ///
+    /// If you are using a color camera, you have spatial correction enabled
+    /// and you have the frame start trigger mode set to off, you must discard
+    /// the first n x 2 lines from the first frame transmitted by the camera
+    /// after an acquisition start command is issued (where n is the absolute
+    /// value of the current spatial correction parameter setting).
+    ///
+    /// If you have spatial correction enabled and you have the frame start
+    /// trigger mode set to on, you must discard the first n x 2 lines from
+    /// each frame transmitted by the camera.
+
+    static const unsigned int retries = 10; // quick and dirty: arbitrary
+    for( unsigned int i = 0; i < retries; ++i )
+    {
+        static comma::signal_flag is_shutdown;
+        if( is_shutdown ) { return P(); }
+        Pylon::GrabResult result;
+        //camera.AcquisitionStart.Execute(); // acquire single image (since acquisition mode set so)
+        if( !grabber.GetWaitObject().Wait( timeout ) ) // quick and dirty: arbitrary timeout
+        {
+            std::cerr << "basler-cat: timeout" << std::endl;
+            grabber.CancelGrab();
+            while( grabber.RetrieveResult( result ) ); // get all buffers back
+            return P();
+        }
+        boost::posix_time::ptime current_time = boost::get_system_time();
+        grabber.RetrieveResult( result );
+        if( !result.Succeeded() )
+        {
+            std::cerr << "basler-cat: acquisition failed" << std::endl;
+            output_result_status( result );
+            show_transport_config( camera );
+            continue;
+        }
+        P pair;
+        pair.second = cv::Mat( result.GetSizeY(), is_packed ? ( ( result.GetSizeX() * 3 ) / 2 ) : result.GetSizeX(), cv_mat_header.type ); // todo: seriously quick and dirty, does not scale to Mono10p; implement packed bytes layout properly 
+        ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
+        // quick and dirty for now: rgb are not contiguous in basler camera frame
+        if( cv_mat_header.type == CV_8UC3 || cv_mat_header.type == CV_16UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
+        set< T >( pair.first, current_time, result, camera );
+        grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
+        return pair;
+    }
+    return P();
+}
+
+static void write( const chunk_pair_t& p )
+{
+    if( p.second.empty() || !std::cout.good() ) { return; }
+    static comma::csv::binary_output_stream< Header > ostream( std::cout, csv );
+    static Header header( cv_mat_header );
+    header.header.timestamp = p.first.timestamp;
+    header.counters.ticks = p.first.ticks;
+    static ChunkData first_chunk_data;
+    if( first_chunk_data.timestamp.is_not_a_date_time() )
+    {
+        first_chunk_data = p.first;
+        header.counters.adjusted_timestamp = p.first.timestamp;
+    }
+    else
+    {
+        static const double factor = 8.0 / 1000; // 8ns per tick
+        header.counters.adjusted_timestamp = first_chunk_data.timestamp + boost::posix_time::microseconds( factor * first_chunk_data.ticks ); // todo: factor in network delay?
+    }
+    header.counters.line_count += p.first.line_trigger_ignored + 1;
+    header.counters.line = header.counters.line_count % encoder_ticks;
+    ostream.write( header );
+    std::cout.write( ( const char* )( p.second.datastart ), p.second.dataend - p.second.datastart );
+    std::cout.flush();
+}
 
 static bool run_chunk_pipeline( Pylon::CBaslerGigECamera& camera, Pylon::CBaslerGigECamera::StreamGrabber_t& grabber, unsigned int max_queue_size, unsigned int max_queue_capacity )
 {
