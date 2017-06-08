@@ -62,7 +62,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --frame-trigger --line-trigger --line-rate"
         " --encoder-ticks"
         " --timeout"
-        " --packet-size"
+        " --packet-size --inter-packet-delay"
         ;
 
     std::cout << completion_options << std::endl;
@@ -141,8 +141,9 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --timeout=<seconds>          frame acquisition timeout; default " << default_timeout << "s";
     std::cerr << "\n";
     std::cerr << "\ntransport options";
-    std::cerr << "\n    --packet-size=[<bytes>]      mtu size on camera side, should not be larger ";
-    std::cerr << "\n                                 than your lan and network interface";
+    std::cerr << "\n    --packet-size=[<bytes>]         camera mtu size, should not be larger";
+    std::cerr << "\n                                    than your lan and network interface";
+    std::cerr << "\n    --inter-packet-delay=[<ticks>]  transmission delay between packets";
     std::cerr << "\n";
     std::cerr << "\nfilters";
     std::cerr << "\n    See \"cv-cat --help --verbose\" for a list of supported filters.";
@@ -315,6 +316,7 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
             std::cerr << "basler-cat: acquisition failed" << std::endl;
             output_result_status( result );
             std::cerr << "            run \"basler-cat --verbose\" and check your --packet-size settings" << std::endl;
+            std::cerr << "            if you have multiple cameras also look at --inter-packet-delay" << std::endl;
             continue;
         }
         P pair;
@@ -813,6 +815,8 @@ static void set_line_rate( Pylon::CBaslerGigECamera& camera, unsigned int line_r
 static void set_line_rate( Pylon::CBaslerUsbCamera& camera, unsigned int ) { COMMA_THROW( comma::exception, "--line-rate not supported for USB cameras" ); }
 static void set_packet_size( Pylon::CBaslerGigECamera& camera, unsigned int packet_size ) { camera.GevSCPSPacketSize = packet_size; }
 static void set_packet_size( Pylon::CBaslerUsbCamera& camera, unsigned int ) { COMMA_THROW( comma::exception, "--packet-size not supported for USB cameras" ); }
+static void set_inter_packet_delay( Pylon::CBaslerGigECamera& camera, unsigned int inter_packet_delay ) { camera.GevSCPD = inter_packet_delay; }
+static void set_inter_packet_delay( Pylon::CBaslerUsbCamera& camera, unsigned int ) { COMMA_THROW( comma::exception, "--inter-packet-delay not supported for USB cameras" ); }
 static void set_socket_buffer_size( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber, unsigned int socket_buffer_size ) { grabber.SocketBufferSize = socket_buffer_size; }
 static void set_socket_buffer_size( Pylon::CBaslerUsbCamera::StreamGrabber_t&, unsigned int ) {}
 
@@ -907,7 +911,8 @@ static void show_config( const T& camera, const comma::command_line_options& opt
 
 static void show_transport_config( Pylon::CBaslerGigECamera& camera )
 {
-    comma::verbose << " packet size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
+    comma::verbose << "        packet size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
+    comma::verbose << " inter-packet delay: " << camera.GevSCPD() << " ticks" << std::endl;
 }
 
 static void show_transport_config( Pylon::CBaslerUsbCamera& camera )
@@ -916,8 +921,8 @@ static void show_transport_config( Pylon::CBaslerUsbCamera& camera )
 
 static void show_config( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber )
 {
-    comma::verbose << "socket buffer size: " << grabber.SocketBufferSize() << " bytes" << std::endl;
-    comma::verbose << "   max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
+    comma::verbose << " socket buffer size: " << grabber.SocketBufferSize() << " bytes" << std::endl;
+    comma::verbose << "    max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
 }
 
 static void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber ) { comma::verbose << "max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl; }
@@ -1006,6 +1011,7 @@ static int run( T& camera, const comma::command_line_options& options )
     comma::verbose << "set width,height to " << width << "," << height << std::endl;
 
     if( options.exists( "--packet-size" )) { set_packet_size( camera, options.value< unsigned int >( "--packet-size" )); }
+    if( options.exists( "--inter-packet-delay" )) { set_inter_packet_delay( camera, options.value< unsigned int >( "--inter-packet-delay" )); }
 
     if( options.exists( "--binning-horizontal" ) )
     {
