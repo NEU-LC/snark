@@ -50,17 +50,17 @@ static void bash_completion( unsigned const ac, char const * const * av )
     static const char* completion_options =
         " --help -h --verbose -v"
         " --address --serial-number --list-cameras"
-        " --discard --buffer"
+        " --test-image"
         " --fields -f"
-        " --pixel-format"
+        " --header-only --no-header"
         " --offset-x --offset-y --width --height"
+        " --pixel-format"
+        " --frame-rate --exposure --gain"
+        " --discard --buffer"
         " --frame-trigger --line-trigger --line-rate"
         " --encoder-ticks"
-        " --header-only --no-header"
-        " --packet-size"
-        " --frame-rate --exposure --gain"
         " --timeout"
-        " --test-image"
+        " --packet-size"
         ;
 
     std::cout << completion_options << std::endl;
@@ -75,24 +75,12 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\nusage: basler-cat [<options>] [<filters>]";
     std::cerr << "\n";
-    std::cerr << "\noptions";
+    std::cerr << "\ngeneral options";
     std::cerr << "\n    --help,-h                    display help message";
     std::cerr << "\n    --address=[<address>]        camera address; default: first available";
     std::cerr << "\n    --serial-number=[<num>]      camera serial number, alternative to --address";
-    std::cerr << "\n    --discard                    discard frames, if cannot keep up;";
-    std::cerr << "\n                                 same as --buffer=1 (which is not a great setting)";
-    std::cerr << "\n    --buffer=[<buffers>]         maximum buffer size before discarding frames";
-    std::cerr << "\n                                 default: unlimited";
     std::cerr << "\n    --list-cameras               output camera list and exit";
     std::cerr << "\n                                 add --verbose for more detail";
-    std::cerr << "\n    --frame-trigger=[<type>]     'line1', 'line2', 'line3', 'encoder'";
-    std::cerr << "\n    --line-trigger=[<type>]      'line1', 'line2', 'line3', 'encoder'";
-    std::cerr << "\n    --line-rate=[<num>]          line acquisition rate";
-    std::cerr << "\n    --encoder-ticks=[<num>]      number of encoder ticks until the count resets";
-    std::cerr << "\n                                 (reused for line number in frame in chunk mode)";
-    std::cerr << "\n    --packet-size=[<bytes>]      mtu size on camera side, should not be larger ";
-    std::cerr << "\n                                 than your lan and network interface";
-    std::cerr << "\n    --timeout=[<seconds>]        frame acquisition timeout; default " << default_timeout << "s";
     std::cerr << "\n    --test-image=[<num>]         output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v                 be more verbose";
     std::cerr << "\n";
@@ -101,9 +89,12 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                 possible values: " << possible_header_fields;
     std::cerr << "\n                                 default: " << default_header_fields;
     std::cerr << "\n    --header-only                output header only";
+    std::cerr << "\n    --no-header                  output image data only";
     std::cerr << "\n    --height=[<pixels>]          number of lines in frame (in chunk mode always 1)";
     std::cerr << "\n                                 default: max";
-    std::cerr << "\n    --no-header                  output image data only";
+    std::cerr << "\n    --width=[<pixels>]           line width in pixels; default: max";
+    std::cerr << "\n    --offset-x=[<pixels>]        offset in pixels in the line; todo: make sure it works on images with more than 1 channel";
+    std::cerr << "\n    --offset-y=[<pixels>]        offset in lines in the frame; todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --pixel-format=[<format>]    pixel format; lower case accepted; currently supported formats:";
     std::cerr << "\n                                     gige cameras";
     std::cerr << "\n                                         Mono8: stdout output format: ub";
@@ -116,9 +107,6 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                         Mono12p: stdout output format: 3ub (apply unpack12 to get 16-bit padded image)";
     std::cerr << "\n                                     default: use the current camera setting";
     std::cerr << "\n                                     format names correspond to enum found in basler header files";
-    std::cerr << "\n    --offset-x=[<pixels>]        offset in pixels in the line; todo: make sure it works on images with more than 1 channel";
-    std::cerr << "\n    --offset-y=[<pixels>]        offset in lines in the frame; todo: make sure it works on images with more than 1 channel";
-    std::cerr << "\n    --width=[<pixels>]           line width in pixels; default: max";
     std::cerr << "\n    --reverse-x                  horizontal mirror image";
     std::cerr << "\n    --reverse-y                  vertical mirror image";
     std::cerr << "\n    --binning-horizontal=<pixels>[,<mode>]";
@@ -130,27 +118,43 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                 <mode>: sum, average (default: sum)";
     std::cerr << "\n                                 ROI will refer to binned rows";
     std::cerr << "\n";
-    std::cerr << "\ncamera settings options";
+    std::cerr << "\ncamera options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
     std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto\" to automatically set";
     std::cerr << "\n    --gain=[<num>]               gain; \"auto\" to automatically set;";
     std::cerr << "\n                                 for USB cameras units are dB";
     std::cerr << "\n";
+    std::cerr << "\nacquisition options";
+    std::cerr << "\n    --discard                    discard frames, if cannot keep up;";
+    std::cerr << "\n                                 same as --buffer=1 (which is not a great setting)";
+    std::cerr << "\n    --buffer=[<buffers>]         maximum buffer size before discarding frames";
+    std::cerr << "\n                                 default: unlimited";
+    std::cerr << "\n    --frame-trigger=[<type>]     'line1', 'line2', 'line3', 'encoder'";
+    std::cerr << "\n    --line-trigger=[<type>]      'line1', 'line2', 'line3', 'encoder'";
+    std::cerr << "\n    --line-rate=[<num>]          line acquisition rate";
+    std::cerr << "\n    --encoder-ticks=[<num>]      number of encoder ticks until the count resets";
+    std::cerr << "\n                                 (reused for line number in frame in chunk mode)";
+    std::cerr << "\n    --timeout=[<seconds>]        frame acquisition timeout; default " << default_timeout << "s";
+    std::cerr << "\n";
+    std::cerr << "\ntransport options";
+    std::cerr << "\n    --packet-size=[<bytes>]      mtu size on camera side, should not be larger ";
+    std::cerr << "\n                                 than your lan and network interface";
+    std::cerr << "\n";
     std::cerr << "\nfilters";
     std::cerr << "\n    See \"cv-cat --help --verbose\" for a list of supported filters.";
     std::cerr << "\n";
-    std::cerr << "\nBy default basler-cat will connect to the first device it finds. To";
-    std::cerr << "\nchoose a specific camera use the --address or --serial-number options.";
-    std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
-    std::cerr << "\nthe USB address. Detected cameras along with their addresses and serial numbers";
-    std::cerr << "\nare shown by --list-cameras --verbose.";
+    std::cerr << "\nBy default basler-cat will connect to the first device it finds. To choose a";
+    std::cerr << "\nspecific camera use the --address or --serial-number options. For GigE cameras ";
+    std::cerr << "\n<address> is the device ip address, for USB cameras it is the USB address.";
+    std::cerr << "\nDetected cameras along with their addresses and serial numbers are shown by";
+    std::cerr << "\n$ basler-cat --list-cameras --verbose.";
+    std::cerr << "\n";
     if( verbose )
     {
         std::cerr << "\n";
         std::cerr << snark::cv_mat::filters::usage();
         std::cerr << snark::cv_mat::serialization::options::type_usage();
     }
-    std::cerr << "\n";
     std::cerr << "\nExample:";
     std::cerr << "\n    $ basler-cat \"resize=0.5;timestamp;view;null\"";
     std::cerr << "\n" << std::endl;
