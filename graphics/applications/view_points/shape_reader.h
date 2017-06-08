@@ -38,7 +38,6 @@
 //#include <windows.h>
 #endif
 
-#include "../../block_buffer.h"
 #include "shape_with_id.h"
 #include "reader.h"
 #if Qt3D_VERSION==1
@@ -48,7 +47,7 @@
 namespace snark { namespace graphics { namespace view {
     
 template< typename S, typename How = how_t::points >
-class ShapeReader : public Reader
+class ShapeReader : public shape_reader_base
 {
     public:
         ShapeReader( const reader_parameters& params, colored* c, const std::string& label, const S& sample = ShapeWithId< S >().shape );
@@ -79,9 +78,7 @@ private:
         mutable boost::mutex m_mutex;
         boost::scoped_ptr< comma::csv::input_stream< ShapeWithId< S > > > m_stream;
         boost::scoped_ptr< comma::csv::passed< ShapeWithId< S > > > m_passed;
-        block_buffer< vertex_t > buffer_;
 
-        block_buffer< label_t > labels_;
         ShapeWithId< S > sample_;
 };
 #if Qt3D_VERSION==2
@@ -127,9 +124,7 @@ void ShapeReader< S, How >::update_labels()
 
 template< typename S, typename How >
 ShapeReader< S, How >::ShapeReader( const reader_parameters& params, colored* c, const std::string& label, const S& sample  )
-    : Reader( params, c, label )
-    , buffer_( size * Shapetraits< S, How >::size )
-    , labels_( size )
+    : shape_reader_base( params, c, label, Shapetraits< S, How >::size )
     , sample_( sample )
 {
 }
@@ -146,7 +141,7 @@ inline std::size_t ShapeReader< S, How >::update( const Eigen::Vector3d& offset 
     boost::mutex::scoped_lock lock( m_mutex );
     for( typename deque_t_::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
     {
-        Shapetraits< S, How >::update( it->shape, offset, it->color, it->block, buffer_, m_extents );
+        Shapetraits< S, How >::update( *this, *it );
         labels_.add( label_t( Shapetraits< S, How >::center( it->shape ), it->color, it->label ), it->block );
     }
     if( m_shutdown )
