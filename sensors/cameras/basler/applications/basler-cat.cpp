@@ -62,7 +62,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --frame-trigger --line-trigger --line-rate"
         " --encoder-ticks"
         " --timeout"
-        " --packet-size --inter-packet-delay"
+        " --packet-size --inter-packet-delay --num-cameras"
         ;
 
     std::cout << completion_options << std::endl;
@@ -141,9 +141,11 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --timeout=<seconds>          frame acquisition timeout; default " << default_timeout << "s";
     std::cerr << "\n";
     std::cerr << "\ntransport options";
+    std::cerr << "\n    run --help --verbose for details on these options";
     std::cerr << "\n    --packet-size=[<bytes>]         camera mtu size, should not be larger";
     std::cerr << "\n                                    than your lan and network interface";
     std::cerr << "\n    --inter-packet-delay=[<ticks>]  transmission delay between packets";
+    std::cerr << "\n    --num-cameras=<num>             auto-set inter-packet delay";
     std::cerr << "\n";
     std::cerr << "\nfilters";
     std::cerr << "\n    See \"cv-cat --help --verbose\" for a list of supported filters.";
@@ -156,7 +158,46 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     if( verbose )
     {
+        std::cerr << "\ntransport options details";
         std::cerr << "\n";
+        std::cerr << "\n    If there are multiple cameras on a single host (each run from a separate";
+        std::cerr << "\n    instance of basler-cat) they need space on the network to transmit.";
+        std::cerr << "\n    Otherwise basler-cat will report that \"The buffer was incompletely grabbed\"";
+        std::cerr << "\n    and possible exit with a timeout.";
+        std::cerr << "\n";
+        std::cerr << "\n    As soon as we have acquired one packet of data it is transmitted, whilst the";
+        std::cerr << "\n    next packet is acquired. So it looks like:";
+        std::cerr << "\n";
+        std::cerr << "\n    | acquire packet 1 | acquire packet 2 | acquire packet 3 | ...";
+        std::cerr << "\n                       | tx p1      |.....| tx p2      |.....| tx p3 ...";
+        std::cerr << "\n";
+        std::cerr << "\n    If the space between one transmission ending and the next beginning is too";
+        std::cerr << "\n    small for the other cameras to transmit there will be network congestion.";
+        std::cerr << "\n";
+        std::cerr << "\n    To fix this we introduce a delay between the end of one packet and the";
+        std::cerr << "\n    start of the next. This is set by --inter-packet-delay and should be at";
+        std::cerr << "\n    least as big as the transmit window (per extra camera). So we will have:";
+        std::cerr << "\n";
+        std::cerr << "\n    | acquire packet 1 | acquire packet 2 | wait | acquire packet 3 | wait |";
+        std::cerr << "\n                       | tx p1      | delay      | tx p2      | delay      |";
+        std::cerr << "\n";
+        std::cerr << "\n    As you can see, the transmit delay forces packet acquisition to wait";
+        std::cerr << "\n    (there is some buffering that this ignores but the principle is the same)";
+        std::cerr << "\n    so it will reduce the achievable frame rate. However this frame rate will";
+        std::cerr << "\n    probably be far higher than that obtainable without the forced delay.";
+        std::cerr << "\n";
+        std::cerr << "\n    You can just set --num-cameras and an appropriate inter-packet-delay will";
+        std::cerr << "\n    be calculated and set, or you can set --inter-packet-delay explicitly.";
+        std::cerr << "\n    You might find better stability by setting it a little higher than the";
+        std::cerr << "\n    value calculated by --num-cameras.";
+        std::cerr << "\n";
+        std::cerr << "\n    The formula used by --num-cameras is:";
+        std::cerr << "\n        inter_packet_delay = ( num_cameras - 1 ) * ( packet_size + 18 )";
+        std::cerr << "\n    where 18 represents the ethernet overhead (header plus checksum).";
+        std::cerr << "\n";
+        std::cerr << "\n    The formula assumes a one byte pixel format, so if you have something";
+        std::cerr << "\n    different you will need to adjust appropriately (scale up).";
+        std::cerr << "\n\n";
         std::cerr << snark::cv_mat::filters::usage();
         std::cerr << snark::cv_mat::serialization::options::type_usage();
     }
@@ -801,6 +842,32 @@ static void set_binning_vertical_mode_average( Pylon::CBaslerGigECamera& camera 
 static void set_binning_vertical_mode_sum( Pylon::CBaslerUsbCamera& camera ) { set_binning_vertical_mode( camera, Basler_UsbCameraParams::BinningVerticalMode_Sum ); }
 static void set_binning_vertical_mode_average( Pylon::CBaslerUsbCamera& camera ) { set_binning_vertical_mode( camera, Basler_UsbCameraParams::BinningVerticalMode_Average ); }
 
+static void set_transport_options( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
+{
+    unsigned int initial_packet_size = camera.GevSCPSPacketSize();
+    unsigned int packet_size = options.value< unsigned int >( "--packet-size", initial_packet_size );
+    if( packet_size != initial_packet_size ) { set_packet_size( camera, packet_size ); }
+
+    unsigned int initial_inter_packet_delay = camera.GevSCPD();
+    unsigned int num_cameras = options.value< unsigned int >( "--num-cameras", 1 );
+    // If there are other cameras then we need to allow network space for them to transmit.
+    // Each additional camera will require time for ( <packet_size> + 18 ) bytes
+    // (being 14 byte ethernet header and 4 byte ethernet CRC ).
+    // For single byte pixel formats this is ( <packet_size> + 18 ) ticks
+    // TODO: support other pixel formats
+    unsigned int inter_packet_delay = ( num_cameras - 1 ) * ( packet_size + 18 );
+    // An explicit --inter-packet-delay overrides the calculated value
+    inter_packet_delay = options.value< unsigned int >( "--inter-packet-delay", inter_packet_delay );
+    if( inter_packet_delay != initial_inter_packet_delay ) { set_inter_packet_delay( camera, inter_packet_delay ); }
+}
+
+static void set_transport_options( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
+{
+    if( options.exists( "--packet-size" )) { COMMA_THROW( comma::exception, "--packet-size not supported for USB cameras" ); }
+    if( options.exists( "--inter-packet-delay" )) { COMMA_THROW( comma::exception, "--inter-packet-delay not supported for USB cameras" ); }
+    if( options.exists( "--num-cameras" )) { COMMA_THROW( comma::exception, "--num-cameras not supported for USB cameras" ); }
+}
+
 template< typename T >
 static void show_config( const T& camera, const comma::command_line_options& options )
 {
@@ -1009,8 +1076,7 @@ static int run( T& camera, const comma::command_line_options& options )
     camera.OffsetY = offset_y;          // but set _after_ we set the actual height
     comma::verbose << "set width,height to " << width << "," << height << std::endl;
 
-    if( options.exists( "--packet-size" )) { set_packet_size( camera, options.value< unsigned int >( "--packet-size" )); }
-    if( options.exists( "--inter-packet-delay" )) { set_inter_packet_delay( camera, options.value< unsigned int >( "--inter-packet-delay" )); }
+    set_transport_options( camera, options );
 
     if( options.exists( "--binning-horizontal" ) )
     {
