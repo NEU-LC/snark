@@ -48,19 +48,21 @@ static const char* default_header_fields = "t,rows,cols,type";
 static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char* completion_options =
-        " --help -h --verbose -v"
+        " --help -h --help-filters --help-types --verbose -v"
         " --address --serial-number --list-cameras"
-        " --discard --buffer"
+        " --test-image"
         " --fields -f"
-        " --pixel-format"
+        " --header-only --no-header"
         " --offset-x --offset-y --width --height"
+        " --pixel-format"
+        " --reverse-x --reverse-y"
+        " --binning-horizontal --binning-vertical"
+        " --frame-rate --exposure --gain"
+        " --discard --buffer"
         " --frame-trigger --line-trigger --line-rate"
         " --encoder-ticks"
-        " --header-only --no-header"
-        " --packet-size"
-        " --frame-rate --exposure --gain"
         " --timeout"
-        " --test-image"
+        " --packet-size --inter-packet-delay --num-cameras"
         ;
 
     std::cout << completion_options << std::endl;
@@ -75,35 +77,30 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\nusage: basler-cat [<options>] [<filters>]";
     std::cerr << "\n";
-    std::cerr << "\noptions";
+    std::cerr << "\ngeneral options";
     std::cerr << "\n    --help,-h                    display help message";
+    std::cerr << "\n    --help-filters               show help on filters";
+    std::cerr << "\n    --help-types                 show help on image types";
     std::cerr << "\n    --address=[<address>]        camera address; default: first available";
     std::cerr << "\n    --serial-number=[<num>]      camera serial number, alternative to --address";
-    std::cerr << "\n    --discard                    discard frames, if cannot keep up;";
-    std::cerr << "\n                                 same as --buffer=1 (which is not a great setting)";
-    std::cerr << "\n    --buffer=[<buffers>]         maximum buffer size before discarding frames";
-    std::cerr << "\n                                 default: unlimited";
     std::cerr << "\n    --list-cameras               output camera list and exit";
     std::cerr << "\n                                 add --verbose for more detail";
-    std::cerr << "\n    --frame-trigger=[<type>]     'line1', 'line2', 'line3', 'encoder'";
-    std::cerr << "\n    --line-trigger=[<type>]      'line1', 'line2', 'line3', 'encoder'";
-    std::cerr << "\n    --line-rate=[<num>]          line acquisition rate";
-    std::cerr << "\n    --encoder-ticks=[<num>]      number of encoder ticks until the count resets";
-    std::cerr << "\n                                 (reused for line number in frame in chunk mode)";
-    std::cerr << "\n    --packet-size=[<bytes>]      mtu size on camera side, should not be larger ";
-    std::cerr << "\n                                 than your lan and network interface";
-    std::cerr << "\n    --timeout=[<seconds>]        frame acquisition timeout; default " << default_timeout << "s";
     std::cerr << "\n    --test-image=[<num>]         output test image <num>; possible values: 1-6";
     std::cerr << "\n    --verbose,-v                 be more verbose";
     std::cerr << "\n";
     std::cerr << "\nimage options";
-    std::cerr << "\n    --fields,-f=[<fields>]       header fields, possible values:";
+    std::cerr << "\n    --fields,-f=<fields>         header fields, possible values:";
     std::cerr << "\n                                 possible values: " << possible_header_fields;
     std::cerr << "\n                                 default: " << default_header_fields;
     std::cerr << "\n    --header-only                output header only";
-    std::cerr << "\n    --height=[<pixels>]          number of lines in frame (in chunk mode always 1)";
-    std::cerr << "\n                                 default: max";
     std::cerr << "\n    --no-header                  output image data only";
+    std::cerr << "\n    --height=<pixels>            number of lines in frame (in chunk mode always 1)";
+    std::cerr << "\n                                 default: max";
+    std::cerr << "\n    --width=<pixels>             line width in pixels; default: max";
+    std::cerr << "\n    --offset-x=<pixels>          offset in pixels in the line; default: 0";
+    std::cerr << "\n                                 todo: make sure it works on images with more than 1 channel";
+    std::cerr << "\n    --offset-y=<pixels>          offset in lines in the frame; default: 0";
+    std::cerr << "\n                                 todo: make sure it works on images with more than 1 channel";
     std::cerr << "\n    --pixel-format=[<format>]    pixel format; lower case accepted; currently supported formats:";
     std::cerr << "\n                                     gige cameras";
     std::cerr << "\n                                         Mono8: stdout output format: ub";
@@ -116,9 +113,6 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                         Mono12p: stdout output format: 3ub (apply unpack12 to get 16-bit padded image)";
     std::cerr << "\n                                     default: use the current camera setting";
     std::cerr << "\n                                     format names correspond to enum found in basler header files";
-    std::cerr << "\n    --offset-x=[<pixels>]        offset in pixels in the line; todo: make sure it works on images with more than 1 channel";
-    std::cerr << "\n    --offset-y=[<pixels>]        offset in lines in the frame; todo: make sure it works on images with more than 1 channel";
-    std::cerr << "\n    --width=[<pixels>]           line width in pixels; default: max";
     std::cerr << "\n    --reverse-x                  horizontal mirror image";
     std::cerr << "\n    --reverse-y                  vertical mirror image";
     std::cerr << "\n    --binning-horizontal=<pixels>[,<mode>]";
@@ -130,27 +124,88 @@ static void usage( bool verbose = false )
     std::cerr << "\n                                 <mode>: sum, average (default: sum)";
     std::cerr << "\n                                 ROI will refer to binned rows";
     std::cerr << "\n";
-    std::cerr << "\ncamera settings options";
+    std::cerr << "\ncamera options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
     std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto\" to automatically set";
     std::cerr << "\n    --gain=[<num>]               gain; \"auto\" to automatically set;";
     std::cerr << "\n                                 for USB cameras units are dB";
     std::cerr << "\n";
-    std::cerr << "\nfilters";
-    std::cerr << "\n    See \"cv-cat --help --verbose\" for a list of supported filters.";
+    std::cerr << "\nacquisition options";
+    std::cerr << "\n    --discard                    discard frames, if cannot keep up;";
+    std::cerr << "\n                                 same as --buffer=1 (which is not a great setting)";
+    std::cerr << "\n    --buffer=[<buffers>]         maximum buffer size before discarding frames";
+    std::cerr << "\n                                 default: unlimited";
+    std::cerr << "\n    --frame-trigger=[<type>]     'line1', 'line2', 'line3', 'encoder'";
+    std::cerr << "\n    --line-trigger=[<type>]      'line1', 'line2', 'line3', 'encoder'";
+    std::cerr << "\n    --line-rate=[<num>]          line acquisition rate";
+    std::cerr << "\n    --encoder-ticks=[<num>]      number of encoder ticks until the count resets";
+    std::cerr << "\n                                 (reused for line number in frame in chunk mode)";
+    std::cerr << "\n    --timeout=<seconds>          frame acquisition timeout; default " << default_timeout << "s";
     std::cerr << "\n";
-    std::cerr << "\nBy default basler-cat will connect to the first device it finds. To";
-    std::cerr << "\nchoose a specific camera use the --address or --serial-number options.";
-    std::cerr << "\nFor GigE cameras <address> is the device ip address, for USB cameras it is";
-    std::cerr << "\nthe USB address. Detected cameras along with their addresses and serial numbers";
-    std::cerr << "\nare shown by --list-cameras --verbose.";
+    std::cerr << "\ntransport options";
+    std::cerr << "\n    run --help --verbose for details on these options";
+    std::cerr << "\n    --packet-size=[<bytes>]         camera mtu size, should not be larger";
+    std::cerr << "\n                                    than your lan and network interface";
+    std::cerr << "\n    --inter-packet-delay=[<ticks>]  transmission delay between packets";
+    std::cerr << "\n    --num-cameras=<num>             auto-set inter-packet delay";
+    std::cerr << "\n";
+    std::cerr << "\nfilters";
+    std::cerr << "\n    See \"basler-cat --help-filters\" for a list of supported filters";
+    std::cerr << "\n    or \"cv-cat --help --verbose\" much more information on filtering.";
+    std::cerr << "\n";
+    std::cerr << "\nBy default basler-cat will connect to the first device it finds. To choose a";
+    std::cerr << "\nspecific camera use the --address or --serial-number options. For GigE cameras ";
+    std::cerr << "\n<address> is the device ip address, for USB cameras it is the USB address.";
+    std::cerr << "\nDetected cameras along with their addresses and serial numbers are shown by";
+    std::cerr << "\n$ basler-cat --list-cameras --verbose.";
+    std::cerr << "\n";
     if( verbose )
     {
+        std::cerr << "\ntransport options details";
         std::cerr << "\n";
-        std::cerr << snark::cv_mat::filters::usage();
-        std::cerr << snark::cv_mat::serialization::options::type_usage();
+        std::cerr << "\n    If there are multiple cameras on a single host (each run from a separate";
+        std::cerr << "\n    instance of basler-cat) they need space on the network to transmit.";
+        std::cerr << "\n    Otherwise basler-cat will report that \"The buffer was incompletely grabbed\"";
+        std::cerr << "\n    and possible exit with a timeout.";
+        std::cerr << "\n";
+        std::cerr << "\n    As soon as we have acquired one packet of data it is transmitted, whilst the";
+        std::cerr << "\n    next packet is acquired. So it looks like:";
+        std::cerr << "\n";
+        std::cerr << "\n    | acquire packet 1 | acquire packet 2 | acquire packet 3 | ...";
+        std::cerr << "\n                       | tx p1      |.....| tx p2      |.....| tx p3 ...";
+        std::cerr << "\n";
+        std::cerr << "\n    If the space between one transmission ending and the next beginning is too";
+        std::cerr << "\n    small for the other cameras to transmit there will be network congestion.";
+        std::cerr << "\n";
+        std::cerr << "\n    To fix this we introduce a delay between the end of one packet and the";
+        std::cerr << "\n    start of the next. This is set by --inter-packet-delay and should be at";
+        std::cerr << "\n    least as big as the transmit window (per extra camera). So we will have:";
+        std::cerr << "\n";
+        std::cerr << "\n    | acquire packet 1 | acquire packet 2 | wait | acquire packet 3 | wait |";
+        std::cerr << "\n                       | tx p1      | delay      | tx p2      | delay      |";
+        std::cerr << "\n";
+        std::cerr << "\n    As you can see, the transmit delay forces packet acquisition to wait";
+        std::cerr << "\n    (there is some buffering that this ignores but the principle is the same)";
+        std::cerr << "\n    so it will reduce the achievable frame rate. However this frame rate will";
+        std::cerr << "\n    probably be far higher than that obtainable without the forced delay.";
+        std::cerr << "\n";
+        std::cerr << "\n    You can just set --num-cameras and an appropriate inter-packet-delay will";
+        std::cerr << "\n    be calculated and set, or you can set --inter-packet-delay explicitly.";
+        std::cerr << "\n    You might find better stability by setting it a little higher than the";
+        std::cerr << "\n    value calculated by --num-cameras.";
+        std::cerr << "\n";
+        std::cerr << "\n    The formula used by --num-cameras is:";
+        std::cerr << "\n        inter_packet_delay = ( num_cameras - 1 ) * ( packet_size + 18 )";
+        std::cerr << "\n    where 18 represents the ethernet overhead (header plus checksum).";
+        std::cerr << "\n";
+        std::cerr << "\n    The formula assumes a one byte pixel format, so if you have something";
+        std::cerr << "\n    different you will need to adjust appropriately (scale up).";
+        std::cerr << "\n";
+        std::cerr << "\nFor help on filters or image types try:";
+        std::cerr << "\n    basler-cat --help-filters";
+        std::cerr << "\n    basler-cat --help-types";
+        std::cerr << "\n";
     }
-    std::cerr << "\n";
     std::cerr << "\nExample:";
     std::cerr << "\n    $ basler-cat \"resize=0.5;timestamp;view;null\"";
     std::cerr << "\n" << std::endl;
@@ -175,7 +230,7 @@ struct Counters
     comma::uint64 line_count; // overall line count
     comma::uint32 line; // line number in one motor revolution
 
-    Counters() : line( 0 ), ticks( 0 ), line_count( 0 ) {}
+    Counters() : ticks( 0 ), line_count( 0 ), line( 0 ) {}
 };
 
 struct Header // quick and dirty
@@ -267,83 +322,6 @@ static void output_result_status( const Pylon::GrabResult& result )
                                              result.Status() == Pylon::Grabbed ? "grabbed" :
                                              result.Status() == Pylon::Canceled ? "canceled" :
                                              result.Status() == Pylon::Failed ? "failed" : "unknown" ) << std::endl;
-}
-
-template < typename T, typename P >
-static P capture( T& camera, typename T::StreamGrabber_t& grabber )
-{
-    /// @todo if color spatial correction implemented, mind the following:
-    ///
-    /// Runner_Users_manual.pdf, 8.2.2.3:
-    ///
-    /// If you are using a color camera, you have spatial correction enabled
-    /// and you have the frame start trigger mode set to off, you must discard
-    /// the first n x 2 lines from the first frame transmitted by the camera
-    /// after an acquisition start command is issued (where n is the absolute
-    /// value of the current spatial correction parameter setting).
-    ///
-    /// If you have spatial correction enabled and you have the frame start
-    /// trigger mode set to on, you must discard the first n x 2 lines from
-    /// each frame transmitted by the camera.
-
-    static const unsigned int retries = 10; // quick and dirty: arbitrary
-    for( unsigned int i = 0; i < retries; ++i )
-    {
-        static comma::signal_flag is_shutdown;
-        if( is_shutdown ) { return P(); }
-        Pylon::GrabResult result;
-        //camera.AcquisitionStart.Execute(); // acquire single image (since acquisition mode set so)
-        if( !grabber.GetWaitObject().Wait( timeout ) ) // quick and dirty: arbitrary timeout
-        {
-            std::cerr << "basler-cat: timeout" << std::endl;
-            grabber.CancelGrab();
-            while( grabber.RetrieveResult( result ) ); // get all buffers back
-            return P();
-        }
-        boost::posix_time::ptime current_time = boost::get_system_time();
-        grabber.RetrieveResult( result );
-        if( !result.Succeeded() )
-        {
-            std::cerr << "basler-cat: acquisition failed" << std::endl;
-            output_result_status( result );
-            std::cerr << "            run \"basler-cat --verbose\" and check your --packet-size settings" << std::endl;
-            continue;
-        }
-        P pair;
-        pair.second = cv::Mat( result.GetSizeY(), is_packed ? ( ( result.GetSizeX() * 3 ) / 2 ) : result.GetSizeX(), cv_mat_header.type ); // todo: seriously quick and dirty, does not scale to Mono10p; implement packed bytes layout properly 
-        ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
-        // quick and dirty for now: rgb are not contiguous in basler camera frame
-        if( cv_mat_header.type == CV_8UC3 || cv_mat_header.type == CV_16UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
-        set< T >( pair.first, current_time, result, camera );
-        grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
-        return pair;
-    }
-    return P();
-}
-
-static void write( const chunk_pair_t& p )
-{
-    if( p.second.empty() || !std::cout.good() ) { return; }
-    static comma::csv::binary_output_stream< Header > ostream( std::cout, csv );
-    static Header header( cv_mat_header );
-    header.header.timestamp = p.first.timestamp;
-    header.counters.ticks = p.first.ticks;
-    static ChunkData first_chunk_data;
-    if( first_chunk_data.timestamp.is_not_a_date_time() )
-    {
-        first_chunk_data = p.first;
-        header.counters.adjusted_timestamp = p.first.timestamp;
-    }
-    else
-    {
-        static const double factor = 8.0 / 1000; // 8ns per tick
-        header.counters.adjusted_timestamp = first_chunk_data.timestamp + boost::posix_time::microseconds( factor * first_chunk_data.ticks ); // todo: factor in network delay?
-    }
-    header.counters.line_count += p.first.line_trigger_ignored + 1;
-    header.counters.line = header.counters.line_count % encoder_ticks;
-    ostream.write( header );
-    std::cout.write( ( const char* )( p.second.datastart ), p.second.dataend - p.second.datastart );
-    std::cout.flush();
 }
 
 template < typename T > struct pixel_format;
@@ -641,7 +619,6 @@ static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::co
         {
             camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_FrameStart;
             camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
-            Basler_GigECameraParams::TriggerSourceEnums t;
             if( frame_trigger == "line1" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line1; }
             if( frame_trigger == "line2" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line2; }
             if( frame_trigger == "line3" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line3; }
@@ -682,7 +659,6 @@ static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::co
         {
             camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_LineStart;
             camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
-            Basler_GigECameraParams::TriggerSourceEnums t;
             if( line_trigger == "line1" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line1; }
             else if( line_trigger == "line2" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line2; }
             else if( line_trigger == "line3" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line3; }
@@ -804,7 +780,7 @@ static void set_gain( Pylon::CBaslerUsbCamera& camera, const comma::command_line
 static void set_line_rate( Pylon::CBaslerGigECamera& camera, unsigned int line_rate ) { camera.AcquisitionLineRateAbs = line_rate; }
 static void set_line_rate( Pylon::CBaslerUsbCamera& camera, unsigned int ) { COMMA_THROW( comma::exception, "--line-rate not supported for USB cameras" ); }
 static void set_packet_size( Pylon::CBaslerGigECamera& camera, unsigned int packet_size ) { camera.GevSCPSPacketSize = packet_size; }
-static void set_packet_size( Pylon::CBaslerUsbCamera& camera, unsigned int ) { COMMA_THROW( comma::exception, "--packet-size not supported for USB cameras" ); }
+static void set_inter_packet_delay( Pylon::CBaslerGigECamera& camera, unsigned int inter_packet_delay ) { camera.GevSCPD = inter_packet_delay; }
 static void set_socket_buffer_size( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber, unsigned int socket_buffer_size ) { grabber.SocketBufferSize = socket_buffer_size; }
 static void set_socket_buffer_size( Pylon::CBaslerUsbCamera::StreamGrabber_t&, unsigned int ) {}
 
@@ -867,6 +843,32 @@ static void set_binning_vertical_mode_average( Pylon::CBaslerGigECamera& camera 
 static void set_binning_vertical_mode_sum( Pylon::CBaslerUsbCamera& camera ) { set_binning_vertical_mode( camera, Basler_UsbCameraParams::BinningVerticalMode_Sum ); }
 static void set_binning_vertical_mode_average( Pylon::CBaslerUsbCamera& camera ) { set_binning_vertical_mode( camera, Basler_UsbCameraParams::BinningVerticalMode_Average ); }
 
+static void set_transport_options( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
+{
+    unsigned int initial_packet_size = camera.GevSCPSPacketSize();
+    unsigned int packet_size = options.value< unsigned int >( "--packet-size", initial_packet_size );
+    if( packet_size != initial_packet_size ) { set_packet_size( camera, packet_size ); }
+
+    unsigned int initial_inter_packet_delay = camera.GevSCPD();
+    unsigned int num_cameras = options.value< unsigned int >( "--num-cameras", 1 );
+    // If there are other cameras then we need to allow network space for them to transmit.
+    // Each additional camera will require time for ( <packet_size> + 18 ) bytes
+    // (being 14 byte ethernet header and 4 byte ethernet CRC ).
+    // For single byte pixel formats this is ( <packet_size> + 18 ) ticks
+    // TODO: support other pixel formats
+    unsigned int inter_packet_delay = ( num_cameras - 1 ) * ( packet_size + 18 );
+    // An explicit --inter-packet-delay overrides the calculated value
+    inter_packet_delay = options.value< unsigned int >( "--inter-packet-delay", inter_packet_delay );
+    if( inter_packet_delay != initial_inter_packet_delay ) { set_inter_packet_delay( camera, inter_packet_delay ); }
+}
+
+static void set_transport_options( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
+{
+    if( options.exists( "--packet-size" )) { COMMA_THROW( comma::exception, "--packet-size not supported for USB cameras" ); }
+    if( options.exists( "--inter-packet-delay" )) { COMMA_THROW( comma::exception, "--inter-packet-delay not supported for USB cameras" ); }
+    if( options.exists( "--num-cameras" )) { COMMA_THROW( comma::exception, "--num-cameras not supported for USB cameras" ); }
+}
+
 template< typename T >
 static void show_config( const T& camera, const comma::command_line_options& options )
 {
@@ -899,7 +901,8 @@ static void show_config( const T& camera, const comma::command_line_options& opt
 
 static void show_transport_config( Pylon::CBaslerGigECamera& camera )
 {
-    comma::verbose << " packet size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
+    comma::verbose << "        packet size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
+    comma::verbose << " inter-packet delay: " << camera.GevSCPD() << " ticks" << std::endl;
 }
 
 static void show_transport_config( Pylon::CBaslerUsbCamera& camera )
@@ -908,11 +911,88 @@ static void show_transport_config( Pylon::CBaslerUsbCamera& camera )
 
 static void show_config( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber )
 {
-    comma::verbose << "socket buffer size: " << grabber.SocketBufferSize() << " bytes" << std::endl;
-    comma::verbose << "   max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
+    comma::verbose << " socket buffer size: " << grabber.SocketBufferSize() << " bytes" << std::endl;
+    comma::verbose << "    max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
 }
 
 static void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber ) { comma::verbose << "max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl; }
+
+template < typename T, typename P >
+static P capture( T& camera, typename T::StreamGrabber_t& grabber )
+{
+    /// @todo if color spatial correction implemented, mind the following:
+    ///
+    /// Runner_Users_manual.pdf, 8.2.2.3:
+    ///
+    /// If you are using a color camera, you have spatial correction enabled
+    /// and you have the frame start trigger mode set to off, you must discard
+    /// the first n x 2 lines from the first frame transmitted by the camera
+    /// after an acquisition start command is issued (where n is the absolute
+    /// value of the current spatial correction parameter setting).
+    ///
+    /// If you have spatial correction enabled and you have the frame start
+    /// trigger mode set to on, you must discard the first n x 2 lines from
+    /// each frame transmitted by the camera.
+
+    static const unsigned int retries = 10; // quick and dirty: arbitrary
+    for( unsigned int i = 0; i < retries; ++i )
+    {
+        static comma::signal_flag is_shutdown;
+        if( is_shutdown ) { return P(); }
+        Pylon::GrabResult result;
+        //camera.AcquisitionStart.Execute(); // acquire single image (since acquisition mode set so)
+        if( !grabber.GetWaitObject().Wait( timeout ) ) // quick and dirty: arbitrary timeout
+        {
+            std::cerr << "basler-cat: timeout" << std::endl;
+            grabber.CancelGrab();
+            while( grabber.RetrieveResult( result ) ); // get all buffers back
+            return P();
+        }
+        boost::posix_time::ptime current_time = boost::get_system_time();
+        grabber.RetrieveResult( result );
+        if( !result.Succeeded() )
+        {
+            std::cerr << "basler-cat: acquisition failed" << std::endl;
+            output_result_status( result );
+            show_transport_config( camera );
+            continue;
+        }
+        P pair;
+        pair.second = cv::Mat( result.GetSizeY(), is_packed ? ( ( result.GetSizeX() * 3 ) / 2 ) : result.GetSizeX(), cv_mat_header.type ); // todo: seriously quick and dirty, does not scale to Mono10p; implement packed bytes layout properly 
+        ::memcpy( pair.second.data, reinterpret_cast< const char* >( result.Buffer() ), pair.second.dataend - pair.second.datastart );
+        // quick and dirty for now: rgb are not contiguous in basler camera frame
+        if( cv_mat_header.type == CV_8UC3 || cv_mat_header.type == CV_16UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
+        set< T >( pair.first, current_time, result, camera );
+        grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
+        return pair;
+    }
+    return P();
+}
+
+static void write( const chunk_pair_t& p )
+{
+    if( p.second.empty() || !std::cout.good() ) { return; }
+    static comma::csv::binary_output_stream< Header > ostream( std::cout, csv );
+    static Header header( cv_mat_header );
+    header.header.timestamp = p.first.timestamp;
+    header.counters.ticks = p.first.ticks;
+    static ChunkData first_chunk_data;
+    if( first_chunk_data.timestamp.is_not_a_date_time() )
+    {
+        first_chunk_data = p.first;
+        header.counters.adjusted_timestamp = p.first.timestamp;
+    }
+    else
+    {
+        static const double factor = 8.0 / 1000; // 8ns per tick
+        header.counters.adjusted_timestamp = first_chunk_data.timestamp + boost::posix_time::microseconds( factor * first_chunk_data.ticks ); // todo: factor in network delay?
+    }
+    header.counters.line_count += p.first.line_trigger_ignored + 1;
+    header.counters.line = header.counters.line_count % encoder_ticks;
+    ostream.write( header );
+    std::cout.write( ( const char* )( p.second.datastart ), p.second.dataend - p.second.datastart );
+    std::cout.flush();
+}
 
 static bool run_chunk_pipeline( Pylon::CBaslerGigECamera& camera, Pylon::CBaslerGigECamera::StreamGrabber_t& grabber, unsigned int max_queue_size, unsigned int max_queue_capacity )
 {
@@ -997,7 +1077,7 @@ static int run( T& camera, const comma::command_line_options& options )
     camera.OffsetY = offset_y;          // but set _after_ we set the actual height
     comma::verbose << "set width,height to " << width << "," << height << std::endl;
 
-    if( options.exists( "--packet-size" )) { set_packet_size( camera, options.value< unsigned int >( "--packet-size" )); }
+    set_transport_options( camera, options );
 
     if( options.exists( "--binning-horizontal" ) )
     {
@@ -1108,6 +1188,9 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" )) bash_completion( argc, argv );
+        if( options.exists( "--help-filters" )) { std::cerr << snark::cv_mat::filters::usage(); return 0; }
+        if( options.exists( "--help-types" )) { std::cerr << snark::cv_mat::serialization::options::type_usage(); return 0; }
+
         Pylon::PylonAutoInitTerm auto_init_term;
         if( options.exists( "--list-cameras" ) ) { list_cameras(); return 0; }
         comma::verbose << "PYLON_ROOT=" << ::getenv( "PYLON_ROOT" ) << std::endl;
