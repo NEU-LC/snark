@@ -135,6 +135,8 @@ args=
 [[ $offset_y ]] && args+=" --offset-y=$offset_y"
 [[ $config_pixel_format ]] && args+=" --pixel-format=$config_pixel_format"
 [[ $config_gige_packet_size ]] && args+=" --packet-size=$config_gige_packet_size"
+[[ $config_num_cameras ]] && args+=" --num-cameras=$config_num_cameras"
+[[ $config_inter_packet_delay ]] && args+=" --inter-packet-delay=$config_inter_packet_delay"
 [[ $options_verbose ]] && args+=" --verbose"
 args=${args# }
 
