@@ -192,7 +192,8 @@ static void usage( bool verbose = false )
         std::cerr << "\n    You can just set --num-cameras and an appropriate inter-packet-delay will";
         std::cerr << "\n    be calculated and set, or you can set --inter-packet-delay explicitly.";
         std::cerr << "\n    You might find better stability by setting it a little higher than the";
-        std::cerr << "\n    value calculated by --num-cameras.";
+        std::cerr << "\n    value calculated by --num-cameras. Use the --verbose option to see the";
+        std::cerr << "\n    calculated value.";
         std::cerr << "\n";
         std::cerr << "\n    The formula used by --num-cameras is:";
         std::cerr << "\n        inter_packet_delay = ( num_cameras - 1 ) * ( packet_size + 18 )";
