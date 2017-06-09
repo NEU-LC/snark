@@ -64,10 +64,6 @@ namespace snark { namespace imaging {
         return dt < limits< R >::lower() ? static_cast< T >( limits< R >::lower() ) : ( dt > limits< R >::upper() ? static_cast< T >( limits< R >::upper() ) : t );
     }
 
-    // Sf - storage from, Rf - range from, St - storage to, Rt - range to
-    // template< typename Sf, range Rf, typename St, range Rt >
-    // St scale( typename enable_if< std::is_integral< T >::value, T >::type & from );
-
     template< typename T, range R >
     void assert_compatible( typename std::enable_if< std::is_integral< T >::value, T >::type t
                           , typename std::enable_if< std::is_integral< typename range_traits< R >::value_t >::value, typename range_traits< R >::value_t >::type r )
@@ -105,8 +101,14 @@ namespace snark { namespace imaging {
             assert_compatible< T, R >( channel0, typename range_traits< R >::value_t( 0 ) );
         }
 
-        // template< typename S, range Q >
-        // pixel( const pixel< S, Q > & rhs ) : channel0( scale< S, Q, T, R >::conv( rhs.channel0 ) ), channel1( scale< S, Q, T, R >::conv( rhs.channel1 ) ), channel2( scale< S, Q, T, R >::conv( rhs.channel2 ) ) {}
+        template< typename S, range Q >
+        static pixel convert( const pixel< S, Q > & rhs )
+        {
+            static const double factor = ( limits< R >::upper() - limits< R >::lower() ) / ( limits< Q >::upper() - limits< Q >::lower() );
+            return pixel( static_cast< T >( factor * ( rhs.channel0 - limits< Q >::lower() ) + limits< R >::lower() )
+                        , static_cast< T >( factor * ( rhs.channel1 - limits< Q >::lower() ) + limits< R >::lower() )
+                        , static_cast< T >( factor * ( rhs.channel2 - limits< Q >::lower() ) + limits< R >::lower() ) );
+        }
     };
 
 } } // namespace snark { namespace imaging {

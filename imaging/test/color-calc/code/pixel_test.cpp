@@ -74,3 +74,179 @@ TEST( pixel, ctor )
         pixel< double,         d > p4;
     }
 }
+
+TEST( pixel, convert )
+{
+    using namespace snark::imaging;
+    {
+        pixel< unsigned char, ub > p( 10, 20, 30 );
+        {
+            pixel< unsigned char, ub > p0( pixel< unsigned char, ub >::convert( p ) );
+            EXPECT_EQ( p0.channel0, p.channel0 ); EXPECT_EQ( p0.channel1, p.channel1 ); EXPECT_EQ( p0.channel2, p.channel2 );
+            pixel< comma::uint16, ub > p1( pixel< comma::uint16, ub >::convert( p ) );
+            EXPECT_EQ( p1.channel0, p.channel0 ); EXPECT_EQ( p1.channel1, p.channel1 ); EXPECT_EQ( p1.channel2, p.channel2 );
+            pixel< comma::uint32, ub > p2( pixel< comma::uint32, ub >::convert( p ) );
+            EXPECT_EQ( p2.channel0, p.channel0 ); EXPECT_EQ( p2.channel1, p.channel1 ); EXPECT_EQ( p2.channel2, p.channel2 );
+            pixel< float,         ub > p3( pixel< float        , ub >::convert( p ) );
+            EXPECT_EQ( p3.channel0, p.channel0 ); EXPECT_EQ( p3.channel1, p.channel1 ); EXPECT_EQ( p3.channel2, p.channel2 );
+            pixel< double,        ub > p4( pixel< double       , ub >::convert( p ) );
+            EXPECT_EQ( p4.channel0, p.channel0 ); EXPECT_EQ( p4.channel1, p.channel1 ); EXPECT_EQ( p4.channel2, p.channel2 );
+        }
+        {
+            double scale = std::numeric_limits< range_traits< uw >::value_t >::max() / std::numeric_limits< range_traits< ub >::value_t >::max();
+            pixel< comma::uint16, uw > p1( pixel< comma::uint16, uw >::convert( p ) );
+            EXPECT_EQ( p1.channel0, scale * p.channel0 ); EXPECT_EQ( p1.channel1, scale * p.channel1 ); EXPECT_EQ( p1.channel2, scale * p.channel2 );
+            pixel< comma::uint32, uw > p2( pixel< comma::uint32, uw >::convert( p ) );
+            EXPECT_EQ( p2.channel0, scale * p.channel0 ); EXPECT_EQ( p2.channel1, scale * p.channel1 ); EXPECT_EQ( p2.channel2, scale * p.channel2 );
+            pixel< float,         uw > p3( pixel< float        , uw >::convert( p ) );
+            EXPECT_EQ( p3.channel0, scale * p.channel0 ); EXPECT_EQ( p3.channel1, scale * p.channel1 ); EXPECT_EQ( p3.channel2, scale * p.channel2 );
+            pixel< double,        uw > p4( pixel< double       , uw >::convert( p ) );
+            EXPECT_EQ( p4.channel0, scale * p.channel0 ); EXPECT_EQ( p4.channel1, scale * p.channel1 ); EXPECT_EQ( p4.channel2, scale * p.channel2 );
+        }
+        {
+            double scale = std::numeric_limits< range_traits< ui >::value_t >::max() / std::numeric_limits< range_traits< ub >::value_t >::max();
+            pixel< comma::uint32, ui > p2( pixel< comma::uint32, ui >::convert( p ) );
+            EXPECT_EQ( p2.channel0, scale * p.channel0 ); EXPECT_EQ( p2.channel1, scale * p.channel1 ); EXPECT_EQ( p2.channel2, scale * p.channel2 );
+            // floats cannot store ui precisely
+            pixel< float,         ui > p3( pixel< float        , ui >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, scale * p.channel0, 15 ); EXPECT_NEAR( p3.channel1, scale * p.channel1, 15 ); EXPECT_NEAR( p3.channel2, scale * p.channel2, 15 );
+            // but doubles can
+            pixel< double,        ui > p4( pixel< double       , ui >::convert( p ) );
+            EXPECT_EQ( p4.channel0, scale * p.channel0 ); EXPECT_EQ( p4.channel1, scale * p.channel1 ); EXPECT_EQ( p4.channel2, scale * p.channel2 );
+        }
+        {
+            double scale = 1.0 / std::numeric_limits< range_traits< ub >::value_t >::max();
+            // conversions are done in doubles, floats are imprecise
+            pixel< float,         f > p3( pixel< float        , f >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, scale * p.channel0, 1.0e-8 ); EXPECT_NEAR( p3.channel1, scale * p.channel1, 1.0e-8 ); EXPECT_NEAR( p3.channel2, scale * p.channel2, 1.0e-8 );
+            pixel< double,        f > p4( pixel< double       , f >::convert( p ) );
+            EXPECT_EQ( p4.channel0, scale * p.channel0 ); EXPECT_EQ( p4.channel1, scale * p.channel1 ); EXPECT_EQ( p4.channel2, scale * p.channel2 );
+        }
+        {
+            double scale = 1.0 / std::numeric_limits< range_traits< ub >::value_t >::max();
+            // conversions are done in doubles, floats are imprecise
+            pixel< float,         d > p3( pixel< float        , d >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, scale * p.channel0, 1.0e-8 ); EXPECT_NEAR( p3.channel1, scale * p.channel1, 1.0e-8 ); EXPECT_NEAR( p3.channel2, scale * p.channel2, 1.0e-8 );
+            pixel< double,        d > p4( pixel< double       , d >::convert( p ) );
+            EXPECT_EQ( p4.channel0, scale * p.channel0 ); EXPECT_EQ( p4.channel1, scale * p.channel1 ); EXPECT_EQ( p4.channel2, scale * p.channel2 );
+        }
+    }
+    {
+        pixel< comma::uint16, uw > p( 20000, 30000, 50000 );
+        {
+            pixel< comma::uint16, uw > p1( pixel< comma::uint16, uw >::convert( p ) );
+            EXPECT_EQ( p1.channel0, p.channel0 ); EXPECT_EQ( p1.channel1, p.channel1 ); EXPECT_EQ( p1.channel2, p.channel2 );
+            pixel< comma::uint32, uw > p2( pixel< comma::uint32, uw >::convert( p ) );
+            EXPECT_EQ( p2.channel0, p.channel0 ); EXPECT_EQ( p2.channel1, p.channel1 ); EXPECT_EQ( p2.channel2, p.channel2 );
+            pixel< float,         uw > p3( pixel< float        , uw >::convert( p ) );
+            EXPECT_EQ( p3.channel0, p.channel0 ); EXPECT_EQ( p3.channel1, p.channel1 ); EXPECT_EQ( p3.channel2, p.channel2 );
+            pixel< double,        uw > p4( pixel< double       , uw >::convert( p ) );
+            EXPECT_EQ( p4.channel0, p.channel0 ); EXPECT_EQ( p4.channel1, p.channel1 ); EXPECT_EQ( p4.channel2, p.channel2 );
+        }
+        {
+            double scale = std::numeric_limits< range_traits< ui >::value_t >::max() / std::numeric_limits< range_traits< uw >::value_t >::max();
+            pixel< comma::uint32, ui > p2( pixel< comma::uint32, ui >::convert( p ) );
+            EXPECT_EQ( p2.channel0, scale * p.channel0 ); EXPECT_EQ( p2.channel1, scale * p.channel1 ); EXPECT_EQ( p2.channel2, scale * p.channel2 );
+            // floats cannot store ui precisely
+            pixel< float,         ui > p3( pixel< float        , ui >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, scale * p.channel0, 100 ); EXPECT_NEAR( p3.channel1, scale * p.channel1, 100 ); EXPECT_NEAR( p3.channel2, scale * p.channel2, 100 );
+            // but doubles can
+            pixel< double,        ui > p4( pixel< double       , ui >::convert( p ) );
+            EXPECT_EQ( p4.channel0, scale * p.channel0 ); EXPECT_EQ( p4.channel1, scale * p.channel1 ); EXPECT_EQ( p4.channel2, scale * p.channel2 );
+        }
+        {
+            double scale = 1.0 / std::numeric_limits< range_traits< uw >::value_t >::max();
+            // conversions are done in doubles, floats are imprecise
+            pixel< float,         f > p3( pixel< float        , f >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, scale * p.channel0, 2.0e-8 ); EXPECT_NEAR( p3.channel1, scale * p.channel1, 2.0e-8 ); EXPECT_NEAR( p3.channel2, scale * p.channel2, 2.0e-8 );
+            pixel< double,        f > p4( pixel< double       , f >::convert( p ) );
+            EXPECT_EQ( p4.channel0, scale * p.channel0 ); EXPECT_EQ( p4.channel1, scale * p.channel1 ); EXPECT_EQ( p4.channel2, scale * p.channel2 );
+        }
+        {
+            double scale = 1.0 / std::numeric_limits< range_traits< uw >::value_t >::max();
+            // conversions are done in doubles, floats are imprecise
+            pixel< float,         d > p3( pixel< float        , d >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, scale * p.channel0, 2.0e-8 ); EXPECT_NEAR( p3.channel1, scale * p.channel1, 2.0e-8 ); EXPECT_NEAR( p3.channel2, scale * p.channel2, 2.0e-8 );
+            pixel< double,        d > p4( pixel< double       , d >::convert( p ) );
+            EXPECT_EQ( p4.channel0, scale * p.channel0 ); EXPECT_EQ( p4.channel1, scale * p.channel1 ); EXPECT_EQ( p4.channel2, scale * p.channel2 );
+        }
+    }
+    {
+        comma::uint32 m = std::numeric_limits< comma::uint32 >::max();
+        pixel< comma::uint32, ui > p( 0.2 * m, 0.3 * m, 0.5 * m );
+        {
+            pixel< comma::uint32, ui > p2( pixel< comma::uint32, ui >::convert( p ) );
+            EXPECT_EQ( p2.channel0, p.channel0 ); EXPECT_EQ( p2.channel1, p.channel1 ); EXPECT_EQ( p2.channel2, p.channel2 );
+            // floats cannot store ui precisely
+            pixel< float,         ui > p3( pixel< float        , ui >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, p.channel0, 100 ); EXPECT_NEAR( p3.channel1, p.channel1, 100 ); EXPECT_NEAR( p3.channel2, p.channel2, 100 );
+            // but doubles can
+            pixel< double,        ui > p4( pixel< double       , ui >::convert( p ) );
+            EXPECT_EQ( p4.channel0, p.channel0 ); EXPECT_EQ( p4.channel1, p.channel1 ); EXPECT_EQ( p4.channel2, p.channel2 );
+        }
+        {
+            double scale = 1.0 / std::numeric_limits< range_traits< ui >::value_t >::max();
+            // conversions are done in doubles, floats are imprecise
+            pixel< float,         f > p3( pixel< float        , f >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, scale * p.channel0, 2.0e-8 ); EXPECT_NEAR( p3.channel1, scale * p.channel1, 2.0e-8 ); EXPECT_NEAR( p3.channel2, scale * p.channel2, 2.0e-8 );
+            pixel< double,        f > p4( pixel< double       , f >::convert( p ) );
+            EXPECT_EQ( p4.channel0, scale * p.channel0 ); EXPECT_EQ( p4.channel1, scale * p.channel1 ); EXPECT_EQ( p4.channel2, scale * p.channel2 );
+        }
+        {
+            double scale = 1.0 / std::numeric_limits< range_traits< ui >::value_t >::max();
+            // conversions are done in doubles, floats are imprecise
+            pixel< float,         d > p3( pixel< float        , d >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, scale * p.channel0, 2.0e-8 ); EXPECT_NEAR( p3.channel1, scale * p.channel1, 2.0e-8 ); EXPECT_NEAR( p3.channel2, scale * p.channel2, 2.0e-8 );
+            pixel< double,        d > p4( pixel< double       , d >::convert( p ) );
+            EXPECT_EQ( p4.channel0, scale * p.channel0 ); EXPECT_EQ( p4.channel1, scale * p.channel1 ); EXPECT_EQ( p4.channel2, scale * p.channel2 );
+        }
+    }
+    {
+        pixel< float,          f > p( 0.2, 0.3, 0.5 );
+        {
+            {
+                double scale = std::numeric_limits< range_traits< ub >::value_t >::max();
+                pixel< unsigned char, ub > p0( pixel< unsigned char, ub >::convert( p ) );
+                EXPECT_NEAR( p0.channel0, scale * p.channel0, 1 ); EXPECT_NEAR( p0.channel1, scale * p.channel1, 1 ); EXPECT_NEAR( p0.channel2, scale * p.channel2, 1 );
+            }
+            {
+                double scale = std::numeric_limits< range_traits< uw >::value_t >::max();
+                pixel< comma::uint16, uw > p1( pixel< comma::uint16, uw >::convert( p ) );
+                EXPECT_NEAR( p1.channel0, scale * p.channel0, 1 ); EXPECT_NEAR( p1.channel1, scale * p.channel1, 1 ); EXPECT_NEAR( p1.channel2, scale * p.channel2, 1 );
+            }
+            {
+                double scale = std::numeric_limits< range_traits< ui >::value_t >::max();
+                pixel< comma::uint32, ui > p2( pixel< comma::uint32, ui >::convert( p ) );
+                EXPECT_NEAR( p2.channel0, scale * p.channel0, 1 ); EXPECT_NEAR( p2.channel1, scale * p.channel1, 1 ); EXPECT_NEAR( p2.channel2, scale * p.channel2, 1 );
+            }
+            pixel< float,         f > p3( pixel< float        , f >::convert( p ) );
+            EXPECT_EQ( p3.channel0, p.channel0 ); EXPECT_EQ( p3.channel1, p.channel1 ); EXPECT_EQ( p3.channel2, p.channel2 );
+            pixel< double,        d > p4( pixel< double       , d >::convert( p ) );
+            EXPECT_EQ( p4.channel0, p.channel0 ); EXPECT_EQ( p4.channel1, p.channel1 ); EXPECT_EQ( p4.channel2, p.channel2 );
+        }
+    }
+    {
+        pixel< double,         d > p( 0.2, 0.3, 0.5 );
+        {
+            {
+                double scale = std::numeric_limits< range_traits< ub >::value_t >::max();
+                pixel< unsigned char, ub > p0( pixel< unsigned char, ub >::convert( p ) );
+                EXPECT_NEAR( p0.channel0, scale * p.channel0, 1 ); EXPECT_NEAR( p0.channel1, scale * p.channel1, 1 ); EXPECT_NEAR( p0.channel2, scale * p.channel2, 1 );
+            }
+            {
+                double scale = std::numeric_limits< range_traits< uw >::value_t >::max();
+                pixel< comma::uint16, uw > p1( pixel< comma::uint16, uw >::convert( p ) );
+                EXPECT_NEAR( p1.channel0, scale * p.channel0, 1 ); EXPECT_NEAR( p1.channel1, scale * p.channel1, 1 ); EXPECT_NEAR( p1.channel2, scale * p.channel2, 1 );
+            }
+            {
+                double scale = std::numeric_limits< range_traits< ui >::value_t >::max();
+                pixel< comma::uint32, ui > p2( pixel< comma::uint32, ui >::convert( p ) );
+                EXPECT_NEAR( p2.channel0, scale * p.channel0, 1 ); EXPECT_NEAR( p2.channel1, scale * p.channel1, 1 ); EXPECT_NEAR( p2.channel2, scale * p.channel2, 1 );
+            }
+            pixel< float,         f > p3( pixel< float        , f >::convert( p ) );
+            EXPECT_NEAR( p3.channel0, p.channel0, 2.0e-8 ); EXPECT_NEAR( p3.channel1, p.channel1, 2.0e-8 ); EXPECT_NEAR( p3.channel2, p.channel2, 2.0e-8 );
+            pixel< double,        d > p4( pixel< double       , d >::convert( p ) );
+            EXPECT_EQ( p4.channel0, p.channel0 ); EXPECT_EQ( p4.channel1, p.channel1 ); EXPECT_EQ( p4.channel2, p.channel2 );
+        }
+    }
+}
