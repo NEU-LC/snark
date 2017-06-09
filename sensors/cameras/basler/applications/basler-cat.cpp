@@ -956,6 +956,8 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
             std::cerr << "basler-cat: timeout" << std::endl;
             grabber.CancelGrab();
             while( grabber.RetrieveResult( result ) ); // get all buffers back
+            // we just return here rather than continue and try again because
+            // experience has shown that once it times out it never recovers
             return P();
         }
         boost::posix_time::ptime current_time = boost::get_system_time();
