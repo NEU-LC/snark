@@ -863,11 +863,16 @@ static void set_transport_options( Pylon::CBaslerGigECamera& camera, const comma
     if( inter_packet_delay != initial_inter_packet_delay ) { set_inter_packet_delay( camera, inter_packet_delay ); }
 }
 
-static void set_transport_options( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
+static void set_transport_options( Pylon::CBaslerUsbCamera&, const comma::command_line_options& options )
 {
-    if( options.exists( "--packet-size" )) { COMMA_THROW( comma::exception, "--packet-size not supported for USB cameras" ); }
-    if( options.exists( "--inter-packet-delay" )) { COMMA_THROW( comma::exception, "--inter-packet-delay not supported for USB cameras" ); }
-    if( options.exists( "--num-cameras" )) { COMMA_THROW( comma::exception, "--num-cameras not supported for USB cameras" ); }
+    for( std::string const& option
+             : std::vector< std::string > { "--packet-size", "--inter-packet-delay", "--num-cameras" } )
+    {
+        if( options.exists( option ))
+        {
+            COMMA_THROW( comma::exception, option << " not supported for USB cameras" );
+        }
+    }
 }
 
 template< typename T >
