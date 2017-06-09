@@ -209,6 +209,10 @@ static void usage( bool verbose = false )
     }
     std::cerr << "\nExample:";
     std::cerr << "\n    $ basler-cat \"resize=0.5;timestamp;view;null\"";
+    std::cerr << "\n    $ basler-cat --packet-size=9000 --pixel-format=Mono8 --frame-rate=120";
+    std::cerr << "\n    $ basler-cat --serial-number=21991077 --height=480 --width=1280";
+    std::cerr << "\n    $ basler-cat | cv-cat \"timestamp;view;null\"";
+
     std::cerr << "\n" << std::endl;
 }
 
