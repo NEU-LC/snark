@@ -509,7 +509,7 @@ struct Shapetraits< axis >
 
     static void update(shape_reader_base& reader, const ShapeWithId<axis>& s)
     {
-        std::vector<std::string> v=comma::split(s.shape.axis_label,';');
+        std::vector<std::string> v=comma::split(s.shape.axis_label,':');
         Eigen::Vector3d pos=s.shape.position - reader.offset();
         Eigen::Matrix3d ori=rotation_matrix::rotation( s.shape.orientation );
         Eigen::Vector3d una(s.shape.length,0,0);
@@ -664,7 +664,7 @@ struct traits< snark::graphics::view::axis >
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
         v.apply( "length", p.length );
-        v.apply( "axis_label", p.axis_label );
+        v.apply( "axis_labels", p.axis_label );
     }
 
     template < typename Key, class Visitor >
@@ -673,7 +673,7 @@ struct traits< snark::graphics::view::axis >
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
         v.apply( "length", p.length );
-        v.apply( "axis_label", p.axis_label );
+        v.apply( "axis_labels", p.axis_label );
     }
 };
 
