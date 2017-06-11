@@ -75,6 +75,35 @@ TEST( pixel, ctor )
     }
 }
 
+TEST( pixel, string )
+{
+    using namespace snark::imaging;
+    {
+        std::string s = stringify::from( ub );
+        EXPECT_EQ( s, "ub" );
+    }
+    {
+        std::string s = stringify::from( ui );
+        EXPECT_EQ( s, "ui" );
+    }
+    {
+        std::string s = stringify::from( d );
+        EXPECT_EQ( s, "d" );
+    }
+    {
+        range r = stringify::to( "ub" );
+        EXPECT_EQ( r, ub );
+    }
+    {
+        range r = stringify::to( "f" );
+        EXPECT_EQ( r, f );
+    }
+    {
+        ASSERT_THROW( stringify::to( "a" ), comma::exception );
+    }
+}
+
+
 TEST( pixel, convert )
 {
     using namespace snark::imaging;

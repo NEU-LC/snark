@@ -30,6 +30,7 @@
 #pragma once
 
 #include <comma/base/types.h>
+#include <comma/base/exception.h>
 #include <boost/static_assert.hpp>
 #include <type_traits>
 
@@ -41,6 +42,30 @@ namespace snark { namespace imaging {
         ui,       // 0 - 4294967295
         f,        // 0 - 1
         d         // 0 - 1
+    };
+
+    struct stringify
+    {
+        static std::string from( range r )
+        {
+            switch( r ) {
+                case ub: return "ub"; break;
+                case uw: return "uw"; break;
+                case ui: return "ui"; break;
+                case f: return "f"; break;
+                case d: return "d"; break;
+                default:
+                    COMMA_THROW( comma::exception, "logical error, unknown range " << r );
+            }
+        }
+
+        static range to( const std::string & s )
+        {
+            for ( auto r : { ub, uw, ui, f, d } ) {
+                if ( s == from( r ) ) { return r; }
+            }
+            COMMA_THROW( comma::exception, "string '" << s << "' is not a valid range" );
+        }
     };
 
     template< range R > struct range_traits;
