@@ -84,7 +84,7 @@ namespace {
         std::cerr << "            by default, output is double-precision values in the range of the \"to\" <colorspace>, e.g., from 0. to 255. for rgb" << std::endl;
         std::cerr << "            use <type> to rescale to different range; by default, values would be stored in variable of that <type>" << std::endl;
         std::cerr << "            use <format> to specify different storage, e.g." << std::endl;
-        std::cerr << "                --to rgb,uw:   convert to rgb in 0-65535 range, truncate value, store as 4-byte integer" << std::endl;
+        std::cerr << "                --to rgb,uw:   convert to rgb in 0-65535 range, truncate value, store as 2-byte integer" << std::endl;
         std::cerr << "                --to rgb,uw,d: convert to rgb in 0-65535 range, store as doubles, keep precision" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    options" << std::endl;
