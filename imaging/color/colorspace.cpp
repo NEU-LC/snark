@@ -54,7 +54,7 @@ namespace snark { namespace imaging {
         return m.at( c );
     }
 
-    const std::string & colorspace::default_type( cspace c )
+    const std::string & colorspace::default_range( cspace c )
     {
         static const std::map< cspace, std::string > & m = {
             { rgb,   "ub" },

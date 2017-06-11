@@ -64,7 +64,7 @@ namespace snark { namespace imaging {
             for ( auto r : { ub, uw, ui, f, d } ) {
                 if ( s == from( r ) ) { return r; }
             }
-            COMMA_THROW( comma::exception, "string '" << s << "' is not a valid range" );
+            COMMA_THROW( comma::exception, "string '" << s << "' is not a valid range descriptor" );
         }
     };
 

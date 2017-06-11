@@ -55,7 +55,7 @@ namespace snark { namespace imaging {
 
         static const std::vector< std::string > & field_names( cspace c );
 
-        static const std::string & default_type( cspace c );
+        static const std::string & default_range( cspace c );
     };
 
     std::ostream & operator<<( std::ostream & os, const colorspace & c )

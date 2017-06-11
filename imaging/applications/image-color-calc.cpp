@@ -283,6 +283,7 @@ namespace {
                 COMMA_THROW( comma::exception, "conversion from ycbcr to " << toc << " is not implemented yet" );
         }
     }
+#endif
 
     // the methods below are for parsing the command line
 
@@ -294,13 +295,13 @@ namespace {
         return true;
     }
 
-    colorspace get_colorspace_from_fields( const std::vector< std::string > & fields, const std::vector< colorspace > & spaces )
+    snark::imaging::colorspace get_colorspace_from_fields( const std::vector< std::string > & fields, const std::vector< snark::imaging::colorspace > & spaces )
     {
         if ( spaces.empty() ) { COMMA_THROW( comma::exception, "no colorspaces provided to choose from" ); }
         unsigned int total = 0;
-        colorspace rv( colorspace::none );
+        snark::imaging::colorspace rv( snark::imaging::colorspace::none );
         for ( const auto & c : spaces ) {
-            if ( fields_have_required( fields, colorspace::field_names( c.value ) ) ) {
+            if ( fields_have_required( fields, snark::imaging::colorspace::field_names( c.value ) ) ) {
                 ++total;
                 rv = c;
             }
@@ -308,27 +309,26 @@ namespace {
         if ( total > 1 ) { COMMA_THROW( comma::exception, "contradictory field names match multiple colorspaces" ); }
         if ( total == 0 ) { COMMA_THROW( comma::exception, "field names do not match the requested colorspaces "
                                                            << std::accumulate( std::next( spaces.begin() ), spaces.end(), std::string( spaces.front() )
-                                                                             , []( const colorspace & c, const std::string & a ) { return a + "," + std::string( c ); } ) ); }
+                                                                             , []( const snark::imaging::colorspace & c, const std::string & a ) { return a + "," + std::string( c ); } ) ); }
         return rv;
     }
 
-    void rename_fields_to_channels( std::vector< std::string > & fields, const colorspace & c )
+    void rename_fields_to_channels( std::vector< std::string > & fields, const snark::imaging::colorspace & c )
     {
-        const std::vector< std::string > & channels = colorspace::field_names( colorspace::none );
-        const std::vector< std::string > & own = colorspace::field_names( c.value );
+        const std::vector< std::string > & channels = snark::imaging::colorspace::field_names( snark::imaging::colorspace::none );
+        const std::vector< std::string > & own = snark::imaging::colorspace::field_names( c.value );
         std::map< std::string, std::string > map;
         std::transform( own.begin(), own.end(), channels.begin(), std::inserter( map, map.end() ), []( const std::string & k, const std::string & v ) { return std::make_pair( k, v ); } );
         for ( size_t i = 0; i < fields.size(); ++i ) { auto search = map.find( fields[i] ); if ( search != map.end() ) { fields[i] = search->second; } }
     }
 
-    void setup_fields_for_colorspace( std::vector< std::string > & fields, const colorspace & c )
+    void setup_fields_for_colorspace( std::vector< std::string > & fields, const snark::imaging::colorspace & c )
     {
-        std::vector< colorspace > spaces( 1, c );
-        if ( c.value != colorspace::none ) { spaces.push_back( colorspace::none ); }
-        colorspace found = get_colorspace_from_fields( fields, spaces );
-        if ( found.value != colorspace::none ) { rename_fields_to_channels( fields, c ); }
+        std::vector< snark::imaging::colorspace > spaces( 1, c );
+        if ( c.value != snark::imaging::colorspace::none ) { spaces.push_back( snark::imaging::colorspace::none ); }
+        snark::imaging::colorspace found = get_colorspace_from_fields( fields, spaces );
+        if ( found.value != snark::imaging::colorspace::none ) { rename_fields_to_channels( fields, c ); }
     }
-#endif
 
 } // anonymous
 
@@ -346,19 +346,26 @@ int main( int ac, char** av )
         const std::string & operation = unnamed[0];
         if ( operation == "convert" )
         {
-#if 0
             // the user may specify the input for conversion by two ways
             // if --from is specified:
             //     if fields are not given, fields are set to the from-specific defaults
             //     if fields are given, the required fields must be present (and renamed if needed)
             // otherwise, if --fields is given, infer the from colorspace from fields
-            colorspace fromc( options.value< std::string >( "--from", "none" ) );
-            if ( options.exists( "--input-fields" ) ) { std::cout << comma::join( colorspace::field_names( fromc.value ), ',' ) << std::endl; return 0; }
-            colorspace toc( options.value< std::string >( "--to", "none" ) );
-            if ( toc.value == colorspace::none ) { COMMA_THROW( comma::exception, "must provide destination colorspace using '--to'" ); }
-            if ( options.exists( "--output-fields" ) ) { std::cout << comma::join( colorspace::field_names( toc.value ), ',' ) << std::endl; return 0; }
+
+            // parsing origin
+            snark::imaging::colorspace fromc( snark::imaging::colorspace::none );
+            boost::optional< snark::imaging::range > fromr;
+            const std::string & froms( options.value< std::string >( "--from", "" ) );
+            if ( !froms.empty() )
+            {
+                const std::vector< std::string > & fromv = comma::split( froms, ',' );
+                if ( fromv.size() > 2 ) { COMMA_THROW( comma::exception, "--from takes at most two comma-separated value" ); }
+                fromc = snark::imaging::colorspace( fromv.front() );
+                if ( fromv.size() == 2 ) { fromr = snark::imaging::stringify::to( fromv[1] ); }
+            }
+            // alternatively, get origin from fields
             std::vector< std::string > fields = comma::split( csv.fields, csv.delimiter );
-            if ( fromc.value != colorspace::none ) {
+            if ( fromc.value != snark::imaging::colorspace::none ) {
                 if ( options.exists( "--fields,-f" ) )
                 {
                     setup_fields_for_colorspace( fields, fromc );
@@ -369,7 +376,9 @@ int main( int ac, char** av )
             } else {
                 if ( options.exists( "--fields,-f" ) )
                 {
-                    std::vector< colorspace > spaces = { colorspace( colorspace::rgb ), colorspace( colorspace::ycbcr ), colorspace( colorspace::ypbpr ) };
+                    std::vector< snark::imaging::colorspace > spaces = { snark::imaging::colorspace( snark::imaging::colorspace::rgb )
+                                                                       , snark::imaging::colorspace( snark::imaging::colorspace::ycbcr )
+                                                                       , snark::imaging::colorspace( snark::imaging::colorspace::ypbpr ) };
                     fromc = get_colorspace_from_fields( fields, spaces );
                     // now fromc cannot be none
                     rename_fields_to_channels( fields, fromc );
@@ -378,9 +387,25 @@ int main( int ac, char** av )
                     COMMA_THROW( comma::exception, "neither '--from' nor '--fields' are given, cannot determine the input colorspace" );
                 }
             }
+            if ( !fromr ) { fromr = snark::imaging::stringify::to( snark::imaging::colorspace::default_range( fromc.value ) ); }
+            if ( options.exists( "--input-fields" ) ) { std::cout << comma::join( snark::imaging::colorspace::field_names( fromc.value ), ',' ) << std::endl; return 0; }
+
+            // parsing destination
+            const std::string & tos = options.value< std::string >( "--to" );
+            const std::vector< std::string > & tov = comma::split( tos, ',' );
+            if ( tov.size() > 3 ) { COMMA_THROW( comma::exception, "--to takes at most three comma-separated value" ); }
+            snark::imaging::colorspace toc = snark::imaging::colorspace( tov.front() );
+            if ( toc.value == snark::imaging::colorspace::none ) { COMMA_THROW( comma::exception, "must provide destination colorspace using '--to'" ); }
+            if ( options.exists( "--output-fields" ) ) { std::cout << comma::join( snark::imaging::colorspace::field_names( toc.value ), ',' ) << std::endl; return 0; }
+            snark::imaging::range tor = snark::imaging::stringify::to( tov.size() > 1 ? tov[1] : snark::imaging::colorspace::default_range( toc.value ) );
+            // store the output format as range for convenience of parsing
+            snark::imaging::range tof = tov.size() > 1 ? ( tov.size() > 2 ? snark::imaging::stringify::to( tov[2] ) : tor ) : snark::imaging::d ;
 
             // the actual processing is done below
-            if ( verbose ) { std::cerr << name << "convert from " << fromc << " to " << toc << " colorspace using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
+            if ( verbose ) { std::cerr << name << "convert from '" << fromc << "," << snark::imaging::stringify::from( *fromr ) << "'"
+                                               <<          " to '" << toc << "," << snark::imaging::stringify::from( tor ) << "," << snark::imaging::stringify::from( tof ) << "'"
+                                               << " using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
+#if 0
             switch ( fromc.value ) {
                 case colorspace::rgb:
                     {
