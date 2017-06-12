@@ -29,6 +29,7 @@
 
 #include "../color/colorspace.h"
 #include "../color/pixel.h"
+#include "../color/convert.h"
 #include "../color/traits.h"
 
 #include <comma/csv/stream.h>
@@ -183,6 +184,8 @@ namespace {
     };
 
     // analog YPbPr from analog RGB (float-to-float, double-to-double, and crosses)
+    // rgb,*,f -> ypbpr,*,f
+    // rgb,*,d -> ypbpr,*,d
     template< typename it, typename ot >
     struct converter< colorspace::rgb, it, colorspace::ypbpr, ot >
     {
@@ -198,6 +201,8 @@ namespace {
     };
 
     // digital YCbCr from analog RGB (floating-point-to-ub)
+    // rgb,*,f -> ycbcr,*,ub
+    // rgb,*,d -> ycbcr,*,ub
     template< typename it >
     struct converter< colorspace::rgb, it, colorspace::ycbcr, unsigned char >
     {
@@ -212,6 +217,9 @@ namespace {
     };
 
     // digital YCbCr from digital RGB (ub-to-ub)
+    // rgb,*,ub -> ycbcr,*,ub
+    // other conversions:
+    // rgb,*,* -> rgb,d,* -> rgb,d,ub -> ycbcr,d,ub -> ycbcr,*,ub
     template< >
     struct converter< colorspace::rgb, unsigned char, colorspace::ycbcr, unsigned char >
     {
@@ -226,6 +234,9 @@ namespace {
     };
 
     // digital RGB from digital YCbCr (ub-to-ub)
+    // ycbcr,*,ub -> rgb,*,ub
+    // other conversions:
+    // ycbcr,*,* -> ycbcr,d,* -> ycbcr,d,ub -> rgb,d,ub -> rgb,*,ub
     template< >
     struct converter< colorspace::ycbcr, unsigned char, colorspace::rgb, unsigned char >
     {
@@ -238,24 +249,6 @@ namespace {
                               , rub( 255/219. * ( p.channel0 - 16 ) + 255/112.*0.886             * ( p.channel1 - 128 )                                                     ) );
         }
     };
-
-    template< colorspace::cspace ic, typename it, colorspace::cspace oc, typename ot >
-    void convert( const comma::csv::options & csv )
-    {
-        comma::csv::input_stream<  pixel< it > > is( std::cin, csv );
-        comma::csv::options output_csv;
-        output_csv.flush = csv.flush;
-        if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< ot > >() ); }
-        comma::csv::output_stream< pixel< ot > > os( std::cout, output_csv );
-        comma::csv::tied< pixel< it >, pixel< ot > > tied( is, os );
-        while( is.ready() || std::cin.good() )
-        {
-            const pixel< it > * p = is.read();
-            if( !p ) { break; }
-            tied.append( converter< ic, it, oc, ot >::to( *p ) );
-            if ( output_csv.flush ) { std::cout.flush(); }
-        }
-    }
 
     void from_rgb( const colorspace & toc, comma::csv::format::types_enum it, const comma::csv::options & csv )
     {
