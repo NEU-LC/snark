@@ -58,7 +58,7 @@ namespace snark { namespace imaging {
         static const std::string & default_range( cspace c );
     };
 
-    std::ostream & operator<<( std::ostream & os, const colorspace & c )
+    inline std::ostream & operator<<( std::ostream & os, const colorspace & c )
     {
         os << std::string( c );
         return os;
