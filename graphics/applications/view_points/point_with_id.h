@@ -35,12 +35,8 @@
 
 #include <comma/base/types.h>
 #include "../../../visiting/eigen.h"
-#if Qt3D_VERSION==1
-#include <Qt3D/qcolor4ub.h>
-#else
-#include "../../../graphics/qt3d/qt3d_v2/gl/types.h"
-#endif
-#include "shape_with_id.h"
+#include "traits.h"
+#include "types.h"
 
 namespace snark { namespace graphics { namespace view {
 
@@ -51,11 +47,7 @@ struct PointWithId // quick and dirty
     Eigen::Vector3d orientation;
     comma::uint32 id;
     comma::uint32 block;
-    #if Qt3D_VERSION==1
-    QColor4ub color;
-    #else
-    qt3d::gl::color_t color;
-    #endif
+    color_t color;
     std::string label;
     double scalar;
 };

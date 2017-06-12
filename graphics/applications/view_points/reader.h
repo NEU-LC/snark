@@ -40,11 +40,11 @@
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
 #include "colored.h"
+#include <snark/math/interval.h>
 #if Qt3D_VERSION==1
 #include <Qt3D/qglview.h>
 #else
 #include <QQuaternion>
-#include "../../../math/interval.h"
 #include "../../qt3d/qt3d_v2/gl/shapes.h"
 #include "../../../graphics/qt3d/qt3d_v2/gl/labels.h"
 #include <memory>

@@ -177,12 +177,13 @@ static void usage()
         "\n                     \"triangle\": e.g. --shape=triangle --fields=,,corners,,,"
         "\n                                     or --shape=triangle --fields=,,corners[0],,,corners[1],,,corners[2],,,"
         "\n                                     or --shape=triangle --fields=,,corners[0]/x,,corners[0]/y,,corners[0]/z,,,,corners[1],,,corners[2],,, etc"
-        "\n                     \"axis\": draws three axis lines in red/green/blue using position and orientation e.g. --shape=axis --fields=position,orientation"
-        "\n                                     fields: position,orientation,length,label"
+        "\n                     \"axis\": draws three axis lines for each record, in red/green/blue using position and orientation e.g. --shape=axis --fields=position,orientation"
+        "\n                                     fields: position,orientation,length,label,axis_label"
         "\n                                         default fields: position,orientation"
         "\n                                         position: x,y,z or position/x,position/y,position/z"
         "\n                                         orientation: roll,pitch,yaw or orientation/roll,orientation/pitch,orientation/yaw"
         "\n                                         length: length of each axis line"
+        "\n                                         axis_labels:  <x>:<y>:<z> colon separated list of axis labels, leave empty for no labels e.g. x;y;z"
         "\n                                     options: --weight or --point-size can be used for line thickness"
         qt55_unsupported_marker_start
         "\n                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
@@ -336,7 +337,8 @@ static void usage()
         "\n                  <( echo 0,0,0,1,1,1 )\";shape=extents;label=extents;color=blue\" \\"
         "\n                  <( echo 0,0,2,0,0,0,0.5,2 )\";shape=ellipse;label=ellipse;color=salad\" \\"
         "\n                  <( echo -e \"0,0,-2,0\\n0,1,-2,1\\n0.5,1.5,-2,2\\n1,1,-2,3\\n1,0,-2,4\\n0.5,-0.5,-2,5\" )\";shape=loop;fields=x,y,z,id;label=loop\" \\"
-        "\n                  <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\""
+        "\n                  <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\"\\"
+        "\n                  <( echo '-3,-3,-3,0,0,0,6,\"X:Y:Z\"' )\";shape=axis;fields=position,orientation,length,axis_labels\""
         "\n";
 
     std::cerr

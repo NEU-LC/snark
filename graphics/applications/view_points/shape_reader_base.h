@@ -28,81 +28,55 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-
 #include <Eigen/Core>
-
-#if Qt3D_VERSION==1
-#include <QVector3D>
-#include <Qt3D/qcolor4ub.h>
-
-#else
-#include "../../../graphics/qt3d/qt3d_v2/gl/types.h"
-
-#endif
+#include <snark/math/interval.h>
+#include "reader.h"
+#include "types.h"
+#include "../../block_buffer.h"
 
 namespace snark { namespace graphics { namespace view {
-    
-#if Qt3D_VERSION==1
-typedef QColor4ub color_t;
-#define COLOR_RED   Qt::red
-#define COLOR_GREEN Qt::green
-#define COLOR_BLUE  Qt::blue
 
-#elif Qt3D_VERSION==2
-
-typedef snark::graphics::qt3d::gl::color_t color_t;
-
-struct stock
-{
-    const static color_t red;
-    const static color_t green;
-    const static color_t blue;
-};
-
-#define COLOR_RED   stock::red
-#define COLOR_GREEN stock::green
-#define COLOR_BLUE  stock::blue
-
-#endif
-
-/**
- * base class for controller. 
- * defines event handlers that are called by viewer.
- */
-class controller_base
+class shape_reader_base : public Reader
 {
 public:
-    virtual ~controller_base() { }
-    //should be called only once when opengl is up
-    virtual void init()=0;
-    virtual void tick()=0;
+    void add_vertex(const vertex_t& v, unsigned int block);
+    void add_label(const label_t& l, unsigned int block);
+    void extent_hull(const snark::math::closed_interval< float, 3 >& x);
+    void extent_hull(const Eigen::Vector3f& p);
+    const Eigen::Vector3d& offset();
+protected:
+    shape_reader_base(const reader_parameters& params, colored* c, const std::string& label, std::size_t shape_size);
+    block_buffer< vertex_t > buffer_;
+    block_buffer< label_t > labels_;
 };
 
-/// text label with 3d position
-struct label_t
+shape_reader_base::shape_reader_base(const reader_parameters& params, colored* c, const std::string& label, std::size_t shape_size)
+    : Reader( params, c, label )
+    , buffer_( size * shape_size )
+    , labels_( size )
 {
-    Eigen::Vector3d position;
-    color_t color;
-    std::string text;
-    label_t() { }
-    label_t( const Eigen::Vector3d& position, const color_t& color, const std::string& text ) : position( position ), color( color ), text( text ) { }
-};
-
-#if Qt3D_VERSION==1
-struct vertex_t
-{
-    QVector3D position;
-    QColor4ub color;
-    vertex_t() {}
-    vertex_t( const QVector3D& position, const QColor4ub& color )
-        : position( position ), color( color ) {}
-    vertex_t(const Eigen::Vector3f& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
-    vertex_t(const Eigen::Vector3d& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
-};
-#elif Qt3D_VERSION==2
-typedef qt3d::gl::vertex_t vertex_t;
-#endif
-
     
-} } } // namespace snark { namespace graphics { namespace view {
+}
+inline void shape_reader_base::add_vertex(const vertex_t& v, unsigned int block)
+{
+    buffer_.add(v,block);
+}
+inline void shape_reader_base::add_label(const label_t& l, unsigned int block)
+{
+    labels_.add(l,block);
+}
+inline void shape_reader_base::extent_hull(const snark::math::closed_interval< float, 3 >& x)
+{
+    m_extents = m_extents ? m_extents->hull( x ) : x;
+}
+inline void shape_reader_base::extent_hull(const Eigen::Vector3f& p)
+{
+    m_extents = m_extents ? m_extents->hull( p ) : snark::math::closed_interval< float, 3 >(p);
+}
+inline const Eigen::Vector3d& shape_reader_base::offset()
+{
+    return m_offset;
+}
 
+} } } // namespace snark { namespace graphics { namespace view {
+    

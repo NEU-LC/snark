@@ -88,7 +88,7 @@ static pair capture( cv::VideoCapture& capture, rate_limit& rate )
     return std::make_pair( buffer , image );
 }
 
-static pair output_single_image( const cv::Mat& image )
+static pair output_single_image( const std::pair< boost::posix_time::ptime, cv::Mat >& p )
 {
     static bool done = false;
     if( done ) { return pair(); }
@@ -97,11 +97,11 @@ static pair output_single_image( const cv::Mat& image )
     static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
 
-    snark::cv_mat::serialization::header h(image);
-    h.timestamp = boost::posix_time::microsec_clock::universal_time();
+    snark::cv_mat::serialization::header h( p.second );
+    h.timestamp = p.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : p.first;
     default_binary.put( h, &buffer[0] );
 
-    return std::make_pair( buffer, image );
+    return std::make_pair( buffer, p.second );
 }
 
 static pair read( snark::cv_mat::serialization& input, rate_limit& rate )
@@ -166,6 +166,7 @@ int main( int argc, char** argv )
             ( "threads", boost::program_options::value< unsigned int >( &number_of_threads )->default_value( 0 ), "number of threads; default: 0 (auto)" )
             ( "skip", boost::program_options::value< unsigned int >( &number_of_frames_to_skip )->default_value( 0 ), "number of initial frames to skip; default: 0" )
             ( "stay", "do not close at end of stream" )
+            ( "timestamped", "if --file present, use file name for timestamp, e.g. --file=images/20170101T012345.jpg" )
             ( "video", "has effect in opencv versions 2.12(?) and above; explicitly specify that filename given by --file refers to a video; e.g. --file ABC_0001.jpg will read a single image, --file ABC_0001.jpg will read images ABC_0001.jpg, ABC_0002.jpg, etc, if present" );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
@@ -262,17 +263,23 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization input( input_options );
         snark::cv_mat::serialization output( output_options );
         boost::scoped_ptr< bursty_reader< pair > > reader;
-        cv::Mat image;
+        std::pair< boost::posix_time::ptime, cv::Mat > p;
 
         typedef snark::imaging::applications::pipeline_with_header pipeline_with_header;
         typedef snark::cv_mat::filters_with_header filters_with_header;
 
         if( vm.count( "file" ) )
         {
-            if( !vm.count( "video" ) ) { image = cv::imread( name ); }
-            if( image.data )
+            if( !vm.count( "video" ) ) { p.second = cv::imread( name ); }
+            if( p.second.data )
             {
-                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( image ) ), discard, capacity ) );
+                if( vm.count( "timestamped" ) )
+                {
+                    std::vector<std::string> time_strings = comma::split( comma::split( name, '/' ).back(), '.' );
+                    if ( time_strings.size() == 2 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] ); }
+                    else if ( time_strings.size() == 3 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] + '.' + time_strings[1] ); }
+                }
+                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( p ) ), discard, capacity ) );
             }
             else
             {

@@ -31,10 +31,8 @@
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
 #include "reader.h"
-#if Qt3D_VERSION==2
 #include <Eigen/Geometry>
-#include "../../../math/rotation_matrix.h"
-#endif
+#include <snark/math/rotation_matrix.h>
 
 namespace snark { namespace graphics { namespace view {
 
