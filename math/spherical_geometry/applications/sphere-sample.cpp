@@ -10,23 +10,39 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/visiting/traits.h>
 #include <snark/math/range_bearing_elevation.h>
-#include <ctime>
-#include "../sample.h"
 #include "../coordinates.h"
 #include "../traits.h"
 
-static const std::string app_name = "sphere-sample";
+static const std::string app_name = "sphere-calc";
+
+namespace detail {
+    
+boost::mt19937 generator;
+boost::uniform_real< double > distribution( 0, 1 );
+boost::variate_generator< boost::mt19937&, boost::uniform_real< double > > random( generator, distribution );
+
+snark::spherical::coordinates pretty_uniform_sample( const snark::spherical::coordinates& centre, double radius )
+{
+    if( radius >= M_PI ) { COMMA_THROW( comma::exception, "support containing circle radius less than pi; got " << radius ); }
+    const Eigen::Matrix3d& r1 = Eigen::AngleAxis< double >( centre.longitude, Eigen::Vector3d( 0, 0, 1 ) ).toRotationMatrix();
+    double a = ( random() * 2 - 1 ) * radius; // double a = impl::random() * M_PI * 2;
+    double b = ( random() * 2 - 1 ) * radius; // double b = std::sqrt( impl::random() ) * radius;
+    const Eigen::Vector3d& s = snark::range_bearing_elevation( 1, a, b ).to_cartesian(); // const Eigen::Vector3d& s = snark::range_bearing_elevation( 1, b * std::cos( a ), b * std::sin( a ) ).to_cartesian();
+    const Eigen::Matrix3d& r2 = Eigen::AngleAxis< double >( centre.latitude, Eigen::Vector3d( 0, -1, 0 ) ).toRotationMatrix();
+    return snark::spherical::coordinates( r1 * r2 * s );
+}
+
+}   // namespace detail {
 
 static void usage( bool verbose )
 {
     std::cerr << std::endl;
     std::cerr << "generates a sample ever the whole sphere" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: sphere-sample <options> > sample.csv" << std::endl;
+    std::cerr << "usage: sphere-calc <options> > sample.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    -h|--help                       Show this help (-v|--verbose to show csv options)" << std::endl;
@@ -57,31 +73,33 @@ template< typename T > T get_option( comma::command_line_options &options, const
     return result;
 }
 
-using namespace acfr;
+using namespace snark;
 
 int main( int ac, char** av )
 {
     try
     {
+        using snark::spherical::coordinates;
+        
         comma::command_line_options options( ac, av, usage );
-        if( options.exists( "--verbose,-v" ) ) { std::cerr << "sphere-sample: called as: " << options.string() << std::endl; }
+        if( options.exists( "--verbose,-v" ) ) { std::cerr << "sphere-calc: called as: " << options.string() << std::endl; }
         double resolution = options.value< double >( "--resolution,-r" ) * M_PI / 180;
-        comma::csv::output_stream< aero::coordinates > ostream( std::cout, comma::csv::options( options ) );
+        comma::csv::output_stream< coordinates > ostream( std::cout, comma::csv::options( options ) );
         options.assert_mutually_exclusive( "--random,--regular" );
         bool regular = options.exists( "--regular" );
         bool random = options.exists( "--random" );
         bool regular_uniform = options.exists( "--regular-uniform,--uniform" );
-        if( !regular && !random && !regular_uniform ) { std::cerr << "sphere-sample: expected sample type (--random, --regular, or --uniform)" << std::endl; return 1; }
-        aero::coordinates begin = get_option< aero::coordinates >( options, "--begin", aero::coordinates( -M_PI / 2, -M_PI ) );
+        if( !regular && !random && !regular_uniform ) { std::cerr << "sphere-calc: expected sample type (--random, --regular, or --uniform)" << std::endl; return 1; }
+        coordinates begin = get_option< coordinates >( options, "--begin", coordinates( -M_PI / 2, -M_PI ) );
         static const double epsilon = 0.00000001;
-        aero::coordinates end = get_option< aero::coordinates >( options, "--end", aero::coordinates( M_PI / 2 + epsilon, M_PI - epsilon ) );
+        coordinates end = get_option< coordinates >( options, "--end", coordinates( M_PI / 2 + epsilon, M_PI - epsilon ) );
         if( begin.latitude < -M_PI / 2 ) { begin.latitude = -M_PI / 2; }
         if( begin.longitude < -M_PI ) { begin.longitude = -M_PI; }
         if( end.latitude > M_PI / 2 ) { end.latitude = M_PI / 2; }
         if( end.longitude > M_PI ) { end.longitude = M_PI; }
         if( regular )
         {
-            for( aero::coordinates c = begin; comma::math::less( c.latitude, end.latitude ); c.latitude += resolution )
+            for( coordinates c = begin; comma::math::less( c.latitude, end.latitude ); c.latitude += resolution )
             {
                 for( c.longitude = begin.longitude; comma::math::less( c.longitude, end.longitude ); c.longitude += resolution )
                 {
@@ -98,7 +116,7 @@ int main( int ac, char** av )
             if( seed ) { generator.seed( *seed ); }
             boost::uniform_real< double > distribution( 0, 1 );
             boost::variate_generator< boost::mt19937&, boost::uniform_real< double > > r( generator, distribution );
-            for( aero::coordinates c = begin; comma::math::less( c.latitude, end.latitude ); c.latitude += resolution )
+            for( coordinates c = begin; comma::math::less( c.latitude, end.latitude ); c.latitude += resolution )
             {
                 double radius = std::abs( std::cos( c.latitude ) );
                 if( radius == 0 ) { continue; }
@@ -106,13 +124,13 @@ int main( int ac, char** av )
                 double offset = random ? ( r() * 2 - 1 ) * step : 0.0;
                 for( c.longitude = begin.longitude + offset; comma::math::less( c.longitude, end.longitude + offset ); c.longitude += step )
                 {
-                    ostream.write( regular_uniform ? c : aero::pretty_uniform_sample( c, resolution / 2 ) );
+                    ostream.write( regular_uniform ? c : detail::pretty_uniform_sample( c, resolution / 2 ) );
                 }
             }
         }
         return 0;
     }
-    catch( std::exception& ex ) { std::cerr << "sphere-sample: " << ex.what() << std::endl; }
-    catch( ... ) { std::cerr << "sphere-sample: unknown exception" << std::endl; }
+    catch( std::exception& ex ) { std::cerr << "sphere-calc: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "sphere-calc: unknown exception" << std::endl; }
     return 1;
 }
