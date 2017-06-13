@@ -39,6 +39,7 @@ namespace {
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, typename outt >
     void convert( const comma::csv::options & csv )
     {
+        // std::cerr << "inc,inr,outc,outr,is_int,size: " << inc << ',' << inr << ',' << outc << ',' << outr << ',' << std::is_integral< outt >::value << ',' << sizeof(outt) << std::endl;
         comma::csv::input_stream< pixel< double, inr > > is( std::cin, csv );
         comma::csv::options output_csv;
         output_csv.flush = csv.flush;
@@ -60,6 +61,7 @@ namespace {
     converter::F resolve_( typename std::enable_if< std::is_integral< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
                          , typename std::enable_if< std::is_integral< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
     {
+        // std::cerr << "resolve_(int, int): " << outr_v << ',' << outt_v << std::endl;
         if ( outr_v == ub && outt_v == ub ) { return convert< inc, inr, outc, ub, typename range_traits< ub >::value_t >; }
         if ( outr_v == ub && outt_v == uw ) { return convert< inc, inr, outc, ub, typename range_traits< uw >::value_t >; }
         if ( outr_v == ub && outt_v == ui ) { return convert< inc, inr, outc, ub, typename range_traits< ui >::value_t >; }
@@ -98,8 +100,8 @@ namespace {
             // shall not attempt instantiating if:
             // outr integer, outt integer and outr > outt
             // outr float, outt integer
-            typename range_traits< outr >::value_t outr_v( 0 );
-            typename range_traits< outt >::value_t outt_v( 0 );
+            typename range_traits< outr >::value_t outr_v( outr );
+            typename range_traits< outt >::value_t outt_v( outt );
             return resolve_< inc, inr, outc, outr, outt >( outr_v, outt_v );
         }
     };
