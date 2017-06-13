@@ -398,6 +398,8 @@ int main( int ac, char** av )
             if ( verbose ) { std::cerr << name << "convert from '" << fromc << "," << snark::imaging::stringify::from( *fromr ) << "'"
                                                <<          " to '" << toc << "," << snark::imaging::stringify::from( tor ) << "," << snark::imaging::stringify::from( tof ) << "'"
                                                << " using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
+            auto converter = snark::imaging::converter::dispatch( fromc, *fromr, toc, tor, tof );
+            converter( csv );
 #if 0
             switch ( fromc.value ) {
                 case colorspace::rgb:
