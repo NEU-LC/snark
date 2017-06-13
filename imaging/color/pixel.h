@@ -33,6 +33,7 @@
 #include <comma/base/exception.h>
 #include <boost/static_assert.hpp>
 #include <type_traits>
+#include <vector>
 
 namespace snark { namespace imaging {
 
@@ -133,6 +134,17 @@ namespace snark { namespace imaging {
             return pixel( static_cast< T >( factor * ( rhs.channel0 - limits< Q >::lower() ) + limits< R >::lower() )
                         , static_cast< T >( factor * ( rhs.channel1 - limits< Q >::lower() ) + limits< R >::lower() )
                         , static_cast< T >( factor * ( rhs.channel2 - limits< Q >::lower() ) + limits< R >::lower() ) );
+        }
+    };
+
+    template< typename T, range R >
+    struct pixel2 : public std::vector< T >
+    {
+        // pixel2( T c0 = 0, T c1 = 0, T c2 = 0 )
+        //     : std::vector< T >( { trim< T, R >( c0 ), trim< T, R >( c1 ), trim< T, R >( c2 ) } )
+        pixel2() : std::vector< T >( 3, 0 )
+        {
+            assert_compatible< T, R >( this->front(), typename range_traits< R >::value_t( 0 ) );
         }
     };
 

@@ -53,4 +53,19 @@ template < typename T, snark::imaging::range R > struct traits< snark::imaging::
     }
 };
 
+template < typename T, snark::imaging::range R > struct traits< snark::imaging::pixel2< T, R > >
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key& k, snark::imaging::pixel2< T, R > & p, Visitor& v )
+    {
+        traits< std::vector< T > >::visit( k, p, v );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( const Key& k, const snark::imaging::pixel2< T, R > & p, Visitor& v )
+    {
+        traits< std::vector< T > >::visit( k, p, v );
+    }
+};
+
 } } // namespace comma { namespace visiting {
