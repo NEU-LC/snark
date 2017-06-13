@@ -37,26 +37,66 @@ namespace {
 
     using namespace snark::imaging;
 
+    struct data
+    {
+        data( double c0, double c1, double c2 ) : channel0( c0 ), channel1( c1 ), channel2( c2 ) { }
+        double channel0;
+        double channel1;
+        double channel2;
+    };
 
+    data linear_combination( const data & i, const Eigen::Vector3d & before, const Eigen::Matrix3d & m, const Eigen::Vector3d & after )
+    {
+        data t( i.channel0 + before(0), i.channel1 + before(1), i.channel2 + before(2) );
+        return data( m(0,0) * t.channel0 + m(0,1) * t.channel1 + m(0,2) * t.channel2 + after(0)
+                   , m(1,0) * t.channel0 + m(1,1) * t.channel1 + m(1,2) * t.channel2 + after(1)
+                   , m(2,0) * t.channel0 + m(2,1) * t.channel1 + m(2,2) * t.channel2 + after(2) );
+    }
+
+    data linear_combination( const data & i, const Eigen::Vector3d & before, const Eigen::Matrix3d & m )
+    {
+        data t( i.channel0 + before(0), i.channel1 + before(1), i.channel2 + before(2) );
+        return data( m(0,0) * t.channel0 + m(0,1) * t.channel1 + m(0,2) * t.channel2
+                   , m(1,0) * t.channel0 + m(1,1) * t.channel1 + m(1,2) * t.channel2
+                   , m(2,0) * t.channel0 + m(2,1) * t.channel1 + m(2,2) * t.channel2 );
+    }
+
+    data linear_combination( const data & i, const Eigen::Matrix3d & m, const Eigen::Vector3d & after )
+    {
+        return data( m(0,0) * i.channel0 + m(0,1) * i.channel1 + m(0,2) * i.channel2 + after(0)
+                   , m(1,0) * i.channel0 + m(1,1) * i.channel1 + m(1,2) * i.channel2 + after(1)
+                   , m(2,0) * i.channel0 + m(2,1) * i.channel1 + m(2,2) * i.channel2 + after(2) );
+    }
+
+    data linear_combination( const data & i, const Eigen::Matrix3d & m )
+    {
+        // std::cerr << i.channel0 << ',' << i.channel1 << ',' << i.channel2 << std::endl;
+        return data( m(0,0) * i.channel0 + m(0,1) * i.channel1 + m(0,2) * i.channel2
+                   , m(1,0) * i.channel0 + m(1,1) * i.channel1 + m(1,2) * i.channel2
+                   , m(2,0) * i.channel0 + m(2,1) * i.channel1 + m(2,2) * i.channel2 );
+    }
+
+    typedef std::function< data ( const data & p ) > C;
     // TODO:
     // outr can be duplicate here to the explicit convert call in convert (or the other way around)
     typedef std::pair< colorspace::cspace, range > half_key_t;
     typedef std::pair< half_key_t, half_key_t > conversion_key_t;
-    typedef std::map< conversion_key_t, Eigen::Matrix3d > conversion_map_t;
+    typedef std::map< conversion_key_t, C > conversion_map_t;
 
     const conversion_map_t & populate()
     {
         static conversion_map_t m;
-        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb, ub ) ) ] << 1, 0, 0,
-                                                                                                               0, 1, 0,
-                                                                                                               0, 0, 1;
+        Eigen::Matrix3d unity = (Eigen::Matrix3d() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished();
+        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb, ub ) ) ] = [&unity]( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ypbpr, f ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, d  ), std::make_pair( colorspace::ypbpr, d ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
         return m;
     }
 
-    typedef std::function< void ( const comma::csv::options & csv, const Eigen::Matrix3d ) > F;
+    typedef std::function< void ( const comma::csv::options & csv, const C & c ) > F;
 
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, typename outt >
-    void convert( const comma::csv::options & csv, const Eigen::Matrix3d & m )
+    void convert( const comma::csv::options & csv, const C & c )
     {
         // std::cerr << "inc,inr,outc,outr,is_int,size: " << inc << ',' << inr << ',' << outc << ',' << outr << ',' << std::is_integral< outt >::value << ',' << sizeof(outt) << std::endl;
         comma::csv::input_stream< pixel< double, inr > > is( std::cin, csv );
@@ -65,13 +105,15 @@ namespace {
         if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< outt, outr > >() ); }
         comma::csv::output_stream< pixel< outt, outr > > os( std::cout, output_csv );
         comma::csv::tied< pixel< double, inr >, pixel< outt, outr > > tied( is, os );
+        static_assert( sizeof( data ) == sizeof( pixel< double, inr > ), "incompatible sizes of raw and input data" );
+        static_assert( sizeof( data ) == sizeof( pixel< double, outr > ), "incompatible sizes of raw and output data" );
         while( is.ready() || std::cin.good() )
         {
             const pixel< double, inr > * p = is.read();
             if( !p ) { break; }
-            pixel< double, outr > op( m(0,0) * p->channel0 + m(0,1) * p->channel1 + m(0,2) * p->channel2
-                                    , m(1,0) * p->channel0 + m(1,1) * p->channel1 + m(1,2) * p->channel2
-                                    , m(2,0) * p->channel0 + m(2,1) * p->channel1 + m(2,2) * p->channel2 );
+            data d = c( reinterpret_cast< const data & >( *p ) );
+            // std::cerr << d.channel0 << ',' << d.channel1 << ',' << d.channel2 << std::endl;
+            pixel< double, outr > op( d.channel0, d.channel1, d.channel2 );
             tied.append( pixel< outt, outr >::convert( op ) );
             if ( output_csv.flush ) { std::cout.flush(); }
         }
