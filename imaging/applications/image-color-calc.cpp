@@ -153,36 +153,6 @@ namespace {
     }
 
 #if 0
-    template< typename T >
-    pixel< T, ub >::pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( limits< T, ub >::trim( c0 ) ), channel1( limits< T, ub >::trim( c1 ) ), channel2( limits< T, ub >::trim( c2 ) ) {}
-
-    template< typename T >
-    pixel< T, uw >::pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( limits< T, uw >::trim( c0 ) ), channel1( limits< T, uw >::trim( c1 ) ), channel2( limits< T, uw >::trim( c2 ) ) {
-        static_assert( !std::is_same< typename range_traits< ub >::value, T >::value, "cannot store value of uw range in ub variable" );
-    }
-
-    template< typename T >
-    pixel< T, ui >::pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( limits< T, ui >::trim( c0 ) ), channel1( limits< T, ui >::trim( c1 ) ), channel2( limits< T, ui >::trim( c2 ) ) {
-        static_assert( !std::is_same< typename range_traits< ub >::value, T >::value, "cannot store value of ui range in ub variable" );
-        static_assert( !std::is_same< typename range_traits< uw >::value, T >::value, "cannot store value of ui range in uw variable" );
-    }
-
-    template< typename T >
-    pixel< T, f >::pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( limits< T, f >::trim( c0 ) ), channel1( limits< T, f >::trim( c1 ) ), channel2( limits< T, f >::trim( c2 ) ) {
-        static_assert( !std::is_same< typename range_traits< ub >::value, T >::value, "cannot store value of f range in ub variable" );
-        static_assert( !std::is_same< typename range_traits< uw >::value, T >::value, "cannot store value of f range in uw variable" );
-        static_assert( !std::is_same< typename range_traits< ui >::value, T >::value, "cannot store value of f range in ui variable" );
-    }
-
-    // general template, never defined
-    // keep the precision explicit because some of the colorspaces may exist in multiple formats
-    // (most are 1-to-1, so this is excessive in general)
-    template< colorspace::cspace ic, typename it, colorspace::cspace oc, typename ot  >
-    struct converter
-    {
-        static pixel< ot > to( const pixel< it > & p );
-    };
-
     // analog YPbPr from analog RGB (float-to-float, double-to-double, and crosses)
     // rgb,*,f -> ypbpr,*,f
     // rgb,*,d -> ypbpr,*,d
@@ -249,33 +219,6 @@ namespace {
                               , rub( 255/219. * ( p.channel0 - 16 ) + 255/112.*0.886             * ( p.channel1 - 128 )                                                     ) );
         }
     };
-
-    void from_rgb( const colorspace & toc, comma::csv::format::types_enum it, const comma::csv::options & csv )
-    {
-        switch( toc.value ) {
-            case colorspace::ycbcr:
-                if ( it == comma::csv::format::uint8 ) { convert< colorspace::rgb, unsigned char, colorspace::ycbcr, unsigned char >( csv ); return; }
-                if ( it == comma::csv::format::float_t ) { convert< colorspace::rgb, float, colorspace::ycbcr, unsigned char >( csv ); return; }
-                if ( it == comma::csv::format::double_t ) { convert< colorspace::rgb, double, colorspace::ycbcr, unsigned char >( csv ); return; }
-                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( it ) << " rgb to " << toc << " is not supported" );
-            case colorspace::ypbpr:
-                if ( it == comma::csv::format::float_t ) { convert< colorspace::rgb, float, colorspace::ypbpr, float >( csv ); return; }
-                if ( it == comma::csv::format::double_t ) { convert< colorspace::rgb, double, colorspace::ypbpr, double >( csv ); return; }
-                COMMA_THROW( comma::exception, "conversion from " << comma::csv::format::to_format( it ) << " rgb to " << toc << " is not supported" );
-            default:
-                COMMA_THROW( comma::exception, "conversion from rgb to " << toc << " is not implemented yet" );
-        }
-    }
-
-    void from_ycbcr( const colorspace & toc, const comma::csv::options & csv )
-    {
-        switch ( toc.value ) {
-            case colorspace::rgb:
-                convert< colorspace::ycbcr, unsigned char, colorspace::rgb, unsigned char >( csv ); return;
-            default:
-                COMMA_THROW( comma::exception, "conversion from ycbcr to " << toc << " is not implemented yet" );
-        }
-    }
 #endif
 
     // the methods below are for parsing the command line
@@ -400,24 +343,6 @@ int main( int ac, char** av )
                                                << " using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
             auto converter = snark::imaging::converter::dispatch( fromc, *fromr, toc, tor, tof );
             converter( csv );
-#if 0
-            switch ( fromc.value ) {
-                case colorspace::rgb:
-                    {
-                        if ( !csv.binary() && !options.exists( "--format" ) ) { COMMA_THROW( comma::exception, "must supply '--format' for ASCII rgb inputs" ); }
-                        const comma::csv::format & format = csv.binary() ? csv.format() : comma::csv::format( options.value< std::string >( "--format" ) );
-                        // assume all input fields have same size
-                        size_t first_field = std::distance( fields.begin(), std::find( fields.begin(), fields.end(), "channel0" ) );
-                        from_rgb( toc, format.offset( first_field ).type, csv );
-                    }
-                    break;
-                case colorspace::ycbcr:
-                    from_ycbcr( toc, csv );
-                    break;
-                default:
-                    COMMA_THROW( comma::exception, "conversion from " << fromc << " to " << toc << " is not implemented yet" );
-            }
-#endif
             return 0;
         } else {
             std::cerr << name << "unknown operation '" << operation << "', not one of: convert" << std::endl;
