@@ -78,7 +78,9 @@ namespace {
 
     typedef std::function< data ( const data & p ) > C;
     // TODO:
-    // outr can be duplicate here to the explicit convert call in convert (or the other way around)
+    // - store data as std::vector instead of introducing a POD type and copying
+    // - YPbPr is from -0.5 to +0.5, not 0 to 1; introduce a new range to match
+    // - outr can be duplicate to the explicit convert call in convert (or the other way around); sort out
     typedef std::pair< colorspace::cspace, range > half_key_t;
     typedef std::pair< half_key_t, half_key_t > conversion_key_t;
     typedef std::map< conversion_key_t, C > conversion_map_t;
@@ -86,10 +88,9 @@ namespace {
     const conversion_map_t & populate()
     {
         static conversion_map_t m;
-        Eigen::Matrix3d unity = (Eigen::Matrix3d() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished();
-        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb, ub ) ) ] = [&unity]( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished() ); };
-        m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ypbpr, f ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
-        m[ std::make_pair( std::make_pair( colorspace::rgb, d  ), std::make_pair( colorspace::ypbpr, d ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb,   ub ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ypbpr, f  ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, d  ), std::make_pair( colorspace::ypbpr, d  ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
         return m;
     }
 
@@ -245,6 +246,7 @@ namespace snark { namespace imaging {
     converter::F converter::dispatch( const colorspace & inc, range inr, const colorspace & outc, range outr, range outt )
     {
         static const conversion_map_t & m = populate();
+        // TODO: implement the logic for searching for the conversion method
         const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outr ) );
         conversion_map_t::const_iterator i = m.find( key );
         if ( i == m.end() ) { COMMA_THROW( comma::exception, "conversion from colorspace " << inc << ", range " << stringify::from( inr ) << " to colorspace " << outc << ", range " << stringify::from( outr ) << " is not known" ); }
