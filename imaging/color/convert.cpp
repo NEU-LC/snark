@@ -36,8 +36,21 @@ namespace {
 
     using namespace snark::imaging;
 
+    typedef std::pair< colorspace::cspace, range > half_key_t;
+    typedef std::pair< half_key_t, half_key_t > conversion_key_t;
+    typedef std::map< conversion_key_t, Eigen::Matrix3d > conversion_map_t;
+
+    const conversion_map_t & populate()
+    {
+        static conversion_map_t m;
+        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb, ub ) ) ] << 1, 0, 0,
+                                                                                                               0, 1, 0,
+                                                                                                               0, 0, 1;
+        return m;
+    }
+
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, typename outt >
-    void convert( const comma::csv::options & csv )
+    void convert( const comma::csv::options & csv, const Eigen::Matrix3d & m )
     {
         // std::cerr << "inc,inr,outc,outr,is_int,size: " << inc << ',' << inr << ',' << outc << ',' << outr << ',' << std::is_integral< outt >::value << ',' << sizeof(outt) << std::endl;
         comma::csv::input_stream< pixel< double, inr > > is( std::cin, csv );
@@ -50,8 +63,9 @@ namespace {
         {
             const pixel< double, inr > * p = is.read();
             if( !p ) { break; }
-            // TODO: implement the correct conversion
-            pixel< double, outr > op( p->channel0, p->channel1, p->channel2 );
+            pixel< double, outr > op( m(0,0) * p->channel0 + m(0,1) * p->channel1 + m(0,2) * p->channel2
+                                    , m(1,0) * p->channel0 + m(1,1) * p->channel1 + m(1,2) * p->channel2
+                                    , m(2,0) * p->channel0 + m(2,1) * p->channel1 + m(2,2) * p->channel2 );
             tied.append( pixel< outt, outr >::convert( op ) );
             if ( output_csv.flush ) { std::cout.flush(); }
         }
@@ -190,6 +204,15 @@ namespace snark { namespace imaging {
             default:
                 COMMA_THROW( comma::exception, "unknown colorspace from '" << std::string( inc ) << "'" );
         }
+    }
+
+    Eigen::Matrix3d converter::conversion( const colorspace & inc, range inr, const colorspace & outc, range outr )
+    {
+        static const conversion_map_t & m = populate();
+        const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outr ) );
+        conversion_map_t::const_iterator i = m.find( key );
+        if ( i == m.end() ) { COMMA_THROW( comma::exception, "conversion from colorspace " << inc << ", range " << stringify::from( inr ) << " to colorspace " << outc << ", range " << stringify::from( outr ) << " is not known" ); }
+        return i->second;
     }
 
 } } // namespace snark { namespace imaging {

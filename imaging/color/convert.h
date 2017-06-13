@@ -31,16 +31,23 @@
 
 #include "pixel.h"
 #include "colorspace.h"
+
 #include <comma/csv/options.h>
+#include <Eigen/Dense>
 #include <functional>
 
 namespace snark { namespace imaging {
 
     struct converter
     {
-        typedef std::function< void ( const comma::csv::options & csv ) > F;
+        typedef std::function< void ( const comma::csv::options & csv, const Eigen::Matrix3d ) > F;
 
         static F dispatch( const colorspace & inc, range inr, const colorspace & outc, range outr, range outt );
+
+        // TODO:
+        // outr can be duplicate here to the explicit convert call in convert (or the other way around)
+        // blend matrix into dispatch, return a bind to the matrix
+        static Eigen::Matrix3d conversion( const colorspace & inc, range inr, const colorspace & outc, range outr );
     };
 
 } } // namespace snark { namespace imaging {
