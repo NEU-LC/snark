@@ -46,8 +46,8 @@
 #endif
 #include <memory>
 #include "types.h"
-#include <snark/math/roll_pitch_yaw.h>
-#include <snark/visiting/traits.h>
+#include "../../../math/roll_pitch_yaw.h"
+#include "../../../visiting/traits.h"
 #include "traits.h"
 #include "shape_reader_base.h"
 
