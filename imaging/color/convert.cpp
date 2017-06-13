@@ -37,48 +37,47 @@ namespace {
 
     using namespace snark::imaging;
 
-    struct data
+    struct pod
     {
-        data( double c0, double c1, double c2 ) : channel0( c0 ), channel1( c1 ), channel2( c2 ) { }
+        pod( double c0, double c1, double c2 ) : channel0( c0 ), channel1( c1 ), channel2( c2 ) { }
         double channel0;
         double channel1;
         double channel2;
     };
 
-    data linear_combination( const data & i, const Eigen::Vector3d & before, const Eigen::Matrix3d & m, const Eigen::Vector3d & after )
+    pod linear_combination( const pod & i, const Eigen::Vector3d & before, const Eigen::Matrix3d & m, const Eigen::Vector3d & after )
     {
-        data t( i.channel0 + before(0), i.channel1 + before(1), i.channel2 + before(2) );
-        return data( m(0,0) * t.channel0 + m(0,1) * t.channel1 + m(0,2) * t.channel2 + after(0)
-                   , m(1,0) * t.channel0 + m(1,1) * t.channel1 + m(1,2) * t.channel2 + after(1)
-                   , m(2,0) * t.channel0 + m(2,1) * t.channel1 + m(2,2) * t.channel2 + after(2) );
+        pod t( i.channel0 + before(0), i.channel1 + before(1), i.channel2 + before(2) );
+        return pod( m(0,0) * t.channel0 + m(0,1) * t.channel1 + m(0,2) * t.channel2 + after(0)
+                  , m(1,0) * t.channel0 + m(1,1) * t.channel1 + m(1,2) * t.channel2 + after(1)
+                  , m(2,0) * t.channel0 + m(2,1) * t.channel1 + m(2,2) * t.channel2 + after(2) );
     }
 
-    data linear_combination( const data & i, const Eigen::Vector3d & before, const Eigen::Matrix3d & m )
+    pod linear_combination( const pod & i, const Eigen::Vector3d & before, const Eigen::Matrix3d & m )
     {
-        data t( i.channel0 + before(0), i.channel1 + before(1), i.channel2 + before(2) );
-        return data( m(0,0) * t.channel0 + m(0,1) * t.channel1 + m(0,2) * t.channel2
-                   , m(1,0) * t.channel0 + m(1,1) * t.channel1 + m(1,2) * t.channel2
-                   , m(2,0) * t.channel0 + m(2,1) * t.channel1 + m(2,2) * t.channel2 );
+        pod t( i.channel0 + before(0), i.channel1 + before(1), i.channel2 + before(2) );
+        return pod( m(0,0) * t.channel0 + m(0,1) * t.channel1 + m(0,2) * t.channel2
+                  , m(1,0) * t.channel0 + m(1,1) * t.channel1 + m(1,2) * t.channel2
+                  , m(2,0) * t.channel0 + m(2,1) * t.channel1 + m(2,2) * t.channel2 );
     }
 
-    data linear_combination( const data & i, const Eigen::Matrix3d & m, const Eigen::Vector3d & after )
+    pod linear_combination( const pod & i, const Eigen::Matrix3d & m, const Eigen::Vector3d & after )
     {
-        return data( m(0,0) * i.channel0 + m(0,1) * i.channel1 + m(0,2) * i.channel2 + after(0)
-                   , m(1,0) * i.channel0 + m(1,1) * i.channel1 + m(1,2) * i.channel2 + after(1)
-                   , m(2,0) * i.channel0 + m(2,1) * i.channel1 + m(2,2) * i.channel2 + after(2) );
+        return pod( m(0,0) * i.channel0 + m(0,1) * i.channel1 + m(0,2) * i.channel2 + after(0)
+                  , m(1,0) * i.channel0 + m(1,1) * i.channel1 + m(1,2) * i.channel2 + after(1)
+                  , m(2,0) * i.channel0 + m(2,1) * i.channel1 + m(2,2) * i.channel2 + after(2) );
     }
 
-    data linear_combination( const data & i, const Eigen::Matrix3d & m )
+    pod linear_combination( const pod & i, const Eigen::Matrix3d & m )
     {
-        // std::cerr << i.channel0 << ',' << i.channel1 << ',' << i.channel2 << std::endl;
-        return data( m(0,0) * i.channel0 + m(0,1) * i.channel1 + m(0,2) * i.channel2
-                   , m(1,0) * i.channel0 + m(1,1) * i.channel1 + m(1,2) * i.channel2
-                   , m(2,0) * i.channel0 + m(2,1) * i.channel1 + m(2,2) * i.channel2 );
+        return pod( m(0,0) * i.channel0 + m(0,1) * i.channel1 + m(0,2) * i.channel2
+                  , m(1,0) * i.channel0 + m(1,1) * i.channel1 + m(1,2) * i.channel2
+                  , m(2,0) * i.channel0 + m(2,1) * i.channel1 + m(2,2) * i.channel2 );
     }
 
-    typedef std::function< data ( const data & p ) > C;
+    typedef std::function< pod ( const pod & p ) > C;
     // TODO:
-    // - store data as std::vector instead of introducing a POD type and copying
+    // - store pod as std::vector instead of introducing a POD type and copying
     // - YPbPr is from -0.5 to +0.5, not 0 to 1; introduce a new range to match
     // - outr can be duplicate to the explicit convert call in convert (or the other way around); sort out
     typedef std::pair< colorspace::cspace, range > half_key_t;
@@ -88,9 +87,9 @@ namespace {
     const conversion_map_t & populate()
     {
         static conversion_map_t m;
-        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb,   ub ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished() ); };
-        m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ypbpr, f  ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
-        m[ std::make_pair( std::make_pair( colorspace::rgb, d  ), std::make_pair( colorspace::ypbpr, d  ) ) ] = []( const data & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb,   ub ) ) ] = []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ypbpr, f  ) ) ] = []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, d  ), std::make_pair( colorspace::ypbpr, d  ) ) ] = []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
         return m;
     }
 
@@ -106,16 +105,17 @@ namespace {
         if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< outt, outr > >() ); }
         comma::csv::output_stream< pixel< outt, outr > > os( std::cout, output_csv );
         comma::csv::tied< pixel< double, inr >, pixel< outt, outr > > tied( is, os );
-        static_assert( sizeof( data ) == sizeof( pixel< double, inr > ), "incompatible sizes of raw and input data" );
-        static_assert( sizeof( data ) == sizeof( pixel< double, outr > ), "incompatible sizes of raw and output data" );
+        static_assert( sizeof( pod ) == sizeof( pixel< double, inr > ), "incompatible sizes of raw and input data" );
+        static_assert( sizeof( pod ) == sizeof( pixel< double, outr > ), "incompatible sizes of raw and output data" );
         while( is.ready() || std::cin.good() )
         {
             const pixel< double, inr > * p = is.read();
             if( !p ) { break; }
-            data d = c( reinterpret_cast< const data & >( *p ) );
+            pod d = c( reinterpret_cast< const pod & >( *p ) );
             // std::cerr << d.channel0 << ',' << d.channel1 << ',' << d.channel2 << std::endl;
             pixel< double, outr > op( d.channel0, d.channel1, d.channel2 );
             tied.append( pixel< outt, outr >::convert( op ) );
+            // tied.append( pixel< outt, outr >::convert( reinterpret_cast< const pixel< double, outr > & >( d ) ) );
             if ( output_csv.flush ) { std::cout.flush(); }
         }
     }
@@ -161,8 +161,8 @@ namespace {
         static F dispatch()
         {
             // shall not attempt instantiating if:
-            // outr integer, outt integer and outr > outt
-            // outr float, outt integer
+            // - outr is integer, outt is integer and outr > outt
+            // - outr is float, outt is integer
             typename range_traits< outr >::value_t outr_v( outr );
             typename range_traits< outt >::value_t outt_v( outt );
             return resolve_< inc, inr, outc, outr, outt >( outr_v, outt_v );

@@ -52,8 +52,8 @@ namespace snark { namespace imaging {
                 case ub: return "ub"; break;
                 case uw: return "uw"; break;
                 case ui: return "ui"; break;
-                case f: return "f"; break;
-                case d: return "d"; break;
+                case f:  return "f" ; break;
+                case d:  return "d" ; break;
                 default:
                     COMMA_THROW( comma::exception, "logical error, unknown range " << r );
             }
