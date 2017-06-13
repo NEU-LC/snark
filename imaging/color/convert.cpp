@@ -28,6 +28,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "convert.h"
+#include "traits.h"
+
 #include <comma/csv/stream.h>
 
 namespace {
@@ -37,35 +39,83 @@ namespace {
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, typename outt >
     void convert( const comma::csv::options & csv )
     {
-        // comma::csv::input_stream< pixel< double, inr > > is( std::cin, csv );
-        // comma::csv::options output_csv;
-        // output_csv.flush = csv.flush;
-        // if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< outt, outr > >() ); }
-        // comma::csv::output_stream< pixel< outt, outr > > os( std::cout, output_csv );
-        // comma::csv::tied< pixel< double, inr >, pixel< outt, outr > > tied( is, os );
-        // while( is.ready() || std::cin.good() )
-        // {
-        //     const pixel< double, inr > * p = is.read();
-        //     if( !p ) { break; }
-        //     pixel< double, outr > op( p->channel0, p->channel1, p->channel2 );
-        //     tied.append( pixel< outt, outr >::convert( op ) );
-        //     if ( output_csv.flush ) { std::cout.flush(); }
-        // }
+        comma::csv::input_stream< pixel< double, inr > > is( std::cin, csv );
+        comma::csv::options output_csv;
+        output_csv.flush = csv.flush;
+        if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< outt, outr > >() ); }
+        comma::csv::output_stream< pixel< outt, outr > > os( std::cout, output_csv );
+        comma::csv::tied< pixel< double, inr >, pixel< outt, outr > > tied( is, os );
+        while( is.ready() || std::cin.good() )
+        {
+            const pixel< double, inr > * p = is.read();
+            if( !p ) { break; }
+            // TODO: implement the correct conversion
+            pixel< double, outr > op( p->channel0, p->channel1, p->channel2 );
+            tied.append( pixel< outt, outr >::convert( op ) );
+            if ( output_csv.flush ) { std::cout.flush(); }
+        }
     }
+
+    template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
+    converter::F resolve_( typename std::enable_if< std::is_integral< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
+                         , typename std::enable_if< std::is_integral< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
+    {
+        if ( outr_v == ub && outt_v == ub ) { return convert< inc, inr, outc, ub, typename range_traits< ub >::value_t >; }
+        if ( outr_v == ub && outt_v == uw ) { return convert< inc, inr, outc, ub, typename range_traits< uw >::value_t >; }
+        if ( outr_v == ub && outt_v == ui ) { return convert< inc, inr, outc, ub, typename range_traits< ui >::value_t >; }
+        if ( outr_v == uw && outt_v == uw ) { return convert< inc, inr, outc, uw, typename range_traits< uw >::value_t >; }
+        if ( outr_v == uw && outt_v == ui ) { return convert< inc, inr, outc, uw, typename range_traits< ui >::value_t >; }
+        if ( outr_v == ui && outt_v == ui ) { return convert< inc, inr, outc, ui, typename range_traits< ui >::value_t >; }
+        COMMA_THROW( comma::exception, "unsupported combination of output range " << stringify::from( outr ) << " and type " << stringify::from( outt ) );
+    }
+
+    template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
+    converter::F resolve_( typename std::enable_if< std::is_floating_point< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
+                         , typename std::enable_if< std::is_integral< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
+    {
+        COMMA_THROW( comma::exception, "cannot use integer output type " << stringify::from( outt ) << " for " << stringify::from( outr ) << " output range" );
+    }
+
+    template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
+    converter::F resolve_( typename std::enable_if< std::is_integral< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
+                         , typename std::enable_if< std::is_floating_point< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
+    {
+        return convert< inc, inr, outc, outr, typename range_traits< outt >::value_t >;
+    }
+
+    template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
+    converter::F resolve_( typename std::enable_if< std::is_floating_point< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
+                         , typename std::enable_if< std::is_floating_point< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
+    {
+        return convert< inc, inr, outc, outr, typename range_traits< outt >::value_t >;
+    }
+
+    template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
+    struct outt_
+    {
+        static converter::F dispatch()
+        {
+            // shall not attempt instantiating if:
+            // outr integer, outt integer and outr > outt
+            // outr float, outt integer
+            typename range_traits< outr >::value_t outr_v( 0 );
+            typename range_traits< outt >::value_t outt_v( 0 );
+            return resolve_< inc, inr, outc, outr, outt >( outr_v, outt_v );
+        }
+    };
 
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr >
     struct outr_
     {
         static converter::F dispatch( range outt )
         {
-            // auto rv = []( const comma::csv::options & csv )->void {};
             switch ( outt )
             {
-                case ub: return convert< inc, inr, outc, outr, typename range_traits< ub >::value_t >; break;
-                case uw: return convert< inc, inr, outc, outr, typename range_traits< uw >::value_t >; break;
-                case ui: return convert< inc, inr, outc, outr, typename range_traits< ui >::value_t >; break;
-                case f:  return convert< inc, inr, outc, outr, typename range_traits< f  >::value_t >; break;
-                case d:  return convert< inc, inr, outc, outr, typename range_traits< d  >::value_t >; break;
+                case ub: return outt_< inc, inr, outc, outr, ub >::dispatch( ); break;
+                case uw: return outt_< inc, inr, outc, outr, uw >::dispatch( ); break;
+                case ui: return outt_< inc, inr, outc, outr, ui >::dispatch( ); break;
+                case f:  return outt_< inc, inr, outc, outr, f  >::dispatch( ); break;
+                case d:  return outt_< inc, inr, outc, outr, d  >::dispatch( ); break;
                 default:
                     COMMA_THROW( comma::exception, "unknown output storage format '" << stringify::from( outt ) << "'" );
             }
