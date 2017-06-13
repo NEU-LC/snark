@@ -31,11 +31,15 @@
 #include "traits.h"
 
 #include <comma/csv/stream.h>
+#include <Eigen/Dense>
 
 namespace {
 
     using namespace snark::imaging;
 
+
+    // TODO:
+    // outr can be duplicate here to the explicit convert call in convert (or the other way around)
     typedef std::pair< colorspace::cspace, range > half_key_t;
     typedef std::pair< half_key_t, half_key_t > conversion_key_t;
     typedef std::map< conversion_key_t, Eigen::Matrix3d > conversion_map_t;
@@ -48,6 +52,8 @@ namespace {
                                                                                                                0, 0, 1;
         return m;
     }
+
+    typedef std::function< void ( const comma::csv::options & csv, const Eigen::Matrix3d ) > F;
 
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, typename outt >
     void convert( const comma::csv::options & csv, const Eigen::Matrix3d & m )
@@ -72,8 +78,8 @@ namespace {
     }
 
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
-    converter::F resolve_( typename std::enable_if< std::is_integral< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
-                         , typename std::enable_if< std::is_integral< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
+    F resolve_( typename std::enable_if< std::is_integral< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
+              , typename std::enable_if< std::is_integral< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
     {
         // std::cerr << "resolve_(int, int): " << outr_v << ',' << outt_v << std::endl;
         if ( outr_v == ub && outt_v == ub ) { return convert< inc, inr, outc, ub, typename range_traits< ub >::value_t >; }
@@ -86,22 +92,22 @@ namespace {
     }
 
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
-    converter::F resolve_( typename std::enable_if< std::is_floating_point< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
-                         , typename std::enable_if< std::is_integral< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
+    F resolve_( typename std::enable_if< std::is_floating_point< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
+              , typename std::enable_if< std::is_integral< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
     {
         COMMA_THROW( comma::exception, "cannot use integer output type " << stringify::from( outt ) << " for " << stringify::from( outr ) << " output range" );
     }
 
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
-    converter::F resolve_( typename std::enable_if< std::is_integral< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
-                         , typename std::enable_if< std::is_floating_point< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
+    F resolve_( typename std::enable_if< std::is_integral< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
+              , typename std::enable_if< std::is_floating_point< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
     {
         return convert< inc, inr, outc, outr, typename range_traits< outt >::value_t >;
     }
 
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
-    converter::F resolve_( typename std::enable_if< std::is_floating_point< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
-                         , typename std::enable_if< std::is_floating_point< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
+    F resolve_( typename std::enable_if< std::is_floating_point< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
+              , typename std::enable_if< std::is_floating_point< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
     {
         return convert< inc, inr, outc, outr, typename range_traits< outt >::value_t >;
     }
@@ -109,7 +115,7 @@ namespace {
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, range outt >
     struct outt_
     {
-        static converter::F dispatch()
+        static F dispatch()
         {
             // shall not attempt instantiating if:
             // outr integer, outt integer and outr > outt
@@ -123,7 +129,7 @@ namespace {
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr >
     struct outr_
     {
-        static converter::F dispatch( range outt )
+        static F dispatch( range outt )
         {
             switch ( outt )
             {
@@ -141,7 +147,7 @@ namespace {
     template< colorspace::cspace inc, range inr, colorspace::cspace outc >
     struct outc_
     {
-        static converter::F dispatch( range outr, range outt )
+        static F dispatch( range outr, range outt )
         {
             switch ( outr )
             {
@@ -159,7 +165,7 @@ namespace {
     template< colorspace::cspace inc, range inr >
     struct inr_
     {
-        static converter::F dispatch( const colorspace & outc, range outr, range outt )
+        static F dispatch( const colorspace & outc, range outr, range outt )
         {
             switch ( outc.value )
             {
@@ -175,7 +181,7 @@ namespace {
     template< colorspace::cspace inc >
     struct inc_
     {
-        static converter::F dispatch( range inr, const colorspace & outc, range outr, range outt )
+        static F dispatch( range inr, const colorspace & outc, range outr, range outt )
         {
             switch ( inr )
             {
@@ -196,23 +202,19 @@ namespace snark { namespace imaging {
 
     converter::F converter::dispatch( const colorspace & inc, range inr, const colorspace & outc, range outr, range outt )
     {
-        switch ( inc.value )
-        {
-            case colorspace::rgb:   return inc_< colorspace::rgb   >::dispatch( inr, outc, outr, outt ); break;
-            case colorspace::ypbpr: return inc_< colorspace::ypbpr >::dispatch( inr, outc, outr, outt ); break;
-            case colorspace::ycbcr: return inc_< colorspace::ycbcr >::dispatch( inr, outc, outr, outt ); break;
-            default:
-                COMMA_THROW( comma::exception, "unknown colorspace from '" << std::string( inc ) << "'" );
-        }
-    }
-
-    Eigen::Matrix3d converter::conversion( const colorspace & inc, range inr, const colorspace & outc, range outr )
-    {
         static const conversion_map_t & m = populate();
         const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outr ) );
         conversion_map_t::const_iterator i = m.find( key );
         if ( i == m.end() ) { COMMA_THROW( comma::exception, "conversion from colorspace " << inc << ", range " << stringify::from( inr ) << " to colorspace " << outc << ", range " << stringify::from( outr ) << " is not known" ); }
-        return i->second;
+
+        switch ( inc.value )
+        {
+            case colorspace::rgb:   return std::bind( inc_< colorspace::rgb   >::dispatch( inr, outc, outr, outt ), std::placeholders::_1, i->second ); break;
+            case colorspace::ypbpr: return std::bind( inc_< colorspace::ypbpr >::dispatch( inr, outc, outr, outt ), std::placeholders::_1, i->second ); break;
+            case colorspace::ycbcr: return std::bind( inc_< colorspace::ycbcr >::dispatch( inr, outc, outr, outt ), std::placeholders::_1, i->second ); break;
+            default:
+                COMMA_THROW( comma::exception, "unknown colorspace from '" << std::string( inc ) << "'" );
+        }
     }
 
 } } // namespace snark { namespace imaging {

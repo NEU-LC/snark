@@ -342,8 +342,7 @@ int main( int ac, char** av )
                                                <<          " to '" << toc << "," << snark::imaging::stringify::from( tor ) << "," << snark::imaging::stringify::from( tof ) << "'"
                                                << " using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
             auto converter = snark::imaging::converter::dispatch( fromc, *fromr, toc, tor, tof );
-            const Eigen::Matrix3d & m = snark::imaging::converter::conversion( fromc, *fromr, toc, tor );
-            converter( csv, m );
+            converter( csv );
             return 0;
         } else {
             std::cerr << name << "unknown operation '" << operation << "', not one of: convert" << std::endl;
