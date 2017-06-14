@@ -290,4 +290,29 @@ namespace snark { namespace imaging {
         }
     }
 
+    void converter::list( std::ostream & os )
+    {
+        const auto & allc = { colorspace( colorspace::rgb ), colorspace( colorspace::ycbcr ), colorspace( colorspace::ypbpr ) };
+        const auto & allr = { ub, uw, ui, f, d };
+        for ( const auto & inc : allc )
+        {
+            for ( auto inr : allr )
+            {
+                for ( const auto & outc : allc )
+                {
+                    for ( auto outr : allr )
+                    {
+                        try
+                        {
+                            const C & conv = select( conversions(), inc, inr, outc, outr );
+                            os << inc << ',' << stringify::from( inr ) << ',' << outc << ',' << stringify::from( outr ) << std::endl;
+                        }
+                        catch ( comma::exception & )
+                        {}
+                    }
+                }
+            }
+        }
+    }
+
 } } // namespace snark { namespace imaging {

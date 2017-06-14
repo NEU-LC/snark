@@ -42,6 +42,8 @@ namespace snark { namespace imaging {
         typedef std::function< void ( const comma::csv::options & csv ) > F;
 
         static F dispatch( const colorspace & inc, range inr, const colorspace & outc, range outr, range outt );
+
+        static void list( std::ostream & os );
     };
 
 } } // namespace snark { namespace imaging {

@@ -47,7 +47,7 @@
 namespace {
 
     bool verbose = false;
-    
+
     const char* name = "image-color-calc: ";
 
     void usage( bool verbose = false )
@@ -89,6 +89,7 @@ namespace {
         std::cerr << "                --to rgb,uw,d: convert to rgb in 0-65535 range, store as doubles, keep precision" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    options" << std::endl;
+        std::cerr << "        --list,--list-conversions; report all supported conversions and exit; format: colorspace/from,range/from,colorspace/to,range/to" << std::endl;
         std::cerr << "        --from=[<colorspace>[,<type>]]; input colorspace and type; colorspace can be also inferred from fields" << std::endl;
         std::cerr << "        --to=<colorspace>[,<type>]; destination colorspace, mandatory, and its optional type" << std::endl;
         std::cerr << "        --input-fields; show input field names for the given --from <colorspace> and exit" << std::endl;
@@ -207,12 +208,19 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
-        std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--output-fields", "--fields,-f,--binary,-b,--input-type,--output-type,--to,--from");
-        if( 1 != unnamed.size() ) { std::cerr << name << "cannot extract the operation from the command-line arguments '" << options.string() << "'" << std::endl; return 1;  }
+        std::vector< std::string > unnamed = options.unnamed( "-h,--help,-v,--verbose,--flush,--input-fields,--output-fields,--list,--list-conversions",
+                                                              "--fields,-f,--binary,-b,--input-type,--output-type,--to,--from" );
+        if( 1 != unnamed.size() ) { std::cerr << name << "cannot extract the operation from the command-line arguments '" << options.string() << "'" << std::endl; return 1; }
 
         const std::string & operation = unnamed[0];
         if ( operation == "convert" )
         {
+            if ( options.exists( "--list,--list-conversions" ) )
+            {
+                snark::imaging::converter::list( std::cout );
+                return 0;
+            }
+
             // the user may specify the input for conversion by two ways
             // if --from is specified:
             //     if fields are not given, fields are set to the from-specific defaults
