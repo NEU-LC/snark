@@ -976,7 +976,7 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
             // quick and dirty for now: rgb are not contiguous in basler camera frame
             if( cv_mat_header.type == CV_8UC3 || cv_mat_header.type == CV_16UC3 ) { cv::cvtColor( pair.second, pair.second, CV_RGB2BGR ); }
             set< T >( pair.first, current_time, result, camera );
-            grabber.QueueBuffer( result.Handle(), NULL ); // requeue buffer
+            grabber.QueueBuffer( result.Handle() ); // requeue buffer
             return pair;
         }
         else
@@ -1180,7 +1180,7 @@ static int run( T& camera, const comma::command_line_options& options )
     for( std::size_t i = 0; i < buffers.size(); ++i )
     {
         buffer_handles[i] = grabber.RegisterBuffer( &buffers[i][0], buffers[i].size() );
-        grabber.QueueBuffer( buffer_handles[i], NULL );
+        grabber.QueueBuffer( buffer_handles[i] );
     }
     unsigned int max_queue_size = options.value< unsigned int >( "--buffer", options.exists( "--discard" ));
     int return_value = 0;
