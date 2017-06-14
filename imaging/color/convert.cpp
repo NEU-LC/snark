@@ -77,6 +77,15 @@ namespace {
     typedef std::pair< half_key_t, half_key_t > conversion_key_t;
     typedef std::map< conversion_key_t, C > conversion_map_t;
 
+    channels scale( const channels & rhs, range inr, range outr )
+    {
+        double uin = upper( inr ), lin = lower( inr ), uout = upper( outr ), lout = lower( outr );
+        double factor = ( uout - lout ) / ( uin - lin );
+        return channels( { factor * ( rhs[0] - lin ) + lout
+                         , factor * ( rhs[1] - lin ) + lout
+                         , factor * ( rhs[2] - lin ) + lout } );
+    }
+
     const conversion_map_t & conversions()
     {
         static conversion_map_t m;
