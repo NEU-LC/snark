@@ -82,7 +82,7 @@ namespace {
         std::cerr << "                ypbpr:  f" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        output <type>,<format>" << std::endl;
-        std::cerr << "            by default, output is double-precision values in the range of the \"to\" <colorspace>, e.g., from 0. to 255. for rgb" << std::endl;
+        std::cerr << "            by default, output is double-precision values in the range of the \"to\" <colorspace>, e.g., from 0.0 to 255.0 for rgb" << std::endl;
         std::cerr << "            use <type> to rescale to different range; by default, values would be stored in variable of that <type>" << std::endl;
         std::cerr << "            use <format> to specify different storage, e.g." << std::endl;
         std::cerr << "                --to rgb,uw:   convert to rgb in 0-65535 range, truncate value, store as 2-byte integer" << std::endl;
@@ -259,7 +259,6 @@ int main( int ac, char** av )
             if ( options.exists( "--input-fields" ) ) { std::cout << comma::join( snark::imaging::colorspace::field_names( fromc.value ), ',' ) << std::endl; return 0; }
 
             // parsing destination
-            // TODO: handle --output-type
             const std::string & tos = options.value< std::string >( "--to" );
             const std::vector< std::string > & tov = comma::split( tos, ',' );
             if ( tov.size() > 3 ) { COMMA_THROW( comma::exception, "--to takes at most three comma-separated value" ); }
@@ -267,8 +266,12 @@ int main( int ac, char** av )
             if ( toc.value == snark::imaging::colorspace::none ) { COMMA_THROW( comma::exception, "must provide destination colorspace using '--to'" ); }
             if ( options.exists( "--output-fields" ) ) { std::cout << comma::join( snark::imaging::colorspace::field_names( toc.value ), ',' ) << std::endl; return 0; }
             snark::imaging::range tor = snark::imaging::stringify::to( tov.size() > 1 ? tov[1] : snark::imaging::colorspace::default_range( toc.value ) );
+            if ( options.exists( "--output-type" ) ) {
+                if ( tov.size() > 1 ) { COMMA_THROW( comma::exception, "cannot provide both --output-type and explicity --to=<...>,type" ); }
+                tor = snark::imaging::stringify::to( options.value< std::string >( "--output-type" ) );
+            }
             // store the output format as range for convenience of parsing
-            snark::imaging::range tof = tov.size() > 1 ? ( tov.size() > 2 ? snark::imaging::stringify::to( tov[2] ) : tor ) : snark::imaging::d ;
+            snark::imaging::range tof = tov.size() > 2 ? snark::imaging::stringify::to( tov[2] ) : ( ( tov.size() > 1 || options.exists( "--output-type" ) ) ? tor : snark::imaging::d );
 
             // these settings are delayed to allow '--input-fields', '--output-fields' to proceed even if a sub-set of normal options is given
             if ( !fromr && options.exists( "--input-type" ) ) { fromr = snark::imaging::stringify::to( options.value< std::string >( "--input-type" ) ); }

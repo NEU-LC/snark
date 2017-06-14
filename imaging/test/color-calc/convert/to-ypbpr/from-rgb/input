@@ -9,6 +9,8 @@ ascii/command[5]="echo name,0.5,0.5,20170102T030405,0.5 | image-color-calc conve
 
 failure/command[0]="echo 1,1,1 | image-color-calc convert --from rgb --to ypbpr"
 failure/command[1]="echo 1,1,1 | image-color-calc convert --from rgb --to ypbpr --format=3ub"
+failure/command[2]="echo 0.5,0.5,0.5 | image-color-calc convert --fields r,g,b --to ypbpr,f --input-type=f --output-type=d"
 
 binary/command[0]="echo 0.5,0.5,0.5 | csv-to-bin 3f | image-color-calc convert --fields r,g,b --to ypbpr,f,f --binary=3f --input-type=f | csv-from-bin 3f,3f"
 binary/command[1]="echo name,0.5,0.5,20170102T030405,0.5 | csv-to-bin s[10],2f,t,f | image-color-calc convert --fields name,r,g,t,b --to ypbpr,f,f --binary=s[10],2f,t,f --input-type=f | csv-from-bin s[10],2f,t,f,3f"
+binary/command[2]="echo 0.5,0.5,0.5 | csv-to-bin 3f | image-color-calc convert --fields r,g,b --to ypbpr --binary=3f --input-type=f --output-type=d | csv-from-bin 3f,3d | csv-eval --fields=,,,a,b,c 'a=0.1*round(10*a);b=0.1*round(10*b);c=0.1*round(10*c);'"
