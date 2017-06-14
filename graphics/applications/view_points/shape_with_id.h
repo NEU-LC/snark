@@ -104,10 +104,10 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
     }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<snark::math::closed_interval< double, 3 >>& s)
+    static void update(shape_reader_base& reader, const ShapeWithId<snark::math::closed_interval< double, 3 >>& s,const Eigen::Vector3d& offset)
     {
-        Eigen::Vector3f min = ( s.shape.min() - reader.offset() ).cast< float >();
-        Eigen::Vector3f max = ( s.shape.max() - reader.offset() ).cast< float >();
+        Eigen::Vector3f min = ( s.shape.min() - offset ).cast< float >();
+        Eigen::Vector3f max = ( s.shape.max() - offset ).cast< float >();
 
         #if Qt3D_VERSION==1
         reader.add_vertex( vertex_t( QVector3D( min.x(), min.y(), min.z() ), s.color ), s.block );
@@ -177,10 +177,10 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
     }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<std::pair< Eigen::Vector3d, Eigen::Vector3d >>& s)
+    static void update(shape_reader_base& reader, const ShapeWithId<std::pair< Eigen::Vector3d, Eigen::Vector3d >>& s,const Eigen::Vector3d& offset)
     {
-        Eigen::Vector3f first = ( s.shape.first - reader.offset() ).cast< float >();
-        Eigen::Vector3f second = ( s.shape.second - reader.offset() ).cast< float >();
+        Eigen::Vector3f first = ( s.shape.first - offset ).cast< float >();
+        Eigen::Vector3f second = ( s.shape.second - offset ).cast< float >();
         //if(    comma::math::equal( first.x(), second.x() )
         //    && comma::math::equal( first.y(), second.y() )
         //    && comma::math::equal( first.z(), second.z() ) ) { return; } // todo: draw a point instead?
@@ -216,11 +216,11 @@ struct Shapetraits< loop< Size > >
     }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<loop< Size >>& s)
+    static void update(shape_reader_base& reader, const ShapeWithId<loop< Size >>& s,const Eigen::Vector3d& offset)
     {
         for( unsigned int i = 0; i < Size; ++i )
         {
-            Eigen::Vector3f v = ( s.shape.corners[i] - reader.offset() ).template cast< float >();
+            Eigen::Vector3f v = ( s.shape.corners[i] - offset ).template cast< float >();
             reader.add_vertex( vertex_t( v, s.color ), s.block );
             reader.extent_hull(v);
         }
@@ -265,9 +265,9 @@ struct Shapetraits< Ellipse< Size > >
     }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<Ellipse< Size >>& s)
+    static void update(shape_reader_base& reader, const ShapeWithId<Ellipse< Size >>& s,const Eigen::Vector3d& offset)
     {
-        Eigen::Vector3d c = s.shape.center - reader.offset();
+        Eigen::Vector3d c = s.shape.center - offset;
         const Eigen::Matrix3d& r = rotation_matrix::rotation( s.shape.orientation );
         static const double step = 3.14159265358979323846l * 2 / Size;
         double angle = 0;
@@ -321,7 +321,7 @@ struct Shapetraits< arc< Size > >
     }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<arc< Size >>& s)
+    static void update(shape_reader_base& reader, const ShapeWithId<arc< Size >>& s,const Eigen::Vector3d& offset)
     {
         const arc< Size >& a=s.shape;
         if( ( a.begin - a.end ).squaredNorm() < ( 0.001 * 0.001 ) ) // real quick and dirty: if begin and end coincide
@@ -330,7 +330,7 @@ struct Shapetraits< arc< Size > >
             Eigen::Vector3d step = ( a.end - a.begin ) / Size;
             for( std::size_t i = 0; i < Size; ++i, v += step ) // just to make the gl buffer sizes right
             {
-                Eigen::Vector3f point = ( v - reader.offset() ).cast< float >();
+                Eigen::Vector3f point = ( v - offset ).cast< float >();
                 reader.add_vertex( vertex_t( point, s.color ), s.block );
                 reader.extent_hull(point);
             }
@@ -363,7 +363,7 @@ struct Shapetraits< arc< Size > >
         Eigen::AngleAxis< double > aa( Eigen::Quaternion< double >::FromTwoVectors( b, e ) );
         Eigen::AngleAxis< double > nn( aa.angle() / ( Size - 1 ), normal );
         const Eigen::Matrix3d& r = nn.toRotationMatrix();
-        Eigen::Vector3d c = centre - reader.offset();
+        Eigen::Vector3d c = centre - offset;
         Eigen::Vector3d v = b;
         for( std::size_t i = 0; i < Size; ++i, v = r * v ) // todo: use native opengl rotation and normals instead
         {
@@ -469,11 +469,11 @@ struct Shapetraits< Eigen::Vector3d, How >
     }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<Eigen::Vector3d>& s)
+    static void update(shape_reader_base& reader, const ShapeWithId<Eigen::Vector3d>& s,const Eigen::Vector3d& offset)
     {
-        Eigen::Vector3f point = (s.shape - reader.offset()).cast< float >();
+        Eigen::Vector3d point = s.shape - offset;
         reader.add_vertex( vertex_t( point, s.color), s.block );
-        reader.extent_hull(point);
+        reader.extent_hull(point.cast<float>());
     }
 
     #if Qt3D_VERSION==1
@@ -507,10 +507,10 @@ struct Shapetraits< axis >
     }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<axis>& s)
+    static void update(shape_reader_base& reader, const ShapeWithId<axis>& s,const Eigen::Vector3d& offset)
     {
         std::vector<std::string> v=comma::split(s.shape.axis_label,':');
-        Eigen::Vector3d pos=s.shape.position - reader.offset();
+        Eigen::Vector3d pos=s.shape.position - offset;
         Eigen::Matrix3d ori=rotation_matrix::rotation( s.shape.orientation );
         Eigen::Vector3d una(s.shape.length,0,0);
         Eigen::Vector3d p=pos + ori*una;

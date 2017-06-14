@@ -141,7 +141,7 @@ inline std::size_t ShapeReader< S, How >::update( const Eigen::Vector3d& offset 
     boost::mutex::scoped_lock lock( m_mutex );
     for( typename deque_t_::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
     {
-        Shapetraits< S, How >::update( *this, *it );
+        Shapetraits< S, How >::update( *this, *it, offset );
         labels_.add( label_t( Shapetraits< S, How >::center( it->shape ), it->color, it->label ), it->block );
     }
     if( m_shutdown )
