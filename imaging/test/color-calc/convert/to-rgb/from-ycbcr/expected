@@ -7,6 +7,15 @@ ascii/command[1]/status=0
 ascii/command[2]/output="foo,107,20170102T030405,91,111,78,134,31"
 ascii/command[2]/status=0
 
+ascii/command[3]/output="107,91,111,79,134,31"
+ascii/command[3]/status=0
+
+ascii/command[4]/output="107,91,111,79,134,31"
+ascii/command[4]/status=0
+
+ascii/command[5]/output="foo,107,20170102T030405,91,111,79,134,31"
+ascii/command[5]/status=0
+
 failure/command[0]/status=1
 failure/command[1]/status=1
 
@@ -18,3 +27,12 @@ binary/command[1]/status=0
 
 binary/command[2]/output="foo,107,20170102T030405,91,111,78,134,31"
 binary/command[2]/status=0
+
+binary/command[4]/output="107,91,111,79,134,31"
+binary/command[4]/status=0
+
+binary/command[5]/output="107,91,111,79,134,31"
+binary/command[5]/status=0
+
+binary/command[6]/output="foo,107,20170102T030405,91,111,79,134,31"
+binary/command[6]/status=0
