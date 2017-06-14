@@ -12,7 +12,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/visiting/traits.h>
-#include <snark/math/range_bearing_elevation.h>
+#include "../../../math/range_bearing_elevation.h"
 #include "../coordinates.h"
 #include "../sample.h"
 #include "../traits.h"

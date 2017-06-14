@@ -10,7 +10,7 @@
 #include <boost/random/variate_generator.hpp>
 #include <Eigen/Geometry>
 #include <comma/base/exception.h>
-#include <snark/math/range_bearing_elevation.h>
+#include "../../math/range_bearing_elevation.h"
 #include "sample.h"
 
 namespace snark { namespace spherical {
