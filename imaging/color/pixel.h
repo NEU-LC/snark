@@ -120,31 +120,18 @@ namespace snark { namespace imaging {
     template< typename T, range R >
     struct pixel
     {
-        T channel0;
-        T channel1;
-        T channel2;
-        pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel0( trim< T, R >( c0 ) ), channel1( trim< T, R >( c1 ) ), channel2( trim< T, R >( c2 ) ) {
-            assert_compatible< T, R >( channel0, typename range_traits< R >::value_t( 0 ) );
+        std::vector< T > channel;
+        pixel( T c0 = 0, T c1 = 0, T c2 = 0 ) : channel( { trim< T, R >( c0 ), trim< T, R >( c1 ), trim< T, R >( c2 ) } ) {
+            assert_compatible< T, R >( channel[0], typename range_traits< R >::value_t( 0 ) );
         }
 
         template< typename S, range Q >
         static pixel convert( const pixel< S, Q > & rhs )
         {
             static const double factor = ( limits< R >::upper() - limits< R >::lower() ) / ( limits< Q >::upper() - limits< Q >::lower() );
-            return pixel( static_cast< T >( factor * ( rhs.channel0 - limits< Q >::lower() ) + limits< R >::lower() )
-                        , static_cast< T >( factor * ( rhs.channel1 - limits< Q >::lower() ) + limits< R >::lower() )
-                        , static_cast< T >( factor * ( rhs.channel2 - limits< Q >::lower() ) + limits< R >::lower() ) );
-        }
-    };
-
-    template< typename T, range R >
-    struct pixel2 : public std::vector< T >
-    {
-        // pixel2( T c0 = 0, T c1 = 0, T c2 = 0 )
-        //     : std::vector< T >( { trim< T, R >( c0 ), trim< T, R >( c1 ), trim< T, R >( c2 ) } )
-        pixel2() : std::vector< T >( 3, 0 )
-        {
-            assert_compatible< T, R >( this->front(), typename range_traits< R >::value_t( 0 ) );
+            return pixel( static_cast< T >( factor * ( rhs.channel[0] - limits< Q >::lower() ) + limits< R >::lower() )
+                        , static_cast< T >( factor * ( rhs.channel[1] - limits< Q >::lower() ) + limits< R >::lower() )
+                        , static_cast< T >( factor * ( rhs.channel[2] - limits< Q >::lower() ) + limits< R >::lower() ) );
         }
     };
 

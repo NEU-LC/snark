@@ -49,7 +49,7 @@ namespace snark { namespace imaging {
             { rgb,   comma::split( "r,g,b" , ',' ) },
             { ycbcr, comma::split( "y,cb,cr", ',' ) },
             { ypbpr, comma::split( "y,pb,pr", ',' ) },
-            { none,  comma::split( "channel0,channel1,channel2", ',' ) }
+            { none,  comma::split( "channel[0],channel[1],channel[2]", ',' ) }
         };
         return m.at( c );
     }

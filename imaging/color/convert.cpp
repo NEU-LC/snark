@@ -131,24 +131,22 @@ namespace {
     template< colorspace::cspace inc, range inr, colorspace::cspace outc, range outr, typename outt >
     void convert( const comma::csv::options & csv, const C & c )
     {
-        // std::cerr << "inc,inr,outc,outr,is_int,size: " << inc << ',' << inr << ',' << outc << ',' << outr << ',' << std::is_integral< outt >::value << ',' << sizeof(outt) << std::endl;
-        comma::csv::input_stream< pixel< double, inr > > is( std::cin, csv );
+        pixel< double, inr > sample_in;
+        comma::csv::input_stream< pixel< double, inr > > is( std::cin, csv, sample_in );
         comma::csv::options output_csv;
         output_csv.flush = csv.flush;
         if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< outt, outr > >() ); }
-        comma::csv::output_stream< pixel< outt, outr > > os( std::cout, output_csv );
+        pixel< outt, outr > sample_out;
+        comma::csv::output_stream< pixel< outt, outr > > os( std::cout, output_csv, sample_out );
         comma::csv::tied< pixel< double, inr >, pixel< outt, outr > > tied( is, os );
-        static_assert( sizeof( pod ) == sizeof( pixel< double, inr > ), "incompatible sizes of raw and input data" );
-        static_assert( sizeof( pod ) == sizeof( pixel< double, outr > ), "incompatible sizes of raw and output data" );
         while( is.ready() || std::cin.good() )
         {
             const pixel< double, inr > * p = is.read();
             if( !p ) { break; }
-            pod d = c( reinterpret_cast< const pod & >( *p ) );
-            // std::cerr << d.channel0 << ',' << d.channel1 << ',' << d.channel2 << std::endl;
-            pixel< double, outr > op( d.channel0, d.channel1, d.channel2 );
+            pod i( p->channel[0], p->channel[1], p->channel[2] );
+            pod o( c( i ) );
+            pixel< double, outr > op( o.channel0, o.channel1, o.channel2 );
             tied.append( pixel< outt, outr >::convert( op ) );
-            // tied.append( pixel< outt, outr >::convert( reinterpret_cast< const pixel< double, outr > & >( d ) ) );
             if ( output_csv.flush ) { std::cout.flush(); }
         }
     }

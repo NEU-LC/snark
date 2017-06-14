@@ -29,8 +29,8 @@
 
 #pragma once
 
-#include <comma/visiting/traits.h>
 #include "pixel.h"
+#include <comma/visiting/traits.h>
 
 namespace comma { namespace visiting {
 
@@ -39,32 +39,13 @@ template < typename T, snark::imaging::range R > struct traits< snark::imaging::
     template < typename Key, class Visitor >
     static void visit( const Key&, snark::imaging::pixel< T, R > & p, Visitor& v )
     {
-        v.apply( "channel0", p.channel0 );
-        v.apply( "channel1", p.channel1 );
-        v.apply( "channel2", p.channel2 );
+        v.apply( "channel", p.channel );
     }
 
     template < typename Key, class Visitor >
     static void visit( const Key&, const snark::imaging::pixel< T, R > & p, Visitor& v )
     {
-        v.apply( "channel0", p.channel0 );
-        v.apply( "channel1", p.channel1 );
-        v.apply( "channel2", p.channel2 );
-    }
-};
-
-template < typename T, snark::imaging::range R > struct traits< snark::imaging::pixel2< T, R > >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key& k, snark::imaging::pixel2< T, R > & p, Visitor& v )
-    {
-        traits< std::vector< T > >::visit( k, p, v );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( const Key& k, const snark::imaging::pixel2< T, R > & p, Visitor& v )
-    {
-        traits< std::vector< T > >::visit( k, p, v );
+        v.apply( "channel", p.channel );
     }
 };
 

@@ -145,7 +145,7 @@ namespace {
             std::cerr << std::endl;
             std::cerr << "        using neutral field names to select values to convert and explicitly define conversion" << std::endl;
             std::cerr << "            echo 'value',1,2,3,20170101T000000 \\" << std::endl;
-            std::cerr << "                | image-color-calc --fields=name,channel0,channel1,channel2,t --from rgb,ub --to=ycbcr,ui,d" << std::endl;
+            std::cerr << "                | image-color-calc --fields=name,channel[0],channel[1],channel[2],t --from rgb,ub --to=ycbcr,ui,d" << std::endl;
             std::cerr << std::endl;
         } else {
             std::cerr << "    use --help --verbose for more examples" << std::endl;
@@ -245,7 +245,7 @@ int main( int ac, char** av )
                 {
                     setup_fields_for_colorspace( fields, fromc );
                 } else {
-                    fields = { "channel0", "channel1", "channel2" };
+                    fields = { "channel[0]", "channel[1]", "channel[2]" };
                 }
                 csv.fields = comma::join( fields, ',' );
             } else {
