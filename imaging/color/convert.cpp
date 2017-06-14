@@ -72,8 +72,6 @@ namespace {
 
     typedef std::function< channels ( const channels & p ) > C;
     // TODO:
-    // - store pod as std::vector instead of introducing a POD type and copying
-    // - YPbPr is from -0.5 to +0.5, not 0 to 1; introduce a new range to match
     // - outr can be duplicate to the explicit convert call in convert (or the other way around); sort out
     typedef std::pair< colorspace::cspace, range > half_key_t;
     typedef std::pair< half_key_t, half_key_t > conversion_key_t;
@@ -148,7 +146,6 @@ namespace {
     F resolve_( typename std::enable_if< std::is_integral< typename range_traits< outr >::value_t >::value, typename range_traits< outr >::value_t >::type outr_v
               , typename std::enable_if< std::is_integral< typename range_traits< outt >::value_t >::value, typename range_traits< outt >::value_t >::type outt_v )
     {
-        // std::cerr << "resolve_(int, int): " << outr_v << ',' << outt_v << std::endl;
         if ( outr_v == ub && outt_v == ub ) { return convert< inc, inr, outc, ub, typename range_traits< ub >::value_t >; }
         if ( outr_v == ub && outt_v == uw ) { return convert< inc, inr, outc, ub, typename range_traits< uw >::value_t >; }
         if ( outr_v == ub && outt_v == ui ) { return convert< inc, inr, outc, ub, typename range_traits< ui >::value_t >; }
