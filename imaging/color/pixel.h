@@ -84,7 +84,7 @@ namespace snark { namespace imaging {
         static constexpr double lower() { return 0.0; }
     };
 
-    double upper( range r )
+    inline double upper( range r )
     {
         switch ( r ) {
             case ub : return limits< ub >::upper();
@@ -97,7 +97,7 @@ namespace snark { namespace imaging {
         }
     }
 
-    double lower( range r )
+    inline double lower( range r )
     {
         switch ( r ) {
             case ub : return limits< ub >::lower();
