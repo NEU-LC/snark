@@ -112,19 +112,45 @@ namespace {
         return m;
     }
 
-    const C & select( const conversion_map_t & m, const colorspace & inc, range inr, const colorspace & outc, range outr )
+    C select( const conversion_map_t & m, const colorspace & inc, range inr, const colorspace & outc, range outr )
     {
         // the logic for searching for the conversion method:
         // 0. check for non-conversions: same colorspace, different (or even same) range; handle explicitly
+        if ( inc.value == outc.value )
+        {
+            if ( inr == outr ) { return []( const channels & c ) { return c; }; }
+            return [inr, outr]( const channels & c ){ return scale( c, inr, outr ); };
+        }
         // 1. if there is a direct conversion from (inc, inr) to (outc, outr) use it (data are stored as doubles on both in and out)
+        {
+            const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outr ) );
+            conversion_map_t::const_iterator i = m.find( key );
+            if ( i != m.end() ) { return i->second; }
+        }
         // 2. if there is a conversion from (inc, inr) to (outc, default-range-of-outc) use it, then change range of outc (chain conversions)
+        {
+            range outdef = stringify::to( colorspace::default_range( outc.value ) );
+            const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outdef ) );
+            conversion_map_t::const_iterator i = m.find( key );
+            if ( i != m.end() ) { return [i, outdef, outr]( const channels & c ){ return scale( i->second( c ), outdef, outr ); }; }
+        }
         // 3. if there is a conversion from (inc, default-range-of-inc) to (outc, outr), use it after changing range of inc
+        {
+            range indef = stringify::to( colorspace::default_range( inc.value ) );
+            const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, indef ), std::make_pair( outc.value, outr ) );
+            conversion_map_t::const_iterator i = m.find( key );
+            if ( i != m.end() ) { return [i, inr, indef]( const channels & c ){ return i->second( scale( c, inr, indef ) ); }; }
+        }
         // 4. if there is a conversion from (inc, default-range-of-inc) to (outc, default-range-of-outc), change range of inc, apply conversion, then change range of outc
+        {
+            range indef = stringify::to( colorspace::default_range( inc.value ) );
+            range outdef = stringify::to( colorspace::default_range( outc.value ) );
+            const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, indef ), std::make_pair( outc.value, outdef ) );
+            conversion_map_t::const_iterator i = m.find( key );
+            if ( i != m.end() ) { return [i, inr, indef, outdef, outr]( const channels & c ){ return scale( i->second( scale( c, inr, indef ) ), outdef, outr ); }; }
+        }
         // 5. if all the above fails, throw
-        const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outr ) );
-        conversion_map_t::const_iterator i = m.find( key );
-        if ( i == m.end() ) { COMMA_THROW( comma::exception, "conversion from colorspace " << inc << ", range " << stringify::from( inr ) << " to colorspace " << outc << ", range " << stringify::from( outr ) << " is not known" ); }
-        return i->second;
+        COMMA_THROW( comma::exception, "conversion from colorspace " << inc << ", range " << stringify::from( inr ) << " to colorspace " << outc << ", range " << stringify::from( outr ) << " is not known" );
     }
 
     typedef std::function< void ( const comma::csv::options & csv, const C & c ) > F;
