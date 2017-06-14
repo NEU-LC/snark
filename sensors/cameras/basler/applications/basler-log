@@ -123,14 +123,14 @@ verbose "loading sensor config $options_config"
 
 comma_path_value_to_var --prefix=config < <( load_config $options_config )
 
-IFS=, read height width <<< $config_image_size
+IFS=, read width height <<< $config_image_size
 IFS=, read offset_x offset_y <<< $config_image_offset
 
 args=
 [[ $config_device_address ]] && args+=" --address $config_device_address"
 [[ $config_device_serial_number ]] && args+=" --serial-number $config_device_serial_number"
-[[ $height ]] && args+=" --height=$height"
 [[ $width ]] && args+=" --width=$width"
+[[ $height ]] && args+=" --height=$height"
 [[ $offset_x ]] && args+=" --offset-x=$offset_x"
 [[ $offset_y ]] && args+=" --offset-y=$offset_y"
 [[ $config_pixel_format ]] && args+=" --pixel-format=$config_pixel_format"
