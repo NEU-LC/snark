@@ -968,6 +968,7 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
                 std::cerr << "basler-cat: acquisition failed" << std::endl;
                 output_result_status( result );
                 show_transport_config( camera );
+                grabber.QueueBuffer( result.Handle() ); // requeue buffer
                 continue;
             }
             P pair;
