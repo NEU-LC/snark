@@ -45,6 +45,7 @@ namespace {
         double channel2;
     };
 
+    // conversion does not have to be a linear operation, but many are; these function simplify setting up such conversions
     pod linear_combination( const pod & i, const Eigen::Vector3d & before, const Eigen::Matrix3d & m, const Eigen::Vector3d & after )
     {
         pod t( i.channel0 + before(0), i.channel1 + before(1), i.channel2 + before(2) );
@@ -84,7 +85,7 @@ namespace {
     typedef std::pair< half_key_t, half_key_t > conversion_key_t;
     typedef std::map< conversion_key_t, C > conversion_map_t;
 
-    const conversion_map_t & populate()
+    const conversion_map_t & conversions()
     {
         static conversion_map_t m;
         m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb,   ub ) ) ] =
@@ -108,6 +109,21 @@ namespace {
                 };
         }
         return m;
+    }
+
+    const C & select( const conversion_map_t & m, const colorspace & inc, range inr, const colorspace & outc, range outr )
+    {
+        // the logic for searching for the conversion method:
+        // 0. check for non-conversions: same colorspace, different (or even same) range; handle explicitly
+        // 1. if there is a direct conversion from (inc, inr) to (outc, outr) use it (data are stored as doubles on both in and out)
+        // 2. if there is a conversion from (inc, inr) to (outc, default-range-of-outc) use it, then change range of outc (chain conversions)
+        // 3. if there is a conversion from (inc, default-range-of-inc) to (outc, outr), use it after changing range of inc
+        // 4. if there is a conversion from (inc, default-range-of-inc) to (outc, default-range-of-outc), change range of inc, apply conversion, then change range of outc
+        // 5. if all the above fails, throw
+        const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outr ) );
+        conversion_map_t::const_iterator i = m.find( key );
+        if ( i == m.end() ) { COMMA_THROW( comma::exception, "conversion from colorspace " << inc << ", range " << stringify::from( inr ) << " to colorspace " << outc << ", range " << stringify::from( outr ) << " is not known" ); }
+        return i->second;
     }
 
     typedef std::function< void ( const comma::csv::options & csv, const C & c ) > F;
@@ -262,17 +278,13 @@ namespace snark { namespace imaging {
 
     converter::F converter::dispatch( const colorspace & inc, range inr, const colorspace & outc, range outr, range outt )
     {
-        static const conversion_map_t & m = populate();
-        // TODO: implement the logic for searching for the conversion method
-        const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outr ) );
-        conversion_map_t::const_iterator i = m.find( key );
-        if ( i == m.end() ) { COMMA_THROW( comma::exception, "conversion from colorspace " << inc << ", range " << stringify::from( inr ) << " to colorspace " << outc << ", range " << stringify::from( outr ) << " is not known" ); }
+        const C & conv = select( conversions(), inc, inr, outc, outr );
 
         switch ( inc.value )
         {
-            case colorspace::rgb:   return std::bind( inc_< colorspace::rgb   >::dispatch( inr, outc, outr, outt ), std::placeholders::_1, i->second ); break;
-            case colorspace::ypbpr: return std::bind( inc_< colorspace::ypbpr >::dispatch( inr, outc, outr, outt ), std::placeholders::_1, i->second ); break;
-            case colorspace::ycbcr: return std::bind( inc_< colorspace::ycbcr >::dispatch( inr, outc, outr, outt ), std::placeholders::_1, i->second ); break;
+            case colorspace::rgb:   return std::bind( inc_< colorspace::rgb   >::dispatch( inr, outc, outr, outt ), std::placeholders::_1, conv ); break;
+            case colorspace::ypbpr: return std::bind( inc_< colorspace::ypbpr >::dispatch( inr, outc, outr, outt ), std::placeholders::_1, conv ); break;
+            case colorspace::ycbcr: return std::bind( inc_< colorspace::ycbcr >::dispatch( inr, outc, outr, outt ), std::placeholders::_1, conv ); break;
             default:
                 COMMA_THROW( comma::exception, "unknown colorspace from '" << std::string( inc ) << "'" );
         }
