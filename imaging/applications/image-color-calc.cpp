@@ -251,10 +251,11 @@ int main( int ac, char** av )
                     rename_fields_to_channels( fields, fromc );
                     csv.fields = comma::join( fields, ',' );
                 } else {
-                    COMMA_THROW( comma::exception, "neither '--from' nor '--fields' are given, cannot determine the input colorspace" );
+                    if ( !options.exists( "--output-fields" ) ) {
+                        COMMA_THROW( comma::exception, "neither '--from' nor '--fields' are given, cannot determine the input colorspace" );
+                    }
                 }
             }
-            if ( !fromr ) { fromr = snark::imaging::stringify::to( snark::imaging::colorspace::default_range( fromc.value ) ); }
             if ( options.exists( "--input-fields" ) ) { std::cout << comma::join( snark::imaging::colorspace::field_names( fromc.value ), ',' ) << std::endl; return 0; }
 
             // parsing destination
@@ -267,6 +268,9 @@ int main( int ac, char** av )
             snark::imaging::range tor = snark::imaging::stringify::to( tov.size() > 1 ? tov[1] : snark::imaging::colorspace::default_range( toc.value ) );
             // store the output format as range for convenience of parsing
             snark::imaging::range tof = tov.size() > 1 ? ( tov.size() > 2 ? snark::imaging::stringify::to( tov[2] ) : tor ) : snark::imaging::d ;
+
+            // these settings are delayed to allow '--input-fields', '--output-fields' to proceed even if a sub-set of normal options is given
+            if ( !fromr ) { fromr = snark::imaging::stringify::to( snark::imaging::colorspace::default_range( fromc.value ) ); }
 
             // the actual processing is done below
             if ( verbose ) { std::cerr << name << "convert from '" << fromc << "," << snark::imaging::stringify::from( *fromr ) << "'"
