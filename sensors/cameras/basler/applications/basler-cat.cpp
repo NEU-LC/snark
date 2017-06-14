@@ -453,7 +453,7 @@ template< typename T, typename P >
 static void load_default_settings( T& camera, P user_set_selector_default )
 {
     camera.UserSetSelector.SetValue( user_set_selector_default );
-    camera.UserSetLoad.Execute();
+    camera.UserSetLoad();
 }
 static void load_default_settings( Pylon::CBaslerGigECamera& camera ) { load_default_settings( camera, Basler_GigECameraParams::UserSetSelector_Default ); }
 static void load_default_settings( Pylon::CBaslerUsbCamera& camera ) { load_default_settings( camera, Basler_UsbCameraParams::UserSetSelector_Default ); }
@@ -646,8 +646,8 @@ static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::co
                 /// @todo compensate for mechanical jitter, if needed
                 ///       see Runner_Users_manual.pdf, 8.3, Case 2
                 camera.ShaftEncoderModuleReverseCounterMax = 0;
-                camera.ShaftEncoderModuleCounterReset.Execute();
-                camera.ShaftEncoderModuleReverseCounterReset.Execute();
+                camera.ShaftEncoderModuleCounterReset();
+                camera.ShaftEncoderModuleReverseCounterReset();
             }
         }
     }
@@ -950,7 +950,7 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
         static comma::signal_flag is_shutdown;
         if( is_shutdown ) { return P(); }
         Pylon::GrabResult result;
-        //camera.AcquisitionStart.Execute(); // acquire single image (since acquisition mode set so)
+        //camera.AcquisitionStart(); // acquire single image (since acquisition mode set so)
         if( !grabber.GetWaitObject().Wait( timeout ) ) // quick and dirty: arbitrary timeout
         {
             std::cerr << "basler-cat: timeout" << std::endl;
@@ -1011,7 +1011,7 @@ static bool run_chunk_pipeline( Pylon::CBaslerGigECamera& camera, Pylon::CBasler
     snark::tbb::bursty_reader< chunk_pair_t > reader( boost::bind( &capture< Pylon::CBaslerGigECamera, chunk_pair_t >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
     tbb::filter_t< chunk_pair_t, void > writer( tbb::filter::serial_in_order, boost::bind( &write, _1 ));
     snark::tbb::bursty_pipeline< chunk_pair_t > pipeline;
-    camera.AcquisitionStart.Execute();
+    camera.AcquisitionStart();
     comma::verbose << "running in chunk mode..." << std::endl;
     pipeline.run( reader, writer );
     comma::verbose << "shutting down..." << std::endl;
@@ -1031,7 +1031,7 @@ static bool run_simple_pipeline( C& camera, G& grabber, unsigned int max_queue_s
     snark::cv_mat::serialization serialization( cv_mat_options );
     snark::tbb::bursty_reader< pair_t > reader( boost::bind( &capture< C, pair_t >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
     snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
-    camera.AcquisitionStart.Execute();
+    camera.AcquisitionStart();
     comma::verbose << "running..." << std::endl;
     pipeline.run();
     if( !pipeline.error().empty() ) { std::cerr << "basler-cat: \"" << pipeline.error() << "\"" << std::endl; error = true; }
@@ -1138,7 +1138,7 @@ static int run( T& camera, const comma::command_line_options& options )
     //if( acquisition_status && GenApi::IsAvailable( acquisition_status ) && camera.AcquisitionStatus() )
     //{
     //    comma::verbose << "stopping acquisition..." << std::endl;
-    //    camera.AcquisitionStop.Execute();
+    //    camera.AcquisitionStop();
     //    comma::verbose << "acquisition stopped" << std::endl;
     //}
 
