@@ -1,20 +1,20 @@
-ascii/command[0]/output="107,91,111,79,134,31"
+ascii/command[0]/output="107,91,111,78,134,31"
 ascii/command[0]/status=0
 
-ascii/command[1]/output="107,91,111,79,134,31"
+ascii/command[1]/output="107,91,111,78,134,31"
 ascii/command[1]/status=0
 
-ascii/command[2]/output="foo,107,20170102T030405,91,111,79,134,31"
+ascii/command[2]/output="foo,107,20170102T030405,91,111,78,134,31"
 ascii/command[2]/status=0
 
 failure/command[0]/status=1
 failure/command[1]/status=1
 
-binary/command[0]/output="107,91,111,79,134,31"
+binary/command[0]/output="107,91,111,78,134,31"
 binary/command[0]/status=0
 
-binary/command[1]/output="107,91,111,79,134,31"
+binary/command[1]/output="107,91,111,78,134,31"
 binary/command[1]/status=0
 
-binary/command[2]/output="foo,107,20170102T030405,91,111,79,134,31"
+binary/command[2]/output="foo,107,20170102T030405,91,111,78,134,31"
 binary/command[2]/status=0
