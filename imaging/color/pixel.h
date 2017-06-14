@@ -125,13 +125,16 @@ namespace snark { namespace imaging {
             assert_compatible< T, R >( channel[0], typename range_traits< R >::value_t( 0 ) );
         }
 
+        template< typename S >
+        pixel( const pixel< S, R > & rhs ) : channel( rhs.channel.begin(), rhs.channel.end() ) {}
+
         template< typename S, range Q >
-        static pixel convert( const pixel< S, Q > & rhs )
+        pixel( const pixel< S, Q > & rhs )
         {
-            static const double factor = ( limits< R >::upper() - limits< R >::lower() ) / ( limits< Q >::upper() - limits< Q >::lower() );
-            return pixel( static_cast< T >( factor * ( rhs.channel[0] - limits< Q >::lower() ) + limits< R >::lower() )
-                        , static_cast< T >( factor * ( rhs.channel[1] - limits< Q >::lower() ) + limits< R >::lower() )
-                        , static_cast< T >( factor * ( rhs.channel[2] - limits< Q >::lower() ) + limits< R >::lower() ) );
+            double factor = ( limits< R >::upper() - limits< R >::lower() ) / ( limits< Q >::upper() - limits< Q >::lower() );
+            channel = { static_cast< T >( factor * ( rhs.channel[0] - limits< Q >::lower() ) + limits< R >::lower() )
+                      , static_cast< T >( factor * ( rhs.channel[1] - limits< Q >::lower() ) + limits< R >::lower() )
+                      , static_cast< T >( factor * ( rhs.channel[2] - limits< Q >::lower() ) + limits< R >::lower() ) };
         }
     };
 

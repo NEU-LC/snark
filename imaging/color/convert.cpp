@@ -131,13 +131,13 @@ namespace {
         pixel< outt, outr > sample_out;
         comma::csv::output_stream< pixel< outt, outr > > os( std::cout, output_csv, sample_out );
         comma::csv::tied< pixel< double, inr >, pixel< outt, outr > > tied( is, os );
+        pixel< double, outr > op;
         while( is.ready() || std::cin.good() )
         {
-            const pixel< double, inr > * p = is.read();
-            if( !p ) { break; }
-            pixel< double, outr > op;
-            c( p->channel ).swap( op.channel );
-            tied.append( pixel< outt, outr >::convert( op ) );
+            const pixel< double, inr > * ip = is.read();
+            if( !ip ) { break; }
+            c( ip->channel ).swap( op.channel );
+            tied.append( pixel< outt, outr >( op ) );
             if ( output_csv.flush ) { std::cout.flush(); }
         }
     }
