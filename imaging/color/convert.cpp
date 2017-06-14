@@ -87,9 +87,26 @@ namespace {
     const conversion_map_t & populate()
     {
         static conversion_map_t m;
-        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb,   ub ) ) ] = []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished() ); };
-        m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ypbpr, f  ) ) ] = []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
-        m[ std::make_pair( std::make_pair( colorspace::rgb, d  ), std::make_pair( colorspace::ypbpr, d  ) ) ] = []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::rgb,   ub ) ) ] =
+            []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 1, 0, 0, 0, 1, 0, 0, 0, 1).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ypbpr, f  ) ) ] =
+            []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished(), (Eigen::Vector3d() << 0, 0.5, 0.5).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, d  ), std::make_pair( colorspace::ypbpr, d  ) ) ] =
+            []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 0.299, 0.587, 0.114, -0.168736, -0.331264, 0.5, 0.5, -0.418688, -0.081312).finished(), (Eigen::Vector3d() << 0, 0.5, 0.5).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ycbcr, ub ) ) ] =
+            []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 65.481, 128.553, 24.966, -37.797, -74.203, 112.0, 112.0, -93.786, -18.214).finished(), (Eigen::Vector3d() << 16, 128, 128).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, d  ), std::make_pair( colorspace::ycbcr, ub ) ) ] =
+            []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 65.481, 128.553, 24.966, -37.797, -74.203, 112.0, 112.0, -93.786, -18.214).finished(), (Eigen::Vector3d() << 16, 128, 128).finished() ); };
+        m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::ycbcr, ub ) ) ] =
+            []( const pod & i ){ return linear_combination( i, (Eigen::Matrix3d() << 65.738, 129.057, 25.064, -37.945, -74.494, 112.439, 112.439, -94.154, -18.258).finished() / 256., (Eigen::Vector3d() << 16, 128, 128).finished() ); };
+        {
+            m[ std::make_pair( std::make_pair( colorspace::ycbcr, ub ), std::make_pair( colorspace::rgb, ub ) ) ] =
+                []( const pod & i) {
+                    return pod( 255/219. * ( i.channel0 - 16 )                                                     + 255/112.*0.701             * ( i.channel2 - 128 )
+                              , 255/219. * ( i.channel0 - 16 ) - 255/112.*0.886*0.114/0.587 * ( i.channel1 - 128 ) - 255/112.*0.701*0.299/0.587 * ( i.channel2 - 128 )
+                              , 255/219. * ( i.channel0 - 16 ) + 255/112.*0.886             * ( i.channel1 - 128 )                                                     );
+                };
+        }
         return m;
     }
 
