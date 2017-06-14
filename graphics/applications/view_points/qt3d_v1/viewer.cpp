@@ -42,7 +42,7 @@
 #include "viewer.h"
 #include <QTimer>
 #include "texture.h"
-#include <snark/math/rotation_matrix.h>
+#include "../../../../math/rotation_matrix.h"
 
 namespace snark { namespace graphics { namespace view {
 

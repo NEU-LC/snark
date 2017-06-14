@@ -29,7 +29,7 @@
 
 #pragma once
 #include <Eigen/Core>
-#include <snark/math/interval.h>
+#include "../../../math/interval.h"
 #include "reader.h"
 #include "types.h"
 #include "../../block_buffer.h"

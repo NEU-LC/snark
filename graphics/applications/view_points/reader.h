@@ -40,7 +40,7 @@
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
 #include "colored.h"
-#include <snark/math/interval.h>
+#include "../../../math/interval.h"
 #if Qt3D_VERSION==1
 #include <Qt3D/qglview.h>
 #else
