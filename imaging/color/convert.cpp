@@ -302,7 +302,7 @@ namespace snark { namespace imaging {
                     {
                         try
                         {
-                            const C & conv = select( conversions(), inc, inr, outc, outr );
+                            select( conversions(), inc, inr, outc, outr );
                             os << inc << ',' << stringify::from( inr ) << ',' << outc << ',' << stringify::from( outr ) << std::endl;
                         }
                         catch ( comma::exception & )
