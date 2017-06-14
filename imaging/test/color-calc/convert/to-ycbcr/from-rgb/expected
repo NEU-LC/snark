@@ -22,7 +22,7 @@ ascii/command[6]/status=0
 ascii/command[7]/output="name,1,1,20170102T030405,1,235,128,128"
 ascii/command[7]/status=0
 
-ascii/command[8]/output="78,134,31,107,91,111"
+ascii/command[8]/output="78,134,31,106,91,110"
 ascii/command[8]/status=0
 
 failure/command[0]/status=1

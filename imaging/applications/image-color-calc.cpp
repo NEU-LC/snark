@@ -207,7 +207,7 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
-        std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--output-fields", "--fields,-f,--binary,-b,--format,--to,--from");
+        std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--output-fields", "--fields,-f,--binary,-b,--input-type,--output-type,--to,--from");
         if( 1 != unnamed.size() ) { std::cerr << name << "cannot extract the operation from the command-line arguments '" << options.string() << "'" << std::endl; return 1;  }
 
         const std::string & operation = unnamed[0];
@@ -259,6 +259,7 @@ int main( int ac, char** av )
             if ( options.exists( "--input-fields" ) ) { std::cout << comma::join( snark::imaging::colorspace::field_names( fromc.value ), ',' ) << std::endl; return 0; }
 
             // parsing destination
+            // TODO: handle --output-type
             const std::string & tos = options.value< std::string >( "--to" );
             const std::vector< std::string > & tov = comma::split( tos, ',' );
             if ( tov.size() > 3 ) { COMMA_THROW( comma::exception, "--to takes at most three comma-separated value" ); }
@@ -270,6 +271,7 @@ int main( int ac, char** av )
             snark::imaging::range tof = tov.size() > 1 ? ( tov.size() > 2 ? snark::imaging::stringify::to( tov[2] ) : tor ) : snark::imaging::d ;
 
             // these settings are delayed to allow '--input-fields', '--output-fields' to proceed even if a sub-set of normal options is given
+            if ( !fromr && options.exists( "--input-type" ) ) { fromr = snark::imaging::stringify::to( options.value< std::string >( "--input-type" ) ); }
             if ( !fromr ) { fromr = snark::imaging::stringify::to( snark::imaging::colorspace::default_range( fromc.value ) ); }
 
             // the actual processing is done below
