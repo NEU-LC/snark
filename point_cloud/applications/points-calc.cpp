@@ -252,7 +252,7 @@ static void usage( bool verbose = false )
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options:" << std::endl;
-    std::cerr << "            --linear: assume data is linear" << std::endl;
+    std::cerr << "            --linear: assume the input is a sequence of points of a trajectory; only this option is currently implemented" << std::endl;
     std::cerr << "            --resolution=<distance>: minimum distance from one point to the next" << std::endl;
     std::cerr << std::endl;
     vector_calc::usage();
