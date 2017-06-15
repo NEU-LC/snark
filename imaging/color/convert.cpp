@@ -133,7 +133,7 @@ namespace {
         return m;
     }
 
-    C select( const conversion_map_t & m, const colorspace & inc, range inr, const colorspace & outc, range outr )
+    C select( const conversion_map_t & m, const colorspace & inc, range inr, const colorspace & outc, range outr, bool recurse = true )
     {
         // the logic for searching for the conversion method:
         // 0. check for non-conversions: same colorspace, different (or even same) range; handle explicitly
@@ -170,7 +170,23 @@ namespace {
             conversion_map_t::const_iterator i = m.find( key );
             if ( i != m.end() ) { return [ i, inr, indef, outdef, outr ]( const channels & c ){ return scale( outdef, outr )( i->second( scale( inr, indef )( c ) ) ); }; }
         }
-        // 5. if all the above fails, throw
+        // 5. if there is a conversion from (inc, inr ) to (rgb, default-range-of-rgb) and also conversion from (rgb, default-range-of-rgb) to (outc, outr)
+        //    ( covering all possible intermediate conversions through a recursive call), convert through the intermediate rgb
+        {
+            if ( recurse )
+            {
+                try {
+                    // do not stuck in infinite recursion
+                    range rgbdef = colorspace::default_range( colorspace::rgb );
+                    C c0 = select( m, inc, inr, colorspace::rgb, rgbdef, false );
+                    C c1 = select( m, colorspace::rgb, rgbdef, outc, outr, false );
+                    return [ c0, c1 ]( const channels & c ){ return c1( c0( c ) ); };
+                }
+                catch ( comma::exception & )
+                {}
+            }
+        }
+        // 6. if all the above fails, throw
         COMMA_THROW( comma::exception, "conversion from colorspace " << inc << ", range " << stringify::from( inr ) << " to colorspace " << outc << ", range " << stringify::from( outr ) << " is not known" );
     }
 
