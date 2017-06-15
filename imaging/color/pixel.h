@@ -32,6 +32,7 @@
 #include "range.h"
 #include <type_traits>
 #include <vector>
+#include <algorithm>
 
 namespace snark { namespace imaging {
 
@@ -71,7 +72,12 @@ namespace snark { namespace imaging {
         }
 
         template< typename S >
-        pixel( const pixel< S, R > & rhs ) : channel( rhs.channel.begin(), rhs.channel.end() ) {}
+        pixel( const pixel< S, R > & rhs ) : channel( rhs.channel.begin(), rhs.channel.end() )
+        {
+            if ( std::is_integral< T >::value && std::is_floating_point< S >::value ) {
+                std::transform( rhs.channel.begin(), rhs.channel.end(), channel.begin(), []( S s ){ return std::round( s ); } );
+            }
+        }
 
         template< typename S, range Q >
         pixel( const pixel< S, Q > & rhs )

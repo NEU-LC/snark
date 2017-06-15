@@ -10,7 +10,7 @@ ascii/command[5]="echo 1,1,1 | image-color-calc convert --from rgb,d --to ycbcr,
 ascii/command[6]="echo 0,0,0 | image-color-calc convert --fields r,g,b --to ycbcr,ub --input-type=d"
 ascii/command[7]="echo name,1,1,20170102T030405,1 | image-color-calc convert --fields name,r,g,t,b --to ycbcr,ub --input-type=f"
 
-ascii/command[8]="echo 78,134,31 | image-color-calc convert --fields r,g,b --to ycbcr,ub --input-type=ub"
+ascii/command[8]="echo 79,134,31 | image-color-calc convert --fields r,g,b --to ycbcr,ub --input-type=ub"
 
 failure/command[0]="echo 1,1,1 | image-color-calc convert --from rgb,a --to ycbcr"
 failure/command[1]="echo 0.1,0.1,0.1 | image-color-calc convert --from rgb --to ycbcr --format=3ub"
