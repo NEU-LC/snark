@@ -7,7 +7,7 @@ ascii/command[4]="echo 107,91,111 | image-color-calc convert --fields y,cb,cr --
 ascii/command[5]="echo foo,107,20170102T030405,91,111 | image-color-calc convert --fields name,y,t,cb,cr --to rgb | csv-eval --fields=,,,,,a,b,c 'a=round(a);b=round(b);c=round(c)'"
 
 failure/command[0]="echo 107,91,111 | image-color-calc convert --fields y,cb,a --to rgb"
-failure/command[1]="echo 107,91,111 | image-color-calc convert --fields y,cb,cr --to ypbpr"
+failure/command[1]="echo 107,91,111 | image-color-calc convert --from ycbcr,ub --input-type=f --to ypbpr"
 
 binary/command[0]="echo 107,91,111 | csv-to-bin 3ub | image-color-calc convert --from ycbcr --to rgb,ub --binary=3ub | csv-from-bin 3ub,3ub"
 binary/command[1]="echo 107,91,111 | csv-to-bin 3ub | image-color-calc convert --fields y,cb,cr --to rgb,ub --binary=3ub | csv-from-bin 3ub,3ub"
