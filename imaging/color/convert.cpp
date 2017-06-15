@@ -120,8 +120,9 @@ namespace {
         m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ycbcr, ub ) ) ] =
             []( const channels & i ){ return linear_combination( i, (Eigen::Matrix3d() << 65.481, 128.553, 24.966, -37.797, -74.203, 112.0, 112.0, -93.786, -18.214).finished(), (Eigen::Vector3d() << 16, 128, 128).finished() ); };
         m[ std::make_pair( std::make_pair( colorspace::rgb, d  ), std::make_pair( colorspace::ycbcr, ub ) ) ] = m[ std::make_pair( std::make_pair( colorspace::rgb, f  ), std::make_pair( colorspace::ycbcr, ub ) ) ];
+        // this differs from commonly presented values, e.g., wiki@YCbCr page, that rounds numbers to 3 decimal digits
         m[ std::make_pair( std::make_pair( colorspace::rgb, ub ), std::make_pair( colorspace::ycbcr, ub ) ) ] =
-            []( const channels & i ){ return linear_combination( i, (Eigen::Matrix3d() << 65.738, 129.057, 25.064, -37.945, -74.494, 112.439, 112.439, -94.154, -18.258).finished() / 256., (Eigen::Vector3d() << 16, 128, 128).finished() ); };
+            []( const channels & i ){ return linear_combination( i, (Eigen::Matrix3d() << 65.481, 128.553, 24.966, -37.797, -74.203, 112.0, 112.0, -93.786, -18.214).finished() / 255., (Eigen::Vector3d() << 16, 128, 128).finished() ); };
         {
             m[ std::make_pair( std::make_pair( colorspace::ycbcr, ub ), std::make_pair( colorspace::rgb, ub ) ) ] =
                 []( const channels & i) {
