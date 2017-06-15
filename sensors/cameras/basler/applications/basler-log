@@ -114,9 +114,7 @@ function load_config()
 {
     local file path
     IFS=: read file path <<< "$1"
-
-    cat "$file" | name-value-convert \
-        | if [[ "$path" ]]; then sed "/^$path\//s#^$path/##"; else cat; fi
+    cat "$file" | name-value-get "$path"
 }
 
 verbose "loading sensor config $options_config"
