@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include "range.h"
 #include <string>
 #include <vector>
 #include <map>
@@ -55,7 +56,7 @@ namespace snark { namespace imaging {
 
         static const std::vector< std::string > & field_names( cspace c );
 
-        static const std::string & default_range( cspace c );
+        static range default_range( cspace c );
     };
 
     inline std::ostream & operator<<( std::ostream & os, const colorspace & c )

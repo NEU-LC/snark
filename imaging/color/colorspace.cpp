@@ -29,6 +29,7 @@
 
 #include "colorspace.h"
 #include <comma/string/string.h>
+#include <comma/base/exception.h>
 
 namespace snark { namespace imaging {
 
@@ -54,15 +55,15 @@ namespace snark { namespace imaging {
         return m.at( c );
     }
 
-    const std::string & colorspace::default_range( cspace c )
+    range colorspace::default_range( cspace c )
     {
-        static const std::map< cspace, std::string > & m = {
-            { rgb,   "ub" },
-            { ycbcr, "ub" },
-            { ypbpr, "f" },
-            { none,  "" }
-        };
-        return m.at( c );
+        switch ( c ) {
+            case rgb:   return ub;
+            case ycbcr: return ub;
+            case ypbpr: return f;
+            default:
+                COMMA_THROW( comma::exception, "unknown colorspace '" << c << "'" );
+        }
     }
 
 } } // namespace snark { namespace imaging {

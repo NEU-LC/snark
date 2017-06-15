@@ -273,7 +273,7 @@ int main( int ac, char** av )
             snark::imaging::colorspace toc = snark::imaging::colorspace( tov.front() );
             if ( toc.value == snark::imaging::colorspace::none ) { COMMA_THROW( comma::exception, "must provide destination colorspace using '--to'" ); }
             if ( options.exists( "--output-fields" ) ) { std::cout << comma::join( snark::imaging::colorspace::field_names( toc.value ), ',' ) << std::endl; return 0; }
-            snark::imaging::range tor = snark::imaging::stringify::to( tov.size() > 1 ? tov[1] : snark::imaging::colorspace::default_range( toc.value ) );
+            snark::imaging::range tor = tov.size() > 1 ? snark::imaging::stringify::to( tov[1] ) : snark::imaging::colorspace::default_range( toc.value );
             if ( options.exists( "--output-type" ) ) {
                 if ( tov.size() > 1 ) { COMMA_THROW( comma::exception, "cannot provide both --output-type and explicity --to=<...>,type" ); }
                 tor = snark::imaging::stringify::to( options.value< std::string >( "--output-type" ) );
@@ -283,7 +283,7 @@ int main( int ac, char** av )
 
             // these settings are delayed to allow '--input-fields', '--output-fields' to proceed even if a sub-set of normal options is given
             if ( !fromr && options.exists( "--input-type" ) ) { fromr = snark::imaging::stringify::to( options.value< std::string >( "--input-type" ) ); }
-            if ( !fromr ) { fromr = snark::imaging::stringify::to( snark::imaging::colorspace::default_range( fromc.value ) ); }
+            if ( !fromr ) { fromr = snark::imaging::colorspace::default_range( fromc.value ); }
 
             // the actual processing is done below
             if ( verbose ) { std::cerr << name << "convert from '" << fromc << "," << snark::imaging::stringify::from( *fromr ) << "'"

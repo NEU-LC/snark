@@ -150,22 +150,22 @@ namespace {
         }
         // 2. if there is a conversion from (inc, inr) to (outc, default-range-of-outc) use it, then change range of outc (chain conversions)
         {
-            range outdef = stringify::to( colorspace::default_range( outc.value ) );
+            range outdef = colorspace::default_range( outc.value );
             const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outdef ) );
             conversion_map_t::const_iterator i = m.find( key );
             if ( i != m.end() ) { return [ i, outdef, outr ]( const channels & c ){ return scale( outdef, outr )( i->second( c ) ); }; }
         }
         // 3. if there is a conversion from (inc, default-range-of-inc) to (outc, outr), use it after changing range of inc
         {
-            range indef = stringify::to( colorspace::default_range( inc.value ) );
+            range indef = colorspace::default_range( inc.value );
             const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, indef ), std::make_pair( outc.value, outr ) );
             conversion_map_t::const_iterator i = m.find( key );
             if ( i != m.end() ) { return [ i, inr, indef ]( const channels & c ){ return i->second( scale( inr, indef )( c ) ); }; }
         }
         // 4. if there is a conversion from (inc, default-range-of-inc) to (outc, default-range-of-outc), change range of inc, apply conversion, then change range of outc
         {
-            range indef = stringify::to( colorspace::default_range( inc.value ) );
-            range outdef = stringify::to( colorspace::default_range( outc.value ) );
+            range indef = colorspace::default_range( inc.value );
+            range outdef = colorspace::default_range( outc.value );
             const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, indef ), std::make_pair( outc.value, outdef ) );
             conversion_map_t::const_iterator i = m.find( key );
             if ( i != m.end() ) { return [ i, inr, indef, outdef, outr ]( const channels & c ){ return scale( outdef, outr )( i->second( scale( inr, indef )( c ) ) ); }; }
