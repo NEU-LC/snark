@@ -77,13 +77,34 @@ namespace {
     typedef std::pair< half_key_t, half_key_t > conversion_key_t;
     typedef std::map< conversion_key_t, C > conversion_map_t;
 
-    channels scale( const channels & rhs, range inr, range outr )
+    C scale( range inr, range outr )
     {
-        double uin = upper( inr ), lin = lower( inr ), uout = upper( outr ), lout = lower( outr );
+        double uin, lin, uout, lout;
+        switch ( inr ) {
+            case ub : uin = limits< ub >::upper(); lin = limits< ub >::lower(); break;
+            case uw : uin = limits< uw >::upper(); lin = limits< uw >::lower(); break;
+            case ui : uin = limits< ui >::upper(); lin = limits< ui >::lower(); break;
+            case f  : uin = limits< f  >::upper(); lin = limits< f  >::lower(); break;
+            case d  : uin = limits< d  >::upper(); lin = limits< d  >::lower(); break;
+            default:
+                COMMA_THROW( comma::exception, "unknown input range '" << stringify::from( inr ) << "'" );
+        }
+
+        switch ( outr ) {
+            case ub : uout = limits< ub >::upper(); lout = limits< ub >::lower(); break;
+            case uw : uout = limits< uw >::upper(); lout = limits< uw >::lower(); break;
+            case ui : uout = limits< ui >::upper(); lout = limits< ui >::lower(); break;
+            case f  : uout = limits< f  >::upper(); lout = limits< f  >::lower(); break;
+            case d  : uout = limits< d  >::upper(); lout = limits< d  >::lower(); break;
+            default:
+                COMMA_THROW( comma::exception, "unknown output range '" << stringify::from( outr ) << "'" );
+        }
+
         double factor = ( uout - lout ) / ( uin - lin );
-        return channels( { factor * ( rhs[0] - lin ) + lout
-                         , factor * ( rhs[1] - lin ) + lout
-                         , factor * ( rhs[2] - lin ) + lout } );
+        return [ factor, lin, lout ]( const channels & rhs ){
+            return channels( { factor * ( rhs[0] - lin ) + lout
+                             , factor * ( rhs[1] - lin ) + lout
+                             , factor * ( rhs[2] - lin ) + lout } ); };
     }
 
     const conversion_map_t & conversions()
@@ -119,7 +140,7 @@ namespace {
         if ( inc.value == outc.value )
         {
             if ( inr == outr ) { return []( const channels & c ) { return c; }; }
-            return [inr, outr]( const channels & c ){ return scale( c, inr, outr ); };
+            return scale( inr, outr );
         }
         // 1. if there is a direct conversion from (inc, inr) to (outc, outr) use it (data are stored as doubles on both in and out)
         {
@@ -132,14 +153,14 @@ namespace {
             range outdef = stringify::to( colorspace::default_range( outc.value ) );
             const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, inr ), std::make_pair( outc.value, outdef ) );
             conversion_map_t::const_iterator i = m.find( key );
-            if ( i != m.end() ) { return [i, outdef, outr]( const channels & c ){ return scale( i->second( c ), outdef, outr ); }; }
+            if ( i != m.end() ) { return [ i, outdef, outr ]( const channels & c ){ return scale( outdef, outr )( i->second( c ) ); }; }
         }
         // 3. if there is a conversion from (inc, default-range-of-inc) to (outc, outr), use it after changing range of inc
         {
             range indef = stringify::to( colorspace::default_range( inc.value ) );
             const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, indef ), std::make_pair( outc.value, outr ) );
             conversion_map_t::const_iterator i = m.find( key );
-            if ( i != m.end() ) { return [i, inr, indef]( const channels & c ){ return i->second( scale( c, inr, indef ) ); }; }
+            if ( i != m.end() ) { return [ i, inr, indef ]( const channels & c ){ return i->second( scale( inr, indef )( c ) ); }; }
         }
         // 4. if there is a conversion from (inc, default-range-of-inc) to (outc, default-range-of-outc), change range of inc, apply conversion, then change range of outc
         {
@@ -147,7 +168,7 @@ namespace {
             range outdef = stringify::to( colorspace::default_range( outc.value ) );
             const conversion_key_t & key = std::make_pair( std::make_pair( inc.value, indef ), std::make_pair( outc.value, outdef ) );
             conversion_map_t::const_iterator i = m.find( key );
-            if ( i != m.end() ) { return [i, inr, indef, outdef, outr]( const channels & c ){ return scale( i->second( scale( c, inr, indef ) ), outdef, outr ); }; }
+            if ( i != m.end() ) { return [ i, inr, indef, outdef, outr ]( const channels & c ){ return scale( outdef, outr )( i->second( scale( inr, indef )( c ) ) ); }; }
         }
         // 5. if all the above fails, throw
         COMMA_THROW( comma::exception, "conversion from colorspace " << inc << ", range " << stringify::from( inr ) << " to colorspace " << outc << ", range " << stringify::from( outr ) << " is not known" );

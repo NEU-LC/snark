@@ -84,32 +84,6 @@ namespace snark { namespace imaging {
         static constexpr double lower() { return 0.0; }
     };
 
-    inline double upper( range r )
-    {
-        switch ( r ) {
-            case ub : return limits< ub >::upper();
-            case uw : return limits< uw >::upper();
-            case ui : return limits< ui >::upper();
-            case f  : return limits< f  >::upper();
-            case d  : return limits< d  >::upper();
-            default:
-                COMMA_THROW( comma::exception, "unknown range '" << stringify::from( r ) << "'" );
-        }
-    }
-
-    inline double lower( range r )
-    {
-        switch ( r ) {
-            case ub : return limits< ub >::lower();
-            case uw : return limits< uw >::lower();
-            case ui : return limits< ui >::lower();
-            case f  : return limits< f  >::lower();
-            case d  : return limits< d  >::lower();
-            default:
-                COMMA_THROW( comma::exception, "unknown range '" << stringify::from( r ) << "'" );
-        }
-    }
-
     template< typename T, range R >
     T trim( T t ) {
         double dt = double(t);
