@@ -59,7 +59,7 @@ namespace {
         std::cerr << std::endl;
         std::cerr << "operations:" << std::endl;
         std::cerr << "    convert" << std::endl;
-        std::cerr << "        perform conversion between rgb, ycbcr, ypbpr, and other colorspaces on input streams" << std::endl;
+        std::cerr << "        perform conversion between rgb, ycbcr, and ypbpr colorspaces on input streams" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        usage:" << std::endl;
         std::cerr << "            cat input.csv | image-color-calc convert --from <colorspace>[,<type>] --to <colorspace>[,<type>,<format>]" << std::endl;
@@ -85,7 +85,7 @@ namespace {
         std::cerr << "            by default, output is double-precision values in the range of the \"to\" <colorspace>, e.g., from 0.0 to 255.0 for rgb" << std::endl;
         std::cerr << "            use <type> to rescale to different range; by default, values would be stored in variable of that <type>" << std::endl;
         std::cerr << "            use <format> to specify different storage, e.g." << std::endl;
-        std::cerr << "                --to rgb,uw:   convert to rgb in 0-65535 range, truncate value, store as 2-byte integer" << std::endl;
+        std::cerr << "                --to rgb,uw:   convert to rgb in 0-65535 range, round output value, store as 2-byte integer" << std::endl;
         std::cerr << "                --to rgb,uw,d: convert to rgb in 0-65535 range, store as doubles, keep precision" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    options" << std::endl;
@@ -120,7 +120,7 @@ namespace {
         std::cerr << "                | csv-from-bin 3f,3d" << std::endl;
         std::cerr << std::endl;
         if ( verbose ) {
-            std::cerr << "        same as above but rescale and truncate output to short integers" << std::endl;
+            std::cerr << "        same as above but rescale and round output to short integers" << std::endl;
             std::cerr << "            echo 1,0.2,0.3 | csv-to-bin 3f \\" << std::endl;
             std::cerr << "                | image-color-calc convert --from=rgb,f --to=ycbcr,uw \\" << std::endl;
             std::cerr << "                | csv-from-bin 3f,3uw" << std::endl;
