@@ -30,9 +30,7 @@
 #include "../../../../imaging/color/pixel.h"
 
 #include <gtest/gtest.h>
-
-#include <boost/assign.hpp>
-
+#include <comma/base/exception.h>
 #include <iostream>
 
 TEST( pixel, ctor )

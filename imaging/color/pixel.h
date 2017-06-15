@@ -29,66 +29,11 @@
 
 #pragma once
 
-#include <comma/base/types.h>
-#include <comma/base/exception.h>
-#include <boost/static_assert.hpp>
+#include "range.h"
 #include <type_traits>
 #include <vector>
 
 namespace snark { namespace imaging {
-
-    enum range {
-        ub = 0,   // 0 - 255
-        uw,       // 0 - 65535
-        ui,       // 0 - 4294967295
-        f,        // 0 - 1
-        d         // 0 - 1
-    };
-
-    struct stringify
-    {
-        static std::string from( range r )
-        {
-            switch( r ) {
-                case ub: return "ub"; break;
-                case uw: return "uw"; break;
-                case ui: return "ui"; break;
-                case f:  return "f" ; break;
-                case d:  return "d" ; break;
-                default:
-                    COMMA_THROW( comma::exception, "logical error, unknown range " << r );
-            }
-        }
-
-        static range to( const std::string & s )
-        {
-            for ( auto r : { ub, uw, ui, f, d } ) {
-                if ( s == from( r ) ) { return r; }
-            }
-            COMMA_THROW( comma::exception, "string '" << s << "' is not a valid range descriptor" );
-        }
-    };
-
-    template< range R > struct range_traits;
-    template<> struct range_traits< ub > { typedef unsigned char value_t; };
-    template<> struct range_traits< uw > { typedef comma::uint16 value_t; };
-    template<> struct range_traits< ui > { typedef comma::uint32 value_t; };
-    template<> struct range_traits< f >  { typedef float         value_t; };
-    template<> struct range_traits< d >  { typedef double        value_t; };
-
-    template< range R >
-    struct limits
-    {
-        typedef typename range_traits< R >::value_t value_t;
-        static constexpr double upper() { return std::is_floating_point< value_t >::value ? 1.0 : double( std::numeric_limits< value_t >::max() ); }
-        static constexpr double lower() { return 0.0; }
-    };
-
-    template< typename T, range R >
-    T trim( T t ) {
-        double dt = double(t);
-        return dt < limits< R >::lower() ? static_cast< T >( limits< R >::lower() ) : ( dt > limits< R >::upper() ? static_cast< T >( limits< R >::upper() ) : t );
-    }
 
     template< typename T, range R >
     void assert_compatible( typename std::enable_if< std::is_integral< T >::value, T >::type t
