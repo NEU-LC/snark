@@ -229,14 +229,17 @@ int main( int ac, char** av )
 
             // parsing origin
             snark::imaging::colorspace fromc( snark::imaging::colorspace::none );
-            boost::optional< snark::imaging::range > fromr;
+            std::string sfromr;
             const std::string & froms( options.value< std::string >( "--from", "" ) );
             if ( !froms.empty() )
             {
                 const std::vector< std::string > & fromv = comma::split( froms, ',' );
                 if ( fromv.size() > 2 ) { COMMA_THROW( comma::exception, "--from takes at most two comma-separated value" ); }
                 fromc = snark::imaging::colorspace( fromv.front() );
-                if ( fromv.size() == 2 ) { fromr = snark::imaging::stringify::to( fromv[1] ); }
+                if ( fromv.size() == 2 ) {
+                    if ( options.exists( "--input-type" ) ) { COMMA_THROW( comma::exception, "input range specified twice, in --from and in --input-type" ); }
+                    sfromr = fromv[1];
+                }
             }
             // alternatively, get origin from fields
             std::vector< std::string > fields = comma::split( csv.fields, csv.delimiter );
@@ -282,14 +285,14 @@ int main( int ac, char** av )
             snark::imaging::range tof = tov.size() > 2 ? snark::imaging::stringify::to( tov[2] ) : ( ( tov.size() > 1 || options.exists( "--output-type" ) ) ? tor : snark::imaging::d );
 
             // these settings are delayed to allow '--input-fields', '--output-fields' to proceed even if a sub-set of normal options is given
-            if ( !fromr && options.exists( "--input-type" ) ) { fromr = snark::imaging::stringify::to( options.value< std::string >( "--input-type" ) ); }
-            if ( !fromr ) { fromr = snark::imaging::colorspace::default_range( fromc.value ); }
+            if ( sfromr.empty() && options.exists( "--input-type" ) ) { sfromr = options.value< std::string >( "--input-type" ); }
+            snark::imaging::range fromr = sfromr.empty() ? snark::imaging::colorspace::default_range( fromc.value ) : snark::imaging::stringify::to( sfromr );
 
             // the actual processing is done below
-            if ( verbose ) { std::cerr << name << "convert from '" << fromc << "," << snark::imaging::stringify::from( *fromr ) << "'"
+            if ( verbose ) { std::cerr << name << "convert from '" << fromc << "," << snark::imaging::stringify::from( fromr ) << "'"
                                                <<          " to '" << toc << "," << snark::imaging::stringify::from( tor ) << "," << snark::imaging::stringify::from( tof ) << "'"
                                                << " using fields '" << comma::join( fields, ',' ) << "'" << std::endl; }
-            auto converter = snark::imaging::converter::dispatch( fromc, *fromr, toc, tor, tof );
+            auto converter = snark::imaging::converter::dispatch( fromc, fromr, toc, tor, tof );
             converter( csv );
             return 0;
         } else {
