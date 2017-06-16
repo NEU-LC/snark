@@ -185,7 +185,9 @@ static void usage()
         "\n                                         length: length of each axis line"
         "\n                                         label: label for the axis"
         "\n                                         axis_labels:  <x>:<y>:<z> colon separated list of axis labels, leave empty for no labels e.g. x:y:z"
+#if Qt3D_VERSION==2
         "\n                                     options: --weight or --point-size can be used for line thickness"
+#endif
         qt55_unsupported_marker_start
         "\n                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
         "\n                     \"    <options>"
