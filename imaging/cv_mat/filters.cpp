@@ -2530,11 +2530,22 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
         if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
-        std::string filter_string = e[1];
-        const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
-        functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], ':' ), get_timestamp );
-        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], ':' ), get_timestamp ), boost::bind( g, _1 ) ); }
-        return boost::bind< value_type_t >( mask_impl_< H >(), _1, g );
+        struct maker
+        {
+            maker( const get_timestamp_functor & get_timestamp, char separator = ';', char equal_sign = '=' ) : get_timestamp_( get_timestamp ), separator_( separator ), equal_sign_( equal_sign ) {}
+            functor_type operator()( const std::string & s )
+            {
+                const std::vector< std::string > & w = comma::split( s, separator_ );
+                functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], equal_sign_ ), get_timestamp_ );
+                for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], equal_sign_ ), get_timestamp_ ), boost::bind( g, _1 ) ); }
+                return g;
+            }
+            private:
+                get_timestamp_functor get_timestamp_;
+                char separator_, equal_sign_;
+        };
+        maker m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
+        return boost::bind< value_type_t >( mask_impl_< H >(), _1, m( e[1] ) );
     }
     else if( e[0] == "timestamp" ) { return timestamp_impl_< H >( get_timestamp ); }
     else if( e[0] == "transpose" ) { return transpose_impl_< H >; }
