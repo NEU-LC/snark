@@ -43,7 +43,7 @@
 
 namespace snark{ namespace cv_mat {
 
-namespace boolean
+namespace bitwise
 {
     struct op_or  {};
     struct op_and {};
@@ -128,6 +128,6 @@ namespace boolean
             boost::spirit::qi::rule< It, expr(), Skipper > not_, and_, xor_, or_, simple, expr_;
     };
 
-} // namespace boolean
+} // namespace bitwise
 
 } } // namespace snark{ namespace cv_mat {

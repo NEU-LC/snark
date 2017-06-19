@@ -27,7 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "../../../../imaging/cv_mat/detail/boolean.h"
+#include "../../../../imaging/cv_mat/detail/bitwise.h"
 
 #include <gtest/gtest.h>
 
@@ -36,10 +36,10 @@
 #include <iostream>
 
 using namespace snark::cv_mat;
-using namespace snark::cv_mat::boolean;
+using namespace snark::cv_mat::bitwise;
 using boost::spirit::ascii::space;
 
-TEST( boolean, parser )
+TEST( bitwise, parser )
 {
     const std::vector< std::string > inputs =
         {
