@@ -74,13 +74,13 @@ static void usage( bool verbose = false )
     }
     std::cerr << std::endl;
     std::cerr << "options: " << std::endl;
-    std::cerr << "    --mode,-m=<mode>: control mode (default: " << default_mode << ")" << std::endl;
-    std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
-    std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
+    std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
     std::cerr << "    --heading-is-absolute: interpret target heading as global by default" << std::endl;
     std::cerr << "    --input-fields: show default input stream fields and exit" << std::endl;
-    std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
+    std::cerr << "    --mode,-m=<mode>: control mode (default: " << default_mode << ")" << std::endl;
+    std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;    
+    std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --strict: fail if a record with the timestamp earlier than the previous one is encountered (default: skip offending records)" << std::endl;
