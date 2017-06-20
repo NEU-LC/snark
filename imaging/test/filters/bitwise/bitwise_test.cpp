@@ -28,10 +28,12 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "../../../../imaging/cv_mat/detail/bitwise.h"
+#include <comma/base/types.h>
 
 #include <gtest/gtest.h>
 
 #include <boost/assign.hpp>
+#include <opencv2/core/core.hpp>
 
 #include <iostream>
 
@@ -178,6 +180,43 @@ TEST( bitwise, logical_int )
                 int r = worker( boost::none );
                 int q = call_direct( m, direct[i] );
                 EXPECT_EQ( r, q );
+            }
+        }
+    }
+}
+
+TEST( bitwise, logical_matrix )
+{
+    std::vector< lookup_map_t< cv::Mat > > lookup_matrices;
+    for ( const auto & m : lookup_ints )
+    {
+        lookup_map_t< cv::Mat > matrices;
+        for ( const auto & k : { "a", "b", "c", "d" } )
+        {
+            cv::Mat matrix( 3, 4, CV_16UC1, cv::Scalar(0) );
+            matrix.at< comma::int16 >( 2, 3 ) = m.at( k );
+            matrices[ k ] = matrix.clone();
+        }
+        lookup_matrices.push_back( matrices );
+    }
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
+        parser< decltype( f ) > p;
+
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
+        {
+            for ( size_t j = 0; j < lookup_matrices.size(); ++j )
+            {
+                logician< cv::Mat > l( lookup_matrices[j] );
+                auto worker = boost::apply_visitor( visitor< boost::none_t, cv::Mat, logician< cv::Mat > >( l ), result );
+                cv::Mat r = worker( boost::none );
+                int ri = r.at< comma::int16 >(2, 3);
+                int q = call_direct( lookup_ints[j], direct[i] );
+                EXPECT_EQ( ri, q );
             }
         }
     }
