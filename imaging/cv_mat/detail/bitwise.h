@@ -71,30 +71,30 @@ namespace bitwise
        expr oper1;
     };
 
-    struct composer : boost::static_visitor< boost::function< void( std::ostream & ) > >
+    struct composer : boost::static_visitor< boost::function< std::ostream & ( std::ostream & ) > >
     {
-        typedef boost::static_visitor< boost::function< void( std::ostream & ) > >::result_type result_type;
+        typedef boost::static_visitor< boost::function< std::ostream & ( std::ostream & ) > >::result_type result_type;
 
-        result_type operator()( const std::string & s ) const { return [&s]( std::ostream & os ){ os << s; }; }
+        result_type operator()( const std::string & s ) const { return [&s]( std::ostream & os ) -> std::ostream & { os << s; return os; }; }
 
         result_type operator()( const binary_op< op_and > & b ) const {
             result_type opl = boost::apply_visitor( *this, b.oper1 );
             result_type opr = boost::apply_visitor( *this, b.oper2 );
-            return [ opl, opr ]( std::ostream & os ){ os << '('; opl( os ); os << " & "; opr( os ); os << ')'; };
+            return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " & "; opr( os ); os << ')'; return os; };
         }
         result_type operator()( const binary_op< op_or  > & b ) const {
             result_type opl = boost::apply_visitor( *this, b.oper1 );
             result_type opr = boost::apply_visitor( *this, b.oper2 );
-            return [ opl, opr ]( std::ostream & os ){ os << '('; opl( os ); os << " | "; opr( os ); os << ')'; };
+            return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " | "; opr( os ); os << ')'; return os; };
         }
         result_type operator()( const binary_op< op_xor > & b ) const {
             result_type opl = boost::apply_visitor( *this, b.oper1 );
             result_type opr = boost::apply_visitor( *this, b.oper2 );
-            return [ opl, opr ]( std::ostream & os ){ os << '('; opl( os ); os << " ^ "; opr( os ); os << ')'; };
+            return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " ^ "; opr( os ); os << ')'; return os; };
         }
         result_type operator()( const unary_op< op_not > & u )  const {
             result_type op = boost::apply_visitor( *this, u.oper1 );
-            return [ op ]( std::ostream & os ){ os << "(!"; op( os ); os << ')'; };
+            return [ op ]( std::ostream & os ) -> std::ostream & { os << "(!"; op( os ); os << ')'; return os; };
         }
     };
 
@@ -127,7 +127,7 @@ namespace bitwise
         }
     };
 
-    std::ostream & operator<<( std::ostream & os, const expr & e ) {
+    inline std::ostream & operator<<( std::ostream & os, const expr & e ) {
         boost::apply_visitor( printer( os ), e );
         return os;
     }
