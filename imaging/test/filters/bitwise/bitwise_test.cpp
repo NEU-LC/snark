@@ -39,6 +39,21 @@ using namespace snark::cv_mat;
 using namespace snark::cv_mat::bitwise;
 using boost::spirit::ascii::space;
 
+namespace {
+
+    struct writer
+    {
+        typedef boost::static_visitor< boost::function< std::ostream & ( std::ostream & ) > >::result_type result_type;
+
+        result_type term( const std::string & s ) const { return [ &s ]( std::ostream & os ) -> std::ostream & { os << s; return os; }; }
+        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " & "; opr( os ); os << ')'; return os; }; }
+        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " | "; opr( os ); os << ')'; return os; }; }
+        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " ^ "; opr( os ); os << ')'; return os; }; }
+        result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "(!"; op( os ); os << ')'; return os; }; }
+    };
+
+} // anonymous
+
 TEST( bitwise, parser )
 {
     const std::vector< std::string > inputs =
@@ -81,8 +96,9 @@ TEST( bitwise, parser )
         }
         {
             std::ostringstream os;
-            auto writer = boost::apply_visitor( composer(), result );
-            writer( os );
+            writer w;
+            auto scribe = boost::apply_visitor( visitor< std::ostream &, std::ostream &, writer >( w ), result );
+            scribe( os );
             EXPECT_EQ( os.str(), expected[i] );
         }
     }
