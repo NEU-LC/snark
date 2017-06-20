@@ -49,7 +49,7 @@ namespace {
         result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " & "; opr( os ); os << ')'; return os; }; }
         result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " | "; opr( os ); os << ')'; return os; }; }
         result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " ^ "; opr( os ); os << ')'; return os; }; }
-        result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "(!"; op( os ); os << ')'; return os; }; }
+        result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "(~"; op( os ); os << ')'; return os; }; }
     };
 
     typedef std::map< std::string, int > lookup_map;
@@ -85,9 +85,9 @@ namespace {
             "(a & b)",
             "(a | b)",
             "(a ^ b)",
-            "(!a)",
-            "((!a) & b)",
-            "(!(a & b))",
+            "(~a)",
+            "((~a) & b)",
+            "(~(a & b))",
             "(a | (b | c))",
             "((a & b) ^ ((c & d) | (a & b)))",
             "((a & b) ^ ((c & d) | (a & b)))",

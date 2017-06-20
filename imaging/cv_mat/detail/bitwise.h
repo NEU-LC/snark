@@ -125,7 +125,7 @@ namespace bitwise
         void operator()( const unary_op< op_not > & u ) const
         {
             _os << "(";
-            _os << "!";
+            _os << "~";
             boost::apply_visitor( *this, u.oper1 );
             _os << ")";
         }
