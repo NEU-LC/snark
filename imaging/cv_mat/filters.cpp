@@ -72,6 +72,7 @@
 #include "../../timing/traits.h"
 #include "filters.h"
 #include "detail/ratio.h"
+#include "detail/bitwise.h"
 #include "serialization.h"
 #include "traits.h"
 #include "depth_traits.h"
@@ -2533,7 +2534,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         struct maker
         {
             maker( const get_timestamp_functor & get_timestamp, char separator = ';', char equal_sign = '=' ) : get_timestamp_( get_timestamp ), separator_( separator ), equal_sign_( equal_sign ) {}
-            functor_type operator()( const std::string & s )
+            functor_type operator()( const std::string & s ) const
             {
                 const std::vector< std::string > & w = comma::split( s, separator_ );
                 functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], equal_sign_ ), get_timestamp_ );
@@ -2541,11 +2542,32 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
                 return g;
             }
             private:
-                get_timestamp_functor get_timestamp_;
+                const get_timestamp_functor & get_timestamp_;
                 char separator_, equal_sign_;
         };
+        struct composer
+        {
+            composer( const maker & m ) : m_( m ) {}
+            const maker & m_;
+
+            typedef typename boost::static_visitor< boost::function< input_type ( input_type ) > >::result_type result_type;
+
+            result_type term( const std::string & s ) const { return m_( s ); };
+            result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second & r.second ); }; }
+            result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second | r.second ); }; }
+            result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second ^ r.second ); }; }
+            result_type op_not( const result_type & op ) const { return [ op ]( const input_type & i ) -> input_type { const input_type & o = op( i ); return std::make_pair( i.first, ~o.second ); }; }
+        };
+        auto start( std::begin( e[1] ) ), finish( std::end( e[1] ) );
+        snark::cv_mat::bitwise::parser< decltype( start ) > p;
+        snark::cv_mat::bitwise::expr result;
+        bool ok = boost::spirit::qi::phrase_parse( start, finish, p, boost::spirit::qi::space, result );
+        if ( !ok ) { COMMA_THROW( comma::exception, "parsing of mask expression '" << e[1] << "' failed" ); }
+        if ( start != finish ) { COMMA_THROW( comma::exception, "unparsed leftover string '" << std::string( start, finish ) << "'" ); }
         maker m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
-        return boost::bind< value_type_t >( mask_impl_< H >(), _1, m( e[1] ) );
+        composer c( m );
+        functor_type f = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer >( c ), result );
+        return boost::bind< value_type_t >( mask_impl_< H >(), _1, f );
     }
     else if( e[0] == "timestamp" ) { return timestamp_impl_< H >( get_timestamp ); }
     else if( e[0] == "transpose" ) { return transpose_impl_< H >; }
