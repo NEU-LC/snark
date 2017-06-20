@@ -52,10 +52,22 @@ namespace {
         result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "(!"; op( os ); os << ')'; return os; }; }
     };
 
-} // anonymous
+    typedef std::map< std::string, int > lookup_map;
 
-TEST( bitwise, parser )
-{
+    struct logician
+    {
+        logician( const lookup_map & m ) : m_( m ) {}
+        const lookup_map & m_;
+
+        typedef boost::static_visitor< boost::function< int ( boost::none_t ) > >::result_type result_type;
+
+        result_type term( const std::string & s ) const { return [ &s, m = m_ ]( boost::none_t ) -> int { return m.at( s ); }; }
+        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> int { int il = opl( boost::none ); int ir = opr( boost::none ); return il & ir; }; }
+        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> int { int il = opl( boost::none ); int ir = opr( boost::none ); return il | ir; }; }
+        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> int { int il = opl( boost::none ); int ir = opr( boost::none ); return il ^ ir; }; }
+        result_type op_not( const result_type & op ) const { return [ op ]( boost::none_t ) -> int { int i = op( boost::none ); return ~i; }; }
+    };
+
     const std::vector< std::string > inputs =
         {
             "a and b",
@@ -80,6 +92,25 @@ TEST( bitwise, parser )
             "((a & b) ^ ((c & d) | (a & b)))",
             "((a & b) ^ ((c & d) | (a & b)))",
         };
+    const std::vector< boost::function< int( int, int, int, int ) > > direct =
+        {
+            []( int a, int b, int c, int d ) ->int { return (a & b); },
+            []( int a, int b, int c, int d ) ->int { return (a | b); },
+            []( int a, int b, int c, int d ) ->int { return (a ^ b); },
+            []( int a, int b, int c, int d ) ->int { return (~a); },
+            []( int a, int b, int c, int d ) ->int { return ((~a) & b); },
+            []( int a, int b, int c, int d ) ->int { return (~(a & b)); },
+            []( int a, int b, int c, int d ) ->int { return (a | (b | c)); },
+            []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
+            []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
+        };
+
+    int call_direct( const lookup_map & m, const boost::function< int( int, int, int, int ) > & f ) { return f( m.at("a"), m.at("b"), m.at("c"), m.at("d") ); }
+
+} // anonymous
+
+TEST( bitwise, printer )
+{
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
         auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
@@ -94,12 +125,55 @@ TEST( bitwise, parser )
             os << result;
             EXPECT_EQ( os.str(), expected[i] );
         }
+    }
+}
+
+TEST( bitwise, writer )
+{
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
+        parser< decltype( f ) > p;
+
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
         {
             std::ostringstream os;
             writer w;
             auto scribe = boost::apply_visitor( visitor< std::ostream &, std::ostream &, writer >( w ), result );
             scribe( os );
             EXPECT_EQ( os.str(), expected[i] );
+        }
+    }
+}
+
+TEST( bitwise, logician )
+{
+    std::vector< lookup_map > lookup_maps = {
+        { { "a",  135 }, { "b",   84 }, { "c",  213 }, { "d",  104 } },
+        { { "a",   13 }, { "b", 2983 }, { "c", -676 }, { "d", 9238 } },
+        { { "a", 4567 }, { "b", -837 }, { "c", 9652 }, { "d",  -38 } },
+    };
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
+        parser< decltype( f ) > p;
+
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
+        {
+            for ( const auto & m : lookup_maps )
+            {
+                logician l( m );
+                auto worker = boost::apply_visitor( visitor< boost::none_t, int, logician >( l ), result );
+                int r = worker( boost::none );
+                int q = call_direct( m, direct[i] );
+                EXPECT_EQ( r, q );
+            }
         }
     }
 }
