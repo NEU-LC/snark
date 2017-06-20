@@ -52,20 +52,22 @@ namespace {
         result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "(~"; op( os ); os << ')'; return os; }; }
     };
 
-    typedef std::map< std::string, int > lookup_map;
+    template< typename T >
+    using lookup_map_t = std::map< std::string, T >;
 
+    template< typename T >
     struct logician
     {
-        logician( const lookup_map & m ) : m_( m ) {}
-        const lookup_map & m_;
+        logician( const lookup_map_t< T > & m ) : m_( m ) {}
+        const lookup_map_t< T > & m_;
 
-        typedef boost::static_visitor< boost::function< int ( boost::none_t ) > >::result_type result_type;
+        typedef typename boost::static_visitor< boost::function< T ( boost::none_t ) > >::result_type result_type;
 
-        result_type term( const std::string & s ) const { return [ &s, m = m_ ]( boost::none_t ) -> int { return m.at( s ); }; }
-        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> int { int il = opl( boost::none ); int ir = opr( boost::none ); return il & ir; }; }
-        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> int { int il = opl( boost::none ); int ir = opr( boost::none ); return il | ir; }; }
-        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> int { int il = opl( boost::none ); int ir = opr( boost::none ); return il ^ ir; }; }
-        result_type op_not( const result_type & op ) const { return [ op ]( boost::none_t ) -> int { int i = op( boost::none ); return ~i; }; }
+        result_type term( const std::string & s ) const { return [ &s, m = m_ ]( boost::none_t ) -> T { return m.at( s ); }; }
+        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> T { const T & il = opl( boost::none ); const T & ir = opr( boost::none ); return il & ir; }; }
+        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> T { const T & il = opl( boost::none ); const T & ir = opr( boost::none ); return il | ir; }; }
+        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> T { const T & il = opl( boost::none ); const T & ir = opr( boost::none ); return il ^ ir; }; }
+        result_type op_not( const result_type & op ) const { return [ op ]( boost::none_t ) -> T { const T & i = op( boost::none ); return ~i; }; }
     };
 
     const std::vector< std::string > inputs =
@@ -105,7 +107,8 @@ namespace {
             []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
         };
 
-    int call_direct( const lookup_map & m, const boost::function< int( int, int, int, int ) > & f ) { return f( m.at("a"), m.at("b"), m.at("c"), m.at("d") ); }
+    template< typename T >
+    int call_direct( const lookup_map_t< T > & m, const boost::function< T( T, T, T, T ) > & f ) { return f( m.at("a"), m.at("b"), m.at("c"), m.at("d") ); }
 
 } // anonymous
 
@@ -151,7 +154,7 @@ TEST( bitwise, writer )
 
 TEST( bitwise, logician )
 {
-    std::vector< lookup_map > lookup_maps = {
+    std::vector< lookup_map_t< int > > lookup_maps = {
         { { "a",  135 }, { "b",   84 }, { "c",  213 }, { "d",  104 } },
         { { "a",   13 }, { "b", 2983 }, { "c", -676 }, { "d", 9238 } },
         { { "a", 4567 }, { "b", -837 }, { "c", 9652 }, { "d",  -38 } },
@@ -168,8 +171,8 @@ TEST( bitwise, logician )
         {
             for ( const auto & m : lookup_maps )
             {
-                logician l( m );
-                auto worker = boost::apply_visitor( visitor< boost::none_t, int, logician >( l ), result );
+                logician< int > l( m );
+                auto worker = boost::apply_visitor( visitor< boost::none_t, int, logician< int > >( l ), result );
                 int r = worker( boost::none );
                 int q = call_direct( m, direct[i] );
                 EXPECT_EQ( r, q );
