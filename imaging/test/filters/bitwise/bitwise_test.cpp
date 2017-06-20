@@ -73,9 +73,17 @@ TEST( bitwise, parser )
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
         EXPECT_TRUE( ok );
-        std::ostringstream os;
-        os << result;
-        EXPECT_EQ( os.str(), expected[i] );
         EXPECT_EQ( f, l );
+        {
+            std::ostringstream os;
+            os << result;
+            EXPECT_EQ( os.str(), expected[i] );
+        }
+        {
+            std::ostringstream os;
+            auto writer = boost::apply_visitor( composer(), result );
+            writer( os );
+            EXPECT_EQ( os.str(), expected[i] );
+        }
     }
 }
