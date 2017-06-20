@@ -82,6 +82,7 @@ namespace {
             "(a and b) xor ((c and d) or (a and b))",
             "a and b xor (c and d or a and b)",
         };
+
     const std::vector< std::string > expected =
         {
             "(a & b)",
@@ -94,6 +95,7 @@ namespace {
             "((a & b) ^ ((c & d) | (a & b)))",
             "((a & b) ^ ((c & d) | (a & b)))",
         };
+
     const std::vector< boost::function< int( int, int, int, int ) > > direct =
         {
             []( int a, int b, int c, int d ) ->int { return (a & b); },
@@ -107,8 +109,13 @@ namespace {
             []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
         };
 
-    template< typename T >
-    int call_direct( const lookup_map_t< T > & m, const boost::function< T( T, T, T, T ) > & f ) { return f( m.at("a"), m.at("b"), m.at("c"), m.at("d") ); }
+    int call_direct( const lookup_map_t< int > & m, const boost::function< int( int, int, int, int ) > & f ) { return f( m.at("a"), m.at("b"), m.at("c"), m.at("d") ); }
+
+    std::vector< lookup_map_t< int > > lookup_ints = {
+        { { "a",  135 }, { "b",   84 }, { "c",  213 }, { "d",  104 } },
+        { { "a",   13 }, { "b", 2983 }, { "c", -676 }, { "d", 9238 } },
+        { { "a", 4567 }, { "b", -837 }, { "c", 9652 }, { "d",  -38 } },
+    };
 
 } // anonymous
 
@@ -152,13 +159,8 @@ TEST( bitwise, writer )
     }
 }
 
-TEST( bitwise, logician )
+TEST( bitwise, logical_int )
 {
-    std::vector< lookup_map_t< int > > lookup_maps = {
-        { { "a",  135 }, { "b",   84 }, { "c",  213 }, { "d",  104 } },
-        { { "a",   13 }, { "b", 2983 }, { "c", -676 }, { "d", 9238 } },
-        { { "a", 4567 }, { "b", -837 }, { "c", 9652 }, { "d",  -38 } },
-    };
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
         auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
@@ -169,7 +171,7 @@ TEST( bitwise, logician )
         EXPECT_TRUE( ok );
         EXPECT_EQ( f, l );
         {
-            for ( const auto & m : lookup_maps )
+            for ( const auto & m : lookup_ints )
             {
                 logician< int > l( m );
                 auto worker = boost::apply_visitor( visitor< boost::none_t, int, logician< int > >( l ), result );
