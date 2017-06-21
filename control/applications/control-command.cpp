@@ -158,12 +158,12 @@ int main( int ac, char** av )
         boost::optional< snark::control::wayline::position_t > previous_position;
         comma::signal_flag is_shutdown;
 
-
-        boost::posix_time::ptime prev_time;
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
             const input_t* input = input_stream.read();
             if( !input ) { break; }
+            boost::posix_time::ptime curr_time = boost::posix_time::microsec_clock::universal_time();
+
             if( reset_pid )
             {
                 if( position ) { previous_position = position; }
@@ -175,14 +175,13 @@ int main( int ac, char** av )
                 }
             }
             command_t command;
-            if( feedback_timeout && !( input->feedback.t.is_not_a_date_time() || prev_time.is_not_a_date_time() )
-             && comma::math::less( *feedback_timeout, ( input->feedback.t - prev_time ).total_milliseconds() / 1000.0, 1e-9 ) )
+            if( feedback_timeout && !input->feedback.t.is_not_a_date_time()
+             && comma::math::less( *feedback_timeout, ( curr_time - input->feedback.t ).total_milliseconds() / 1000.0, 1e-9 ) )
             {
-                std::cerr << name << ": feedback timed out after " << ( ( input->feedback.t - prev_time ).total_milliseconds() / 1000.0 )
+                std::cerr << name << ": feedback timed out after " << ( curr_time - input->feedback.t ).total_milliseconds() / 1000.0
                           << " seconds (timeout: " << *feedback_timeout << " seconds)" << std::endl;
                 return 1;
             }
-            prev_time = input->feedback.t;
 
             //boost::posix_time::ptime time = feedback_has_time ? input->feedback.t : boost::posix_time::not_a_date_time;
             switch( steering )
