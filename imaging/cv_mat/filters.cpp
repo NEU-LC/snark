@@ -2558,7 +2558,8 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
             result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second ^ r.second ); }; }
             result_type op_not( const result_type & op ) const { return [ op ]( const input_type & i ) -> input_type { const input_type & o = op( i ); return std::make_pair( i.first, ~o.second ); }; }
         };
-        auto start( std::begin( e[1] ) ), finish( std::end( e[1] ) );
+        const std::string & sanitized = snark::cv_mat::bitwise::tabify_bitwise_ops( e[1] );
+        auto start( std::begin( sanitized ) ), finish( std::end( sanitized ) );
         snark::cv_mat::bitwise::parser< decltype( start ) > p;
         snark::cv_mat::bitwise::expr result;
         bool ok = boost::spirit::qi::phrase_parse( start, finish, p, boost::spirit::qi::space, result );
