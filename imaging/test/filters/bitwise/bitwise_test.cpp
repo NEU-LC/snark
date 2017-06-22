@@ -32,7 +32,6 @@
 
 #include <gtest/gtest.h>
 
-#include <boost/assign.hpp>
 #include <opencv2/core/core.hpp>
 
 #include <iostream>

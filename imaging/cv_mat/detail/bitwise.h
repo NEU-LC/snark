@@ -39,7 +39,6 @@
 #include <boost/spirit/include/phoenix_object.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/variant/recursive_wrapper.hpp>
-#include <boost/bind.hpp>
 
 namespace snark{ namespace cv_mat {
 
