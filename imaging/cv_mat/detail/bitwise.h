@@ -115,19 +115,19 @@ namespace bitwise
 
         void print( const std::string & op, const expr & l, const expr & r) const
         {
-            _os << "(";
+            _os << "[";
             boost::apply_visitor( *this, l );
             _os << op;
             boost::apply_visitor( *this, r );
-            _os << ")";
+            _os << "]";
         }
 
         void operator()( const unary_op< op_not > & u ) const
         {
-            _os << "(";
+            _os << "[";
             _os << "~";
             boost::apply_visitor( *this, u.oper1 );
-            _os << ")";
+            _os << "]";
         }
     };
 
@@ -150,7 +150,7 @@ namespace bitwise
             and_ = ( not_ >> "and" >> and_ ) [ qi::_val = boost::phoenix::construct< binary_op< op_and > >( boost::spirit::_1, boost::spirit::_2 ) ] | not_   [ qi::_val = boost::spirit::_1 ];
             not_ = ( "not" > simple        ) [ qi::_val = boost::phoenix::construct<  unary_op< op_not > >( boost::spirit::_1                    ) ] | simple [ qi::_val = boost::spirit::_1 ];
 
-            simple = ( ( '(' > expr_ > ')' ) | var_ );
+            simple = ( ( '[' > expr_ > ']' ) | var_ );
             var_ = qi::lexeme[ +qi::alpha ];
         }
 
