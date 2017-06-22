@@ -151,7 +151,7 @@ namespace bitwise
             not_ = ( "not" > simple        ) [ qi::_val = boost::phoenix::construct<  unary_op< op_not > >( boost::spirit::_1                    ) ] | simple [ qi::_val = boost::spirit::_1 ];
 
             simple = ( ( '[' > expr_ > ']' ) | var_ );
-            var_ = qi::lexeme[ +qi::alpha ];
+            var_ = qi::lexeme[ +(qi::alnum | qi::char_(",.()/:|+-")) ];
         }
 
         private:

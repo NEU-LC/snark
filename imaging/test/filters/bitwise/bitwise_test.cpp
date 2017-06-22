@@ -164,6 +164,37 @@ TEST( bitwise, printer )
     }
 }
 
+TEST( bitwise, special )
+{
+    const std::string & f0 = "linear-combination:r|convert-to:ub|threshold:otsu,1.5";
+    const std::string & f1 = "ratio:(r-g)/(r+g)|convert-to:ub|threshold:1.2e-1";
+    const std::vector< std::string > inputs =
+        {
+            f0 + " and " + f1,
+        };
+
+    const std::vector< std::string > expected =
+        {
+            "[" + f0 + " & " + f1 + "]",
+        };
+
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
+        parser< decltype( f ) > p;
+
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
+        {
+            std::ostringstream os;
+            os << result;
+            EXPECT_EQ( os.str(), expected[i] );
+        }
+    }
+}
+
 TEST( bitwise, writer )
 {
     for ( size_t i = 0; i < inputs.size(); ++i )
