@@ -141,21 +141,21 @@ namespace bitwise
     {
         parser() : parser::base_type(expr_)
         {
-            using namespace boost::spirit::qi;
+            namespace qi = boost::spirit::qi;
 
             expr_ = or_.alias();
 
-            or_  = ( xor_ >> "or"  >> or_  ) [ _val = boost::phoenix::construct< binary_op< op_or  > >( boost::spirit::_1, boost::spirit::_2 ) ] | xor_   [ _val = boost::spirit::_1 ];
-            xor_ = ( and_ >> "xor" >> xor_ ) [ _val = boost::phoenix::construct< binary_op< op_xor > >( boost::spirit::_1, boost::spirit::_2 ) ] | and_   [ _val = boost::spirit::_1 ];
-            and_ = ( not_ >> "and" >> and_ ) [ _val = boost::phoenix::construct< binary_op< op_and > >( boost::spirit::_1, boost::spirit::_2 ) ] | not_   [ _val = boost::spirit::_1 ];
-            not_ = ( "not" > simple        ) [ _val = boost::phoenix::construct<  unary_op< op_not > >( boost::spirit::_1                    ) ] | simple [ _val = boost::spirit::_1 ];
+            or_  = ( xor_ >> "or"  >> or_  ) [ qi::_val = boost::phoenix::construct< binary_op< op_or  > >( boost::spirit::_1, boost::spirit::_2 ) ] | xor_   [ qi::_val = boost::spirit::_1 ];
+            xor_ = ( and_ >> "xor" >> xor_ ) [ qi::_val = boost::phoenix::construct< binary_op< op_xor > >( boost::spirit::_1, boost::spirit::_2 ) ] | and_   [ qi::_val = boost::spirit::_1 ];
+            and_ = ( not_ >> "and" >> and_ ) [ qi::_val = boost::phoenix::construct< binary_op< op_and > >( boost::spirit::_1, boost::spirit::_2 ) ] | not_   [ qi::_val = boost::spirit::_1 ];
+            not_ = ( "not" > simple        ) [ qi::_val = boost::phoenix::construct<  unary_op< op_not > >( boost::spirit::_1                    ) ] | simple [ qi::_val = boost::spirit::_1 ];
 
             simple = ( ( '(' > expr_ > ')' ) | var_ );
-            var_ = boost::spirit::qi::lexeme[ +alpha ];
+            var_ = qi::lexeme[ +qi::alpha ];
         }
 
         private:
-            boost::spirit::qi::rule< It, std::string() , Skipper > var_;
+            boost::spirit::qi::rule< It, std::string(), Skipper > var_;
             boost::spirit::qi::rule< It, expr(), Skipper > not_, and_, xor_, or_, simple, expr_;
     };
 
