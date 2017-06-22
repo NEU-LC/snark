@@ -158,6 +158,8 @@ namespace bitwise
             boost::spirit::qi::rule< It, expr(), Skipper > not_, and_, xor_, or_, simple, expr_;
     };
 
+    std::string tabify_bitwise_ops( const std::string & s );
+
 } // namespace bitwise
 
 } } // namespace snark{ namespace cv_mat {
