@@ -42,6 +42,30 @@ using namespace snark::cv_mat::bitwise;
 using boost::spirit::ascii::space;
 
 namespace {
+    struct info_printer
+    {
+	typedef boost::spirit::utf8_string string;
+
+	void element( string const & tag, string const & value, int depth ) const
+	{
+	    for ( int i = 0; i < ( depth*4 ); ++i ) { // indent to depth
+		std::cerr << ' ';
+            }
+
+	    std::cerr << "tag: " << tag;
+	    if ( value != "" ) { std::cerr << ", value: " << value; }
+	    std::cerr << std::endl;
+	}
+    };
+
+    void print_info(boost::spirit::info const& what)
+    {
+	using boost::spirit::basic_info_walker;
+
+	info_printer pr;
+	basic_info_walker< info_printer > walker( pr, what.tag, 0 );
+	boost::apply_visitor( walker, what.value );
+    }
 
     struct writer
     {
