@@ -3065,6 +3065,13 @@ static std::string usage_impl_()
     oss << "                             cat images.bin | cv-cat 'mask=load:mask.png' > masked.bin" << std::endl;
     oss << "                         extract pixels brighter than 100" << std::endl;
     oss << "                             cat images.bin | cv-cat 'mask=convert-color:BGR,GRAY|threshold=otsu,100' > masked.bin" << std::endl;
+    oss << "            bitwise operations on masks:" << std::endl;
+    oss << "                mask=<mask1> and <mask2>: apply bitwise 'and' of <mask1> and <mask2>" << std::endl;
+    oss << "                mask=<mask1> or <mask2>: apply bitwise 'or'" << std::endl;
+    oss << "                mask=<mask1> xor <mask2>: apply bitwise 'xor'" << std::endl;
+    oss << "                mask=not <mask1>: apply bitwise 'not' (complement, tilde in C++)" << std::endl;
+    oss << "                mask=[[ not <mask1> ] and <mask2>] or <mask3>: apply the given logical expression of 3 masks" << std::endl;
+    oss << "                    note: standard precedence rules apply; use (square) brackets to explicitly denote precedence" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
     oss << "                  fields: key,value; default: value" << std::endl;
