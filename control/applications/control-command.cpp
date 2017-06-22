@@ -69,14 +69,15 @@ static void usage( bool verbose = false )
     std::cerr << "usage: " << name << " [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --steering,-s=<mode>: steering mode" << std::endl;
     std::cerr << "    --cross-track-pid=<p>,<i>,<d>[,<integral threshold>]: cross track pid parameters" << std::endl;
-    std::cerr << "    --heading-pid=<p>,<i>,<d>[,<integral threshold>]: heading pid parameters" << std::endl;
-    std::cerr << "    --reset: pid's are reset every time target waypoint changes" << std::endl;
-    std::cerr << "    --input-fields: show default input stream fields and exit" << std::endl;
+    std::cerr << "    --feedback-timeout=<seconds>: exit if the feedback is given seconds old" << std::endl;
     std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
+    std::cerr << "    --heading-pid=<p>,<i>,<d>[,<integral threshold>]: heading pid parameters" << std::endl;
+    std::cerr << "    --input-fields: show default input stream fields and exit" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for command fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for command fields only)" << std::endl;
+    std::cerr << "    --reset: pid's are reset every time target waypoint changes" << std::endl;
+    std::cerr << "    --steering,-s=<mode>: steering mode" << std::endl;
     std::cerr << std::endl;
     std::cerr << "steering modes:" << std::endl;
     std::cerr << "    skid: skid-steer mode" << std::endl;
@@ -148,18 +149,21 @@ int main( int ac, char** av )
         comma::csv::tied< input_t, command_t > tied( input_stream, output_stream );
         if( options.exists( "--output-format" ) ) { std::cout << format< command_t >( output_csv.fields ) << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << output_csv.fields << std::endl; return 0; }
-        bool feedback_has_time  = input_csv.has_field( "feedback/t" );
         bool compute_yaw_rate = !input_csv.has_field( "feedback/yaw_rate" );
         bool reset_pid = options.exists( "--reset" );
         snark::control::pid cross_track_pid = make_pid< snark::control::pid >( options.value< std::string >( "--cross-track-pid" ) );
         snark::control::pid heading_pid = make_pid< snark::control::angular_pid >( options.value< std::string >( "--heading-pid" ) );
+        boost::optional< double > feedback_timeout = options.optional< double >( "--feedback-timeout" );
         boost::optional< snark::control::wayline::position_t > position;
         boost::optional< snark::control::wayline::position_t > previous_position;
         comma::signal_flag is_shutdown;
+
         while( !is_shutdown && ( input_stream.ready() || ( std::cin.good() && !std::cin.eof() ) ) )
         {
             const input_t* input = input_stream.read();
             if( !input ) { break; }
+            boost::posix_time::ptime curr_time = boost::posix_time::microsec_clock::universal_time();
+
             if( reset_pid )
             {
                 if( position ) { previous_position = position; }
@@ -171,20 +175,28 @@ int main( int ac, char** av )
                 }
             }
             command_t command;
-            boost::posix_time::ptime time = feedback_has_time ? input->feedback.t : boost::posix_time::not_a_date_time;
+            if( feedback_timeout && !input->feedback.t.is_not_a_date_time()
+             && comma::math::less( *feedback_timeout, ( curr_time - input->feedback.t ).total_milliseconds() / 1000.0, 1e-9 ) )
+            {
+                std::cerr << name << ": feedback timed out after " << ( curr_time - input->feedback.t ).total_milliseconds() / 1000.0
+                          << " seconds (timeout: " << *feedback_timeout << " seconds)" << std::endl;
+                return 1;
+            }
+
+            //boost::posix_time::ptime time = feedback_has_time ? input->feedback.t : boost::posix_time::not_a_date_time;
             switch( steering )
             {
                 case omni:
                 {
-                    double correction = limit_angle( cross_track_pid( input->error.cross_track, time ) );
+                    double correction = limit_angle( cross_track_pid( input->error.cross_track, input->feedback.t ) );
                     command.local_heading = comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), input->wayline.heading + correction - input->feedback.yaw )();
-                    command.turn_rate = compute_yaw_rate ? heading_pid( input->error.heading, time ) : heading_pid( input->error.heading, input->feedback.yaw_rate, time );
+                    command.turn_rate = compute_yaw_rate ? heading_pid( input->error.heading, input->feedback.t ) : heading_pid( input->error.heading, input->feedback.yaw_rate, input->feedback.t );
                     break;
                 }
                 case skid:
                 {
-                    double error = input->error.heading - limit_angle( cross_track_pid( input->error.cross_track, time ) );
-                    command.turn_rate = compute_yaw_rate ? heading_pid( error, time ) : heading_pid( error, input->feedback.yaw_rate, time );
+                    double error = input->error.heading - limit_angle( cross_track_pid( input->error.cross_track, input->feedback.t ) );
+                    command.turn_rate = compute_yaw_rate ? heading_pid( error, input->feedback.t ) : heading_pid( error, input->feedback.yaw_rate, input->feedback.t );
                     break;
                 }
             }
