@@ -136,13 +136,12 @@ public:
             if( proximity_ < 0 ) { COMMA_THROW( comma::exception, "expected positive proximity, got " << proximity_ ); }
         }
 
-    void set_target( const snark::control::target_t& target, const std::pair< snark::control::feedback_t, std::string >& feedback )
+    void set_target( const snark::control::target_t& target, const snark::control::wayline::position_t& current_position )
     {
-        snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : feedback.first.position;
-        feedback_buffer_ = feedback.second;
+        snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : current_position;
         target_ = target;
         no_previous_targets_ = false;
-        reached_ = ( feedback.first.position - target_->position ).norm() < proximity_;
+        reached_ = ( current_position - target_->position ).norm() < proximity_;
         if( reached_ || ( from - target_->position ).norm() < eps_ ) { return; } // if from is too close to the new target, the old wayline will be used
         wayline_ = snark::control::wayline( from, target_->position );
     }
@@ -358,7 +357,7 @@ int main( int ac, char** av )
                     targets.clear();
                     targets.push_back( pair );
                 }
-                follower.set_target( targets.front().first, feedback );
+                follower.set_target( targets.front().first, feedback.first.position );
                 if( verbose ) { std::cerr << name << ": target waypoint " << serialise( follower.to() ) << ", current position " << serialise( feedback.first.position ) << std::endl; }
             }
             follower.update( feedback );

@@ -180,8 +180,6 @@ int main( int ac, char** av )
             {
                 std::cerr << name << ": feedback timed out after " << ( curr_time - input->feedback.t ).total_milliseconds() / 1000.0
                           << " seconds (timeout: " << *feedback_timeout << " seconds)" << std::endl;
-                std::cerr << name << ": feedback time: " << input->feedback.t << std::endl;
-                std::cerr << name << ": current time : " << curr_time << std::endl;
                 return 1;
             }
 
