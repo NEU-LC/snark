@@ -46,6 +46,7 @@
 #include "../camera_reader.h"
 #include "../reader.h"
 #endif
+#include <memory>
 
 namespace snark { namespace graphics { namespace view {
 
@@ -53,7 +54,7 @@ class Viewer : public qt3d::view
 {
     Q_OBJECT
     public:
-        std::vector< boost::shared_ptr< Reader > > readers;
+        std::vector< std::unique_ptr< Reader > > readers;
 
         /// @todo split into several constructors; make camera configuration a separate class
         Viewer( const QColor4ub& background_color
@@ -71,13 +72,19 @@ class Viewer : public qt3d::view
 
         void shutdown();
 
+        //moved here from reader
+public:
+        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const QColor4ub& color, const std::string& label );
+private:
+        void drawText( QGLPainter *painter, const QString& string, const QColor4ub& color );
+
     private slots:
         void read();
 
     private:
         void initializeGL( QGLPainter *painter );
         void paintGL( QGLPainter *painter );
-        void setCameraPosition( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation );
+        void set_camera_position( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation );
         virtual void mouse_double_right_click_event( QMouseEvent *e );
 
         bool m_shutdown;
@@ -100,6 +107,8 @@ class Viewer : public qt3d::view
         boost::scoped_ptr< camera_position_output > camera_position_output_;
         bool m_stdout_allowed;
         bool m_exit_on_end_of_input;
+        void look_at_center() { lookAtCenter(); }
+        void update_view(const QVector3D& min, const QVector3D& max) { updateView(min,max); }
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

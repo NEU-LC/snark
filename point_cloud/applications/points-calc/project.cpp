@@ -166,7 +166,10 @@ std::string traits::output_format() { return comma::csv::format::value< output >
 std::string traits::usage()
 {
     std::ostringstream oss;
-    oss << "    project-onto-plane: output project of point onto plane and signed distance (dot product of projection vector and plane normal)" << std::endl
+    oss << "    project-onto-plane" << std::endl
+        << "        output project of point onto plane and signed distance" << std::endl
+        << "        (dot product of projection vector and plane normal)" << std::endl
+        << std::endl
         << "        options" << std::endl
         << "            --v=<x,y,z>: point to project" << std::endl
         << "            --plane-point,--point=<x,y,z>: a point on the plane" << std::endl
@@ -210,19 +213,25 @@ std::string traits::output_format() { return comma::csv::format::value< output >
 std::string traits::usage()
 {
     std::ostringstream oss;
-    oss << "    project-onto-line: output project of point onto line, distance to it, and flag indicating where projection is relative to the points defining line" << std::endl
+    oss << "    project-onto-line" << std::endl
+        << "        output project of point onto line, distance to it, and flag indicating" << std::endl
+        << "        where projection is relative to the points defining line" << std::endl
+        << std::endl
+        << "        input fields" << std::endl
+        << "            origin,direction line definition (default): " << comma::join( comma::csv::names< input< points_calc::line > >( true ), ',' ) << std::endl
+        << "            first,second point line definition: " << comma::join( comma::csv::names< input< points_calc::line::pair > >( true ), ',' ) << std::endl
+        << std::endl
+        << "        flag" << std::endl
+        << "            -1: projection is before the first point defining the line (line/point)" << std::endl
+        << "             0: projection is between first and second point defining the line" << std::endl
+        << "             1: projection is after the second point defining the line (line/point + line/vector)" << std::endl
+        << std::endl
         << "        options" << std::endl
         << "            --v=<x,y,z>: point to project" << std::endl
         << "            --line-origin,--origin,--line-point,--point,--line-first,--first=<x,y,z>: first point on the line" << std::endl
         << "            --line-second,--second=<x,y,z>: second point of the line" << std::endl
-        << "            --line-direction,--direction,--line-vector,--vector=<x,y,z>: vector parallel to line" << std::endl
-        << "        input fields" << std::endl
-        << "            origin,direction line definition (default): " << comma::join( comma::csv::names< input< points_calc::line > >( true ), ',' ) << std::endl
-        << "            first,second point line definition: " << comma::join( comma::csv::names< input< points_calc::line::pair > >( true ), ',' ) << std::endl
-        << "        where flag" << std::endl
-        << "            -1: projection is before the first point defining the line (line/point)" << std::endl
-        << "            0: projection is between first and second point defining the line" << std::endl
-        << "            1: projection is after the second point defining the line (line/point + line/vector)" << std::endl;
+        << "            --line-direction,--direction,--line-vector,--vector=<x,y,z>:" << std::endl
+        << "                    vector parallel to line" << std::endl;
     return oss.str();
 }
 

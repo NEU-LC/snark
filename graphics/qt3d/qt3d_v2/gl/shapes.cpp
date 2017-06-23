@@ -38,7 +38,6 @@ shape::shape(GLenum mode):mode(mode),size_(0)
 }
 shape::~shape()
 {
-    
 }
 void shape::init()
 {
@@ -57,8 +56,9 @@ void shape::init()
     glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, position )));
     glVertexAttribPointer( 1, 4, GL_FLOAT, GL_FALSE, sizeof( vertex_t ), reinterpret_cast<void *>( offsetof( vertex_t, color )));
     vbo.release();
-//     std::cerr<<"shape::init()"<<std::endl;
 }
+
+
 void shape::update(const vertex_t* data, std::size_t size)
 {
     QOpenGLVertexArrayObject::Binder binder(&vao);
@@ -67,25 +67,20 @@ void shape::update(const vertex_t* data, std::size_t size)
     vbo.write(0,data,size*sizeof(vertex_t));
     vbo.release();
     size_=size;
-//     std::cerr<<"shape::update(): "<<size<<std::endl;
 }
 void shape::paint()
 {
     QOpenGLVertexArrayObject::Binder binder(&vao);
     glDrawArrays(mode,0,size_);
-//     std::cerr<<"shape::paint(): "<<mode<<", "<<size_<<std::endl;
 }
 void shape::destroy()
 {
     vbo.destroy();
-//     std::cerr<<"shape::destroy()"<<std::endl;
 }
 namespace shapes {
     
 point::point(float point_size) : shape(GL_POINTS),point_size(point_size)
 {
-//     std::cerr<<"point::point()"<<std::endl;
-    
 }
 void point::paint()
 {
@@ -94,7 +89,34 @@ void point::paint()
     glEnable(GL_POINT_SMOOTH);  //circular point, otherwise draws square points
     glPointSize(point_size);
     shape::paint();
-//     std::cerr<<"point::paint()"<<std::endl;
+}
+
+lines::lines(float line_width) : shape(GL_LINES),line_width(line_width) { }
+void lines::paint()
+{
+    if(line_width!=1)
+    {
+//         std::cerr<<"lines::paint"
+        glLineWidth(line_width);
+        glEnable(GL_LINE_SMOOTH);
+    }
+    shape::paint();
+
+// //if not supported by vga
+// GLfloat lineWidthRange[2];
+// glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
+}
+
+line_strip::line_strip() : shape(GL_LINE_STRIP) { }
+
+line_loop::line_loop() : shape(GL_LINE_LOOP) { }
+
+triangles::triangles(bool fill) : shape(GL_TRIANGLES),fill(fill) { }
+void triangles::paint()
+{
+    glPolygonMode(GL_FRONT_AND_BACK,fill ? GL_FILL : GL_LINE);
+    shape::paint();
+    glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
 }
 
 } // namespace shapes {

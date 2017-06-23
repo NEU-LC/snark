@@ -38,40 +38,38 @@
 //#include <windows.h>
 #endif
 
-#include "../../block_buffer.h"
 #include "shape_with_id.h"
 #include "reader.h"
+#if Qt3D_VERSION==1
+#include "qt3d_v1/viewer.h"
+#endif
 
 namespace snark { namespace graphics { namespace view {
     
 template< typename S, typename How = how_t::points >
-class ShapeReader : public Reader
+class ShapeReader : public shape_reader_base
 {
     public:
-        #if Qt3D_VERSION==1
-        ShapeReader( QGLView& viewer, const reader_parameters& params, colored* c, const std::string& label, const S& sample = ShapeWithId< S >().shape );
-        #else
-        ShapeReader( const reader_parameters& params, colored* c, const S& sample = ShapeWithId< S >().shape );
-        #endif
+        ShapeReader( const reader_parameters& params, colored* c, const std::string& label, const S& sample = ShapeWithId< S >().shape );
 
         void start();
         std::size_t update( const Eigen::Vector3d& offset );
         const Eigen::Vector3d& somePoint() const;
         bool read_once();
         #if Qt3D_VERSION==1
-        void render( QGLPainter *painter = NULL );
-        #else
-        const char* buffer_data() const { return (char *)buffer_.values().data(); }
-        std::size_t buffer_size() const { return buffer_.size(); }
+        void render( Viewer& viewer, QGLPainter *painter = NULL );
         #endif
         bool empty() const;
 
 #if Qt3D_VERSION==2
 public:
     std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape();
+    std::shared_ptr<snark::graphics::qt3d::gl::label_shader> make_label_shader();
     void update_shape();
+    void update_labels();
 private:
     std::shared_ptr<snark::graphics::qt3d::gl::shape> shape;
+    std::shared_ptr<snark::graphics::qt3d::gl::label_shader> label_shader;
 #endif
 
     private:
@@ -80,53 +78,56 @@ private:
         mutable boost::mutex m_mutex;
         boost::scoped_ptr< comma::csv::input_stream< ShapeWithId< S > > > m_stream;
         boost::scoped_ptr< comma::csv::passed< ShapeWithId< S > > > m_passed;
-        block_buffer< vertex_t > buffer_;
 
-        #if Qt3D_VERSION==1
-        struct label_t_ // quick and dirty
-        {
-            Eigen::Vector3d position;
-            QColor4ub color;
-            std::string text;
-            label_t_() {}
-            label_t_( const Eigen::Vector3d& position, const QColor4ub& color, const std::string& text ) : position( position ), color( color ), text( text ) {}
-        };
-        block_buffer< label_t_ > labels_;
-        #endif
         ShapeWithId< S > sample_;
 };
 #if Qt3D_VERSION==2
 template< typename S, typename How >
 std::shared_ptr<snark::graphics::qt3d::gl::shape> ShapeReader< S, How >::make_shape()
 {
-    shape=Shapetraits< S, How >::make_shape(point_size);
+    shape=Shapetraits< S, How >::make_shape(gl_parameters(point_size,fill));
     return shape;
+}
+template< typename S, typename How >
+std::shared_ptr<snark::graphics::qt3d::gl::label_shader> ShapeReader< S, How >::make_label_shader()
+{
+    label_shader=std::shared_ptr<snark::graphics::qt3d::gl::label_shader>(new snark::graphics::qt3d::gl::label_shader());
+    return label_shader;
 }
 template< typename S, typename How >
 void ShapeReader< S, How >::update_shape()
 {
     if(shape) { shape->update(buffer_.values().data(),buffer_.size()); }
 }
+
+template< typename S, typename How >
+void ShapeReader< S, How >::update_labels()
+{
+    label_shader->clear();
+    label_shader->labels.reserve(labels_.size());
+    for( unsigned int i = 0; i < labels_.size(); i++ )
+    {
+        if(!labels_.values()[i].text.empty())
+        {
+            label_shader->labels.push_back(std::shared_ptr<snark::graphics::qt3d::gl::label>(
+                new snark::graphics::qt3d::gl::text_label( labels_.values()[i].position - m_offset, labels_.values()[i].text, labels_.values()[i].color )));
+        }
+    }
+    if( !m_label.empty() )
+    {
+        label_shader->labels.push_back(std::shared_ptr<snark::graphics::qt3d::gl::label>(
+                new snark::graphics::qt3d::gl::text_label( m_translation - m_offset, m_label, m_color )));
+    }
+    label_shader->update();
+}
 #endif
 
-#if Qt3D_VERSION==1
 template< typename S, typename How >
-ShapeReader< S, How >::ShapeReader( QGLView& viewer, const reader_parameters& params, colored* c, const std::string& label, const S& sample  )
-    : Reader( viewer, params, c, label )
-    , buffer_( size * Shapetraits< S, How >::size )
-    , labels_( size )
+ShapeReader< S, How >::ShapeReader( const reader_parameters& params, colored* c, const std::string& label, const S& sample  )
+    : shape_reader_base( params, c, label, Shapetraits< S, How >::size )
     , sample_( sample )
 {
 }
-#else
-template< typename S, typename How >
-ShapeReader< S, How >::ShapeReader( const reader_parameters& params, colored* c, const S& sample  )
-    : Reader( params, c )
-    , buffer_( size * Shapetraits< S, How >::size )
-    , sample_( sample )
-{
-}
-#endif
 
 template< typename S, typename How >
 inline void ShapeReader< S, How >::start()
@@ -140,17 +141,13 @@ inline std::size_t ShapeReader< S, How >::update( const Eigen::Vector3d& offset 
     boost::mutex::scoped_lock lock( m_mutex );
     for( typename deque_t_::iterator it = m_deque.begin(); it != m_deque.end(); ++it )
     {
-        Shapetraits< S, How >::update( it->shape, offset, it->color, it->block, buffer_, m_extents );
-        #if Qt3D_VERSION==1
-        labels_.add( label_t_( Shapetraits< S, How >::center( it->shape ), it->color, it->label ), it->block );
-        #endif
+        Shapetraits< S, How >::update( *this, *it, offset );
+        labels_.add( label_t( Shapetraits< S, How >::center( it->shape ), it->color, it->label ), it->block );
     }
     if( m_shutdown )
     {
         buffer_.toggle();
-        #if Qt3D_VERSION==1
         labels_.toggle();
-        #endif
     }
     std::size_t s = m_deque.size();
     m_deque.clear();
@@ -175,7 +172,7 @@ inline const Eigen::Vector3d& ShapeReader< S, How >::somePoint() const
 
 #if Qt3D_VERSION==1
 template< typename S, typename How >
-inline void ShapeReader< S, How >::render( QGLPainter* painter )
+inline void ShapeReader< S, How >::render( Viewer& viewer, QGLPainter* painter )
 {
     painter->setStandardEffect(QGL::FlatPerVertexColor);
     painter->clearAttributes();
@@ -196,8 +193,8 @@ inline void ShapeReader< S, How >::render( QGLPainter* painter )
     painter->setVertexAttribute( QGL::Color, color_attribute );
 
     Shapetraits< S, How >::draw( painter, buffer_.size(), fill );
-    for( unsigned int i = 0; i < labels_.size(); i++ ) { draw_label( painter, labels_.values()[i].position, labels_.values()[i].color, labels_.values()[i].text ); }
-    if( !m_label.empty() ) { draw_label( painter, m_translation ); }
+    for( unsigned int i = 0; i < labels_.size(); i++ ) { viewer.draw_label( painter, labels_.values()[i].position - m_offset, labels_.values()[i].color, labels_.values()[i].text ); }
+    if( !m_label.empty() ) { viewer.draw_label( painter, m_translation - m_offset, m_color, m_label ); }
 }
 #endif
 
@@ -233,9 +230,7 @@ inline bool ShapeReader< S, How >::read_once()
         boost::mutex::scoped_lock lock( m_mutex );
         m_deque.push_back( v );
         m_point = Shapetraits< S, How >::somePoint( v.shape );
-        #if Qt3D_VERSION==1
         m_color = v.color;
-        #endif
         return true;
     }
     catch( std::exception& ex ) { std::cerr << "view-points: " << ex.what() << std::endl; }

@@ -50,7 +50,7 @@ void pinhole::config_t::validate()
 }
 
 template < typename V > V pinhole::config_t::distortion_t::as() const
-{
+{ 
     V v;
     v[0] = radial.k1;
     v[1] = radial.k2;
@@ -60,14 +60,15 @@ template < typename V > V pinhole::config_t::distortion_t::as() const
     return v;
 }
 
+template Eigen::Matrix< double, 5, 1 > pinhole::config_t::distortion_t::as< Eigen::Matrix< double, 5, 1 > >() const;
+
+template cv::Vec< double, 5 > pinhole::config_t::distortion_t::as< cv::Vec< double, 5 > >() const;
+
 bool pinhole::config_t::distortion_t::radial_t::empty() const { return k1 == 0 && k2 == 0 && k3 == 0; }
 
 bool pinhole::config_t::distortion_t::tangential_t::empty() const { return p1 == 0 && p2 == 0; }
 
 bool pinhole::config_t::distortion_t::empty() const { return map_filename.empty() && radial.empty() && tangential.empty(); }
-
-template Eigen::Matrix< double, 5, 1 > pinhole::config_t::distortion_t::as< Eigen::Matrix< double, 5, 1 > >() const;
-template cv::Vec< double, 5 > pinhole::config_t::distortion_t::as< cv::Vec< double, 5 > >() const;
 
 //quick and dirty: if sensor_size is empty we are taking pixel size to be 1 meter !?
 Eigen::Vector2d pinhole::config_t::pixel_size() const { return sensor_size ? Eigen::Vector2d( sensor_size->x() / image_size.x(), sensor_size->y() / image_size.y() ) : Eigen::Vector2d( 1, 1 ); }
@@ -102,8 +103,11 @@ static double reverse_map( std::vector< float >::const_iterator first, unsigned 
     if( right == first ) { ++right; }
     std::vector< float >::const_iterator left = right - 1;
     //std::cerr<<"extrapolate_reverse_map: left [" <<int(left - first)<<"]: " << *left<< " right ["<<int(right - first)<<"]:"<<*right<<" /"<<int(last-first)<<" value "<<value<<std::endl;
-    double o = double( value - *left ) / double( *right - *left ) + int( left - first );
-    return o;
+    double diff = *right - *left;
+    //std::cerr << "==> value: " << value << " *left: " << *left << " right: " << *right << " diff: " << diff << " int( left - first ): " << int( left - first ) << std::endl;
+    if( diff > 0 ) { return double( value - *left ) / diff + int( left - first ); }
+    if( diff == 0 ) { return int( left - first ); }
+    COMMA_THROW( comma::exception, "on pixel coordinate " << value << ": expected elements of undistort map ordered, got element " << int( left - first ) << " equal to " << *left << " element " << int( right - first ) << " equal to " << *right );
 }
 
 static double extrapolate_map( const float* first, unsigned int width, double value )
@@ -137,6 +141,25 @@ Eigen::Vector2d pinhole::to_pixel( const Eigen::Vector2d& p ) const
 }
 
 Eigen::Vector2d pinhole::config_t::image_centre() const { return principal_point ? *principal_point : Eigen::Vector2d( double( image_size.x() ) / 2, double( image_size.y() ) / 2 ); }
+
+cv::Mat pinhole::config_t::camera_matrix() const
+{
+    cv::Mat m = cv::Mat::eye( 3, 3, CV_64F );
+    const Eigen::Vector2d& c = image_centre();
+    if( sensor_size )
+    {
+        m.at< double >( 0, 0 ) = focal_length * image_size.x() / sensor_size->x();
+        m.at< double >( 1, 1 ) = focal_length * image_size.y() / sensor_size->y();
+    }
+    else
+    {
+        m.at< double >( 0, 0 ) = focal_length;
+        m.at< double >( 1, 1 ) = focal_length;
+    }
+    m.at< double >( 0, 2 ) = c.x();
+    m.at< double >( 1, 2 ) = c.y();
+    return m;
+}
 
 static void load( const std::string& filename, const Eigen::Vector2i& image_size, cv::Mat& map_x, cv::Mat& map_y )
 {

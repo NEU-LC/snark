@@ -37,6 +37,7 @@
 #include <QMatrix4x4>
 #include "../../camera_options.h"
 #include "shapes.h"
+#include "label_shader.h"
 #include <vector>
 #include <memory>
 
@@ -56,6 +57,8 @@ public:
     QSize sizeHint() const Q_DECL_OVERRIDE;
 
     std::vector<std::shared_ptr<shape>> shapes;
+    std::vector<std::shared_ptr<label_shader>> label_shaders;
+    
     void begin_update();
     void end_update();
 public slots:
@@ -72,7 +75,7 @@ protected:
     void mouseDoubleClickEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
     void wheelEvent( QWheelEvent *event ) Q_DECL_OVERRIDE;
 
-private:
+protected:
     void set_projection();
 
     boost::optional< QVector3D > viewport_to_3d( const QPoint& point_2d );

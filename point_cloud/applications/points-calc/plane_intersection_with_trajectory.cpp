@@ -97,16 +97,25 @@ std::string traits::output_format() { return comma::csv::format::value< output >
 std::string traits::usage()
 {
     std::ostringstream oss;
-    oss << "    plane-intersection-with-trajectory: input points are a trajectory; for each intersection with the trajectory, output the input records for adjacent points" << std::endl
-        << "                                        between which intersection is, the intersection point, and the direction of intersection (-1,0,+1)," << std::endl
-        << "                                        where 0 indicates that both adjacent points are on the plane, +1 if the trajectory's direction is " << std::endl 
-        << "                                        the same as normal of the plane, and -1 otherwise" << std::endl
+    oss << "    plane-intersection-with-trajectory" << std::endl
+        << "        input points are a trajectory; for each intersection with the trajectory" << std::endl
+        << "        output the input records for adjacent points between which intersection" << std::endl
+        << "        is, the intersection point, and the direction of intersection (-1,0,+1)," << std::endl
+        << "        where 0 indicates that both adjacent points are on the plane," << std::endl
+        << "        +1 if the trajectory's direction is the same as normal of the plane," << std::endl
+        << "        and -1 otherwise" << std::endl
+        << std::endl
+        << "        fields:" << std::endl
+        << "            if block field is present, output plane intersections only for" << std::endl
+        << "            trajectory points belonging to the same block" << std::endl
+        << std::endl
+        << "        options:" << std::endl
         << "            --plane-point,--point=<x>,<y>,<z>: point on the plane" << std::endl
         << "            --plane-normal,--normal=<x>,<y>,<z>: plane normal" << std::endl
-        << "            --threshold=<distance>: any separation between contiguous points of trajectory greater than threshold will be treated as a gap in the" << std::endl
-        << "                                    trajectory (no intersections will lie in the gaps)" << std::endl
-        << "            --v=<x>,<y>,<z>: default trajectory point" << std::endl
-        << "        fields: if block field is present, output plane intersections only for trajectory points belonging to the same block" << std::endl;
+        << "            --threshold=<distance>: any separation between contiguous points of" << std::endl
+        << "                    trajectory greater than threshold will be treated as a gap" << std::endl
+        << "                    in the trajectory (no intersections will lie in the gaps)" << std::endl
+        << "            --v=<x>,<y>,<z>: default trajectory point" << std::endl;
     return oss.str();
 }
 

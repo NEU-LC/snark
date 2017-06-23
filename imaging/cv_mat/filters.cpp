@@ -55,6 +55,7 @@
 #include <comma/csv/options.h>
 #include <comma/string/string.h>
 #include <comma/name_value/parser.h>
+#include <comma/name_value/serialize.h>
 #include <comma/application/verbose.h>
 #include <Eigen/Core>
 #include <opencv2/contrib/contrib.hpp>
@@ -65,10 +66,13 @@
 #include <opencv2/highgui/highgui_c.h>
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
+#include "../camera/pinhole.h"
+#include "../camera/traits.h"
 #include "../../timing/timestamped.h"
 #include "../../timing/traits.h"
 #include "filters.h"
 #include "detail/ratio.h"
+#include "detail/bitwise.h"
 #include "serialization.h"
 #include "traits.h"
 #include "depth_traits.h"
@@ -146,6 +150,62 @@ namespace {
         }
     };
 
+// todo
+// - comma, snark: c++11, c++14
+//   - shrimp littleboard: compiler version, if c++11 not supported, regroup
+//   - tear down c++11 option
+//   - always check what flag to use
+//   - announce
+// - use ',' instead of ':'  DONE
+// - size
+//   - specify full size, not half-size  DONE
+//   - fix help  DONE
+//   - fix default values in help  DONE
+
+    const std::map< std::string, int > morphology_operations = { { "erode", cv::MORPH_ERODE }
+                                                               , { "erosion", cv::MORPH_ERODE }
+                                                               , { "dilate", cv::MORPH_DILATE }
+                                                               , { "dilation", cv::MORPH_DILATE }
+                                                               , { "open", cv::MORPH_OPEN }
+                                                               , { "opening", cv::MORPH_OPEN }
+                                                               , { "close", cv::MORPH_CLOSE }
+                                                               , { "closing", cv::MORPH_CLOSE }
+                                                               , { "gradient", cv::MORPH_GRADIENT }
+                                                               , { "tophat", cv::MORPH_TOPHAT }
+                                                               , { "blackhat", cv::MORPH_BLACKHAT } };
+
+    cv::Mat parse_structuring_element( const std::vector< std::string > & e )
+    {
+        if ( e.size() > 1 )
+        {
+            std::vector< std::string > p = comma::split( e[1], ',' );
+            p.reserve( 5 ); // to protect eltype reference in push_back
+            const std::string & eltype = p[0];
+            if ( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) {
+                if ( p.size() != 5 && p.size() != 3 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 2 or 4 parameters" ); }
+                if ( p.size() == 3 ) { p.push_back( "" ); p.push_back( "" ); }
+                int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
+                int size_y = ( p[2].empty() ? size_x : boost::lexical_cast< int >( p[2] ) );
+                if ( size_x == 1 && size_y == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
+                int anchor_x = ( p[3].empty() ? -1 : boost::lexical_cast< int >( p[3] ) );
+                int anchor_y = ( p[4].empty() ? anchor_x : boost::lexical_cast< int >( p[4] ) );
+                int shape = ( eltype == "rectangle" ? cv::MORPH_RECT : ( eltype == "ellipse" ? cv::MORPH_ELLIPSE : cv::MORPH_CROSS ) );
+                return cv::getStructuringElement( shape, cv::Size( size_x, size_y ), cv::Point( anchor_x, anchor_y ) );
+            } else if ( eltype == "square" || eltype == "circle" ) {
+                if ( p.size() != 3 && p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 1 or 2 parameters" ); }
+                if ( p.size() == 2 ) { p.push_back( "" ); }
+                int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
+                if ( size_x == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
+                int anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
+                int shape = ( eltype == "square" ? cv::MORPH_RECT : cv::MORPH_ELLIPSE );
+                return cv::getStructuringElement( shape, cv::Size( size_x, size_x ), cv::Point( anchor_x, anchor_x ) );
+            } else {
+                COMMA_THROW( comma::exception, "the '" << eltype << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
+            }
+        }
+        return cv::Mat();
+    }
+
 } // anonymous
 
 namespace snark{ namespace cv_mat {
@@ -161,7 +221,7 @@ static bool is_empty( typename impl::filters< H >::value_type m, const typename 
 static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension )
 {
     std::ostringstream ss;
-    ss << boost::posix_time::to_iso_string( t ) << '.' << extension; 
+    ss << boost::posix_time::to_iso_string( t ) << '.' << extension;
     return ss.str();
 }
 
@@ -277,7 +337,7 @@ unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid comp
 template < typename H >
 struct cvt_color_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type m, unsigned int which )
     {
         value_type n;
@@ -299,77 +359,113 @@ static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int si
     }
     COMMA_THROW( comma::exception, "expected a scalar of the size up to 4, got: " << size << " elements" );
 }
-
-template < typename H >
-struct unpack_impl_
+template < typename H, unsigned int In, int InType, unsigned int Out, int OutType >
+struct pixel_format_impl_
 {
+    static const unsigned int ElementSize = sizeof( typename depth_traits< CV_MAT_DEPTH( InType ) >::value_t );
+    static const unsigned int InBytes = In * ElementSize;
     typedef typename impl::filters< H >::value_type value_type;
-    struct transform
+    typedef typename depth_traits< CV_MAT_DEPTH( OutType ) >::value_t value_out_t;
+    typedef std::array< std::array< std::function< value_out_t( const unsigned char byte ) >, Out >, InBytes > transforms_t;
+    typedef std::array< std::array< std::array< value_out_t, Out >, 256 >, InBytes > lookup_table_t;
+
+    // byte operations
+    struct zero { value_out_t operator()( const unsigned char byte ) const { return 0; } };
+    struct identity { value_out_t operator()( const unsigned char byte ) const { return byte; } };
+    struct shift_byte
     {
-        unsigned index;
-        unsigned n;
-        unsigned m;
-        transform():index(0),n(0),m(0) {}
-        transform(unsigned index,unsigned n,unsigned m):index(index),n(n),m(m){}
-//         inline unsigned fix(const unsigned char* ptr) { return ((ptr[index]>>n)&0xF)<<m; }
+        unsigned int left_shift;
+        shift_byte( unsigned int left_shift ) : left_shift(left_shift) {}
+        value_out_t operator()( const unsigned char byte ) const { return byte << left_shift; }
     };
-    std::vector<std::vector<transform> > transforms;
-    unpack_impl_(const std::string& s)
+    struct shift_quadbit
     {
-        std::vector<std::string> args=comma::split(s,',');
-        if(args.size()!=3) { COMMA_THROW( comma::exception, "expected three arguements, got:"<<args.size());}
-        if(args[0]!="12") { COMMA_THROW( comma::exception, "only 12 bit unpack is supported, got:"<<args[0]); }
-        for(unsigned i=1;i<=2;i++)
-        {
-            transforms.push_back(parse(args[i]));
-        }
+        unsigned int right_shift;
+        unsigned int left_shift;
+        shift_quadbit( unsigned int right_shift, unsigned int left_shift ) : right_shift(right_shift), left_shift(left_shift) {}
+        value_out_t operator()( const unsigned char byte ) const { return ( byte >> right_shift & 0xF ) << left_shift; }
+    };
+
+    static std::string quadbit_characters( unsigned int quadbits )
+    {
+        std::string c;
+        for( unsigned int i = 0; i < quadbits; ++i ) { c += 'a' + i; }
+        c += '0';
+        return c;
     }
-    static std::vector<transform> parse(const std::string& format)
+    static transforms_t parse( const std::array< std::string, Out >& formats )
     {
-        std::size_t pos=format.find_first_not_of("abcdef0");
-        if(pos!=std::string::npos) { COMMA_THROW( comma::exception, "pixel format  contains invalid characters: "<<format[pos]);}
-        std::vector<transform> fx;
-        unsigned digit=format.size()-1;
-        for(unsigned i=0;i<format.size();i++,digit--)
+        std::string characters = quadbit_characters( InBytes * 2 );
+        transforms_t transforms;
+        std::fill_n( &transforms[0][0], InBytes * Out, zero() );
+        for( unsigned int i = 0; i < formats.size(); ++i )
         {
-            char c=format[i];
-            if(c!='0')  //case '0': do nothing
+            std::string format = formats[i];
+            std::size_t pos = format.find_first_not_of( characters );
+            if( pos != std::string::npos) { COMMA_THROW( comma::exception, "pixel format '" << format << "' contains invalid character: " << format[pos] ); }
+            unsigned int quadbit = format.size() - 1 ;
+            for( unsigned j = 0; j < format.size(); ++j, --quadbit )
             {
-                c-='a';
-                unsigned index=c/2;
-                if(c%2) { fx.push_back(transform(index,4,digit*4)); } //msb
-                else { fx.push_back(transform(index,0,digit*4)); } //lsb
-            }
-        }
-        return fx;
-    }
-    value_type operator()( value_type m)
-    {
-        if(m.second.type()!=CV_8UC1 && m.second.type()!=CV_16UC1) { COMMA_THROW( comma::exception, "expected CV_8UC1("<<int(CV_8UC1)<<") or CV_16UC1("<<int(CV_16UC1)<<") , got: "<< m.second.type() );}
-        //number of bytes
-        int size=m.second.cols;
-        if(m.second.type()==CV_16UC1){size*=2;}
-        if(size%3!=0) { COMMA_THROW( comma::exception, "size is not divisible by three: "<<size);}
-        cv::Mat mat(m.second.rows, (2*size)/3, CV_16UC1);
-        for(int j=0;j<m.second.rows;j++)
-        {
-            const unsigned char* ptr=m.second.ptr(j);
-            unsigned short* out_ptr=mat.ptr<unsigned short>(j);
-            for(int col=0, i=0;i<size;i+=3)
-            {
-                for(std::size_t t=0;t<transforms.size();t++)
+                char c = format[j];
+                if( c == '0' ) { continue; }
+                unsigned int index = ( c - 'a' ) / 2;
+                bool high_quadbit = ( c - 'a' ) % 2 == 0;
+                if( quadbit > 0 && high_quadbit && format[j + 1] == c + 1 )
                 {
-                    unsigned out=0;
-                    std::vector<transform>& fx=transforms[t];
-                    for(unsigned k=0;k<fx.size();k++)
-                    {
-                        out+=((ptr[i+fx[k].index]>>fx[k].n)&0xF)<<fx[k].m;
-                    }
-                    out_ptr[col++]=out;
+                    if( quadbit == 1 ) { transforms[ index ][ i ] = identity(); }
+                    else { transforms[ index ][ i ] = shift_byte( (quadbit - 1) * 4 ); }
+                    ++j;
+                    --quadbit;
+                }
+                else
+                {
+                    transforms[ index ][ i ] = shift_quadbit( high_quadbit ? 4 : 0, quadbit * 4 );
                 }
             }
         }
-        return value_type(m.first, mat);
+        return transforms;
+    }
+    static lookup_table_t generate_lookup_table( const transforms_t& transforms )
+    {
+        lookup_table_t table;
+        for( unsigned int i = 0; i < InBytes; ++i )
+        {
+            for( unsigned int j = 0; j < 256; ++j )
+            {
+                for( unsigned int k = 0; k < Out; ++k )
+                {
+                    table[i][j][k] = transforms[i][k]( j );
+                }
+            }
+        }
+        return table;
+    }
+
+    std::string filter_name;
+    lookup_table_t table;
+    pixel_format_impl_( const std::string& filter_name, const std::array< std::string, Out >& formats ) : filter_name( filter_name ) , table( generate_lookup_table( parse( formats ) ) ) {}
+    value_type operator()( const value_type& m )
+    {
+        if( m.second.type() != InType ) { COMMA_THROW( comma::exception, filter_name << ": expected type: " << type_as_string( InType ) << " (" << InType << "), got: " << type_as_string( m.second.type() ) << " (" << m.second.type() << ")" ); }
+        if( m.second.cols % In ) { COMMA_THROW( comma::exception, filter_name << ": columns: " << m.second.cols << " is not divisible by " << In ); }
+        cv::Mat mat( m.second.rows, m.second.cols / In * Out, OutType, 0.0 );
+        unsigned int bytes = m.second.cols * ElementSize;
+        for( unsigned int i = 0; int( i ) < m.second.rows; ++i )
+        {
+            const unsigned char *in = m.second.ptr( i );
+            value_out_t *out = mat.ptr< value_out_t >( i );
+            for( unsigned int j = 0; j < bytes; j += InBytes, in += InBytes, out += Out )
+            {
+                for( unsigned int k = 0; k < Out; ++k )
+                {
+                    for( unsigned int l = 0; l < InBytes; ++l )
+                    {
+                        out[k] |= table[l][ in[l] ][ k ];
+                    }
+                }
+            }
+        }
+        return value_type( m.first, mat );
     }
 };
 
@@ -441,7 +537,7 @@ static unsigned int sum_up( unsigned int v, const stripe_t & s ){ return v + s.s
 template < typename H >
 struct crop_cols_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, const std::vector< stripe_t > & cols )
     {
         unsigned int h = input.second.rows;
@@ -461,7 +557,7 @@ struct crop_cols_impl_ {
 template < typename H >
 struct crop_rows_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, const std::vector< stripe_t > & rows )
     {
         unsigned int w = input.second.cols;
@@ -483,7 +579,7 @@ static const int bands_method_default = CV_REDUCE_AVG;
 template < typename H >
 struct bands_to_cols_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, bool bands_to_cols, const std::vector< stripe_t > & bands, int cv_reduce_method, int cv_reduce_dtype = -1 )
     {
         unsigned int w = input.second.cols;
@@ -517,15 +613,15 @@ struct bands_to_cols_impl_ {
 template < typename H >
 struct cols_to_channels_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, bool cols_to_channels, const std::vector< unsigned int > & values, double padding_value, unsigned int repeat )
     {
         if ( input.second.channels() != 1 ) { COMMA_THROW( comma::exception, "input image for cols-to-channels operation must have a single channel" ); }
         std::string element = cols_to_channels ? "column" : "row";
-    
+
         unsigned int w = input.second.cols;
         unsigned int h = input.second.rows;
-    
+
         unsigned int min_element = *std::min_element( values.begin(), values.end() );
         if ( min_element >= ( cols_to_channels ? w : h ) ) { COMMA_THROW( comma::exception, "the first output " << element << " is outside of the input image" ); }
         unsigned int output_w = cols_to_channels
@@ -537,11 +633,11 @@ struct cols_to_channels_impl_ {
         unsigned int output_c = values.size() == 2 ? 3 : values.size();
         unsigned int output_t = CV_MAKETYPE( input.second.depth(), output_c );
         value_type output( input.first, cv::Mat( output_h, output_w, output_t ) );
-    
+
         std::vector< int > from_to;
         from_to.reserve( 2 * output_c );
         for ( size_t i = 0; i < output_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
-    
+
         std::vector< cv::Mat > src( output_c );
         std::vector< cv::Mat > dst( 1 );
         cv::Mat padding = ( cols_to_channels
@@ -575,22 +671,22 @@ struct cols_to_channels_impl_ {
 template < typename H >
 struct channels_to_cols_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     value_type operator()( value_type input, bool channels_to_cols )
     {
         unsigned int w = input.second.cols;
         unsigned int h = input.second.rows;
-    
+
         unsigned int input_c = input.second.channels();
         unsigned int output_t = CV_MAKETYPE( input.second.depth(), 1 );
         value_type output( input.first, cv::Mat( channels_to_cols ? h : input_c * h
                                                         , channels_to_cols ? input_c * w : w
                                                         , output_t ) );
-    
+
         std::vector< int > from_to;
         from_to.reserve( 2 * input_c );
         for ( size_t i = 0; i < input_c; ++i ) { from_to.push_back( i ); from_to.push_back( i ); }
-    
+
         std::vector< cv::Mat > src( 1 );
         std::vector< cv::Mat > dst( input_c );
         for ( unsigned int ipos = 0; ipos < ( channels_to_cols ? w : h ) ; ++ipos )
@@ -606,7 +702,7 @@ struct channels_to_cols_impl_ {
                                           : cv::Rect( 0, ipos, w, 1 ) );
             cv::mixChannels( src, dst, &from_to[0], input_c );
         }
-    
+
         return output;
     }
 };
@@ -704,7 +800,7 @@ static typename impl::filters< H >::value_type colour_map_impl_( typename impl::
 
 template < typename H >
 struct mask_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     value_type operator()( value_type m, boost::function< value_type( value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
     {
         value_type n;
@@ -714,7 +810,7 @@ struct mask_impl_ {
         m.second.copyTo( n.second, f );
         return n;
     }
-    
+
 };
 
 struct blur_t
@@ -864,7 +960,7 @@ static typename impl::filters< H >::value_type split_impl_( typename impl::filte
 
 template < typename H >
 class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex is non-copyable
-{            
+{
     public:
         typedef typename impl::filters< H >::value_type value_type;
         typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
@@ -876,23 +972,23 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
         log_impl_( const std::string& directory, unsigned int size, bool index, const get_timestamp_functor& get_timestamp ) : logger_( new logger( directory, size, index, get_timestamp ) ) {}
 
         value_type operator()( value_type m ) { return logger_->operator()( m ); }
-        
+
         class logger
         {
             public:
 
-                logger( const std::string& filename, const get_timestamp_functor& get_timestamp ) 
+                logger( const std::string& filename, const get_timestamp_functor& get_timestamp )
                     : ofstream_( new std::ofstream( &filename[0] ) )
-                    , serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ), get_timestamp_(get_timestamp) 
-                { 
-                    if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); } 
+                    , serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ), size_( 0 ), count_( 0 ), get_timestamp_(get_timestamp)
+                {
+                    if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
                 }
 
-                logger( const std::string& directory, boost::posix_time::time_duration period, bool index, const get_timestamp_functor& get_timestamp ) 
+                logger( const std::string& directory, boost::posix_time::time_duration period, bool index, const get_timestamp_functor& get_timestamp )
                     : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) )
                     , period_( period ), size_( 0 ), count_( 0 ), index_(index, directory), get_timestamp_(get_timestamp) { }
 
-                logger( const std::string& directory, unsigned int size, bool index, const get_timestamp_functor& get_timestamp ) 
+                logger( const std::string& directory, unsigned int size, bool index, const get_timestamp_functor& get_timestamp )
                     : directory_( directory ), serialization_( "t,rows,cols,type", comma::csv::format( "t,3ui" ) )
                     , size_( size ), count_( 0 ), index_(index, directory), get_timestamp_(get_timestamp) { }
 
@@ -916,7 +1012,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
 //                     index_.write( m, writer< H >::size( serialization_, m ) );
                     return m;
                 }
-                
+
                 struct indexer
                 {
                     boost::posix_time::ptime t;
@@ -924,9 +1020,9 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     comma::uint64 offset;
                     boost::scoped_ptr< std::ofstream > filestream;
                     boost::scoped_ptr< comma::csv::binary_output_stream< indexer > > csv_stream;
-                    
+
                     indexer( ) : file( 0 ), offset( 0 ) {}
-                    
+
                     indexer( bool enabled, const std::string& directory ) : file ( 0 ), offset( 0 )
                     {
                         if( !enabled ) { return; }
@@ -935,23 +1031,23 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                         if( !filestream->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << index_file << "\"" ); }
                         csv_stream.reset( new comma::csv::binary_output_stream< indexer >( *filestream ) );
                     }
-                    
+
                     ~indexer() { if ( filestream ) { filestream->close(); } }
-                    
+
                     void increment_file() { ++file; offset = 0; }
-                    
+
                     void write( const boost::posix_time::ptime& time, const value_type& m, std::size_t size )
                     {
                         t = time;
-                        if( csv_stream ) 
-                        { 
+                        if( csv_stream )
+                        {
                             csv_stream->write( *this );
-                            csv_stream->flush(); 
+                            csv_stream->flush();
                         }
                         offset += size;
                     }
                 };
-                
+
             private:
                 boost::mutex mutex_;
                 std::string directory_;
@@ -986,7 +1082,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     index_.increment_file();
                 }
         };
-        
+
     private:
         boost::shared_ptr< logger > logger_; // todo: watch performance
 };
@@ -1005,10 +1101,10 @@ static typename impl::filters< H >::value_type merge_impl_( typename impl::filte
 
 template < typename H >
 struct view_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     view_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( value_type m, std::string name, unsigned int delay )
     {
@@ -1097,20 +1193,31 @@ static void encode_impl_check_type( const typename impl::filters< H >::value_typ
     if( size == 2 && !( type == "tiff" || type == "tif" || type == "png" || type == "jp2" ) ) { COMMA_THROW( comma::exception, "cannot convert 16-bit image to type " << type << "; use tif or png instead" ); }
 }
 
+static std::vector<int> imwrite_params( const std::string& type, const int quality)
+{
+    std::vector<int> params;
+    if ( type == "jpg" ) { params.push_back(CV_IMWRITE_JPEG_QUALITY); }
+    else { COMMA_THROW( comma::exception, "quality only supported for jpg images, not for \"" << type << "\" yet" ); }
+    params.push_back(quality);
+    return params;
+}
+
 template < typename H >
-struct encode_impl_ { 
+struct encode_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     encode_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
-    value_type operator()( const value_type& m, const std::string& type )
+    value_type operator()( const value_type& m, const std::string& type, const boost::optional<int>& quality )
     {
         if( is_empty< H >( m, get_timestamp_ ) ) { return m; }
         encode_impl_check_type< H >( m, type );
         std::vector< unsigned char > buffer;
+        std::vector<int> params;
+        if (quality) { params = imwrite_params(type, *quality); }
         std::string format = "." + type;
-        cv::imencode( format, m.second, buffer );
+        cv::imencode( format, m.second, buffer, params );
         typename impl::filters< H >::value_type p;
         p.first = m.first;
         p.second = cv::Mat( buffer.size(), 1, CV_8UC1 );
@@ -1133,9 +1240,9 @@ struct histogram_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     histogram_impl_( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
-    
+
     value_type operator()( value_type m )
     {
         static comma::csv::output_stream< serialization::header > os( std::cout, make_header_csv() ); // todo: quick and dirty; generalize imaging::serialization::pipeline
@@ -1182,10 +1289,10 @@ template < typename T > static T cv_read_( const std::string& filename = "", con
 
 template < typename H >
 struct simple_blob_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     simple_blob_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
     value_type operator()( const value_type& m, const cv::SimpleBlobDetector::Params& params, bool is_binary )
     {
@@ -1200,29 +1307,34 @@ struct simple_blob_impl_ {
 
 template < typename H >
 struct grab_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     grab_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
-    value_type operator()( value_type m, const std::string& type )
+    value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
-        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second );
+        std::vector<int> params;
+        if (quality) { params = imwrite_params(type, *quality); }
+        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second, params );
         return typename impl::filters< H >::value_type(); // HACK to notify application to exit
     }
 };
 
 template < typename H >
 struct file_impl_ {
-    typedef typename impl::filters< H >::value_type value_type; 
+    typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     file_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
-    value_type operator()( value_type m, const std::string& type )
+    value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
+        if(m.second.empty()) { return m; }
         encode_impl_check_type< H >( m, type );
-        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second );
+        std::vector<int> params;
+        if (quality) { params = imwrite_params(type, *quality); }
+        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second, params );
         return m;
     }
 };
@@ -1232,9 +1344,9 @@ struct timestamp_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
-    
+
     timestamp_impl_< H >( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
-    
+
     value_type operator()( value_type m )
     {
         cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
@@ -1459,17 +1571,56 @@ class undistort_impl_
 {
     public:
         typedef typename impl::filters< H >::value_type value_type;
-        undistort_impl_( const std::string& filename ) : filename_( filename ) {}
+        undistort_impl_( const std::string& filename ) : distortion_coefficients_( 0, 0, 0, 0, 0 )
+        {
+            try
+            {
+                const std::vector< std::string >& v = comma::split( filename, ':' );
+                snark::camera::pinhole::config_t config;
+                switch( v.size() )
+                {
+                    case 1: comma::read( config, filename ); break;
+                    case 2: comma::read( config, v[0], v[1] ); break;
+                    default: COMMA_THROW( comma::exception, "undistort: expected <filename>[:<path>]; got: \"" << filename << "\"" );
+                }
+                if( config.distortion )
+                {
+                    if( config.distortion->map_filename.empty() )
+                    {
+                        distortion_coefficients_ = config.distortion->as< cv::Vec< double, 5 > >();
+                        camera_matrix_ = config.camera_matrix();
+                    }
+                    else
+                    {
+                        filename_ = config.distortion->map_filename;
+                    }
+                }
+            }
+            catch( ... )
+            {
+                filename_ = filename;
+            }
+        }
 
         value_type operator()( value_type m )
         {
-            init_map_( m.second.rows, m.second.cols );
             value_type n( m.first, cv::Mat( m.second.size(), m.second.type(), cv::Scalar::all(0) ) );
-            cv::remap( m.second, n.second, x_, y_, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT );
+            if( filename_.empty() )
+            {
+                if( camera_matrix_.empty() ) { n.second = m.second.clone(); }
+                else { cv::undistort( m.second, n.second, camera_matrix_, distortion_coefficients_ ); }
+            }
+            else
+            {
+                init_map_( m.second.rows, m.second.cols );
+                cv::remap( m.second, n.second, x_, y_, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT );
+            }
             return n;
         }
 
     private:
+        cv::Mat camera_matrix_;
+        cv::Vec< double, 5 > distortion_coefficients_;
         std::string filename_;
         std::vector< char > xbuf_;
         std::vector< char > ybuf_;
@@ -1781,6 +1932,39 @@ static typename impl::filters< H >::value_type ratio_impl_( const typename impl:
     COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
 
+template < typename H >
+static typename impl::filters< H >::value_type morphology_impl_( const typename impl::filters< H >::value_type m, int op, const cv::Mat & element )
+{
+    typename impl::filters< H >::value_type result( m.first, cv::Mat() );
+    cv::morphologyEx( m.second, result.second, op, element );
+    return result;
+}
+
+template < typename H >
+static typename impl::filters< H >::value_type skeleton_impl_( const typename impl::filters< H >::value_type m, const cv::Mat & element )
+{
+    if ( m.second.channels() != 1 ) { COMMA_THROW( comma::exception, "skeleton operations supports only single-channel (grey-scale) images" ); }
+    typename impl::filters< H >::value_type result( m.first, cv::Mat( m.second.size(), CV_8UC1, cv::Scalar(0) ) );
+    cv::Mat temp, eroded, img;
+    m.second.copyTo( img );
+    bool done = false;
+    size_t iter = 0;
+    do
+    {
+        cv::erode( img, eroded, element );
+        cv::dilate( eroded, temp, element );
+        cv::subtract( img, temp, temp );
+        cv::bitwise_or( result.second, temp, result.second );
+        eroded.copyTo( img );
+
+        double min, max;
+        cv::minMaxLoc( img, &min, &max );
+        done = ( min == max );
+        if ( ++iter > 1000 ) { COMMA_THROW( comma::exception, "skeleton did not converge after " << iter << " iterations" ); }
+    } while ( !done );
+    return result;
+}
+
 static double max_value(int depth)
 {
     switch(depth)
@@ -1812,7 +1996,7 @@ struct overlay_impl_
     cv::Mat overlay;
     int alpha;
     typedef typename impl::filters< H >::value_type value_type;
-    
+
     overlay_impl_(const std::string& image_file, int a, int b) : x(a), y(b), alpha(0)
     {
 //         comma::verbose<<"overlay_impl_: image_file "<<image_file<<std::endl;
@@ -1964,7 +2148,7 @@ struct load_impl_
 {
     typedef typename impl::filters< H >::value_type value_type;
     value_type value;
-    
+
     load_impl_( const std::string& filename )
     {
         const std::vector< std::string >& v = comma::split( filename, '.' );
@@ -1982,7 +2166,7 @@ struct load_impl_
         }
         if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
     }
-    
+
     value_type operator()( value_type ) { return value; }
 };
 
@@ -2296,7 +2480,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         boost::optional< double > offset( 0.0 );
         if ( w.size() > 1 ) {
             if ( w[1] == "normalize" ) {
-                if ( w.size() != 2 ) { COMMA_THROW( comma::exception, "normalized scale takes no extra parameters" ); } 
+                if ( w.size() != 2 ) { COMMA_THROW( comma::exception, "normalized scale takes no extra parameters" ); }
                 scale = boost::none;
                 offset = boost::none;
             } else {
@@ -2347,11 +2531,44 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
         if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
-        std::string filter_string = e[1];
-        const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
-        functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], ':' ), get_timestamp );
-        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], ':' ), get_timestamp ), boost::bind( g, _1 ) ); }
-        return boost::bind< value_type_t >( mask_impl_< H >(), _1, g );
+        struct maker
+        {
+            maker( const get_timestamp_functor & get_timestamp, char separator = ';', char equal_sign = '=' ) : get_timestamp_( get_timestamp ), separator_( separator ), equal_sign_( equal_sign ) {}
+            functor_type operator()( const std::string & s ) const
+            {
+                const std::vector< std::string > & w = comma::split( s, separator_ );
+                functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], equal_sign_ ), get_timestamp_ );
+                for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], equal_sign_ ), get_timestamp_ ), boost::bind( g, _1 ) ); }
+                return g;
+            }
+            private:
+                const get_timestamp_functor & get_timestamp_;
+                char separator_, equal_sign_;
+        };
+        struct composer
+        {
+            composer( const maker & m ) : m_( m ) {}
+            const maker & m_;
+
+            typedef typename boost::static_visitor< boost::function< input_type ( input_type ) > >::result_type result_type;
+
+            result_type term( const std::string & s ) const { return m_( s ); };
+            result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second & r.second ); }; }
+            result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second | r.second ); }; }
+            result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second ^ r.second ); }; }
+            result_type op_not( const result_type & op ) const { return [ op ]( const input_type & i ) -> input_type { const input_type & o = op( i ); return std::make_pair( i.first, ~o.second ); }; }
+        };
+        const std::string & sanitized = snark::cv_mat::bitwise::tabify_bitwise_ops( e[1] );
+        auto start( std::begin( sanitized ) ), finish( std::end( sanitized ) );
+        snark::cv_mat::bitwise::parser< decltype( start ) > p;
+        snark::cv_mat::bitwise::expr result;
+        bool ok = boost::spirit::qi::phrase_parse( start, finish, p, boost::spirit::qi::space, result );
+        if ( !ok ) { COMMA_THROW( comma::exception, "parsing of mask expression '" << e[1] << "' failed" ); }
+        if ( start != finish ) { COMMA_THROW( comma::exception, "unparsed leftover string '" << std::string( start, finish ) << "'" ); }
+        maker m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
+        composer c( m );
+        functor_type f = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer >( c ), result );
+        return boost::bind< value_type_t >( mask_impl_< H >(), _1, f );
     }
     else if( e[0] == "timestamp" ) { return timestamp_impl_< H >( get_timestamp ); }
     else if( e[0] == "transpose" ) { return transpose_impl_< H >; }
@@ -2371,6 +2588,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     }
     if(e[0]=="normalize")
     {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify parameter: expected normalize=<how>" ); }
         if(e[1]=="max") { return normalize_max_impl_< H >; }
         else if(e[1]=="sum") { return normalize_sum_impl_< H >; }
         else if(e[1]=="all") { return normalize_cv_impl_< H >; }
@@ -2407,7 +2625,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         const std::vector< std::string >& s = comma::split( e[1], ',' );
         if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected blur=<blur_type>,<blur_type_parameters>" ); }
-        
+
         blur_t params;
         params.blur_type = blur_t::from_string(s[0]);
         if (s[0] == "box")
@@ -2431,7 +2649,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
             { COMMA_THROW( comma::exception, "blur=bilateral expected 3 parameters" ); }
             params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
             params.sigma_space = boost::lexical_cast< double >( s[2] );
-            params.sigma_colour = boost::lexical_cast< double >( s[3] ); 
+            params.sigma_colour = boost::lexical_cast< double >( s[3] );
         }
         else if (s[0] == "adaptive-bilateral")
         {
@@ -2492,6 +2710,14 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
         return boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] );
     }
+    if( morphology_operations.find( e[0] ) != morphology_operations.end() )
+    {
+        return boost::bind< value_type_t >( morphology_impl_< H >, _1, morphology_operations.at( e[0] ), parse_structuring_element( e ) );
+    }
+    if( e[0] == "skeleton" || e[0] == "thinning" )
+    {
+        return boost::bind< value_type_t >( skeleton_impl_< H >, _1, parse_structuring_element( e ) );
+    }
     if( e[0] == "overlay" )
     {
         if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected file name (and optional x,y) with the overlay, e.g. overlay=a.svg" ); }
@@ -2532,7 +2758,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
 {
     typedef typename impl::filters< H >::value_type value_type_t;
     typedef typename impl::filters< H >::filter_type filter_type;
-    
+
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter_type > f;
     if( how == "" ) { return f; }
@@ -2553,10 +2779,27 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
             f.push_back( filter_type( boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, which ) ) );
         }
+        else if( e[0] == "pack" )
+        {
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "pack: missing arguments" ); }
+            std::vector< std::string > args = comma::split( e[1], ',' );
+            if( args[0] == "12" )
+            {
+                if( args.size() != 4 ) { COMMA_THROW( comma::exception, "12-bit pack expects 3 formats, got: " << args.size() - 1 ); }
+                f.push_back( filter_type( pixel_format_impl_< H, 2, CV_16UC1, 3, CV_8UC1 >( e[0], { args[1], args[2], args[3] } ) ) );
+            }
+            else { COMMA_THROW( comma::exception, "pack size not implemented: " << args[0] ); }
+        }
         else if( e[0] == "unpack" )
         {
-            if(e.size()<2) { COMMA_THROW( comma::exception, "missing arguements"); }
-            f.push_back( filter_type(unpack_impl_<H>(e[1])) );
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "unpack: missing arguments"); }
+            std::vector< std::string > args = comma::split( e[1], ',' );
+            if( args[0] == "12" )
+            {
+                if( args.size() != 3 ) { COMMA_THROW( comma::exception, "12-bit unpack expects 2 formats, got: " << args.size() - 1 ); }
+                f.push_back( filter_type( pixel_format_impl_< H, 3, CV_8UC1, 2, CV_16UC1 >( e[0], { args[1], args[2] } ) ) );
+            }
+            else { COMMA_THROW( comma::exception, "unpack size not implemented: " << args[0] ); }
         }
         else if( e[0] == "unpack12" )
         {
@@ -2571,7 +2814,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             bool index = false;
             if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "please specify log=<filename> or log=<directory>[,<options>]" ); }
             const std::vector< std::string >& w = comma::split( e[1], ',' );
-            
+
             std::string file = w[0];
             for ( std::size_t option = 1; option < w.size(); ++option )
             {
@@ -2597,17 +2840,17 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                     COMMA_THROW( comma::exception, "log: expected \"index\", \"period\" or \"size\"; got: \"" << u[0] << "\"" );
                 }
             }
-            if (period) 
-            {   
+            if (period)
+            {
                 unsigned int seconds = static_cast< unsigned int >( *period );
-                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index, get_timestamp ), false ) ); 
+                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index, get_timestamp ), false ) );
             }
             else if ( size )
-            { 
+            {
                 f.push_back( filter_type( log_impl_< H >( file, *size, index, get_timestamp), false ) );
-            } 
+            }
             else
-            { 
+            {
                 if( index ) { COMMA_THROW( comma::exception, "log: index should be specified with directory and period or size, not with filename" );  }
                 f.push_back( filter_type( log_impl_< H >( file, get_timestamp ), false ) );
             }
@@ -2645,20 +2888,26 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                 if( next_filter != "head" ) COMMA_THROW( comma::exception, "cannot have a filter after encode unless next filter is head" );
             }
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
-            std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s ), false ) );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            boost::optional < int > quality;
+            if (s.size()> 1) { quality = boost::lexical_cast<int>(s[1]); }
+            f.push_back( filter_type( boost::bind< value_type_t >( encode_impl_< H >( get_timestamp ), _1, s[0], quality ), false ) );
         }
         else if( e[0] == "grab" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected encoding type like jpg, ppm, etc" ); }
-            std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >(get_timestamp), _1, s ) ) );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            boost::optional < int > quality;
+            if (s.size() == 1) { quality = boost::lexical_cast<int>(s[1]); }
+            f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >(get_timestamp), _1, s[0], quality ) ) );
         }
         else if( e[0] == "file" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
-            std::string s = e[1];
-            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >(get_timestamp), _1, s ) ) );
+            std::vector< std::string > s = comma::split( e[1], ',' );
+            boost::optional < int > quality;
+            if (s.size()> 1) { quality = boost::lexical_cast<int>(s[1]); }
+            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >(get_timestamp), _1, s[0], quality ) ) );
         }
         else if( e[0] == "histogram" )
         {
@@ -2707,10 +2956,34 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if( i < v.size() - 1 )
             {
                 std::string next_filter = comma::split( v[i+1], '=' )[0];
-                if( next_filter != "null" && next_filter != "encode" ) { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode" ); }
+                if( next_filter != "null" && next_filter != "encode" && next_filter != "file") { COMMA_THROW( comma::exception, "cannot have a filter after head unless next filter is null or encode or file" ); }
             }
             unsigned int n = e.size() < 2 ? 1 : boost::lexical_cast< unsigned int >( e[1] );
             f.push_back( filter_type( boost::bind< value_type_t >( head_impl_< H >, _1, n ), false ) );
+        }
+        else if( e[0] == "rotate90" )
+        {
+            int n = ( e.size() > 1 ? boost::lexical_cast< int >( e[1] ) : 1 ) % 4;
+            if( n < 0 ) { n += 4; }
+            std::vector< std::string > filters;
+            switch( n )
+            {
+                case 1:
+                    filters.push_back( "transpose" );
+                    filters.push_back( "flop" );
+                    break;
+                case 2:
+                    filters.push_back( "flip" );
+                    filters.push_back( "flop" );
+                    break;
+                case 3:
+                    filters.push_back( "transpose" );
+                    filters.push_back( "flip" );
+                    break;
+                default:
+                    break;
+            }
+            for( std::string s : filters ) { f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( { s }, get_timestamp ) ) ); }
         }
         else
         {
@@ -2753,7 +3026,8 @@ static std::string usage_impl_()
     oss << "            <horizontal>: if present, tiles will be stacked horizontally (by default, vertical stacking is used)" << std::endl;
     oss << "            example: \"crop-tile=2,5,1,0,1,4&horizontal\"" << std::endl;
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
-    oss << "        encode=<format>: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "        encode=<format>[,<quality>]: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
+    oss << "                                     <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
     oss << "            options: inverse: do inverse fft" << std::endl;
@@ -2761,10 +3035,12 @@ static std::string usage_impl_()
     oss << "                     magnitude: output magnitude only" << std::endl;
     oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
     oss << "                      cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
-    oss << "        file=<format>: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "        file=<format>[,<quality>]: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
-    oss << "        grab=<format>: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
+    oss << "        grab=<format>[,<quality>]: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
+    oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
@@ -2789,6 +3065,13 @@ static std::string usage_impl_()
     oss << "                             cat images.bin | cv-cat 'mask=load:mask.png' > masked.bin" << std::endl;
     oss << "                         extract pixels brighter than 100" << std::endl;
     oss << "                             cat images.bin | cv-cat 'mask=convert-color:BGR,GRAY|threshold=otsu,100' > masked.bin" << std::endl;
+    oss << "            bitwise operations on masks:" << std::endl;
+    oss << "                mask=<mask1> and <mask2>: apply bitwise 'and' of <mask1> and <mask2>" << std::endl;
+    oss << "                mask=<mask1> or <mask2>: apply bitwise 'or'" << std::endl;
+    oss << "                mask=<mask1> xor <mask2>: apply bitwise 'xor'" << std::endl;
+    oss << "                mask=not <mask1>: apply bitwise 'not' (complement, tilde in C++)" << std::endl;
+    oss << "                mask=[[ not <mask1> ] and <mask2>] or <mask3>: apply the given logical expression of 3 masks" << std::endl;
+    oss << "                    note: standard precedence rules apply; use (square) brackets to explicitly denote precedence" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
     oss << "                  fields: key,value; default: value" << std::endl;
@@ -2803,6 +3086,10 @@ static std::string usage_impl_()
     oss << "            normalize=all: normalize each pixel by max of all channels (see cv::normalize with NORM_INF)" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        overlay=<image_file>[,x,y]: overlay image_file on top of current stream at optional x,y location; overlay image should have alpha channel" << std::endl;
+    oss << "        pack=<bits>,<format>: pack pixel data in specified bits, example: pack=12,cd,hb,fg" << std::endl;
+    oss << "            <bits>: number of bits, currently only 12-bit packing from 16-bit is supported (pack 2 pixels into 3 bytes)" << std::endl;
+    oss << "            <format>: output pixel formats in quadbits" << std::endl;
+    oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
     oss << "                             in format <width>,<height>,<interpolation> corresponding numeric values can be used: " << cv::INTER_NEAREST << ", " << cv::INTER_LINEAR << ", " << cv::INTER_AREA << ", " << cv::INTER_CUBIC << ", " << cv::INTER_LANCZOS4 << std::endl;
@@ -2815,6 +3102,7 @@ static std::string usage_impl_()
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
+    oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
@@ -2826,12 +3114,15 @@ static std::string usage_impl_()
     oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
-    oss << "        undistort=<undistort map file>: undistort" << std::endl;
+    oss << "        undistort=<how>: undistort" << std::endl;
+    oss << "            <how>" << std::endl;
+    oss << "                <undistort_map_filename>, e.g. map.bin" << std::endl;
+    oss << "                <pinhole_config_filename>[:<path>], e.g. config.json:camera/pinhole" << std::endl;
     oss << "        unpack=<bits>,<format>: unpack compressed pixel formats, example: unpack=12,cba0,fed0" << std::endl;
     oss << "            <bits>: number of bits, currently only 12 is supported" << std::endl;
-    oss << "            <format>: output pixels format in base 4 notation, containting letters 'a' to 'f' and '0'" << std::endl;
-    oss << "                where 'a' is 4-bit LSB of byte 0, 'b' is 4-bit MSB of byte 0, 'c' is 4-bit LSB of byte 1, etc and '0' means 4-bit zero" << std::endl;
-    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,bad0,fec0" << std::endl;
+    oss << "            <format>: output pixel formats in quadbits" << std::endl;
+    oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
+    oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,abc0,efd0" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
@@ -2885,6 +3176,41 @@ static std::string usage_impl_()
     oss << "            example: \"linear-combination=-r+2g-b\", highlights the green channel" << std::endl;
     oss << "            naming conventions are the same as for the ratio operation; use '--help filters::linear-combination' for more examples and a detailed syntax explanation" << std::endl;
     oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
+    oss << std::endl;
+    oss << "    morphology operations:" << std::endl;
+    oss << "        blackhat[=<parameters>]; apply black-hat operation with the given parameters" << std::endl;
+    oss << "        close[=<parameters>], closing[=<parameters>]; apply closing with the given parameters" << std::endl;
+    oss << "        dilate[=<parameters>], dilation[=<parameters>]; apply dilation with the given parameters" << std::endl;
+    oss << "        erode[=<parameters>], erosion[=<parameters>]; apply erosion with the given parameters" << std::endl;
+    oss << "        gradient[=<parameters>]; apply morphological gradient with the given parameters" << std::endl;
+    oss << "        open[=<parameters>], opening[=<parameters>]; apply opening with the given parameters" << std::endl;
+    oss << "        tophat[=<parameters>]; apply top-hat operation with the given parameters" << std::endl;
+    oss << "    extended morphology operations that are implemented on top of OpenCV capabilities:" << std::endl;
+    oss << "        skeleton[=<parameters>], thinning[=<parameters>]; apply skeletonization (thinning) with the given parameters" << std::endl;
+    oss << std::endl;
+    oss << "            <parameters> for all the above operations have the same syntax; erode as an example is shown below:" << std::endl;
+    oss << "                erode=rectangle,<size/x>,<size/y>[,<anchor/x>,<anchor/y>]; apply erosion with a rectangular structuring element" << std::endl;
+    oss << "                erode=square,<size/x>[,<anchor/x>]; apply erosion with a square structuring element of custom size" << std::endl;
+    oss << "                erode=ellipse,<size/x>,<size/y>[,<anchor/x>,<anchor/y>]; apply erosion with an elliptic structuring element" << std::endl;
+    oss << "                erode=circle,<size/x>[,<anchor/x>]; apply erosion with a circular structuring element" << std::endl;
+    oss << "                erode=cross,<size/x>,<size/y>[,<anchor/x>,<anchor/y>]; apply erosion with a circular structuring element" << std::endl;
+    oss << "                    note that the structuring element shall usually be symmetric, and therefore, size/s,size/y shall be odd" << std::endl;
+    oss << "                    any of the parameters after the shape name can be omitted (left as an empty csv field) to use the defaults:" << std::endl;
+    oss << "                        - size/x = 3:" << std::endl;
+    oss << "                        - size/y = size/x:" << std::endl;
+    oss << "                        - anchor/x = center in x" << std::endl;
+    oss << "                        - anchor/y = anchor/x" << std::endl;
+    oss << "                    anchor value of -1 is interpreted as the center of the element" << std::endl;
+    oss << "                    alternatively, if only 2 parameters are given for rectangle, ellipse, and cross, they are interpreted as size/x," << std::endl;
+    oss << "                    size/y, with the anchor set to default; similarly, if a single parameter is given for square and circle," << std::endl;
+    oss << "                    it is used to set size with default anchor" << std::endl;
+    oss << std::endl;
+    oss << "            examples: \"erode=rectangle,5,3,,\"; apply erosion with a 5x3 rectangle anchored at the center" << std::endl;
+    oss << "                      \"close\"; apply closing with a 3x3 square structuring element anchored at the center (default)" << std::endl;
+    oss << "                      \"tophat=rectangle,11,,3,3\"; apply tophat with a 11x11 square and custom off-center anchor" << std::endl;
+    oss << "                      \"dilate=cross,7,,,\"; apply dilation with a 7x7 cross anchored at the center" << std::endl;
+    oss << "                      \"open=circle,7\"; apply opening with a radius 7 circle anchored at the center (note single parameter)" << std::endl;
+    oss << "                      \"open=rectangle,7,3\"; apply opening with a 7x3 rectangle anchored at the center (note only two parameters)" << std::endl;
     oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;

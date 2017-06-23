@@ -55,13 +55,13 @@ class TextureReader : public Reader
             image_options( const std::string& filename, double width, double height ) : filename( filename ), width( width ), height( height ) {}
         };
 
-        TextureReader( QGLView& viewer, const reader_parameters& params, const std::vector< image_options >& io );
+        TextureReader( const reader_parameters& params, const std::vector< image_options >& io );
 
         void start();
         std::size_t update( const Eigen::Vector3d& offset );
         const Eigen::Vector3d& somePoint() const;
         bool read_once();
-        void render( QGLPainter *painter );
+        void render( Viewer& viewer, QGLPainter *painter );
         bool empty() const;
 
     protected:

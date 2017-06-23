@@ -59,6 +59,8 @@ if( build_view_points )
     set( VIEW_POINTS_MOC_FILES view_pointsMoc view_points/main_window.h view_points/action.h )
     if( Qt3D_VERSION EQUAL 1 )
         list( APPEND VIEW_POINTS_MOC_FILES view_points/${snark_qt3d_specific_dir}/viewer.h )
+    elseif( Qt3D_VERSION EQUAL 2 )
+        list( APPEND VIEW_POINTS_MOC_FILES view_points/qt3d_v2/viewer.h )
     endif()
 
     if( QT_VERSION_MAJOR EQUAL 4 )

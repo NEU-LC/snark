@@ -41,6 +41,8 @@
 #endif
 #include "viewer.h"
 #include <QTimer>
+#include "texture.h"
+#include "../../../../math/rotation_matrix.h"
 
 namespace snark { namespace graphics { namespace view {
 
@@ -143,7 +145,7 @@ void Viewer::read()
     }
     if( !m_cameraReader && m_cameraposition )
     {
-        setCameraPosition( *m_cameraposition, *m_cameraorientation );
+        set_camera_position( *m_cameraposition, *m_cameraorientation );
         m_cameraposition.reset();
         m_cameraorientation.reset();
     }
@@ -155,7 +157,7 @@ void Viewer::read()
         {
             m_cameraposition = position;
             m_cameraorientation = orientation;
-            setCameraPosition( position, orientation );
+            set_camera_position( position, orientation );
         }
     }
     else if( readers[0]->m_extents && readers[0]->m_num_points > 0 && ( m_shutdown || ready_to_look || readers[0]->m_num_points >= readers[0]->size / 10 ) )
@@ -180,14 +182,14 @@ void Viewer::paintGL( QGLPainter *painter )
         if( !readers[i]->show() ) { continue; }
         if( readers[i]->point_size > 1 ) { ::glEnable( GL_POINT_SMOOTH ); }
         ::glPointSize( readers[i]->point_size );
-        readers[i]->render( painter );
+        readers[i]->render( *this, painter );
         if( readers[i]->point_size > 1 ) { ::glDisable( GL_POINT_SMOOTH ); }
     }
     draw_coordinates( painter );
     if( camera_position_output_ && m_stdout_allowed ) { camera_position_output_->write(); }
 }
 
-void Viewer::setCameraPosition ( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )
+void Viewer::set_camera_position ( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )
 {
     Eigen::Vector3d p = position - *m_offset;
     camera()->setUpVector( QVector3D( 0, 0, m_z_up ? 1 : -1 ) );
@@ -219,5 +221,37 @@ void Viewer::mouse_double_right_click_event(  QMouseEvent *e )
     p += *m_offset;
     std::cout << std::setprecision(16) << p.x() << "," << p.y() << "," << p.z() << std::endl;
 }
+
+void Viewer::draw_label( QGLPainter *painter, const Eigen::Vector3d& position, const QColor4ub& color, const std::string& label )
+{
+    if( label.empty() ) { return; }
+    painter->modelViewMatrix().push();
+    Eigen::Vector3d d = position;
+    painter->modelViewMatrix().translate( QVector3D( d.x(), d.y(), d.z() ) ); // painter->modelViewMatrix().translate( position );
+    QMatrix4x4 world = painter->modelViewMatrix().top();
+    Eigen::Matrix3d R;
+    R << world( 0, 0 ) , world( 0, 1 ), world( 0, 2 ),
+         world( 1, 0 ) , world( 1, 1 ), world( 1, 2 ),
+         world( 2, 0 ) , world( 2, 1 ), world( 2, 2 );
+    R.transposeInPlace();
+    snark::rotation_matrix rotation( R );
+    Eigen::Quaterniond q = rotation.quaternion();
+    painter->modelViewMatrix().rotate( QQuaternion( q.w(), q.x(), q.y(), q.z() ) );
+    //painter->modelViewMatrix().translate( m_offset );
+    double scale = 1.0 / double( height() );
+    scale *= camera()->projectionType() == QGLCamera::Orthographic
+           ? ( 0.25 * camera()->viewSize().width() )
+           : ( 0.2 * Eigen::Vector3d( world( 0, 3 ) , world( 1, 3 ), world( 2, 3 ) ).norm() );
+    painter->modelViewMatrix().scale( scale ); // TODO make size configurable ?
+    drawText( painter, QString::fromUtf8( &label[0] ), color );
+    painter->modelViewMatrix().pop();
+}
+
+void Viewer::drawText( QGLPainter *painter, const QString& string, const QColor4ub& color )
+{
+    Texture texture( string, color );
+    texture.draw( painter );
+}
+
 
 } } } // namespace snark { namespace graphics { namespace view {

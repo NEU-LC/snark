@@ -58,7 +58,7 @@ usage
 
 """
 
-parser = argparse.ArgumentParser( description = description )
+parser = argparse.ArgumentParser( description = description, formatter_class = argparse.RawTextHelpFormatter )
 parser.add_argument( '--view', action="store_true", help = 'view result' )
 parser.add_argument( '--config', action="store", help = 'configuration file name' )
 parser.add_argument( '--default-config', action="store_true", help = 'output default config and exit' )

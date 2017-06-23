@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2016 The University of Sydney
+// Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,18 +27,23 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_GRAPHICS_QT3D_BUFFERPROVIDER_H_
-#define SNARK_GRAPHICS_QT3D_BUFFERPROVIDER_H_
+#pragma once
 
-namespace snark { namespace graphics { namespace qt3d {
+#include "pixel.h"
+#include "colorspace.h"
 
-class buffer_provider
-{
-    public:
-        virtual const char* buffer_data() const = 0;
-        virtual std::size_t buffer_size() const = 0;
-};
+#include <comma/csv/options.h>
+#include <functional>
 
-} } } // namespace snark { namespace graphics { namespace qt3d {
+namespace snark { namespace imaging {
 
-#endif /*SNARK_GRAPHICS_QT3D_BUFFERPROVIDER_H_*/
+    struct converter
+    {
+        typedef std::function< void ( const comma::csv::options & csv ) > F;
+
+        static F dispatch( const colorspace & inc, range inr, const colorspace & outc, range outr, range outt );
+
+        static void list( std::ostream & os );
+    };
+
+} } // namespace snark { namespace imaging {

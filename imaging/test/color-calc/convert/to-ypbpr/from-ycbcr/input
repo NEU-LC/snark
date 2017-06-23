@@ -1,0 +1,1 @@
+ascii/command[0]="echo 16,128,128 | image-color-calc convert --from ycbcr,ub --to ypbpr,f"

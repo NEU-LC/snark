@@ -109,6 +109,9 @@ class pinhole
             /// return tangentially corrected pixel
             Eigen::Vector2d tangentially_corrected( const Eigen::Vector2d& p ) const;
             
+            /// return camera matrix
+            cv::Mat camera_matrix() const;
+            
             /// throw, if basic checks on config fail
             void validate();
         };

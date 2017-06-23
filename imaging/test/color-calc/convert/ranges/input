@@ -1,0 +1,3 @@
+range/ub[0]="echo 50,100,150 | image-color-calc convert --from rgb,ub --to ycbcr,ub"
+range/uw[0]="echo 12850,25700,38550 | image-color-calc convert --from rgb,uw --to ycbcr,ub"
+range/ui[0]="echo 842150450,1684300900,2526451350 | image-color-calc convert --from rgb,ui --to ycbcr,ub"

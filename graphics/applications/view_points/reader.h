@@ -40,24 +40,26 @@
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
 #include "colored.h"
+#include "../../../math/interval.h"
 #if Qt3D_VERSION==1
 #include <Qt3D/qglview.h>
 #else
 #include <QQuaternion>
-#include "../../../math/interval.h"
 #include "../../qt3d/qt3d_v2/gl/shapes.h"
+#include "../../../graphics/qt3d/qt3d_v2/gl/labels.h"
 #include <memory>
 #endif
-
-#if Qt3D_VERSION==1
-typedef QColor4ub color_t;
-#else
-typedef snark::graphics::qt3d::gl::color_t color_t;
-#endif
+#include "types.h"
 
 namespace snark { namespace graphics { namespace view {
 
+#if Qt3D_VERSION==1
 class Viewer;
+#elif Qt3D_VERSION==2
+namespace qt3d_v2 {
+class viewer;
+}
+#endif
 
 struct reader_parameters
 {
@@ -86,17 +88,10 @@ struct reader_parameters
 class Reader : public reader_parameters
 {
     public:
-        #if Qt3D_VERSION==1
-        Reader( QGLView& viewer
-              , const reader_parameters& params
+        Reader( const reader_parameters& params
               , colored* c
               , const std::string& label
               , const Eigen::Vector3d& offset = Eigen::Vector3d( 0, 0, 0 ) );
-        #else
-        Reader( const reader_parameters& params
-              , colored* c
-              , const Eigen::Vector3d& offset = Eigen::Vector3d( 0, 0, 0 ) );
-        #endif
 
         virtual ~Reader() {}
 
@@ -104,9 +99,9 @@ class Reader : public reader_parameters
         virtual std::size_t update( const Eigen::Vector3d& offset ) = 0;
         virtual const Eigen::Vector3d& somePoint() const = 0;
         virtual bool read_once() = 0;
-        #if Qt3D_VERSION==1
-        virtual void render( QGLPainter *painter ) = 0;
-        #endif
+#if Qt3D_VERSION==1
+        virtual void render( Viewer& viewer, QGLPainter *painter ) = 0;
+#endif
         virtual bool empty() const = 0;
 
         void show( bool s );
@@ -116,25 +111,20 @@ class Reader : public reader_parameters
         void shutdown();
         void read();
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION==1
+        friend class Viewer;
+#elif Qt3D_VERSION==2
+    friend class controller;
 public:
-    virtual std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape(){return std::shared_ptr<snark::graphics::qt3d::gl::shape>();};
-    virtual void update_shape(){};
+    virtual std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape()=0;
+    virtual std::shared_ptr<snark::graphics::qt3d::gl::label_shader> make_label_shader()=0;
+    virtual void update_shape()=0;
+    virtual void update_labels()=0;
 #endif
              
     protected:
         bool updatePoint( const Eigen::Vector3d& offset );
-        #if Qt3D_VERSION==1
-        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const QColor4ub& color, const std::string& label );
-        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const QColor4ub& color );
-        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const std::string& label );
-        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position );
-        #endif
 
-        #if Qt3D_VERSION==1
-        friend class Viewer;
-        QGLView& m_viewer;
-        #endif
         boost::optional< snark::math::closed_interval< float, 3 > > m_extents;
         unsigned int m_num_points;
         boost::scoped_ptr< colored > m_colored;
@@ -154,11 +144,6 @@ public:
         Eigen::Vector3d m_translation;
         Eigen::Vector3d m_offset;
         QQuaternion m_quaternion;
-
-    private:
-        #if Qt3D_VERSION==1
-        void drawText( QGLPainter *painter, const QString& string, const QColor4ub& color );
-        #endif
 };
 
 } } } // namespace snark { namespace graphics { namespace view {

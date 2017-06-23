@@ -74,13 +74,13 @@ static void usage( bool verbose = false )
     }
     std::cerr << std::endl;
     std::cerr << "options: " << std::endl;
-    std::cerr << "    --mode,-m=<mode>: control mode (default: " << default_mode << ")" << std::endl;
-    std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
-    std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;
+    std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
     std::cerr << "    --heading-is-absolute: interpret target heading as global by default" << std::endl;
     std::cerr << "    --input-fields: show default input stream fields and exit" << std::endl;
-    std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
+    std::cerr << "    --mode,-m=<mode>: control mode (default: " << default_mode << ")" << std::endl;
+    std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;    
+    std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << "    --strict: fail if a record with the timestamp earlier than the previous one is encountered (default: skip offending records)" << std::endl;
@@ -136,12 +136,13 @@ public:
             if( proximity_ < 0 ) { COMMA_THROW( comma::exception, "expected positive proximity, got " << proximity_ ); }
         }
 
-    void set_target( const snark::control::target_t& target, const snark::control::wayline::position_t& current_position )
+    void set_target( const snark::control::target_t& target, const std::pair< snark::control::feedback_t, std::string >& feedback )
     {
-        snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : current_position;
+        snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : feedback.first.position;
+        feedback_buffer_ = feedback.second;
         target_ = target;
         no_previous_targets_ = false;
-        reached_ = ( current_position - target_->position ).norm() < proximity_;
+        reached_ = ( feedback.first.position - target_->position ).norm() < proximity_;
         if( reached_ || ( from - target_->position ).norm() < eps_ ) { return; } // if from is too close to the new target, the old wayline will be used
         wayline_ = snark::control::wayline( from, target_->position );
     }
@@ -304,6 +305,11 @@ int main( int ac, char** av )
         wayline_follower follower( mode, proximity, use_past_endpoint, strict );
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
+            
+            if ( !input_stream.ready() && !feedback_stream.ready() )
+            {
+                select.wait( boost::posix_time::milliseconds( 1 ) );
+            }
             // todo? don't do select.check() on stdin in the loop or do it only in "dynamic" mode?
             while( !is_shutdown && ( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ) ) ) )
             {
@@ -352,7 +358,7 @@ int main( int ac, char** av )
                     targets.clear();
                     targets.push_back( pair );
                 }
-                follower.set_target( targets.front().first, feedback.first.position );
+                follower.set_target( targets.front().first, feedback );
                 if( verbose ) { std::cerr << name << ": target waypoint " << serialise( follower.to() ) << ", current position " << serialise( feedback.first.position ) << std::endl; }
             }
             follower.update( feedback );

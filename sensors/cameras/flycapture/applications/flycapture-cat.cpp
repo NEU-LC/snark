@@ -29,23 +29,21 @@
 
 
 #include <boost/program_options.hpp>
-#include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/map.h>
 #include "../../../../imaging/cv_mat/pipeline.h"
 #include "../flycapture.h"
+#include "../helpers.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 
 boost::scoped_ptr< snark::tbb::bursty_reader< Pair > > reader;
-static Pair capture( snark::cameras::flycapture::camera& camera ) 
-{ 
-    static comma::signal_flag is_shutdown;
-    if( is_shutdown ) { reader->stop(); return Pair(); }
-    return camera.read(); 
+static Pair capture( snark::cameras::flycapture::camera& camera )
+{
+    return camera.read( );
 }
- 
+
 int main( int argc, char** argv )
 {
     try
@@ -53,6 +51,7 @@ int main( int argc, char** argv )
         std::string fields;
         unsigned int id;
         std::string setattributes;
+        std::string timestamp_time_option;
         unsigned int discard;
         boost::program_options::options_description description( "options" );
         description.add_options()
@@ -62,8 +61,9 @@ int main( int argc, char** argv )
             ( "serial", boost::program_options::value< unsigned int >( &id )->default_value( 0 ), "camera serial number; default: first available camera" )
             ( "discard", boost::program_options::value< unsigned int >( &discard ), "buffer this many frames, discard after" )
             ( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
-            ( "list-attributes", "output current camera attributes" )
+            ( "timestamp", boost::program_options::value< std::string >( &timestamp_time_option )->default_value( "after" ), "when to take the timestamp of the frame (before or after reading data from the camera, or the average of the two); possible values before, after, average" )
             ( "list-cameras", "list all cameras and exit" )
+            ( "list-attributes", "output current camera attributes" )
             ( "header", "output header only" )
             ( "no-header", "output image data only" )
             ( "verbose,v", "be more verbose" );
@@ -111,9 +111,13 @@ int main( int argc, char** argv )
             }
             // attributes.insert( attribute_map.get().begin(), attribute_map.get().end() );
         }
+        snark::cameras::flycapture::camera::timestamp_policy when( timestamp_time_option );
         if( verbose ) { std::cerr << "flycapture-cat: connecting..." << std::endl; }
-        snark::cameras::flycapture::camera camera( id, attributes );
-        if( verbose ) { std::cerr << "flycapture-cat: connected to camera " << camera.id() << std::endl; }
+        snark::cameras::flycapture::camera camera( id, attributes, when );
+        if( verbose )
+        {
+            std::cerr << "flycapture-cat: connected to " << snark::cameras::flycapture::get_interface_string(camera.get_interface())
+                << " camera " << camera.id() << std::endl; }
         if( verbose ) { std::cerr << "flycapture-cat: total bytes per frame: " << camera.total_bytes_per_frame() << std::endl; }
         if( vm.count( "set-and-exit" ) ) { return 0; }
         if( vm.count( "list-attributes" ) )

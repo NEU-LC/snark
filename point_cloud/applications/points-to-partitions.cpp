@@ -63,7 +63,7 @@
 #include <google/profiler.h>
 #endif
 
-static void usage()
+static void usage( bool )
 {
     std::cerr << std::endl;
     std::cerr << "partition 3d point cloud" << std::endl;
@@ -77,7 +77,7 @@ static void usage()
     std::cerr << "        --min-points-per-voxel <n>: min number of points in a non-empty voxel; default: 1" << std::endl;
     std::cerr << "        --min-voxels-per-partition <n>: min number of voxels in a partition; default: 1" << std::endl;
     std::cerr << "        --min-points-per-partition <n>: min number of points in a partition; default: 1" << std::endl;
-    std::cerr << "        --resolution <resolution>: default: 0.2 metres" << std::endl;
+    std::cerr << "        --resolution <resolution>: <value> or <x>,<y>,<z>; e.g: --resolution=0.3 or resolution=0.2,0.2,1; default: 0.2 metres" << std::endl;
     std::cerr << "    data flow options:" << std::endl;
     std::cerr << "        --discard,-d: if present, partition as many points as possible, discard the rest" << std::endl;
     std::cerr << "        --output-all: output all points, even non-partitioned; the latter with id: max uint32" << std::endl;
@@ -259,17 +259,31 @@ int main( int ac, char** av )
         #ifdef WIN32
         _setmode( _fileno( stdout ), _O_BINARY );
         #endif
-        comma::command_line_options options( ac, av );
-        if( options.exists( "--help,-h" ) ) { usage(); }
+        comma::command_line_options options( ac, av, usage );
         csv = comma::csv::options( options, "x,y,z" );
         min_points_per_voxel = options.value( "--min-points-per-voxel", 1u );
         min_voxels_per_partition = options.value( "--min-voxels-per-partition", 1u );
         min_points_per_partition = options.value( "--min-points-per-partition", 1u );
         min_density = options.value( "--min-density", 0.0 );
-        if( min_points_per_voxel == 0 ) { std::cerr << "points-to-partitions: expected minimum number of points in a non-empty voxel, got zero" << std::endl; usage(); }
+        if( min_points_per_voxel == 0 ) { std::cerr << "points-to-partitions: expected minimum number of points in a non-empty voxel, got zero" << std::endl; }
         verbose = options.exists( "--verbose,-v" );
-        double r = options.value( "--resolution", double( 0.2 ) );
-        resolution = Eigen::Vector3d( r, r, r );
+        std::string resolution_string = options.value< std::string >( "--resolution", "0.2" );
+        const std::vector< std::string >& v = comma::split( resolution_string, ',' );
+        switch( v.size() )
+        {
+            case 1:
+            {
+                double r = boost::lexical_cast< double >( v[0] );
+                resolution = Eigen::Vector3d( r, r, r );
+                break;
+            }
+            case 3:
+                resolution = Eigen::Vector3d( boost::lexical_cast< double >( v[0] ), boost::lexical_cast< double >( v[1] ), boost::lexical_cast< double >( v[2] ) );
+                break;
+            default:
+                std::cerr << "points-to-partitions: expected resolution, got: \"" << resolution_string << "\"" << std::endl;
+                return 1;
+        }
         discard = options.exists( "--discard,-d" );
         min_id = options.value( "--min-id", 0 );
         output_all = options.exists( "--output-all" );
@@ -294,8 +308,11 @@ int main( int ac, char** av )
         #ifdef PROFILE
         ProfilerStop(); }
         #endif
-        if( is_shutdown ) { std::cerr << "points-to-partitions: caught signal" << std::endl; }
-        else { std::cerr << "points-to-partitions: end of stream" << std::endl; }
+        if(verbose)
+        {
+            if( is_shutdown ) { std::cerr << "points-to-partitions: caught signal" << std::endl; }
+            else { std::cerr << "points-to-partitions: end of stream" << std::endl; }
+        }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "points-to-partitions: " << ex.what() << std::endl; }

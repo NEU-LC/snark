@@ -1,0 +1,5 @@
+head1=" cat image.bin | cv-cat 'head=1' >output/head1.bin; diff expected-head1.bin output/head1.bin"
+head2=" cat image.bin | cv-cat 'head=2' >output/head2.bin; diff expected-head2.bin output/head2.bin"
+head3=" cat image.bin | cv-cat 'head=3' >output/head3.bin; diff expected-head3.bin output/head3.bin"
+
+

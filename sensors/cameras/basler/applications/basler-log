@@ -81,7 +81,7 @@ function config_sample()
         "fields": "t",
         "image-size": "1280,480",
         "image-offset": "0,0",
-        "image-type": "ub",
+        "pixel-format": "Mono8",
 
         "device":
         {
@@ -114,27 +114,27 @@ function load_config()
 {
     local file path
     IFS=: read file path <<< "$1"
-
-    cat "$file" | name-value-convert \
-        | if [[ "$path" ]]; then sed "/^$path\//s#^$path/##"; else cat; fi
+    cat "$file" | name-value-get "$path"
 }
 
 verbose "loading sensor config $options_config"
 
 comma_path_value_to_var --prefix=config < <( load_config $options_config )
 
-IFS=, read height width <<< $config_image_size
+IFS=, read width height <<< $config_image_size
 IFS=, read offset_x offset_y <<< $config_image_offset
 
 args=
 [[ $config_device_address ]] && args+=" --address $config_device_address"
 [[ $config_device_serial_number ]] && args+=" --serial-number $config_device_serial_number"
-[[ $height ]] && args+=" --height=$height"
 [[ $width ]] && args+=" --width=$width"
+[[ $height ]] && args+=" --height=$height"
 [[ $offset_x ]] && args+=" --offset-x=$offset_x"
 [[ $offset_y ]] && args+=" --offset-y=$offset_y"
-[[ $config_image_type ]] && args+=" --image-type $config_image_type"
+[[ $config_pixel_format ]] && args+=" --pixel-format=$config_pixel_format"
 [[ $config_gige_packet_size ]] && args+=" --packet-size=$config_gige_packet_size"
+[[ $config_num_cameras ]] && args+=" --num-cameras=$config_num_cameras"
+[[ $config_inter_packet_delay ]] && args+=" --inter-packet-delay=$config_inter_packet_delay"
 [[ $options_verbose ]] && args+=" --verbose"
 args=${args# }
 

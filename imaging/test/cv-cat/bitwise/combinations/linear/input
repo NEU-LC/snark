@@ -1,0 +1,1 @@
+filter="linear-combination:r + b - g|convert-to:ub|threshold:4 xor linear-combination:(g + r)|convert-to:ub|threshold:5"

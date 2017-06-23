@@ -1,4 +1,4 @@
-PROJECT( "snark" )
+PROJECT( "snark"  )
 
 cmake_minimum_required(VERSION 2.6)
 
@@ -42,7 +42,7 @@ IF(NOT CMAKE_BUILD_TYPE)
       FORCE)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
-option( USE_CXX11 "build with C++11 support" OFF )
+option( USE_CXX11 "build with C++11 support" ON )
 if( USE_CXX11 )
     if( UNIX )
         # A much better way to do this is with CXX_STANDARD but that requires CMake 3.1
@@ -358,6 +358,18 @@ IF( snark_build_sensors_asd )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_asd-d
                              optimized snark_asd )
 ENDIF( snark_build_sensors_asd )
+
+if( snark_build_sensors_kinect )
+  find_path( LIBUSB_INCLUDE_DIR  NAMES libusb.h  PATH_SUFFIXES "include" "libusb" "libusb-1.0")
+
+  # todo: find usb library
+  #find_library( LIBUSB_LIBRARY NAMES usb PATH_SUFFIXES "lib" "lib32" "lib64" "x86_64-linux-gnu" )
+  find_library( LIBUSB_LIBRARY NAMES usb HINTS /usr/lib/x86_64-linux-gnu )
+
+  
+  find_package( OpenCL REQUIRED )
+  find_package( freenect2 REQUIRED )
+endif( snark_build_sensors_kinect )
 
 SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_math-d
                          optimized snark_math

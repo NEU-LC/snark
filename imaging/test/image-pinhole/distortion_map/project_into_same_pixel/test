@@ -1,0 +1,5 @@
+#!/bin/bash
+
+image-pinhole to-cartesian --config config.json \
+    | name-value-from-csv --prefix=output --line-number --fields="pixel/x,pixel/y,x,y,z" \
+    | csv-quote --unquote --delimiter='='

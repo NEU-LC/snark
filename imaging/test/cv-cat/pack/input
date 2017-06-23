@@ -1,0 +1,5 @@
+test[0]="echo 256,800 | csv-to-bin 2uw | cv-cat --input 'rows=1;cols=2;no-header;type=uw' --output no-header 'pack=12,cd,ae,gh' | csv-from-bin 3ub"
+test[1]="echo 8512,25904 | csv-to-bin 2uw | cv-cat --input 'rows=1;cols=2;no-header;type=uw' --output no-header 'pack=12,cd,ae,gh' | csv-from-bin 3ub"
+test[2]="echo 8512,25904 | csv-to-bin 2uw | cv-cat --input 'rows=1;cols=2;no-header;type=uw' --output no-header 'pack=12,c,a,g' | csv-from-bin 3ub"
+test[3]="echo 8512,25904 | csv-to-bin 2uw | cv-cat --input 'rows=1;cols=2;no-header;type=uw' --output no-header 'pack=12,b,0h,f0' | csv-from-bin 3ub"
+test[4]="echo 8512,25904 | csv-to-bin 2uw | cv-cat --input 'rows=1;cols=2;no-header;type=uw' --output no-header 'pack=12,ab,fd,he' | csv-from-bin 3ub"

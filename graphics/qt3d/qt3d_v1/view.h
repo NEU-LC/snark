@@ -100,6 +100,8 @@ private:
 
 namespace comma { namespace visiting {
 
+#ifndef COMMA_VISITING_TRAITS_QVECTOR3d
+#define COMMA_VISITING_TRAITS_QVECTOR3d
 template <> struct traits< QVector3D >
 {
     template < typename Key, class Visitor >
@@ -119,6 +121,7 @@ template <> struct traits< QVector3D >
         v.apply( "z", p.z() );
     }
 };
+#endif
 
 template <> struct traits< QSizeF >
 {

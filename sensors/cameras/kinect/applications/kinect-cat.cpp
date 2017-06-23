@@ -31,6 +31,7 @@
 
 #include <Eigen/Core>
 #include <comma/application/command_line_options.h>
+#include <comma/base/types.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
 #include <comma/string/string.h>
@@ -43,23 +44,13 @@
 #include <libfreenect2/packet_pipeline.h>
 #include <libfreenect2/logger.h>
 #include <cv.h>
-#include <snark/imaging/cv_mat/serialization.h>
+#include <comma/application/signal_flag.h>
+#include "../../../../imaging/cv_mat/serialization.h"
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/serialize.h>
-#include <snark/imaging/camera/pinhole.h>
-#include <snark/imaging/camera/traits.h>
-#include <signal.h>
-
-
-bool protonect_shutdown = false; ///< Whether the running application should shut down.
-
-void sigint_handler(int s)
-{
-  protonect_shutdown = true;
-}
-
-
-
+#include "../../../../imaging/camera/pinhole.h"
+#include "../../../../imaging/camera/traits.h"
+#include <cmath>
 
 static void usage( bool verbose )
 {
@@ -176,10 +167,39 @@ template <> struct traits< snark::kinect::point >
     }
 };
     
+
+
 } } // namespace comma { namespace visiting {
+
+
+// create a custom logger
+/// [logger]
+#include <fstream>
+#include <cstdlib>
+class CowboxLogger: public libfreenect2::Logger
+{
+private:
+  std::string serial_;
+public:
+  CowboxLogger(Level level, std::string serial)
+  {
+    level_ = level;
+    serial_ = serial;
+  }
+  void setSerial(std::string serial){ serial_ = serial; }
+  virtual void log(Level level, const std::string &message)
+  {
+    std::cerr << "kinect-cat: " << serial_ << " :libfreenect2: [" << level2str(level) << "] " << message << std::endl;
+  }
+};
+/// [logger]
+
+
+std::string serial = "";
 
 int main( int ac, char** av )
 {
+	CowboxLogger *logger = new CowboxLogger(libfreenect2::Logger::Debug, serial);
     try
     {
         comma::command_line_options options( ac, av, usage );
@@ -193,19 +213,32 @@ int main( int ac, char** av )
         comma::csv::output_stream< snark::kinect::point > ostream( std::cout, csv );
         snark::kinect::camera camera;
 
-        libfreenect2::setGlobalLogger(libfreenect2::createConsoleLogger(libfreenect2::Logger::None));
+        libfreenect2::setGlobalLogger(logger);
         /// [context]
+
+        // struct device
+        // {
+        //     libfreenect2::Freenect2 freenect2;
+        //     libfreenect2::Freenect2Device *dev = NULL;
+        //     libfreenect2::PacketPipeline *pipeline = 0;
+
+        //     device( ??? ) { ... }
+
+        //     void close() { ... }
+        //     ~device() { close(); /* anything else to clean up? */ }
+        // };
+
+
         libfreenect2::Freenect2 freenect2;
         libfreenect2::Freenect2Device *dev = 0;
         libfreenect2::PacketPipeline *pipeline = 0;
 
         /// [context]
-        std::string serial = "";
         /// [discovery]
         if(freenect2.enumerateDevices() == 0)
         {
             std::cerr << "kinect-cat: no device connected!" << std::endl;
-            return 1;
+            return 0;
         }
 
 
@@ -225,14 +258,74 @@ int main( int ac, char** av )
 
             }
 
-            return 1;
+            return 0;
         }
-
 
         if (serial == "")
         {
             serial = freenect2.getDefaultDeviceSerialNumber();
         }
+
+        logger->setSerial(serial);
+        int deviceId = -1;
+#ifdef LIBFREENECT2_WITH_CUDA_SUPPORT
+        if( options.exists( "--cuda" ))
+        {
+            //std::cerr << "kinect-cat: here, pipeline: " << pipeline << std::endl;
+            if(!pipeline)
+            {
+                //std::cerr << "kinect-cat: Using cuda pipeline" << std::endl;
+                pipeline = new libfreenect2::CudaPacketPipeline(deviceId);
+                std::cerr << "kinect-cat: " << serial << ": Using cuda pipeline" << std::endl;
+            }
+        }
+        else if( options.exists( "--cudakde" ))
+        {
+            if(!pipeline)
+            {
+                pipeline = new libfreenect2::CudaKdePacketPipeline(deviceId);
+                std::cerr << "kinect-cat: " << serial << ": Using cudakde pipeline" << std::endl;
+            }
+        }
+        else 
+#endif // def LIBFREENECT2_WITH_CUDA_SUPPORT
+#ifdef LIBFREENECT2_WITH_OPENCL_SUPPORT
+        if( options.exists( "--cl" ))
+        {
+            if(!pipeline)
+            {
+                pipeline = new libfreenect2::OpenCLPacketPipeline(deviceId);
+                std::cerr << "kinect-cat: " << serial << ": Using cl pipeline" << std::endl;
+            }
+        }
+        else if( options.exists( "--clkde" ))
+        {
+            if(!pipeline)
+            {
+                pipeline = new libfreenect2::OpenCLKdePacketPipeline(deviceId);
+                std::cerr << "kinect-cat: " << serial << ": Using clkde pipeline" << std::endl;
+            }
+        }
+        else 
+#endif // def LIBFREENECT2_WITH_OPENCL_SUPPORT
+#ifdef LIBFREENECT2_WITH_OPENGL_SUPPORT
+        if( options.exists( "--gl" ))
+        {
+            if(!pipeline)
+            {
+                pipeline = new libfreenect2::OpenGLPacketPipeline();
+                std::cerr << "kinect-cat: " << serial << ": Using gl pipeline" << std::endl;
+            }
+        }
+        else 
+#endif // def LIBFREENECT2_WITH_OPENGL_SUPPORT
+        if(!pipeline)
+        {
+            pipeline = new libfreenect2::CpuPacketPipeline();
+            std::cerr << "kinect-cat: " << serial << ": Using cpu pipeline" << std::endl;
+        }
+
+
         /// [discovery]
 
         if(pipeline)
@@ -249,11 +342,10 @@ int main( int ac, char** av )
 
         if(dev == 0)
         {
-            std::cerr << "kinect-cat: failure opening device!" << std::endl;
-            return 1;
+            std::cerr << "kinect-cat: " << serial << ": failure opening device!" << std::endl;
+            return 0;
         }
 
-        signal(SIGINT,sigint_handler); // todo: use comma:signal_flag
 
         bool enable_rgb = false;
         bool enable_depth = true;
@@ -274,24 +366,19 @@ int main( int ac, char** av )
         /// [start]
         if (enable_rgb && enable_depth)
         {
-        if (!dev->start())
-          return -1;
+            if (!dev->start()) 
+            { 
+                return 0;
+            }
         }
         else
         {
         if (!dev->startStreams(enable_rgb, enable_depth))
-          return 1;
+          return 0;
         }
         const int width_ir = 512;
         const int height_ir = 424;
-        const int size_depth = width_ir * height_ir;
 
-//        std::cout << "device serial: " << dev->getSerialNumber() << std::endl;
-//        std::cout << "device firmware: " << dev->getFirmwareVersion() << std::endl;
-        /// [start]
-        ///
-        ///
-        ///
         std::string        fields = "t,rows,cols,type";
         bool               header_only = false;
 
@@ -306,97 +393,105 @@ int main( int ac, char** av )
             header_only = ( options.exists( "--header" ));
         }
 
-        if( options.exists( "--get-intrinsics" )){
-            libfreenect2::Freenect2Device::IrCameraParams ir_params = dev->getIrCameraParams();
-            // put these parameters in json block "kinect"
-            std::cout << "fx=" << ir_params.fx << std::endl; ///< Focal length x (pixel)
-            std::cout << "fy=" << ir_params.fy << std::endl; ///< Focal length y (pixel)
-            std::cout << "cx=" << ir_params.cx << std::endl; ///< Principal point x (pixel)
-            std::cout << "cy=" << ir_params.cy << std::endl; ///< Principal point y (pixel)
+        // these intrinsics are probably with respect to raw unflipped image, but not entirely sure. Commented out due to output of raw frames and undistortion external to kinect-cat or libfreenect2
+        // if( options.exists( "--get-intrinsics-kinect" )){ // todo: --get-intrinsics; --get-pinhole-config
+        //     
+        //     libfreenect2::Freenect2Device::IrCameraParams ir_params = dev->getIrCameraParams();
+        //     // put these parameters in json block "kinect"
+        //     std::cout << "fx=" << ir_params.fx << std::endl; ///< Focal length x (pixel)
+        //     std::cout << "fy=" << ir_params.fy << std::endl; ///< Focal length y (pixel)
+        //     std::cout << "cx=" << ir_params.cx << std::endl; ///< Principal point x (pixel)
+        //     std::cout << "cy=" << ir_params.cy << std::endl; ///< Principal point y (pixel)
 
-            std::cout << "k1=" << ir_params.k1 << std::endl; ///< Radial distortion coefficient, 1st-order
-            std::cout << "k2=" << ir_params.k2 << std::endl; ///< Radial distortion coefficient, 2nd-order
-            std::cout << "k3=" << ir_params.k3 << std::endl; ///< Radial distortion coefficient, 3rd-order
+        //     std::cout << "k1=" << ir_params.k1 << std::endl; ///< Radial distortion coefficient, 1st-order
+        //     std::cout << "k2=" << ir_params.k2 << std::endl; ///< Radial distortion coefficient, 2nd-order
+        //     std::cout << "k3=" << ir_params.k3 << std::endl; ///< Radial distortion coefficient, 3rd-order
 
-            std::cout << "p1=" << ir_params.p1 << std::endl; ///< Tangential distortion coefficient
-            std::cout << "p2=" << ir_params.p2 << std::endl; ///< Tangential distortion coefficient
+        //     std::cout << "p1=" << ir_params.p1 << std::endl; ///< Tangential distortion coefficient
+        //     std::cout << "p2=" << ir_params.p2 << std::endl; ///< Tangential distortion coefficient
+
+        //     return 0;
+        // }
+        // if( options.exists( "--get-intrinsics-pinhole" )){ // todo: --get-intrinsics; --get-pinhole-config
+        //     libfreenect2::Freenect2Device::IrCameraParams ir_params = dev->getIrCameraParams();
+        //     // put these parameters in json block "metric"
+        //     snark::camera::pinhole::config_t config;
+        //     double px_pitch = 10 * 0.000001; //10 um 
+        //     config.image_size = Eigen::Vector2i( width_ir, height_ir );
+        //     config.sensor_size = Eigen::Vector2d( width_ir * px_pitch, height_ir * px_pitch );
+        //     config.focal_length = ir_params.fx * config.sensor_size->x() / config.image_size.x();
+        //     config.principal_point = Eigen::Vector2d( ir_params.cx, ir_params.cy);
+        //     config.distortion = snark::camera::pinhole::config_t::distortion_t( snark::camera::pinhole::config_t::distortion_t::radial_t( ir_params.k1, ir_params.k2, ir_params.k3 ), snark::camera::pinhole::config_t::distortion_t::tangential_t( ir_params.p1, ir_params.p2 ) );
+        //     comma::write_json( config, std::cout );
+
+        //     dev->stop();
+        //     dev->close();
+        //     return 0;
+        // }
+
+		// these extrinsics have not been verified or tested
+   //      if( options.exists( "--get-extrinsics-kinect" )){
+   //          libfreenect2::Freenect2Device::ColorCameraParams color_params = dev->getColorCameraParams();
+
            
+			// // These parameters are used in [a formula](https://github.com/OpenKinect/libfreenect2/issues/41#issuecomment-72022111) to map coordinates in the
+			// // depth camera to the color camera.
+			// // They cannot be used for matrix transformation.
+     
+   
 
-            // put these parameters in json block "metric"
-            snark::camera::pinhole::config_t config;
-            double px_pitch = 10 * 0.000001; //10 um 
-            config.image_size = Eigen::Vector2i( width_ir, height_ir );
-            config.sensor_size = Eigen::Vector2d( width_ir * px_pitch, height_ir * px_pitch );
-            config.focal_length = ir_params.fx * config.sensor_size->x() / config.image_size.x();
-            config.principal_point = Eigen::Vector2d( ir_params.cx, ir_params.cy);
-            config.distortion = snark::camera::pinhole::config_t::distortion_t( snark::camera::pinhole::config_t::distortion_t::radial_t( ir_params.k1, ir_params.k2, ir_params.k3 ), snark::camera::pinhole::config_t::distortion_t::tangential_t( ir_params.p1, ir_params.p2 ) );
-            comma::write_json( config, std::cout );
-
-            dev->stop();
-            dev->close();
-            return 0;
-        }
-
-        if( options.exists( "--get-extrinsics" )){
-            libfreenect2::Freenect2Device::ColorCameraParams color_params = dev->getColorCameraParams();
-
-            /** @name Extrinsic parameters
-     * These parameters are used in [a formula](https://github.com/OpenKinect/libfreenect2/issues/41#issuecomment-72022111) to map coordinates in the
-     * depth camera to the color camera.
-     *
-     * They cannot be used for matrix transformation.
-     */
-    ///@{
-
-            std::cout << "shift_d=" << color_params.shift_d << std::endl;
-            std::cout << "shift_m=" << color_params.shift_m << std::endl;
+   //          std::cout << "shift_d=" << color_params.shift_d << std::endl;
+   //          std::cout << "shift_m=" << color_params.shift_m << std::endl;
             
-            std::cout << "mx_x3y0=" << color_params.mx_x3y0 << std::endl;
-            std::cout << "mx_x0y3=" << color_params.mx_x0y3 << std::endl;
-            std::cout << "mx_x2y1=" << color_params.mx_x2y1 << std::endl;
-            std::cout << "mx_x1y2=" << color_params.mx_x1y2 << std::endl;
-            std::cout << "mx_x2y0=" << color_params.mx_x2y1 << std::endl;
-            std::cout << "mx_x0y2=" << color_params.mx_x1y2 << std::endl;
-            std::cout << "mx_x1y1=" << color_params.mx_x2y1 << std::endl;
-            std::cout << "mx_x1y0=" << color_params.mx_x1y2 << std::endl;
-            std::cout << "mx_x0y1=" << color_params.mx_x2y1 << std::endl;
-            std::cout << "mx_x0y0=" << color_params.mx_x1y2 << std::endl;
+   //          std::cout << "mx_x3y0=" << color_params.mx_x3y0 << std::endl;
+   //          std::cout << "mx_x0y3=" << color_params.mx_x0y3 << std::endl;
+   //          std::cout << "mx_x2y1=" << color_params.mx_x2y1 << std::endl;
+   //          std::cout << "mx_x1y2=" << color_params.mx_x1y2 << std::endl;
+   //          std::cout << "mx_x2y0=" << color_params.mx_x2y1 << std::endl;
+   //          std::cout << "mx_x0y2=" << color_params.mx_x1y2 << std::endl;
+   //          std::cout << "mx_x1y1=" << color_params.mx_x2y1 << std::endl;
+   //          std::cout << "mx_x1y0=" << color_params.mx_x1y2 << std::endl;
+   //          std::cout << "mx_x0y1=" << color_params.mx_x2y1 << std::endl;
+   //          std::cout << "mx_x0y0=" << color_params.mx_x1y2 << std::endl;
 
-            std::cout << "my_x3y0=" << color_params.mx_x3y0 << std::endl;
-            std::cout << "my_x0y3=" << color_params.mx_x0y3 << std::endl;
-            std::cout << "my_x2y1=" << color_params.mx_x2y1 << std::endl;
-            std::cout << "my_x1y2=" << color_params.mx_x1y2 << std::endl;
-            std::cout << "my_x2y0=" << color_params.mx_x2y1 << std::endl;
-            std::cout << "my_x0y2=" << color_params.mx_x1y2 << std::endl;
-            std::cout << "my_x1y1=" << color_params.mx_x2y1 << std::endl;
-            std::cout << "my_x1y0=" << color_params.mx_x1y2 << std::endl;
-            std::cout << "my_x0y1=" << color_params.mx_x2y1 << std::endl;
-            std::cout << "my_x0y0=" << color_params.mx_x1y2 << std::endl;
+   //          std::cout << "my_x3y0=" << color_params.mx_x3y0 << std::endl;
+   //          std::cout << "my_x0y3=" << color_params.mx_x0y3 << std::endl;
+   //          std::cout << "my_x2y1=" << color_params.mx_x2y1 << std::endl;
+   //          std::cout << "my_x1y2=" << color_params.mx_x1y2 << std::endl;
+   //          std::cout << "my_x2y0=" << color_params.mx_x2y1 << std::endl;
+   //          std::cout << "my_x0y2=" << color_params.mx_x1y2 << std::endl;
+   //          std::cout << "my_x1y1=" << color_params.mx_x2y1 << std::endl;
+   //          std::cout << "my_x1y0=" << color_params.mx_x1y2 << std::endl;
+   //          std::cout << "my_x0y1=" << color_params.mx_x2y1 << std::endl;
+   //          std::cout << "my_x0y0=" << color_params.mx_x1y2 << std::endl;
 
-            dev->stop();
-            dev->close();
-            return 0;
-        }
+   //          dev->stop();
+   //          dev->close();
+   //          return 0;
+   //      }
 
 
 
         snark::cv_mat::serialization serialization( fields, format, header_only );
 
-        libfreenect2::Registration* registration = new libfreenect2::Registration(dev->getIrCameraParams(), dev->getColorCameraParams());
-        libfreenect2::Frame depth_undistorted(512, 424, 4);
+        // libfreenect2::Registration* registration = new libfreenect2::Registration(dev->getIrCameraParams(), dev->getColorCameraParams());
+        // libfreenect2::Frame depth_undistorted(512, 424, 4);
+        // libfreenect2::Frame ir_undistorted(512, 424, 4);
 
         
     
-        int first_timestamp = true;
-        boost::posix_time::ptime libfreenect2_time_at_offset;
-        uint libfreenect2_offset = 0;
+        // int first_timestamp = true;
+        //boost::posix_time::ptime libfreenect2_time_at_offset;
+        //uint libfreenect2_offset = 0;
         /// [loop start]
-        while(!protonect_shutdown)
+        comma::signal_flag is_shutdown;
+        while( !is_shutdown )
         {
+        	//std::cerr << "--> 0: is_shutdown: " << ( is_shutdown ? "set" : "not set" ) << std::endl;
             if (!listener.waitForNewFrame(frames, 10*1000)) // 10 seconds
             {
-              std::cerr << "kinect-cat: timeout!" << std::endl;
-              return 1;
+              std::cerr << "kinect-cat: " << serial << ": timeout!" << std::endl;
+              return 0;
             }
 
             //libfreenect2::Frame *rgb = frames[libfreenect2::Frame::Color];
@@ -405,7 +500,8 @@ int main( int ac, char** av )
 
             boost::posix_time::ptime timestamp1 = boost::posix_time::microsec_clock::universal_time();
 
-            registration->undistortDepth( depth, &depth_undistorted );
+            // registration->undistortDepth( depth, &depth_undistorted );
+            // registration->undistortDepth( ir, &ir_undistorted );
 
             cv::Mat irMat = cv::Mat(
                     height_ir, width_ir,
@@ -414,45 +510,48 @@ int main( int ac, char** av )
                     height_ir, width_ir,
                     CV_32FC1, depth->data);
 
-            cv::Mat depthMat_undistorted = cv::Mat(
-                    height_ir, width_ir,
-                    CV_32FC1, depth_undistorted.data);
 
-            cv::Mat A = cv::Mat::ones(height_ir, width_ir, CV_32FC1) / 1000;
-            cv::Mat depthMat_si = depthMat.mul(A); //depth in m instead of mm
-            cv::Mat depthMat_undistorted_si = depthMat_undistorted.mul(A); //depth in m instead of mm
+            cv::Mat depthMat_uint16 = cv::Mat(height_ir, width_ir, CV_16UC1);
+            depthMat.convertTo(depthMat_uint16, CV_16UC1); //depthMat_uint16 contains depth per pixel in mm
+            cv::flip(depthMat_uint16, depthMat_uint16, 1); //flip horizontally
 
-            cv::Mat B = cv::Mat::ones(height_ir, width_ir, CV_32FC1) / 65535;
-            cv::Mat irMat_01 = irMat.mul(B); //intensity values between 0 and 1
+            
+            cv::Mat irMat_uint16 = cv::Mat(height_ir, width_ir, CV_16UC1);
+            irMat.convertTo(irMat_uint16, CV_16UC1); //irMat contains intensity in integers up to 65535, so irMat_uint16 does to 
+           	cv::flip(irMat_uint16, irMat_uint16, 1); //flip horizontally
 
-            cv::Mat frame(height_ir, width_ir, CV_32FC2); // 2 channel image
+            cv::Mat frame(height_ir, width_ir, CV_16UC2); // 2 channel image
             
             std::vector<cv::Mat> channels;
-            channels.push_back(irMat_01);
-            channels.push_back(depthMat_undistorted_si);
-            //channels.push_back(depthMat_si);
+           
+            channels.push_back(irMat_uint16);
+            channels.push_back(depthMat_uint16);
             cv::merge(channels, frame);
-
 
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
             
 
-            if(first_timestamp){ 
-                libfreenect2_time_at_offset = boost::posix_time::microsec_clock::universal_time();
-                libfreenect2_offset = ir->timestamp;
-                first_timestamp = false;
-            }
+            // if(first_timestamp){ 
+            //     libfreenect2_time_at_offset = boost::posix_time::microsec_clock::universal_time();
+            //     libfreenect2_offset = ir->timestamp;
+            //     first_timestamp = false;
+            // }
 
-            // is ir->timestamp equal to depth->timestamp?
-            boost::posix_time::ptime timestamp2 = libfreenect2_time_at_offset + boost::posix_time::microseconds( (ir->timestamp - libfreenect2_offset) * 100 ); // ir-> timestamp is uint32 counting 0.1 ms. Will rollover every 119.3 hours
+            // // is ir->timestamp equal to depth->timestamp?
+            // boost::posix_time::ptime timestamp2 = libfreenect2_time_at_offset + boost::posix_time::microseconds( (ir->timestamp - libfreenect2_offset) * 100 ); // ir-> timestamp is uint32 counting 0.1 ms. Will rollover every 119.3 hours
 
             // libfreenect2 frame timestamp info: https://github.com/OpenKinect/libfreenect2/issues/721
             // ideally, we want the timestamp for each of the 9 raw ir images, which are the input for a single depth image
             // pair.first = timestamp2; // I don't trust this timestamp as I get framerates >30 Hz
-            pair.first = timestamp1; // here I get very close to 30 Hz
+            
+            pair.first = timestamp1;
             pair.second = frame;
-            serialization.write_to_stdout(pair, true);
 
+            // todo: investigate
+            // the following is the right way of doing it (see note in imaging/cv_mat/serialization.cpp),
+            // but it blocks most of the time on signal in a very strange way:
+            //serialization.write_to_stdout(pair, true);
+            serialization.write( std::cout, pair, true );
 
 // content of libfreenect2::Frame
 //            size_t width;           ///< Length of a line (in pixels).
@@ -470,9 +569,7 @@ int main( int ac, char** av )
             listener.release(frames);
 
         }
-
         // these should be closed on SIGINT
-        /// [stop]
         dev->stop();
         dev->close();
         /// [stop]
@@ -484,7 +581,11 @@ int main( int ac, char** av )
         return 0;
 
     }
-    catch( std::exception& ex ) { std::cerr << "kinect-cat: kinect-cat: " << ex.what() << std::endl; }
-    catch( ... ) { std::cerr << "kinect-cat: kinect-cat: unknown exception" << std::endl; }
+    catch( std::exception& ex ) { std::cerr << "kinect-cat: " << serial << ": " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "kinect-cat: " << serial << ": kinect-cat: unknown exception" << std::endl; }
+
+    delete logger;
+    // todo? if dev is open, do you need to stop and close it before exiting?
+
     return 1;
 }

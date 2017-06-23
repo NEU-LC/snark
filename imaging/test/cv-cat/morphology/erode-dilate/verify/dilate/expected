@@ -1,0 +1,12 @@
+#python
+
+for i in range(size):
+    for j in range(size):
+        if ( i == limit/lower or i == limit/upper ) and j >= limit/lower and j <= limit/upper:
+            expect original/x[i]/y[j]/v == 0
+            expect result/x[i]/y[j]/v == 255
+        elif ( j == limit/lower or j == limit/upper ) and i >= limit/lower and i <= limit/upper:
+            expect original/x[i]/y[j]/v == 0
+            expect result/x[i]/y[j]/v == 255
+        else:
+            expect original/x[i]/y[j]/v == result/x[i]/y[j]/v
