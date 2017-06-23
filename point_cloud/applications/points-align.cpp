@@ -120,7 +120,7 @@ static const std::string default_fields = comma::join( comma::csv::names< point_
 static const std::string standard_output_fields = "x,y,z,roll,pitch,yaw,scale";
 static const std::string standard_output_format = "d,d,d,d,d,d,d";
 
-static void bash_completion( unsigned const ac, char const * const * av )
+static void bash_completion( unsigned int const ac, char const * const * av )
 {
     static const char* completion_options =
         " --help -h"
