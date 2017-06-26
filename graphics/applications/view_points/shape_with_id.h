@@ -243,14 +243,26 @@ struct Shapetraits< loop< Size > >
     }
 };
 
+struct orientation // quick and dirty
+{
+    double roll;
+    double pitch;
+    double yaw;
+    
+    orientation(): roll( 0 ), pitch( 0 ), yaw( 0 ) {}
+    orientation( double roll, double pitch, double yaw ): roll( roll ), pitch( pitch ), yaw( yaw ) {}
+    operator Eigen::Vector3d() const { return Eigen::Vector3d( roll, pitch, yaw ); }
+};
+
 template < std::size_t Size >
 struct Ellipse
 {
     Eigen::Vector3d center;
-    Eigen::Vector3d orientation;
-    Ellipse() : center( 0, 0, 0 ), orientation( 0, 0, 0 ) {}
+    snark::graphics::view::orientation orientation;
     double major;
     double minor;
+    
+    Ellipse() : center( 0, 0, 0 ), orientation( 0, 0, 0 ) {}
 };
 
 template < std::size_t Size >
@@ -575,6 +587,25 @@ template < typename S > struct traits< snark::graphics::view::ShapeWithId< S > >
         v.apply( "label", p.label );
         v.apply( "scalar", p.scalar );
         v.apply( "fill", p.fill );
+    }
+};
+
+template <> struct traits< snark::graphics::view::orientation >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, snark::graphics::view::orientation& p, Visitor& v )
+    {
+        v.apply( "roll", p.roll );
+        v.apply( "pitch", p.pitch );
+        v.apply( "yaw", p.yaw );
+    }
+    
+    template < typename Key, class Visitor >
+    static void visit( Key, const snark::graphics::view::orientation& p, Visitor& v )
+    {
+        v.apply( "roll", p.roll );
+        v.apply( "pitch", p.pitch );
+        v.apply( "yaw", p.yaw );
     }
 };
 
