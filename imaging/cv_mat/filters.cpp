@@ -72,6 +72,7 @@
 #include "../../timing/traits.h"
 #include "filters.h"
 #include "detail/ratio.h"
+#include "detail/bitwise.h"
 #include "serialization.h"
 #include "traits.h"
 #include "depth_traits.h"
@@ -2530,11 +2531,44 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
         if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
-        std::string filter_string = e[1];
-        const std::vector< std::string > w = comma::split( filter_string, '|' ); // quick and dirty, running out of delimiters
-        functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], ':' ), get_timestamp );
-        for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], ':' ), get_timestamp ), boost::bind( g, _1 ) ); }
-        return boost::bind< value_type_t >( mask_impl_< H >(), _1, g );
+        struct maker
+        {
+            maker( const get_timestamp_functor & get_timestamp, char separator = ';', char equal_sign = '=' ) : get_timestamp_( get_timestamp ), separator_( separator ), equal_sign_( equal_sign ) {}
+            functor_type operator()( const std::string & s ) const
+            {
+                const std::vector< std::string > & w = comma::split( s, separator_ );
+                functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], equal_sign_ ), get_timestamp_ );
+                for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], equal_sign_ ), get_timestamp_ ), boost::bind( g, _1 ) ); }
+                return g;
+            }
+            private:
+                const get_timestamp_functor & get_timestamp_;
+                char separator_, equal_sign_;
+        };
+        struct composer
+        {
+            composer( const maker & m ) : m_( m ) {}
+            const maker & m_;
+
+            typedef typename boost::static_visitor< boost::function< input_type ( input_type ) > >::result_type result_type;
+
+            result_type term( const std::string & s ) const { return m_( s ); };
+            result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second & r.second ); }; }
+            result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second | r.second ); }; }
+            result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second ^ r.second ); }; }
+            result_type op_not( const result_type & op ) const { return [ op ]( const input_type & i ) -> input_type { const input_type & o = op( i ); return std::make_pair( i.first, ~o.second ); }; }
+        };
+        const std::string & sanitized = snark::cv_mat::bitwise::tabify_bitwise_ops( e[1] );
+        auto start( std::begin( sanitized ) ), finish( std::end( sanitized ) );
+        snark::cv_mat::bitwise::parser< decltype( start ) > p;
+        snark::cv_mat::bitwise::expr result;
+        bool ok = boost::spirit::qi::phrase_parse( start, finish, p, boost::spirit::qi::space, result );
+        if ( !ok ) { COMMA_THROW( comma::exception, "parsing of mask expression '" << e[1] << "' failed" ); }
+        if ( start != finish ) { COMMA_THROW( comma::exception, "unparsed leftover string '" << std::string( start, finish ) << "'" ); }
+        maker m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
+        composer c( m );
+        functor_type f = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer >( c ), result );
+        return boost::bind< value_type_t >( mask_impl_< H >(), _1, f );
     }
     else if( e[0] == "timestamp" ) { return timestamp_impl_< H >( get_timestamp ); }
     else if( e[0] == "transpose" ) { return transpose_impl_< H >; }
@@ -3031,6 +3065,13 @@ static std::string usage_impl_()
     oss << "                             cat images.bin | cv-cat 'mask=load:mask.png' > masked.bin" << std::endl;
     oss << "                         extract pixels brighter than 100" << std::endl;
     oss << "                             cat images.bin | cv-cat 'mask=convert-color:BGR,GRAY|threshold=otsu,100' > masked.bin" << std::endl;
+    oss << "            bitwise operations on masks:" << std::endl;
+    oss << "                mask=<mask1> and <mask2>: apply bitwise 'and' of <mask1> and <mask2>" << std::endl;
+    oss << "                mask=<mask1> or <mask2>: apply bitwise 'or'" << std::endl;
+    oss << "                mask=<mask1> xor <mask2>: apply bitwise 'xor'" << std::endl;
+    oss << "                mask=not <mask1>: apply bitwise 'not' (complement, tilde in C++)" << std::endl;
+    oss << "                mask=[[ not <mask1> ] and <mask2>] or <mask3>: apply the given logical expression of 3 masks" << std::endl;
+    oss << "                    note: standard precedence rules apply; use (square) brackets to explicitly denote precedence" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
     oss << "                  fields: key,value; default: value" << std::endl;

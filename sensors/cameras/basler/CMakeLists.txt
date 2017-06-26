@@ -1,5 +1,5 @@
 SET( PROJECT "Basler" )
-SET( TARGET_NAME Ark${PROJECT} )
+SET( TARGET_NAME snark_${PROJECT} )
 
 if( WIN32 )
     message( FATAL "not implemented" )

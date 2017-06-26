@@ -147,6 +147,7 @@ public:
     }
     void update( const std::pair< snark::control::feedback_t, std::string >& feedback )
     {
+        feedback_buffer_ = feedback.second;
         if( reached_ ) { return; }
         if( previous_update_time_ && feedback.first.t < previous_update_time_ )
         {
@@ -154,7 +155,6 @@ public:
             return;
         }
         previous_update_time_ = feedback.first.t;
-        feedback_buffer_ = feedback.second;
         reached_ = ( ( feedback.first.position - target_->position ).norm() < proximity_ )
             || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
         if( reached_ ) { return; }
