@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2016 The University of Sydney
+// Copyright (c) 2017 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -28,33 +28,30 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include "realsense.h"
+#include "cepton.h"
 #include <comma/csv/traits.h>
-#include <boost/lexical_cast.hpp>
+#include "../../../visiting/eigen.h"
 
 namespace comma { namespace visiting {
    
 
-template <> struct traits< snark::realsense::stream_args >
+template <> struct traits< snark::cepton::point_t >
 {
-    template< typename K, typename V > static void visit( const K& k, snark::realsense::stream_args& p, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::cepton::point_t& p, V& v )
     {
-        v.apply( "width", p.width );
-        v.apply( "height", p.height );
-        std::string f;
-        v.apply( "format", f );
-        p.format=snark::realsense::format(f);
-        v.apply( "framerate", p.framerate );
+        v.apply( "t", p.t );
+        v.apply( "point", p.point );
+        v.apply( "intensity", p.intensity );
     }
-    template< typename K, typename V > static void visit( const K& k, const snark::realsense::stream_args& p, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::cepton::point_t& p, V& v )
     {
-        v.apply( "width", p.width );
-        v.apply( "height", p.height );
-        std::string f=boost::lexical_cast<std::string>(int(p.format.value));
-        v.apply( "format", f );
-        v.apply( "framerate", p.framerate );
+        v.apply( "t", p.t );
+        v.apply( "point", p.point );
+        v.apply( "intensity", p.intensity );
     }
 };
 
     
 } } // namespace comma { namespace visiting {
+    
+
