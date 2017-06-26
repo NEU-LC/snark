@@ -1,0 +1,12 @@
+#python
+
+for i in range(nx):
+    for j in range(ny):
+        if ( original/x[i]/y[j]/g > 4 ):
+            expect filtered/x[i]/y[j]/r == original/x[i]/y[j]/r
+            expect filtered/x[i]/y[j]/g == original/x[i]/y[j]/g
+            expect filtered/x[i]/y[j]/b == original/x[i]/y[j]/b
+        else:
+            expect filtered/x[i]/y[j]/r == 0
+            expect filtered/x[i]/y[j]/g == 0
+            expect filtered/x[i]/y[j]/b == 0

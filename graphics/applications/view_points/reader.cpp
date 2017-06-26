@@ -31,12 +31,8 @@
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
 #include "reader.h"
-#if Qt3D_VERSION==1
-#include "qt3d_v1/texture.h"
-#else
 #include <Eigen/Geometry>
 #include "../../../math/rotation_matrix.h"
-#endif
 
 namespace snark { namespace graphics { namespace view {
 
@@ -46,21 +42,11 @@ const color_t stock::green(0,255,0);
 const color_t stock::blue(0,0,255);
 #endif
 
-#if Qt3D_VERSION==1
-Reader::Reader( QGLView& viewer
-              , const reader_parameters& params
+Reader::Reader( const reader_parameters& params
               , colored* c
               , const std::string& label
               , const Eigen::Vector3d& offset )
-#else
-Reader::Reader( const reader_parameters& params
-              , colored* c
-              , const Eigen::Vector3d& offset )
-#endif
     : reader_parameters( params )
-    #if Qt3D_VERSION==1
-    , m_viewer( viewer )
-    #endif
     , m_num_points( 0 )
     , m_colored( c )
     , m_shutdown( false )
@@ -70,9 +56,7 @@ Reader::Reader( const reader_parameters& params
     , m_pass_through( params.pass_through ? &std::cout : 0 )
     , updated_( false )
     , id_( 0 )
-    #if Qt3D_VERSION==1
     , m_label( label )
-    #endif
     , m_offset( offset )
 {}
 
@@ -113,44 +97,5 @@ bool Reader::updatePoint( const Eigen::Vector3d& offset )
     updated_ = false;
     return true;
 }
-
-#if Qt3D_VERSION==1
-void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position, const std::string& label ) { draw_label( painter, position, m_color, label ); }
-
-void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position, const QColor4ub& color ) { draw_label( painter, position, color, m_label ); }
-
-void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position ) { draw_label( painter, position, m_color, m_label ); }
-
-void Reader::draw_label( QGLPainter *painter, const Eigen::Vector3d& position, const QColor4ub& color, const std::string& label )
-{
-    if( label.empty() ) { return; }
-    painter->modelViewMatrix().push();
-    Eigen::Vector3d d = position - m_offset;
-    painter->modelViewMatrix().translate( QVector3D( d.x(), d.y(), d.z() ) ); // painter->modelViewMatrix().translate( position );
-    QMatrix4x4 world = painter->modelViewMatrix().top();
-    Eigen::Matrix3d R;
-    R << world( 0, 0 ) , world( 0, 1 ), world( 0, 2 ),
-         world( 1, 0 ) , world( 1, 1 ), world( 1, 2 ),
-         world( 2, 0 ) , world( 2, 1 ), world( 2, 2 );
-    R.transposeInPlace();
-    snark::rotation_matrix rotation( R );
-    Eigen::Quaterniond q = rotation.quaternion();
-    painter->modelViewMatrix().rotate( QQuaternion( q.w(), q.x(), q.y(), q.z() ) );
-    //painter->modelViewMatrix().translate( m_offset );
-    double scale = 1.0 / double( m_viewer.height() );
-    scale *= m_viewer.camera()->projectionType() == QGLCamera::Orthographic
-           ? ( 0.25 * m_viewer.camera()->viewSize().width() )
-           : ( 0.2 * Eigen::Vector3d( world( 0, 3 ) , world( 1, 3 ), world( 2, 3 ) ).norm() );
-    painter->modelViewMatrix().scale( scale ); // TODO make size configurable ?
-    drawText( painter, QString::fromUtf8( &label[0] ), color );
-    painter->modelViewMatrix().pop();
-}
-
-void Reader::drawText( QGLPainter *painter, const QString& string, const QColor4ub& color )
-{
-    Texture texture( string, color );
-    texture.draw( painter );
-}
-#endif
 
 } } } // namespace snark { namespace graphics { namespace view {

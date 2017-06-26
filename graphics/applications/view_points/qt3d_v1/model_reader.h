@@ -45,8 +45,7 @@ namespace snark { namespace graphics { namespace view {
 class ModelReader : public Reader
 {
     public:
-        ModelReader( QGLView& viewer
-                   , const reader_parameters& params
+        ModelReader( const reader_parameters& params
                    , const std::string& file
                    , bool flip
                    , double scale
@@ -57,7 +56,7 @@ class ModelReader : public Reader
         std::size_t update( const Eigen::Vector3d& offset );
         const Eigen::Vector3d& somePoint() const;
         bool read_once();
-        void render( QGLPainter *painter );
+        void render( Viewer& viewer, QGLPainter *painter );
         bool empty() const;
 
     protected:

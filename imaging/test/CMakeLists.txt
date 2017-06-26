@@ -1,6 +1,8 @@
 SET(KIT imaging)
 
-FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/${KIT}/test/cv-cat/ratio/parser/*_test.cpp )
+FILE( GLOB source ${SOURCE_CODE_BASE_DIR}/${KIT}/test/cv-cat/ratio/parser/*_test.cpp
+                  ${SOURCE_CODE_BASE_DIR}/${KIT}/test/filters/bitwise/*_test.cpp
+                  ${SOURCE_CODE_BASE_DIR}/${KIT}/test/color-calc/code/*_test.cpp )
 
 ADD_EXECUTABLE( ${CMAKE_PROJECT_NAME}_test_${KIT} ${source} )
 

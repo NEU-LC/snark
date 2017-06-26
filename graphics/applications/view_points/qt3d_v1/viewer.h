@@ -46,6 +46,7 @@
 #include "../camera_reader.h"
 #include "../reader.h"
 #endif
+#include <memory>
 
 namespace snark { namespace graphics { namespace view {
 
@@ -53,7 +54,7 @@ class Viewer : public qt3d::view
 {
     Q_OBJECT
     public:
-        std::vector< boost::shared_ptr< Reader > > readers;
+        std::vector< std::unique_ptr< Reader > > readers;
 
         /// @todo split into several constructors; make camera configuration a separate class
         Viewer( const QColor4ub& background_color
@@ -70,6 +71,12 @@ class Viewer : public qt3d::view
         void inhibit_stdout() { m_stdout_allowed = false; }
 
         void shutdown();
+
+        //moved here from reader
+public:
+        void draw_label( QGLPainter* painter, const Eigen::Vector3d& position, const QColor4ub& color, const std::string& label );
+private:
+        void drawText( QGLPainter *painter, const QString& string, const QColor4ub& color );
 
     private slots:
         void read();

@@ -36,34 +36,24 @@
 #include <boost/static_assert.hpp>
 #include <comma/base/types.h>
 #include <comma/visiting/traits.h>
-#include "../../../math/interval.h"
 #include "../../../math/rotation_matrix.h"
 #include "../../../graphics/block_buffer.h"
 #if Qt3D_VERSION==1
 #include <Qt3D/qglnamespace.h>
 #include <Qt3D/qglpainter.h>
 #else
-#include <Eigen/Core>
 #include "../../../graphics/qt3d/qt3d_v2/gl/shapes.h"
 #endif
 #include <memory>
 #include "types.h"
+#include "../../../math/roll_pitch_yaw.h"
+#include "../../../visiting/traits.h"
+#include "traits.h"
+#include "shape_reader_base.h"
 
 namespace snark { namespace graphics { namespace view {
 
-#if Qt3D_VERSION==1
-struct vertex_t
-{
-    QVector3D position;
-    QColor4ub color;
-    vertex_t() {}
-    vertex_t( const QVector3D& position, const QColor4ub& color )
-        : position( position ), color( color ) {}
-    vertex_t(const Eigen::Vector3f& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
-    vertex_t(const Eigen::Vector3d& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
-};
-#else
-typedef qt3d::gl::vertex_t vertex_t;
+#if Qt3D_VERSION==2
 typedef std::shared_ptr<snark::graphics::qt3d::gl::shape> gl_shape_ptr_t;
 struct gl_parameters
 {
@@ -114,49 +104,42 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
     }
 #endif
 
-    #if Qt3D_VERSION==1
-    static void update( const snark::math::closed_interval< double, 3 >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
-    #else
-    static void update( const snark::math::closed_interval< double, 3 >& e, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
-                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
-    #endif
+    static void update(shape_reader_base& reader, const ShapeWithId<snark::math::closed_interval< double, 3 >>& s,const Eigen::Vector3d& offset)
     {
-        Eigen::Vector3f min = ( e.min() - offset ).cast< float >();
-        Eigen::Vector3f max = ( e.max() - offset ).cast< float >();
+        Eigen::Vector3f min = ( s.shape.min() - offset ).cast< float >();
+        Eigen::Vector3f max = ( s.shape.max() - offset ).cast< float >();
 
         #if Qt3D_VERSION==1
-        buffer.add( vertex_t( QVector3D( min.x(), min.y(), min.z() ), color ), block );
-        buffer.add( vertex_t( QVector3D( min.x(), min.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( QVector3D( min.x(), max.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( QVector3D( min.x(), max.y(), min.z() ), color ), block );
-        buffer.add( vertex_t( QVector3D( max.x(), min.y(), min.z() ), color ), block );
-        buffer.add( vertex_t( QVector3D( max.x(), min.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( QVector3D( max.x(), max.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( QVector3D( max.x(), max.y(), min.z() ), color ), block );
+        reader.add_vertex( vertex_t( QVector3D( min.x(), min.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( QVector3D( min.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( QVector3D( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( QVector3D( min.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( QVector3D( max.x(), min.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( QVector3D( max.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( QVector3D( max.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( QVector3D( max.x(), max.y(), min.z() ), s.color ), s.block );
         #else
-        buffer.add( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), color ), block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
         
-        buffer.add( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), color ), block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
         
-        buffer.add( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), color ), block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
         #endif
 
-        extents = extents
-                ? extents->hull( snark::math::closed_interval< float, 3 >( min, max ) )
-                : snark::math::closed_interval< float, 3 >( min, max );
+        reader.extent_hull(snark::math::closed_interval< float, 3 >( min, max ));
     }
 
     #if Qt3D_VERSION==1
@@ -194,30 +177,18 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
     }
 #endif
 
-    #if Qt3D_VERSION==1
-    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
-    #else
-    static void update( const std::pair< Eigen::Vector3d, Eigen::Vector3d >& p, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
-                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
-    #endif
+    static void update(shape_reader_base& reader, const ShapeWithId<std::pair< Eigen::Vector3d, Eigen::Vector3d >>& s,const Eigen::Vector3d& offset)
     {
-        Eigen::Vector3f first = ( p.first - offset ).cast< float >();
-        Eigen::Vector3f second = ( p.second - offset ).cast< float >();
+        Eigen::Vector3f first = ( s.shape.first - offset ).cast< float >();
+        Eigen::Vector3f second = ( s.shape.second - offset ).cast< float >();
         //if(    comma::math::equal( first.x(), second.x() )
         //    && comma::math::equal( first.y(), second.y() )
         //    && comma::math::equal( first.z(), second.z() ) ) { return; } // todo: draw a point instead?
-        #if Qt3D_VERSION==1
-        buffer.add( vertex_t( QVector3D( first.x(), first.y(), first.z() ), color ), block );
-        buffer.add( vertex_t( QVector3D( second.x(), second.y(), second.z() ), color ), block );
-        #else
-        buffer.add( vertex_t( Eigen::Vector3f( first.x(), first.y(), first.z() ), color ), block );
-        buffer.add( vertex_t( Eigen::Vector3f( second.x(), second.y(), second.z() ), color ), block );
-        #endif
+        reader.add_vertex( vertex_t( first, s.color ), s.block );
+        reader.add_vertex( vertex_t( second, s.color ), s.block );
 
-        extents = extents
-                ? extents->hull( snark::math::closed_interval< float, 3 >( first ) )
-                : snark::math::closed_interval< float, 3 >( first );
-        extents = extents->hull( snark::math::closed_interval< float, 3 >( second ) );
+        reader.extent_hull(first);
+        reader.extent_hull(second);
     }
 
     #if Qt3D_VERSION==1
@@ -245,24 +216,13 @@ struct Shapetraits< loop< Size > >
     }
 #endif
 
-    #if Qt3D_VERSION==1
-    static void update( const loop< Size >& e, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
-    #else
-    static void update( const loop< Size >& e, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
-                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
-    #endif
+    static void update(shape_reader_base& reader, const ShapeWithId<loop< Size >>& s,const Eigen::Vector3d& offset)
     {
         for( unsigned int i = 0; i < Size; ++i )
         {
-            Eigen::Vector3f v = ( e.corners[i] - offset ).template cast< float >();
-            
-            #if Qt3D_VERSION==1
-            buffer.add( vertex_t( QVector3D( v.x(), v.y(), v.z() ), color ), block );
-            #else
-            buffer.add( vertex_t( v, color ), block );
-            #endif
-
-            extents = extents ? extents->hull( snark::math::closed_interval< float, 3 >( v ) ) : snark::math::closed_interval< float, 3 >( v );
+            Eigen::Vector3f v = ( s.shape.corners[i] - offset ).template cast< float >();
+            reader.add_vertex( vertex_t( v, s.color ), s.block );
+            reader.extent_hull(v);
         }
     }
 
@@ -283,14 +243,26 @@ struct Shapetraits< loop< Size > >
     }
 };
 
+struct orientation // quick and dirty
+{
+    double roll;
+    double pitch;
+    double yaw;
+    
+    orientation(): roll( 0 ), pitch( 0 ), yaw( 0 ) {}
+    orientation( double roll, double pitch, double yaw ): roll( roll ), pitch( pitch ), yaw( yaw ) {}
+    operator Eigen::Vector3d() const { return Eigen::Vector3d( roll, pitch, yaw ); }
+};
+
 template < std::size_t Size >
 struct Ellipse
 {
     Eigen::Vector3d center;
-    Eigen::Vector3d orientation;
-    Ellipse() : center( 0, 0, 0 ), orientation( 0, 0, 0 ) {}
+    snark::graphics::view::orientation orientation;
     double major;
     double minor;
+    
+    Ellipse() : center( 0, 0, 0 ), orientation( 0, 0, 0 ) {}
 };
 
 template < std::size_t Size >
@@ -305,29 +277,20 @@ struct Shapetraits< Ellipse< Size > >
     }
 #endif
 
-    #if Qt3D_VERSION==1
-    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
-    #else
-    static void update( const Ellipse< Size >& ellipse, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
-                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
-    #endif
+    static void update(shape_reader_base& reader, const ShapeWithId<Ellipse< Size >>& s,const Eigen::Vector3d& offset)
     {
-        Eigen::Vector3d c = ellipse.center - offset;
-        const Eigen::Matrix3d& r = rotation_matrix::rotation( ellipse.orientation );
+        Eigen::Vector3d c = s.shape.center - offset;
+        const Eigen::Matrix3d& r = rotation_matrix::rotation( s.shape.orientation );
         static const double step = 3.14159265358979323846l * 2 / Size;
         double angle = 0;
         // todo: use native opengl rotation and normals instead
         for( std::size_t i = 0; i < Size; ++i, angle += step )
         {
-            Eigen::Vector3d v = r * Eigen::Vector3d( std::cos( angle ) * ellipse.major, std::sin( angle ) * ellipse.minor, 0 );
+            Eigen::Vector3d v = r * Eigen::Vector3d( std::cos( angle ) * s.shape.major, std::sin( angle ) * s.shape.minor, 0 );
             Eigen::Vector3d p( v.x(), v.y(), v.z() );
             Eigen::Vector3f point = ( p + c ).cast< float >();
-            #if Qt3D_VERSION==1
-            buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
-            #else
-            buffer.add( vertex_t( point, color ), block );
-            #endif
-            extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
+            reader.add_vertex( vertex_t( point, s.color ), s.block );
+            reader.extent_hull(point);
         }
     }
 
@@ -370,13 +333,9 @@ struct Shapetraits< arc< Size > >
     }
 #endif
 
-    #if Qt3D_VERSION==1
-    static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
-    #else
-    static void update( const arc< Size >& a, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
-                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
-    #endif
+    static void update(shape_reader_base& reader, const ShapeWithId<arc< Size >>& s,const Eigen::Vector3d& offset)
     {
+        const arc< Size >& a=s.shape;
         if( ( a.begin - a.end ).squaredNorm() < ( 0.001 * 0.001 ) ) // real quick and dirty: if begin and end coincide
         {
             Eigen::Vector3d v = a.begin;
@@ -384,12 +343,8 @@ struct Shapetraits< arc< Size > >
             for( std::size_t i = 0; i < Size; ++i, v += step ) // just to make the gl buffer sizes right
             {
                 Eigen::Vector3f point = ( v - offset ).cast< float >();
-                #if Qt3D_VERSION==1
-                buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
-                #else
-                buffer.add( vertex_t( point, color ), block );
-                #endif
-                extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
+                reader.add_vertex( vertex_t( point, s.color ), s.block );
+                reader.extent_hull(point);
             }
             return;
         }
@@ -425,12 +380,8 @@ struct Shapetraits< arc< Size > >
         for( std::size_t i = 0; i < Size; ++i, v = r * v ) // todo: use native opengl rotation and normals instead
         {
             Eigen::Vector3f point = ( v + c ).cast< float >();
-            #if Qt3D_VERSION==1
-            buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
-            #else
-            buffer.add( vertex_t( point, color ), block );
-            #endif
-            extents = extents ? extents->hull( point ) : snark::math::closed_interval< float, 3 >( point );
+            reader.add_vertex( vertex_t( point, s.color ), s.block );
+            reader.extent_hull(point);
         }
     }
 
@@ -530,22 +481,11 @@ struct Shapetraits< Eigen::Vector3d, How >
     }
 #endif
 
-    #if Qt3D_VERSION==1
-    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const QColor4ub& color, unsigned int block, block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents  )
-    #else
-    static void update( const Eigen::Vector3d& p, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
-                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
-    #endif
+    static void update(shape_reader_base& reader, const ShapeWithId<Eigen::Vector3d>& s,const Eigen::Vector3d& offset)
     {
-        Eigen::Vector3d point = p - offset;
-        #if Qt3D_VERSION==1
-        buffer.add( vertex_t( QVector3D( point.x(), point.y(), point.z() ), color ), block );
-        #else
-        buffer.add( vertex_t( Eigen::Vector3f( point.x(), point.y(), point.z() ), color), block );
-        #endif
-        extents = extents
-                ? extents->hull( point.cast< float >() )
-                : snark::math::closed_interval< float, 3 >( point.cast< float >() );
+        Eigen::Vector3d point = s.shape - offset;
+        reader.add_vertex( vertex_t( point, s.color), s.block );
+        reader.extent_hull(point.cast<float>());
     }
 
     #if Qt3D_VERSION==1
@@ -561,8 +501,9 @@ struct Shapetraits< Eigen::Vector3d, How >
 struct axis
 {
     Eigen::Vector3d position;
-    Eigen::Vector3d orientation;
+    snark::roll_pitch_yaw orientation;
     double length;
+    std::string axis_label;
     axis() : position( 0, 0, 0 ), orientation( 0, 0, 0 ), length(1) {}
 };
 
@@ -578,27 +519,31 @@ struct Shapetraits< axis >
     }
 #endif
 
-    static void update( const axis& axis, const Eigen::Vector3d& offset, const color_t& color, unsigned int block, 
-                        block_buffer< vertex_t >& buffer, boost::optional< snark::math::closed_interval< float, 3 > >& extents)
+    static void update(shape_reader_base& reader, const ShapeWithId<axis>& s,const Eigen::Vector3d& offset)
     {
-        Eigen::Vector3d pos=axis.position - offset;
-        Eigen::Matrix3d ori=rotation_matrix::rotation( axis.orientation );
-        Eigen::Vector3d una(axis.length,0,0);
+        std::vector<std::string> v=comma::split(s.shape.axis_label,':');
+        Eigen::Vector3d pos=s.shape.position - offset;
+        Eigen::Matrix3d ori=rotation_matrix::rotation( s.shape.orientation );
+        Eigen::Vector3d una(s.shape.length,0,0);
         Eigen::Vector3d p=pos + ori*una;
-        buffer.add( vertex_t(pos,COLOR_RED),block);
-        buffer.add( vertex_t(p,COLOR_RED),block);
-//         ori=rotation_matrix::rotation( Eigen::Vector3d(axis.orientation.x(), axis.orientation.y()+M_PI/2, axis.orientation.z()));
+        reader.add_vertex( vertex_t(pos,COLOR_RED),s.block);
+        reader.add_vertex( vertex_t(p,COLOR_RED),s.block);
+        if(v.size()>0) { reader.add_label(label_t(p,COLOR_RED,v[0]),s.block); }
+
         Eigen::Matrix3d y_r=rotation_matrix::rotation(Eigen::Vector3d(0,0,M_PI/2));
         p=pos+ori*y_r*una;
-        buffer.add( vertex_t(pos,COLOR_GREEN),block);
-        buffer.add( vertex_t(p,COLOR_GREEN),block);
-//         ori=rotation_matrix::rotation( Eigen::Vector3d(axis.orientation.x(), axis.orientation.y(), axis.orientation.z()+M_PI/2));
-        Eigen::Matrix3d z_r=rotation_matrix::rotation(Eigen::Vector3d(0,M_PI/2,0));
-        p=pos+ori*z_r*una;
-        buffer.add( vertex_t(pos,COLOR_BLUE),block);
-        buffer.add( vertex_t(p,COLOR_BLUE),block);
+        reader.add_vertex( vertex_t(pos,COLOR_GREEN),s.block);
+        reader.add_vertex( vertex_t(p,COLOR_GREEN),s.block);
+        if(v.size()>1) { reader.add_label(label_t(p,COLOR_GREEN,v[1]),s.block); }
 
-        extents = extents ? extents->hull( pos.cast<float>() ) : snark::math::closed_interval< float, 3 >( pos.cast<float>() );
+        Eigen::Matrix3d z_r=rotation_matrix::rotation(Eigen::Vector3d(0,-M_PI/2,0));
+        p=pos+ori*z_r*una;
+        reader.add_vertex( vertex_t(pos,COLOR_BLUE),s.block);
+        reader.add_vertex( vertex_t(p,COLOR_BLUE),s.block);
+        if(v.size()>2) { reader.add_label(label_t(p,COLOR_BLUE,v[2]),s.block); }
+
+        reader.extent_hull(pos.cast<float>());
+        reader.extent_hull( p.cast<float>() );
     }
 
     #if Qt3D_VERSION==1
@@ -617,34 +562,6 @@ struct Shapetraits< axis >
 } } } // namespace snark { namespace graphics { namespace view {
 
 namespace comma { namespace visiting {
-
-#if Qt3D_VERSION==1
-template <> struct traits< QColor4ub >
-{
-    template < typename Key, class Visitor >
-    static void visit( Key, QColor4ub& p, Visitor& v )
-    {
-        unsigned char red = 0;
-        unsigned char green = 0;
-        unsigned char blue = 0;
-        unsigned char alpha = 255;
-        v.apply( "r", red );
-        v.apply( "g", green );
-        v.apply( "b", blue );
-        v.apply( "a", alpha );
-        p = QColor4ub( red, green, blue, alpha );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( Key, const QColor4ub& p, Visitor& v )
-    {
-        v.apply( "r", p.red() );
-        v.apply( "g", p.green() );
-        v.apply( "b", p.blue() );
-        v.apply( "a", p.alpha() );
-    }
-};
-#endif
 
 template < typename S > struct traits< snark::graphics::view::ShapeWithId< S > >
 {
@@ -670,6 +587,25 @@ template < typename S > struct traits< snark::graphics::view::ShapeWithId< S > >
         v.apply( "label", p.label );
         v.apply( "scalar", p.scalar );
         v.apply( "fill", p.fill );
+    }
+};
+
+template <> struct traits< snark::graphics::view::orientation >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, snark::graphics::view::orientation& p, Visitor& v )
+    {
+        v.apply( "roll", p.roll );
+        v.apply( "pitch", p.pitch );
+        v.apply( "yaw", p.yaw );
+    }
+    
+    template < typename Key, class Visitor >
+    static void visit( Key, const snark::graphics::view::orientation& p, Visitor& v )
+    {
+        v.apply( "roll", p.roll );
+        v.apply( "pitch", p.pitch );
+        v.apply( "yaw", p.yaw );
     }
 };
 
@@ -759,6 +695,7 @@ struct traits< snark::graphics::view::axis >
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
         v.apply( "length", p.length );
+        v.apply( "axis_labels", p.axis_label );
     }
 
     template < typename Key, class Visitor >
@@ -767,6 +704,7 @@ struct traits< snark::graphics::view::axis >
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
         v.apply( "length", p.length );
+        v.apply( "axis_labels", p.axis_label );
     }
 };
 

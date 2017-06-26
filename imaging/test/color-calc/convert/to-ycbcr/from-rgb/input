@@ -1,25 +1,25 @@
-ascii/command[0]="echo 0,0,0 | image-color-calc convert --from rgb --to ycbcr --format=3ub"
-ascii/command[1]="echo 255,255,255 | image-color-calc convert --from rgb --to ycbcr --format=3ub"
+ascii/command[0]="echo 0,0,0 | image-color-calc convert --from rgb --to ycbcr"
+ascii/command[1]="echo 255,255,255 | image-color-calc convert --from rgb --to ycbcr,ub"
 
-ascii/command[2]="echo 0,0,0 | image-color-calc convert --from rgb --to ycbcr --format=3f"
-ascii/command[3]="echo 1,1,1 | image-color-calc convert --from rgb --to ycbcr --format=3f"
+ascii/command[2]="echo 0,0,0 | image-color-calc convert --from rgb,f --to ycbcr,ub"
+ascii/command[3]="echo 1,1,1 | image-color-calc convert --from rgb,f --to ycbcr,ub"
 
-ascii/command[4]="echo 0,0,0 | image-color-calc convert --from rgb --to ycbcr --format=3d"
-ascii/command[5]="echo 1,1,1 | image-color-calc convert --from rgb --to ycbcr --format=3d"
+ascii/command[4]="echo 0,0,0 | image-color-calc convert --from rgb,d --to ycbcr,ub"
+ascii/command[5]="echo 1,1,1 | image-color-calc convert --from rgb,d --to ycbcr,ub"
 
-ascii/command[6]="echo 0,0,0 | image-color-calc convert --fields r,g,b --to ycbcr --format=3d"
-ascii/command[7]="echo name,1,1,20170102T030405,1 | image-color-calc convert --fields name,r,g,t,b --to ycbcr --format=s[10],2d,t,d"
+ascii/command[6]="echo 0,0,0 | image-color-calc convert --fields r,g,b --to ycbcr,ub --input-type=d"
+ascii/command[7]="echo name,1,1,20170102T030405,1 | image-color-calc convert --fields name,r,g,t,b --to ycbcr,ub --input-type=f"
 
-ascii/command[8]="echo 78,134,31 | image-color-calc convert --fields r,g,b --to ycbcr --format=3ub"
+ascii/command[8]="echo 79,134,31 | image-color-calc convert --fields r,g,b --to ycbcr,ub --input-type=ub"
 
-failure/command[0]="echo 1,1,1 | image-color-calc convert --from rgb --to ycbcr"
+failure/command[0]="echo 1,1,1 | image-color-calc convert --from rgb,a --to ycbcr"
 failure/command[1]="echo 0.1,0.1,0.1 | image-color-calc convert --from rgb --to ycbcr --format=3ub"
 
-binary/command[0]="echo 0,0,0 | csv-to-bin 3ub | image-color-calc convert --from rgb --to ycbcr --binary=3ub | csv-from-bin 3ub,3ub"
-binary/command[1]="echo 255,255,255 | csv-to-bin 3ub | image-color-calc convert --from rgb --to ycbcr --binary=3ub | csv-from-bin 3ub,3ub"
+binary/command[0]="echo 0,0,0 | csv-to-bin 3ub | image-color-calc convert --from rgb --to ycbcr,ub --binary=3ub | csv-from-bin 3ub,3ub"
+binary/command[1]="echo 255,255,255 | csv-to-bin 3ub | image-color-calc convert --from rgb --to ycbcr,ub --binary=3ub | csv-from-bin 3ub,3ub"
 
-binary/command[2]="echo 0,0,0 | csv-to-bin 3f | image-color-calc convert --from rgb --to ycbcr --binary=3f | csv-from-bin 3f,3ub"
-binary/command[3]="echo 1,1,1 | csv-to-bin 3f | image-color-calc convert --from rgb --to ycbcr --binary=3f | csv-from-bin 3f,3ub"
+binary/command[2]="echo 0,0,0 | csv-to-bin 3f | image-color-calc convert --from rgb,f --to ycbcr,ub --binary=3f | csv-from-bin 3f,3ub"
+binary/command[3]="echo 1,1,1 | csv-to-bin 3f | image-color-calc convert --from rgb,f --to ycbcr,ub --binary=3f | csv-from-bin 3f,3ub"
 
-binary/command[4]="echo 0,0,0 | csv-to-bin 3d | image-color-calc convert --from rgb --to ycbcr --binary=3d | csv-from-bin 3d,3ub"
-binary/command[5]="echo 1,1,1 | csv-to-bin 3d | image-color-calc convert --from rgb --to ycbcr --binary=3d | csv-from-bin 3d,3ub"
+binary/command[4]="echo 0,0,0 | csv-to-bin 3d | image-color-calc convert --from rgb,f --to ycbcr,ub --binary=3d | csv-from-bin 3d,3ub"
+binary/command[5]="echo 1,1,1 | csv-to-bin 3d | image-color-calc convert --from rgb,f --to ycbcr,ub --binary=3d | csv-from-bin 3d,3ub"

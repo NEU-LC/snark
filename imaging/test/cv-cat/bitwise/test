@@ -1,0 +1,63 @@
+#!/bin/bash
+
+scriptname=$( basename "$0" )
+
+source $( which comma-application-util ) || { echo "$scriptname: cannot source 'comma-application-util'" >&2; exit 1; }
+comma_path_value_to_var --prefix=input
+
+function generate()
+{
+    local nx=$1
+    local ny=$2
+    local i=0
+    while (( i < ny )) ; do
+        local j=0
+        while (( j < nx )) ; do
+            echo "$i,$j,$(( i + j ))"
+            (( ++j ))
+        done
+        (( ++i ))
+    done
+}
+
+function bin_to_path_value()
+{
+    local prefix=$1
+    cat "$output_dir/$prefix.bin" \
+        | image-to-csv \
+        | tee "$output_dir/$prefix.csv" \
+        | csv-shuffle --fields=t,x,y,r,g,b --output-fields=x,y,r,g,b \
+        | name-value-from-csv x,y,r,g,b --indices=x,y \
+        | csv-quote --delimiter='=' --unquote \
+        | sed "s@^@$prefix/@"
+    comma_status_ok || { echo "$scriptname: error converting '$infile' into path-values" >&2; return 1; }
+}
+
+function apply_mask()
+{
+    local filter=$1
+    local prefix=$2
+    cat "$output_dir/original.bin" \
+        | cv-cat "mask=$filter" > "$output_dir/$prefix.bin" || { echo "$scriptname: error in cv-cat filter '$filter'" >&2; return 1; }
+    bin_to_path_value "$prefix" || return 1
+    return 0
+}
+
+output_dir="output"
+mkdir -p "$output_dir" || { echo "$scriptname: cannot create directory '$output_dir'" >&2; exit 1; }
+
+timestamp="20170303T000000"
+nx=10
+ny=8
+echo "nx=$nx"
+echo "ny=$ny"
+
+size=$(( nx * ny * $( csv-size 3ub ) ))
+generate $nx $ny \
+    | csv-to-bin 3ub \
+    | csv-paste value="$timestamp,$ny,$nx,16;binary=t,3ui" "-;binary=s[$size]" > "$output_dir/original.bin"
+comma_status_ok || { echo "$scriptname: cannot generate '$output_dir/original.bin'" >&2; exit 1; }
+
+bin_to_path_value "original" || return 1
+
+apply_mask "$input_filter" "filtered" || exit 1

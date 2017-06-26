@@ -29,7 +29,10 @@
 
 #pragma once
 
+#include <Eigen/Core>
+
 #if Qt3D_VERSION==1
+#include <QVector3D>
 #include <Qt3D/qcolor4ub.h>
 
 #else
@@ -75,7 +78,30 @@ public:
     virtual void tick()=0;
 };
 
+/// text label with 3d position
+struct label_t
+{
+    Eigen::Vector3d position;
+    color_t color;
+    std::string text;
+    label_t() { }
+    label_t( const Eigen::Vector3d& position, const color_t& color, const std::string& text ) : position( position ), color( color ), text( text ) { }
+};
 
+#if Qt3D_VERSION==1
+struct vertex_t
+{
+    QVector3D position;
+    QColor4ub color;
+    vertex_t() {}
+    vertex_t( const QVector3D& position, const QColor4ub& color )
+        : position( position ), color( color ) {}
+    vertex_t(const Eigen::Vector3f& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
+    vertex_t(const Eigen::Vector3d& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
+};
+#elif Qt3D_VERSION==2
+typedef qt3d::gl::vertex_t vertex_t;
+#endif
 
     
 } } } // namespace snark { namespace graphics { namespace view {

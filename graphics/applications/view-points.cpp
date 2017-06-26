@@ -155,9 +155,7 @@ static void usage()
         qt55_unsupported_marker_end
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
         "\n    --fill: fill the shape; currently implemented only for triangles"
-        qt55_unsupported_marker_start
         "\n    --label <label>: text label displayed next to the latest point"
-        qt55_unsupported_marker_end
         "\n    --no-stdin: do not read from stdin"
         "\n    --pass-through,--pass; pass input data to stdout"
         "\n    --point-size,--weight <point size>: default: 1"
@@ -179,6 +177,17 @@ static void usage()
         "\n                     \"triangle\": e.g. --shape=triangle --fields=,,corners,,,"
         "\n                                     or --shape=triangle --fields=,,corners[0],,,corners[1],,,corners[2],,,"
         "\n                                     or --shape=triangle --fields=,,corners[0]/x,,corners[0]/y,,corners[0]/z,,,,corners[1],,,corners[2],,, etc"
+        "\n                     \"axis\": draws three axis lines per record, in red/green/blue corresponding to x/y/z axes, using position and orientation e.g. --shape=axis --fields=position,orientation"
+        "\n                                     fields: position,orientation,length,label,axis_labels"
+        "\n                                         default fields: position,orientation"
+        "\n                                         position: x,y,z or position/x,position/y,position/z"
+        "\n                                         orientation: roll,pitch,yaw or orientation/roll,orientation/pitch,orientation/yaw"
+        "\n                                         length: length of each axis line"
+        "\n                                         label: label for the axis"
+        "\n                                         axis_labels:  <x>:<y>:<z> colon separated list of axis labels, leave empty for no labels e.g. x:y:z"
+#if Qt3D_VERSION==2
+        "\n                                     options: --weight or --point-size can be used for line thickness"
+#endif
         qt55_unsupported_marker_start
         "\n                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
         "\n                     \"    <options>"
@@ -239,11 +248,9 @@ static void usage()
         "\n                  use --colour=<from>:<to>[,<from colour>:<to colour>]"
         "\n                  default: 0:1,cyan:magenta"
         "\n                  todo: implement for shapes (currently works only for points)"
-        qt55_unsupported_marker_start
         "\n        label: text label (currenly implemented for ascii only)"
         "\n        roll,pitch,yaw: if present, show orientation"
         "\n"
-        qt55_unsupported_marker_end
         "\n    most of the options can be set for individual files (see examples)"
         "\n";
         
@@ -326,14 +333,15 @@ static void usage()
         "\n        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345"
         "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z,id,label;weight=10\" | csv-paste \"-\" line-number line-number > pipe"
         "\n"
+        qt55_unsupported_marker_end
         "\n    an example of many of the supported shapes"
         "\n        for i in {0..15}; do echo \"a=2*3.1415926532/16*$i;s(a)*3;c(a)*3;s(a)*3\" | bc -l | paste -s -d,; done \\"
         "\n            | view-points \"-;weight=5;color=cyan;label=points\" \\"
         "\n                  <( echo 0,0,0,1,1,1 )\";shape=extents;label=extents;color=blue\" \\"
         "\n                  <( echo 0,0,2,0,0,0,0.5,2 )\";shape=ellipse;label=ellipse;color=salad\" \\"
         "\n                  <( echo -e \"0,0,-2,0\\n0,1,-2,1\\n0.5,1.5,-2,2\\n1,1,-2,3\\n1,0,-2,4\\n0.5,-0.5,-2,5\" )\";shape=loop;fields=x,y,z,id;label=loop\" \\"
-        "\n                  <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\""
-        qt55_unsupported_marker_end
+        "\n                  <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\"\\"
+        "\n                  <( echo '-3,-3,-3,0,0,0,6,\"X:Y:Z\"' )\";shape=axis;fields=position,orientation,length,axis_labels\""
         "\n";
 
     std::cerr
@@ -385,16 +393,9 @@ template <> struct traits< model_options >
 static bool data_passed_through = false;
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
-#if Qt3D_VERSION==1
-boost::shared_ptr< snark::graphics::view::Reader > make_reader( QGLView& viewer
-                                                             , const comma::command_line_options& options
-                                                             , const comma::csv::options& csv_options
-                                                             , const std::string& properties = "" )
-#else
 std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::command_line_options& options
                                                              , const comma::csv::options& csv_options
                                                              , const std::string& properties = "" )
-#endif
 {
     //snark::graphics::view::color_t 
     QColor background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
@@ -441,33 +442,22 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         std::vector< std::string > v = comma::split( param.options.fields, ',' );
         bool has_orientation = false;
         for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
-        #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( viewer, param, colored, label ) );
-        #else
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( param, colored ) );
-        #endif
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( param, colored, label ) );
         reader->show( show );
         return reader;
     }
     if( shape == "loop" )
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
-        #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( viewer, param, colored, label ) );
-        #else
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( param, colored ) );
-        #endif
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( param, colored, label ) );
         reader->show( show );
         return reader;
     }
     if( shape == "lines" ) // todo: get a better name
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
-        #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( viewer, param, colored, label ) );
-        #else
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( param, colored ) );
-        #endif
+
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::connected >( param, colored, label ) );
         reader->show( show );
         return reader;
     }
@@ -507,6 +497,13 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     else if(shape=="axis")
     {
         if( param.options.fields == "" ) { param.options.fields="position,orientation"; }
+        std::vector< std::string > v = comma::split( param.options.fields, ',' );
+        for( std::size_t i = 0; i < v.size(); ++i )
+        {
+            if( v[i] == "x" || v[i] == "y" || v[i] == "z" ) { v[i] = "position/" + v[i]; }
+            else if( v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "orientation/" + v[i]; }
+        }
+        param.options.fields = comma::join( v, ',' );
     }
     else
     {
@@ -532,13 +529,13 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
                 model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
                 m.filename = shape;
                 if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
-                boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( viewer, param, shape, m.flip, m.scale, colored, label ) );
+                std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( param, shape, m.flip, m.scale, colored, label ) );
                 reader->show( show );
                 return reader;
             }
             else
             {
-                boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( viewer, param, image_options ) );
+                std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( param, image_options ) );
                 reader->show( show );
                 return reader;
             }
@@ -566,41 +563,25 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     param.options.full_xpath = true;
     if( shape == "extents" )
     {
-        #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( viewer, param, colored, label, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
-        #else
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( param, colored, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
-        #endif
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::math::closed_interval< double, 3 > >( param, colored, label, snark::math::closed_interval< double, 3 >( Eigen::Vector3d( 0, 0, 0 ), Eigen::Vector3d( 0, 0, 0 ) ) ) );
         reader->show( show );
         return reader;
     }
     else if( shape == "line" )
     {
-        #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( viewer, param, colored, label ) );
-        #else
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( param, colored ) );
-        #endif
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< std::pair< Eigen::Vector3d, Eigen::Vector3d > >( param, colored, label ) );
         reader->show( show );
         return reader;
     }
     else if( shape == "triangle" )
     {
-        #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( viewer, param, colored, label ) );
-        #else
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( param, colored ) );
-        #endif
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::loop< 3 > >( param, colored, label ) );
         reader->show( show );
         return reader;
     }
     else if( shape == "ellipse" )
     {
-        #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( viewer, param, colored, label ) );
-        #else
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( param, colored ) );
-        #endif
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::Ellipse< 25 > >( param, colored, label ) );
         reader->show( show );
         return reader;
     }
@@ -608,21 +589,13 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     {
         snark::graphics::view::arc< 20 > sample; // quick and dirty
         if( param.options.has_field( "middle" ) || param.options.has_field( "middle/x" ) || param.options.has_field( "middle/y" ) || param.options.has_field( "middle/z" ) ) { sample.middle = Eigen::Vector3d(); }
-        #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( viewer, param, colored, label, sample ) );
-        #else
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( param, colored, sample ) );
-        #endif
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< snark::graphics::view::arc< 20 > >( param, colored, label, sample ) );
         reader->show( show );
         return reader;
     }
     else if(shape=="axis")
     {
-        #if Qt3D_VERSION==1
-        boost::shared_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader<snark::graphics::view::axis>( viewer, param, colored, label ) );
-        #else
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader<snark::graphics::view::axis>( param, colored ) );
-        #endif
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader<snark::graphics::view::axis>( param, colored, label ) );
         reader->show( show );
         return reader;
     }
@@ -735,12 +708,12 @@ int main( int argc, char** argv )
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
             if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
-            viewer->readers.push_back( make_reader( *viewer, options, csv_options, properties[i] ) );
+            viewer->readers.push_back( make_reader( options, csv_options, properties[i] ) );
         }
         if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
         {
             csv_options.filename = "-";
-            viewer->readers.push_back( make_reader( *viewer, options, csv_options ) );
+            viewer->readers.push_back( make_reader( options, csv_options ) );
         }
         if( data_passed_through )
         {

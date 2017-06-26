@@ -185,6 +185,7 @@ fi
 
 passed_fields=$( prefix target <<< $waypoints_fields ),$( prefix feedback <<< $feedback_fields ),$error_fields
 is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || passed_binary=
+[[ -z $feedback_timeout ]] || feedback_timeout="--feedback-timeout=$feedback_timeout"
 
 config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
 
@@ -204,6 +205,7 @@ control-error \
     | control-command \
         --fields=$passed_fields \
         --binary=$passed_binary \
+        $feedback_timeout \
         --cross-track-pid=$pid_cross_track \
         --heading-pid=$pid_heading \
         --steering=$steering \

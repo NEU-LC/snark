@@ -32,24 +32,23 @@
 
 #include "model_reader.h"
 #include "texture.h"
+#include "viewer.h"
 
 namespace snark { namespace graphics { namespace view {
 
 /// constructor
-/// @param viewer reference to the viewer
 /// @param params csv options for the position input
 /// @param file model filename
 /// @param flip flip model around the x-axis
 /// @param c color used for the label
 /// @param label text displayed as label
-ModelReader::ModelReader( QGLView& viewer
-                        , const reader_parameters& params
+ModelReader::ModelReader( const reader_parameters& params
                         , const std::string& file
                         , bool flip
                         , double scale
                         , snark::graphics::view::colored* c
                         , const std::string& label )
-    : Reader( viewer, reader_parameters( params ), c, label, Eigen::Vector3d( 0, 1, 1 ) ) // TODO make offset configurable ?
+    : Reader( reader_parameters( params ), c, label, Eigen::Vector3d( 0, 1, 1 ) ) // TODO make offset configurable ?
     , m_file( file )
     , m_flip( flip )
     , scale_( scale )
@@ -89,7 +88,7 @@ const Eigen::Vector3d& ModelReader::somePoint() const
     return *m_point;
 }
 
-void ModelReader::render( QGLPainter* painter )
+void ModelReader::render( Viewer& viewer, QGLPainter* painter )
 {
     painter->modelViewMatrix().push();
     Eigen::Vector3d d = m_translation - m_offset;
@@ -104,7 +103,7 @@ void ModelReader::render( QGLPainter* painter )
         node->draw(painter);
     }
     painter->modelViewMatrix().pop();
-    if( !m_label.empty() ) { draw_label( painter, m_translation ); }
+    if( !m_label.empty() ) { viewer.draw_label( painter, m_translation - m_offset, m_color, m_label ); }
 }
 
 bool ModelReader::read_once()
