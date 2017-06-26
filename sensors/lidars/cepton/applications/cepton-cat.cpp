@@ -82,6 +82,7 @@ int main( int argc, char** argv )
             return 0;
         }
         //--mock
+        /*
         //cepton_sdk_mock_network_receive(uint64_t ipv4_address, uint8_t const *mac, uint8_t const *buffer, size_t size);
         int n=cepton_sdk_get_number_of_sensors();
         for(int i=0;i<n;i++)
@@ -96,6 +97,7 @@ int main( int argc, char** argv )
         //cepton_sdk_unlisten_scanlines
         result=cepton_sdk_unlisten_frames(callback);
         result=cepton_sdk_deinitialize();
+        */
         return 0;
     }
     catch( std::exception& ex )
