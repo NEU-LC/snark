@@ -404,9 +404,7 @@ template < typename V > struct join_impl_
         {
             const input_t* p = istream.read();
             if( !p ) { break; }
-            std::cerr << "p->block is " << p->block << " and block is " << *block << std::endl;
             if (!block || ( *block != p->block ) ) { grid = read_filter_block(); }
-            std::cerr << "p->block is " << p->block << " and block is " << *block << std::endl;
             typename grid_t::index_type index = grid.index_of( *p );
             typename grid_t::index_type i;
             if( all )
