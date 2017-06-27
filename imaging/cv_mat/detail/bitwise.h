@@ -32,6 +32,7 @@
 #include <iostream>
 #include <string>
 
+#define BOOST_SPIRIT_DEBUG
 #include <boost/config/warning_disable.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
@@ -48,10 +49,15 @@ namespace bitwise
     struct op_and {};
     struct op_xor {};
     struct op_not {};
+    struct op_brk {};
 
     template< typename T > struct binary_op;
     template< typename T > struct unary_op;
+    template< typename T > struct bracket_op;
     typedef boost::variant< std::string
+                          , boost::recursive_wrapper< bracket_op< op_brk > >
+                          > leaf;
+    typedef boost::variant< leaf
                           , boost::recursive_wrapper< unary_op< op_not > >
                           , boost::recursive_wrapper< binary_op< op_and > >
                           , boost::recursive_wrapper< binary_op< op_xor > >
@@ -70,36 +76,42 @@ namespace bitwise
        expr oper1;
     };
 
-    template< typename I, typename O, typename C >
-    struct visitor : boost::static_visitor< boost::function< O ( I ) > >
+    template< typename T > struct bracket_op
     {
-        typedef typename boost::static_visitor< boost::function< O ( I ) > >::result_type result_type;
-
-        visitor( const C & c ) : c_( c ) {}
-        const C & c_;
-
-        result_type operator()( const std::string & s ) const { return c_.term( s ); }
-
-        result_type operator()( const binary_op< op_and > & b ) const {
-            result_type opl = boost::apply_visitor( *this, b.oper1 );
-            result_type opr = boost::apply_visitor( *this, b.oper2 );
-            return c_.op_and( opl, opr );
-        }
-        result_type operator()( const binary_op< op_or  > & b ) const {
-            result_type opl = boost::apply_visitor( *this, b.oper1 );
-            result_type opr = boost::apply_visitor( *this, b.oper2 );
-            return c_.op_or( opl, opr );
-        }
-        result_type operator()( const binary_op< op_xor > & b ) const {
-            result_type opl = boost::apply_visitor( *this, b.oper1 );
-            result_type opr = boost::apply_visitor( *this, b.oper2 );
-            return c_.op_xor( opl, opr );
-        }
-        result_type operator()( const unary_op< op_not > & u )  const {
-            result_type op = boost::apply_visitor( *this, u.oper1 );
-            return c_.op_not( op );
-        }
+       explicit bracket_op( const leaf & l ) : leaf1( l ) { }
+       leaf leaf1;
     };
+
+//    template< typename I, typename O, typename C >
+//    struct visitor : boost::static_visitor< boost::function< O ( I ) > >
+//    {
+//        typedef typename boost::static_visitor< boost::function< O ( I ) > >::result_type result_type;
+//
+//        visitor( const C & c ) : c_( c ) {}
+//        const C & c_;
+//
+//        result_type operator()( const std::string & s ) const { return c_.term( s ); }
+//
+//        result_type operator()( const binary_op< op_and > & b ) const {
+//            result_type opl = boost::apply_visitor( *this, b.oper1 );
+//            result_type opr = boost::apply_visitor( *this, b.oper2 );
+//            return c_.op_and( opl, opr );
+//        }
+//        result_type operator()( const binary_op< op_or  > & b ) const {
+//            result_type opl = boost::apply_visitor( *this, b.oper1 );
+//            result_type opr = boost::apply_visitor( *this, b.oper2 );
+//            return c_.op_or( opl, opr );
+//        }
+//        result_type operator()( const binary_op< op_xor > & b ) const {
+//            result_type opl = boost::apply_visitor( *this, b.oper1 );
+//            result_type opr = boost::apply_visitor( *this, b.oper2 );
+//            return c_.op_xor( opl, opr );
+//        }
+//        result_type operator()( const unary_op< op_not > & u )  const {
+//            result_type op = boost::apply_visitor( *this, u.oper1 );
+//            return c_.op_not( op );
+//        }
+//    };
 
     struct printer : boost::static_visitor< void >
     {
@@ -107,10 +119,16 @@ namespace bitwise
         std::ostream & _os;
 
         void operator()( const std::string & s ) const { _os << s; }
+        void operator()( const bracket_op< op_brk > & b ) const {
+            _os << "(";
+            boost::apply_visitor( *this, b.leaf1 );
+            _os << ")";
+        }
 
         void operator()( const binary_op< op_and > & b ) const { print( " & ", b.oper1, b.oper2 ); }
         void operator()( const binary_op< op_or  > & b ) const { print( " | ", b.oper1, b.oper2 ); }
         void operator()( const binary_op< op_xor > & b ) const { print( " ^ ", b.oper1, b.oper2 ); }
+        void operator()( const leaf & l ) const { boost::apply_visitor( *this, l ); }
 
         void print( const std::string & op, const expr & l, const expr & r) const
         {
@@ -149,16 +167,24 @@ namespace bitwise
             and_ = ( not_ >> "and" >> and_ ) [ qi::_val = boost::phoenix::construct< binary_op< op_and > >( boost::spirit::_1, boost::spirit::_2 ) ] | not_   [ qi::_val = boost::spirit::_1 ];
             not_ = ( "not" > simple        ) [ qi::_val = boost::phoenix::construct<  unary_op< op_not > >( boost::spirit::_1                    ) ] | simple [ qi::_val = boost::spirit::_1 ];
 
-            simple = ( ( '[' > expr_ > ']' ) | var_ );
-            var_ = qi::lexeme[ +(qi::alnum | qi::char_(",.()/:|+-")) ];
+            simple = ( ( '(' >> expr_ >> ')' ) | leaf_ );
+            leaf_ = var_ >> *( brackets_ >> var_ );
+            brackets_ = '(' >> +var_ >> ')';
+            var_ = qi::lexeme[ +(qi::alnum | qi::char_(",./:|+-")) ];
+
+            BOOST_SPIRIT_DEBUG_NODE( simple );
+            BOOST_SPIRIT_DEBUG_NODE( leaf_ );
+            BOOST_SPIRIT_DEBUG_NODE( brackets_ );
+            BOOST_SPIRIT_DEBUG_NODE( var_ );
         }
 
         private:
-            boost::spirit::qi::rule< It, std::string(), Skipper > var_;
+            boost::spirit::qi::rule< It, std::string(), Skipper > var_, brackets_;
+            boost::spirit::qi::rule< It, leaf(), Skipper > leaf_;
             boost::spirit::qi::rule< It, expr(), Skipper > not_, and_, xor_, or_, simple, expr_;
     };
 
-    std::string tabify_bitwise_ops( const std::string & s );
+//    std::string tabify_bitwise_ops( const std::string & s );
 
 } // namespace bitwise
 
