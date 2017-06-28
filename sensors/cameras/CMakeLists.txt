@@ -11,9 +11,6 @@ IF( snark_build_sensors_gige )
 ENDIF( snark_build_sensors_gige )
 
 IF( snark_build_sensors_flycapture )
-	if( NOT USE_CXX11 )
-		message( FATAL_ERROR "Building flycapture requires USE_CXX11 set to ON")
-	endif()
     ADD_SUBDIRECTORY( flycapture )
 ENDIF( snark_build_sensors_flycapture )
 

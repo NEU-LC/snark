@@ -79,13 +79,6 @@ elseif( QT_VERSION_MAJOR EQUAL 5 )
         set( Qt3D_VERSION 2 )
         message( WARNING "\nQt ${snark_qt_version} includes Qt3D version 2.\nview-points support for Qt3D version 2 is experimental and incomplete\nConsider using Qt4 (by setting QT_QMAKE_EXECUTABLE to the path to the Qt4 qmake, typically /usr/bin/qmake)" )
         find_package( Qt5 COMPONENTS 3DCore REQUIRED )
-
-        if( QT_VERSION_MINOR GREATER 6 )
-            # Qt5.7+ requires c++11
-            if( NOT USE_CXX11 )
-                message( FATAL_ERROR "\nQt ${snark_qt_version} requires C++11 support. Do one of:\n* set USE_CXX11 to ON\n* Disable graphics (via snark_build_graphics)\n* Set Qt to a version below 5.7 (via QT_QMAKE_EXECUTABLE)" )
-            endif()
-        endif()
     endif()
 else()
     message( FATAL_ERROR "Qt version 4 or 5 required" )
