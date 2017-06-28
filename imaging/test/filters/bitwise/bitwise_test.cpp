@@ -36,8 +36,6 @@
 #include <opencv2/core/core.hpp>
 
 #include <iostream>
-#include <boost/fusion/adapted/struct/adapt_struct.hpp>
-#include <boost/fusion/include/adapt_struct.hpp>
 
 using namespace snark::cv_mat;
 using namespace snark::cv_mat::bitwise;
