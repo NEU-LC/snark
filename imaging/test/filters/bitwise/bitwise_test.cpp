@@ -167,7 +167,7 @@ namespace testing
                           , bracket
                           > leaf;
 
-    struct seq : public std::vector< leaf > {};
+    struct filter : public std::vector< leaf > {};
 
     struct printer : boost::static_visitor< void >
     {
@@ -184,24 +184,24 @@ namespace testing
         return os;
     }
 
-    inline std::ostream & operator<<( std::ostream & os, const seq & s ) {
+    inline std::ostream & operator<<( std::ostream & os, const filter & s ) {
         for ( const auto & e : s ) { os << e; }
         return os;
     }
 
     template< typename It, typename Skipper = boost::spirit::qi::space_type >
-    struct parser : boost::spirit::qi::grammar< It, seq(), Skipper >
+    struct parser : boost::spirit::qi::grammar< It, filter(), Skipper >
     {
-        parser() : parser::base_type( seq_ )
+        parser() : parser::base_type( filter_ )
         {
             namespace qi = boost::spirit::qi;
 
-            seq_ = var_ >> *leaf_;
+            filter_ = var_ >> *leaf_;
             leaf_ = ( bracket_ | var_ );
             bracket_ = '(' >> var_ >> ')';
             var_ = qi::lexeme[ +(qi::alnum | qi::char_(",./:|+-")) ];
 
-            BOOST_SPIRIT_DEBUG_NODE( seq_ );
+            BOOST_SPIRIT_DEBUG_NODE( filter_ );
             BOOST_SPIRIT_DEBUG_NODE( leaf_ );
             BOOST_SPIRIT_DEBUG_NODE( bracket_ );
             BOOST_SPIRIT_DEBUG_NODE( var_ );
@@ -211,7 +211,7 @@ namespace testing
             boost::spirit::qi::rule< It, std::string(), Skipper > var_;
             boost::spirit::qi::rule< It, bracket(), Skipper > bracket_;
             boost::spirit::qi::rule< It, leaf(), Skipper > leaf_;
-            boost::spirit::qi::rule< It, seq(), Skipper > seq_;
+            boost::spirit::qi::rule< It, filter(), Skipper > filter_;
     };
 
 } // namespace testing
@@ -236,7 +236,7 @@ TEST( bitwise, testing )
         testing::parser< decltype( f ) > p;
 
         try {
-            testing::seq result;
+            testing::filter result;
             bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
             EXPECT_TRUE( ok );
             EXPECT_EQ( f, l );
