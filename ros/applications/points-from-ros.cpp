@@ -58,7 +58,9 @@ void usage(bool detail)
     std::cerr << "    --help,-h: show help; --help --verbose: show more help" << std::endl;
     std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
     std::cerr << "    --topic=<topic>: name of the topic to subscribe to" << std::endl;
+    std::cerr << "    --flush; call flush on stdout after each write (otherwise may buffer with small size messages)" << std::endl;
     std::cerr << "    --queue-size=[<n>]: ROS Subscriber queue size, default 1" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "field names and format are extracted from the first message of the subscribed topic; following options wait until they receive a message" << std::endl;
     std::cerr << "    --output-fields; print field names and exit" << std::endl;
     std::cerr << "    --output-format; print format and exit" << std::endl;
@@ -200,18 +202,20 @@ struct points
     comma::csv::options csv;
     bool output_fields;
     bool output_format;
-    points(const comma::command_line_options& options) : csv(options)
+    bool flush;
+    points(const comma::command_line_options& options) : ascii(false), csv(options)
     {
-        if(!csv.binary())
+        output_fields=options.exists("--output-fields");
+        output_format=options.exists("--output-format");
+        if(!output_fields && !output_format && !csv.binary())
         {
             if(!options.exists("--format")) { COMMA_THROW( comma::exception, "please specify either --format for ascii or --binary"); }
             ascii=true;
             format=comma::csv::format(comma::csv::format(options.value<std::string>("--format")).expanded_string());
         }
-        output_fields=options.exists("--output-fields");
-        output_format=options.exists("--output-format");
+        flush=options.exists("--flush");
     }
-    void process(const sensor_msgs::PointCloud2ConstPtr& input)
+    void process(const sensor_msgs::PointCloud2ConstPtr input)
     {
         try
         {
@@ -229,20 +233,24 @@ struct points
             }
             unsigned count=input->width*input->height;
             unsigned record_size=input->point_step;
-            comma::verbose<<record_size<<"; "<<input->header.seq<<"; "<<input->header.stamp<<std::endl;
+            comma::verbose<<record_size<<"; "<<input->width<<"x"<<input->height<<";//"<<input->header.seq<<std::endl;
             if(csv.fields.empty())
             {
                 for(unsigned i=0;i<count;i++)
                 {
+                    comma::verbose<<"i: "<<i<<" ;"<<input->data.size()<<" ascii "<<ascii<<std::endl;
                     const char* buf=reinterpret_cast<const char*>(&input->data[i*record_size]);
                     if(ascii)
                     {
                         std::string bin_data=format.bin_to_csv(buf,csv.delimiter,csv.precision);
                         std::cout.write(bin_data.data(),bin_data.size())<<std::endl;
+                        if(flush) { std::cout.flush(); }
                     }
                     else
                     {
+                        comma::verbose<<"writing "<<(unsigned int)(buf[0])<<" "<<(unsigned int)(buf[1])<<" "<<(unsigned int)(buf[2])<<" "<<(unsigned int)(buf[0])<<std::endl;
                         std::cout.write(buf,record_size);
+                        if(flush) { std::cout.flush(); }
                     }
                     if(!std::cout.good())
                     {
@@ -262,10 +270,12 @@ struct points
                     {
                         std::string bin_data=format.bin_to_csv(buf,csv.delimiter,csv.precision);
                         std::cout.write(bin_data.data(),bin_data.size())<<std::endl;
+                        if(flush) { std::cout.flush(); }
                     }
                     else
                     {
                         std::cout.write(buf,bin_shuffle.size());
+                        if(flush) { std::cout.flush(); }
                     }
                     if(!std::cout.good())
                     {
