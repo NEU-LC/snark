@@ -99,36 +99,36 @@ namespace {
 
     const std::vector< std::string > inputs =
         {
-            // "a and b",
-            // "a or b",
-            // "a xor b",
-            // "not a",
-            // "not a and b",
-            // "not (a and b)",
-            // "a or b or c",
-            // "(a and b) xor ((c and d) or (a and b))",
-            // "a and b xor (c and d or a and b)",
-            // "a and b xor (c and f(d+g) or a and b)",
+            "a and b",
+            "a or b",
+            "a xor b",
+            "not a",
+            "not a and b",
+            "not [a and b]",
+            "a or b or c",
+            "[a and b] xor [[c and d] or [a and b]]",
+            "a and b xor [c and d or a and b]",
+            // "a and b xor [c and f(d+g) or a and b]",
             // "a and f(d+g)",
-            // "(a and f(d+g)) or c",
-            "f:(d + g) / a|foo:bar",
+            // "[a and f(d+g)] or c",
+            // "f:(d+g)/a|foo:bar",
         };
 
     const std::vector< std::string > expected =
         {
-            // "[a & b]",
-            // "[a | b]",
-            // "[a ^ b]",
-            // "[~a]",
-            // "[[~a] & b]",
-            // "[~[a & b]]",
-            // "[a | [b | c]]",
-            // "[[a & b] ^ [[c & d] | [a & b]]]",
-            // "[[a & b] ^ [[c & d] | [a & b]]]",
+            "[a & b]",
+            "[a | b]",
+            "[a ^ b]",
+            "[~a]",
+            "[[~a] & b]",
+            "[~[a & b]]",
+            "[a | [b | c]]",
+            "[[a & b] ^ [[c & d] | [a & b]]]",
+            "[[a & b] ^ [[c & d] | [a & b]]]",
             // "[[a & b] ^ [[c & f(d+g)] | [a & b]]]",
-            // "[a and f(d+g)]",
-            // "[[a and f(d+g)] or c]",
-            "f:(d + g) / a|foo:bar",
+            // "[a & f(d+g)]",
+            // "[[a & f(d+g)] | c]",
+            // "f:(d+g)/a|foo:bar",
         };
 
     const std::vector< boost::function< int( int, int, int, int ) > > direct =
@@ -263,164 +263,163 @@ TEST( bitwise, testing )
     }
 }
 
-// TEST( bitwise, printer )
-// {
-//     for ( size_t i = 0; i < inputs.size(); ++i )
-//     {
-//         auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-//         parser< decltype( f ) > p;
-// 
-//         try {
-//         expr result;
-//         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-//         // EXPECT_TRUE( ok );
-//         // EXPECT_EQ( f, l );
-//         {
-//             std::ostringstream os;
-//             os << result;
-//             std::cerr << expected[i] << " : " << os.str() << std::endl;
-//             // EXPECT_EQ( os.str(), expected[i] );
-//         }
-//         } catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
-//         {
-//             std::cerr << "exception:" << std::endl;
-//             print_info( e.what_ );
-//         }
-//     }
-// }
+TEST( bitwise, printer )
+{
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
+        parser< decltype( f ) > p;
 
-// TEST( bitwise, special )
-// {
-//     const std::string & f0 = "linear-combination:r|convert-to:ub|threshold:otsu,1.5";
-//     const std::string & f1 = "ratio:(r - g)/(r + g)|convert-to:ub|threshold:1.2e-1";
-//     const std::vector< std::string > inputs =
-//         {
-//             f0 + " and " + f1,
-//         };
-// 
-//     const std::vector< std::string > expected =
-//         {
-//             "(" + boost::algorithm::erase_all_copy( f0, " " ) + " & " + boost::algorithm::erase_all_copy( f1, " " ) + ")",
-//         };
-// 
-//     for ( size_t i = 0; i < inputs.size(); ++i )
-//     {
-//         const auto & s = tabify_bitwise_ops( inputs[i] );
-//         auto f( std::begin( s ) ), l( std::end( s ) );
-//         parser< decltype( f ) > p;
-// 
-//         expr result;
-//         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-//         // EXPECT_TRUE( ok );
-//         // EXPECT_EQ( f, l );
-//         std::cerr << "ok? " << ok << ", f == l? " << ( f == l ) << std::endl;
-//         {
-//             std::ostringstream os;
-//             os << result;
-//             std::cerr << expected[i] << " : " << os.str() << std::endl;
-//             // EXPECT_EQ( os.str(), expected[i] );
-//         }
-//     }
-// }
+        try {
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
+        {
+            std::ostringstream os;
+            os << result;
+            // std::cerr << expected[i] << " : " << os.str() << std::endl;
+            EXPECT_EQ( os.str(), expected[i] );
+        }
+        } catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
+        {
+            std::cerr << "exception:" << std::endl;
+            print_info( e.what_ );
+        }
+    }
+}
 
-// TEST( bitwise, writer )
-// {
-//     for ( size_t i = 0; i < inputs.size(); ++i )
-//     {
-//         auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-//         parser< decltype( f ) > p;
-// 
-//         expr result;
-//         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-//         EXPECT_TRUE( ok );
-//         EXPECT_EQ( f, l );
-//         {
-//             std::ostringstream os;
-//             writer w;
-//             auto scribe = boost::apply_visitor( visitor< std::ostream &, std::ostream &, writer >( w ), result );
-//             scribe( os );
-//             EXPECT_EQ( os.str(), expected[i] );
-//         }
-//     }
-// }
+TEST( bitwise, special )
+{
+    const std::string & f0 = "linear-combination:r|convert-to:ub|threshold:otsu,1.5";
+    const std::string & f1 = "ratio:(r - g)/(r + g)|convert-to:ub|threshold:1.2e-1";
+    const std::vector< std::string > inputs =
+        {
+            f0 + " and " + f1,
+        };
 
-// TEST( bitwise, logical_int )
-// {
-//     for ( size_t i = 0; i < inputs.size(); ++i )
-//     {
-//         auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-//         parser< decltype( f ) > p;
-// 
-//         expr result;
-//         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-//         EXPECT_TRUE( ok );
-//         EXPECT_EQ( f, l );
-//         {
-//             for ( const auto & m : lookup_ints )
-//             {
-//                 logician< int > l( m );
-//                 auto worker = boost::apply_visitor( visitor< boost::none_t, int, logician< int > >( l ), result );
-//                 int r = worker( boost::none );
-//                 int q = call_direct( m, direct[i] );
-//                 EXPECT_EQ( r, q );
-//             }
-//         }
-//     }
-// }
+    const std::vector< std::string > expected =
+        {
+            "[" + boost::algorithm::erase_all_copy( f0, " " ) + " & " + boost::algorithm::erase_all_copy( f1, " " ) + "]",
+        };
 
-// TEST( bitwise, logical_matrix )
-// {
-//     std::vector< lookup_map_t< cv::Mat > > lookup_matrices;
-//     for ( const auto & m : lookup_ints )
-//     {
-//         lookup_map_t< cv::Mat > matrices;
-//         for ( const auto & k : { "a", "b", "c", "d" } )
-//         {
-//             cv::Mat matrix( 3, 4, CV_16UC1, cv::Scalar(0) );
-//             matrix.at< comma::int16 >( 2, 3 ) = m.at( k );
-//             matrices[ k ] = matrix.clone();
-//         }
-//         lookup_matrices.push_back( matrices );
-//     }
-//     for ( size_t i = 0; i < inputs.size(); ++i )
-//     {
-//         auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-//         parser< decltype( f ) > p;
-// 
-//         expr result;
-//         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-//         EXPECT_TRUE( ok );
-//         EXPECT_EQ( f, l );
-//         {
-//             for ( size_t j = 0; j < lookup_matrices.size(); ++j )
-//             {
-//                 logician< cv::Mat > l( lookup_matrices[j] );
-//                 auto worker = boost::apply_visitor( visitor< boost::none_t, cv::Mat, logician< cv::Mat > >( l ), result );
-//                 cv::Mat r = worker( boost::none );
-//                 int ri = r.at< comma::int16 >(2, 3);
-//                 int q = call_direct( lookup_ints[j], direct[i] );
-//                 EXPECT_EQ( ri, q );
-//             }
-//         }
-//     }
-// }
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        const auto & s = tabify_bitwise_ops( inputs[i] );
+        auto f( std::begin( s ) ), l( std::end( s ) );
+        parser< decltype( f ) > p;
 
-// TEST( bitwise, tabify )
-// {
-//     for ( size_t i = 0; i < inputs.size(); ++i )
-//     {
-//         const std::string & s = tabify_bitwise_ops( inputs[i] );
-//         auto f( std::begin( s ) ), l( std::end( s ) );
-//         parser< decltype( f ) > p;
-// 
-//         expr result;
-//         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-//         EXPECT_TRUE( ok );
-//         EXPECT_EQ( f, l );
-//         {
-//             std::ostringstream os;
-//             os << result;
-//             EXPECT_EQ( os.str(), expected[i] );
-//         }
-//     }
-// }
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
+        {
+            std::ostringstream os;
+            os << result;
+            // std::cerr << expected[i] << " : " << os.str() << std::endl;
+            EXPECT_EQ( os.str(), expected[i] );
+        }
+    }
+}
+
+TEST( bitwise, writer )
+{
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
+        parser< decltype( f ) > p;
+
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
+        {
+            std::ostringstream os;
+            writer w;
+            auto scribe = boost::apply_visitor( visitor< std::ostream &, std::ostream &, writer >( w ), result );
+            scribe( os );
+            EXPECT_EQ( os.str(), expected[i] );
+        }
+    }
+}
+
+TEST( bitwise, logical_int )
+{
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
+        parser< decltype( f ) > p;
+
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
+        {
+            for ( const auto & m : lookup_ints )
+            {
+                logician< int > l( m );
+                auto worker = boost::apply_visitor( visitor< boost::none_t, int, logician< int > >( l ), result );
+                int r = worker( boost::none );
+                int q = call_direct( m, direct[i] );
+                EXPECT_EQ( r, q );
+            }
+        }
+    }
+}
+
+TEST( bitwise, logical_matrix )
+{
+    std::vector< lookup_map_t< cv::Mat > > lookup_matrices;
+    for ( const auto & m : lookup_ints )
+    {
+        lookup_map_t< cv::Mat > matrices;
+        for ( const auto & k : { "a", "b", "c", "d" } )
+        {
+            cv::Mat matrix( 3, 4, CV_16UC1, cv::Scalar(0) );
+            matrix.at< comma::int16 >( 2, 3 ) = m.at( k );
+            matrices[ k ] = matrix.clone();
+        }
+        lookup_matrices.push_back( matrices );
+    }
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
+        parser< decltype( f ) > p;
+
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
+        {
+            for ( size_t j = 0; j < lookup_matrices.size(); ++j )
+            {
+                logician< cv::Mat > l( lookup_matrices[j] );
+                auto worker = boost::apply_visitor( visitor< boost::none_t, cv::Mat, logician< cv::Mat > >( l ), result );
+                cv::Mat r = worker( boost::none );
+                int ri = r.at< comma::int16 >(2, 3);
+                int q = call_direct( lookup_ints[j], direct[i] );
+                EXPECT_EQ( ri, q );
+            }
+        }
+    }
+}
+
+TEST( bitwise, tabify )
+{
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        const std::string & s = tabify_bitwise_ops( inputs[i] );
+        auto f( std::begin( s ) ), l( std::end( s ) );
+        parser< decltype( f ) > p;
+
+        expr result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        EXPECT_TRUE( ok );
+        EXPECT_EQ( f, l );
+        {
+            std::ostringstream os;
+            os << result;
+            EXPECT_EQ( os.str(), expected[i] );
+        }
+    }
+}

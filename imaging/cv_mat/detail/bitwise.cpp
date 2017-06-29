@@ -36,14 +36,14 @@ namespace snark{ namespace cv_mat {
 
 namespace bitwise
 {
-//    std::string tabify_bitwise_ops( const std::string & s )
-//    {
-//        static const auto & not_regex = boost::regex( "((\\[|^|\\s+)not\\s+)" );
-//        static const auto & and_regex = boost::regex( "(\\s+and\\s+)" );
-//        static const auto & xor_regex = boost::regex( "(\\s+xor\\s+)" );
-//        static const auto & or_regex  = boost::regex( "(\\s+or\\s+)" );
-//        return boost::algorithm::erase_all_copy( boost::regex_replace( boost::regex_replace( boost::regex_replace( boost::regex_replace( s, or_regex, "\\tor\\t" ), xor_regex, "\\txor\\t" ), and_regex, "\\tand\\t" ), not_regex, "\\tnot\\t" ), " " );
-//    };
+    std::string tabify_bitwise_ops( const std::string & s )
+    {
+        static const auto & not_regex = boost::regex( "((\\[|^|\\s+)not\\s+)" );
+        static const auto & and_regex = boost::regex( "(\\s+and\\s+)" );
+        static const auto & xor_regex = boost::regex( "(\\s+xor\\s+)" );
+        static const auto & or_regex  = boost::regex( "(\\s+or\\s+)" );
+        return boost::algorithm::erase_all_copy( boost::regex_replace( boost::regex_replace( boost::regex_replace( boost::regex_replace( s, or_regex, "\\tor\\t" ), xor_regex, "\\txor\\t" ), and_regex, "\\tand\\t" ), not_regex, "\\tnot\\t" ), " " );
+    };
 
 } // namespace bitwise
 

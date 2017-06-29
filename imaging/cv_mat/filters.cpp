@@ -72,7 +72,7 @@
 #include "../../timing/traits.h"
 #include "filters.h"
 #include "detail/ratio.h"
-#include "detail/bitwise.h"
+//#include "detail/bitwise.h"
 #include "serialization.h"
 #include "traits.h"
 #include "depth_traits.h"
