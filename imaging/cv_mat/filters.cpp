@@ -218,10 +218,12 @@ template < > struct empty< std::vector< char > > { static bool is_empty( const s
 template < typename H >
 static bool is_empty( typename impl::filters< H >::value_type m, const typename impl::filters< H >::get_timestamp_functor& get_timestamp ) { return ( m.second.empty() && ( empty< H >::is_empty(m.first) || get_timestamp(m.first) == boost::posix_time::not_a_date_time ) ); }
 
-static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension )
+static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension, unsigned int index = 0 )
 {
     std::ostringstream ss;
-    ss << boost::posix_time::to_iso_string( t ) << '.' << extension;
+    ss << boost::posix_time::to_iso_string( t );
+    if( index > 0 ) { ss << '.' << index; }
+    ss << '.' << extension;
     return ss.str();
 }
 
@@ -1322,21 +1324,30 @@ struct grab_impl_ {
 };
 
 template < typename H >
-struct file_impl_ {
-    typedef typename impl::filters< H >::value_type value_type;
-    typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor get_timestamp_;
+class file_impl_
+{
+    public:
+        typedef typename impl::filters< H >::value_type value_type;
+        typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
 
-    file_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
-    value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
-    {
-        if(m.second.empty()) { return m; }
-        encode_impl_check_type< H >( m, type );
-        std::vector<int> params;
-        if (quality) { params = imwrite_params(type, *quality); }
-        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second, params );
-        return m;
-    }
+        file_impl_( const get_timestamp_functor& get_timestmap ) : get_timestamp_( get_timestmap ), index_( 0 ) {}
+
+        value_type operator()( value_type m, const std::string& type, const boost::optional< int >& quality )
+        {
+            if( m.second.empty() ) { return m; }
+            encode_impl_check_type< H >( m, type );
+            std::vector< int > params;
+            if( quality ) { params = imwrite_params( type, *quality ); }
+            boost::posix_time::ptime timestamp = get_timestamp_( m.first );
+            index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
+            cv::imwrite( make_filename( timestamp, type, index_ ), m.second, params );
+            previous_timestamp_ = timestamp;
+            return m;
+        }
+    private:
+        const get_timestamp_functor get_timestamp_;
+        boost::posix_time::ptime previous_timestamp_;
+        unsigned int index_;
 };
 
 template < typename H >
@@ -2907,7 +2918,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             std::vector< std::string > s = comma::split( e[1], ',' );
             boost::optional < int > quality;
             if (s.size()> 1) { quality = boost::lexical_cast<int>(s[1]); }
-            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >(get_timestamp), _1, s[0], quality ) ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >( get_timestamp ), _1, s[0], quality ) ) );
         }
         else if( e[0] == "histogram" )
         {
