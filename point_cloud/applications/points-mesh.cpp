@@ -186,6 +186,21 @@ class grid
                     if( right != voxel_map_.end() ) { output_( it, right_up, right ); }
                     if( up != voxel_map_.end() ) { output_( it, up, right_up ); }
                 }
+                if( right != voxel_map_.end() )
+                {
+                    i[0] = it->first[0];
+                    i[1] = it->first[1] - 1;
+                    iterator_ down = voxel_map_.find( i );
+                    //if there is no down
+                    if(down==voxel_map_.end()) 
+                    {
+                        i[0] = it->first[0] + 1;
+                        i[1] = it->first[1] - 1;
+                        iterator_ right_down = voxel_map_.find( i );
+                        //but there is right_down
+                        if( right_down != voxel_map_.end() ) { output_( it, right, right_down ); }
+                    }
+                }
             }
             voxel_map_.clear();
         }
