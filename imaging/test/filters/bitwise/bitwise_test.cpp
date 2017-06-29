@@ -33,6 +33,7 @@
 #include <gtest/gtest.h>
 
 #include <boost/algorithm/string/erase.hpp>
+#include <boost/container/vector.hpp>
 #include <opencv2/core/core.hpp>
 
 #include <iostream>
@@ -155,17 +156,19 @@ namespace {
 
 namespace testing
 {
-    struct bracket
-    {
-       explicit bracket( const std::string & s = "" ) : s_( s ) { }
-       std::string s_;
-    };
+    struct bracket;
 
     typedef boost::variant< std::string
-                          , bracket
-                          > leaf;
+                          , boost::recursive_wrapper< bracket >
+                          > element;
 
-    struct filter : public std::vector< leaf > {};
+    typedef boost::container::vector< element > leaf;
+
+    struct bracket
+    {
+       explicit bracket( const leaf & f = leaf() ) : f_( f ) {}
+       leaf f_;
+    };
 
     struct printer : boost::static_visitor< void >
     {
@@ -173,34 +176,35 @@ namespace testing
         std::ostream & _os;
 
         void operator()( const std::string & s ) const { _os << s; }
-        void operator()( const bracket & b ) const { _os << '(' << b.s_ << ')'; }
-        void operator()( const leaf & l ) const { boost::apply_visitor( *this, l ); }
+        void operator()( const bracket & b ) const { _os << '('; ( *this )( b.f_ ); _os << ')'; }
+        void operator()( const element & l ) const { boost::apply_visitor( *this, l ); }
+        void operator()( const leaf & f ) const { for ( const auto e : f ) { boost::apply_visitor( *this, e ); } }
     };
 
-    inline std::ostream & operator<<( std::ostream & os, const leaf & l ) {
+    inline std::ostream & operator<<( std::ostream & os, const element & l ) {
         boost::apply_visitor( printer( os ), l );
         return os;
     }
 
-    inline std::ostream & operator<<( std::ostream & os, const filter & s ) {
+    inline std::ostream & operator<<( std::ostream & os, const leaf & s ) {
         for ( const auto & e : s ) { os << e; }
         return os;
     }
 
     template< typename It, typename Skipper = boost::spirit::qi::space_type >
-    struct parser : boost::spirit::qi::grammar< It, filter(), Skipper >
+    struct parser : boost::spirit::qi::grammar< It, leaf(), Skipper >
     {
-        parser() : parser::base_type( filter_ )
+        parser() : parser::base_type( leaf_ )
         {
             namespace qi = boost::spirit::qi;
 
-            filter_ = var_ >> *leaf_;
-            leaf_ = ( bracket_ | var_ );
-            bracket_ = '(' >> var_ >> ')';
-            var_ = qi::lexeme[ +(qi::alnum | qi::char_(",./:|+-")) ];
+            leaf_ = var_ >> *element_;
+            element_ = ( bracket_ | var_ );
+            bracket_ = '(' >> leaf_ >> ')';
+            var_ = qi::lexeme[ +(qi::alnum | qi::char_("=;,./:|+-")) ];
 
-            BOOST_SPIRIT_DEBUG_NODE( filter_ );
             BOOST_SPIRIT_DEBUG_NODE( leaf_ );
+            BOOST_SPIRIT_DEBUG_NODE( element_ );
             BOOST_SPIRIT_DEBUG_NODE( bracket_ );
             BOOST_SPIRIT_DEBUG_NODE( var_ );
         }
@@ -208,8 +212,8 @@ namespace testing
         private:
             boost::spirit::qi::rule< It, std::string(), Skipper > var_;
             boost::spirit::qi::rule< It, bracket(), Skipper > bracket_;
+            boost::spirit::qi::rule< It, element(), Skipper > element_;
             boost::spirit::qi::rule< It, leaf(), Skipper > leaf_;
-            boost::spirit::qi::rule< It, filter(), Skipper > filter_;
     };
 
 } // namespace testing
@@ -219,13 +223,17 @@ TEST( bitwise, testing )
     const std::vector< std::string > inputs =
         {
             "f:(d+g)/a|foo:bar",
-            "ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar",
+            "ratio:(r + b)/(1.0+g)|threshold:otsu, 1.2e-8|foo:bar",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
+            "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)",
         };
 
     const std::vector< std::string > expected =
         {
             "f:(d+g)/a|foo:bar",
             "ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar,baz)",
         };
 
     for ( size_t i = 0; i < inputs.size(); ++i )
@@ -234,10 +242,11 @@ TEST( bitwise, testing )
         testing::parser< decltype( f ) > p;
 
         try {
-            testing::filter result;
+            testing::leaf result;
             bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
             EXPECT_TRUE( ok );
             EXPECT_EQ( f, l );
+            // std::cerr << "ok? " << ok << ", f == l? " << ( f == l ) << ", unparsed: '" << std::string( f, l ) << "'" << std::endl;
             {
                 std::ostringstream os;
                 os << result;
