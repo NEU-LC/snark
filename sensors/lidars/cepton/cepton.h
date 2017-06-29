@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2016 The University of Sydney
+// Copyright (c) 2017 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -28,33 +28,20 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include "realsense.h"
-#include <comma/csv/traits.h>
-#include <boost/lexical_cast.hpp>
+#include "cepton_sdk.h"
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <Eigen/Core>
 
-namespace comma { namespace visiting {
-   
+namespace snark { namespace cepton {
 
-template <> struct traits< snark::realsense::stream_args >
+struct point_t
 {
-    template< typename K, typename V > static void visit( const K& k, snark::realsense::stream_args& p, V& v )
-    {
-        v.apply( "width", p.width );
-        v.apply( "height", p.height );
-        std::string f;
-        v.apply( "format", f );
-        p.format=snark::realsense::format(f);
-        v.apply( "framerate", p.framerate );
-    }
-    template< typename K, typename V > static void visit( const K& k, const snark::realsense::stream_args& p, V& v )
-    {
-        v.apply( "width", p.width );
-        v.apply( "height", p.height );
-        std::string f=boost::lexical_cast<std::string>(int(p.format.value));
-        v.apply( "format", f );
-        v.apply( "framerate", p.framerate );
-    }
+    boost::posix_time::ptime t;
+    Eigen::Vector3f point;
+    float intensity;
+    point_t( ) : intensity(0) { }
+    point_t(const CeptonSensorPoint& cp) : t(boost::gregorian::date( 1970, 1, 1 ), boost::posix_time::microseconds(cp.timestamp)), point(cp.x,cp.y,cp.z), intensity(cp.intensity) { } 
 };
-
     
-} } // namespace comma { namespace visiting {
+} } //namespace snark { namespace cepton {
+    

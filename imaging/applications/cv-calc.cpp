@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with Ark. If not, see <http://www.gnu.org/licenses/>.
 
+#include <memory>
 #include <opencv2/core/core.hpp>
 #include <comma/visiting/traits.h>
 #include <comma/csv/stream.h>
@@ -56,15 +57,20 @@ static void usage( bool verbose=false )
     std::cerr << "serialization options" << std::endl;
     if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
     std::cerr << std::endl;
-    std::cerr << "operations" << std::endl;
+    std::cerr << "operation options" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --show-partial; by default no partial roi is shown in image. Use option to change behaviour." << std::endl;
     std::cerr << "        --discard; discards frames where the roi is not seen." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    stride" << std::endl;
+    std::cerr << "        --non-zero=<what>; output only patches that have non-zero pixels" << std::endl;
+    std::cerr << "            <what>" << std::endl;
+    std::cerr << "                all: output only patches with all pixels non-zero" << std::endl;
+    std::cerr << "                some: output only patches with some pixels non-zero" << std::endl;
+    std::cerr << "                <ratio>: output only patches with a given ration of non-zero pixels: todo?" << std::endl;
     std::cerr << "        --output=<options>; output options; see cv-cat for details" << std::endl;
-    std::cerr << "        --padding=[<padding>]; padding, 'same' or 'valid' (see e.g. tensorflow for the meaning); default: same" << std::endl;
+    std::cerr << "        --padding=[<padding>]; padding, 'same' or 'valid' (see e.g. tensorflow for the meaning); default: valid" << std::endl;
     std::cerr << "        --shape,--kernel,--size=<x>,<y>; image size" << std::endl;
     std::cerr << "        --strides=[<x>,<y>]; stride size; default: 1,1" << std::endl;
     std::cerr << std::endl;
@@ -148,7 +154,8 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
+        //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
@@ -199,11 +206,15 @@ int main( int ac, char** av )
             if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
             std::pair< unsigned int, unsigned int > shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
             struct padding_types { enum values { same, valid }; };
-            std::string padding_string = options.value< std::string >( "--padding", "same" );
+            std::string padding_string = options.value< std::string >( "--padding", "valid" );
             padding_types::values padding = padding_types::same;
             if( padding_string == "same" || padding_string == "SAME" ) { padding = padding_types::same; std::cerr << "cv-calc: stride: padding 'same' not implemented; please use --padding=valid" << std::endl; return 1; }
             else if( padding_string == "valid" || padding_string == "VALID" ) { padding = padding_types::valid; }
             else { std::cerr << "cv-calc: stride: expected padding type, got: \"" << padding_string << "\"" << std::endl; return 1; }
+            std::string non_zero = options.value< std::string >( "--non-zero", "" );
+            bool non_zero_all = non_zero == "all";
+            bool non_zero_some = non_zero == "some";
+            boost::optional< double > non_zero_ratio = boost::lexical_cast< double >( non_zero );
             while( std::cin.good() && !std::cin.eof() )
             {
                 std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
@@ -217,11 +228,23 @@ int main( int ac, char** av )
                         if( p.second.cols < int( shape.first ) || p.second.rows < int( shape.second ) ) { std::cerr << "cv-calc: expected image greater than rows: " << shape.second << " cols: " << shape.first << "; got rows: " << p.second.rows << " cols: " << p.second.cols << std::endl; return 1; }
                         std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > q;
                         q.first = p.first;
+                        unsigned int non_zero_min_size = non_zero_all ? shape.first * shape.second : non_zero_some ? 1 : non_zero_ratio ? shape.first * shape.second * *non_zero_ratio : 0;
                         for( unsigned int i = 0; i < ( p.second.cols + 1 - shape.first ); i += strides.first )
                         {
                             for( unsigned int j = 0; j < ( p.second.rows + 1 - shape.second ); j += strides.second )
                             {
                                 p.second( cv::Rect( i, j, shape.first, shape.second ) ).copyTo( q.second );
+                                if( non_zero_min_size )
+                                {
+                                    unsigned int count = 0; // todo: quick and dirty; seriously watch performance
+                                    static std::vector< char > zero_pixel( q.second.elemSize(), 0 );
+                                    for( const unsigned char* ptr = q.second.datastart; ptr < q.second.dataend; ptr += q.second.elemSize() )
+                                    {
+                                        if( ::memcmp( ptr, &zero_pixel[0], zero_pixel.size() ) == 0 ) { if( non_zero_all ) { break; } else { continue; } }
+                                        ++count;
+                                    }
+                                    if( count < non_zero_min_size ) { continue; }
+                                }
                                 output.write_to_stdout( q );
                             }
                         }
@@ -290,7 +313,6 @@ int main( int ac, char** av )
         }
         else if( operation == "roi" )
         {
-            
             comma::csv::binary< ::extents > binary( csv );
             bool flush = options.exists("--flush");
             bool show_partial = options.exists("--show-partial");
@@ -322,7 +344,6 @@ int main( int ac, char** av )
                 // roi not in image at all
                 if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows ) { continue; }
                     
-                
                 // Clip roi to fit in the image
                 if( show_partial )
                 {
@@ -340,9 +361,7 @@ int main( int ac, char** av )
                         << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1;
                 }
                 
-                if( ext.min.x >= 0 && ext.min.y >=0 
-                    && (ext.min.x + width < mat.cols) && (ext.min.y + height < mat.rows) 
-                ) 
+                if( ext.min.x >= 0 && ext.min.y >=0 && (ext.min.x + width < mat.cols) && (ext.min.y + height < mat.rows ) ) 
                 {
                     mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(0);
                     mat.setTo( cv::Scalar(0), mask );
