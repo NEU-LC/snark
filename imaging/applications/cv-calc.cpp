@@ -214,7 +214,7 @@ int main( int ac, char** av )
             std::string non_zero = options.value< std::string >( "--non-zero", "" );
             bool non_zero_all = non_zero == "all";
             bool non_zero_some = non_zero == "some";
-            boost::optional< double > non_zero_ratio = boost::lexical_cast< double >( non_zero );
+            boost::optional< double > non_zero_ratio = non_zero.empty() ? boost::none : boost::optional< double >( boost::lexical_cast< double >( non_zero ) );
             while( std::cin.good() && !std::cin.eof() )
             {
                 std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
