@@ -154,71 +154,77 @@ namespace {
 
 } // anonymous
 
-namespace testing
+namespace snark{ namespace cv_mat {
+
+namespace bitwise
 {
-    struct bracket;
-
-    typedef boost::variant< std::string
-                          , boost::recursive_wrapper< bracket >
-                          > element;
-
-    typedef boost::container::vector< element > leaf;
-
-    struct bracket
+    namespace brackets
     {
-       explicit bracket( const leaf & f = leaf() ) : f_( f ) {}
-       leaf f_;
-    };
+        struct bracket;
 
-    struct printer : boost::static_visitor< void >
-    {
-        printer( std::ostream & os ) : _os(os) {}
-        std::ostream & _os;
+        typedef boost::variant< std::string
+                              , boost::recursive_wrapper< bracket >
+                              > element;
 
-        void operator()( const std::string & s ) const { _os << s; }
-        void operator()( const bracket & b ) const { _os << '('; ( *this )( b.f_ ); _os << ')'; }
-        void operator()( const element & l ) const { boost::apply_visitor( *this, l ); }
-        void operator()( const leaf & f ) const { for ( const auto e : f ) { boost::apply_visitor( *this, e ); } }
-    };
+        typedef boost::container::vector< element > sequence;
 
-    inline std::ostream & operator<<( std::ostream & os, const element & l ) {
-        boost::apply_visitor( printer( os ), l );
-        return os;
-    }
-
-    inline std::ostream & operator<<( std::ostream & os, const leaf & s ) {
-        for ( const auto & e : s ) { os << e; }
-        return os;
-    }
-
-    template< typename It, typename Skipper = boost::spirit::qi::space_type >
-    struct parser : boost::spirit::qi::grammar< It, leaf(), Skipper >
-    {
-        parser() : parser::base_type( leaf_ )
+        struct bracket
         {
-            namespace qi = boost::spirit::qi;
+           explicit bracket( const sequence & f = sequence() ) : s_( f ) {}
+           sequence s_;
+        };
 
-            leaf_ = var_ >> *element_;
-            element_ = ( bracket_ | var_ );
-            bracket_ = '(' >> leaf_ >> ')';
-            var_ = qi::lexeme[ +(qi::alnum | qi::char_("=;,./:|+-")) ];
+        struct printer : boost::static_visitor< void >
+        {
+            printer( std::ostream & os ) : _os(os) {}
+            std::ostream & _os;
 
-            BOOST_SPIRIT_DEBUG_NODE( leaf_ );
-            BOOST_SPIRIT_DEBUG_NODE( element_ );
-            BOOST_SPIRIT_DEBUG_NODE( bracket_ );
-            BOOST_SPIRIT_DEBUG_NODE( var_ );
+            void operator()( const std::string & s ) const { _os << s; }
+            void operator()( const bracket & b ) const { _os << '('; ( *this )( b.s_ ); _os << ')'; }
+            void operator()( const element & l ) const { boost::apply_visitor( *this, l ); }
+            void operator()( const sequence & f ) const { for ( const auto e : f ) { boost::apply_visitor( *this, e ); } }
+        };
+
+        inline std::ostream & operator<<( std::ostream & os, const element & l ) {
+            boost::apply_visitor( printer( os ), l );
+            return os;
         }
 
-        private:
-            boost::spirit::qi::rule< It, std::string(), Skipper > var_;
-            boost::spirit::qi::rule< It, bracket(), Skipper > bracket_;
-            boost::spirit::qi::rule< It, element(), Skipper > element_;
-            boost::spirit::qi::rule< It, leaf(), Skipper > leaf_;
-    };
+        inline std::ostream & operator<<( std::ostream & os, const sequence & s ) {
+            for ( const auto & e : s ) { os << e; }
+            return os;
+        }
 
-} // namespace testing
+        template< typename It, typename Skipper = boost::spirit::qi::space_type >
+        struct parser : boost::spirit::qi::grammar< It, sequence(), Skipper >
+        {
+            parser() : parser::base_type( sequence_ )
+            {
+                namespace qi = boost::spirit::qi;
 
-TEST( bitwise, testing )
+                sequence_ = var_ >> *element_;
+                element_ = ( bracket_ | var_ );
+                bracket_ = '(' >> sequence_ >> ')';
+                var_ = qi::lexeme[ +(qi::alnum | qi::char_("=;,./:|+-")) ];
+
+                BOOST_SPIRIT_DEBUG_NODE( sequence_ );
+                BOOST_SPIRIT_DEBUG_NODE( element_ );
+                BOOST_SPIRIT_DEBUG_NODE( bracket_ );
+                BOOST_SPIRIT_DEBUG_NODE( var_ );
+            }
+
+            private:
+                boost::spirit::qi::rule< It, std::string(), Skipper > var_;
+                boost::spirit::qi::rule< It, bracket(), Skipper > bracket_;
+                boost::spirit::qi::rule< It, element(), Skipper > element_;
+                boost::spirit::qi::rule< It, sequence(), Skipper > sequence_;
+        };
+    } // namespace brackets
+} // namespace bitwise
+
+} } // namespace snark{ namespace cv_mat {
+
+TEST( bitwise, brackets )
 {
     const std::vector< std::string > inputs =
         {
@@ -239,10 +245,10 @@ TEST( bitwise, testing )
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
         auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-        testing::parser< decltype( f ) > p;
+        brackets::parser< decltype( f ) > p;
 
         try {
-            testing::leaf result;
+            brackets::sequence result;
             bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
             EXPECT_TRUE( ok );
             EXPECT_EQ( f, l );
