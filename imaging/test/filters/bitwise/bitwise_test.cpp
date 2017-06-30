@@ -34,6 +34,10 @@
 
 #include <boost/algorithm/string/erase.hpp>
 #include <boost/container/vector.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <opencv2/core/core.hpp>
 
 #include <iostream>
@@ -158,8 +162,10 @@ namespace snark{ namespace cv_mat {
 
 namespace bitwise
 {
+
     namespace brackets
     {
+
         struct bracket;
 
         typedef boost::variant< std::string
@@ -181,8 +187,8 @@ namespace bitwise
 
             void operator()( const std::string & s ) const { _os << s; }
             void operator()( const bracket & b ) const { _os << '('; ( *this )( b.s_ ); _os << ')'; }
-            void operator()( const element & l ) const { boost::apply_visitor( *this, l ); }
-            void operator()( const sequence & f ) const { for ( const auto e : f ) { boost::apply_visitor( *this, e ); } }
+            void operator()( const element & e ) const { boost::apply_visitor( *this, e ); }
+            void operator()( const sequence & s ) const { for ( const auto e : s ) { boost::apply_visitor( *this, e ); } }
         };
 
         inline std::ostream & operator<<( std::ostream & os, const element & l ) {
@@ -194,6 +200,58 @@ namespace bitwise
             for ( const auto & e : s ) { os << e; }
             return os;
         }
+
+        struct visitor : boost::static_visitor< void >
+        {
+            visitor( unsigned int start = 0 ) : next_( start ), g_(), name_( "e" + boost::uuids::to_string( g_() ) )
+            {
+                name_.erase( std::remove( name_.begin(), name_.end(), '-' ) );
+            }
+
+            void operator()( const std::string & s ) {
+                if ( s == "and" ) { value += " and "; return; }
+                if ( s == "xor" ) { value += " xor "; return; }
+                if ( s == "or"  ) { value += " or " ; return; }
+                if ( s == "not" ) { value += " not "; return; }
+                value += s;
+            }
+            void operator()( const bracket & b ) {
+                visitor inner( next_ );
+                inner( b.s_ );
+                next_ = inner.next_;
+                std::string id = name_ + boost::lexical_cast< std::string >( next_++ );
+                subexpressions[ id ] = inner.value;
+                value += id;
+                std::move( inner.subexpressions.begin(), inner.subexpressions.end(), std::inserter( subexpressions, subexpressions.begin() ) );
+            }
+            void operator()( const element & e ) { boost::apply_visitor( *this, e ); }
+            void operator()( const sequence & s ) { for ( const auto e : s ) { boost::apply_visitor( *this, e ); } }
+
+            void print( std::ostream & os ) const
+            {
+                os << "expression is: '" << value << "'\n" << "where:";
+                if ( subexpressions.empty() )
+                {
+                    os << " there are no subexpressions";
+                }
+                else
+                {
+                    for ( const auto & e : subexpressions )
+                    {
+                        os << "\n    " << e.first << " is '" << e.second << "'";
+                    }
+                }
+                os << std::endl;
+            }
+
+            std::map< std::string, std::string > subexpressions;
+            std::string value;
+
+            private:
+                unsigned int next_;
+                boost::uuids::random_generator g_;
+                std::string name_;
+        };
 
         template< typename It, typename Skipper = boost::spirit::qi::space_type >
         struct parser : boost::spirit::qi::grammar< It, sequence(), Skipper >
@@ -219,7 +277,9 @@ namespace bitwise
                 boost::spirit::qi::rule< It, element(), Skipper > element_;
                 boost::spirit::qi::rule< It, sequence(), Skipper > sequence_;
         };
+
     } // namespace brackets
+
 } // namespace bitwise
 
 } } // namespace snark{ namespace cv_mat {
@@ -260,6 +320,10 @@ TEST( bitwise, brackets )
                 // std::cerr << "got      '" << os.str()    << "'" << std::endl;
                 EXPECT_EQ( os.str(), expected[i] );
             }
+            brackets::visitor v;
+            v( result );
+            std::cerr << "expected: " << expected[i] << std::endl;
+            v.print( std::cerr );
         }
         catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
         {
