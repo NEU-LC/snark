@@ -292,14 +292,8 @@ TEST( bitwise, brackets )
             "ratio:(r + b)/(1.0+g)|threshold:otsu, 1.2e-8|foo:bar",
             "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
             "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)",
-        };
-
-    const std::vector< std::string > expected =
-        {
-            "f:(d+g)/a|foo:bar",
-            "ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar",
-            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
-            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar,baz)",
+            "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)and blah",
+            "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar or linear-combination:r|threshold:10)/ (bar, baz)and blah",
         };
 
     for ( size_t i = 0; i < inputs.size(); ++i )
@@ -316,19 +310,19 @@ TEST( bitwise, brackets )
             {
                 std::ostringstream os;
                 os << result;
-                // std::cerr << "expected '" << expected[i] << "'" << std::endl;
-                // std::cerr << "got      '" << os.str()    << "'" << std::endl;
-                EXPECT_EQ( os.str(), expected[i] );
             }
             brackets::visitor v;
             v( result );
-            std::cerr << "expected: " << expected[i] << std::endl;
-            v.print( std::cerr );
+            std::ostringstream os;
+            os << "parse: " << inputs[i] << '\n';
+            v.print( os );
+            std::cerr << os.str() << std::endl;
         }
         catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
         {
             std::cerr << "exception:" << std::endl;
             print_info( e.what_ );
+            throw;
         }
     }
 }
@@ -341,16 +335,16 @@ TEST( bitwise, printer )
         parser< decltype( f ) > p;
 
         try {
-        expr result;
-        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-        EXPECT_TRUE( ok );
-        EXPECT_EQ( f, l );
-        {
-            std::ostringstream os;
-            os << result;
-            // std::cerr << expected[i] << " : " << os.str() << std::endl;
-            EXPECT_EQ( os.str(), expected[i] );
-        }
+            expr result;
+            bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+            EXPECT_TRUE( ok );
+            EXPECT_EQ( f, l );
+            {
+                std::ostringstream os;
+                os << result;
+                // std::cerr << expected[i] << " : " << os.str() << std::endl;
+                EXPECT_EQ( os.str(), expected[i] );
+            }
         } catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
         {
             std::cerr << "exception:" << std::endl;
