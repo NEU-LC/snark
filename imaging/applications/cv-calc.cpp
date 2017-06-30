@@ -373,8 +373,8 @@ int main( int ac, char** av )
         else { std::cerr << name << " unknown operation: " << operation << std::endl; return 1; }
         return 0;
     }
-    catch( std::exception& ex ) { std::cerr << "image-calc: " << ex.what() << std::endl; }
-    catch( ... ) { std::cerr << "image-calc: unknown exception" << std::endl; }
+    catch( std::exception& ex ) { std::cerr << "cv-calc: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "cv-calc: unknown exception" << std::endl; }
     return 1;
 }
 
