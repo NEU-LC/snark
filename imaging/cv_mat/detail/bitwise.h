@@ -32,6 +32,7 @@
 #include <iostream>
 #include <string>
 
+// #define BOOST_SPIRIT_DEBUG
 #include <boost/config/warning_disable.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
@@ -151,6 +152,14 @@ namespace bitwise
 
             simple = ( ( '[' > expr_ > ']' ) | var_ );
             var_ = qi::lexeme[ +(qi::alnum | qi::char_(",.()/:|+-")) ];
+
+            BOOST_SPIRIT_DEBUG_NODE( not_ );
+            BOOST_SPIRIT_DEBUG_NODE( and_ );
+            BOOST_SPIRIT_DEBUG_NODE( xor_ );
+            BOOST_SPIRIT_DEBUG_NODE( or_ );
+            BOOST_SPIRIT_DEBUG_NODE( simple );
+            BOOST_SPIRIT_DEBUG_NODE( expr_ );
+            BOOST_SPIRIT_DEBUG_NODE( var_ );
         }
 
         private:

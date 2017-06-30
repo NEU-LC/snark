@@ -33,6 +33,7 @@
 #include <gtest/gtest.h>
 
 #include <boost/algorithm/string/erase.hpp>
+#include <boost/container/vector.hpp>
 #include <opencv2/core/core.hpp>
 
 #include <iostream>
@@ -107,6 +108,10 @@ namespace {
             "a or b or c",
             "[a and b] xor [[c and d] or [a and b]]",
             "a and b xor [c and d or a and b]",
+            // "a and b xor [c and f(d+g) or a and b]",
+            // "a and f(d+g)",
+            // "[a and f(d+g)] or c",
+            // "f:(d+g)/a|foo:bar",
         };
 
     const std::vector< std::string > expected =
@@ -120,6 +125,10 @@ namespace {
             "[a | [b | c]]",
             "[[a & b] ^ [[c & d] | [a & b]]]",
             "[[a & b] ^ [[c & d] | [a & b]]]",
+            // "[[a & b] ^ [[c & f(d+g)] | [a & b]]]",
+            // "[a & f(d+g)]",
+            // "[[a & f(d+g)] | c]",
+            // "f:(d+g)/a|foo:bar",
         };
 
     const std::vector< boost::function< int( int, int, int, int ) > > direct =
@@ -145,6 +154,115 @@ namespace {
 
 } // anonymous
 
+namespace testing
+{
+    struct bracket;
+
+    typedef boost::variant< std::string
+                          , boost::recursive_wrapper< bracket >
+                          > element;
+
+    typedef boost::container::vector< element > leaf;
+
+    struct bracket
+    {
+       explicit bracket( const leaf & f = leaf() ) : f_( f ) {}
+       leaf f_;
+    };
+
+    struct printer : boost::static_visitor< void >
+    {
+        printer( std::ostream & os ) : _os(os) {}
+        std::ostream & _os;
+
+        void operator()( const std::string & s ) const { _os << s; }
+        void operator()( const bracket & b ) const { _os << '('; ( *this )( b.f_ ); _os << ')'; }
+        void operator()( const element & l ) const { boost::apply_visitor( *this, l ); }
+        void operator()( const leaf & f ) const { for ( const auto e : f ) { boost::apply_visitor( *this, e ); } }
+    };
+
+    inline std::ostream & operator<<( std::ostream & os, const element & l ) {
+        boost::apply_visitor( printer( os ), l );
+        return os;
+    }
+
+    inline std::ostream & operator<<( std::ostream & os, const leaf & s ) {
+        for ( const auto & e : s ) { os << e; }
+        return os;
+    }
+
+    template< typename It, typename Skipper = boost::spirit::qi::space_type >
+    struct parser : boost::spirit::qi::grammar< It, leaf(), Skipper >
+    {
+        parser() : parser::base_type( leaf_ )
+        {
+            namespace qi = boost::spirit::qi;
+
+            leaf_ = var_ >> *element_;
+            element_ = ( bracket_ | var_ );
+            bracket_ = '(' >> leaf_ >> ')';
+            var_ = qi::lexeme[ +(qi::alnum | qi::char_("=;,./:|+-")) ];
+
+            BOOST_SPIRIT_DEBUG_NODE( leaf_ );
+            BOOST_SPIRIT_DEBUG_NODE( element_ );
+            BOOST_SPIRIT_DEBUG_NODE( bracket_ );
+            BOOST_SPIRIT_DEBUG_NODE( var_ );
+        }
+
+        private:
+            boost::spirit::qi::rule< It, std::string(), Skipper > var_;
+            boost::spirit::qi::rule< It, bracket(), Skipper > bracket_;
+            boost::spirit::qi::rule< It, element(), Skipper > element_;
+            boost::spirit::qi::rule< It, leaf(), Skipper > leaf_;
+    };
+
+} // namespace testing
+
+TEST( bitwise, testing )
+{
+    const std::vector< std::string > inputs =
+        {
+            "f:(d+g)/a|foo:bar",
+            "ratio:(r + b)/(1.0+g)|threshold:otsu, 1.2e-8|foo:bar",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
+            "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)",
+        };
+
+    const std::vector< std::string > expected =
+        {
+            "f:(d+g)/a|foo:bar",
+            "ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar,baz)",
+        };
+
+    for ( size_t i = 0; i < inputs.size(); ++i )
+    {
+        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
+        testing::parser< decltype( f ) > p;
+
+        try {
+            testing::leaf result;
+            bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+            EXPECT_TRUE( ok );
+            EXPECT_EQ( f, l );
+            // std::cerr << "ok? " << ok << ", f == l? " << ( f == l ) << ", unparsed: '" << std::string( f, l ) << "'" << std::endl;
+            {
+                std::ostringstream os;
+                os << result;
+                // std::cerr << "expected '" << expected[i] << "'" << std::endl;
+                // std::cerr << "got      '" << os.str()    << "'" << std::endl;
+                EXPECT_EQ( os.str(), expected[i] );
+            }
+        }
+        catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
+        {
+            std::cerr << "exception:" << std::endl;
+            print_info( e.what_ );
+        }
+    }
+}
+
 TEST( bitwise, printer )
 {
     for ( size_t i = 0; i < inputs.size(); ++i )
@@ -152,6 +270,7 @@ TEST( bitwise, printer )
         auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
         parser< decltype( f ) > p;
 
+        try {
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
         EXPECT_TRUE( ok );
@@ -159,7 +278,13 @@ TEST( bitwise, printer )
         {
             std::ostringstream os;
             os << result;
+            // std::cerr << expected[i] << " : " << os.str() << std::endl;
             EXPECT_EQ( os.str(), expected[i] );
+        }
+        } catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
+        {
+            std::cerr << "exception:" << std::endl;
+            print_info( e.what_ );
         }
     }
 }
@@ -191,6 +316,7 @@ TEST( bitwise, special )
         {
             std::ostringstream os;
             os << result;
+            // std::cerr << expected[i] << " : " << os.str() << std::endl;
             EXPECT_EQ( os.str(), expected[i] );
         }
     }

@@ -72,7 +72,7 @@
 #include "../../timing/traits.h"
 #include "filters.h"
 #include "detail/ratio.h"
-#include "detail/bitwise.h"
+//#include "detail/bitwise.h"
 #include "serialization.h"
 #include "traits.h"
 #include "depth_traits.h"
@@ -218,11 +218,11 @@ template < > struct empty< std::vector< char > > { static bool is_empty( const s
 template < typename H >
 static bool is_empty( typename impl::filters< H >::value_type m, const typename impl::filters< H >::get_timestamp_functor& get_timestamp ) { return ( m.second.empty() && ( empty< H >::is_empty(m.first) || get_timestamp(m.first) == boost::posix_time::not_a_date_time ) ); }
 
-static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension, unsigned int index = 0 )
+static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension, boost::optional< unsigned int > index = boost::none )
 {
     std::ostringstream ss;
     ss << boost::posix_time::to_iso_string( t );
-    if( index > 0 ) { ss << '.' << index; }
+    if( index ) { ss << '.' << *index; }
     ss << '.' << extension;
     return ss.str();
 }
@@ -1107,7 +1107,7 @@ struct view_impl_ {
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
 
-    view_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
+    view_impl_< H >( const get_timestamp_functor& get_timestamp ) : get_timestamp_(get_timestamp) {}
     value_type operator()( value_type m, std::string name, unsigned int delay )
     {
         cv::imshow( &name[0], m.second );
@@ -1295,7 +1295,7 @@ struct simple_blob_impl_ {
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
 
-    simple_blob_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
+    simple_blob_impl_< H >( const get_timestamp_functor& get_timestamp ) : get_timestamp_(get_timestamp) {}
     value_type operator()( const value_type& m, const cv::SimpleBlobDetector::Params& params, bool is_binary )
     {
         static cv::SimpleBlobDetector detector( params ); // quick and dirty
@@ -1313,7 +1313,7 @@ struct grab_impl_ {
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
 
-    grab_impl_< H >( const get_timestamp_functor& get_timestmap ) : get_timestamp_(get_timestmap) {}
+    grab_impl_< H >( const get_timestamp_functor& get_timestamp ) : get_timestamp_(get_timestamp) {}
     value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
         std::vector<int> params;
@@ -1330,9 +1330,9 @@ class file_impl_
         typedef typename impl::filters< H >::value_type value_type;
         typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
 
-        file_impl_( const get_timestamp_functor& get_timestmap ) : get_timestamp_( get_timestmap ), index_( 0 ) {}
+        file_impl_( const get_timestamp_functor& get_timestamp ) : get_timestamp_( get_timestamp ), index_( 0 ) {}
 
-        value_type operator()( value_type m, const std::string& type, const boost::optional< int >& quality )
+        value_type operator()( value_type m, const std::string& type, const boost::optional< int >& quality, bool do_index )
         {
             if( m.second.empty() ) { return m; }
             encode_impl_check_type< H >( m, type );
@@ -1340,10 +1340,11 @@ class file_impl_
             if( quality ) { params = imwrite_params( type, *quality ); }
             boost::posix_time::ptime timestamp = get_timestamp_( m.first );
             index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
-            cv::imwrite( make_filename( timestamp, type, index_ ), m.second, params );
+            cv::imwrite( make_filename( timestamp, type, do_index ? boost::optional< unsigned int >( index_ ) : boost::none ), m.second, params );
             previous_timestamp_ = timestamp;
             return m;
         }
+        
     private:
         const get_timestamp_functor get_timestamp_;
         boost::posix_time::ptime previous_timestamp_;
@@ -2556,30 +2557,30 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
                 const get_timestamp_functor & get_timestamp_;
                 char separator_, equal_sign_;
         };
-        struct composer
-        {
-            composer( const maker & m ) : m_( m ) {}
-            const maker & m_;
-
-            typedef typename boost::static_visitor< boost::function< input_type ( input_type ) > >::result_type result_type;
-
-            result_type term( const std::string & s ) const { return m_( s ); };
-            result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second & r.second ); }; }
-            result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second | r.second ); }; }
-            result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second ^ r.second ); }; }
-            result_type op_not( const result_type & op ) const { return [ op ]( const input_type & i ) -> input_type { const input_type & o = op( i ); return std::make_pair( i.first, ~o.second ); }; }
-        };
-        const std::string & sanitized = snark::cv_mat::bitwise::tabify_bitwise_ops( e[1] );
-        auto start( std::begin( sanitized ) ), finish( std::end( sanitized ) );
-        snark::cv_mat::bitwise::parser< decltype( start ) > p;
-        snark::cv_mat::bitwise::expr result;
-        bool ok = boost::spirit::qi::phrase_parse( start, finish, p, boost::spirit::qi::space, result );
-        if ( !ok ) { COMMA_THROW( comma::exception, "parsing of mask expression '" << e[1] << "' failed" ); }
-        if ( start != finish ) { COMMA_THROW( comma::exception, "unparsed leftover string '" << std::string( start, finish ) << "'" ); }
-        maker m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
-        composer c( m );
-        functor_type f = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer >( c ), result );
-        return boost::bind< value_type_t >( mask_impl_< H >(), _1, f );
+//        struct composer
+//        {
+//            composer( const maker & m ) : m_( m ) {}
+//            const maker & m_;
+//
+//            typedef typename boost::static_visitor< boost::function< input_type ( input_type ) > >::result_type result_type;
+//
+//            result_type term( const std::string & s ) const { return m_( s ); };
+//            result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second & r.second ); }; }
+//            result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second | r.second ); }; }
+//            result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second ^ r.second ); }; }
+//            result_type op_not( const result_type & op ) const { return [ op ]( const input_type & i ) -> input_type { const input_type & o = op( i ); return std::make_pair( i.first, ~o.second ); }; }
+//        };
+//        const std::string & sanitized = snark::cv_mat::bitwise::tabify_bitwise_ops( e[1] );
+//        auto start( std::begin( sanitized ) ), finish( std::end( sanitized ) );
+//        snark::cv_mat::bitwise::parser< decltype( start ) > p;
+//        snark::cv_mat::bitwise::expr result;
+//        bool ok = boost::spirit::qi::phrase_parse( start, finish, p, boost::spirit::qi::space, result );
+//        if ( !ok ) { COMMA_THROW( comma::exception, "parsing of mask expression '" << e[1] << "' failed" ); }
+//        if ( start != finish ) { COMMA_THROW( comma::exception, "unparsed leftover string '" << std::string( start, finish ) << "'" ); }
+//        maker m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
+//        composer c( m );
+//        functor_type f = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer >( c ), result );
+//        return boost::bind< value_type_t >( mask_impl_< H >(), _1, f );
     }
     else if( e[0] == "timestamp" ) { return timestamp_impl_< H >( get_timestamp ); }
     else if( e[0] == "transpose" ) { return transpose_impl_< H >; }
@@ -2916,14 +2917,19 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
             std::vector< std::string > s = comma::split( e[1], ',' );
-            boost::optional < int > quality;
-            if (s.size()> 1) { quality = boost::lexical_cast<int>(s[1]); }
-            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >( get_timestamp ), _1, s[0], quality ) ) );
+            boost::optional< int > quality;
+            bool do_index = false;
+            for( unsigned int i = 1; i < s.size(); ++i )
+            {
+                if( s[i] == "index" ) { do_index = true; }
+                else { quality = boost::lexical_cast< int >( s[i] ); }
+            }
+            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >( get_timestamp ), _1, s[0], quality, do_index ), false ) );
         }
         else if( e[0] == "histogram" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
-            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >(get_timestamp), _1 ), false ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >( get_timestamp ), _1 ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
         }
         else if( e[0] == "simple-blob" )
@@ -3046,8 +3052,9 @@ static std::string usage_impl_()
     oss << "                     magnitude: output magnitude only" << std::endl;
     oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
     oss << "                      cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
-    oss << "        file=<format>[,<quality>]: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "        file=<format>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
     oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
+    oss << "                                   index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        grab=<format>[,<quality>]: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
