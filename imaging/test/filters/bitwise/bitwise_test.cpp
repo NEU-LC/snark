@@ -407,14 +407,7 @@ TEST( bitwise, special )
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        const auto & s = tabify_bitwise_ops( inputs[i] );
-        auto f( std::begin( s ) ), l( std::end( s ) );
-        logical::parser< decltype( f ) > p;
-
-        expr result;
-        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-        EXPECT_TRUE( ok );
-        EXPECT_EQ( f, l );
+        expr result = parse( inputs[i] );
         {
             std::ostringstream os;
             os << result;
