@@ -3082,8 +3082,10 @@ static std::string usage_impl_()
     oss << "                mask=<mask1> or <mask2>: apply bitwise 'or'" << std::endl;
     oss << "                mask=<mask1> xor <mask2>: apply bitwise 'xor'" << std::endl;
     oss << "                mask=not <mask1>: apply bitwise 'not' (complement, tilde in C++)" << std::endl;
-    oss << "                mask=[[ not <mask1> ] and <mask2>] or <mask3>: apply the given logical expression of 3 masks" << std::endl;
-    oss << "                    note: standard precedence rules apply; use (square) brackets to explicitly denote precedence" << std::endl;
+    oss << "                mask=(( not <mask1> ) and <mask2>) or <mask3>: apply the given logical expression of 3 masks" << std::endl;
+    oss << "                    note: standard precedence rules apply; use brackets to explicitly denote precedence" << std::endl;
+    oss << "                example:" << std::endl;
+    oss << "                    cv-cat \"mask=ratio:(r + b - g)/( 1 + r + b )|convert-to:ub|threshold:4 xor ratio:2./(1.5e1 - g + r)|convert-to:ub|threshold:5\"" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
     oss << "                  fields: key,value; default: value" << std::endl;
