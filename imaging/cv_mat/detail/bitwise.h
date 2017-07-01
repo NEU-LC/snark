@@ -138,36 +138,36 @@ namespace bitwise
 
     namespace logical
     {
-    template< typename It, typename Skipper = boost::spirit::qi::space_type >
-    struct parser : boost::spirit::qi::grammar< It, expr(), Skipper >
-    {
-        parser() : parser::base_type(expr_)
+        template< typename It, typename Skipper = boost::spirit::qi::space_type >
+        struct parser : boost::spirit::qi::grammar< It, expr(), Skipper >
         {
-            namespace qi = boost::spirit::qi;
+            parser() : parser::base_type(expr_)
+            {
+                namespace qi = boost::spirit::qi;
 
-            expr_ = or_.alias();
+                expr_ = or_.alias();
 
-            or_  = ( xor_ >> "or"  >> or_  ) [ qi::_val = boost::phoenix::construct< binary_op< op_or  > >( boost::spirit::_1, boost::spirit::_2 ) ] | xor_   [ qi::_val = boost::spirit::_1 ];
-            xor_ = ( and_ >> "xor" >> xor_ ) [ qi::_val = boost::phoenix::construct< binary_op< op_xor > >( boost::spirit::_1, boost::spirit::_2 ) ] | and_   [ qi::_val = boost::spirit::_1 ];
-            and_ = ( not_ >> "and" >> and_ ) [ qi::_val = boost::phoenix::construct< binary_op< op_and > >( boost::spirit::_1, boost::spirit::_2 ) ] | not_   [ qi::_val = boost::spirit::_1 ];
-            not_ = ( "not" > simple        ) [ qi::_val = boost::phoenix::construct<  unary_op< op_not > >( boost::spirit::_1                    ) ] | simple [ qi::_val = boost::spirit::_1 ];
+                or_  = ( xor_ >> "or"  >> or_  ) [ qi::_val = boost::phoenix::construct< binary_op< op_or  > >( boost::spirit::_1, boost::spirit::_2 ) ] | xor_   [ qi::_val = boost::spirit::_1 ];
+                xor_ = ( and_ >> "xor" >> xor_ ) [ qi::_val = boost::phoenix::construct< binary_op< op_xor > >( boost::spirit::_1, boost::spirit::_2 ) ] | and_   [ qi::_val = boost::spirit::_1 ];
+                and_ = ( not_ >> "and" >> and_ ) [ qi::_val = boost::phoenix::construct< binary_op< op_and > >( boost::spirit::_1, boost::spirit::_2 ) ] | not_   [ qi::_val = boost::spirit::_1 ];
+                not_ = ( "not" > simple        ) [ qi::_val = boost::phoenix::construct<  unary_op< op_not > >( boost::spirit::_1                    ) ] | simple [ qi::_val = boost::spirit::_1 ];
 
-            simple = ( ( '(' > expr_ > ')' ) | var_ );
-            var_ = qi::lexeme[ +(qi::alnum | qi::char_("=;_,./:|+-")) ];
+                simple = ( ( '(' > expr_ > ')' ) | var_ );
+                var_ = qi::lexeme[ +(qi::alnum | qi::char_("=;_,./:|+-")) ];
 
-            BOOST_SPIRIT_DEBUG_NODE( not_ );
-            BOOST_SPIRIT_DEBUG_NODE( and_ );
-            BOOST_SPIRIT_DEBUG_NODE( xor_ );
-            BOOST_SPIRIT_DEBUG_NODE( or_ );
-            BOOST_SPIRIT_DEBUG_NODE( simple );
-            BOOST_SPIRIT_DEBUG_NODE( expr_ );
-            BOOST_SPIRIT_DEBUG_NODE( var_ );
-        }
+                BOOST_SPIRIT_DEBUG_NODE( not_ );
+                BOOST_SPIRIT_DEBUG_NODE( and_ );
+                BOOST_SPIRIT_DEBUG_NODE( xor_ );
+                BOOST_SPIRIT_DEBUG_NODE( or_ );
+                BOOST_SPIRIT_DEBUG_NODE( simple );
+                BOOST_SPIRIT_DEBUG_NODE( expr_ );
+                BOOST_SPIRIT_DEBUG_NODE( var_ );
+            }
 
-        private:
-            boost::spirit::qi::rule< It, std::string(), Skipper > var_;
-            boost::spirit::qi::rule< It, expr(), Skipper > not_, and_, xor_, or_, simple, expr_;
-    };
+            private:
+                boost::spirit::qi::rule< It, std::string(), Skipper > var_;
+                boost::spirit::qi::rule< It, expr(), Skipper > not_, and_, xor_, or_, simple, expr_;
+        };
 
     } // namespace logical
 

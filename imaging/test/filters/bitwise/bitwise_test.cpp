@@ -106,52 +106,53 @@ namespace {
 
     namespace global
     {
-    const std::vector< std::string > inputs =
-        {
-            "a and b",
-            "a or b",
-            "a xor b",
-            "not a",
-            "not a and b",
-            "not (a and b)",
-            "a or b or c",
-            "(a and b) xor ((c and d) or (a and b))",
-            "a and b xor (c and d or a and b)",
-            // "a and b xor (c and f(d+g) or a and b)",
-            // "a and f(d+g)",
-            // "(a and f(d+g)) or c",
-            // "f:(d+g)/a|foo:bar",
-        };
+        const std::vector< std::string > inputs =
+            {
+                "a and b",
+                "a or b",
+                "a xor b",
+                "not a",
+                "not a and b",
+                "not (a and b)",
+                "a or b or c",
+                "(a and b) xor ((c and d) or (a and b))",
+                "a and b xor (c and d or a and b)",
+                // "a and b xor (c and f(d+g) or a and b)",
+                // "a and f(d+g)",
+                // "(a and f(d+g)) or c",
+                // "f:(d+g)/a|foo:bar",
+            };
 
-    const std::vector< std::string > expected =
-        {
-            "(a & b)",
-            "(a | b)",
-            "(a ^ b)",
-            "(~a)",
-            "((~a) & b)",
-            "(~(a & b))",
-            "(a | (b | c))",
-            "((a & b) ^ ((c & d) | (a & b)))",
-            "((a & b) ^ ((c & d) | (a & b)))",
-            // "((a & b) ^ ((c & f(d+g)) | (a & b)))",
-            // "(a & f(d+g))",
-            // "((a & f(d+g)) | c)",
-            // "f:(d+g)/a|foo:bar",
-        };
+        const std::vector< std::string > expected =
+            {
+                "(a & b)",
+                "(a | b)",
+                "(a ^ b)",
+                "(~a)",
+                "((~a) & b)",
+                "(~(a & b))",
+                "(a | (b | c))",
+                "((a & b) ^ ((c & d) | (a & b)))",
+                "((a & b) ^ ((c & d) | (a & b)))",
+                // "((a & b) ^ ((c & f(d+g)) | (a & b)))",
+                // "(a & f(d+g))",
+                // "((a & f(d+g)) | c)",
+                // "f:(d+g)/a|foo:bar",
+            };
 
-    const std::vector< boost::function< int( int, int, int, int ) > > direct =
-        {
-            []( int a, int b, int c, int d ) ->int { return (a & b); },
-            []( int a, int b, int c, int d ) ->int { return (a | b); },
-            []( int a, int b, int c, int d ) ->int { return (a ^ b); },
-            []( int a, int b, int c, int d ) ->int { return (~a); },
-            []( int a, int b, int c, int d ) ->int { return ((~a) & b); },
-            []( int a, int b, int c, int d ) ->int { return (~(a & b)); },
-            []( int a, int b, int c, int d ) ->int { return (a | (b | c)); },
-            []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
-            []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
-        };
+        const std::vector< boost::function< int( int, int, int, int ) > > direct =
+            {
+                []( int a, int b, int c, int d ) ->int { return (a & b); },
+                []( int a, int b, int c, int d ) ->int { return (a | b); },
+                []( int a, int b, int c, int d ) ->int { return (a ^ b); },
+                []( int a, int b, int c, int d ) ->int { return (~a); },
+                []( int a, int b, int c, int d ) ->int { return ((~a) & b); },
+                []( int a, int b, int c, int d ) ->int { return (~(a & b)); },
+                []( int a, int b, int c, int d ) ->int { return (a | (b | c)); },
+                []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
+                []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
+            };
+
     } // namespace global
 
     int call_direct( const lookup_map_t< int > & m, const boost::function< int( int, int, int, int ) > & f ) { return f( m.at("a"), m.at("b"), m.at("c"), m.at("d") ); }
@@ -164,14 +165,12 @@ namespace {
 
 } // anonymous
 
-namespace snark{ namespace cv_mat {
+namespace snark { namespace cv_mat {
 
 namespace bitwise
 {
-
     namespace brackets
     {
-
         struct bracket;
 
         typedef boost::variant< std::string
@@ -313,7 +312,7 @@ namespace bitwise
 
 } // namespace bitwise
 
-} } // namespace snark{ namespace cv_mat {
+} } // namespace snark { namespace cv_mat {
 
 TEST( bitwise, brackets )
 {
