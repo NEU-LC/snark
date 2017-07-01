@@ -80,10 +80,10 @@ namespace {
         typedef boost::static_visitor< boost::function< std::ostream & ( std::ostream & ) > >::result_type result_type;
 
         result_type term( const std::string & s ) const { return [ &s ]( std::ostream & os ) -> std::ostream & { os << s; return os; }; }
-        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '['; opl( os ); os << " & "; opr( os ); os << ']'; return os; }; }
-        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '['; opl( os ); os << " | "; opr( os ); os << ']'; return os; }; }
-        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '['; opl( os ); os << " ^ "; opr( os ); os << ']'; return os; }; }
-        result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "[~"; op( os ); os << ']'; return os; }; }
+        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " & "; opr( os ); os << ')'; return os; }; }
+        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " | "; opr( os ); os << ')'; return os; }; }
+        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " ^ "; opr( os ); os << ')'; return os; }; }
+        result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "(~"; op( os ); os << ')'; return os; }; }
     };
 
     template< typename T >
@@ -113,30 +113,30 @@ namespace {
             "a xor b",
             "not a",
             "not a and b",
-            "not [a and b]",
+            "not (a and b)",
             "a or b or c",
-            "[a and b] xor [[c and d] or [a and b]]",
-            "a and b xor [c and d or a and b]",
-            // "a and b xor [c and f(d+g) or a and b]",
+            "(a and b) xor ((c and d) or (a and b))",
+            "a and b xor (c and d or a and b)",
+            // "a and b xor (c and f(d+g) or a and b)",
             // "a and f(d+g)",
-            // "[a and f(d+g)] or c",
+            // "(a and f(d+g)) or c",
             // "f:(d+g)/a|foo:bar",
         };
 
     const std::vector< std::string > expected =
         {
-            "[a & b]",
-            "[a | b]",
-            "[a ^ b]",
-            "[~a]",
-            "[[~a] & b]",
-            "[~[a & b]]",
-            "[a | [b | c]]",
-            "[[a & b] ^ [[c & d] | [a & b]]]",
-            "[[a & b] ^ [[c & d] | [a & b]]]",
-            // "[[a & b] ^ [[c & f(d+g)] | [a & b]]]",
-            // "[a & f(d+g)]",
-            // "[[a & f(d+g)] | c]",
+            "(a & b)",
+            "(a | b)",
+            "(a ^ b)",
+            "(~a)",
+            "((~a) & b)",
+            "(~(a & b))",
+            "(a | (b | c))",
+            "((a & b) ^ ((c & d) | (a & b)))",
+            "((a & b) ^ ((c & d) | (a & b)))",
+            // "((a & b) ^ ((c & f(d+g)) | (a & b)))",
+            // "(a & f(d+g))",
+            // "((a & f(d+g)) | c)",
             // "f:(d+g)/a|foo:bar",
         };
 
@@ -400,7 +400,7 @@ TEST( bitwise, special )
 
     const std::vector< std::string > expected =
         {
-            "[" + boost::algorithm::erase_all_copy( f0, " " ) + " & " + boost::algorithm::erase_all_copy( f1, " " ) + "]",
+            "(" + boost::algorithm::erase_all_copy( f0, " " ) + " & " + boost::algorithm::erase_all_copy( f1, " " ) + ")",
         };
 
     for ( size_t i = 0; i < inputs.size(); ++i )
