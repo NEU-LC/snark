@@ -334,23 +334,3 @@ TEST( bitwise, logical_matrix )
         }
     }
 }
-
-TEST( bitwise, tabify )
-{
-    for ( size_t i = 0; i < global::inputs.size(); ++i )
-    {
-        const std::string & s = tabify_bitwise_ops( global::inputs[i] );
-        auto f( std::begin( s ) ), l( std::end( s ) );
-        logical::parser< decltype( f ) > p;
-
-        expr result;
-        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-        EXPECT_TRUE( ok );
-        EXPECT_EQ( f, l );
-        {
-            std::ostringstream os;
-            os << result;
-            EXPECT_EQ( os.str(), global::expected[i] );
-        }
-    }
-}

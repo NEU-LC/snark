@@ -226,8 +226,6 @@ namespace bitwise
 
     expr parse( const std::string & s );
 
-    std::string tabify_bitwise_ops( const std::string & s );
-
 } // namespace bitwise
 
 } } // namespace snark { namespace cv_mat {
