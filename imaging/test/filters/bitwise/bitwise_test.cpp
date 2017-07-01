@@ -310,6 +310,18 @@ namespace bitwise
 
     } // namespace brackets
 
+    expr parse( const std::string & s )
+    {
+        auto f( std::begin( s ) ), l( std::end( s ) );
+        brackets::parser< decltype( f ) > p;
+        brackets::sequence result;
+        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+        if ( !ok ) { COMMA_THROW( comma::exception, "cannot parse the string '" << s << "' into a sequence of words" ); }
+        if ( f != l ) { COMMA_THROW( comma::exception, "string '" << s << "', unparsed remainder '" << std::string( f, l ) << "'" ); }
+        brackets::converter c;
+        return c( result );
+    }
+
 } // namespace bitwise
 
 } } // namespace snark { namespace cv_mat {

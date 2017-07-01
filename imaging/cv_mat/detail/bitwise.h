@@ -41,6 +41,8 @@
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/variant/recursive_wrapper.hpp>
 
+#include <comma/base/exception.h>
+
 namespace snark{ namespace cv_mat {
 
 namespace bitwise
@@ -168,6 +170,17 @@ namespace bitwise
                 boost::spirit::qi::rule< It, std::string(), Skipper > var_;
                 boost::spirit::qi::rule< It, expr(), Skipper > not_, and_, xor_, or_, simple, expr_;
         };
+
+        expr parse( const std::string & s )
+        {
+            auto f( std::begin( s ) ), l( std::end( s ) );
+            parser< decltype( f ) > p;
+            expr result;
+            bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+            if ( !ok ) { COMMA_THROW( comma::exception, "cannot parse the string '" << s << "' into logical expressions" ); }
+            if ( f != l ) { COMMA_THROW( comma::exception, "string '" << s << "', unparsed remainder '" << std::string( f, l ) << "'" ); }
+            return result;
+        }
 
     } // namespace logical
 
