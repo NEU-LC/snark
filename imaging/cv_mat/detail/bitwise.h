@@ -136,6 +136,8 @@ namespace bitwise
         return os;
     }
 
+    namespace logical
+    {
     template< typename It, typename Skipper = boost::spirit::qi::space_type >
     struct parser : boost::spirit::qi::grammar< It, expr(), Skipper >
     {
@@ -166,6 +168,8 @@ namespace bitwise
             boost::spirit::qi::rule< It, std::string(), Skipper > var_;
             boost::spirit::qi::rule< It, expr(), Skipper > not_, and_, xor_, or_, simple, expr_;
     };
+
+    } // namespace logical
 
     std::string tabify_bitwise_ops( const std::string & s );
 

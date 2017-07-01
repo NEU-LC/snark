@@ -367,8 +367,8 @@ TEST( bitwise, printer )
 {
     for ( size_t i = 0; i < global::inputs.size(); ++i )
     {
-        parser< decltype( f ) > p;
         auto f( std::begin( global::inputs[i] ) ), l( std::end( global::inputs[i] ) );
+        logical::parser< decltype( f ) > p;
 
         try {
             expr result;
@@ -407,7 +407,7 @@ TEST( bitwise, special )
     {
         const auto & s = tabify_bitwise_ops( inputs[i] );
         auto f( std::begin( s ) ), l( std::end( s ) );
-        parser< decltype( f ) > p;
+        logical::parser< decltype( f ) > p;
 
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
@@ -426,8 +426,8 @@ TEST( bitwise, writer )
 {
     for ( size_t i = 0; i < global::inputs.size(); ++i )
     {
-        parser< decltype( f ) > p;
         auto f( std::begin( global::inputs[i] ) ), l( std::end( global::inputs[i] ) );
+        logical::parser< decltype( f ) > p;
 
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
@@ -447,8 +447,8 @@ TEST( bitwise, logical_int )
 {
     for ( size_t i = 0; i < global::inputs.size(); ++i )
     {
-        parser< decltype( f ) > p;
         auto f( std::begin( global::inputs[i] ) ), l( std::end( global::inputs[i] ) );
+        logical::parser< decltype( f ) > p;
 
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
@@ -483,8 +483,8 @@ TEST( bitwise, logical_matrix )
     }
     for ( size_t i = 0; i < global::inputs.size(); ++i )
     {
-        parser< decltype( f ) > p;
         auto f( std::begin( global::inputs[i] ) ), l( std::end( global::inputs[i] ) );
+        logical::parser< decltype( f ) > p;
 
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
@@ -510,7 +510,7 @@ TEST( bitwise, tabify )
     {
         const std::string & s = tabify_bitwise_ops( global::inputs[i] );
         auto f( std::begin( s ) ), l( std::end( s ) );
-        parser< decltype( f ) > p;
+        logical::parser< decltype( f ) > p;
 
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
