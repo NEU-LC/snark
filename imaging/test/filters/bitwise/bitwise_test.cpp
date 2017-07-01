@@ -238,9 +238,9 @@ namespace bitwise
             }
         };
 
-        struct visitor : boost::static_visitor< void >
+        struct converter : boost::static_visitor< void >
         {
-            visitor() : next_( 0 ), name_( visitor::get_name() ), subexpressions_(), value_() {}
+            converter() : next_( 0 ), name_( converter::get_name() ), subexpressions_(), value_() {}
 
             void operator()( const std::string & s ) {
                 if ( s == "and" ) { value_ += " and "; return; }
@@ -250,22 +250,17 @@ namespace bitwise
                 value_ += s;
             }
             void operator()( const bracket & b ) {
-                visitor inner;
-                expr sub = inner.process( b.s_ );
+                converter inner;
+                expr sub = inner( b.s_ );
                 std::string id = name_ + "_" + boost::lexical_cast< std::string >( next_++ );
                 subexpressions_[ id ] = sub;
                 value_ += id;
             }
             void operator()( const element & e ) { boost::apply_visitor( *this, e ); }
 
-            expr process( const sequence & s ) {
+            expr operator()( const sequence & s ) {
                 for ( const auto e : s ) { boost::apply_visitor( *this, e ); }
-                auto f( std::begin( value_ ) ), l( std::end( value_ ) );
-                parser< decltype( f ) > p;
-                expr result;
-                bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-                if ( !ok ) { COMMA_THROW( comma::exception, "cannot parse the string '" << value_ << "'" ); }
-                if ( f != l ) { COMMA_THROW( comma::exception, "string '" << value_ << "', unparsed remainder '" << std::string( f, l ) << "'" ); }
+                expr result = logical::parse( value_ );
                 resolver r( subexpressions_ );
                 return boost::apply_visitor( r, result );
             }
@@ -328,49 +323,45 @@ namespace bitwise
 
 TEST( bitwise, brackets )
 {
-    const std::vector< std::string > inputs =
+    const std::vector< std::string > good_inputs =
         {
             "f:(d+g)/a|foo:bar",
             "ratio:(r + b)/(1.0+g)|threshold:otsu, 1.2e-8|foo:bar",
             "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
             "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)",
             "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)and blah",
-            "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar or linear-combination:r|threshold:10)/ (bar, baz)and blah",
             "( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar or linear-combination:r|threshold:10) xor (bar, baz) and blah",
         };
 
-    for ( size_t i = 0; i < inputs.size(); ++i )
-    {
-        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-        brackets::parser< decltype( f ) > p;
+    const std::vector< std::string > good_expected =
+        {
+            "f:(d+g)/a|foo:bar",
+            "ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar,baz)",
+            "(foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar,baz) & blah)",
+            "((ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar | linear-combination:r|threshold:10) ^ (bar,baz & blah))",
+        };
 
-        try {
-            brackets::sequence result;
-            bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-            EXPECT_TRUE( ok );
-            EXPECT_EQ( f, l );
-            // std::cerr << "ok? " << ok << ", f == l? " << ( f == l ) << ", unparsed: '" << std::string( f, l ) << "'" << std::endl;
-            {
-                std::ostringstream os;
-                os << result;
-            }
-            brackets::visitor v;
-            expr e = v.process( result );
-            std::ostringstream os;
-            os << "parse: " << inputs[i] << '\n';
-            os << "result: " << e;
-            std::cerr << os.str() << std::endl;
-        }
-        catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
+    const std::vector< std::string > bad_inputs =
         {
-            std::cerr << "expectation failure:" << std::endl;
-            print_info( e.what_ );
-        }
-        catch ( const std::exception & e )
-        {
-            std::cerr << "exception:" << std::endl;
-            std::cerr << e.what() << std::endl;
-        }
+            "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar or linear-combination:r|threshold:10)/ (bar, baz)and blah",
+        };
+
+    ASSERT_EQ( good_inputs.size(), good_expected.size() );
+    for ( size_t i = 0; i < good_inputs.size(); ++i )
+    {
+        expr e = parse( good_inputs[i] );
+        std::ostringstream os;
+        os << e;
+        EXPECT_EQ( os.str(), good_expected[i] );
+        // std::cerr << "parse:    " << good_inputs[i] << '\n';
+        // std::cerr << "result:   " << e << '\n';
+        // std::cerr << "expected: " << good_expected[i] << std::endl;
+    }
+    for ( size_t i = 0; i < bad_inputs.size(); ++i )
+    {
+        ASSERT_THROW( parse( bad_inputs[i] ), comma::exception );
     }
 }
 
