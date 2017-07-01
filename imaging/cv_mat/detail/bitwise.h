@@ -40,10 +40,11 @@
 #include <boost/spirit/include/phoenix_object.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/variant/recursive_wrapper.hpp>
+#include <boost/container/vector.hpp>
 
 #include <comma/base/exception.h>
 
-namespace snark{ namespace cv_mat {
+namespace snark { namespace cv_mat {
 
 namespace bitwise
 {
@@ -110,27 +111,11 @@ namespace bitwise
         std::ostream & _os;
 
         void operator()( const std::string & s ) const { _os << s; }
-
         void operator()( const binary_op< op_and > & b ) const { print( " & ", b.oper1, b.oper2 ); }
         void operator()( const binary_op< op_or  > & b ) const { print( " | ", b.oper1, b.oper2 ); }
         void operator()( const binary_op< op_xor > & b ) const { print( " ^ ", b.oper1, b.oper2 ); }
-
-        void print( const std::string & op, const expr & l, const expr & r) const
-        {
-            _os << "(";
-            boost::apply_visitor( *this, l );
-            _os << op;
-            boost::apply_visitor( *this, r );
-            _os << ")";
-        }
-
-        void operator()( const unary_op< op_not > & u ) const
-        {
-            _os << "(";
-            _os << "~";
-            boost::apply_visitor( *this, u.oper1 );
-            _os << ")";
-        }
+        void print( const std::string & op, const expr & l, const expr & r) const;
+        void operator()( const unary_op< op_not > & u ) const;
     };
 
     inline std::ostream & operator<<( std::ostream & os, const expr & e ) {
@@ -171,21 +156,78 @@ namespace bitwise
                 boost::spirit::qi::rule< It, expr(), Skipper > not_, and_, xor_, or_, simple, expr_;
         };
 
-        expr parse( const std::string & s )
-        {
-            auto f( std::begin( s ) ), l( std::end( s ) );
-            parser< decltype( f ) > p;
-            expr result;
-            bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-            if ( !ok ) { COMMA_THROW( comma::exception, "cannot parse the string '" << s << "' into logical expressions" ); }
-            if ( f != l ) { COMMA_THROW( comma::exception, "string '" << s << "', unparsed remainder '" << std::string( f, l ) << "'" ); }
-            return result;
-        }
+        expr parse( const std::string & s );
 
     } // namespace logical
+
+    namespace brackets
+    {
+        struct bracket;
+
+        typedef boost::variant< std::string
+                              , boost::recursive_wrapper< bracket >
+                              > element;
+
+        typedef boost::container::vector< element > sequence;
+
+        struct bracket
+        {
+           explicit bracket( const sequence & f = sequence() ) : s_( f ) {}
+           sequence s_;
+        };
+
+        struct printer : boost::static_visitor< void >
+        {
+            printer( std::ostream & os ) : _os(os) {}
+            std::ostream & _os;
+
+            void operator()( const std::string & s ) const { _os << s; }
+            void operator()( const bracket & b ) const { _os << '('; ( *this )( b.s_ ); _os << ')'; }
+            void operator()( const element & e ) const { boost::apply_visitor( *this, e ); }
+            void operator()( const sequence & s ) const { for ( const auto e : s ) { boost::apply_visitor( *this, e ); } }
+        };
+
+        inline std::ostream & operator<<( std::ostream & os, const element & l ) {
+            boost::apply_visitor( printer( os ), l );
+            return os;
+        }
+
+        inline std::ostream & operator<<( std::ostream & os, const sequence & s ) {
+            for ( const auto & e : s ) { os << e; }
+            return os;
+        }
+
+        template< typename It, typename Skipper = boost::spirit::qi::space_type >
+        struct parser : boost::spirit::qi::grammar< It, sequence(), Skipper >
+        {
+            parser() : parser::base_type( sequence_ )
+            {
+                namespace qi = boost::spirit::qi;
+
+                sequence_ = element_ >> *element_;
+                element_ = ( bracket_ | var_ );
+                bracket_ = '(' >> sequence_ >> ')';
+                var_ = qi::lexeme[ +(qi::alnum | qi::char_("=;_,./:|+-")) ];
+
+                BOOST_SPIRIT_DEBUG_NODE( sequence_ );
+                BOOST_SPIRIT_DEBUG_NODE( element_ );
+                BOOST_SPIRIT_DEBUG_NODE( bracket_ );
+                BOOST_SPIRIT_DEBUG_NODE( var_ );
+            }
+
+            private:
+                boost::spirit::qi::rule< It, std::string(), Skipper > var_;
+                boost::spirit::qi::rule< It, bracket(), Skipper > bracket_;
+                boost::spirit::qi::rule< It, element(), Skipper > element_;
+                boost::spirit::qi::rule< It, sequence(), Skipper > sequence_;
+        };
+
+    } // namespace brackets
+
+    expr parse( const std::string & s );
 
     std::string tabify_bitwise_ops( const std::string & s );
 
 } // namespace bitwise
 
-} } // namespace snark{ namespace cv_mat {
+} } // namespace snark { namespace cv_mat {
