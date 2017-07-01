@@ -29,6 +29,7 @@
 
 #include "../../../../imaging/cv_mat/detail/bitwise.h"
 #include <comma/base/types.h>
+#include <comma/base/exception.h>
 
 #include <gtest/gtest.h>
 
@@ -38,6 +39,8 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <boost/algorithm/string/erase.hpp>
+#include <boost/algorithm/string/replace.hpp>
 #include <opencv2/core/core.hpp>
 
 #include <iostream>
@@ -201,56 +204,81 @@ namespace bitwise
             return os;
         }
 
+        struct resolver : boost::static_visitor< expr >
+        {
+            resolver( const std::map< std::string, expr > & m ) : m_( m ) {}
+            const std::map< std::string, expr > & m_;
+
+            expr operator()( const std::string & s ) const {
+                for ( const auto & e : m_ )
+                {
+                    if ( s == e.first ) { return e.second; }
+                    std::size_t pos = s.find( e.first );
+                    if ( pos == std::string::npos ) { continue; }
+                    if ( e.second.which() != 0 ) { COMMA_THROW( comma::exception, "in string '" << s << "' value " << e.first << " is a logical expression '" << e.second << "', not a string" ); }
+                    const std::string & replacement = '(' + boost::get< std::string >( e.second ) + ')';
+                    const std::string & news = boost::replace_all_copy( s, e.first, replacement );
+                    return (*this)( news );
+                }
+                // never resolved anything
+                return expr( s );
+            }
+
+            template< typename Op >
+            expr operator()( const binary_op< Op > & b ) const {
+                expr opl = boost::apply_visitor( *this, b.oper1 );
+                expr opr = boost::apply_visitor( *this, b.oper2 );
+                return binary_op< Op >( opl, opr );
+            }
+            expr operator()( const unary_op< op_not > & u ) const {
+                expr op = boost::apply_visitor( *this, u.oper1 );
+                return unary_op< op_not >( op );
+            }
+        };
+
         struct visitor : boost::static_visitor< void >
         {
-            visitor( unsigned int start = 0 ) : next_( start ), g_(), name_( "e" + boost::uuids::to_string( g_() ) )
-            {
-                name_.erase( std::remove( name_.begin(), name_.end(), '-' ) );
-            }
+            visitor() : next_( 0 ), name_( visitor::get_name() ), subexpressions_(), value_() {}
 
             void operator()( const std::string & s ) {
-                if ( s == "and" ) { value += " and "; return; }
-                if ( s == "xor" ) { value += " xor "; return; }
-                if ( s == "or"  ) { value += " or " ; return; }
-                if ( s == "not" ) { value += " not "; return; }
-                value += s;
+                if ( s == "and" ) { value_ += " and "; return; }
+                if ( s == "xor" ) { value_ += " xor "; return; }
+                if ( s == "or"  ) { value_ += " or " ; return; }
+                if ( s == "not" ) { value_ += " not "; return; }
+                value_ += s;
             }
             void operator()( const bracket & b ) {
-                visitor inner( next_ );
-                inner( b.s_ );
-                next_ = inner.next_;
-                std::string id = name_ + boost::lexical_cast< std::string >( next_++ );
-                subexpressions[ id ] = inner.value;
-                value += id;
-                std::move( inner.subexpressions.begin(), inner.subexpressions.end(), std::inserter( subexpressions, subexpressions.begin() ) );
+                visitor inner;
+                expr sub = inner.process( b.s_ );
+                std::string id = name_ + "_" + boost::lexical_cast< std::string >( next_++ );
+                subexpressions_[ id ] = sub;
+                value_ += id;
             }
             void operator()( const element & e ) { boost::apply_visitor( *this, e ); }
-            void operator()( const sequence & s ) { for ( const auto e : s ) { boost::apply_visitor( *this, e ); } }
 
-            void print( std::ostream & os ) const
-            {
-                os << "expression is: '" << value << "'\n" << "where:";
-                if ( subexpressions.empty() )
-                {
-                    os << " there are no subexpressions";
-                }
-                else
-                {
-                    for ( const auto & e : subexpressions )
-                    {
-                        os << "\n    " << e.first << " is '" << e.second << "'";
-                    }
-                }
-                os << std::endl;
+            expr process( const sequence & s ) {
+                for ( const auto e : s ) { boost::apply_visitor( *this, e ); }
+                auto f( std::begin( value_ ) ), l( std::end( value_ ) );
+                parser< decltype( f ) > p;
+                expr result;
+                bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+                if ( !ok ) { COMMA_THROW( comma::exception, "cannot parse the string '" << value_ << "'" ); }
+                if ( f != l ) { COMMA_THROW( comma::exception, "string '" << value_ << "', unparsed remainder '" << std::string( f, l ) << "'" ); }
+                resolver r( subexpressions_ );
+                return boost::apply_visitor( r, result );
             }
-
-            std::map< std::string, std::string > subexpressions;
-            std::string value;
 
             private:
                 unsigned int next_;
-                boost::uuids::random_generator g_;
                 std::string name_;
+                std::map< std::string, expr > subexpressions_;
+                std::string value_;
+
+                static std::string get_name()
+                {
+                    static boost::uuids::random_generator g_;
+                    return "e" + boost::algorithm::erase_all_copy( boost::uuids::to_string( g_() ), "-" );
+                }
         };
 
         template< typename It, typename Skipper = boost::spirit::qi::space_type >
@@ -260,10 +288,10 @@ namespace bitwise
             {
                 namespace qi = boost::spirit::qi;
 
-                sequence_ = var_ >> *element_;
+                sequence_ = element_ >> *element_;
                 element_ = ( bracket_ | var_ );
                 bracket_ = '(' >> sequence_ >> ')';
-                var_ = qi::lexeme[ +(qi::alnum | qi::char_("=;,./:|+-")) ];
+                var_ = qi::lexeme[ +(qi::alnum | qi::char_("=;_,./:|+-")) ];
 
                 BOOST_SPIRIT_DEBUG_NODE( sequence_ );
                 BOOST_SPIRIT_DEBUG_NODE( element_ );
@@ -294,6 +322,7 @@ TEST( bitwise, brackets )
             "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)",
             "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)and blah",
             "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar or linear-combination:r|threshold:10)/ (bar, baz)and blah",
+            "( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar or linear-combination:r|threshold:10) xor (bar, baz) and blah",
         };
 
     for ( size_t i = 0; i < inputs.size(); ++i )
@@ -312,17 +341,21 @@ TEST( bitwise, brackets )
                 os << result;
             }
             brackets::visitor v;
-            v( result );
+            expr e = v.process( result );
             std::ostringstream os;
             os << "parse: " << inputs[i] << '\n';
-            v.print( os );
+            os << "result: " << e;
             std::cerr << os.str() << std::endl;
         }
         catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
         {
-            std::cerr << "exception:" << std::endl;
+            std::cerr << "expectation failure:" << std::endl;
             print_info( e.what_ );
-            throw;
+        }
+        catch ( const std::exception & e )
+        {
+            std::cerr << "exception:" << std::endl;
+            std::cerr << e.what() << std::endl;
         }
     }
 }
