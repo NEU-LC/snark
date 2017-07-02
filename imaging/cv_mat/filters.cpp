@@ -2544,33 +2544,6 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
          if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
          if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
-         struct maker
-         {
-             maker( const get_timestamp_functor & get_timestamp, char separator = ';', char equal_sign = '=' ) : get_timestamp_( get_timestamp ), separator_( separator ), equal_sign_( equal_sign ) {}
-             functor_type operator()( const std::string & s ) const
-             {
-                 const std::vector< std::string > & w = comma::split( s, separator_ );
-                 functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], equal_sign_ ), get_timestamp_ );
-                 for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], equal_sign_ ), get_timestamp_ ), boost::bind( g, _1 ) ); }
-                 return g;
-             }
-             private:
-                 const get_timestamp_functor & get_timestamp_;
-                 char separator_, equal_sign_;
-         };
-         struct composer
-         {
-             composer( const maker & m ) : m_( m ) {}
-             const maker & m_;
- 
-             typedef typename boost::static_visitor< boost::function< input_type ( input_type ) > >::result_type result_type;
- 
-             result_type term( const std::string & s ) const { return m_( s ); };
-             result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second & r.second ); }; }
-             result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second | r.second ); }; }
-             result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second ^ r.second ); }; }
-             result_type op_not( const result_type & op ) const { return [ op ]( const input_type & i ) -> input_type { const input_type & o = op( i ); return std::make_pair( i.first, ~o.second ); }; }
-         };
          snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
          maker m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
          composer c( m );
@@ -2742,6 +2715,36 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     if( functor ) { return functor; }
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
 }
+
+    struct maker
+    {
+        maker( const get_timestamp_functor & get_timestamp, char separator = ';', char equal_sign = '=' ) : get_timestamp_( get_timestamp ), separator_( separator ), equal_sign_( equal_sign ) {}
+        functor_type operator()( const std::string & s ) const
+        {
+            const std::vector< std::string > & w = comma::split( s, separator_ );
+            functor_type g = make_filter< O, H >::make_filter_functor( comma::split( w[0], equal_sign_ ), get_timestamp_ );
+            for( unsigned int k = 1; k < w.size(); ++k ) { g = boost::bind( make_filter< O, H >::make_filter_functor( comma::split( w[k], equal_sign_ ), get_timestamp_ ), boost::bind( g, _1 ) ); }
+            return g;
+        }
+        private:
+            const get_timestamp_functor & get_timestamp_;
+            char separator_, equal_sign_;
+    };
+
+    struct composer
+    {
+        composer( const maker & m ) : m_( m ) {}
+        const maker & m_;
+
+        typedef typename boost::static_visitor< boost::function< input_type ( input_type ) > >::result_type result_type;
+
+        result_type term( const std::string & s ) const { return m_( s ); };
+        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second & r.second ); }; }
+        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second | r.second ); }; }
+        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second ^ r.second ); }; }
+        result_type op_not( const result_type & op ) const { return [ op ]( const input_type & i ) -> input_type { const input_type & o = op( i ); return std::make_pair( i.first, ~o.second ); }; }
+    };
+
 };
 
 template < typename H > struct time_traits
