@@ -192,8 +192,9 @@ namespace {
                 int shape = ( eltype == "rectangle" ? cv::MORPH_RECT : ( eltype == "ellipse" ? cv::MORPH_ELLIPSE : cv::MORPH_CROSS ) );
                 return cv::getStructuringElement( shape, cv::Size( size_x, size_y ), cv::Point( anchor_x, anchor_y ) );
             } else if ( eltype == "square" || eltype == "circle" ) {
-                if ( p.size() != 3 && p.size() != 2 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes 1 or 2 parameters" ); }
-                if ( p.size() == 2 ) { p.push_back( "" ); }
+                if ( p.size() > 3 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 0, or 1, or 2 parameters" ); }
+                if ( p.size() < 3 ) { p.push_back( "" ); }
+                if ( p.size() < 3 ) { p.push_back( "" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
                 if ( size_x == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
                 int anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );

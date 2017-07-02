@@ -31,6 +31,8 @@ circle[2]="cv-cat --file ../data/square.png 'erode=circle,,-1'  | wc -c"
 circle[3]="cv-cat --file ../data/square.png 'erode=circle,,1'   | wc -c"
 circle[4]="cv-cat --file ../data/square.png 'erode=circle,7,'   | wc -c"
 circle[5]="cv-cat --file ../data/square.png 'erode=circle,'     | wc -c"
+circle[6]="cv-cat --file ../data/square.png 'erode=circle,3'    | wc -c"
+circle[7]="cv-cat --file ../data/square.png 'erode=circle'      | wc -c"
 
 cross[0]="cv-cat --file ../data/square.png 'erode=cross,,,,'      | wc -c"
 cross[1]="cv-cat --file ../data/square.png 'erode=cross,7,9,,'    | wc -c"
