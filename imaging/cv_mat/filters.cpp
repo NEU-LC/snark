@@ -1336,13 +1336,24 @@ class file_impl_
         value_type operator()( value_type m, const std::string& type, const boost::optional< int >& quality, bool do_index )
         {
             if( m.second.empty() ) { return m; }
-            encode_impl_check_type< H >( m, type );
             std::vector< int > params;
             if( quality ) { params = imwrite_params( type, *quality ); }
             boost::posix_time::ptime timestamp = get_timestamp_( m.first );
             index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
-            cv::imwrite( make_filename( timestamp, type, do_index ? boost::optional< unsigned int >( index_ ) : boost::none ), m.second, params );
             previous_timestamp_ = timestamp;
+            const std::string& filename = make_filename( timestamp, type, do_index ? boost::optional< unsigned int >( index_ ) : boost::none );
+            if( type == "bin" )
+            {
+                static snark::cv_mat::serialization serialization;
+                std::ofstream ofs( filename );
+                if( !ofs.is_open() ) { COMMA_THROW( comma::exception, "" ); }
+                serialization.write( ofs, m );
+            }
+            else
+            {
+                encode_impl_check_type< H >( m, type );
+                cv::imwrite( filename, m.second, params );
+            }
             return m;
         }
         
@@ -3050,7 +3061,8 @@ static std::string usage_impl_()
     oss << "                     magnitude: output magnitude only" << std::endl;
     oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
     oss << "                      cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
-    oss << "        file=<format>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "        file=<format>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "                                   <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
     oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "                                   index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
