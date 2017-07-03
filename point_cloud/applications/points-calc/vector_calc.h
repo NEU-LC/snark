@@ -68,7 +68,7 @@ struct vector_calc
         std::cerr << "                      i.e. (1/a)*v" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        normalize: calculate normalized vector" << std::endl;
-        std::cerr << "            input fields:  v" << std::endl;
+        std::cerr << "            input fields:  x,y,z" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        add: add two vectors: v + u " << std::endl;
