@@ -1,0 +1,21 @@
+#python
+
+def fcn1( r, g, b ):
+    return ( r + b - g ) / ( 1 + r + b )
+
+def fcn2( r, g, b ):
+    return 2. / ( 1.5e1 - g + r )
+
+def fcn3( r, g, b ):
+    return r + g
+
+for i in range(nx):
+    for j in range(ny):
+        if ( ( fcn1( original/x[i]/y[j]/r, original/x[i]/y[j]/b, original/x[i]/y[j]/g ) > 4 ) ^ ( ( fcn2( original/x[i]/y[j]/r, original/x[i]/y[j]/g, original/x[i]/y[j]/b ) > 5 ) | ( fcn3( original/x[i]/y[j]/r, original/x[i]/y[j]/g, original/x[i]/y[j]/b ) > 5 ) ) ):
+            expect filtered/x[i]/y[j]/r == original/x[i]/y[j]/r
+            expect filtered/x[i]/y[j]/g == original/x[i]/y[j]/g
+            expect filtered/x[i]/y[j]/b == original/x[i]/y[j]/b
+        else:
+            expect filtered/x[i]/y[j]/r == 0
+            expect filtered/x[i]/y[j]/g == 0
+            expect filtered/x[i]/y[j]/b == 0

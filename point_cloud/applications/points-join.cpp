@@ -105,6 +105,7 @@ static void usage( bool more = false )
 static bool verbose;
 static bool strict;
 static bool permissive;
+static bool normal_fields_present;
 static double radius;
 static double squared_radius;
 static double max_triangle_side;
@@ -136,6 +137,7 @@ struct triangle_input
 {
     snark::triangle value;
     comma::uint32 block;
+    triangle_input() : block( 0 ) {}
 };
 
 namespace comma { namespace visiting {
@@ -143,16 +145,16 @@ template <> struct traits< point_input >
 {
     template< typename K, typename V > static void visit( const K& k, point_input& t, V& v )
     {
-        v.apply( "block", t.block );
-        v.apply( "normal", t.normal );
         traits< Eigen::Vector3d >::visit( k, t.value, v );
+        v.apply( "normal", t.normal );
+        v.apply( "block", t.block );
     }
 
     template< typename K, typename V > static void visit( const K& k, const point_input& t, V& v )
     {
-        v.apply( "block", t.block );
-        v.apply( "normal", t.normal );
         traits< Eigen::Vector3d >::visit( k, t.value, v );
+        v.apply( "normal", t.normal );
+        v.apply( "block", t.block );
     }
 };
 
@@ -160,14 +162,14 @@ template <> struct traits< triangle_input >
 {
     template< typename K, typename V > static void visit( const K& k, triangle_input& t, V& v )
     {
-        v.apply( "block", t.block );
         traits< snark::triangle >::visit( k, t.value, v );
+        v.apply( "block", t.block );
     }
 
     template< typename K, typename V > static void visit( const K& k, const triangle_input& t, V& v )
     {
-        v.apply( "block", t.block );
         traits< snark::triangle >::visit( k, t.value, v );
+        v.apply( "block", t.block );
     }
 };
 
@@ -183,7 +185,8 @@ struct record
     record( const point_input& input, const std::string& line ) : value( input.value ), normal( input.normal ), line( line ) {}
     boost::optional< Eigen::Vector3d > nearest_to( const point_input& rhs ) const
     {
-        return !comma::math::less( normal.dot(rhs.normal), 0 ) ? boost::make_optional(value) : boost::none;
+        if( normal_fields_present ) { return !comma::math::less( normal.dot(rhs.normal), 0 ) ? boost::make_optional(value) : boost::none; }
+        return value;
     } // watch performance
     bool is_valid() const { return true; }
 };
@@ -216,12 +219,7 @@ template <> struct traits< Eigen::Vector3d >
         #ifdef SNARK_USE_CUDA
             snark::cuda::buffer buffer;
             void calculate_squared_norms( const Eigen::Vector3d& rhs ) { snark::cuda::squared_norms( rhs, buffer ); }
-            boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const point_input& rhs, unsigned int k ) const
-            {
-                const boost::optional< Eigen::Vector3d >& n = records[k]->nearest_to( rhs );
-                if( !n ) { return boost::none; }
-                return std::make_pair(*n, use_cuda ? buffer_out[k] : (*n - rhs.value).squaredNorm());
-            }
+            boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const point_input& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, use_cuda ? buffer.out[k] : (records[k]->value - rhs ).squaredNorm() ); }
         #else // SNARK_USE_CUDA
             boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const point_input& rhs, unsigned int k ) const
             {
@@ -429,6 +427,7 @@ template < typename V > struct join_impl_
         #endif
 
         grid_t grid = read_filter_block();
+        if (!block) { std::cerr << "got 0 records from filter" << std::endl; return 1; }
 
         typedef traits< Eigen::Vector3d >::input_t input_t;
 
@@ -444,7 +443,9 @@ template < typename V > struct join_impl_
         {
             const input_t* p = istream.read();
             if( !p ) { break; }
-            if (!block || ( *block != p->block ) ) { grid = read_filter_block(); }
+            // todo: if blocks don't match, which input to wait for?
+            if ( *block != p->block ) { grid = read_filter_block(); }
+            if ( *block != p->block ) { COMMA_THROW(comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block);}
             typename grid_t::index_type index = grid.index_of( p->value );
             typename grid_t::index_type i;
             if( all )
@@ -542,8 +543,16 @@ int main( int ac, char** av )
         filter_csv.full_xpath = true;
         if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
+        const std::vector< std::string >& w = comma::split( stdin_csv.fields, ',' );
         bool filter_triangulated = false;
+        normal_fields_present = false;
         for( unsigned int i = 0; !filter_triangulated && i < v.size(); ++i ) { filter_triangulated = v[i].substr( 0, ::strlen( "corners" ) ) == "corners"; }
+        for( unsigned int i = 0; !normal_fields_present && i < w.size(); ++i ) { normal_fields_present = w[i].substr( 0, ::strlen( "normal" ) ) == "normal"; }
+
+        #ifdef SNARK_USE_CUDA
+        if (use_cuda && normal_fields_present) { std::cerr << "todo: point normals not implemented for cuda" << std::endl; return 1; }
+        #endif
+
         radius = options.value< double >( "--radius" );
         squared_radius = radius * radius;
         double r = radius;

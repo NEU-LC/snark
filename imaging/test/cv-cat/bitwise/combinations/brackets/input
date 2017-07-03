@@ -1,0 +1,1 @@
+filter="ratio:(r + b - g)/( 1 + r + b )|convert-to:ub|threshold:4 xor ( ratio:2./(1.5e1 - g + r)|convert-to:ub|threshold:5 or linear-combination:r + g|convert-to:ub|threshold:5 )"
