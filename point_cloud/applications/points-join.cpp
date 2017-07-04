@@ -105,7 +105,8 @@ static void usage( bool more = false )
 static bool verbose;
 static bool strict;
 static bool permissive;
-static bool normal_fields_present;
+static bool use_normal;
+static bool use_block;
 static double radius;
 static double squared_radius;
 static double max_triangle_side;
@@ -185,7 +186,7 @@ struct record
     record( const point_input& input, const std::string& line ) : value( input.value ), normal( input.normal ), line( line ) {}
     boost::optional< Eigen::Vector3d > nearest_to( const point_input& rhs ) const
     {
-        if( normal_fields_present ) { return !comma::math::less( normal.dot(rhs.normal), 0 ) ? boost::make_optional(value) : boost::none; }
+        if( use_normal ) { return !comma::math::less( normal.dot(rhs.normal), 0 ) ? boost::make_optional(value) : boost::none; }
         return value;
     } // watch performance
     bool is_valid() const { return true; }
@@ -380,8 +381,9 @@ template < typename V > struct join_impl_
         static const filter_value_t* p;
         if (!block) { p = ifstream.read(); }
         if (p) { block = p->block; }
-        while( p && block && ( p->block == *block ) )
+        while( p )
         {
+            if (use_block && ( p->block != *block ) ) { break; }
             std::string line;
             if( filter_csv.binary() ) // quick and dirty
             {
@@ -444,8 +446,8 @@ template < typename V > struct join_impl_
             const input_t* p = istream.read();
             if( !p ) { break; }
             // todo: if blocks don't match, which input to wait for?
-            if ( *block != p->block ) { grid = read_filter_block(); }
-            if ( *block != p->block ) { COMMA_THROW(comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block);}
+            if ( use_block && *block != p->block ) { grid = read_filter_block(); }
+            if ( use_block && *block != p->block ) { COMMA_THROW(comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block);}
             typename grid_t::index_type index = grid.index_of( p->value );
             typename grid_t::index_type i;
             if( all )
@@ -526,6 +528,15 @@ template < typename V > struct join_impl_
     }
 };
 
+bool find_in_fields( const std::vector<std::string>& fields, const std::vector<std::string>& strings )
+{
+    for (const auto& s : strings )
+    {
+        if ( std::find(fields.begin(),fields.end(),s) != fields.end() ) { return true; }
+    }
+    return false;
+}
+
 int main( int ac, char** av )
 {
     try
@@ -540,17 +551,20 @@ int main( int ac, char** av )
         if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
+        if ( filter_csv.fields.empty() ) { filter_csv.fields="x,y,z"; }
         filter_csv.full_xpath = true;
         if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
         const std::vector< std::string >& w = comma::split( stdin_csv.fields, ',' );
-        bool filter_triangulated = false;
-        normal_fields_present = false;
-        for( unsigned int i = 0; !filter_triangulated && i < v.size(); ++i ) { filter_triangulated = v[i].substr( 0, ::strlen( "corners" ) ) == "corners"; }
-        for( unsigned int i = 0; !normal_fields_present && i < w.size(); ++i ) { normal_fields_present = w[i].substr( 0, ::strlen( "normal" ) ) == "normal"; }
+        const std::vector<std::string> corner_strings = { "corners", "corners[0]", "corners[1]", "corners[2]"};
+        const std::vector<std::string> normal_strings = { "normal", "normal/x", "normal/y", "normal/z"};
+        const std::vector<std::string> block_strings = { "block" };
+        bool filter_triangulated = find_in_fields(v, corner_strings);
+        use_normal = ( find_in_fields(w, normal_strings) && find_in_fields(v, normal_strings) );
+        use_block = ( find_in_fields(w, block_strings) && find_in_fields(v, block_strings) );
 
         #ifdef SNARK_USE_CUDA
-        if (use_cuda && normal_fields_present) { std::cerr << "todo: point normals not implemented for cuda" << std::endl; return 1; }
+        if (use_cuda && use_normal) { std::cerr << "todo: point normals not implemented for cuda" << std::endl; return 1; }
         #endif
 
         radius = options.value< double >( "--radius" );
