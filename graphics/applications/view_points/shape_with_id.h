@@ -499,7 +499,7 @@ struct Shapetraits< Eigen::Vector3d, How >
 
 // todo
 //     - --help on axis
-//       - remove 'label' field from the description; it is a generic field, no need to specifically mention it for axis
+//       .- remove 'label' field from the description; it is a generic field, no need to specifically mention it for axis
 //     - axis labels: should not axis_labels be a stream option rather than field? are not the labels defined per stream, not per point? therefore
 //       - add command line option --labels
 //       - add stream option axis-labels, e.g. "axis.csv;shape=axis;labels=x,y,z"
