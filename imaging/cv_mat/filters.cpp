@@ -78,8 +78,8 @@
 #include "depth_traits.h"
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
-#include "detail/scale_by_mask.h"
 #include "detail/load-impl.h"
+#include "detail/scale_by_mask.h"
 
 namespace {
 
@@ -2692,7 +2692,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     if( e[0] == "scale-by-mask" )
     {
         if( e.size() != 2 ) { COMMA_THROW( comma::exception, "scale-by-mask: please specify expected mask file" ); }
-        return boost::bind< value_type_t >( scale_by_mask_< H >(e[1]), _1 );
+        return boost::bind< value_type_t >( impl::scale_by_mask_impl_< H >(e[1]), _1 );
     }
     if( e[0] == "skeleton" || e[0] == "thinning" )
     {
@@ -3300,5 +3300,7 @@ struct traits< typename snark::cv_mat::log_impl_< snark::cv_mat::header_type >::
 
 } } // namespace comma { namespace visiting {
 
+template class snark::cv_mat::impl::scale_by_mask_impl_< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::scale_by_mask_impl_< snark::cv_mat::header_type >;
 template class snark::cv_mat::impl::filters< boost::posix_time::ptime >;
 template class snark::cv_mat::impl::filters< snark::cv_mat::header_type >;

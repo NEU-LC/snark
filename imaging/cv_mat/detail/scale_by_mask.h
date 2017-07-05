@@ -32,11 +32,11 @@
 #include <string>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <boost/thread/pthread/mutex.hpp>
 #include <boost/thread/pthread/pthread_mutex_scoped_lock.hpp>
-#include "../filters.h"
 #include "load-impl.h"
 
-namespace snark{ namespace cv_mat {
+namespace snark{ namespace cv_mat { namespace impl {
 
 // todo
 // done - move implementation to a separate
@@ -46,24 +46,10 @@ namespace snark{ namespace cv_mat {
 // done - dereference mask_ etc rather than using mask = mask_.get()
 // done - make mask inflation thread-safe or don't inflate at all
 // done - convert to mask type, multiply, convert back 
-
-// template < typename H >
-// struct scale_by_mask_ {
-//     typedef typename impl::filters< H >::value_type value_type;
-//     std::string mask_file_;
-//     load_impl_< H > loader_;
-//     boost::optional< cv::Mat > mask_;
-//     
-//     void apply_mask(cv::Mat& mat);
-// 
-//     scale_by_mask_( const std::string& mask_file ) : mask_file_(mask_file), loader_(mask_file) {}
-// 
-//     value_type operator()( value_type m );
-// };
     
 template < typename H >
-struct scale_by_mask_ {
-    typedef typename impl::filters< H >::value_type value_type;
+struct scale_by_mask_impl_ {
+    typedef std::pair< H, cv::Mat > value_type;
     cv::Mat mask_;
     boost::shared_ptr< boost::mutex > mutex_;   // have to be careful here
     
@@ -76,7 +62,7 @@ struct scale_by_mask_ {
         masked.convertTo(mat, mat.type() );       // convert back to 
     }
 
-    scale_by_mask_( const std::string& mask_file ) : mutex_(new boost::mutex()) {
+    scale_by_mask_impl_( const std::string& mask_file ) : mutex_(new boost::mutex()) {
         mask_ = load_impl_< H >(mask_file)( value_type() ).second;
     }
 
@@ -110,4 +96,4 @@ struct scale_by_mask_ {
     }
 };
 
-} }  // namespace snark { namespace cv_mat {
+} } }  // namespace snark { namespace cv_mat { namespace impl {

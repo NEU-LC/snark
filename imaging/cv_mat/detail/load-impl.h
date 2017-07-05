@@ -30,18 +30,18 @@
 #pragma once
 
 #include <string>
+#include <fstream>
 #include <comma/base/exception.h>
 #include <comma/string/split.h>
+#include <comma/csv/format.h>
 #include <opencv2/highgui/highgui.hpp>
-#include "../filters.h"
-
 
 namespace snark{ namespace cv_mat {
 
 template < typename H >
 struct load_impl_
 {
-    typedef typename impl::filters< H >::value_type value_type;
+    typedef std::pair< H, cv::Mat > value_type;
     value_type value;
 
     load_impl_( const std::string& filename )

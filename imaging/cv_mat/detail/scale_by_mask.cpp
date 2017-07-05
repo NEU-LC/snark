@@ -27,7 +27,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "../filters.h"
 #include "scale_by_mask.h"
 
 #include <comma/base/exception.h>
@@ -35,57 +34,49 @@
 #include <map>
 #include <Eigen/Core>
 
-namespace snark{ namespace cv_mat {
+namespace snark{ namespace cv_mat {  namespace impl {
 
 // template < typename H >
-// void scale_by_mask< H >::apply_mask(cv::Mat& mat)
+// void scale_by_mask_impl_< H >::apply_mask(cv::Mat& mat)
 // {
-//     const cv::Mat& mask = mask_.get();
 //     cv::Mat mat_float;
-//     mat.convertTo(mat_float, mask.type());  // convert to float point
+//     mat.convertTo(mat_float, mask_.type());  // convert to float point
 //         
-//     cv::Mat masked = mat_float.mul(mask);
+//     cv::Mat masked = mat_float.mul(mask_);
 //     masked.convertTo(mat, mat.type() );       // convert back to 
 // }
 // 
 // template < typename H >
-// typename scale_by_mask< H >::value_type scale_by_mask< H >::operator()( value_type m )
+// typename scale_by_mask_impl_< H >::value_type scale_by_mask_impl_< H >::operator()( typename scale_by_mask_impl_< H >::value_type m )
 // {
 //     cv::Mat& mat = m.second;
 //     
-//     if( !mask_ )
+//     if( mask_.depth() != CV_32FC1 && mask_.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask, mask type must be floating point f or  d"); }
+//     // We expand mask once, to match number of channels in input data
+//     if( mask_.channels() != mat.channels() )
 //     {
-//         mask_.reset( loader_(value_type()).second );
-//         cv::Mat& mask = *mask_; 
-//         
-//         if( mask.depth() != CV_32FC1 && mask.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask=" << mask_file_ << ", mask type must be floating point f or  d"); }
-//         // We expand mask once, to match number of channels in input data
-//         if( mask.channels() != mat.channels() )
+//         boost::mutex::scoped_lock lock( *mutex_ );
+//         if( mask_.channels() != mat.channels() )    // Do a need an atomic to store mask_.channels() ?
 //         {
-//             if( mask.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels (" << mask.channels() << ")" <<" must be 1 or must be equal to input image channels: " << mat.channels()); }
-//             else if( mat.channels() == 3 ) { cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGR); }
-//             else if( mat.channels() == 4 ) { cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGRA); }
-//             else { COMMA_THROW(comma::exception, "scale-by-mask supports image channels number 1, 3, or 4 only"); }
+//             if( mask_.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels (" << mask_.channels() << ")" <<" must be 1 or must be equal to input image channels: " << mat.channels()); }
+//             
+//             std::vector< cv::Mat > channels( mat.channels() );
+//             for( int i=0; i<mat.channels(); ++i ) { channels[i] = mask_; }
+//             cv::merge(channels, mask_);
 //         }
 //     }
 //     
-//     
-//     cv::Mat& mask = mask_.get(); 
-//     
 //     // For every input image we must check
-//     if( mat.rows != mask.rows || mat.cols != mask.cols ) { COMMA_THROW(comma::exception, "failed to apply scale-by-mask=" << mask_file_ << ", because mask dimensions do not matches input row and column dimensions" ); }
-//     if( mask.channels() != mat.channels() ) { COMMA_THROW(comma::exception, "mask file has more channels than input mat: " << mask.channels() << " > " << mat.channels()); }
+//     if( mat.rows != mask_.rows || mat.cols != mask_.cols ) { COMMA_THROW(comma::exception, "failed to apply scale-by-mask, because mask dimensions do not matches input row and column dimensions" ); }
+//     if( mask_.channels() != mat.channels() ) { COMMA_THROW(comma::exception, "mask_ file has more channels than input mat: " << mask_.channels() << " > " << mat.channels()); }
 //     
-//     if( mask.depth() == mat.depth() ) { mat = mat.mul(mask); }  // The simplest case
-//     else 
-//     { 
-//         apply_mask(mat);
-// //         if( mask.depth() == CV_32FC1 ) { return scale_by_input_type< H, CV_32F >(m, mask); }
-// //         else { return scale_by_input_type< H, CV_64F >(m, mask); }
-//     }
+//     if( mask_.depth() == mat.depth() ) { mat = mat.mul(mask_); }  // The simplest case
+//     else { apply_mask(mat); }
+//     
+//     return m;
 // }
-// 
-// template class snark::cv_mat::scale_by_mask< boost::posix_time::ptime >;
-// template class snark::cv_mat::scale_by_mask< snark::cv_mat::header_type >;
 
-} }  // namespace snark { namespace cv_mat {
+} } }  // namespace snark { namespace cv_mat { namespace impl {
+
+template class snark::cv_mat::impl::scale_by_mask_impl_< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::scale_by_mask_impl_< snark::cv_mat::header_type >;
