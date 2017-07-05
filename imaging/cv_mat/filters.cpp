@@ -2171,6 +2171,69 @@ struct load_impl_
 };
 
 template < typename H >
+struct scale_by_mask_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
+    const get_timestamp_functor get_timestamp_;
+    std::string mask_file_;
+    load_impl_< H > loader_;
+    boost::optional< cv::Mat > mask_;
+
+    scale_by_mask_( const get_timestamp_functor& gt, const std::string& mask_file ) 
+    : get_timestamp_(gt), mask_file_(mask_file), loader_(mask_file)
+    {
+    }
+
+    value_type operator()( value_type m )
+    {
+        cv::Mat& mat = m.second;
+        
+        if( !mask_ )
+        {
+            mask_.reset( loader_(value_type()).second );
+            if( mask_.get().type() != CV_32FC1 ) { COMMA_THROW(comma::exception, "failed scale_by_mask_=" << mask_file_ << ", mask type must be CV_32FC1 or f"); }
+            // convert mask to 3 channels once
+            if( mat.type() == CV_8UC3 ) 
+            { 
+                cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGR); 
+                std::cerr << "converted temp is: " << mask_.get().type() << std::endl;
+            }
+        }
+         cv::Mat& mask = mask_.get(); 
+        
+        if( mat.rows != mask.rows || mat.cols != mask.cols ) { COMMA_THROW(comma::exception, "failed to apply scale_by_mask=" << mask_file_ << ", because mask dimensions do not matches input row and column dimensions" ); }
+        
+        std::cerr << "mat type is: " << mat.type() << std::endl;
+        if( mat.type() == CV_8UC1 )
+        {
+            cv::Mat mat_float;
+            mat.convertTo(mat_float, CV_32FC1);
+            
+            cv::Mat masked = mat_float.mul(mask);
+            masked.convertTo(mat, CV_8UC1 );
+            std::cerr << "data type is: " << m.second.type() << std::endl;
+        }
+        else if( mat.type() == CV_8UC3 )
+        {
+            cv::Mat mat_float;
+            mat.convertTo(mat_float, CV_32FC3);
+            std::cerr << "mat_float is: " << mat_float.type() << std::endl;
+
+            cv::Mat masked = mat_float.mul(mask);
+            masked.convertTo(mat, CV_8UC3 );
+            std::cerr << "data CV_8UC3 type is: " << mat.type() << std::endl;
+        }
+        else if( mat.type() == CV_32FC1 || mat.type() == CV_32FC3 )
+        {
+            mat = mat.mul(mask);
+        }
+        else { COMMA_THROW(comma::exception, "input image type is not supported (" << mat.type() << "), must be CV_8UC1, CV_8UC3 or CV32FC1"  ); }
+        
+        return m;
+    }
+};
+
+template < typename H >
 static typename impl::filters< H >::value_type remove_mean_impl_(const typename impl::filters< H >::value_type m, const cv::Size kernel_size, const double ratio )
 {
     typename impl::filters< H >::value_type n;
@@ -2915,6 +2978,10 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >(get_timestamp), _1 ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
         }
+        else if( e[0] == "scale-by-mask" )
+        {
+            f.push_back( filter_type( boost::bind< value_type_t >( scale_by_mask_< H >(get_timestamp, e[1]), _1 ), false ) );
+        }
         else if( e[0] == "simple-blob" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'simple-blob' as the last filter, got \"" << how << "\"" ); }
@@ -3104,6 +3171,7 @@ static std::string usage_impl_()
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
+    oss << "        scale-to-mask: given a mask file macthing the input images' width and height, scale each channel value by the mask's value. The mask type shall be CV_32FC1 or CV_64FC1." << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
