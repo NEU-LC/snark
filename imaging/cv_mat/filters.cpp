@@ -2214,6 +2214,15 @@ static typename impl::filters< H >::value_type scale_by_input_type( const typena
     COMMA_THROW( comma::exception,  "scale-by-mask: unrecognised output image type " << otype );
 }
 
+// todo
+// - move implementation to a separate
+// - move as much as possible to the constructor
+// - get rid of unnecessary class members
+// - switch instead of if/else if or rather just don't use cvtColour
+// - dereference mask_ etc rather than using mask = mask_.get()
+// - make mask inflation thread-safe or don't inflate at all
+// - convert to mask type, multiply, convert back 
+
 template < typename H >
 struct scale_by_mask_ {
     typedef typename impl::filters< H >::value_type value_type;
@@ -2240,7 +2249,7 @@ struct scale_by_mask_ {
         if( !mask_ )
         {
             mask_.reset( loader_(value_type()).second );
-            cv::Mat& mask = mask_.get(); 
+            cv::Mat& mask = *mask_; 
             
             if( mask.depth() != CV_32FC1 && mask.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask=" << mask_file_ << ", mask type must be floating point f or  d"); }
             // We expand mask once, to match number of channels in input data
@@ -2252,6 +2261,10 @@ struct scale_by_mask_ {
                 else { COMMA_THROW(comma::exception, "scale-by-mask supports image channels number 1, 3, or 4 only"); }
             }
         }
+        
+//         const cv::Mat& mask = cv::reduceChannels( mask_, mat.depth() );
+        
+        
         cv::Mat& mask = mask_.get(); 
         
         // For every input image we must check
@@ -2813,7 +2826,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     }
     if( e[0] == "scale-by-mask" )
     {
-        if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected mask file of type .bin" ); }
+        if( e.size() != 2 ) { COMMA_THROW( comma::exception, "scale-by-mask: please specify expected mask file" ); }
         return boost::bind< value_type_t >( scale_by_mask_< H >(e[1]), _1 );
     }
     if( e[0] == "skeleton" || e[0] == "thinning" )
