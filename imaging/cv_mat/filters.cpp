@@ -2202,9 +2202,10 @@ struct scale_by_mask_ {
             // We expand mask once, to match number of channels in input data
             if( mask.channels() != mat.channels() )
             {
-                if( mask.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels must be 1 or must be equal to input image channels: " << mat.channels()); }
+                if( mask.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels (" << mask.channels() << ")" <<" must be 1 or must be equal to input image channels: " << mat.channels()); }
                 else if( mat.channels() == 3 ) { cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGR); }
-                else { cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGRA); }
+                else if( mat.channels() == 4 ) { cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGRA); }
+                else { COMMA_THROW(comma::exception, "scale-by-mask supports image channels number 1, 3, or 4 only"); }
             }
         }
         cv::Mat& mask = mask_.get(); 
