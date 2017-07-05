@@ -2203,13 +2203,13 @@ static typename impl::filters< H >::value_type scale_by_input_type( const typena
     int otype = single_channel_type( m.second.type() );
     switch( otype )
     {
-        case CV_8U : return scale_tbb< H, CV_8U , MaskIn >( m, mask );
-        case CV_8S : return scale_tbb< H, CV_8S , MaskIn >( m, mask );
-        case CV_16U: return scale_tbb< H, CV_16U, MaskIn >( m, mask );
-        case CV_16S: return scale_tbb< H, CV_16S, MaskIn >( m, mask );
-        case CV_32S: return scale_tbb< H, CV_32S, MaskIn >( m, mask );
-        case CV_32F: return scale_tbb< H, CV_32F, MaskIn >( m, mask );
-        case CV_64F: return scale_tbb< H, CV_64F, MaskIn >( m, mask );
+        case CV_8U : return scale_by_rows< H, CV_8U , MaskIn >( m, mask );
+        case CV_8S : return scale_by_rows< H, CV_8S , MaskIn >( m, mask );
+        case CV_16U: return scale_by_rows< H, CV_16U, MaskIn >( m, mask );
+        case CV_16S: return scale_by_rows< H, CV_16S, MaskIn >( m, mask );
+        case CV_32S: return scale_by_rows< H, CV_32S, MaskIn >( m, mask );
+        case CV_32F: return scale_by_rows< H, CV_32F, MaskIn >( m, mask );
+        case CV_64F: return scale_by_rows< H, CV_64F, MaskIn >( m, mask );
     }
     COMMA_THROW( comma::exception,  "scale-by-mask: unrecognised output image type " << otype );
 }
@@ -2811,6 +2811,11 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         return boost::bind< value_type_t >( morphology_impl_< H >, _1, morphology_operations.at( e[0] ), parse_structuring_element( e ) );
     }
+    if( e[0] == "scale-by-mask" )
+    {
+        if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected mask file of type .bin" ); }
+        return boost::bind< value_type_t >( scale_by_mask_< H >(e[1]), _1 );
+    }
     if( e[0] == "skeleton" || e[0] == "thinning" )
     {
         return boost::bind< value_type_t >( skeleton_impl_< H >, _1, parse_structuring_element( e ) );
@@ -3011,11 +3016,6 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
             f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >(get_timestamp), _1 ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
-        }
-        else if( e[0] == "scale-by-mask" ) // todo: move to make_filter
-        {
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected mask file of type .bin" ); }
-            f.push_back( filter_type( boost::bind< value_type_t >( scale_by_mask_< H >(e[1]), _1 ), true ) ); // todo: why false? it should be true
         }
         else if( e[0] == "simple-blob" )
         {
