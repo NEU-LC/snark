@@ -42,9 +42,9 @@ namespace snark{ namespace cv_mat {
 // done - move implementation to a separate
 // done - move as much as possible to the constructor
 // done - get rid of unnecessary class members
-// - switch instead of if/else if or rather just don't use cvtColour
+// done - switch instead of if/else if or rather just don't use cvtColour
 // done - dereference mask_ etc rather than using mask = mask_.get()
-// - make mask inflation thread-safe or don't inflate at all
+// done - make mask inflation thread-safe or don't inflate at all
 // done - convert to mask type, multiply, convert back 
 
 // template < typename H >
@@ -64,7 +64,6 @@ namespace snark{ namespace cv_mat {
 template < typename H >
 struct scale_by_mask_ {
     typedef typename impl::filters< H >::value_type value_type;
-    std::string mask_file_;
     cv::Mat mask_;
     boost::shared_ptr< boost::mutex > mutex_;   // have to be careful here
     
@@ -77,7 +76,7 @@ struct scale_by_mask_ {
         masked.convertTo(mat, mat.type() );       // convert back to 
     }
 
-    scale_by_mask_( const std::string& mask_file ) : mask_file_(mask_file), mutex_(new boost::mutex()) {
+    scale_by_mask_( const std::string& mask_file ) : mutex_(new boost::mutex()) {
         mask_ = load_impl_< H >(mask_file)( value_type() ).second;
     }
 
@@ -85,20 +84,23 @@ struct scale_by_mask_ {
     {
         cv::Mat& mat = m.second;
         
-        if( mask_.depth() != CV_32FC1 && mask_.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask=" << mask_file_ << ", mask type must be floating point f or  d"); }
+        if( mask_.depth() != CV_32FC1 && mask_.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask, mask type must be floating point f or  d"); }
         // We expand mask once, to match number of channels in input data
         if( mask_.channels() != mat.channels() )
         {
-            if( mask_.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels (" << mask_.channels() << ")" <<" must be 1 or must be equal to input image channels: " << mat.channels()); }
-            
             boost::mutex::scoped_lock lock( *mutex_ );
-            if( mat.channels() == 3 ) { cv::cvtColor( mask_, mask_, CV_GRAY2BGR); }
-            else if( mat.channels() == 4 ) { cv::cvtColor( mask_, mask_, CV_GRAY2BGRA); }
-            else { COMMA_THROW(comma::exception, "scale-by-mask supports image channels number 1, 3, or 4 only"); }
+            if( mask_.channels() != mat.channels() )    // Do a need an atomic to store mask_.channels() ?
+            {
+                if( mask_.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels (" << mask_.channels() << ")" <<" must be 1 or must be equal to input image channels: " << mat.channels()); }
+                
+                std::vector< cv::Mat > channels( mat.channels() );
+                for( int i=0; i<mat.channels(); ++i ) { channels[i] = mask_; }
+                cv::merge(channels, mask_);
+            }
         }
         
         // For every input image we must check
-        if( mat.rows != mask_.rows || mat.cols != mask_.cols ) { COMMA_THROW(comma::exception, "failed to apply scale-by-mask=" << mask_file_ << ", because mask dimensions do not matches input row and column dimensions" ); }
+        if( mat.rows != mask_.rows || mat.cols != mask_.cols ) { COMMA_THROW(comma::exception, "failed to apply scale-by-mask, because mask dimensions do not matches input row and column dimensions" ); }
         if( mask_.channels() != mat.channels() ) { COMMA_THROW(comma::exception, "mask_ file has more channels than input mat: " << mask_.channels() << " > " << mat.channels()); }
         
         if( mask_.depth() == mat.depth() ) { mat = mat.mul(mask_); }  // The simplest case
