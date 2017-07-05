@@ -2173,16 +2173,21 @@ struct load_impl_
 template < typename H >
 struct scale_by_mask_ {
     typedef typename impl::filters< H >::value_type value_type;
-    typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor get_timestamp_;
     std::string mask_file_;
     load_impl_< H > loader_;
     boost::optional< cv::Mat > mask_;
-
-    scale_by_mask_( const get_timestamp_functor& gt, const std::string& mask_file ) 
-    : get_timestamp_(gt), mask_file_(mask_file), loader_(mask_file)
+    
+    void apply_mask(cv::Mat& mat)
     {
+        const cv::Mat& mask = mask_.get();
+        cv::Mat mat_float;
+        mat.convertTo(mat_float, mask.type());  // convert to float point
+            
+        cv::Mat masked = mat_float.mul(mask);
+        masked.convertTo(mat, mat.type() );       // convert back to 
     }
+
+    scale_by_mask_( const std::string& mask_file ) : mask_file_(mask_file), loader_(mask_file) {}
 
     value_type operator()( value_type m )
     {
@@ -2191,43 +2196,25 @@ struct scale_by_mask_ {
         if( !mask_ )
         {
             mask_.reset( loader_(value_type()).second );
-            if( mask_.get().type() != CV_32FC1 ) { COMMA_THROW(comma::exception, "failed scale_by_mask_=" << mask_file_ << ", mask type must be CV_32FC1 or f"); }
-            // convert mask to 3 channels once
-            if( mat.type() == CV_8UC3 ) 
-            { 
-                cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGR); 
-                std::cerr << "converted temp is: " << mask_.get().type() << std::endl;
+            cv::Mat& mask = mask_.get(); 
+            
+            if( mask.depth() != CV_32FC1 && mask.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask=" << mask_file_ << ", mask type must be floating point f or  d"); }
+            // We expand mask once, to match number of channels in input data
+            if( mask.channels() != mat.channels() )
+            {
+                if( mask.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels must be 1 or must be equal to input image channels: " << mat.channels()); }
+                else if( mat.channels() == 3 ) { cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGR); }
+                else { cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGRA); }
             }
         }
-         cv::Mat& mask = mask_.get(); 
+        cv::Mat& mask = mask_.get(); 
         
-        if( mat.rows != mask.rows || mat.cols != mask.cols ) { COMMA_THROW(comma::exception, "failed to apply scale_by_mask=" << mask_file_ << ", because mask dimensions do not matches input row and column dimensions" ); }
+        // For every input image we must check
+        if( mat.rows != mask.rows || mat.cols != mask.cols ) { COMMA_THROW(comma::exception, "failed to apply scale-by-mask=" << mask_file_ << ", because mask dimensions do not matches input row and column dimensions" ); }
+        if( mask.channels() != mat.channels() ) { COMMA_THROW(comma::exception, "mask file has more channels than input mat: " << mask.channels() << " > " << mat.channels()); }
         
-        std::cerr << "mat type is: " << mat.type() << std::endl;
-        if( mat.type() == CV_8UC1 )
-        {
-            cv::Mat mat_float;
-            mat.convertTo(mat_float, CV_32FC1);
-            
-            cv::Mat masked = mat_float.mul(mask);
-            masked.convertTo(mat, CV_8UC1 );
-            std::cerr << "data type is: " << m.second.type() << std::endl;
-        }
-        else if( mat.type() == CV_8UC3 )
-        {
-            cv::Mat mat_float;
-            mat.convertTo(mat_float, CV_32FC3);
-            std::cerr << "mat_float is: " << mat_float.type() << std::endl;
-
-            cv::Mat masked = mat_float.mul(mask);
-            masked.convertTo(mat, CV_8UC3 );
-            std::cerr << "data CV_8UC3 type is: " << mat.type() << std::endl;
-        }
-        else if( mat.type() == CV_32FC1 || mat.type() == CV_32FC3 )
-        {
-            mat = mat.mul(mask);
-        }
-        else { COMMA_THROW(comma::exception, "input image type is not supported (" << mat.type() << "), must be CV_8UC1, CV_8UC3 or CV32FC1"  ); }
+        if( mask.depth() == mat.depth() ) { mat = mat.mul(mask); }  // The simplest case
+        else { apply_mask(mat); }
         
         return m;
     }
@@ -2980,7 +2967,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "scale-by-mask" )
         {
-            f.push_back( filter_type( boost::bind< value_type_t >( scale_by_mask_< H >(get_timestamp, e[1]), _1 ), false ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( scale_by_mask_< H >(e[1]), _1 ), false ) );
         }
         else if( e[0] == "simple-blob" )
         {
