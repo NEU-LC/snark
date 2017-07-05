@@ -78,6 +78,8 @@
 #include "depth_traits.h"
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
+#include "detail/scale_by_mask.h"
+#include "detail/load-impl.h"
 
 namespace {
 
@@ -2142,143 +2144,6 @@ static typename impl::filters< H >::value_type inrange_impl_( const typename imp
     cv::inRange( m.second, lower, upper, n.second );
     return n;
 }
-
-template < typename H >
-struct load_impl_
-{
-    typedef typename impl::filters< H >::value_type value_type;
-    value_type value;
-
-    load_impl_( const std::string& filename )
-    {
-        const std::vector< std::string >& v = comma::split( filename, '.' );
-        if( v.back() == "bin" ) // quick and dirty
-        {
-            std::ifstream ifs( &filename[0] );
-            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
-            serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
-            value = s.read< H >( ifs );
-            ifs.close();
-        }
-        else
-        {
-            value.second = cv::imread( filename, -1 );
-        }
-        if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
-    }
-
-    value_type operator()( value_type ) { return value; }
-};
-
-template< int DepthIn, int MaskIn >
-static void scale( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const cv::Mat& mask, cv::Mat& result )
-{
-    typedef typename depth_traits< DepthIn >::value_t value_in_t;
-    typedef typename depth_traits< DepthIn >::value_t value_out_t;
-    typedef typename depth_traits< MaskIn >::value_t mask_in_t;
-    const unsigned int channels = m.channels();
-    const unsigned int cols = m.cols * channels;
-    for( unsigned int i = r.begin(); i < r.end(); ++i )
-    {
-        const value_in_t* in = m.ptr< value_in_t >(i);
-        const mask_in_t* in_mask = mask.ptr< mask_in_t >(i);
-        value_out_t* out = result.ptr< value_out_t >(i);
-        for( unsigned int j = 0; j < cols; ++j ) {
-            *out++ = value_out_t(*in++ * *in_mask++);
-        }
-    }
-}
-
-template< typename H, int DepthIn, int MaskIn >
-static typename impl::filters< H >::value_type scale_by_rows( const typename impl::filters< H >::value_type m, const cv::Mat& mask )
-{
-    cv::Mat result( m.second.size(), m.second.type() );
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &scale< DepthIn, MaskIn >, _1, m.second, mask, boost::ref( result ) ) );
-    return typename impl::filters< H >::value_type( m.first, result );
-}
-
-template< typename H, int MaskIn >
-static typename impl::filters< H >::value_type scale_by_input_type( const typename impl::filters< H >::value_type& m, const cv::Mat& mask)
-{
-    int otype = single_channel_type( m.second.type() );
-    switch( otype )
-    {
-        case CV_8U : return scale_by_rows< H, CV_8U , MaskIn >( m, mask );
-        case CV_8S : return scale_by_rows< H, CV_8S , MaskIn >( m, mask );
-        case CV_16U: return scale_by_rows< H, CV_16U, MaskIn >( m, mask );
-        case CV_16S: return scale_by_rows< H, CV_16S, MaskIn >( m, mask );
-        case CV_32S: return scale_by_rows< H, CV_32S, MaskIn >( m, mask );
-        case CV_32F: return scale_by_rows< H, CV_32F, MaskIn >( m, mask );
-        case CV_64F: return scale_by_rows< H, CV_64F, MaskIn >( m, mask );
-    }
-    COMMA_THROW( comma::exception,  "scale-by-mask: unrecognised output image type " << otype );
-}
-
-// todo
-// - move implementation to a separate
-// - move as much as possible to the constructor
-// - get rid of unnecessary class members
-// - switch instead of if/else if or rather just don't use cvtColour
-// - dereference mask_ etc rather than using mask = mask_.get()
-// - make mask inflation thread-safe or don't inflate at all
-// - convert to mask type, multiply, convert back 
-
-template < typename H >
-struct scale_by_mask_ {
-    typedef typename impl::filters< H >::value_type value_type;
-    std::string mask_file_;
-    load_impl_< H > loader_;
-    boost::optional< cv::Mat > mask_;
-    
-//     void apply_mask(cv::Mat& mat)
-//     {
-//         const cv::Mat& mask = mask_.get();
-//         cv::Mat mat_float;
-//         mat.convertTo(mat_float, mask.type());  // convert to float point
-//             
-//         cv::Mat masked = mat_float.mul(mask);
-//         masked.convertTo(mat, mat.type() );       // convert back to 
-//     }
-
-    scale_by_mask_( const std::string& mask_file ) : mask_file_(mask_file), loader_(mask_file) {}
-
-    value_type operator()( value_type m )
-    {
-        cv::Mat& mat = m.second;
-        
-        if( !mask_ )
-        {
-            mask_.reset( loader_(value_type()).second );
-            cv::Mat& mask = *mask_; 
-            
-            if( mask.depth() != CV_32FC1 && mask.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask=" << mask_file_ << ", mask type must be floating point f or  d"); }
-            // We expand mask once, to match number of channels in input data
-            if( mask.channels() != mat.channels() )
-            {
-                if( mask.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels (" << mask.channels() << ")" <<" must be 1 or must be equal to input image channels: " << mat.channels()); }
-                else if( mat.channels() == 3 ) { cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGR); }
-                else if( mat.channels() == 4 ) { cv::cvtColor( mask_.get(), mask_.get(), CV_GRAY2BGRA); }
-                else { COMMA_THROW(comma::exception, "scale-by-mask supports image channels number 1, 3, or 4 only"); }
-            }
-        }
-        
-//         const cv::Mat& mask = cv::reduceChannels( mask_, mat.depth() );
-        
-        
-        cv::Mat& mask = mask_.get(); 
-        
-        // For every input image we must check
-        if( mat.rows != mask.rows || mat.cols != mask.cols ) { COMMA_THROW(comma::exception, "failed to apply scale-by-mask=" << mask_file_ << ", because mask dimensions do not matches input row and column dimensions" ); }
-        if( mask.channels() != mat.channels() ) { COMMA_THROW(comma::exception, "mask file has more channels than input mat: " << mask.channels() << " > " << mat.channels()); }
-        
-        if( mask.depth() == mat.depth() ) { mat = mat.mul(mask); }  // The simplest case
-        else 
-        { 
-            if( mask.depth() == CV_32FC1 ) { return scale_by_input_type< H, CV_32F >(m, mask); }
-            else { return scale_by_input_type< H, CV_64F >(m, mask); }
-        }
-    }
-};
 
 template < typename H >
 static typename impl::filters< H >::value_type remove_mean_impl_(const typename impl::filters< H >::value_type m, const cv::Size kernel_size, const double ratio )
