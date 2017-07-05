@@ -3158,8 +3158,14 @@ static std::string usage_impl_()
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
+    oss << "        scale-to-mask=<mask.bin>: given a mask file matching the input images' width and height, scale each channel value by the mask's value. The mask must be type f or d. The mask channel number can be 1 or equal to input images' channel number" << std::endl;
+    oss << "            examples" << std::endl;
+    oss << "                cv-cat --file image-1ub.jpg 'scale-by-mask=mask-1f.bin' >scaled-1ub.bin : one mask channel applied to one input channel" << std::endl;
+    oss << "                cv-cat --file image-3ub.jpg 'scale-by-mask=mask-1d.bin' >scaled-3ub.bin : one mask channel applied to three input channels" << std::endl;
+    oss << "                cv-cat --file image-3ub.jpg 'scale-by-mask=mask-3f.bin' >scaled-3ub.bin : three mask channels, each applied to corresponding input channel" << std::endl;
+    oss << "                cv-cat --file image-3d.jpg 'scale-by-mask=mask-1d.bin' >scaled-3d.bin : one mask channel (1f), applied to three input channels" << std::endl;
+    oss << "            note: for performance sake, when input image depth is f or d, use the same mask depth: d -> d, and f -> f" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
-    oss << "        scale-to-mask: given a mask file macthing the input images' width and height, scale each channel value by the mask's value. The mask type shall be CV_32FC1 or CV_64FC1." << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
