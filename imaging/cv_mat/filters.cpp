@@ -2143,6 +2143,34 @@ static typename impl::filters< H >::value_type inrange_impl_( const typename imp
     return n;
 }
 
+// template< int DepthIn, int MaskIn >
+// static void scale( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const cv::Mat& mask, cv::Mat& result )
+// {
+//     typedef typename depth_traits< DepthIn >::value_t value_in_t;
+//     typedef typename depth_traits< DepthIn >::value_t value_out_t;
+//     typedef typename depth_traits< MaskIn >::value_t mask_in_t;
+//     const unsigned int channels = m.channels();
+//     const unsigned int cols = m.cols * channels;
+//     for( unsigned int i = r.begin(); i < r.end(); ++i )
+//     {
+//         const value_in_t* in = m.ptr< value_in_t >(i);
+//         const mask_in_t* in_mask = mask.ptr< mask_in_t >(i);
+//         value_out_t* out = result.ptr< value_out_t >(i);
+//         for( unsigned int j = 0; j < cols; j += channels )
+//         {
+//             *out++ = value_out_t(*in++ * *in_mask++);
+// //             double n = numerator[0];
+// //             double d = denominator[0];
+// //             for( unsigned int k = 0; k < channels; ++k ) {
+// //                 n += *in * numerator[k + 1];
+// //                 d += *in++ * denominator[k + 1];
+// //             }
+// //             double value = ( d == 0 ? ( n == 0 ? 0 : highest ) : n / d );
+// //             *out++ = value > highest ? highest : value < lowest ? lowest : value;
+//         }
+//     }
+// }
+
 template < typename H >
 struct load_impl_
 {
@@ -2966,9 +2994,10 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >(get_timestamp), _1 ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
         }
-        else if( e[0] == "scale-by-mask" )
+        else if( e[0] == "scale-by-mask" ) // todo: move to make_filter
         {
-            f.push_back( filter_type( boost::bind< value_type_t >( scale_by_mask_< H >(e[1]), _1 ), false ) );
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected mask file of type .bin" ); }
+            f.push_back( filter_type( boost::bind< value_type_t >( scale_by_mask_< H >(e[1]), _1 ), true ) ); // todo: why false? it should be true
         }
         else if( e[0] == "simple-blob" )
         {
@@ -3158,13 +3187,12 @@ static std::string usage_impl_()
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
-    oss << "        scale-to-mask=<mask.bin>: given a mask file matching the input images' width and height, scale each channel value by the mask's value. The mask must be type f or d. The mask channel number can be 1 or equal to input images' channel number" << std::endl;
-    oss << "            examples" << std::endl;
-    oss << "                cv-cat --file image-1ub.jpg 'scale-by-mask=mask-1f.bin' >scaled-1ub.bin : one mask channel applied to one input channel" << std::endl;
-    oss << "                cv-cat --file image-3ub.jpg 'scale-by-mask=mask-1d.bin' >scaled-3ub.bin : one mask channel applied to three input channels" << std::endl;
-    oss << "                cv-cat --file image-3ub.jpg 'scale-by-mask=mask-3f.bin' >scaled-3ub.bin : three mask channels, each applied to corresponding input channel" << std::endl;
-    oss << "                cv-cat --file image-3d.jpg 'scale-by-mask=mask-1d.bin' >scaled-3d.bin : one mask channel (1f), applied to three input channels" << std::endl;
-    oss << "            note: for performance sake, when input image depth is f or d, use the same mask depth: d -> d, and f -> f" << std::endl;
+    oss << "        scale-to-mask=<mask.bin>: given a mask file matching the input image width and height, scale each channel value by the mask value." << std::endl;
+    oss << "                                  mask type: f or d" << std::endl;
+    oss << "                                  mask number of channels" << std::endl;
+    oss << "                                      1: apply the same mask to each channel of the image" << std::endl;
+    oss << "                                      same as the input image: apply to each channel the corresponding channel of the mask" << std::endl;
+    oss << "                                  note: for performance's sake, when input image depth is f or d, use the same mask depth: d -> d, and f -> f" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
