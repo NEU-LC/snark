@@ -2143,34 +2143,6 @@ static typename impl::filters< H >::value_type inrange_impl_( const typename imp
     return n;
 }
 
-// template< int DepthIn, int MaskIn >
-// static void scale( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const cv::Mat& mask, cv::Mat& result )
-// {
-//     typedef typename depth_traits< DepthIn >::value_t value_in_t;
-//     typedef typename depth_traits< DepthIn >::value_t value_out_t;
-//     typedef typename depth_traits< MaskIn >::value_t mask_in_t;
-//     const unsigned int channels = m.channels();
-//     const unsigned int cols = m.cols * channels;
-//     for( unsigned int i = r.begin(); i < r.end(); ++i )
-//     {
-//         const value_in_t* in = m.ptr< value_in_t >(i);
-//         const mask_in_t* in_mask = mask.ptr< mask_in_t >(i);
-//         value_out_t* out = result.ptr< value_out_t >(i);
-//         for( unsigned int j = 0; j < cols; j += channels )
-//         {
-//             *out++ = value_out_t(*in++ * *in_mask++);
-// //             double n = numerator[0];
-// //             double d = denominator[0];
-// //             for( unsigned int k = 0; k < channels; ++k ) {
-// //                 n += *in * numerator[k + 1];
-// //                 d += *in++ * denominator[k + 1];
-// //             }
-// //             double value = ( d == 0 ? ( n == 0 ? 0 : highest ) : n / d );
-// //             *out++ = value > highest ? highest : value < lowest ? lowest : value;
-//         }
-//     }
-// }
-
 template < typename H >
 struct load_impl_
 {
@@ -2198,6 +2170,50 @@ struct load_impl_
     value_type operator()( value_type ) { return value; }
 };
 
+template< int DepthIn, int MaskIn >
+static void scale( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const cv::Mat& mask, cv::Mat& result )
+{
+    typedef typename depth_traits< DepthIn >::value_t value_in_t;
+    typedef typename depth_traits< DepthIn >::value_t value_out_t;
+    typedef typename depth_traits< MaskIn >::value_t mask_in_t;
+    const unsigned int channels = m.channels();
+    const unsigned int cols = m.cols * channels;
+    for( unsigned int i = r.begin(); i < r.end(); ++i )
+    {
+        const value_in_t* in = m.ptr< value_in_t >(i);
+        const mask_in_t* in_mask = mask.ptr< mask_in_t >(i);
+        value_out_t* out = result.ptr< value_out_t >(i);
+        for( unsigned int j = 0; j < cols; ++j ) {
+            *out++ = value_out_t(*in++ * *in_mask++);
+        }
+    }
+}
+
+template< typename H, int DepthIn, int MaskIn >
+static typename impl::filters< H >::value_type scale_by_rows( const typename impl::filters< H >::value_type m, const cv::Mat& mask )
+{
+    cv::Mat result( m.second.size(), m.second.type() );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &scale< DepthIn, MaskIn >, _1, m.second, mask, boost::ref( result ) ) );
+    return typename impl::filters< H >::value_type( m.first, result );
+}
+
+template< typename H, int MaskIn >
+static typename impl::filters< H >::value_type scale_by_input_type( const typename impl::filters< H >::value_type& m, const cv::Mat& mask)
+{
+    int otype = single_channel_type( m.second.type() );
+    switch( otype )
+    {
+        case CV_8U : return scale_tbb< H, CV_8U , MaskIn >( m, mask );
+        case CV_8S : return scale_tbb< H, CV_8S , MaskIn >( m, mask );
+        case CV_16U: return scale_tbb< H, CV_16U, MaskIn >( m, mask );
+        case CV_16S: return scale_tbb< H, CV_16S, MaskIn >( m, mask );
+        case CV_32S: return scale_tbb< H, CV_32S, MaskIn >( m, mask );
+        case CV_32F: return scale_tbb< H, CV_32F, MaskIn >( m, mask );
+        case CV_64F: return scale_tbb< H, CV_64F, MaskIn >( m, mask );
+    }
+    COMMA_THROW( comma::exception,  "scale-by-mask: unrecognised output image type " << otype );
+}
+
 template < typename H >
 struct scale_by_mask_ {
     typedef typename impl::filters< H >::value_type value_type;
@@ -2205,15 +2221,15 @@ struct scale_by_mask_ {
     load_impl_< H > loader_;
     boost::optional< cv::Mat > mask_;
     
-    void apply_mask(cv::Mat& mat)
-    {
-        const cv::Mat& mask = mask_.get();
-        cv::Mat mat_float;
-        mat.convertTo(mat_float, mask.type());  // convert to float point
-            
-        cv::Mat masked = mat_float.mul(mask);
-        masked.convertTo(mat, mat.type() );       // convert back to 
-    }
+//     void apply_mask(cv::Mat& mat)
+//     {
+//         const cv::Mat& mask = mask_.get();
+//         cv::Mat mat_float;
+//         mat.convertTo(mat_float, mask.type());  // convert to float point
+//             
+//         cv::Mat masked = mat_float.mul(mask);
+//         masked.convertTo(mat, mat.type() );       // convert back to 
+//     }
 
     scale_by_mask_( const std::string& mask_file ) : mask_file_(mask_file), loader_(mask_file) {}
 
@@ -2243,9 +2259,11 @@ struct scale_by_mask_ {
         if( mask.channels() != mat.channels() ) { COMMA_THROW(comma::exception, "mask file has more channels than input mat: " << mask.channels() << " > " << mat.channels()); }
         
         if( mask.depth() == mat.depth() ) { mat = mat.mul(mask); }  // The simplest case
-        else { apply_mask(mat); }
-        
-        return m;
+        else 
+        { 
+            if( mask.depth() == CV_32FC1 ) { return scale_by_input_type< H, CV_32F >(m, mask); }
+            else { return scale_by_input_type< H, CV_64F >(m, mask); }
+        }
     }
 };
 
