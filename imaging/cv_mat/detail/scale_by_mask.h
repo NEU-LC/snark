@@ -68,7 +68,7 @@ struct scale_by_mask_impl_ {
         if( mask_.depth() != CV_32FC1 && mask_.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask, mask type must be floating point f or  d"); }
     }
 
-    value_type operator()( value_type n )
+    value_type operator()( const value_type& n )
     {
         value_type m = n; // not thread-safe, if several filters need to be called on one image in parallel
         if( m.second.rows != mask_.rows || m.second.cols != mask_.cols ) { COMMA_THROW(comma::exception, "failed to apply scale-by-mask, because mask dimensions do not matches input row and column dimensions" ); }
