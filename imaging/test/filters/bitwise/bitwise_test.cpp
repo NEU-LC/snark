@@ -72,10 +72,10 @@ namespace {
         typedef boost::static_visitor< boost::function< std::ostream & ( std::ostream & ) > >::result_type result_type;
 
         result_type term( const std::string & s ) const { return [ &s ]( std::ostream & os ) -> std::ostream & { os << s; return os; }; }
-        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '['; opl( os ); os << " & "; opr( os ); os << ']'; return os; }; }
-        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '['; opl( os ); os << " | "; opr( os ); os << ']'; return os; }; }
-        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '['; opl( os ); os << " ^ "; opr( os ); os << ']'; return os; }; }
-        result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "[~"; op( os ); os << ']'; return os; }; }
+        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " & "; opr( os ); os << ')'; return os; }; }
+        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " | "; opr( os ); os << ')'; return os; }; }
+        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " ^ "; opr( os ); os << ')'; return os; }; }
+        result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "(~"; op( os ); os << ')'; return os; }; }
     };
 
     template< typename T >
@@ -96,44 +96,56 @@ namespace {
         result_type op_not( const result_type & op ) const { return [ op ]( boost::none_t ) -> T { const T & i = op( boost::none ); return ~i; }; }
     };
 
-    const std::vector< std::string > inputs =
-        {
-            "a and b",
-            "a or b",
-            "a xor b",
-            "not a",
-            "not a and b",
-            "not [a and b]",
-            "a or b or c",
-            "[a and b] xor [[c and d] or [a and b]]",
-            "a and b xor [c and d or a and b]",
-        };
+    namespace global
+    {
+        const std::vector< std::string > inputs =
+            {
+                "a and b",
+                "a or b",
+                "a xor b",
+                "not a",
+                "not a and b",
+                "not (a and b)",
+                "a or b or c",
+                "(a and b) xor ((c and d) or (a and b))",
+                "a and b xor (c and d or a and b)",
+                // "a and b xor (c and f(d+g) or a and b)",
+                // "a and f(d+g)",
+                // "(a and f(d+g)) or c",
+                // "f:(d+g)/a|foo:bar",
+            };
 
-    const std::vector< std::string > expected =
-        {
-            "[a & b]",
-            "[a | b]",
-            "[a ^ b]",
-            "[~a]",
-            "[[~a] & b]",
-            "[~[a & b]]",
-            "[a | [b | c]]",
-            "[[a & b] ^ [[c & d] | [a & b]]]",
-            "[[a & b] ^ [[c & d] | [a & b]]]",
-        };
+        const std::vector< std::string > expected =
+            {
+                "(a & b)",
+                "(a | b)",
+                "(a ^ b)",
+                "(~a)",
+                "((~a) & b)",
+                "(~(a & b))",
+                "(a | (b | c))",
+                "((a & b) ^ ((c & d) | (a & b)))",
+                "((a & b) ^ ((c & d) | (a & b)))",
+                // "((a & b) ^ ((c & f(d+g)) | (a & b)))",
+                // "(a & f(d+g))",
+                // "((a & f(d+g)) | c)",
+                // "f:(d+g)/a|foo:bar",
+            };
 
-    const std::vector< boost::function< int( int, int, int, int ) > > direct =
-        {
-            []( int a, int b, int c, int d ) ->int { return (a & b); },
-            []( int a, int b, int c, int d ) ->int { return (a | b); },
-            []( int a, int b, int c, int d ) ->int { return (a ^ b); },
-            []( int a, int b, int c, int d ) ->int { return (~a); },
-            []( int a, int b, int c, int d ) ->int { return ((~a) & b); },
-            []( int a, int b, int c, int d ) ->int { return (~(a & b)); },
-            []( int a, int b, int c, int d ) ->int { return (a | (b | c)); },
-            []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
-            []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
-        };
+        const std::vector< boost::function< int( int, int, int, int ) > > direct =
+            {
+                []( int a, int b, int c, int d ) ->int { return (a & b); },
+                []( int a, int b, int c, int d ) ->int { return (a | b); },
+                []( int a, int b, int c, int d ) ->int { return (a ^ b); },
+                []( int a, int b, int c, int d ) ->int { return (~a); },
+                []( int a, int b, int c, int d ) ->int { return ((~a) & b); },
+                []( int a, int b, int c, int d ) ->int { return (~(a & b)); },
+                []( int a, int b, int c, int d ) ->int { return (a | (b | c)); },
+                []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
+                []( int a, int b, int c, int d ) ->int { return ((a & b) ^ ((c & d) | (a & b))); },
+            };
+
+    } // namespace global
 
     int call_direct( const lookup_map_t< int > & m, const boost::function< int( int, int, int, int ) > & f ) { return f( m.at("a"), m.at("b"), m.at("c"), m.at("d") ); }
 
@@ -145,21 +157,72 @@ namespace {
 
 } // anonymous
 
+TEST( bitwise, brackets )
+{
+    const std::vector< std::string > good_inputs =
+        {
+            "f:(d+g)/a|foo:bar",
+            "ratio:(r + b)/(1.0+g)|threshold:otsu, 1.2e-8|foo:bar",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
+            "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)",
+            "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar)/ (bar, baz)and blah",
+            "( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar or linear-combination:r|threshold:10) xor (bar, baz) and blah",
+        };
+
+    const std::vector< std::string > good_expected =
+        {
+            "f:(d+g)/a|foo:bar",
+            "ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar)",
+            "foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar,baz)",
+            "(foo=(ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar)/(bar,baz) & blah)",
+            "((ratio:(r+b)/(1.0+g)|threshold:otsu,1.2e-8|foo:bar | linear-combination:r|threshold:10) ^ (bar,baz & blah))",
+        };
+
+    const std::vector< std::string > bad_inputs =
+        {
+            "foo=( ratio:(r+b)/(1.0 +g )|threshold:otsu,1.2e-8|foo:bar or linear-combination:r|threshold:10)/ (bar, baz)and blah",
+        };
+
+    ASSERT_EQ( good_inputs.size(), good_expected.size() );
+    for ( size_t i = 0; i < good_inputs.size(); ++i )
+    {
+        expr e = parse( good_inputs[i] );
+        std::ostringstream os;
+        os << e;
+        EXPECT_EQ( os.str(), good_expected[i] );
+        // std::cerr << "parse:    " << good_inputs[i] << '\n';
+        // std::cerr << "result:   " << e << '\n';
+        // std::cerr << "expected: " << good_expected[i] << std::endl;
+    }
+    for ( size_t i = 0; i < bad_inputs.size(); ++i )
+    {
+        ASSERT_THROW( parse( bad_inputs[i] ), comma::exception );
+    }
+}
+
 TEST( bitwise, printer )
 {
-    for ( size_t i = 0; i < inputs.size(); ++i )
+    for ( size_t i = 0; i < global::inputs.size(); ++i )
     {
-        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-        parser< decltype( f ) > p;
+        auto f( std::begin( global::inputs[i] ) ), l( std::end( global::inputs[i] ) );
+        logical::parser< decltype( f ) > p;
 
-        expr result;
-        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-        EXPECT_TRUE( ok );
-        EXPECT_EQ( f, l );
+        try {
+            expr result;
+            bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
+            EXPECT_TRUE( ok );
+            EXPECT_EQ( f, l );
+            {
+                std::ostringstream os;
+                os << result;
+                // std::cerr << expected[i] << " : " << os.str() << std::endl;
+                EXPECT_EQ( os.str(), global::expected[i] );
+            }
+        } catch ( const boost::spirit::qi::expectation_failure< std::string::const_iterator > & e )
         {
-            std::ostringstream os;
-            os << result;
-            EXPECT_EQ( os.str(), expected[i] );
+            std::cerr << "exception:" << std::endl;
+            print_info( e.what_ );
         }
     }
 }
@@ -175,22 +238,16 @@ TEST( bitwise, special )
 
     const std::vector< std::string > expected =
         {
-            "[" + boost::algorithm::erase_all_copy( f0, " " ) + " & " + boost::algorithm::erase_all_copy( f1, " " ) + "]",
+            "(" + boost::algorithm::erase_all_copy( f0, " " ) + " & " + boost::algorithm::erase_all_copy( f1, " " ) + ")",
         };
 
     for ( size_t i = 0; i < inputs.size(); ++i )
     {
-        const auto & s = tabify_bitwise_ops( inputs[i] );
-        auto f( std::begin( s ) ), l( std::end( s ) );
-        parser< decltype( f ) > p;
-
-        expr result;
-        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-        EXPECT_TRUE( ok );
-        EXPECT_EQ( f, l );
+        expr result = parse( inputs[i] );
         {
             std::ostringstream os;
             os << result;
+            // std::cerr << expected[i] << " : " << os.str() << std::endl;
             EXPECT_EQ( os.str(), expected[i] );
         }
     }
@@ -198,10 +255,10 @@ TEST( bitwise, special )
 
 TEST( bitwise, writer )
 {
-    for ( size_t i = 0; i < inputs.size(); ++i )
+    for ( size_t i = 0; i < global::inputs.size(); ++i )
     {
-        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-        parser< decltype( f ) > p;
+        auto f( std::begin( global::inputs[i] ) ), l( std::end( global::inputs[i] ) );
+        logical::parser< decltype( f ) > p;
 
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
@@ -212,17 +269,17 @@ TEST( bitwise, writer )
             writer w;
             auto scribe = boost::apply_visitor( visitor< std::ostream &, std::ostream &, writer >( w ), result );
             scribe( os );
-            EXPECT_EQ( os.str(), expected[i] );
+            EXPECT_EQ( os.str(), global::expected[i] );
         }
     }
 }
 
 TEST( bitwise, logical_int )
 {
-    for ( size_t i = 0; i < inputs.size(); ++i )
+    for ( size_t i = 0; i < global::inputs.size(); ++i )
     {
-        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-        parser< decltype( f ) > p;
+        auto f( std::begin( global::inputs[i] ) ), l( std::end( global::inputs[i] ) );
+        logical::parser< decltype( f ) > p;
 
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
@@ -234,7 +291,7 @@ TEST( bitwise, logical_int )
                 logician< int > l( m );
                 auto worker = boost::apply_visitor( visitor< boost::none_t, int, logician< int > >( l ), result );
                 int r = worker( boost::none );
-                int q = call_direct( m, direct[i] );
+                int q = call_direct( m, global::direct[i] );
                 EXPECT_EQ( r, q );
             }
         }
@@ -255,10 +312,10 @@ TEST( bitwise, logical_matrix )
         }
         lookup_matrices.push_back( matrices );
     }
-    for ( size_t i = 0; i < inputs.size(); ++i )
+    for ( size_t i = 0; i < global::inputs.size(); ++i )
     {
-        auto f( std::begin( inputs[i] ) ), l( std::end( inputs[i] ) );
-        parser< decltype( f ) > p;
+        auto f( std::begin( global::inputs[i] ) ), l( std::end( global::inputs[i] ) );
+        logical::parser< decltype( f ) > p;
 
         expr result;
         bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
@@ -271,29 +328,9 @@ TEST( bitwise, logical_matrix )
                 auto worker = boost::apply_visitor( visitor< boost::none_t, cv::Mat, logician< cv::Mat > >( l ), result );
                 cv::Mat r = worker( boost::none );
                 int ri = r.at< comma::int16 >(2, 3);
-                int q = call_direct( lookup_ints[j], direct[i] );
+                int q = call_direct( lookup_ints[j], global::direct[i] );
                 EXPECT_EQ( ri, q );
             }
-        }
-    }
-}
-
-TEST( bitwise, tabify )
-{
-    for ( size_t i = 0; i < inputs.size(); ++i )
-    {
-        const std::string & s = tabify_bitwise_ops( inputs[i] );
-        auto f( std::begin( s ) ), l( std::end( s ) );
-        parser< decltype( f ) > p;
-
-        expr result;
-        bool ok = boost::spirit::qi::phrase_parse( f, l, p, boost::spirit::qi::space, result );
-        EXPECT_TRUE( ok );
-        EXPECT_EQ( f, l );
-        {
-            std::ostringstream os;
-            os << result;
-            EXPECT_EQ( os.str(), expected[i] );
         }
     }
 }

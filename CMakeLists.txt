@@ -42,24 +42,8 @@ IF(NOT CMAKE_BUILD_TYPE)
       FORCE)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
-option( USE_CXX11 "build with C++11 support" ON )
-if( USE_CXX11 )
-    if( UNIX )
-        # A much better way to do this is with CXX_STANDARD but that requires CMake 3.1
-        include( CheckCXXCompilerFlag )
-        CHECK_CXX_COMPILER_FLAG( "-std=c++11" compiler_supports_cxx11 )
-        CHECK_CXX_COMPILER_FLAG( "-std=c++0x" compiler_supports_cxx0x )
-        if( compiler_supports_cxx11 )
-            set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
-            if ( CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
-                set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wc++11-narrowing" )
-            endif ( CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
-        elseif( compiler_supports_cxx0x )
-            set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x" )
-        else()
-            message( FATAL_ERROR "USE_CXX11 set to ON but ${CMAKE_CXX_COMPILER} has no C++11 support")
-        endif()
-    endif()
+if( UNIX )
+    INCLUDE( ${comma_DIR}/check.c++.standard.cmake REQUIRED )
 endif()
 
 IF(WIN32)
@@ -147,9 +131,7 @@ if( USE_CUDA )
 #    list( APPEND CUDA_NVCC_FLAGS -gencode arch=compute_50,code=sm_50 )
 #    list( APPEND CUDA_NVCC_FLAGS -gencode arch=compute_52,code=sm_52 )
     #message( "CUDA_NVCC_FLAGS: ${CUDA_NVCC_FLAGS}" )
-    if( USE_CXX11 )
-        list( APPEND CUDA_NVCC_FLAGS -D_MWAITXINTRIN_H_INCLUDED -D__STRICT_ANSI__ -D_FORCE_INLINES )
-    endif( USE_CXX11 )
+    list( APPEND CUDA_NVCC_FLAGS -D_MWAITXINTRIN_H_INCLUDED -D__STRICT_ANSI__ -D_FORCE_INLINES )
     set( CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE ON ) # todo: what is this?
     set( CUDA_SEPARABLE_COMPILATION ON ) # todo: what is this?
     set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSNARK_USE_CUDA" )
@@ -172,7 +154,7 @@ FIND_PACKAGE( Boost COMPONENTS thread filesystem system serialization date_time 
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIRS} )
 LINK_DIRECTORIES( ${Boost_LIBRARY_DIRS} )
 
-if( USE_CXX11 )
+IF( ${CXX_STANDARD_TO_USE} MATCHES "11" )
     # Work around a boost bug in Boost 1.56 and below when the library is compiled
     # against one C++ version and the application is compiled against another.
     # It will manifest itself as a linker error.
@@ -275,6 +257,7 @@ CMAKE_DEPENDENT_OPTION( ADD_PYTHON_PACKAGES_TO_RPM "add snark python packages to
 
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_asd "build asd components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_basler "build basler components" OFF "snark_build_sensors" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_sensors_cepton "build cepton components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_dc1394 "build dc1394 components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_flycapture "build flycapture components for pointgrey" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "snark_build_sensors" OFF )

@@ -16,12 +16,14 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with Ark. If not, see <http://www.gnu.org/licenses/>.
 
+#include <memory>
 #include <opencv2/core/core.hpp>
 #include <comma/visiting/traits.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
 #include <comma/math/interval.h>
 #include <comma/name_value/parser.h>
+#include "../../imaging/cv_mat/filters.h"
 #include "../../imaging/cv_mat/serialization.h"
 
 const char* name = "cv-calc: ";
@@ -30,12 +32,19 @@ const char* default_input_fields = "min/x,min/y,max/x,max/y,t,rows,cols,type";
 static void usage( bool verbose=false )
 {
     std::cerr << std::endl;
-    std::cerr << "Performs verious image manipulation or calculations on cv image streams." << std::endl;
-    std::cerr << "usage: cat bumblebee2.bin | cv-calc <operation> [<options>] > bumblebee2_roi.bin " << std::endl;
+    std::cerr << "performs verious image manipulation or calculations on cv image streams" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "essential difference between cv-calc and  cv-cat" << std::endl;
+    std::cerr << "    cv-cat takes one image in, applies operations, outputs one image out; e.g. cv-cat cannot skip images" << std::endl;
+    std::cerr << "    cv-calc, depending on operation, may output multiple images per an one input image, skip images, or have just numeric outputs, etc" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "usage: cat images.bin | cv-calc <operation> [<options>] > processed.bin " << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    format" << std::endl;
     std::cerr << "        output header and data format string in ascii" << std::endl;
+    std::cerr << "    grep" << std::endl;
+    std::cerr << "        output only images that satisfy conditions" << std::endl;
     std::cerr << "    header" << std::endl;
     std::cerr << "        output header information in ascii csv" << std::endl;
     std::cerr << "    mean" << std::endl;
@@ -56,15 +65,25 @@ static void usage( bool verbose=false )
     std::cerr << "serialization options" << std::endl;
     if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
     std::cerr << std::endl;
-    std::cerr << "operations" << std::endl;
+    std::cerr << "operation options" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    grep" << std::endl;
+    std::cerr << "        --mask=[<filters>]; todo; apply --non-zero logic to mask, not to image itself; run cv-cat --help --verbose for mask syntax" << std::endl;
+    std::cerr << "        --non-zero=[<what>]; output only images that have non-zero pixels" << std::endl;
+    std::cerr << "            <what>" << std::endl;
+    std::cerr << "                all: output only images with all pixels non-zero" << std::endl;
+    std::cerr << "                none: output only images with all pixels zero, makes sense only if --mask given" << std::endl;
+    std::cerr << "                some: output only images with some pixels non-zero" << std::endl;
+    std::cerr << "                <ratio>: output only images with a given ration of non-zero pixels: todo?" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --show-partial; by default no partial roi is shown in image. Use option to change behaviour." << std::endl;
     std::cerr << "        --discard; discards frames where the roi is not seen." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    stride" << std::endl;
-    std::cerr << "        --output=<options>; output options; see cv-cat for details" << std::endl;
-    std::cerr << "        --padding=[<padding>]; padding, 'same' or 'valid' (see e.g. tensorflow for the meaning); default: same" << std::endl;
+    std::cerr << "        --input=[<options>]; input options; run cv-cat --help --verbose for details" << std::endl;
+    std::cerr << "        --output=[<options>]; output options; run cv-cat --help --verbose for details" << std::endl;
+    std::cerr << "        --padding=[<padding>]; padding, 'same' or 'valid' (see e.g. tensorflow for the meaning); default: valid" << std::endl;
     std::cerr << "        --shape,--kernel,--size=<x>,<y>; image size" << std::endl;
     std::cerr << "        --strides=[<x>,<y>]; stride size; default: 1,1" << std::endl;
     std::cerr << std::endl;
@@ -148,10 +167,74 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
+        //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
+        snark::cv_mat::serialization::options input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) );
+        std::string output_options_string = options.value< std::string >( "--output", "" );
+        snark::cv_mat::serialization::options output_options = output_options_string.empty() ? input_options : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
+        if( input_options.no_header && !output_options.fields.empty() && input_options.fields != output_options.fields )
+        {
+            if( output_options.fields != snark::cv_mat::serialization::header::default_fields() ) { std::cerr << "cv-calc: when --input has no-header option, --output fields can only be fields=" << snark::cv_mat::serialization::header::default_fields() << ", got: " << output_options.fields << std::endl; return 1; }
+        }
+        else
+        { 
+            if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-calc: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; }
+        }
+        if( output_options.fields.empty() ) { output_options.fields = input_options.fields; } // output fields and format will be empty when the user specifies only --output no-header or --output header-only
+        if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-calc: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
+        if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
+        snark::cv_mat::serialization input_serialization( input_options );
+        snark::cv_mat::serialization output_serialization( output_options );
+        if( operation == "grep" )
+        {
+            std::string non_zero = options.value< std::string >( "--non-zero", "" );
+            bool non_zero_all = non_zero == "all";
+            bool non_zero_none = non_zero == "none";
+            bool non_zero_some = non_zero == "some";
+            boost::optional< double > non_zero_ratio = non_zero.empty() ? boost::none : boost::optional< double >( boost::lexical_cast< double >( non_zero ) );
+            std::string mask_string = options.value< std::string >( "--mask", "" );
+            if( non_zero.empty() && !mask_string.empty() ) { std::cerr << "cv-calc: warning: --mask specified, but --non-zero is not; --mask will have no effect" << std::endl; }
+            if( !mask_string.empty() ) { std::cerr << "cv-calc: todo" << std::endl; return 1; }
+            
+            // todo: handle 'none'
+            // todo: load mask filters
+            
+            while( std::cin.good() && !std::cin.eof() )
+            {
+                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                unsigned int non_zero_min_size = non_zero_all
+                                               ? p.second.rows * p.second.cols
+                                               : non_zero_some
+                                               ? 1
+                                               : non_zero_ratio
+                                               ? p.second.rows * p.second.cols * *non_zero_ratio
+                                               : 0;
+                for( int i = 0; i < p.second.cols; ++i )
+                {
+                    for( int j = 0; j < p.second.rows; ++j )
+                    {
+                        if( non_zero_min_size > 0 )
+                        {
+                            unsigned int count = 0; // todo: quick and dirty; seriously watch performance
+                            static std::vector< char > zero_pixel( p.second.elemSize(), 0 );
+                            for( const unsigned char* ptr = p.second.datastart; ptr < p.second.dataend; ptr += p.second.elemSize() )
+                            {
+                                if( ::memcmp( ptr, &zero_pixel[0], zero_pixel.size() ) == 0 ) { if( non_zero_all ) { break; } else { continue; } }
+                                ++count;
+                            }
+                            if( count < non_zero_min_size ) { continue; }
+                        }
+                        output_serialization.write_to_stdout( p );
+                    }
+                }
+                std::cout.flush();
+            }
+            return 0;
+        }
         if( operation == "mean" )
         {
             if( csv.fields.empty() ) { csv.fields = "t,rows,cols,type"; }
@@ -170,28 +253,6 @@ int main( int ac, char** av )
         }
         if( operation == "stride" )
         {
-            snark::cv_mat::serialization::options input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) );
-            std::string output_options_string = options.value< std::string >( "--output", "" );
-            snark::cv_mat::serialization::options output_options = output_options_string.empty() ? input_options : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
-            if( input_options.no_header && !output_options.fields.empty() && input_options.fields != output_options.fields )
-            {
-                if( output_options.fields != snark::cv_mat::serialization::header::default_fields() )
-                {
-                    std::cerr << "cv-calc: when --input has no-header option, --output fields can only be fields=" << snark::cv_mat::serialization::header::default_fields() << ", got: " << output_options.fields << std::endl; return 1;
-                }
-            }
-            else
-            { 
-                if( !output_options.fields.empty() && input_options.fields != output_options.fields )
-                {
-                    std::cerr << "cv-calc: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1;
-                }
-            }
-            if( output_options.fields.empty() ) { output_options.fields = input_options.fields; } // output fields and format will be empty when the user specifies only --output no-header or --output header-only
-            if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-calc: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
-            if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
-            snark::cv_mat::serialization input( input_options );
-            snark::cv_mat::serialization output( output_options );
             const std::vector< std::string >& strides_vector = comma::split( options.value< std::string >( "--strides", "1,1" ), ',' );
             if( strides_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected strides as <x>,<y>, got: \"" << options.value< std::string >( "--strides" ) << std::endl; return 1; }
             std::pair< unsigned int, unsigned int > strides( boost::lexical_cast< unsigned int >( strides_vector[0] ), boost::lexical_cast< unsigned int >( strides_vector[1] ) );
@@ -199,14 +260,14 @@ int main( int ac, char** av )
             if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
             std::pair< unsigned int, unsigned int > shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
             struct padding_types { enum values { same, valid }; };
-            std::string padding_string = options.value< std::string >( "--padding", "same" );
+            std::string padding_string = options.value< std::string >( "--padding", "valid" );
             padding_types::values padding = padding_types::same;
             if( padding_string == "same" || padding_string == "SAME" ) { padding = padding_types::same; std::cerr << "cv-calc: stride: padding 'same' not implemented; please use --padding=valid" << std::endl; return 1; }
             else if( padding_string == "valid" || padding_string == "VALID" ) { padding = padding_types::valid; }
             else { std::cerr << "cv-calc: stride: expected padding type, got: \"" << padding_string << "\"" << std::endl; return 1; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
+                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
                 if( p.second.empty() ) { return 0; }
                 switch( padding )
                 {
@@ -222,7 +283,7 @@ int main( int ac, char** av )
                             for( unsigned int j = 0; j < ( p.second.rows + 1 - shape.second ); j += strides.second )
                             {
                                 p.second( cv::Rect( i, j, shape.first, shape.second ) ).copyTo( q.second );
-                                output.write_to_stdout( q );
+                                output_serialization.write_to_stdout( q );
                             }
                         }
                         break;
@@ -232,7 +293,6 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        
         if( operation == "header" || operation == "format" )
         {
             if( csv.fields.empty() ) { csv.fields = "t,rows,cols,type" ; }
@@ -290,7 +350,6 @@ int main( int ac, char** av )
         }
         else if( operation == "roi" )
         {
-            
             comma::csv::binary< ::extents > binary( csv );
             bool flush = options.exists("--flush");
             bool show_partial = options.exists("--show-partial");
@@ -322,7 +381,6 @@ int main( int ac, char** av )
                 // roi not in image at all
                 if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows ) { continue; }
                     
-                
                 // Clip roi to fit in the image
                 if( show_partial )
                 {
@@ -340,9 +398,7 @@ int main( int ac, char** av )
                         << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1;
                 }
                 
-                if( ext.min.x >= 0 && ext.min.y >=0 
-                    && (ext.min.x + width < mat.cols) && (ext.min.y + height < mat.rows) 
-                ) 
+                if( ext.min.x >= 0 && ext.min.y >=0 && (ext.min.x + width < mat.cols) && (ext.min.y + height < mat.rows ) ) 
                 {
                     mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(0);
                     mat.setTo( cv::Scalar(0), mask );
@@ -354,8 +410,8 @@ int main( int ac, char** av )
         else { std::cerr << name << " unknown operation: " << operation << std::endl; return 1; }
         return 0;
     }
-    catch( std::exception& ex ) { std::cerr << "image-calc: " << ex.what() << std::endl; }
-    catch( ... ) { std::cerr << "image-calc: unknown exception" << std::endl; }
+    catch( std::exception& ex ) { std::cerr << "cv-calc: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "cv-calc: unknown exception" << std::endl; }
     return 1;
 }
 

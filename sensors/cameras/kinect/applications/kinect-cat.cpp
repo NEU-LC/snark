@@ -73,14 +73,14 @@ static void usage( bool verbose )
 }
 
 namespace snark { namespace kinect {
-    
+
 struct color // quick and dirty
 {
     unsigned char r, g, b;
     color( unsigned char r, unsigned char g, unsigned char b ) : r( r ), g( g ), b( b ) {}
     color() : r( 0 ), g( 0 ), b( 0 ) {}
 };
-    
+
 struct point
 {
     boost::posix_time::ptime t;
@@ -109,19 +109,19 @@ struct frame // todo
                 p.index = Eigen::Vector2i( 7, 8 );
                 return p;
             }
-            
+
         private:
             friend class frame;
             unsigned int index_;
             const frame* frame_;
     };
-    
+
     const_iterator begin() const { const_iterator it; it.index_ = 0; it.frame_ = this; return it; } // todo
-    
+
     const_iterator end() const { const_iterator it; it.index_ = 4; it.frame_ = this; return it; } // todo
-    
+
     frame() : block( 0 ) {}
-    
+
     boost::posix_time::ptime t;
     unsigned int block;
 };
@@ -134,9 +134,9 @@ class camera
             current_.t = boost::posix_time::microsec_clock::universal_time(); // it's better to get timestamp from the camera, if available
             return current_.block++ < 3;
         }
-        
+
         const kinect::frame& frame() const { return current_; }
-        
+
     private:
         kinect::frame current_;
 };
@@ -166,7 +166,7 @@ template <> struct traits< snark::kinect::point >
         v.apply( "block", p.block );
     }
 };
-    
+
 
 
 } } // namespace comma { namespace visiting {
@@ -245,7 +245,7 @@ int main( int ac, char** av )
         if( options.exists( "--serial" ))
         {
             serial = options.value< std::string >( "--serial" );
-          
+
 
         }
 
@@ -287,7 +287,7 @@ int main( int ac, char** av )
                 std::cerr << "kinect-cat: " << serial << ": Using cudakde pipeline" << std::endl;
             }
         }
-        else 
+        else
 #endif // def LIBFREENECT2_WITH_CUDA_SUPPORT
 #ifdef LIBFREENECT2_WITH_OPENCL_SUPPORT
         if( options.exists( "--cl" ))
@@ -306,7 +306,7 @@ int main( int ac, char** av )
                 std::cerr << "kinect-cat: " << serial << ": Using clkde pipeline" << std::endl;
             }
         }
-        else 
+        else
 #endif // def LIBFREENECT2_WITH_OPENCL_SUPPORT
 #ifdef LIBFREENECT2_WITH_OPENGL_SUPPORT
         if( options.exists( "--gl" ))
@@ -317,7 +317,7 @@ int main( int ac, char** av )
                 std::cerr << "kinect-cat: " << serial << ": Using gl pipeline" << std::endl;
             }
         }
-        else 
+        else
 #endif // def LIBFREENECT2_WITH_OPENGL_SUPPORT
         if(!pipeline)
         {
@@ -366,8 +366,8 @@ int main( int ac, char** av )
         /// [start]
         if (enable_rgb && enable_depth)
         {
-            if (!dev->start()) 
-            { 
+            if (!dev->start())
+            {
                 return 0;
             }
         }
@@ -395,7 +395,7 @@ int main( int ac, char** av )
 
         // these intrinsics are probably with respect to raw unflipped image, but not entirely sure. Commented out due to output of raw frames and undistortion external to kinect-cat or libfreenect2
         // if( options.exists( "--get-intrinsics-kinect" )){ // todo: --get-intrinsics; --get-pinhole-config
-        //     
+        //
         //     libfreenect2::Freenect2Device::IrCameraParams ir_params = dev->getIrCameraParams();
         //     // put these parameters in json block "kinect"
         //     std::cout << "fx=" << ir_params.fx << std::endl; ///< Focal length x (pixel)
@@ -416,7 +416,7 @@ int main( int ac, char** av )
         //     libfreenect2::Freenect2Device::IrCameraParams ir_params = dev->getIrCameraParams();
         //     // put these parameters in json block "metric"
         //     snark::camera::pinhole::config_t config;
-        //     double px_pitch = 10 * 0.000001; //10 um 
+        //     double px_pitch = 10 * 0.000001; //10 um
         //     config.image_size = Eigen::Vector2i( width_ir, height_ir );
         //     config.sensor_size = Eigen::Vector2d( width_ir * px_pitch, height_ir * px_pitch );
         //     config.focal_length = ir_params.fx * config.sensor_size->x() / config.image_size.x();
@@ -433,16 +433,16 @@ int main( int ac, char** av )
    //      if( options.exists( "--get-extrinsics-kinect" )){
    //          libfreenect2::Freenect2Device::ColorCameraParams color_params = dev->getColorCameraParams();
 
-           
+
 			// // These parameters are used in [a formula](https://github.com/OpenKinect/libfreenect2/issues/41#issuecomment-72022111) to map coordinates in the
 			// // depth camera to the color camera.
 			// // They cannot be used for matrix transformation.
-     
-   
+
+
 
    //          std::cout << "shift_d=" << color_params.shift_d << std::endl;
    //          std::cout << "shift_m=" << color_params.shift_m << std::endl;
-            
+
    //          std::cout << "mx_x3y0=" << color_params.mx_x3y0 << std::endl;
    //          std::cout << "mx_x0y3=" << color_params.mx_x0y3 << std::endl;
    //          std::cout << "mx_x2y1=" << color_params.mx_x2y1 << std::endl;
@@ -478,13 +478,13 @@ int main( int ac, char** av )
         // libfreenect2::Frame depth_undistorted(512, 424, 4);
         // libfreenect2::Frame ir_undistorted(512, 424, 4);
 
-        
-    
+
+
         // int first_timestamp = true;
         //boost::posix_time::ptime libfreenect2_time_at_offset;
         //uint libfreenect2_offset = 0;
         /// [loop start]
-        comma::signal_flag is_shutdown;
+        comma::signal_flag is_shutdown( comma::signal_flag::hard );
         while( !is_shutdown )
         {
         	//std::cerr << "--> 0: is_shutdown: " << ( is_shutdown ? "set" : "not set" ) << std::endl;
@@ -515,23 +515,23 @@ int main( int ac, char** av )
             depthMat.convertTo(depthMat_uint16, CV_16UC1); //depthMat_uint16 contains depth per pixel in mm
             cv::flip(depthMat_uint16, depthMat_uint16, 1); //flip horizontally
 
-            
+
             cv::Mat irMat_uint16 = cv::Mat(height_ir, width_ir, CV_16UC1);
-            irMat.convertTo(irMat_uint16, CV_16UC1); //irMat contains intensity in integers up to 65535, so irMat_uint16 does to 
+            irMat.convertTo(irMat_uint16, CV_16UC1); //irMat contains intensity in integers up to 65535, so irMat_uint16 does to
            	cv::flip(irMat_uint16, irMat_uint16, 1); //flip horizontally
 
             cv::Mat frame(height_ir, width_ir, CV_16UC2); // 2 channel image
-            
+
             std::vector<cv::Mat> channels;
-           
+
             channels.push_back(irMat_uint16);
             channels.push_back(depthMat_uint16);
             cv::merge(channels, frame);
 
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
-            
 
-            // if(first_timestamp){ 
+
+            // if(first_timestamp){
             //     libfreenect2_time_at_offset = boost::posix_time::microsec_clock::universal_time();
             //     libfreenect2_offset = ir->timestamp;
             //     first_timestamp = false;
@@ -543,7 +543,7 @@ int main( int ac, char** av )
             // libfreenect2 frame timestamp info: https://github.com/OpenKinect/libfreenect2/issues/721
             // ideally, we want the timestamp for each of the 9 raw ir images, which are the input for a single depth image
             // pair.first = timestamp2; // I don't trust this timestamp as I get framerates >30 Hz
-            
+
             pair.first = timestamp1;
             pair.second = frame;
 

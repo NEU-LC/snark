@@ -239,13 +239,12 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        bool verbose=options.exists("--verbose,-v");
-        if( options.exists( "--output-fields" ) ) {std::cout << comma::join( comma::csv::names< snark::velodyne_point >(), ',' ) << std::endl; return 0; }
+        bool verbose = options.exists( "--verbose,-v" );
+        if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::velodyne_point >(), ',' ) << std::endl; return 0; }
         std::string fields = fields_( options.value< std::string >( "--fields", "" ) );
         comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
-        if( options.exists( "--output-format,--format" ) ) { std::cout << format.string()<<std::endl; exit( 0 ); }
-        snark::velodyne::db db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) );
-        bool outputInvalidpoints = options.exists( "--output-invalid-points" );
+        if( options.exists( "--output-format,--format" ) ) { std::cout << format.string() << std::endl; return 0; }
+        bool output_invalid_points = options.exists( "--output-invalid-points" );
         boost::optional< std::size_t > from;
         boost::optional< std::size_t > to;
         if( options.exists( "--scans" ) )
@@ -270,28 +269,29 @@ int main( int ac, char** av )
         adjust_timestamp adjust_timestamp_functor( options.value<std::string>("--adjusted-time","")
                                                  , options.value<unsigned>("--adjusted-time-threshold", adjust_timestamp::DEFAULT_THRESHOLD )
                                                  , options.value<unsigned>("--adjusted-time-reset", adjust_timestamp::DEFAULT_RESET ) );
-        //use old algorithm for old database
-        if (!legacy && db.version == 0){legacy=true; std::cerr<<"velodyne-to-csv: using legacy option for old database"<<std::endl;}
-        if(legacy && db.version > 0){std::cerr<<"velodyne-to-csv: using new calibration with legacy option"<<std::endl;}
         snark::velodyne::calculator* calculator = NULL;
         snark::velodyne::stream* s = NULL;
+        boost::scoped_ptr< snark::velodyne::db > db;
         if( options.exists( "--puck" ) )
         {
             calculator= new snark::velodyne::puck::calculator;
-            if( options.exists( "--pcap" ) ) { s = new snark::velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, outputInvalidpoints ); }
-            else if( options.exists( "--thin" ) ) { s = new snark::velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, outputInvalidpoints ); }
-            else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), outputInvalidpoints ); }
-            else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, outputInvalidpoints ); }
-            else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, outputInvalidpoints ); }
+            if( options.exists( "--pcap" ) ) { s = new snark::velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points ); }
+            else if( options.exists( "--thin" ) ) { s = new snark::velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points ); }
+            else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points ); }
+            else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points ); }
+            else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points ); }
         }
         else
         {
-            calculator = new snark::velodyne::db_calculator( db );
-            if( options.exists( "--pcap" ) ) { s = new snark::velodyne::hdl64::stream< snark::pcap_reader >( new snark::pcap_reader, outputInvalidpoints, legacy ); }
-            else if( options.exists( "--thin" ) ) { s = new snark::velodyne::hdl64::stream< snark::thin_reader >( new snark::thin_reader, outputInvalidpoints, legacy ); }
-            else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::hdl64::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), outputInvalidpoints, legacy ); }
-            else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::hdl64::stream< snark::proprietary_reader >( new snark::proprietary_reader, outputInvalidpoints, legacy ); }
-            else { s = new snark::velodyne::hdl64::stream< snark::stream_reader >( new snark::stream_reader, outputInvalidpoints, legacy ); }
+            db.reset( new snark::velodyne::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) ) );
+            if( !legacy && db->version == 0 ) { legacy=true; std::cerr << "velodyne-to-csv: using legacy option for old database" << std::endl; }
+            if( legacy && db->version > 0 ) { std::cerr << "velodyne-to-csv: using new calibration with legacy option" << std::endl;}
+            calculator = new snark::velodyne::db_calculator( *db );
+            if( options.exists( "--pcap" ) ) { s = new snark::velodyne::hdl64::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points, legacy ); }
+            else if( options.exists( "--thin" ) ) { s = new snark::velodyne::hdl64::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points, legacy ); }
+            else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::hdl64::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points, legacy ); }
+            else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::hdl64::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points, legacy ); }
+            else { s = new snark::velodyne::hdl64::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, legacy ); }
         }
         snark::velodyne_stream v( s, calculator, from, to, raw_intensity );
         comma::signal_flag is_shutdown;
@@ -306,14 +306,10 @@ int main( int ac, char** av )
             ostream.write( p );
         }
         //Profilerstop(); }
-        if(verbose)
-        {
-            if( is_shutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; }
-            else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; }
-        }
+        if( verbose ) { if( is_shutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; } else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; } }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "velodyne-to-csv: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "velodyne-to-csv: unknown exception" << std::endl; }
-    //usage();
+    return 1;
 }

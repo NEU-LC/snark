@@ -204,9 +204,11 @@ int main( int ac, char** av )
         std::vector< cv::Point3f > pattern_corners = pattern_corners_( pattern, pattern_size, square_size );
         boost::optional< cv::Size > image_size;
         unsigned int count = 0;
+        unsigned int count_not_found = 0;
         boost::optional< unsigned int > max_count = options.optional< unsigned int >( "--max-count" );
         std::vector< cv::Mat > images;
-        while( !std::cin.eof() && std::cin.good() && ( !max_count || count < max_count ) )
+        if( verbose ) { std::cerr << "image-pinhole-calibrate: reading images..." << std::endl; }
+        for( ; !std::cin.eof() && std::cin.good() && ( !max_count || count < max_count ); ++count )
         {
             std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair = input.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
             if( pair.second.empty() ) { break; }
@@ -220,7 +222,9 @@ int main( int ac, char** av )
                        : false;
             if( !found )
             {
-                if( strict ) { std::cerr << "image-pinhole-calibrate: no calibration pattern found in image " << count << std::endl; return 1; }
+                if( verbose ) { std::cerr << "image-pinhole-calibrate: no calibration pattern found in image " << count << std::endl; }
+                if( strict ) { return 1; }
+                ++count_not_found;
                 continue;
             }
             if( verbose ) { std::cerr << "image-pinhole-calibrate: found calibration pattern " << image_points.size() << " in image " << count << std::endl; }
@@ -238,9 +242,10 @@ int main( int ac, char** av )
                 cv::imshow( "calibration pattern", pair.second );
                 cv::waitKey( 1000 );
             }
-            ++count;
         }
         if( image_points.empty() ) { std::cerr << "image-pinhole-calibrate: found no image points in " << count << " image(s)" << std::endl; return 1; }
+        if( verbose ) { std::cerr << "image-pinhole-calibrate: found calibration pattern in " << ( count - count_not_found ) << " image(s) of " << count << " image(s)" << std::endl; }
+        if( verbose ) { std::cerr << "image-pinhole-calibrate: calibrating..." << std::endl; }
         ::output_t output;
         cv::Mat camera_matrix;
         cv::Mat distortion_coefficients;
@@ -254,6 +259,7 @@ int main( int ac, char** av )
             cv::imshow( "undistorted", undistorted );
             cv::waitKey( 2000 );
         }
+        if( verbose ) { std::cerr << "image-pinhole-calibrate: outputting..." << std::endl; }
         output.pinhole.image_size.x() = image_size->width;
         output.pinhole.image_size.y() = image_size->height;
         output.pinhole.principal_point = Eigen::Vector2d( camera_matrix.at< double >( 0, 2 ), camera_matrix.at< double >( 1, 2 ) );
@@ -276,6 +282,7 @@ int main( int ac, char** av )
         comma::csv::ascii< std::pair< Eigen::Vector3d, Eigen::Vector3d > > ascii; // quick and dirty
         for( unsigned int i = 0; i < rvecs.size(); i++ ) { output.offsets.push_back( ascii.put( std::make_pair( cv_to_eigen( rvecs[i] ), cv_to_eigen( tvecs[i] ) ) ) ); }
         comma::write_json( output, std::cout ); // todo: write offsets as json array (currently it outputs vector
+        if( verbose ) { std::cerr << "image-pinhole-calibrate: done" << std::endl; }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "image-pinhole-calibration: " << ex.what() << std::endl; }

@@ -8,6 +8,7 @@ rectangle[4]="cv-cat --file ../data/square.png 'erode=rectangle,7,,-1,'   | wc -
 rectangle[5]="cv-cat --file ../data/square.png 'erode=rectangle,7,,2,3'   | wc -c"
 rectangle[6]="cv-cat --file ../data/square.png 'erode=rectangle,7,11,2,3' | wc -c"
 rectangle[7]="cv-cat --file ../data/square.png 'erode=rectangle,7,11'     | wc -c"
+rectangle[8]="cv-cat --file ../data/square.png 'erode=rectangle,,11'      | wc -c"
 
 square[0]="cv-cat --file ../data/square.png 'erode=square,,'    | wc -c"
 square[1]="cv-cat --file ../data/square.png 'erode=square,7,2'  | wc -c"
@@ -31,6 +32,8 @@ circle[2]="cv-cat --file ../data/square.png 'erode=circle,,-1'  | wc -c"
 circle[3]="cv-cat --file ../data/square.png 'erode=circle,,1'   | wc -c"
 circle[4]="cv-cat --file ../data/square.png 'erode=circle,7,'   | wc -c"
 circle[5]="cv-cat --file ../data/square.png 'erode=circle,'     | wc -c"
+circle[6]="cv-cat --file ../data/square.png 'erode=circle,3'    | wc -c"
+circle[7]="cv-cat --file ../data/square.png 'erode=circle'      | wc -c"
 
 cross[0]="cv-cat --file ../data/square.png 'erode=cross,,,,'      | wc -c"
 cross[1]="cv-cat --file ../data/square.png 'erode=cross,7,9,,'    | wc -c"

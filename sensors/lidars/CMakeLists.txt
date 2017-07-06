@@ -12,4 +12,6 @@ IF( snark_build_sensors_hokuyo )
     add_subdirectory(hokuyo)
 ENDIF( snark_build_sensors_hokuyo )
 
-
+if(snark_build_sensors_cepton)
+    add_subdirectory(cepton)
+endif()

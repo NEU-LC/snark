@@ -59,7 +59,7 @@ view::view( const QColor4ub& background_color
     , m_show_coordinates( false )
 {
     camera()->setFieldOfView( camera_options.field_of_view );
-    camera()->setNearPlane( 0.1 );
+    camera()->setNearPlane( 0.001 );
     if( camera_options.orthographic )
     {
         camera()->setProjectionType( QGLCamera::Orthographic );
@@ -256,7 +256,7 @@ void view::wheelEvent( QWheelEvent *e )
             camera()->setCenter( camera()->center() - 5 * viewVector.normalized() );
             distance = ( camera()->eye() - camera()->center() ).length();
         }
-        const qreal coef = qMax( distance, 0.2 * scene_radius_ );
+        const qreal coef = ( e->modifiers() & Qt::ShiftModifier ) ? (0.2 * scene_radius_) : qMax( distance, 0.2 * scene_radius_ );
         qreal zoomIncrement = -0.001 * e->delta() * coef;
         if ( !qFuzzyIsNull( zoomIncrement ) )
         {
