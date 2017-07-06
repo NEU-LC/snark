@@ -78,6 +78,8 @@
 #include "depth_traits.h"
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
+#include "detail/load-impl.h"
+#include "detail/scale_by_mask.h"
 
 namespace {
 
@@ -2168,33 +2170,6 @@ static typename impl::filters< H >::value_type inrange_impl_( const typename imp
 }
 
 template < typename H >
-struct load_impl_
-{
-    typedef typename impl::filters< H >::value_type value_type;
-    value_type value;
-
-    load_impl_( const std::string& filename )
-    {
-        const std::vector< std::string >& v = comma::split( filename, '.' );
-        if( v.back() == "bin" ) // quick and dirty
-        {
-            std::ifstream ifs( &filename[0] );
-            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
-            serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
-            value = s.read< H >( ifs );
-            ifs.close();
-        }
-        else
-        {
-            value.second = cv::imread( filename, -1 );
-        }
-        if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
-    }
-
-    value_type operator()( value_type ) { return value; }
-};
-
-template < typename H >
 static typename impl::filters< H >::value_type remove_mean_impl_(const typename impl::filters< H >::value_type m, const cv::Size kernel_size, const double ratio )
 {
     typename impl::filters< H >::value_type n;
@@ -2655,7 +2630,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     if( e[0] == "load" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
-        return load_impl_< H >( e[1] );
+        return impl::load_impl_< H >( e[1] );
     }
     if( e[0] == "map" )
     {
@@ -2704,6 +2679,11 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     if( morphology_operations.find( e[0] ) != morphology_operations.end() )
     {
         return boost::bind< value_type_t >( morphology_impl_< H >, _1, morphology_operations.at( e[0] ), parse_structuring_element( e ) );
+    }
+    if( e[0] == "scale-by-mask" )
+    {
+        if( e.size() != 2 ) { COMMA_THROW( comma::exception, "scale-by-mask: please specify expected mask file" ); }
+        return boost::bind< value_type_t >( impl::scale_by_mask_impl_< H >(e[1]), _1 );
     }
     if( e[0] == "skeleton" || e[0] == "thinning" )
     {
@@ -3133,6 +3113,12 @@ static std::string usage_impl_()
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
+    oss << "        scale-to-mask=<mask.bin>: given a mask file matching the input image width and height, scale each channel value by the mask value." << std::endl;
+    oss << "                                  mask type: f or d" << std::endl;
+    oss << "                                  mask number of channels" << std::endl;
+    oss << "                                      1: apply the same mask to each channel of the image" << std::endl;
+    oss << "                                      same as the input image: apply to each channel the corresponding channel of the mask" << std::endl;
+    oss << "                                  note: for performance's sake, when input image depth is f or d, use the same mask depth: d -> d, and f -> f" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
