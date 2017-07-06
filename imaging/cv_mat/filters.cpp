@@ -1684,6 +1684,8 @@ class max_impl_ // experimental, to debug
             deque_.push_back( value_type() );
             m.second.copyTo( deque_.back().second );
             value_type s( m.first, cv::Mat( m.second.rows, m.second.cols, m.second.type() ) );
+            // For min, memset has to set max value
+            // TODO: support other image types other than ub
             ::memset( m.second.datastart, 0, m.second.rows * m.second.cols * m.second.channels() );
             static unsigned int count = 0;
             for( unsigned int i = 0; i < deque_.size(); ++i )
@@ -3014,6 +3016,10 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
+    oss << "        accumulated=<operation>[,<window>]: apply a pixel-wise operation to the images in a given sliding window" << std::endl;
+    oss << "            <operation>: average, max, min" << std::endl;
+    oss << "            <window>: number of images in the sliding window" << std::endl;
+    oss << "                      default: all images from the beginning of the stream" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
     oss << "            blur=box,<kernel_size> " << std::endl;
