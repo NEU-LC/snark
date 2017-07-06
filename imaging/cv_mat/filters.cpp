@@ -3300,7 +3300,5 @@ struct traits< typename snark::cv_mat::log_impl_< snark::cv_mat::header_type >::
 
 } } // namespace comma { namespace visiting {
 
-template class snark::cv_mat::impl::scale_by_mask_impl_< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::scale_by_mask_impl_< snark::cv_mat::header_type >;
 template class snark::cv_mat::impl::filters< boost::posix_time::ptime >;
 template class snark::cv_mat::impl::filters< snark::cv_mat::header_type >;

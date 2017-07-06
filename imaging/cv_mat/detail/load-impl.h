@@ -35,6 +35,7 @@
 #include <comma/string/split.h>
 #include <comma/csv/format.h>
 #include <opencv2/highgui/highgui.hpp>
+#include "../serialization.h"
 
 namespace snark{ namespace cv_mat {
 

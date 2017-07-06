@@ -33,50 +33,58 @@
 #include <vector>
 #include <map>
 #include <Eigen/Core>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <boost/thread/pthread/pthread_mutex_scoped_lock.hpp>
 
 namespace snark{ namespace cv_mat {  namespace impl {
+    
+template < typename H >
+scale_by_mask_impl_< H >::scale_by_mask_impl_( const std::string& mask_file )
+    : mutex_(new boost::mutex())
+    , mask_( load_impl_< H >(mask_file)( value_type() ).second )
+{
+    if( mask_.depth() != CV_32FC1 && mask_.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask, mask type must be floating point f or  d"); }
+}
 
-// template < typename H >
-// void scale_by_mask_impl_< H >::apply_mask(cv::Mat& mat)
-// {
-//     cv::Mat mat_float;
-//     mat.convertTo(mat_float, mask_.type());  // convert to float point
-//         
-//     cv::Mat masked = mat_float.mul(mask_);
-//     masked.convertTo(mat, mat.type() );       // convert back to 
-// }
-// 
-// template < typename H >
-// typename scale_by_mask_impl_< H >::value_type scale_by_mask_impl_< H >::operator()( typename scale_by_mask_impl_< H >::value_type m )
-// {
-//     cv::Mat& mat = m.second;
-//     
-//     if( mask_.depth() != CV_32FC1 && mask_.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask, mask type must be floating point f or  d"); }
-//     // We expand mask once, to match number of channels in input data
-//     if( mask_.channels() != mat.channels() )
-//     {
-//         boost::mutex::scoped_lock lock( *mutex_ );
-//         if( mask_.channels() != mat.channels() )    // Do a need an atomic to store mask_.channels() ?
-//         {
-//             if( mask_.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels (" << mask_.channels() << ")" <<" must be 1 or must be equal to input image channels: " << mat.channels()); }
-//             
-//             std::vector< cv::Mat > channels( mat.channels() );
-//             for( int i=0; i<mat.channels(); ++i ) { channels[i] = mask_; }
-//             cv::merge(channels, mask_);
-//         }
-//     }
-//     
-//     // For every input image we must check
-//     if( mat.rows != mask_.rows || mat.cols != mask_.cols ) { COMMA_THROW(comma::exception, "failed to apply scale-by-mask, because mask dimensions do not matches input row and column dimensions" ); }
-//     if( mask_.channels() != mat.channels() ) { COMMA_THROW(comma::exception, "mask_ file has more channels than input mat: " << mask_.channels() << " > " << mat.channels()); }
-//     
-//     if( mask_.depth() == mat.depth() ) { mat = mat.mul(mask_); }  // The simplest case
-//     else { apply_mask(mat); }
-//     
-//     return m;
-// }
+template < typename H >
+void scale_by_mask_impl_< H >::apply_mask(cv::Mat& mat)
+{
+    if( mask_.depth() == mat.depth() )
+    { 
+        mat = mat.mul(mask_);
+    }
+    else
+    {
+        cv::Mat mat_float;
+        mat.convertTo(mat_float, mask_.type());  // convert to float point                
+        cv::Mat masked = mat_float.mul(mask_);
+        masked.convertTo(mat, mat.type() );       // convert back to 
+    }
+}
+
+template < typename H >
+typename scale_by_mask_impl_< H >::value_type scale_by_mask_impl_< H >::operator()( const typename scale_by_mask_impl_< H >::value_type& n )
+{
+    boost::posix_time::ptime t;
+    value_type m = n; // not thread-safe, if several filters need to be called on one image in parallel
+    if( m.second.rows != mask_.rows || m.second.cols != mask_.cols ) { COMMA_THROW(comma::exception, "failed to apply scale-by-mask, because mask dimensions do not matches input row and column dimensions" ); }
+    if( mask_.channels() != m.second.channels() ) // We expand mask once, to match number of channels in input data
+    {
+        boost::mutex::scoped_lock lock( *mutex_ );
+        if( mask_.channels() != m.second.channels() )
+        {
+            if( mask_.channels() > 1 ) { COMMA_THROW(comma::exception, "mask channels (" << mask_.channels() << ")" <<" must be 1 or must be equal to input image channels: " << m.second.channels()); }
+            cv::merge( std::vector< cv::Mat >( m.second.channels(), mask_ ), mask_);
+        }
+    }        
+    if( mask_.channels() != m.second.channels() ) { COMMA_THROW(comma::exception, "mask_ file has more channels than input mat: " << mask_.channels() << " > " << m.second.channels()); }        
+    apply_mask( m.second );
+    return m;
+}
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
 template class snark::cv_mat::impl::scale_by_mask_impl_< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::scale_by_mask_impl_< snark::cv_mat::header_type >;
+template class snark::cv_mat::impl::scale_by_mask_impl_< std::vector< char > >;
