@@ -237,8 +237,10 @@ int main( int ac, char** av )
             if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
-                if( p.second.empty() ) { return 0; }
+                std::pair< boost::posix_time::ptime, cv::Mat > q = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( q.second.empty() ) { return 0; }
+                auto p = q;
+                if( !filters.empty() ) { q.second.copyTo( p.second ); }
                 for( auto& filter: filters ) { p = filter( p ); }
                 non_zero.min_size( p.second.rows * p.second.cols );
                 static std::vector< char > zero_pixel( p.second.elemSize(), 0 );
