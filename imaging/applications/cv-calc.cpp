@@ -16,8 +16,10 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with Ark. If not, see <http://www.gnu.org/licenses/>.
 
+#include <algorithm>
 #include <memory>
 #include <opencv2/core/core.hpp>
+#include <tbb/parallel_for.h>
 #include <comma/visiting/traits.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
@@ -239,12 +241,20 @@ int main( int ac, char** av )
                 if( p.second.empty() ) { return 0; }
                 for( auto& filter: filters ) { p = filter( p ); }
                 non_zero.min_size( p.second.rows * p.second.cols );
-                unsigned int count = 0;
                 static std::vector< char > zero_pixel( p.second.elemSize(), 0 );
-                for( const unsigned char* ptr = p.second.datastart; ptr < p.second.dataend && non_zero.keep_counting( count ); ptr += p.second.elemSize() ) // quick and dirty; watch performance! use tbb?
-                {
-                    if( ::memcmp( ptr, &zero_pixel[0], zero_pixel.size() ) != 0 ) { ++count; }
-                }
+                std::vector< unsigned int > counts( p.second.rows, 0 );
+                tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, p.second.rows )
+                                 , [&]( const tbb::blocked_range< std::size_t >& r )
+                                   {
+                                       for( unsigned int i = r.begin(); i < r.end() && non_zero.keep_counting( counts[i] ); ++i )
+                                       {
+                                           for( const unsigned char* ptr = p.second.ptr( i ); ptr < p.second.ptr( i + 1 ); ptr += p.second.elemSize() )
+                                           { 
+                                               if( ::memcmp( ptr, &zero_pixel[0], zero_pixel.size() ) != 0 ) { ++counts[i]; }
+                                           }
+                                       }
+                                   } );
+                unsigned int count = std::accumulate( counts.begin(), counts.end(), 0 );
                 if( non_zero.keep( count ) ) { output_serialization.write_to_stdout( p ); }
                 std::cout.flush();
             }
