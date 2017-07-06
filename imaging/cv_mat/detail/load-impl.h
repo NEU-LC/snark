@@ -30,14 +30,9 @@
 #pragma once
 
 #include <string>
-#include <fstream>
-#include <comma/base/exception.h>
-#include <comma/string/split.h>
-#include <comma/csv/format.h>
-#include <opencv2/highgui/highgui.hpp>
-#include "../serialization.h"
+#include <opencv2/core/core.hpp>
 
-namespace snark{ namespace cv_mat {
+namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
 struct load_impl_
@@ -45,26 +40,10 @@ struct load_impl_
     typedef std::pair< H, cv::Mat > value_type;
     value_type value;
 
-    load_impl_( const std::string& filename )
-    {
-        const std::vector< std::string >& v = comma::split( filename, '.' );
-        if( v.back() == "bin" ) // quick and dirty
-        {
-            std::ifstream ifs( &filename[0] );
-            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
-            serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
-            value = s.read< H >( ifs );
-            ifs.close();
-        }
-        else
-        {
-            value.second = cv::imread( filename, -1 );
-        }
-        if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
-    }
+    load_impl_( const std::string& filename );
 
     value_type operator()( value_type ) { return value; }
 };
 
 
-} }  // namespace snark { namespace cv_mat {
+} } }  // namespace snark { namespace cv_mat { namespace impl {

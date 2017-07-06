@@ -37,6 +37,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <boost/thread/pthread/pthread_mutex_scoped_lock.hpp>
+#include "load-impl.h"
 
 namespace snark{ namespace cv_mat {  namespace impl {
     

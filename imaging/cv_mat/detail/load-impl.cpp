@@ -27,26 +27,38 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "load-impl.h"
 
 #include <string>
-#include <Eigen/Core>
-#include <boost/thread/pthread/mutex.hpp>
-#include <opencv2/core/core.hpp>
+#include <fstream>
+#include <comma/base/exception.h>
+#include <comma/string/split.h>
+#include <comma/csv/format.h>
+#include <opencv2/highgui/highgui.hpp>
+#include "../serialization.h"
 
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
-struct scale_by_mask_impl_ {
-    typedef std::pair< H, cv::Mat > value_type;
-    boost::shared_ptr< boost::mutex > mutex_;
-    cv::Mat mask_;
-    
-    void apply_mask(cv::Mat& mat);
-
-    scale_by_mask_impl_( const std::string& mask_file );
-
-    value_type operator()( const value_type& n );
-};
+load_impl_< H >::load_impl_( const std::string& filename )
+{
+    const std::vector< std::string >& v = comma::split( filename, '.' );
+    if( v.back() == "bin" ) // quick and dirty
+    {
+        std::ifstream ifs( &filename[0] );
+        if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
+        serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
+        value = s.read< H >( ifs );
+        ifs.close();
+    }
+    else
+    {
+        value.second = cv::imread( filename, -1 );
+    }
+    if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
+}
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
+
+template class snark::cv_mat::impl::load_impl_< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::load_impl_< std::vector< char > >;

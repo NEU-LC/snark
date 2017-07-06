@@ -2639,7 +2639,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     if( e[0] == "load" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
-        return load_impl_< H >( e[1] );
+        return impl::load_impl_< H >( e[1] );
     }
     if( e[0] == "map" )
     {
