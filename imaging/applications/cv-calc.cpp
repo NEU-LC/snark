@@ -68,7 +68,8 @@ static void usage( bool verbose=false )
     std::cerr << "operation options" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    grep" << std::endl;
-    std::cerr << "        --mask=[<filters>]; todo; apply --non-zero logic to mask, not to image itself; run cv-cat --help --verbose for mask syntax" << std::endl;
+    std::cerr << "        --filter,--filters=[<filters>]; todo; apply --non-zero logic to the image with filters applied, not to image itself" << std::endl;
+    std::cerr << "                                        run cv-cat --help --verbose for filters available" << std::endl;
     std::cerr << "        --non-zero=[<what>]; output only images that have non-zero pixels" << std::endl;
     std::cerr << "            <what>" << std::endl;
     std::cerr << "                all: output only images with all pixels non-zero" << std::endl;
@@ -190,47 +191,61 @@ int main( int ac, char** av )
         snark::cv_mat::serialization output_serialization( output_options );
         if( operation == "grep" )
         {
-            std::string non_zero = options.value< std::string >( "--non-zero", "" );
-            bool non_zero_all = non_zero == "all";
-            bool non_zero_none = non_zero == "none";
-            bool non_zero_some = non_zero == "some";
-            boost::optional< double > non_zero_ratio = non_zero.empty() ? boost::none : boost::optional< double >( boost::lexical_cast< double >( non_zero ) );
-            std::string mask_string = options.value< std::string >( "--mask", "" );
-            if( non_zero.empty() && !mask_string.empty() ) { std::cerr << "cv-calc: warning: --mask specified, but --non-zero is not; --mask will have no effect" << std::endl; }
-            if( !mask_string.empty() ) { std::cerr << "cv-calc: todo" << std::endl; return 1; }
-            
-            // todo: handle 'none'
-            // todo: load mask filters
-            
+            class non_zero_t
+            { 
+                public:
+                    non_zero_t( const std::string s ) : min_size_( 0 )
+                    {
+                        if( s.empty() ) { return; }
+                        if( s == "all" ) { how_ = all; return; }
+                        if( s == "none" ) { how_ = none; return; }
+                        if( s == "some" ) { how_ = some; return; }
+                        how_ = ratio;
+                        ratio_ = boost::lexical_cast< double >( s );
+                    }
+                    operator bool() const { return static_cast< bool >( how_ ); }
+                    void min_size( unsigned int image_size ) { if( how_ ) { min_size_ = *how_ == all ? image_size : *how_ == some ? 1 : *how_ == ratio ? image_size * ratio : 0; } }
+                    bool keep( unsigned int count ) const
+                    { 
+                        if( !how_ ) { return true; }
+                        switch( *how_ )
+                        {
+                            case none: return count == 0;
+                            default: return count >= min_size_;
+                        }
+                    }
+                    bool keep_counting( unsigned int count ) const
+                    {
+                        if( !how_ ) { return false; }
+                        switch( *how_ )
+                        {
+                            case none: return count == 0;
+                            default: return count < min_size_;
+                        }
+                    }
+                private:
+                    enum how_t_ { all, none, some, ratio };
+                    boost::optional< how_t_ > how_;
+                    double ratio_;
+                    unsigned int min_size_;
+
+            };
+            non_zero_t non_zero( options.value< std::string >( "--non-zero", "" ) );
+            const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( options.value< std::string >( "--filter,--filters", "" ) );
+            if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
+                std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
                 if( p.second.empty() ) { return 0; }
-                unsigned int non_zero_min_size = non_zero_all
-                                               ? p.second.rows * p.second.cols
-                                               : non_zero_some
-                                               ? 1
-                                               : non_zero_ratio
-                                               ? p.second.rows * p.second.cols * *non_zero_ratio
-                                               : 0;
-                for( int i = 0; i < p.second.cols; ++i )
+                for( auto& filter: filters ) { p = filter( p ); }
+                non_zero.min_size( p.second.rows * p.second.cols );
+                unsigned int count = 0;
+                static std::vector< char > zero_pixel( p.second.elemSize(), 0 );
+                for( const unsigned char* ptr = p.second.datastart; ptr < p.second.dataend && non_zero.keep_counting( count ); ptr += p.second.elemSize() ) // quick and dirty; watch performance! use tbb?
                 {
-                    for( int j = 0; j < p.second.rows; ++j )
-                    {
-                        if( non_zero_min_size > 0 )
-                        {
-                            unsigned int count = 0; // todo: quick and dirty; seriously watch performance
-                            static std::vector< char > zero_pixel( p.second.elemSize(), 0 );
-                            for( const unsigned char* ptr = p.second.datastart; ptr < p.second.dataend; ptr += p.second.elemSize() )
-                            {
-                                if( ::memcmp( ptr, &zero_pixel[0], zero_pixel.size() ) == 0 ) { if( non_zero_all ) { break; } else { continue; } }
-                                ++count;
-                            }
-                            if( count < non_zero_min_size ) { continue; }
-                        }
-                        output_serialization.write_to_stdout( p );
-                    }
+                    if( ::memcmp( ptr, &zero_pixel[0], zero_pixel.size() ) != 0 ) { ++count; }
                 }
+                if( non_zero.keep( count ) ) { output_serialization.write_to_stdout( p ); }
                 std::cout.flush();
             }
             return 0;
