@@ -43,17 +43,6 @@ enum class accumulated_type { average, max, min };
 accumulated_type accumulated_type_to_str( const std::string& s );
 
 template < typename H >
-struct average_impl_ {
-    typedef std::pair< H, cv::Mat > value_type;
-    comma::uint64 count_;
-    cv::Mat average_;
-    
-    average_impl_() : count_(0) {}
-
-    value_type operator()( const value_type& n );
-};
-
-template < typename H >
 struct accumulated_impl_ {
     typedef std::pair< H, cv::Mat > value_type;
     accumulated_type type_;
@@ -61,6 +50,20 @@ struct accumulated_impl_ {
     cv::Mat result_;
     
     accumulated_impl_( accumulated_type type ) : type_(type), count_(0) {}
+
+    value_type operator()( const value_type& n );
+};
+
+template < typename H >
+struct sliding_window_impl_ {
+    typedef std::pair< H, cv::Mat > value_type;
+    accumulated_type type_;
+    comma::uint64 count_;
+    cv::Mat result_;
+    comma::uint32 size_;  // sliding window size
+    std::deque< cv::Mat > window_;
+    
+    sliding_window_impl_( accumulated_type type, comma::uint32 size ) : type_(type), count_(0), size_(size) {}
 
     value_type operator()( const value_type& n );
 };

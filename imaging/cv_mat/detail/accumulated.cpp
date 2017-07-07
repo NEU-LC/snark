@@ -51,24 +51,18 @@ accumulated_type accumulated_type_to_str(const std::__cxx11::string& s)
     else { COMMA_THROW( comma::exception, "accumulated=" << s << ", unknown accumulated operation"); }
 }
 
-static double accumulated_average( double in, double avg, comma::uint64 count)
+static double accumulated_average( double in, double avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
     return (avg + (in - avg)/count);
 }
 
-static double accumulated_max( double in, double max, comma::uint64 count)
+static double accumulated_max( double in, double max, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
     return std::max(in, max);
 }
-static double accumulated_min( double in, double min, comma::uint64 count)
+static double accumulated_min( double in, double min, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
     return std::min(in, min);
-}
-    
-template < typename H >
-typename average_impl_< H >::value_type average_impl_< H >::operator()( const typename average_impl_< H >::value_type& n )
-{
-    return n;
 }
 
 template < typename H >
@@ -99,9 +93,48 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
     return value_type( n.first, result );
 }
 
+static double sliding_average( double in, double avg, comma::uint64 count, 
+                               comma::uint32 row, comma::uint32 col, 
+                               const std::deque< cv::Mat >& window)
+{
+    // Let do the simple one first
+    return 1.0;
+}
+
+    
+template < typename H >
+typename sliding_window_impl_< H >::value_type sliding_window_impl_< H >::operator()( const typename sliding_window_impl_< H >::value_type& n )
+{
+    ++count_;
+    if( result_.size() == cv::Size(0,0) ) 
+    {  // This filter is not run in parallel, no locking required
+        result_.create( n.second.rows, n.second.cols, CV_MAKETYPE(CV_64F, n.second.channels()) );
+        
+        switch (type_)
+        {
+            case accumulated_type::max: result_.setTo(std::numeric_limits< double >::min()); break;
+            case accumulated_type::min: result_.setTo(std::numeric_limits< double >::max()); break;
+            default: break;
+        }
+    }
+    
+    apply_function average = boost::bind( &sliding_average, _1, _2, _3, _4, _5, boost::ref(window_) );
+    switch (type_)
+    {
+        case accumulated_type::average: iterate_by_input_type< H >(n.second, result_, average , count_); break;
+        case accumulated_type::max: iterate_by_input_type< H >(n.second, result_, &accumulated_max, count_); break;
+        case accumulated_type::min: iterate_by_input_type< H >(n.second, result_, &accumulated_min, count_); break;
+    }
+    
+    
+    cv::Mat result;
+    result_.convertTo(result, n.second.type());
+    return value_type( n.first, result );
+}
+
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
-template class snark::cv_mat::impl::average_impl_< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::average_impl_< std::vector< char > >;
+template class snark::cv_mat::impl::sliding_window_impl_< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::sliding_window_impl_< std::vector< char > >;
 template class snark::cv_mat::impl::accumulated_impl_< boost::posix_time::ptime >;
 template class snark::cv_mat::impl::accumulated_impl_< std::vector< char > >;

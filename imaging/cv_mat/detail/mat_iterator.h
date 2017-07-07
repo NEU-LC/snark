@@ -41,7 +41,7 @@
 
 namespace snark{ namespace cv_mat {  namespace impl {
     
-typedef boost::function< double( double , double , double ) > apply_function;
+typedef boost::function< double( double , double , double, unsigned int row, unsigned int col ) > apply_function;
     
 template< int DepthIn >
 static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )
@@ -56,7 +56,7 @@ static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv
         auto* ret = result.ptr< value_out_t >(i);
         for( unsigned int j = 0; j < cols; ++j ) 
         {
-            *ret = fn( *in, *ret, count);
+            *ret = fn( *in, *ret, count, i, j);
             ++ret;
             ++in;
         }
@@ -67,7 +67,7 @@ template< typename H, int DepthIn >
 static void divide_by_rows( const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )
 {
     tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.rows ), 
-                       boost::bind( &iterate_pixels< DepthIn >, _1, m, boost::ref( result ), fn, count ) );
+                       boost::bind( &iterate_pixels< DepthIn >, _1, m, boost::ref( result ), boost::ref(fn), count ) );
 }
 
 template< typename H >
