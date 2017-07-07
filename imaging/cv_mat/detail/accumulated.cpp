@@ -123,42 +123,17 @@ static apply_function get_average(int depth, const std::deque< cv::Mat >& window
     }
 }
 
-template < int DepthIn >
-static float sliding_min_max( bool is_max, float in, float result, comma::uint64 count, 
-                               comma::uint32 row, comma::uint32 col, 
-                               const std::deque< cv::Mat >& window, comma::uint32 size)
-{
-    typedef typename depth_traits< DepthIn >::value_t value_in_t;
-    
-    float m = in;
-    // Haven't reach the window size yet
-    std::size_t i = window.size() < size ? 0 : 1; // skip first one if window is full, use max
-    for( ; i<window.size(); ++i)
-    {
-        const auto* window_row = window[i].ptr< value_in_t >(row);
-        float val = *(window_row + col);
-        m = is_max ? std::max(m, val) : std::min(m, val); 
-    }
-    
-    return m;
-}
-
-static apply_function get_min_max(bool is_max, int depth, const std::deque< cv::Mat >& window, comma::uint32 size)
-{
-    switch( depth )
-    {
-        case CV_8U : return boost::bind( &sliding_min_max< CV_8U >,  is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_8S : return boost::bind( &sliding_min_max< CV_8S >,  is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_16U: return boost::bind( &sliding_min_max< CV_16U >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_16S: return boost::bind( &sliding_min_max< CV_16S >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_32S: return boost::bind( &sliding_min_max< CV_32S >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_32F: return boost::bind( &sliding_min_max< CV_32F >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
-        default: return boost::bind( &sliding_min_max< CV_64F >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
-    }
-}
-
 template < typename H >
-sliding_window_impl_< H >::sliding_window_impl_( accumulated_type type, comma::uint32 size ) : type_(type), count_(0), size_(size) {}
+sliding_window_impl_< H >::sliding_window_impl_( accumulated_type type, comma::uint32 size ) : type_(type), count_(0), size_(size) {
+    
+    switch(type_)
+    {
+        case accumulated_type::min:
+        case accumulated_type::max:
+            COMMA_THROW(comma::exception, "accumulated: min or max do not support sliding window yet");
+        default: break;
+    }
+}
     
 // There is a crashing problem here, investigate
 template < typename H >
@@ -168,25 +143,10 @@ typename sliding_window_impl_< H >::value_type sliding_window_impl_< H >::operat
     if( result_.size() == cv::Size(0,0) ) 
     {  // This filter is not run in parallel, no locking required
         result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) );
-        
-        switch (type_)
-        {
-            case accumulated_type::max: result_.setTo(std::numeric_limits< float >::min()); break;
-            case accumulated_type::min: result_.setTo(std::numeric_limits< float >::max()); break;
-            default: break;
-        }
-        
         average_ = get_average(n.second.depth(), window_, size_);
-        max_ = get_min_max( true, n.second.depth(), window_, size_);
-        min_ = get_min_max( false, n.second.depth(), window_, size_);
     }
     
-    switch (type_)
-    {
-        case accumulated_type::average: iterate_by_input_type< H >(n.second, result_, average_, count_); break;
-        case accumulated_type::max: iterate_by_input_type< H >(n.second, result_, max_, count_); break;
-        case accumulated_type::min: iterate_by_input_type< H >(n.second, result_, min_, count_); break;
-    }
+    iterate_by_input_type< H >(n.second, result_, average_, count_);
     
     if( window_.size() >= size_ ) { window_.pop_front(); }
     window_.push_back( cv::Mat() );
