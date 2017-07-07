@@ -41,13 +41,13 @@
 
 namespace snark{ namespace cv_mat {  namespace impl {
     
-typedef boost::function< double( double , double , double, unsigned int row, unsigned int col ) > apply_function;
+typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function;
     
 template< int DepthIn >
 static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )
 {
     typedef typename depth_traits< DepthIn >::value_t value_in_t;
-    typedef double value_out_t;
+    typedef float value_out_t;
     const unsigned int channels = m.channels();
     const unsigned int cols = m.cols * channels;
     for( unsigned int i = r.begin(); i < r.end(); ++i )

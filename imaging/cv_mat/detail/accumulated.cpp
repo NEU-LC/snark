@@ -51,16 +51,16 @@ accumulated_type accumulated_type_to_str(const std::__cxx11::string& s)
     else { COMMA_THROW( comma::exception, "accumulated=" << s << ", unknown accumulated operation"); }
 }
 
-static double accumulated_average( double in, double avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
+static float accumulated_average( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
     return (avg + (in - avg)/count);
 }
 
-static double accumulated_max( double in, double max, comma::uint64 count, comma::uint32 row, comma::uint32 col)
+static float accumulated_max( float in, float max, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
     return std::max(in, max);
 }
-static double accumulated_min( double in, double min, comma::uint64 count, comma::uint32 row, comma::uint32 col)
+static float accumulated_min( float in, float min, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
     return std::min(in, min);
 }
@@ -71,12 +71,12 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
     ++count_;
     if( result_.size() == cv::Size(0,0) ) 
     {  // This filter is not run in parallel, no locking required
-        result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_64F, n.second.channels()) );
+        result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) );
         
         switch (type_)
         {
-            case accumulated_type::max: result_.setTo(std::numeric_limits< double >::min()); break;
-            case accumulated_type::min: result_.setTo(std::numeric_limits< double >::max()); break;
+            case accumulated_type::max: result_.setTo(std::numeric_limits< float >::min()); break;
+            case accumulated_type::min: result_.setTo(std::numeric_limits< float >::max()); break;
             default: break;
         }
     }
@@ -94,7 +94,7 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
 }
 
 template < int DepthIn >
-static double sliding_average( double in, double avg, comma::uint64 count, 
+static float sliding_average( float in, float avg, comma::uint64 count, 
                                comma::uint32 row, comma::uint32 col, 
                                const std::deque< cv::Mat >& window, comma::uint32 size)
 {
@@ -105,7 +105,7 @@ static double sliding_average( double in, double avg, comma::uint64 count,
     {
         const auto* back_of_window = window.front().ptr< value_in_t >(row);
         value_in_t val = *(back_of_window + col);
-        return avg + (in - val)/double(size);
+        return avg + (in - val)/float(size);
     }
 }
 
@@ -124,19 +124,19 @@ static apply_function get_average(int depth, const std::deque< cv::Mat >& window
 }
 
 template < int DepthIn >
-static double sliding_min_max( bool is_max, double in, double result, comma::uint64 count, 
+static float sliding_min_max( bool is_max, float in, float result, comma::uint64 count, 
                                comma::uint32 row, comma::uint32 col, 
                                const std::deque< cv::Mat >& window, comma::uint32 size)
 {
     typedef typename depth_traits< DepthIn >::value_t value_in_t;
     
-    double m = in;
+    float m = in;
     // Haven't reach the window size yet
     std::size_t i = window.size() < size ? 0 : 1; // skip first one if window is full, use max
     for( ; i<window.size(); ++i)
     {
         const auto* window_row = window[i].ptr< value_in_t >(row);
-        double val = *(window_row + col);
+        float val = *(window_row + col);
         m = is_max ? std::max(m, val) : std::min(m, val); 
     }
     
@@ -160,18 +160,19 @@ static apply_function get_min_max(bool is_max, int depth, const std::deque< cv::
 template < typename H >
 sliding_window_impl_< H >::sliding_window_impl_( accumulated_type type, comma::uint32 size ) : type_(type), count_(0), size_(size) {}
     
+// There is a crashing problem here, investigate
 template < typename H >
 typename sliding_window_impl_< H >::value_type sliding_window_impl_< H >::operator()( const typename sliding_window_impl_< H >::value_type& n )
 {
     ++count_;
     if( result_.size() == cv::Size(0,0) ) 
     {  // This filter is not run in parallel, no locking required
-        result_.create( n.second.rows, n.second.cols, CV_MAKETYPE(CV_64F, n.second.channels()) );
+        result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) );
         
         switch (type_)
         {
-            case accumulated_type::max: result_.setTo(std::numeric_limits< double >::min()); break;
-            case accumulated_type::min: result_.setTo(std::numeric_limits< double >::max()); break;
+            case accumulated_type::max: result_.setTo(std::numeric_limits< float >::min()); break;
+            case accumulated_type::min: result_.setTo(std::numeric_limits< float >::max()); break;
             default: break;
         }
         

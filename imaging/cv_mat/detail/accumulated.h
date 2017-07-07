@@ -58,7 +58,7 @@ struct accumulated_impl_ {
 template < typename H >
 struct sliding_window_impl_ {
     typedef std::pair< H, cv::Mat > value_type;
-    typedef boost::function< double( double , double , double, unsigned int row, unsigned int col ) > apply_function;
+    typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function;
     accumulated_type type_;
     comma::uint64 count_;
     cv::Mat result_;
