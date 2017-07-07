@@ -43,53 +43,26 @@
 
 namespace snark{ namespace cv_mat {  namespace impl {
     
-template< int DepthIn >
-static void average_pixel( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& average, comma::uint64 count )
+accumulated_type accumulated_type_to_str(const std::__cxx11::string& s)
 {
-    typedef typename depth_traits< DepthIn >::value_t value_in_t;
-    typedef double value_out_t;
-    const unsigned int channels = m.channels();
-    const unsigned int cols = m.cols * channels;
-    for( unsigned int i = r.begin(); i < r.end(); ++i )
-    {
-        const value_in_t* in = m.ptr< value_in_t >(i);
-        auto* avg = average.ptr< value_out_t >(i);
-        for( unsigned int j = 0; j < cols; ++j ) 
-        {
-            *avg += (*in - *avg) / count; 
-            ++avg;
-            ++in;
-        }
-    }
-}
-
-template< typename H, int DepthIn >
-static void average_by_rows( const typename accumulated_impl_< H >::value_type m, cv::Mat& average, comma::uint64 count )
-{
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), 
-                       boost::bind( &average_pixel< DepthIn >, _1, m.second, boost::ref( average ), count ) );
-}
-
-template< typename H >
-static void iterate_by_input_type( const typename accumulated_impl_< H >::value_type& m, cv::Mat& average, comma::uint64 count)
-{
-    int otype = m.second.depth(); // This will work?
-    switch( otype )
-    {
-        case CV_8U : average_by_rows< H, CV_8U  >( m, average, count ); break;
-        case CV_8S : average_by_rows< H, CV_8S  >( m, average, count ); break;
-        case CV_16U: average_by_rows< H, CV_16U >( m, average, count ); break;
-        case CV_16S: average_by_rows< H, CV_16S >( m, average, count ); break;
-        case CV_32S: average_by_rows< H, CV_32S >( m, average, count ); break;
-        case CV_32F: average_by_rows< H, CV_32F >( m, average, count ); break;
-        case CV_64F: average_by_rows< H, CV_64F >( m, average, count ); break;
-        default: COMMA_THROW( comma::exception, "accumulated: unrecognised output image type " << otype );
-    }
+    if( s == "average" ) { return accumulated_type::average; }
+    else if( s == "max" ) { return accumulated_type::max; }
+    else if( s == "min" ) { return accumulated_type::min; }
+    else { COMMA_THROW( comma::exception, "accumulated=" << s << ", unknown accumulated operation"); }
 }
 
 static double accumulated_average( double in, double avg, comma::uint64 count)
 {
     return (avg + (in - avg)/count);
+}
+
+static double accumulated_max( double in, double max, comma::uint64 count)
+{
+    return std::max(in, max);
+}
+static double accumulated_min( double in, double min, comma::uint64 count)
+{
+    return std::min(in, min);
 }
     
 template < typename H >
@@ -102,16 +75,28 @@ template < typename H >
 typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( const typename accumulated_impl_< H >::value_type& n )
 {
     ++count_;
-    if( result_.size() == cv::Size(0,0) ) {  // This filter is not run in parallel, no locking required
+    if( result_.size() == cv::Size(0,0) ) 
+    {  // This filter is not run in parallel, no locking required
         result_.create( n.second.rows, n.second.cols, CV_MAKETYPE(CV_64F, n.second.channels()) );
+        
+        switch (type_)
+        {
+            case accumulated_type::max: result_.setTo(std::numeric_limits< double >::min()); break;
+            case accumulated_type::min: result_.setTo(std::numeric_limits< double >::max()); break;
+            default: break;
+        }
     }
     
-    iterate_by_input_type< H >(n.second, result_, &accumulated_average, count_);
+    switch (type_)
+    {
+        case accumulated_type::average: iterate_by_input_type< H >(n.second, result_, &accumulated_average, count_); break;
+        case accumulated_type::max: iterate_by_input_type< H >(n.second, result_, &accumulated_max, count_); break;
+        case accumulated_type::min: iterate_by_input_type< H >(n.second, result_, &accumulated_min, count_); break;
+    }
     
     cv::Mat result;
     result_.convertTo(result, n.second.type());
     return value_type( n.first, result );
-    return n;
 }
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

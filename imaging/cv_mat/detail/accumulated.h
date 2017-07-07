@@ -37,6 +37,10 @@
 #include <comma/base/types.h>
 
 namespace snark{ namespace cv_mat { namespace impl {
+    
+enum class accumulated_type { average, max, min };
+
+accumulated_type accumulated_type_to_str( const std::string& s );
 
 template < typename H >
 struct average_impl_ {
@@ -52,10 +56,11 @@ struct average_impl_ {
 template < typename H >
 struct accumulated_impl_ {
     typedef std::pair< H, cv::Mat > value_type;
+    accumulated_type type_;
     comma::uint64 count_;
     cv::Mat result_;
     
-    accumulated_impl_() : count_(0) {}
+    accumulated_impl_( accumulated_type type ) : type_(type), count_(0) {}
 
     value_type operator()( const value_type& n );
 };
