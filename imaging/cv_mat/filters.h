@@ -48,6 +48,8 @@ struct operation
     typedef input_type value_type; // quick and dirty for now
     operation( boost::function< output_type( value_type ) > f, bool p = true ): filter_function( f ), parallel( p ) {}
     boost::function< output_type( value_type ) > filter_function;
+    output_type operator()( value_type v ) { return filter_function( v ); }
+    output_type operator()( value_type v ) const { return filter_function( v ); }
     bool parallel;
 };
 

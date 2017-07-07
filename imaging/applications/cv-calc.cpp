@@ -16,8 +16,10 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with Ark. If not, see <http://www.gnu.org/licenses/>.
 
+#include <algorithm>
 #include <memory>
 #include <opencv2/core/core.hpp>
+#include <tbb/parallel_for.h>
 #include <comma/visiting/traits.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
@@ -68,7 +70,8 @@ static void usage( bool verbose=false )
     std::cerr << "operation options" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    grep" << std::endl;
-    std::cerr << "        --mask=[<filters>]; todo; apply --non-zero logic to mask, not to image itself; run cv-cat --help --verbose for mask syntax" << std::endl;
+    std::cerr << "        --filter,--filters=[<filters>]; apply --non-zero logic to the image with filters applied, not to image itself" << std::endl;
+    std::cerr << "                                        run cv-cat --help --verbose for filters available" << std::endl;
     std::cerr << "        --non-zero=[<what>]; output only images that have non-zero pixels" << std::endl;
     std::cerr << "            <what>" << std::endl;
     std::cerr << "                all: output only images with all pixels non-zero" << std::endl;
@@ -81,7 +84,9 @@ static void usage( bool verbose=false )
     std::cerr << "        --discard; discards frames where the roi is not seen." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    stride" << std::endl;
+    std::cerr << "        --filter,--filters=[<filters>]; see grep operation; added to stride for performance" << std::endl;
     std::cerr << "        --input=[<options>]; input options; run cv-cat --help --verbose for details" << std::endl;
+    std::cerr << "        --non-zero=[<what>]; see grep operation; added to stride for performance" << std::endl;
     std::cerr << "        --output=[<options>]; output options; run cv-cat --help --verbose for details" << std::endl;
     std::cerr << "        --padding=[<padding>]; padding, 'same' or 'valid' (see e.g. tensorflow for the meaning); default: valid" << std::endl;
     std::cerr << "        --shape,--kernel,--size=<x>,<y>; image size" << std::endl;
@@ -158,6 +163,74 @@ template <> struct traits< ::extents >
 
 static bool verbose = false;
 
+namespace snark { namespace imaging { namespace operations {
+    
+namespace grep {
+    
+class non_zero
+{ 
+    public:
+        non_zero() {}
+        non_zero( const std::string s ) : min_size_( 0 )
+        {
+            if( s.empty() ) { return; }
+            if( s == "all" ) { how_ = all; return; }
+            if( s == "none" ) { how_ = none; return; }
+            if( s == "some" ) { how_ = some; return; }
+            how_ = ratio;
+            ratio_ = boost::lexical_cast< double >( s );
+        }
+        operator bool() const { return static_cast< bool >( how_ ); }
+        void min_size( unsigned int image_size ) { if( how_ ) { min_size_ = *how_ == all ? image_size : *how_ == some ? 1 : *how_ == ratio ? image_size * ratio : 0; } }
+        bool keep( unsigned int count ) const
+        { 
+            if( !how_ ) { return true; }
+            switch( *how_ )
+            {
+                case none: return count == 0;
+                default: return count >= min_size_;
+            }
+        }
+        bool keep( const cv::Mat& m ) const { return keep( count( m ) ); }
+        unsigned int count( const cv::Mat& m ) const
+        {
+            static std::vector< char > zero_pixel( m.elemSize(), 0 );
+            std::vector< unsigned int > counts( m.rows, 0 );
+            tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.rows )
+                                , [&]( const tbb::blocked_range< std::size_t >& r )
+                                {
+                                    for( unsigned int i = r.begin(); i < r.end() && keep_counting_( counts[i] ); ++i )
+                                    {
+                                        for( const unsigned char* ptr = m.ptr( i ); ptr < m.ptr( i + 1 ); ptr += m.elemSize() )
+                                        { 
+                                            if( ::memcmp( ptr, &zero_pixel[0], zero_pixel.size() ) != 0 ) { ++counts[i]; }
+                                        }
+                                    }
+                                } );
+            return std::accumulate( counts.begin(), counts.end(), 0 );
+        }
+        const uchar* ptr;
+        
+    private:
+        enum how_t_ { all, none, some, ratio };
+        boost::optional< how_t_ > how_;
+        double ratio_;
+        unsigned int min_size_;
+        bool keep_counting_( unsigned int count ) const
+        {
+            if( !how_ ) { return false; }
+            switch( *how_ )
+            {
+                case none: return count == 0;
+                default: return count < min_size_;
+            }
+        }
+};
+
+} // namespace grep {
+    
+} } } // namespace snark { namespace imaging { namespace operations {
+
 int main( int ac, char** av )
 {
     
@@ -190,47 +263,18 @@ int main( int ac, char** av )
         snark::cv_mat::serialization output_serialization( output_options );
         if( operation == "grep" )
         {
-            std::string non_zero = options.value< std::string >( "--non-zero", "" );
-            bool non_zero_all = non_zero == "all";
-            bool non_zero_none = non_zero == "none";
-            bool non_zero_some = non_zero == "some";
-            boost::optional< double > non_zero_ratio = non_zero.empty() ? boost::none : boost::optional< double >( boost::lexical_cast< double >( non_zero ) );
-            std::string mask_string = options.value< std::string >( "--mask", "" );
-            if( non_zero.empty() && !mask_string.empty() ) { std::cerr << "cv-calc: warning: --mask specified, but --non-zero is not; --mask will have no effect" << std::endl; }
-            if( !mask_string.empty() ) { std::cerr << "cv-calc: todo" << std::endl; return 1; }
-            
-            // todo: handle 'none'
-            // todo: load mask filters
-            
+            snark::imaging::operations::grep::non_zero non_zero( options.value< std::string >( "--non-zero", "" ) );
+            const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( options.value< std::string >( "--filter,--filters", "" ) );
+            if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: grep: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
-                if( p.second.empty() ) { return 0; }
-                unsigned int non_zero_min_size = non_zero_all
-                                               ? p.second.rows * p.second.cols
-                                               : non_zero_some
-                                               ? 1
-                                               : non_zero_ratio
-                                               ? p.second.rows * p.second.cols * *non_zero_ratio
-                                               : 0;
-                for( int i = 0; i < p.second.cols; ++i )
-                {
-                    for( int j = 0; j < p.second.rows; ++j )
-                    {
-                        if( non_zero_min_size > 0 )
-                        {
-                            unsigned int count = 0; // todo: quick and dirty; seriously watch performance
-                            static std::vector< char > zero_pixel( p.second.elemSize(), 0 );
-                            for( const unsigned char* ptr = p.second.datastart; ptr < p.second.dataend; ptr += p.second.elemSize() )
-                            {
-                                if( ::memcmp( ptr, &zero_pixel[0], zero_pixel.size() ) == 0 ) { if( non_zero_all ) { break; } else { continue; } }
-                                ++count;
-                            }
-                            if( count < non_zero_min_size ) { continue; }
-                        }
-                        output_serialization.write_to_stdout( p );
-                    }
-                }
+                std::pair< boost::posix_time::ptime, cv::Mat > q = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( q.second.empty() ) { return 0; }
+                auto p = q;
+                if( !filters.empty() ) { q.second.copyTo( p.second ); }
+                for( auto& filter: filters ) { p = filter( p ); }
+                non_zero.min_size( p.second.rows * p.second.cols );
+                if( non_zero.keep( p.second ) ) { output_serialization.write_to_stdout( p ); }
                 std::cout.flush();
             }
             return 0;
@@ -265,10 +309,16 @@ int main( int ac, char** av )
             if( padding_string == "same" || padding_string == "SAME" ) { padding = padding_types::same; std::cerr << "cv-calc: stride: padding 'same' not implemented; please use --padding=valid" << std::endl; return 1; }
             else if( padding_string == "valid" || padding_string == "VALID" ) { padding = padding_types::valid; }
             else { std::cerr << "cv-calc: stride: expected padding type, got: \"" << padding_string << "\"" << std::endl; return 1; }
+            snark::imaging::operations::grep::non_zero non_zero( options.value< std::string >( "--non-zero", "" ) );
+            const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( options.value< std::string >( "--filter,--filters", "" ) );
+            if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: stride: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
-                if( p.second.empty() ) { return 0; }
+                std::pair< boost::posix_time::ptime, cv::Mat > s = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( s.second.empty() ) { return 0; }
+                auto p = s;
+                if( !filters.empty() ) { s.second.copyTo( p.second ); }
+                for( auto& filter: filters ) { p = filter( p ); }
                 switch( padding )
                 {
                     case padding_types::same: // todo
@@ -276,14 +326,15 @@ int main( int ac, char** av )
                     case padding_types::valid:
                     {
                         if( p.second.cols < int( shape.first ) || p.second.rows < int( shape.second ) ) { std::cerr << "cv-calc: expected image greater than rows: " << shape.second << " cols: " << shape.first << "; got rows: " << p.second.rows << " cols: " << p.second.cols << std::endl; return 1; }
-                        std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > q;
+                        std::pair< boost::posix_time::ptime, cv::Mat > q;
                         q.first = p.first;
                         for( unsigned int i = 0; i < ( p.second.cols + 1 - shape.first ); i += strides.first )
                         {
                             for( unsigned int j = 0; j < ( p.second.rows + 1 - shape.second ); j += strides.second )
                             {
                                 p.second( cv::Rect( i, j, shape.first, shape.second ) ).copyTo( q.second );
-                                output_serialization.write_to_stdout( q );
+                                non_zero.min_size( q.second.rows * q.second.cols );
+                                if( non_zero.keep( q.second ) ) { output_serialization.write_to_stdout( q ); }
                             }
                         }
                         break;
