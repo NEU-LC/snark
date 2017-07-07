@@ -37,13 +37,14 @@
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <opencv2/core/core.hpp>
+#include <boost/function.hpp>
 
 namespace snark{ namespace cv_mat {  namespace impl {
     
-
+typedef boost::function< double( double , double , double ) > apply_function;
     
 template< int DepthIn >
-static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& average, comma::uint64 count )
+static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )
 {
     typedef typename depth_traits< DepthIn >::value_t value_in_t;
     typedef double value_out_t;
@@ -52,36 +53,36 @@ static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv
     for( unsigned int i = r.begin(); i < r.end(); ++i )
     {
         const value_in_t* in = m.ptr< value_in_t >(i);
-        auto* avg = average.ptr< value_out_t >(i);
+        auto* ret = result.ptr< value_out_t >(i);
         for( unsigned int j = 0; j < cols; ++j ) 
         {
-            *avg += (*in - *avg) / count; 
-            ++avg;
+            *ret = fn( *in, *ret, count);
+            ++ret;
             ++in;
         }
     }
 }
 
 template< typename H, int DepthIn >
-static void divide_by_rows( const cv::Mat& m, cv::Mat& average, comma::uint64 count )
+static void divide_by_rows( const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )
 {
     tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.rows ), 
-                       boost::bind( &iterate_pixels< DepthIn >, _1, m, boost::ref( average ), count ) );
+                       boost::bind( &iterate_pixels< DepthIn >, _1, m, boost::ref( result ), fn, count ) );
 }
 
 template< typename H >
-static void iterate_by_input_type( const cv::Mat& m, cv::Mat& result, comma::uint64 count)
+static void iterate_by_input_type( const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count)
 {
     int otype = m.depth(); // This will work?
     switch( otype )
     {
-        case CV_8U : divide_by_rows< H, CV_8U  >( m, result, count ); break;
-        case CV_8S : divide_by_rows< H, CV_8S  >( m, result, count ); break;
-        case CV_16U: divide_by_rows< H, CV_16U >( m, result, count ); break;
-        case CV_16S: divide_by_rows< H, CV_16S >( m, result, count ); break;
-        case CV_32S: divide_by_rows< H, CV_32S >( m, result, count ); break;
-        case CV_32F: divide_by_rows< H, CV_32F >( m, result, count ); break;
-        case CV_64F: divide_by_rows< H, CV_64F >( m, result, count ); break;
+        case CV_8U : divide_by_rows< H, CV_8U  >( m, result, fn, count ); break;
+        case CV_8S : divide_by_rows< H, CV_8S  >( m, result, fn, count ); break;
+        case CV_16U: divide_by_rows< H, CV_16U >( m, result, fn, count ); break;
+        case CV_16S: divide_by_rows< H, CV_16S >( m, result, fn, count ); break;
+        case CV_32S: divide_by_rows< H, CV_32S >( m, result, fn, count ); break;
+        case CV_32F: divide_by_rows< H, CV_32F >( m, result, fn, count ); break;
+        case CV_64F: divide_by_rows< H, CV_64F >( m, result, fn, count ); break;
         default: COMMA_THROW( comma::exception, "accumulated: unrecognised output image type " << otype );
     }
 }

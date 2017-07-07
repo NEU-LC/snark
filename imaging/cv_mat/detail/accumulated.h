@@ -53,7 +53,7 @@ template < typename H >
 struct accumulated_impl_ {
     typedef std::pair< H, cv::Mat > value_type;
     comma::uint64 count_;
-    cv::Mat average_;
+    cv::Mat result_;
     
     accumulated_impl_() : count_(0) {}
 

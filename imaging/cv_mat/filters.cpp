@@ -2195,7 +2195,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     if( e[0] == "accumulated" )
     {
         if( e.size() != 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
-        return boost::bind< value_type_t >( impl::average_impl_< H >(), _1 );
+        return boost::bind< value_type_t >( impl::accumulated_impl_< H >(), _1 );
     }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {

@@ -39,6 +39,7 @@
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 #include "../depth_traits.h"
+#include "mat_iterator.h"
 
 namespace snark{ namespace cv_mat {  namespace impl {
     
@@ -85,29 +86,31 @@ static void iterate_by_input_type( const typename accumulated_impl_< H >::value_
         default: COMMA_THROW( comma::exception, "accumulated: unrecognised output image type " << otype );
     }
 }
+
+static double accumulated_average( double in, double avg, comma::uint64 count)
+{
+    return (avg + (in - avg)/count);
+}
     
 template < typename H >
 typename average_impl_< H >::value_type average_impl_< H >::operator()( const typename average_impl_< H >::value_type& n )
 {
-    ++count_;
-    if( average_.size() == cv::Size(0,0) )  // This filter is not run in parallel, no locking required
-    {
-        std::cerr << "Found empty average_" << std::endl;
-        
-        average_.create( n.second.rows, n.second.cols, CV_MAKETYPE(CV_64F, n.second.channels()) );
-        std::cerr << "average_ " << average_.rows << "x" << average_.cols << " type: " << average_.type() << std::endl;
-    }
-    
-    iterate_by_input_type< H >(n, average_, count_);
-    
-    cv::Mat result;
-    average_.convertTo(result, n.second.type());
-    return value_type( n.first, result );
+    return n;
 }
 
 template < typename H >
 typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( const typename accumulated_impl_< H >::value_type& n )
 {
+    ++count_;
+    if( result_.size() == cv::Size(0,0) ) {  // This filter is not run in parallel, no locking required
+        result_.create( n.second.rows, n.second.cols, CV_MAKETYPE(CV_64F, n.second.channels()) );
+    }
+    
+    iterate_by_input_type< H >(n.second, result_, &accumulated_average, count_);
+    
+    cv::Mat result;
+    result_.convertTo(result, n.second.type());
+    return value_type( n.first, result );
     return n;
 }
 
