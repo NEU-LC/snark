@@ -71,7 +71,7 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
     ++count_;
     if( result_.size() == cv::Size(0,0) ) 
     {  // This filter is not run in parallel, no locking required
-        result_.create( n.second.rows, n.second.cols, CV_MAKETYPE(CV_64F, n.second.channels()) );
+        result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_64F, n.second.channels()) );
         
         switch (type_)
         {
@@ -119,9 +119,46 @@ static apply_function get_average(int depth, const std::deque< cv::Mat >& window
         case CV_16S: return boost::bind( &sliding_average< CV_16S >, _1, _2, _3, _4, _5, boost::ref(window), size );
         case CV_32S: return boost::bind( &sliding_average< CV_32S >, _1, _2, _3, _4, _5, boost::ref(window), size );
         case CV_32F: return boost::bind( &sliding_average< CV_32F >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_64F: return boost::bind( &sliding_average< CV_64F >, _1, _2, _3, _4, _5, boost::ref(window), size );
+        default: return boost::bind( &sliding_average< CV_64F >, _1, _2, _3, _4, _5, boost::ref(window), size );
     }
 }
+
+template < int DepthIn >
+static double sliding_min_max( bool is_max, double in, double result, comma::uint64 count, 
+                               comma::uint32 row, comma::uint32 col, 
+                               const std::deque< cv::Mat >& window, comma::uint32 size)
+{
+    typedef typename depth_traits< DepthIn >::value_t value_in_t;
+    
+    double m = in;
+    // Haven't reach the window size yet
+    std::size_t i = window.size() < size ? 0 : 1; // skip first one if window is full, use max
+    for( ; i<window.size(); ++i)
+    {
+        const auto* window_row = window[i].ptr< value_in_t >(row);
+        double val = *(window_row + col);
+        m = is_max ? std::max(m, val) : std::min(m, val); 
+    }
+    
+    return m;
+}
+
+static apply_function get_min_max(bool is_max, int depth, const std::deque< cv::Mat >& window, comma::uint32 size)
+{
+    switch( depth )
+    {
+        case CV_8U : return boost::bind( &sliding_min_max< CV_8U >,  is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_8S : return boost::bind( &sliding_min_max< CV_8S >,  is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_16U: return boost::bind( &sliding_min_max< CV_16U >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_16S: return boost::bind( &sliding_min_max< CV_16S >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_32S: return boost::bind( &sliding_min_max< CV_32S >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_32F: return boost::bind( &sliding_min_max< CV_32F >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
+        default: return boost::bind( &sliding_min_max< CV_64F >, is_max, _1, _2, _3, _4, _5, boost::ref(window), size );
+    }
+}
+
+template < typename H >
+sliding_window_impl_< H >::sliding_window_impl_( accumulated_type type, comma::uint32 size ) : type_(type), count_(0), size_(size) {}
     
 template < typename H >
 typename sliding_window_impl_< H >::value_type sliding_window_impl_< H >::operator()( const typename sliding_window_impl_< H >::value_type& n )
@@ -137,18 +174,24 @@ typename sliding_window_impl_< H >::value_type sliding_window_impl_< H >::operat
             case accumulated_type::min: result_.setTo(std::numeric_limits< double >::max()); break;
             default: break;
         }
+        
+        average_ = get_average(n.second.depth(), window_, size_);
+        max_ = get_min_max( true, n.second.depth(), window_, size_);
+        min_ = get_min_max( false, n.second.depth(), window_, size_);
     }
     
-    apply_function average = get_average(n.second.depth(), window_, size_);
     switch (type_)
     {
-        case accumulated_type::average: iterate_by_input_type< H >(n.second, result_, average , count_); break;
-        case accumulated_type::max: iterate_by_input_type< H >(n.second, result_, &accumulated_max, count_); break;
-        case accumulated_type::min: iterate_by_input_type< H >(n.second, result_, &accumulated_min, count_); break;
+        case accumulated_type::average: iterate_by_input_type< H >(n.second, result_, average_, count_); break;
+        case accumulated_type::max: iterate_by_input_type< H >(n.second, result_, max_, count_); break;
+        case accumulated_type::min: iterate_by_input_type< H >(n.second, result_, min_, count_); break;
     }
     
-    if( window_.size() == size_ ) { window_.pop_front(); }
-    window_.push_back( n.second );
+    if( window_.size() >= size_ ) { window_.pop_front(); }
+    window_.push_back( cv::Mat() );
+    n.second.copyTo( window_.back() );      // have to copy, next filter will change it
+    
+    if( window_.size() == 1 ) { return n; }
     
     cv::Mat result;
     result_.convertTo(result, n.second.type());

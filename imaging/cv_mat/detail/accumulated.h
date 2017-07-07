@@ -33,6 +33,7 @@
 #include <deque>
 #include <Eigen/Core>
 #include <boost/shared_ptr.hpp>
+#include <boost/function.hpp>
 #include <opencv2/core/core.hpp>
 #include <comma/base/types.h>
 
@@ -57,13 +58,17 @@ struct accumulated_impl_ {
 template < typename H >
 struct sliding_window_impl_ {
     typedef std::pair< H, cv::Mat > value_type;
+    typedef boost::function< double( double , double , double, unsigned int row, unsigned int col ) > apply_function;
     accumulated_type type_;
     comma::uint64 count_;
     cv::Mat result_;
     comma::uint32 size_;  // sliding window size
     std::deque< cv::Mat > window_;
+    apply_function average_;
+    apply_function max_;
+    apply_function min_;
     
-    sliding_window_impl_( accumulated_type type, comma::uint32 size ) : type_(type), count_(0), size_(size) {}
+    sliding_window_impl_( accumulated_type type, comma::uint32 size );
 
     value_type operator()( const value_type& n );
 };
