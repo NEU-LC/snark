@@ -39,6 +39,17 @@
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
+struct average_impl_ {
+    typedef std::pair< H, cv::Mat > value_type;
+    comma::uint64 count_;
+    cv::Mat average_;
+    
+    average_impl_() : count_(0) {}
+
+    value_type operator()( const value_type& n );
+};
+
+template < typename H >
 struct accumulated_impl_ {
     typedef std::pair< H, cv::Mat > value_type;
     comma::uint64 count_;

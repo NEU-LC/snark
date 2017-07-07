@@ -27,23 +27,23 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "accumulated.h"
+#pragma once
 
-#include <comma/base/exception.h>
-#include <iostream>
 #include <vector>
 #include <map>
 #include <boost/bind.hpp>
-#include <boost/thread/pthread/pthread_mutex_scoped_lock.hpp>
-#include <boost/date_time/posix_time/ptime.hpp>
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
-#include "../depth_traits.h"
+#include <comma/base/exception.h>
+#include <comma/base/types.h>
+#include <opencv2/core/core.hpp>
 
 namespace snark{ namespace cv_mat {  namespace impl {
     
+
+    
 template< int DepthIn >
-static void average_pixel( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& average, comma::uint64 count )
+static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& average, comma::uint64 count )
 {
     typedef typename depth_traits< DepthIn >::value_t value_in_t;
     typedef double value_out_t;
@@ -63,57 +63,27 @@ static void average_pixel( const tbb::blocked_range< std::size_t >& r, const cv:
 }
 
 template< typename H, int DepthIn >
-static void average_by_rows( const typename accumulated_impl_< H >::value_type m, cv::Mat& average, comma::uint64 count )
+static void divide_by_rows( const cv::Mat& m, cv::Mat& average, comma::uint64 count )
 {
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), 
-                       boost::bind( &average_pixel< DepthIn >, _1, m.second, boost::ref( average ), count ) );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.rows ), 
+                       boost::bind( &iterate_pixels< DepthIn >, _1, m, boost::ref( average ), count ) );
 }
 
 template< typename H >
-static void iterate_by_input_type( const typename accumulated_impl_< H >::value_type& m, cv::Mat& average, comma::uint64 count)
+static void iterate_by_input_type( const cv::Mat& m, cv::Mat& result, comma::uint64 count)
 {
-    int otype = m.second.depth(); // This will work?
+    int otype = m.depth(); // This will work?
     switch( otype )
     {
-        case CV_8U : average_by_rows< H, CV_8U  >( m, average, count ); break;
-        case CV_8S : average_by_rows< H, CV_8S  >( m, average, count ); break;
-        case CV_16U: average_by_rows< H, CV_16U >( m, average, count ); break;
-        case CV_16S: average_by_rows< H, CV_16S >( m, average, count ); break;
-        case CV_32S: average_by_rows< H, CV_32S >( m, average, count ); break;
-        case CV_32F: average_by_rows< H, CV_32F >( m, average, count ); break;
-        case CV_64F: average_by_rows< H, CV_64F >( m, average, count ); break;
+        case CV_8U : divide_by_rows< H, CV_8U  >( m, result, count ); break;
+        case CV_8S : divide_by_rows< H, CV_8S  >( m, result, count ); break;
+        case CV_16U: divide_by_rows< H, CV_16U >( m, result, count ); break;
+        case CV_16S: divide_by_rows< H, CV_16S >( m, result, count ); break;
+        case CV_32S: divide_by_rows< H, CV_32S >( m, result, count ); break;
+        case CV_32F: divide_by_rows< H, CV_32F >( m, result, count ); break;
+        case CV_64F: divide_by_rows< H, CV_64F >( m, result, count ); break;
         default: COMMA_THROW( comma::exception, "accumulated: unrecognised output image type " << otype );
     }
 }
-    
-template < typename H >
-typename average_impl_< H >::value_type average_impl_< H >::operator()( const typename average_impl_< H >::value_type& n )
-{
-    ++count_;
-    if( average_.size() == cv::Size(0,0) )  // This filter is not run in parallel, no locking required
-    {
-        std::cerr << "Found empty average_" << std::endl;
-        
-        average_.create( n.second.rows, n.second.cols, CV_MAKETYPE(CV_64F, n.second.channels()) );
-        std::cerr << "average_ " << average_.rows << "x" << average_.cols << " type: " << average_.type() << std::endl;
-    }
-    
-    iterate_by_input_type< H >(n, average_, count_);
-    
-    cv::Mat result;
-    average_.convertTo(result, n.second.type());
-    return value_type( n.first, result );
-}
 
-template < typename H >
-typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( const typename accumulated_impl_< H >::value_type& n )
-{
-    return n;
-}
-
-} } }  // namespace snark { namespace cv_mat { namespace impl {
-
-template class snark::cv_mat::impl::average_impl_< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::average_impl_< std::vector< char > >;
-template class snark::cv_mat::impl::accumulated_impl_< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::accumulated_impl_< std::vector< char > >;
+} } } // namespace snark{ namespace cv_mat {  namespace impl {
