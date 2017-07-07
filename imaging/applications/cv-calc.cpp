@@ -233,7 +233,6 @@ class non_zero
 
 int main( int ac, char** av )
 {
-    
     try
     {
         comma::command_line_options options( ac, av, usage );
@@ -268,13 +267,13 @@ int main( int ac, char** av )
             if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: grep: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< boost::posix_time::ptime, cv::Mat > q = input_serialization.read< boost::posix_time::ptime >( std::cin );
-                if( q.second.empty() ) { return 0; }
-                auto p = q;
-                if( !filters.empty() ) { q.second.copyTo( p.second ); }
-                for( auto& filter: filters ) { p = filter( p ); }
-                non_zero.min_size( p.second.rows * p.second.cols );
-                if( non_zero.keep( p.second ) ) { output_serialization.write_to_stdout( p ); }
+                std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                auto filtered = p;
+                if( !filters.empty() ) { p.second.copyTo( filtered.second ); }
+                for( auto& filter: filters ) { filtered = filter( filtered ); }
+                non_zero.min_size( filtered.second.rows * filtered.second.cols );
+                if( non_zero.keep( filtered.second ) ) { output_serialization.write_to_stdout( p ); }
                 std::cout.flush();
             }
             return 0;
@@ -303,6 +302,7 @@ int main( int ac, char** av )
             const std::vector< std::string >& shape_vector = comma::split( options.value< std::string >( "--shape,--size,--kernel" ), ',' );
             if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
             std::pair< unsigned int, unsigned int > shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
+            unsigned int shape_size = shape.first * shape.second;
             struct padding_types { enum values { same, valid }; };
             std::string padding_string = options.value< std::string >( "--padding", "valid" );
             padding_types::values padding = padding_types::same;
@@ -314,11 +314,15 @@ int main( int ac, char** av )
             if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: stride: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< boost::posix_time::ptime, cv::Mat > s = input_serialization.read< boost::posix_time::ptime >( std::cin );
-                if( s.second.empty() ) { return 0; }
-                auto p = s;
-                if( !filters.empty() ) { s.second.copyTo( p.second ); }
-                for( auto& filter: filters ) { p = filter( p ); }
+                std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                std::pair< boost::posix_time::ptime, cv::Mat > filtered;
+                if( !filters.empty() )
+                {
+                    p.second.copyTo( filtered.second );
+                    for( auto& filter: filters ) { filtered = filter( filtered ); }
+                    if( filtered.second.rows != p.second.rows || filtered.second.cols != p.second.cols ) { std::cerr << "cv-calc: expected original and filtered images of the same size, got " << p.second.rows << "," << p.second.cols << " vs " << filtered.second.rows << "," << filtered.second.cols << std::endl; return 1; }
+                }
                 switch( padding )
                 {
                     case padding_types::same: // todo
@@ -332,9 +336,14 @@ int main( int ac, char** av )
                         {
                             for( unsigned int j = 0; j < ( p.second.rows + 1 - shape.second ); j += strides.second )
                             {
+                                if( !filtered.second.empty() )
+                                {
+                                    filtered.second( cv::Rect( i, j, shape.first, shape.second ) ).copyTo( q.second );
+                                    non_zero.min_size( shape_size );
+                                    if( !non_zero.keep( q.second ) ) { continue; }
+                                }
                                 p.second( cv::Rect( i, j, shape.first, shape.second ) ).copyTo( q.second );
-                                non_zero.min_size( q.second.rows * q.second.cols );
-                                if( non_zero.keep( q.second ) ) { output_serialization.write_to_stdout( q ); }
+                                output_serialization.write_to_stdout( q );
                             }
                         }
                         break;
