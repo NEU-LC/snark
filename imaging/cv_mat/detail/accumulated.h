@@ -32,16 +32,19 @@
 #include <string>
 #include <deque>
 #include <Eigen/Core>
-#include <boost/thread/pthread/mutex.hpp>
+#include <boost/shared_ptr.hpp>
 #include <opencv2/core/core.hpp>
+#include <comma/base/types.h>
 
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
 struct accumulated_impl_ {
     typedef std::pair< H, cv::Mat > value_type;
+    comma::uint64 count_;
+    cv::Mat average_;
     
-    accumulated_impl_() {}
+    accumulated_impl_() : count_(0) {}
 
     value_type operator()( const value_type& n );
 };

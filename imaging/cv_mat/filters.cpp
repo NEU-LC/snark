@@ -80,6 +80,7 @@
 #include "tbb/parallel_reduce.h"
 #include "detail/load-impl.h"
 #include "detail/scale_by_mask.h"
+#include "detail/accumulated.h"
 
 namespace {
 
@@ -2191,6 +2192,11 @@ struct make_filter {
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
 static functor_type make_filter_functor( const std::vector< std::string >& e, const get_timestamp_functor& get_timestamp )
 {
+    if( e[0] == "accumulated" )
+    {
+        if( e.size() != 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
+        return boost::bind< value_type_t >( impl::accumulated_impl_< H >(), _1 );
+    }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }

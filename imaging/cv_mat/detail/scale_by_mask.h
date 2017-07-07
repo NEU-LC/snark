@@ -32,6 +32,7 @@
 #include <string>
 #include <Eigen/Core>
 #include <boost/thread/pthread/mutex.hpp>
+#include <boost/shared_ptr.hpp>
 #include <opencv2/core/core.hpp>
 
 namespace snark{ namespace cv_mat { namespace impl {
