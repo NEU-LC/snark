@@ -154,9 +154,13 @@ typename sliding_window_impl_< H >::value_type sliding_window_impl_< H >::operat
     
     if( window_.size() == 1 ) { return n; }
     
-    cv::Mat result;
-    result_.convertTo(result, n.second.type());
-    return value_type( n.first, result );
+    if( result_.depth() == n.second.type() ) { return value_type( n.first, result_); } 
+    else
+    {
+        cv::Mat result;
+        result_.convertTo(result, n.second.type());
+        return value_type( n.first, result );
+    }
 }
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
