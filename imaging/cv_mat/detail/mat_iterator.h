@@ -41,6 +41,9 @@
 
 namespace snark{ namespace cv_mat {  namespace impl {
     
+// Row and Col tells you which pixel to access or was accessed to get input nd result pixel
+// The returned value will also be set into this pixel in 'result' cv::Mat 
+// 'count' is the image number being accessed
 typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function;
     
 template< int DepthIn >

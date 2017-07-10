@@ -34,43 +34,36 @@
 #include <Eigen/Core>
 #include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
+#include <boost/optional.hpp>
 #include <opencv2/core/core.hpp>
 #include <comma/base/types.h>
 
 namespace snark{ namespace cv_mat { namespace impl {
     
-enum class accumulated_type { average, max, min };
-
-accumulated_type accumulated_type_to_str( const std::string& s );
-
-template < typename H >
-struct accumulated_impl_ {
-    typedef std::pair< H, cv::Mat > value_type;
-    accumulated_type type_;
-    comma::uint64 count_;
-    cv::Mat result_;
-    
-    accumulated_impl_( accumulated_type type ) : type_(type), count_(0) {}
-
-    value_type operator()( const value_type& n );
-};
+enum class accumulated_type { average, exponential_moving_average };
+ 
+// accumulated_type accumulated_type_to_str( const std::string& s );
 
 template < typename H >
-struct sliding_window_impl_ {
+class accumulated_impl_ {
+public:
     typedef std::pair< H, cv::Mat > value_type;
     typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function;
-    accumulated_type type_;
-    comma::uint64 count_;
-    cv::Mat result_;
-    comma::uint32 size_;  // sliding window size
-    std::deque< cv::Mat > window_;
-    apply_function average_;
-    apply_function max_;
-    apply_function min_;
     
-    sliding_window_impl_( accumulated_type type, comma::uint32 size );
+    accumulated_impl_( boost::optional< comma::uint32 > size=boost::none, bool output_float_image=false );
 
     value_type operator()( const value_type& n );
+    
+private:
+    comma::uint64 count_;
+    cv::Mat result_;        // This is a float depth image
+    boost::optional< comma::uint32 > window_size_;
+    accumulated_type type_;
+    bool output_float_;
+    double multiplier_;     // for EMA 
+    apply_function average_ema_;
+    
+    float accumulated_ema_( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col);
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

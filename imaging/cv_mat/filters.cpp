@@ -2192,17 +2192,6 @@ struct make_filter {
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
 static functor_type make_filter_functor( const std::vector< std::string >& e, const get_timestamp_functor& get_timestamp )
 {
-    if( e[0] == "accumulated" )
-    {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
-        
-        auto s = comma::split(e[1], ',');
-        if( s.size() > 1 ) { 
-            comma::uint32 size = boost::lexical_cast< comma::uint32 >(s[1]);    // TODO check for error
-            return boost::bind< value_type_t >( impl::sliding_window_impl_< H >( impl::accumulated_type_to_str(s[0]), size ), _1 ); 
-        }
-        else { return boost::bind< value_type_t >( impl::accumulated_impl_< H >( impl::accumulated_type_to_str(s[0]) ), _1 ); }
-    }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
@@ -2787,6 +2776,15 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
             if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
             f.push_back( filter_type( accumulate_impl_< H >( how_many ), false ) );
+        }
+        if( e[0] == "accumulated" )
+        {
+            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
+            auto s = comma::split(e[1], ',');
+            if( s.front() != "average" ) { COMMA_THROW(comma::exception, "accumulated: unrecignised operation: " << s.front()); }
+            boost::optional< comma::uint32 > size = boost::none;
+            if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: failed to cast window size to comma::uint32, got " << s[1]); }}
+            f.push_back( filter_type( boost::bind< value_type_t >( impl::accumulated_impl_< H >( size ), _1 ), false ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
