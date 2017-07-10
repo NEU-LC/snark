@@ -12,7 +12,7 @@ FILE( GLOB color_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/color/*.cpp )
 FILE( GLOB color_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/color/*.h )
 
 # Templates in cpp, sources order is important, todo: give cv_mat/detail its own lib
-FILE( GLOB cvmat_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/load-impl.cpp ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.cpp ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.cpp )
+FILE( GLOB cvmat_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.cpp ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.cpp )
 FILE( GLOB cvmat_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.h )
 
 FILE( GLOB stereo_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.cpp )
