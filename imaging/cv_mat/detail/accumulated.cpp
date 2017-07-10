@@ -85,7 +85,7 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
     // This filter is not run in parallel, no locking required
     if( result_.size() == cv::Size(0,0) ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
-    switch (type_)
+    switch (type_)  // call to parallel by row ranges
     {
         case accumulated_type::average: iterate_by_input_type< H >(n.second, result_, &accumulated_average, count_); break;
         case accumulated_type::exponential_moving_average: iterate_by_input_type< H >(n.second, result_, average_ema_, count_); break;
@@ -94,7 +94,7 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
     if( output_float_ || n.second.depth() == CV_32FC1 )
     { 
         cv::Mat output;
-        result_.copyTo(output);
+        result_.copyTo(output);     // copy as result_ will be changed next iteration
         return value_type(n.first, output); 
     }
     else 
