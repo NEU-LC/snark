@@ -91,18 +91,9 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
         case accumulated_type::exponential_moving_average: iterate_by_input_type< H >(n.second, result_, average_ema_, count_); break;
     }
     
-    if( output_float_ || n.second.depth() == CV_32FC1 )
-    { 
-        cv::Mat output;
-        result_.copyTo(output);     // copy as result_ will be changed next iteration
-        return value_type(n.first, output); 
-    }
-    else 
-    {
-        cv::Mat converted;
-        result_.convertTo(converted, n.second.type());
-        return value_type( n.first, converted );
-    }
+    cv::Mat output; // copy as result_ will be changed next iteration
+    if( output_float_ || n.second.depth() == CV_32FC1 ) { result_.copyTo(output); } else { result_.convertTo(output, n.second.type()); }
+    return value_type(n.first, output); 
 }
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
