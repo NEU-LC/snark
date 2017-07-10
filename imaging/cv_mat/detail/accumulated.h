@@ -40,8 +40,6 @@
 
 namespace snark{ namespace cv_mat { namespace impl {
     
-enum class accumulated_type { average, exponential_moving_average };
- 
 // accumulated_type accumulated_type_to_str( const std::string& s );
 
 template < typename H >
@@ -53,8 +51,8 @@ public:
     accumulated_impl_( boost::optional< comma::uint32 > size=boost::none, bool output_float_image=false );
 
     value_type operator()( const value_type& n );
-    
 private:
+    enum class accumulated_type { average, exponential_moving_average };
     comma::uint64 count_;
     cv::Mat result_;        // This is a float depth image
     boost::optional< comma::uint32 > window_size_;
