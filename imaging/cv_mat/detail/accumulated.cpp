@@ -57,11 +57,11 @@ static float accumulated_average( float in, float avg, comma::uint64 count, comm
 }
 
 // exponential moving average
-template < typename H >
-float accumulated_impl_< H >::accumulated_ema_( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
+static float accumulated_ema( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col, 
+                        comma::uint32 window_size, double multiplier)
 {
     // Do Simple Moving Average until the count is greater than window size
-    if( count_ <= *window_size_ ) { return (avg + (in - avg)/count_); } else {  return avg + (in - avg) * multiplier_; }
+    if( count <= window_size ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * multiplier; }
 }
 
 template < typename H >
@@ -72,9 +72,9 @@ accumulated_impl_< H >::accumulated_impl_( boost::optional< comma::uint32 > size
     {
         if( *window_size_ < 2 ) { COMMA_THROW(comma::exception, "accumulated: window size for Exponential Moving Average must be >= 2, got " << *window_size_ ); }
         type_ = accumulated_type::exponential_moving_average;
-        multiplier_ = 2.0 / ( *window_size_ + 1 );    
+        double multiplier = 2.0 / ( *window_size_ + 1 );    
         
-        average_ema_ = boost::bind( &accumulated_impl_< H >::accumulated_ema_, this, _1, _2, _3, _4, _5);
+        average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, *window_size_, multiplier);
     }
 }
 

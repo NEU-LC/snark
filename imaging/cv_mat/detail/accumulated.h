@@ -60,10 +60,7 @@ private:
     boost::optional< comma::uint32 > window_size_;
     accumulated_type type_;
     bool output_float_;
-    double multiplier_;     // for EMA 
     apply_function average_ema_;
-    
-    float accumulated_ema_( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col);
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
