@@ -1334,7 +1334,12 @@ class file_impl_
         typedef typename impl::filters< H >::value_type value_type;
         typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
 
-        file_impl_( const get_timestamp_functor& get_timestamp ) : get_timestamp_( get_timestamp ), index_( 0 ) {}
+        file_impl_( const get_timestamp_functor& get_timestamp, bool no_header ) : get_timestamp_( get_timestamp ), index_( 0 )
+        {
+            snark::cv_mat::serialization::options options;
+            options.no_header = no_header;
+            serialization_ = snark::cv_mat::serialization( options );
+        }
 
         value_type operator()( value_type m, const std::string& type, const boost::optional< int >& quality, bool do_index )
         {
@@ -1347,10 +1352,9 @@ class file_impl_
             const std::string& filename = make_filename( timestamp, type, do_index ? boost::optional< unsigned int >( index_ ) : boost::none );
             if( type == "bin" )
             {
-                static snark::cv_mat::serialization serialization;
                 std::ofstream ofs( filename );
                 if( !ofs.is_open() ) { COMMA_THROW( comma::exception, "" ); }
-                serialization.write( ofs, m );
+                serialization_.write( ofs, m );
             }
             else
             {
@@ -1361,6 +1365,7 @@ class file_impl_
         }
         
     private:
+        snark::cv_mat::serialization serialization_;
         const get_timestamp_functor get_timestamp_;
         boost::posix_time::ptime previous_timestamp_;
         unsigned int index_;
@@ -2920,12 +2925,14 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             std::vector< std::string > s = comma::split( e[1], ',' );
             boost::optional< int > quality;
             bool do_index = false;
+            bool no_header = false;
             for( unsigned int i = 1; i < s.size(); ++i )
             {
                 if( s[i] == "index" ) { do_index = true; }
+                else if( s[i] == "no-header" ) { no_header = true; }
                 else { quality = boost::lexical_cast< int >( s[i] ); }
             }
-            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >( get_timestamp ), _1, s[0], quality, do_index ), false ) );
+            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false ) );
         }
         else if( e[0] == "histogram" )
         {

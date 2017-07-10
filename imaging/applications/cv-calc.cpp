@@ -20,11 +20,12 @@
 #include <memory>
 #include <opencv2/core/core.hpp>
 #include <tbb/parallel_for.h>
-#include <comma/visiting/traits.h>
+#include <comma/base/exception.h>
 #include <comma/csv/stream.h>
-#include <comma/string/string.h>
 #include <comma/math/interval.h>
 #include <comma/name_value/parser.h>
+#include <comma/string/string.h>
+#include <comma/visiting/traits.h>
 #include "../../imaging/cv_mat/filters.h"
 #include "../../imaging/cv_mat/serialization.h"
 
@@ -74,10 +75,16 @@ static void usage( bool verbose=false )
     std::cerr << "                                        run cv-cat --help --verbose for filters available" << std::endl;
     std::cerr << "        --non-zero=[<what>]; output only images that have non-zero pixels" << std::endl;
     std::cerr << "            <what>" << std::endl;
-    std::cerr << "                all: output only images with all pixels non-zero" << std::endl;
-    std::cerr << "                none: output only images with all pixels zero, makes sense only if --mask given" << std::endl;
-    std::cerr << "                some: output only images with some pixels non-zero" << std::endl;
-    std::cerr << "                <ratio>: output only images with a given ration of non-zero pixels: todo?" << std::endl;
+    std::cerr << "                ratio,[<min>][,<max>]: output only images with number of non-zero pixels within the limits of given ratios, e.g:" << std::endl;
+    std::cerr << "                                           --non-zero=ratio,0.2,0.8: output images that have from 20 to 80% of non-zero pixels" << std::endl;
+    std::cerr << "                                           --non-zero=ratio,,0.8: output images that have up to 80% of non-zero pixels" << std::endl;
+    std::cerr << "                                           --non-zero=ratio,0.8: output images that have at least 80% of non-zero pixels" << std::endl;
+    std::cerr << "                size,[<min>][,<max>]: output only images with number of non-zero pixels within given limits" << std::endl;
+    std::cerr << "                                      lower limit inclusive, upper limit exclusive; e.g" << std::endl;
+    std::cerr << "                                          --non-zero=size,10,1000: output images that have from 10 to 999 non-zero pixels" << std::endl;
+    std::cerr << "                                          --non-zero=size,10: output images that have at least 10 non-zero pixels" << std::endl;
+    std::cerr << "                                          --non-zero=size,,1000: output images that have not more than 999 non-zero pixels" << std::endl;
+    std::cerr << "                                          --non-zero=size,,1: output images with all pixels zero (makes sense only when used with --filters" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --show-partial; by default no partial roi is shown in image. Use option to change behaviour." << std::endl;
@@ -171,26 +178,33 @@ class non_zero
 { 
     public:
         non_zero() {}
-        non_zero( const std::string s ) : min_size_( 0 )
+        non_zero( const std::string s )
         {
             if( s.empty() ) { return; }
-            if( s == "all" ) { how_ = all; return; }
-            if( s == "none" ) { how_ = none; return; }
-            if( s == "some" ) { how_ = some; return; }
-            how_ = ratio;
-            ratio_ = boost::lexical_cast< double >( s );
-        }
-        operator bool() const { return static_cast< bool >( how_ ); }
-        void min_size( unsigned int image_size ) { if( how_ ) { min_size_ = *how_ == all ? image_size : *how_ == some ? 1 : *how_ == ratio ? image_size * ratio : 0; } }
-        bool keep( unsigned int count ) const
-        { 
-            if( !how_ ) { return true; }
-            switch( *how_ )
-            {
-                case none: return count == 0;
-                default: return count >= min_size_;
+            const std::vector< std::string >& v = comma::split( s, ',' );
+            if( v[0] == "ratio" )
+            { 
+                if( v.size() < 2 ) { COMMA_THROW( comma::exception, "expected --non-zero=ratio,<min>,<max>; got --non-zero=ratio" ); }
+                if( !v[1].empty() ) { ratio_.first = boost::lexical_cast< double >( v[1] ); }
+                if( v.size() > 2 && !v[2].empty() ) { ratio_.second = boost::lexical_cast< double >( v[2] ); }
+                return;
             }
+            if( v[0] == "size" )
+            {
+                if( v.size() < 2 ) { COMMA_THROW( comma::exception, "expected --non-zero=size,<min>,<max>; got --non-zero=size" ); }
+                if( !v[1].empty() ) { size_.first = boost::lexical_cast< unsigned int >( v[1] ); }
+                if( v.size() > 2 && !v[2].empty() ) { size_.second = boost::lexical_cast< unsigned int >( v[2] ); }
+                return;
+            }
+            COMMA_THROW( comma::exception, "--non-zero: expected 'ratio' or 'size', got: '" << v[0] << "'" );
         }
+        operator bool() const { return static_cast< bool >( ratio_.first ) || static_cast< bool >( ratio_.second ) || static_cast< bool >( size_.first ) || static_cast< bool >( size_.second ); }
+        void size( unsigned int image_size )
+        { 
+            if( ratio_.first ) { size_.first = image_size * *ratio_.first; }
+            if( ratio_.second ) { size_.second = image_size * *ratio_.second; }
+        }
+        bool keep( unsigned int count ) const { return ( !size_.first || *size_.first <= count ) && ( !size_.second || count < *size_.second ); }
         bool keep( const cv::Mat& m ) const { return keep( count( m ) ); }
         unsigned int count( const cv::Mat& m ) const
         {
@@ -199,7 +213,7 @@ class non_zero
             tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.rows )
                                 , [&]( const tbb::blocked_range< std::size_t >& r )
                                 {
-                                    for( unsigned int i = r.begin(); i < r.end() && keep_counting_( counts[i] ); ++i )
+                                    for( unsigned int i = r.begin(); i < r.end(); ++i )
                                     {
                                         for( const unsigned char* ptr = m.ptr( i ); ptr < m.ptr( i + 1 ); ptr += m.elemSize() )
                                         { 
@@ -212,18 +226,13 @@ class non_zero
         const uchar* ptr;
         
     private:
-        enum how_t_ { all, none, some, ratio };
-        boost::optional< how_t_ > how_;
-        double ratio_;
-        unsigned int min_size_;
+        std::pair< boost::optional< double >, boost::optional< double > > ratio_;
+        std::pair< boost::optional< unsigned int >, boost::optional< unsigned int > > size_;
+        bool empty_;
         bool keep_counting_( unsigned int count ) const
         {
-            if( !how_ ) { return false; }
-            switch( *how_ )
-            {
-                case none: return count == 0;
-                default: return count < min_size_;
-            }
+            if( size_.second ) { return *size_.second < count; }
+            return size_.first && ( count < *size_.first );
         }
 };
 
@@ -233,7 +242,6 @@ class non_zero
 
 int main( int ac, char** av )
 {
-    
     try
     {
         comma::command_line_options options( ac, av, usage );
@@ -268,13 +276,13 @@ int main( int ac, char** av )
             if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: grep: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< boost::posix_time::ptime, cv::Mat > q = input_serialization.read< boost::posix_time::ptime >( std::cin );
-                if( q.second.empty() ) { return 0; }
-                auto p = q;
-                if( !filters.empty() ) { q.second.copyTo( p.second ); }
-                for( auto& filter: filters ) { p = filter( p ); }
-                non_zero.min_size( p.second.rows * p.second.cols );
-                if( non_zero.keep( p.second ) ) { output_serialization.write_to_stdout( p ); }
+                std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                auto filtered = p;
+                if( !filters.empty() ) { p.second.copyTo( filtered.second ); }
+                for( auto& filter: filters ) { filtered = filter( filtered ); }
+                non_zero.size( filtered.second.rows * filtered.second.cols );
+                if( non_zero.keep( filtered.second ) ) { output_serialization.write_to_stdout( p ); }
                 std::cout.flush();
             }
             return 0;
@@ -303,6 +311,7 @@ int main( int ac, char** av )
             const std::vector< std::string >& shape_vector = comma::split( options.value< std::string >( "--shape,--size,--kernel" ), ',' );
             if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
             std::pair< unsigned int, unsigned int > shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
+            unsigned int shape_size = shape.first * shape.second;
             struct padding_types { enum values { same, valid }; };
             std::string padding_string = options.value< std::string >( "--padding", "valid" );
             padding_types::values padding = padding_types::same;
@@ -314,11 +323,15 @@ int main( int ac, char** av )
             if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: stride: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< boost::posix_time::ptime, cv::Mat > s = input_serialization.read< boost::posix_time::ptime >( std::cin );
-                if( s.second.empty() ) { return 0; }
-                auto p = s;
-                if( !filters.empty() ) { s.second.copyTo( p.second ); }
-                for( auto& filter: filters ) { p = filter( p ); }
+                std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                std::pair< boost::posix_time::ptime, cv::Mat > filtered;
+                if( !filters.empty() )
+                {
+                    p.second.copyTo( filtered.second );
+                    for( auto& filter: filters ) { filtered = filter( filtered ); }
+                    if( filtered.second.rows != p.second.rows || filtered.second.cols != p.second.cols ) { std::cerr << "cv-calc: expected original and filtered images of the same size, got " << p.second.rows << "," << p.second.cols << " vs " << filtered.second.rows << "," << filtered.second.cols << std::endl; return 1; }
+                }
                 switch( padding )
                 {
                     case padding_types::same: // todo
@@ -332,9 +345,14 @@ int main( int ac, char** av )
                         {
                             for( unsigned int j = 0; j < ( p.second.rows + 1 - shape.second ); j += strides.second )
                             {
+                                if( !filtered.second.empty() )
+                                {
+                                    filtered.second( cv::Rect( i, j, shape.first, shape.second ) ).copyTo( q.second );
+                                    non_zero.size( shape_size );
+                                    if( !non_zero.keep( q.second ) ) { continue; }
+                                }
                                 p.second( cv::Rect( i, j, shape.first, shape.second ) ).copyTo( q.second );
-                                non_zero.min_size( q.second.rows * q.second.cols );
-                                if( non_zero.keep( q.second ) ) { output_serialization.write_to_stdout( q ); }
+                                output_serialization.write_to_stdout( q );
                             }
                         }
                         break;

@@ -61,7 +61,7 @@ template < typename H >
 float accumulated_impl_< H >::accumulated_ema_( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
     // Do Simple Moving Average until the count is greater than window size
-    if( count_ <= *window_size_ ) { return (avg + (in - avg)/count_); } else {  return (in - avg) * multiplier_ + avg; }
+    if( count_ <= *window_size_ ) { return (avg + (in - avg)/count_); } else {  return avg + (in - avg) * multiplier_; }
 }
 
 template < typename H >
