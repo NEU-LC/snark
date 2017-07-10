@@ -40,10 +40,9 @@
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
-load_impl_< H >::load_impl_( const std::string& filename )
+load_impl_< H >::load_impl_( const std::string& filename, const std::string& load_as )
 {
-    const std::vector< std::string >& v = comma::split( filename, '.' );
-    if( v.back() == "bin" ) // quick and dirty
+    if( load_as == "bin" || comma::split( filename, '.' ).back() == "bin" ) // quick and dirty
     {
         std::ifstream ifs( &filename[0] );
         if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }

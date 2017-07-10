@@ -40,7 +40,8 @@ struct load_impl_
     typedef std::pair< H, cv::Mat > value_type;
     value_type value;
 
-    load_impl_( const std::string& filename );
+    // Set load as "bin" to load cv-cat format, else load using cv::imread
+    load_impl_( const std::string& filename, const std::string& load_as="" );
 
     value_type operator()( value_type ) { return value; }
 };
