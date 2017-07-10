@@ -65,16 +65,16 @@ static float accumulated_ema( float in, float avg, comma::uint64 count, comma::u
 }
 
 template < typename H >
-accumulated_impl_< H >::accumulated_impl_( boost::optional< comma::uint32 > size, bool output_float_image ) 
-    : count_(0), window_size_(size), type_(accumulated_type::average), output_float_(output_float_image)
+accumulated_impl_< H >::accumulated_impl_( boost::optional< comma::uint32 > window_size, bool output_float_image ) 
+    : count_(0), type_(accumulated_type::average), output_float_(output_float_image)
 {
-    if( window_size_ ) 
+    if( window_size ) 
     {
-        if( *window_size_ < 2 ) { COMMA_THROW(comma::exception, "accumulated: window size for Exponential Moving Average must be >= 2, got " << *window_size_ ); }
+        if( *window_size < 2 ) { COMMA_THROW(comma::exception, "accumulated: window size for Exponential Moving Average must be >= 2, got " << *window_size ) }
         type_ = accumulated_type::exponential_moving_average;
-        double multiplier = 2.0 / ( *window_size_ + 1 );    
+        double multiplier = 2.0 / ( *window_size + 1 );    
         
-        average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, *window_size_, multiplier);
+        average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, *window_size, multiplier);
     }
 }
 

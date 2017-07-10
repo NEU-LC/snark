@@ -48,14 +48,15 @@ public:
     typedef std::pair< H, cv::Mat > value_type;
     typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function;
     
-    accumulated_impl_( boost::optional< comma::uint32 > size=boost::none, bool output_float_image=false );
+    // window_size: if given use Exponent Moving Average of specified size
+    // output_float_image: force output image to be float depth, else convert to input image depth
+    accumulated_impl_( boost::optional< comma::uint32 > window_size=boost::none, bool output_float_image=false );
 
     value_type operator()( const value_type& n );
 private:
     enum class accumulated_type { average, exponential_moving_average };
-    comma::uint64 count_;
+    comma::uint64 count_;   // How many input images so far
     cv::Mat result_;        // This is a float depth image
-    boost::optional< comma::uint32 > window_size_;
     accumulated_type type_;
     bool output_float_;
     apply_function average_ema_;
