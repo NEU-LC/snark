@@ -3034,8 +3034,8 @@ static std::string usage_impl_()
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
     oss << "        accumulated=<operation>[,<window>]: apply a pixel-wise operation to the images in a given sliding window" << std::endl;
-    oss << "            <operation>: average, max, min" << std::endl;
-    oss << "            <window>: number of images in the sliding window" << std::endl;
+    oss << "            <operation>: average" << std::endl;
+    oss << "            <window>: number of images in the Exponential Moving Average window" << std::endl;
     oss << "                      default: all images from the beginning of the stream" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
