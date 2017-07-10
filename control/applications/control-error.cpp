@@ -46,14 +46,15 @@
 #include "traits.h"
 
 static const std::string name = "control-error";
+static const double default_proximity = 0.1;
+static const std::string default_mode = "fixed";
 
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
 template< typename T > std::string format( bool full_xpath = false, const std::string& fields = "" ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 
-static const double default_proximity = 0.1;
-static const std::string default_mode = "fixed";
-
 typedef snark::control::control_error_output_t output_t;
+typedef std::pair< snark::control::feedback_t, std::string > feedback_t;
+typedef std::pair< snark::control::target_t, std::string > target_t;
 
 static void usage( bool verbose = false )
 {
@@ -72,18 +73,20 @@ static void usage( bool verbose = false )
         std::cerr << "csv stream options: " << std::endl;
         std::cerr << comma::csv::options::usage( field_names< snark::control::target_t >() ) << std::endl;
     }
+    std::cerr << "info options: " << std::endl;
+    std::cerr << "    --input-fields: show default input stream fields and exit" << std::endl;
+    std::cerr << "    --input-format: show default input stream format and exit" << std::endl;
+    std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
+    std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options: " << std::endl;
     std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
     std::cerr << "    --heading-is-absolute: interpret target heading as global by default" << std::endl;
-    std::cerr << "    --input-fields: show default input stream fields and exit" << std::endl;
     std::cerr << "    --mode,-m=<mode>: control mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;    
     std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
-    std::cerr << "    --output-format: show binary format of output stream and exit (for wayline and control error fields only)" << std::endl;
-    std::cerr << "    --output-fields: show output fields and exit (for wayline and control error fields only)" << std::endl;
-    std::cerr << "    --strict: fail if a record with the timestamp earlier than the previous one is encountered (default: skip offending records)" << std::endl;
+    std::cerr << "    --strict: fail if the feedback timestamp is earlier than the previous one (default: skip offending records)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "control modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
@@ -102,7 +105,7 @@ static void usage( bool verbose = false )
 std::string serialise( const snark::control::wayline::position_t& p )
 {
     std::stringstream s;
-    s << std::fixed << std::setprecision(12) << p.x() << ',' << p.y();
+    s << std::fixed << std::setprecision(6) << p.x() << ' ' << p.y();
     return s.str();
 }
 
@@ -124,13 +127,11 @@ std::string mode_to_string( control_mode_t m ) { return  named_modes.left.at( m 
 class wayline_follower
 {
 public:
-    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, bool strict_time, double eps=1e-6 )
+    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, double eps=1e-6 )
         : mode_( mode )
         , proximity_( proximity )
         , use_past_endpoint_( use_past_endpoint )
         , reached_( false )
-        , no_previous_targets_( true )
-        , strict_time_( strict_time )
         , eps_( eps )
         {
             if( proximity_ < 0 ) { COMMA_THROW( comma::exception, "expected positive proximity, got " << proximity_ ); }
@@ -140,49 +141,35 @@ public:
     {
         snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : current_position;
         target_ = target;
-        no_previous_targets_ = false;
-        reached_ = ( current_position - target_->position ).norm() < proximity_;
-        if( reached_ || ( from - target_->position ).norm() < eps_ ) { return; } // if from is too close to the new target, the old wayline will be used
+        reached_ = false;
+        if( ( from - target_->position ).norm() < eps_ ) { return; } // if from is too close to the new target, the old wayline will be used
         wayline_ = snark::control::wayline( from, target_->position );
     }
-    void update( const std::pair< snark::control::feedback_t, std::string >& feedback )
+    void update( const feedback_t& feedback )
     {
-        feedback_buffer_ = feedback.second;
-        if( reached_ ) { return; }
-        if( previous_update_time_ && feedback.first.t < previous_update_time_ )
-        {
-            if( strict_time_ ) { COMMA_THROW( comma::exception, "received feedback time " << feedback.first.t << " that is earlier than the previous feedback time " << previous_update_time_ ); }
-            return;
-        }
-        previous_update_time_ = feedback.first.t;
-        reached_ = ( ( feedback.first.position - target_->position ).norm() < proximity_ )
-            || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
-        if( reached_ ) { return; }
+        feedback_ = feedback;
+        reached_ = ( ( feedback.first.position - target_->position ).norm() < proximity_ ) || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
         error_.cross_track = wayline_.cross_track_error( feedback.first.position );
         error_.heading = target_->is_absolute ? comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), target_->heading - feedback.first.yaw )()
             : wayline_.heading_error( feedback.first.yaw, target_->heading );
     }
     bool target_reached() const { return reached_; }
-    bool no_target() const { return no_previous_targets_ || reached_; }
+    bool has_target() const { return target_ && !reached_; }
     snark::control::error_t error() const { return error_; }
     snark::control::wayline::position_t to() const { return target_->position; }
     snark::control::wayline wayline() const { return wayline_; }
-    std::string feedback() const { return feedback_buffer_; }
+    std::string feedback() const { return feedback_->second; }
 
 private:
     control_mode_t mode_;
     double proximity_;
     bool use_past_endpoint_;
     boost::optional< snark::control::target_t > target_;
-    bool verbose_;
     bool reached_;
-    bool no_previous_targets_;
-    bool strict_time_;
     double eps_;
     snark::control::wayline wayline_;
     snark::control::error_t error_;
-    boost::optional< boost::posix_time::ptime > previous_update_time_;
-    std::string feedback_buffer_;
+    boost::optional< feedback_t > feedback_;
 };
 
 class full_output_t
@@ -226,20 +213,22 @@ public:
     }
     void write( const std::string& input_buffer, const wayline_follower& follower )
     {
-        if( ! ( follower.target_reached() 
-                || ( next_output_time_ && boost::posix_time::microsec_clock::universal_time() > *next_output_time_ ) ) ) { return; }
-        if( is_binary_ )
+        boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
+        if( follower.target_reached() || ( next_output_time_ && *next_output_time_ <= now ) )
         {
-            std::cout.write( &input_buffer[0], input_size_ );
-            std::cout.write( &follower.feedback()[0], feedback_size_ );
+            if( is_binary_ )
+            {
+                std::cout.write( &input_buffer[0], input_size_ );
+                std::cout.write( &follower.feedback()[0], feedback_size_ );
+            }
+            else
+            {
+                std::cout << input_buffer << delimiter_;
+                std::cout << comma::join( follower.feedback(), delimiter_ ) << delimiter_;
+            }
+            output_stream_.write( output_t( follower.wayline().heading(), follower.error(), follower.target_reached() ) );
+            if( next_output_time_ ) { next_output_time_ = follower.target_reached() ? now : now + delay_; }
         }
-        else
-        {
-            std::cout << input_buffer << delimiter_;
-            std::cout << comma::join( follower.feedback(), delimiter_ ) << delimiter_;
-        }
-        output_stream_.write( output_t( follower.wayline().heading(), follower.error(), follower.target_reached() ) );
-        if( next_output_time_ ) { next_output_time_ = boost::posix_time::microsec_clock::universal_time() + delay_; }
      }
 private:
     comma::csv::output_stream< output_t >& output_stream_;
@@ -266,9 +255,8 @@ int main( int ac, char** av )
         control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
         double proximity = options.value< double >( "--proximity", default_proximity );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
-        bool verbose = options.exists( "--verbose,-v" );
         bool strict = options.exists( "--strict" );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--input-fields,--format,--input-format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute,--strict", "-.*,--.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--input-fields,--format,--input-format,--output-format,--output-fields,--past-endpoint,--heading-is-absolute,--strict", "-.*,--.*" );
         if( unnamed.empty() ) { std::cerr << name << ": feedback stream is not given" << std::endl; return 1; }
         comma::csv::options feedback_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( unnamed[0] );
         comma::io::istream feedback_in( feedback_csv.filename, feedback_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
@@ -276,96 +264,75 @@ int main( int ac, char** av )
         full_output_t output( input_stream, feedback_stream, output_stream, options.optional< double >( "--frequency,-f" ) );
         comma::io::select select;
         select.read().add( feedback_in );
-        std::pair< snark::control::feedback_t, std::string > feedback;
+        feedback_t feedback;
+        if( feedback_csv.binary() ) { feedback.second.resize( feedback_csv.format().size() ); }
         if( select.wait( boost::posix_time::seconds( 1 ) ) ) // TODO: consider using feedback timeout (when implemented) instead of the hardcoded 1 sec
         {
             const snark::control::feedback_t* p = feedback_stream.read();
             if( !p ) { std::cerr << name << ": feedback stream error" << std::endl; return 1; }
             feedback.first = *p;
-            if( feedback_csv.binary() )
-            {
-                feedback.second.resize( feedback_csv.format().size() );
-                ::memcpy( &feedback.second[0], feedback_stream.binary().last(), feedback.second.size());
-            }
-            else
-            {
-                feedback.second = comma::join( feedback_stream.ascii().last(), feedback_csv.delimiter );
-            }
+            if( feedback_csv.binary() ) { ::memcpy( &feedback.second[0], feedback_stream.binary().last(), feedback.second.size() ); }
+            else { feedback.second = comma::join( feedback_stream.ascii().last(), feedback_csv.delimiter ); }
         }
         else
         {
             std::cerr << name << ": feedback is not publishing data" << std::endl;
             return 1;
         }
-        //boost::posix_time::time_duration feedback_timeout; // todo
         select.read().add( comma::io::stdin_fd );
-        std::deque< std::pair< snark::control::target_t, std::string > > targets;
+        std::deque< target_t > targets;
+        target_t target;
+        if( input_csv.binary() ) { target.second.resize( input_csv.format().size() ); }
         comma::signal_flag is_shutdown;
-        wayline_follower follower( mode, proximity, use_past_endpoint, strict );
+        wayline_follower follower( mode, proximity, use_past_endpoint );
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
-            
-            if ( !input_stream.ready() && !feedback_stream.ready() )
-            {
-                select.wait( boost::posix_time::milliseconds( 1 ) );
-            }
+            if( !input_stream.ready() && !feedback_stream.ready() ) { select.wait( boost::posix_time::milliseconds( 10 ) ); }
             // todo? don't do select.check() on stdin in the loop or do it only in "dynamic" mode?
             while( !is_shutdown && ( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ) ) ) )
             {
                 const snark::control::target_t* p = input_stream.read();
                 if( !p ) { break; }
-                std::pair< snark::control::target_t, std::string > pair( *p, "" );
-                if( input_csv.binary() )
-                {
-                    pair.second.resize( input_csv.format().size() );
-                    ::memcpy( &pair.second[0], input_stream.binary().last(), pair.second.size() );
-                }
-                else
-                {
-                    pair.second = comma::join( input_stream.ascii().last(), input_csv.delimiter );
-                }
-                targets.push_back( pair );
+                target.first = *p;
+                if( input_csv.binary() ) { ::memcpy( &target.second[0], input_stream.binary().last(), target.second.size() ); }
+                else { target.second = comma::join( input_stream.ascii().last(), input_csv.delimiter ); }
+                targets.push_back( target );
             }
+            bool got_feedback = false;
             while( !is_shutdown && ( feedback_stream.ready() || ( select.check() && select.read().ready( feedback_in ) ) ) )
             {
                 const snark::control::feedback_t* p = feedback_stream.read();
                 if( !p ) { std::cerr << name << ": end of feedback stream" << std::endl; return 1; }
+                if( p->t < feedback.first.t )
+                {
+                    if( strict ) { COMMA_THROW( comma::exception, "feedback time " << p->t << " is earlier than the previous valid feedback time " << feedback.first.t ); }
+                    else { comma::verbose << "feedback time " << p->t << " is earlier than the previous valid feedback time " << feedback.first.t << "; skipping" << std::endl; continue; }
+                }
+                got_feedback = true;
                 feedback.first = *p;
-                if( feedback_csv.binary() )
-                {
-                    feedback.second.resize( feedback_csv.format().size() );
-                    ::memcpy( &feedback.second[0], feedback_stream.binary().last(), feedback.second.size());
-                }
-                else
-                {
-                    feedback.second = comma::join( feedback_stream.ascii().last(), feedback_csv.delimiter );
-                }
+                if( feedback_csv.binary() ) { ::memcpy( &feedback.second[0], feedback_stream.binary().last(), feedback.second.size()); }
+                else { feedback.second = comma::join( feedback_stream.ascii().last(), feedback_csv.delimiter ); }
             }
             if( is_shutdown ) { break; }
-            // todo: implement feedback timeout
-            //if( !feedback->t.is_not_a_date_time() && ( feedback->t + feedback_timeout < now ) )
-            //{ 
-            //   if( verbose ) { warning }
-            //   feedback.reset();
-            //}
-            if( targets.empty() ) { select.wait( boost::posix_time::millisec( 10 ) ); continue; }
-            if( follower.no_target() || ( mode == dynamic && targets.size() > 1 ) )
+            if( targets.empty() || !got_feedback ) { continue; }
+            while( targets.size() )
             {
-                if( mode == dynamic )
+                if( !follower.has_target() || ( mode == dynamic && targets.size() > 1 ) )
                 {
-                    std::pair< snark::control::target_t, std::string > pair = targets.back();
-                    targets.clear();
-                    targets.push_back( pair );
+                    if( mode == dynamic )
+                    {
+                        target_t target = targets.back();
+                        targets.clear();
+                        targets.push_back( target );
+                    }
+                    follower.set_target( targets.front().first, feedback.first.position );
+                    comma::verbose << " target waypoint: " << serialise( follower.to() ) << ", current position: " << serialise( feedback.first.position ) << std::endl;
                 }
-                follower.set_target( targets.front().first, feedback.first.position );
-                if( verbose ) { std::cerr << name << ": target waypoint " << serialise( follower.to() ) << ", current position " << serialise( feedback.first.position ) << std::endl; }
-            }
-            follower.update( feedback );
-            output.write( targets.front().second, follower );
-            if( follower.target_reached() )
-            {
-                if( verbose ) { std::cerr << name << ": reached waypoint " << serialise( follower.to() ) << ", current position " << serialise( feedback.first.position ) << std::endl; }
+                follower.update( feedback );
+                output.write( targets.front().second, follower );
+                if( !follower.target_reached() ) { break; }
                 targets.pop_front();
+                comma::verbose << "reached waypoint: " << serialise( follower.to() ) << ", current position: " << serialise( feedback.first.position ) << std::endl;
             }
         }
         return 0;
