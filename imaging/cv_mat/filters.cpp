@@ -78,7 +78,7 @@
 #include "depth_traits.h"
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
-#include "detail/load-impl.h"
+#include "detail/load_impl.h"
 #include "detail/scale_by_mask.h"
 #include "detail/accumulated.h"
 
