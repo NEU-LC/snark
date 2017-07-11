@@ -45,6 +45,7 @@
 #include <pcl/search/kdtree.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/segmentation/region_growing.h>
+#include <pcl/registration/icp.h>
 
 static void usage(bool detail)
 {
@@ -55,6 +56,7 @@ static void usage(bool detail)
     std::cerr<< "operations:"<< std::endl;
     std::cerr<< "    region-growing-segmentation"<< std::endl;
     std::cerr<< "    normal-estimator"<< std::endl;
+    std::cerr<< "    iterative-closest-point"<< std::endl;
     std::cerr << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h: show help" << std::endl;
@@ -63,15 +65,32 @@ static void usage(bool detail)
     std::cerr << "    --input-format: print input format and exit"<<std::endl;
     std::cerr << "    --output-fields: print output fields and exit"<<std::endl;
     std::cerr << "    --output-format: print output format and exit"<<std::endl;
-    std::cerr<< "region-growing-segmentation options:"<< std::endl;
-    std::cerr << "    --min-cluster-size: the minimum number of points that a cluster needs to contain in order to be considered valid; default: 50"<< std::endl;
-    std::cerr << "    --max-cluster-size: the maximum number of points that a cluster needs to contain in order to be considered valid; default 1000000"<< std::endl;
-    std::cerr << "    --number-of-neighbours: number of nearest neighbours used for KNN (k-nearest neighbours search); default: 30"<< std::endl;
-    std::cerr << "    --smoothness-threshold: smoothness threshold used for testing the points; default: "<<3.0 / 180.0 * M_PI<< std::endl;
-    std::cerr << "    --curvature-threshold: residual threshold used for testing the points; default: 1.0"<< std::endl;
-    std::cerr << "    --discard: discard points with invalid cluster, when not specified all points will be written to output, invalid points with id=0"<< std::endl;
-    std::cerr<< "normal-estimator options:"<< std::endl;
-    std::cerr << "   --k,--k-neighbours: number of k nearest neighbors to use for the feature estimation; default: 50"<< std::endl;
+    std::cerr << std::endl;
+    std::cerr<< "region-growing-segmentation"<< std::endl;
+    std::cerr<< "     fields: block,point/x,point/y,point/z,normal/x,normal/y,normal/z,normal/curvature"<< std::endl;
+    std::cerr<< "     output: <input>,id"<< std::endl;
+    std::cerr<< "     options:"<< std::endl;
+    std::cerr << "        --min-cluster-size=<n>: the minimum number of points that a cluster needs to contain in order to be considered valid; default: 50"<< std::endl;
+    std::cerr << "        --max-cluster-size=<n>: the maximum number of points that a cluster needs to contain in order to be considered valid; default 1000000"<< std::endl;
+    std::cerr << "        --number-of-neighbours=<n>: number of nearest neighbours used for KNN (k-nearest neighbours search); default: 30"<< std::endl;
+    std::cerr << "        --smoothness-threshold=<f>: smoothness threshold used for testing the points; default: "<<3.0 / 180.0 * M_PI<< std::endl;
+    std::cerr << "        --curvature-threshold=<f>: residual threshold used for testing the points; default: 1.0"<< std::endl;
+    std::cerr << "        --discard: discard points with invalid cluster, when not specified all points will be written to output, invalid points with id=0"<< std::endl;
+    std::cerr << std::endl;
+    std::cerr<< "normal-estimator"<< std::endl;
+    std::cerr<< "     fields: block,point/x,point/y,point/z"<< std::endl;
+    std::cerr<< "     output: <input>,x,y,z,curvature"<< std::endl;
+    std::cerr<< "     options:"<< std::endl;
+    std::cerr << "       --k,--k-neighbours=<n>: number of k nearest neighbors to use for the feature estimation; default: 50"<< std::endl;
+    std::cerr << std::endl;
+    std::cerr<< "iterative-closest-point"<< std::endl;
+    std::cerr<< "     fields: "<< std::endl;
+    std::cerr<< "     output: 4x4 transformation matrix"<< std::endl;
+    std::cerr<< "     options:"<< std::endl;
+    std::cerr << "       --iterations=<n>: maximum number of iterations; the algorithm will stop after this many iterations even if it has not converged; default 100"<< std::endl;
+    std::cerr << "       --transformation-epsilon=<d>: distance threshold; if distance between two correspondent points is larger than this, the points will not be used for aligning"<< std::endl;
+    std::cerr << "       --max-correspondence-distance=<d>: transformations epsilon for convergence ; if difference between two consecutive transformations are less than this, the algorithm will stop"<< std::endl;
+    std::cerr << "       --euclidean-fitness-epsilon=<d>: error epsilon for convergence; if average Euclidean distance of points is less than this, the algorithm will stop"<< std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -106,6 +125,20 @@ struct segmentation_output
 {
     std::uint32_t id;
     segmentation_output(std::uint32_t id=0) : id(id) { }
+};
+
+struct icp_input
+{
+    std::uint32_t block;
+    pcl::PointXYZ first;
+    pcl::PointXYZ second;
+};
+
+struct icp_output
+{
+    std::uint32_t block;
+//     Eigen::Matrix<float,4,4>
+    pcl::Registration<pcl::PointXYZ,pcl::PointXYZ>::Matrix4 transformation;
 };
 
 namespace comma { namespace visiting {
@@ -143,7 +176,6 @@ template <> struct traits< pcl::Normal >
         v.apply( "curvature", p.curvature );
     }
 };
-
 
 template <> struct traits< input_point >
 {
@@ -184,6 +216,36 @@ template <> struct traits< segmentation_output >
     template< typename K, typename V > static void visit( const K& k, const segmentation_output& p, V& v )
     {
         v.apply( "id", p.id);
+    }
+};
+
+template <> struct traits< icp_input >
+{
+    template< typename K, typename V > static void visit( const K& k, icp_input& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "first", p.first );
+        v.apply( "second", p.second );
+    }
+    template< typename K, typename V > static void visit( const K& k, const icp_input& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "first", p.first );
+        v.apply( "second", p.second );
+    }
+};
+
+template <> struct traits< icp_output >
+{
+    template< typename K, typename V > static void visit( const K& k, icp_output& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "transformation", p.transformation );
+    }
+    template< typename K, typename V > static void visit( const K& k, const icp_output& p, V& v )
+    {
+        v.apply( "block", p.block );
+        v.apply( "transformation", p.transformation );
     }
 };
 
@@ -301,6 +363,60 @@ struct normal_estimator : public app_t<input_point,pcl::Normal>
     }
 };
 
+struct iterative_closest_point : public app_t<icp_input,icp_output>
+{
+    typedef typename pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr;
+    std::pair<cloud_ptr,cloud_ptr> clouds;
+    icp_output output;
+    int iterations;
+    boost::optional<double> transformation_epsilon;
+    boost::optional<double> max_correspondence_distance;
+    boost::optional<double> euclidean_fitness_epsilon;
+    iterative_closest_point(const comma::command_line_options& options) : app_t(options),
+        clouds(cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>()),cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>()))
+    {
+        iterations=options.value<int>("--iterations",100);
+        transformation_epsilon=options.optional<double>("--transformation-epsilon");
+        max_correspondence_distance=options.optional<double>("--max-correspondence-distance");
+        euclidean_fitness_epsilon=options.optional<double>("--euclidean-fitness-epsilon");
+    }
+    void clear()
+    {
+        clouds.first->clear();
+        clouds.second->clear();
+        output=icp_output();
+    }
+    void push_back(const input_t& p)
+    {
+        clouds.first->push_back(p.first);
+        clouds.second->push_back(p.second);
+        output.block=p.block;
+    }
+    void process()
+    {
+        cloud_ptr cloud_registered(new pcl::PointCloud<pcl::PointXYZ>());
+        pcl::IterativeClosestPoint<pcl::PointXYZ,pcl::PointXYZ> icp;
+        icp.setInputSource(clouds.first);
+        icp.setInputTarget(clouds.second);
+        icp.setMaximumIterations(iterations);
+        if(max_correspondence_distance)
+        {
+            comma::verbose<<"max_correspondence_distance "<<*max_correspondence_distance<<std::endl;
+            icp.setMaxCorrespondenceDistance(*max_correspondence_distance);
+        }
+        if(transformation_epsilon)
+            icp.setTransformationEpsilon(*transformation_epsilon);
+        if(euclidean_fitness_epsilon)
+            icp.setEuclideanFitnessEpsilon(*euclidean_fitness_epsilon);
+        icp.align(*cloud_registered);
+        output.transformation=icp.getFinalTransformation();
+    }
+    void write_output(comma::csv::output_stream<output_t>& os)
+    {
+        os.write(output);
+    }
+};
+
 struct region_growing_segmentation : public app_t<input_point_normal,segmentation_output>
 {
     typename pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
@@ -374,11 +490,18 @@ struct region_growing_segmentation : public app_t<input_point_normal,segmentatio
 };
 
 // todo:
+// change template parameter to subclass and use T::input_t, T::output_t instead of T and S
 // add bash completion
 // mkdir points-pcl-calc
 // mv app* to points-pcl-calc/app.h or common.h
-// mv normal estimator to points-pcl-calc/feature.h
-// mv region growing segmentation to points-pcl-calc/segmentation.h
+// normal estimator 
+//      mv to points-pcl-calc/feature.h
+//      input fields: accept x,y,z translate to point/x ... (see view-points for example)
+// region growing segmentation 
+//      mv to points-pcl-calc/segmentation.h
+//      input fields: accept x,y,z translate to point/x ... (see view-points for example)
+// do we need to support point double precision for above? (do we need both float and double, or just double)
+// mv icp to points-pcl-calc/registration.h
 
 int main( int argc, char** argv )
 {
@@ -396,6 +519,10 @@ int main( int argc, char** argv )
         else if(operation=="normal-estimator")
         {
             app.reset(new normal_estimator(options));
+        }
+        else if(operation=="iterative-closest-point")
+        {
+            app.reset(new iterative_closest_point(options));
         }
         else
         {

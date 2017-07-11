@@ -58,6 +58,7 @@ void usage(bool detail)
     std::cerr << "    --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
     std::cerr << "    --hang-on; waits about three seconds before exiting so that subscribers can receive the last message" << std::endl;
     std::cerr << "    --all; sends all the records as one ros message (when no block field), otherwise send each record as a message" << std::endl;
+    std::cerr << "    --node-name: node name for this process, when not specified uses ros::init_options::AnonymousName flag" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    csv options" << std::endl;
     std::cerr << "        --fields: default: x,y,z" << std::endl;
@@ -249,8 +250,15 @@ int main( int argc, char** argv )
         bool has_block=csv.has_field("block");
         bool all=options.exists("--all");
         std::string frame_id=options.value<std::string>("--frame","");
+        boost::optional<std::string> node_name=options.optional<std::string>("--node-name");
         int arrrgc=1;
-        ros::init(arrrgc, argv, "points_to_ros", ros::init_options::AnonymousName);
+        uint32_t node_options=0;
+        if(!node_name)
+        {
+            node_name="points_to_ros";
+            node_options=ros::init_options::AnonymousName;
+        }
+        ros::init(arrrgc, argv, *node_name,node_options);
         ros::NodeHandle ros_node;
         ros::Publisher publisher=ros_node.advertise<sensor_msgs::PointCloud2>(topic, queue_size,options.exists("--latch"));
         ros::spinOnce();

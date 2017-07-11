@@ -27,8 +27,9 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_POINT_CLOUD_APPLICATIONS_DETAIL_VECTOR_CALC_H
-#define DETAIL_VECTOR_CALC_H
+/// @author Navid Pirmarzdashti
+
+#pragma once
 #include <iostream>
 #include <comma/csv/stream.h>
 #include "../../../visiting/eigen.h"
@@ -88,6 +89,11 @@ struct vector_calc
         std::cerr << "            --w=<x>,<y>,<z>: default value for vector 3" << std::endl;
         std::cerr << "            --unit: normalize the output to unit length" << std::endl;
         std::cerr << std::endl;
+        std::cerr << "        transform: calculate 4x4 matrix transform of m*v" << std::endl;
+        std::cerr << "            input fields: v, m" << std::endl;
+        std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
+        std::cerr << "            --m=<00>,...<44>: default value for matrix m (16 values)" << std::endl;
+        std::cerr << std::endl;
     }
     static void usage_list_operations()
     {
@@ -99,10 +105,12 @@ struct vector_calc
         std::cerr << "    scale" << std::endl;
         std::cerr << "    add" << std::endl;
         std::cerr << "    subtract" << std::endl;
+        std::cerr << "    transform" << std::endl;
     }
     static bool has_operation(const std::string& operation)
     {
-        return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale") || (operation=="add") || (operation=="subtract") || (operation=="normal") || (operation=="normalize");
+        return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale") || (operation=="add") || 
+            (operation=="subtract") || (operation=="normal") || (operation=="normalize") || (operation=="transform");
     }
     static void process(const std::string& operation, const comma::command_line_options& options, const comma::csv::options& csv)
     {
@@ -185,6 +193,16 @@ struct vector_calc
             vector_calc::normal(v_default,u_default,w_default,options.exists("--unit")).run(csv);
             return;
         }
+        if(operation=="transform")
+        {
+            if(options.exists("--input-fields")){vector_calc::transform().input_fields(); return; }
+            if(options.exists("--output-fields")){vector_calc::transform().output_fields(); return; }
+            if(options.exists("--output-format")){vector_calc::transform().output_format(); return; }
+            Eigen::Vector3d v_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
+            Eigen::Matrix<double,4,4> m_default=comma::csv::ascii< Eigen::Matrix<double,4,4> >().get(options.value< std::string >( "--m",  "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"));
+            vector_calc::transform(v_default,m_default).run(csv);
+            return;
+        }
         COMMA_THROW( comma::exception, "vector_calc operation not supported :" << operation );
     }
     //typedef double scalar;
@@ -232,6 +250,13 @@ struct vector_calc
         double a;
         scalar():a(0){}
         scalar(double d):a(d){}
+    };
+    struct vector_matrix
+    {
+        Eigen::Vector3d v;
+        Eigen::Matrix<double,4,4> m;
+        vector_matrix() { }
+        vector_matrix(Eigen::Vector3d v,Eigen::Matrix<double,4,4> m): v(v), m(m) { }
     };
     struct cross:operation_t<vector_pair,vector>
     {
@@ -301,6 +326,16 @@ struct vector_calc
         subtract(){}
         subtract(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
         vector calc(const vector_pair& in) const { return in.u-in.v; }
+    };
+    struct transform:operation_t<vector_matrix,Eigen::Vector3d>
+    {
+        transform(){}
+        transform(const Eigen::Vector3d& default1, const Eigen::Matrix<double,4,4>& default2):operation_t(vector_matrix(default1,default2)) {}
+        Eigen::Vector3d calc(const vector_matrix& in) const
+        {
+            Eigen::Affine3d transform(in.m);
+            return transform*in.v;
+        }
     };
     struct normal:operation_t<vector_triple,vector>
     {
@@ -376,6 +411,21 @@ template <> struct traits< vector_calc::scalar >
     }
 };
 
+
+template <> struct traits< vector_calc::vector_matrix >
+{
+    template< typename K, typename V > static void visit( const K& k, vector_calc::vector_matrix& t, V& v )
+    {
+        v.apply( "v", t.v);
+        v.apply( "m", t.m);
+    }
+    template< typename K, typename V > static void visit( const K& k, const vector_calc::vector_matrix& t, V& v )
+    {
+        v.apply( "v", t.v);
+        v.apply( "m", t.m);
+    }
+};
+
+
 } } // namespace comma { namespace visiting {
     
-#endif
