@@ -44,7 +44,7 @@ namespace snark{ namespace cv_mat {  namespace impl {
 // Row and Col tells you which pixel to access or was accessed to get input nd result pixel
 // The returned value will also be set into this pixel in 'result' cv::Mat 
 // 'count' is the image number being accessed
-typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function;
+typedef boost::function< float( float input_value, float result_value, comma::uint32 count, unsigned int row, unsigned int col ) > apply_function;
     
 template< int DepthIn >
 static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )

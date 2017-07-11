@@ -53,7 +53,7 @@ public:
 
     value_type operator()( const value_type& n );
 private:
-    typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function_;
+    typedef boost::function< float( float input_value, float result_value, comma::uint64 count, unsigned int row, unsigned int col ) > apply_function_;
     enum class accumulated_type { average, exponential_moving_average };
     comma::uint64 count_;   // How many input images so far
     cv::Mat result_;        // This is a float depth image
