@@ -60,19 +60,13 @@ typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::operator()( va
 template < typename H >
 typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::apply_(const value_type& m, const cv::Mat& operand )
 {
-    value_type n;
-    n.first = m.first;
+    value_type n( m.first, cv::Mat(m.second.rows, m.second.cols, m.second.type()) );
     switch(operation_)
     {
-        case operation::multiply:
-//             n.second = m.second.mul(operand);
-            cv::multiply(m.second, operand, n.second );
-        case operation::subtract:
-            cv::subtract(m.second, operand, n.second );
-        case operation::divide:
-            cv::divide(m.second, operand, n.second );
-        case operation::add:
-            cv::add(m.second, operand, n.second );
+        case operation::multiply: cv::multiply(m.second, operand, n.second ); break;
+        case operation::subtract: cv::subtract(m.second, operand, n.second ); break;
+        case operation::divide:   cv::divide(m.second, operand, n.second ); break;
+        case operation::add:      cv::add(m.second, operand, n.second );    break;
     }
     
     return n;
