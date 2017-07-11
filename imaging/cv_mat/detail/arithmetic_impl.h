@@ -49,7 +49,7 @@ public:
     // Set load as "bin" to load cv-cat format, else load using cv::imread
     arithmetic_impl_( operation op );
 
-    value_type operator()( value_type n, boost::function< value_type( value_type ) > operand );
+    value_type operator()( value_type n, boost::function< value_type( value_type ) >& operand );
     
 private:
     operation operation_;

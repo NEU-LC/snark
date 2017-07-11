@@ -49,7 +49,7 @@ template < typename H >
 arithmetic_impl_< H >::arithmetic_impl_( operation op ) : operation_(op) {}
 
 template < typename H >
-typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::operator()( value_type m, boost::function< value_type( value_type ) > operand ) // have to pass mask by value, since filter functors may change on call
+typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::operator()( value_type m, boost::function< value_type( value_type ) >& operand ) // have to pass mask by value, since filter functors may change on call
 {
     const cv::Mat & rhs = operand( m ).second;
     // TODO use type_as_string_here
