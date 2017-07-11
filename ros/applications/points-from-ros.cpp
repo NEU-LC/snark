@@ -60,6 +60,8 @@ void usage(bool detail)
     std::cerr << "    --topic=<topic>: name of the topic to subscribe to" << std::endl;
     std::cerr << "    --flush; call flush on stdout after each write (otherwise may buffer with small size messages)" << std::endl;
     std::cerr << "    --queue-size=[<n>]: ROS Subscriber queue size, default 1" << std::endl;
+    std::cerr << "    --max-datagram-size: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)" << std::endl;
+    std::cerr << "    --node-name: node name for this process, when not specified uses ros::init_options::AnonymousName flag" << std::endl;
     std::cerr << std::endl;
     std::cerr << "field names and format are extracted from the first message of the subscribed topic; following options wait until they receive a message" << std::endl;
     std::cerr << "    --output-fields; print field names and exit" << std::endl;
@@ -305,11 +307,21 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv, usage );
         std::string topic=options.value<std::string>("--topic");
         unsigned queue_size=options.value<unsigned>("--queue-size",1);
+        boost::optional<int> max_datagram_size=options.optional<int>("--max-datagram-size");
+        boost::optional<std::string> node_name=options.optional<std::string>("--node-name");
+        uint32_t node_options=0;
+        if(!node_name)
+        {
+            node_name="points_from_ros";
+            node_options=ros::init_options::AnonymousName;
+        }
         int arrrgc=1;
-        ros::init(arrrgc, argv,"points_from_ros", ros::init_options::AnonymousName);
+        ros::init(arrrgc, argv,*node_name,node_options);
         ros::NodeHandle ros_node;
         points points(options);
-        ros::Subscriber subsriber=ros_node.subscribe(topic,queue_size,&points::process,&points);
+        ros::TransportHints transport_hints;
+        if(max_datagram_size) {transport_hints=ros::TransportHints().maxDatagramSize(*max_datagram_size);}
+        ros::Subscriber subsriber=ros_node.subscribe(topic,queue_size,&points::process,&points,transport_hints);
         ros::spin();
         return 0;
     }
