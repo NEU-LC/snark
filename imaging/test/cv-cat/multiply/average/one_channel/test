@@ -1,0 +1,14 @@
+#!/bin/bash
+
+source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
+
+read cv_depth
+read mask_values
+
+cv_depth=${cv_depth:-f} # Default to type f
+
+csv-to-bin 6$cv_depth | 
+    cv-cat --input "no-header;rows=2;cols=3;type=$cv_depth" --output "no-header=0" | 
+    cv-cat "multiply=accumulated:average" | 
+    csv-from-bin "t,3ui,6$cv_depth" |
+    gawk '{ print "image[" NR "]=\"" $0 "\""  }'
