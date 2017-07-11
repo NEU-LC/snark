@@ -30,24 +30,21 @@
 #pragma once
 
 #include <string>
-#include <Eigen/Core>
-#include <boost/thread/pthread/mutex.hpp>
-#include <boost/shared_ptr.hpp>
 #include <opencv2/core/core.hpp>
 
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
-struct scale_by_mask_impl_ {
+struct load_impl_
+{
     typedef std::pair< H, cv::Mat > value_type;
-    boost::shared_ptr< boost::mutex > mutex_;
-    cv::Mat mask_;
-    
-    void apply_mask(cv::Mat& mat);
+    value_type value;
 
-    scale_by_mask_impl_( const std::string& mask_file );
+    // Set load as "bin" to load cv-cat format, else load using cv::imread
+    load_impl_( const std::string& filename, const std::string& load_as="" );
 
-    value_type operator()( const value_type& n );
+    value_type operator()( value_type ) { return value; }
 };
+
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

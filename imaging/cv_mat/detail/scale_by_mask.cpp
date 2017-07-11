@@ -37,14 +37,14 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <boost/thread/pthread/pthread_mutex_scoped_lock.hpp>
-#include "load-impl.h"
+#include "load_impl.h"
 
 namespace snark{ namespace cv_mat {  namespace impl {
     
 template < typename H >
 scale_by_mask_impl_< H >::scale_by_mask_impl_( const std::string& mask_file )
     : mutex_(new boost::mutex())
-    , mask_( load_impl_< H >(mask_file)( value_type() ).second )
+    , mask_( load_impl_< H >(mask_file, "bin")( value_type() ).second )
 {
     if( mask_.depth() != CV_32FC1 && mask_.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask, mask type must be floating point f or  d"); }
 }
@@ -59,9 +59,9 @@ void scale_by_mask_impl_< H >::apply_mask(cv::Mat& mat)
     else
     {
         cv::Mat mat_float;
-        mat.convertTo(mat_float, mask_.type());  // convert to float point                
+        mat.convertTo(mat_float, mask_.type());  // convert to floating point                
         cv::Mat masked = mat_float.mul(mask_);
-        masked.convertTo(mat, mat.type() );       // convert back to 
+        masked.convertTo(mat, mat.type() );       // convert back 
     }
 }
 

@@ -27,38 +27,38 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "load-impl.h"
+#pragma once
 
 #include <string>
-#include <fstream>
-#include <comma/base/exception.h>
-#include <comma/string/split.h>
-#include <comma/csv/format.h>
-#include <opencv2/highgui/highgui.hpp>
-#include "../serialization.h"
+#include <deque>
+#include <Eigen/Core>
+#include <boost/shared_ptr.hpp>
+#include <boost/function.hpp>
+#include <boost/optional.hpp>
+#include <opencv2/core/core.hpp>
+#include <comma/base/types.h>
 
 namespace snark{ namespace cv_mat { namespace impl {
+    
+// accumulated_type accumulated_type_to_str( const std::string& s );
 
 template < typename H >
-load_impl_< H >::load_impl_( const std::string& filename )
-{
-    const std::vector< std::string >& v = comma::split( filename, '.' );
-    if( v.back() == "bin" ) // quick and dirty
-    {
-        std::ifstream ifs( &filename[0] );
-        if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
-        serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
-        value = s.read< H >( ifs );
-        ifs.close();
-    }
-    else
-    {
-        value.second = cv::imread( filename, -1 );
-    }
-    if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
-}
+class accumulated_impl_ {
+public:
+    typedef std::pair< H, cv::Mat > value_type;
+    
+    // window_size: if given use Exponent Moving Average of specified size
+    // output_float_image: force output image to be float depth, else convert to input image depth
+    accumulated_impl_( boost::optional< comma::uint32 > window_size=boost::none );
+
+    value_type operator()( const value_type& n );
+private:
+    typedef boost::function< float( float input_value, float result_value, comma::uint64 count, unsigned int row, unsigned int col ) > apply_function_;
+    enum class accumulated_type { average, exponential_moving_average };
+    comma::uint64 count_;   // How many input images so far
+    cv::Mat result_;        // This is a float depth image
+    accumulated_type type_;
+    apply_function_ average_ema_;
+};
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
-
-template class snark::cv_mat::impl::load_impl_< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::load_impl_< std::vector< char > >;

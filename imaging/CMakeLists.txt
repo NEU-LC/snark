@@ -11,9 +11,11 @@ FILE( GLOB camera_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/camera/*.h )
 FILE( GLOB color_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/color/*.cpp )
 FILE( GLOB color_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/color/*.h )
 
-# Templates in cpp, sources order is important, todo: give cv_mat/detail its own lib
-FILE( GLOB cvmat_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/load-impl.cpp ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.cpp ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.cpp )
+FILE( GLOB cvmat_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.cpp )
 FILE( GLOB cvmat_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.h )
+
+FILE( GLOB cvmat_detail_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.h )
+FILE( GLOB cvmat_detail_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.cpp )
 
 FILE( GLOB stereo_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.cpp )
 FILE( GLOB stereo_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.h )
@@ -25,6 +27,7 @@ ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes}
                             ${camera_source} ${camera_includes}
                             ${color_source} ${color_includes}
                             ${cvmat_source} ${cvmat_includes}
+                            ${cvmat_detail_source} ${cvmat_detail_includes}
                             ${stereo_source} ${stereo_includes}
                             ${vegetation_source} ${vegetation_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
