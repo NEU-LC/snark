@@ -27,8 +27,9 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_POINT_CLOUD_APPLICATIONS_DETAIL_VECTOR_CALC_H
-#define DETAIL_VECTOR_CALC_H
+/// @author Navid Pirmarzdashti
+
+#pragma once
 #include <iostream>
 #include <comma/csv/stream.h>
 #include "../../../visiting/eigen.h"
@@ -428,4 +429,3 @@ template <> struct traits< vector_calc::vector_matrix >
 
 } } // namespace comma { namespace visiting {
     
-#endif
