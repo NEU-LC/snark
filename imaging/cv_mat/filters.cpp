@@ -81,6 +81,7 @@
 #include "detail/load_impl.h"
 #include "detail/scale_by_mask.h"
 #include "detail/accumulated.h"
+#include "detail/arithmetic_impl.h"
 
 namespace {
 
@@ -2767,6 +2768,10 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
 {
     typedef typename impl::filters< H >::value_type value_type_t;
     typedef typename impl::filters< H >::filter_type filter_type;
+    typedef typename filter_type::input_type input_type;
+    typedef typename filter_type::output_type output_type;
+    typedef boost::function< output_type( input_type ) > functor_type;
+    typedef typename make_filter< cv::Mat, H >::maker maker_t;
 
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter_type > f;
@@ -2782,7 +2787,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
             f.push_back( filter_type( accumulate_impl_< H >( how_many ), false ) );
         }
-        if( e[0] == "accumulated" )
+        else if( e[0] == "accumulated" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
             auto s = comma::split(e[1], ',');
@@ -2790,6 +2795,13 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             boost::optional< comma::uint32 > size;
             if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: expected window size as integer, got \"" << s[1] << "\"" ); }}
             f.push_back( filter_type( boost::bind< value_type_t >( impl::accumulated_impl_< H >( size ), _1 ), false ) );
+        }
+        else if( e[0] == "multiply" )
+        {
+             if( e.size() == 1 ) { COMMA_THROW( comma::exception, "multiply: please specify multiply filters" ); }
+             if( e.size() > 2 ) { COMMA_THROW( comma::exception, "multiply: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
+             functor_type operand_filters = maker_t( get_timestamp, '|', ':' )( e[1] );
+             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic_impl_< H >( arithmetic_impl_< H >::operation::multiply ), _1, operand_filters ) ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
@@ -3266,7 +3278,7 @@ static std::string usage_impl_()
     oss << "        division=<operand>; input image is divided by the operand image" << std::endl;
     oss << std::endl;
     oss << "            examples: multiply=load:scaled.bin; a single scaled image is multiplied to each input to give a corresponding result" << std::endl;
-    oss << "                      multiply=accumulated:average|threshold:0.5; the operand image is derived from accumated input data" << std::endl;
+    oss << "                      multiply=accumulated:average|threshold:0.5; the operand image is calculated from accumated input data" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations:" << std::endl;
     oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; for 3ub images as b,g,r: t,3ui,256ui,256ui,256ui, etc" << std::endl;
