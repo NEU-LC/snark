@@ -2198,6 +2198,15 @@ struct make_filter {
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
 static functor_type make_filter_functor( const std::vector< std::string >& e, const get_timestamp_functor& get_timestamp )
 {
+    if( e[0] == "accumulated" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
+        auto s = comma::split(e[1], ',');
+        if( s.front() != "average" ) { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
+        boost::optional< comma::uint32 > size;
+        if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: expected window size as integer, got \"" << s[1] << "\"" ); }}
+        return boost::bind< value_type_t >( impl::accumulated_impl_< H >( size ), _1 );
+    }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
@@ -2772,6 +2781,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
     typedef typename filter_type::output_type output_type;
     typedef boost::function< output_type( input_type ) > functor_type;
     typedef typename make_filter< cv::Mat, H >::maker maker_t;
+    typedef make_filter< cv::Mat, H > make_filter_t;
 
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter_type > f;
@@ -2789,12 +2799,8 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "accumulated" )
         {
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
-            auto s = comma::split(e[1], ',');
-            if( s.front() != "average" ) { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
-            boost::optional< comma::uint32 > size;
-            if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: expected window size as integer, got \"" << s[1] << "\"" ); }}
-            f.push_back( filter_type( boost::bind< value_type_t >( impl::accumulated_impl_< H >( size ), _1 ), false ) );
+            // This must be serial
+            f.push_back( filter_type( make_filter_t::make_filter_functor( e, get_timestamp ), false ) );
         }
         else if( e[0] == "multiply" )
         {
