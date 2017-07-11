@@ -46,20 +46,19 @@ template < typename H >
 class accumulated_impl_ {
 public:
     typedef std::pair< H, cv::Mat > value_type;
-    typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function;
     
     // window_size: if given use Exponent Moving Average of specified size
     // output_float_image: force output image to be float depth, else convert to input image depth
-    accumulated_impl_( boost::optional< comma::uint32 > window_size=boost::none, bool output_float_image=false );
+    accumulated_impl_( boost::optional< comma::uint32 > window_size=boost::none );
 
     value_type operator()( const value_type& n );
 private:
+    typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function_;
     enum class accumulated_type { average, exponential_moving_average };
     comma::uint64 count_;   // How many input images so far
     cv::Mat result_;        // This is a float depth image
     accumulated_type type_;
-    bool output_float_;
-    apply_function average_ema_;
+    apply_function_ average_ema_;
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

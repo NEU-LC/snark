@@ -2786,9 +2786,9 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
             auto s = comma::split(e[1], ',');
-            if( s.front() != "average" ) { COMMA_THROW(comma::exception, "accumulated: unrecignised operation: " << s.front()); }
-            boost::optional< comma::uint32 > size = boost::none;
-            if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: failed to cast window size to comma::uint32, got " << s[1]); }}
+            if( s.front() != "average" ) { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
+            boost::optional< comma::uint32 > size;
+            if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: expected window size as integer, got \"" << s[1] << "\"" ); }}
             f.push_back( filter_type( boost::bind< value_type_t >( impl::accumulated_impl_< H >( size ), _1 ), false ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
@@ -3034,8 +3034,9 @@ static std::string usage_impl_()
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
     oss << "        accumulated=<operation>[,<window>]: apply a pixel-wise operation to the images in a given sliding window" << std::endl;
-    oss << "            <operation>: average" << std::endl;
-    oss << "            <window>: number of images in the Exponential Moving Average window" << std::endl;
+    oss << "            <operation>" << std::endl;
+    oss << "                average: pixelwise average or exponential moving average" << std::endl;
+    oss << "            <window>: number of images to apply pixelwise operation to" << std::endl;
     oss << "                      default: all images from the beginning of the stream" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
@@ -3216,6 +3217,11 @@ static std::string usage_impl_()
     oss << "            naming conventions are the same as for the ratio operation; use '--help filters::linear-combination' for more examples and a detailed syntax explanation" << std::endl;
     oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
     oss << std::endl;
+    oss << "    basic drawing on images" << std::endl;
+    oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
+    oss << "        circle=<x>,<y>,<radius>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw circle; see cv::circle for details on parameters and defaults" << std::endl;
+    oss << "        rectangle,box=<x>,<y>,<x>,<y>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw rectangle; see cv::rectangle for details on parameters and defaults" << std::endl;
+    oss << std::endl;
     oss << "    morphology operations:" << std::endl;
     oss << "        blackhat[=<parameters>]; apply black-hat operation with the given parameters" << std::endl;
     oss << "        close[=<parameters>], closing[=<parameters>]; apply closing with the given parameters" << std::endl;
@@ -3250,11 +3256,6 @@ static std::string usage_impl_()
     oss << "                      \"dilate=cross,7,,,\"; apply dilation with a 7x7 cross anchored at the center" << std::endl;
     oss << "                      \"open=circle,7\"; apply opening with a radius 7 circle anchored at the center (note single parameter)" << std::endl;
     oss << "                      \"open=rectangle,7,3\"; apply opening with a 7x3 rectangle anchored at the center (note only two parameters)" << std::endl;
-    oss << std::endl;
-    oss << "    basic drawing on images" << std::endl;
-    oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
-    oss << "        circle=<x>,<y>,<radius>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw circle; see cv::circle for details on parameters and defaults" << std::endl;
-    oss << "        rectangle,box=<x>,<y>,<x>,<y>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw rectangle; see cv::rectangle for details on parameters and defaults" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations:" << std::endl;
     oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; for 3ub images as b,g,r: t,3ui,256ui,256ui,256ui, etc" << std::endl;

@@ -42,14 +42,6 @@
 #include "mat_iterator.h"
 
 namespace snark{ namespace cv_mat {  namespace impl {
-    
-// accumulated_type accumulated_type_to_str(const std::__cxx11::string& s)
-// {
-//     if( s == "average" ) { return accumulated_type::average; }
-//     else if( s == "max" ) { return accumulated_type::max; }
-//     else if( s == "min" ) { return accumulated_type::min; }
-//     else { COMMA_THROW( comma::exception, "accumulated=" << s << ", unknown accumulated operation"); }
-// }
 
 static float accumulated_average( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
@@ -65,8 +57,8 @@ static float accumulated_ema( float in, float avg, comma::uint64 count, comma::u
 }
 
 template < typename H >
-accumulated_impl_< H >::accumulated_impl_( boost::optional< comma::uint32 > window_size, bool output_float_image ) 
-    : count_(0), type_(accumulated_type::average), output_float_(output_float_image)
+accumulated_impl_< H >::accumulated_impl_( boost::optional< comma::uint32 > window_size ) 
+    : count_(0), type_(accumulated_type::average)
 {
     if( window_size ) 
     {
@@ -83,7 +75,7 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
 {
     ++count_;
     // This filter is not run in parallel, no locking required
-    if( result_.size() == cv::Size(0,0) ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
     switch (type_)  // call to parallel by row ranges
     {
@@ -92,7 +84,7 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
     }
     
     cv::Mat output; // copy as result_ will be changed next iteration
-    if( output_float_ || n.second.depth() == CV_32FC1 ) { result_.copyTo(output); } else { result_.convertTo(output, n.second.type()); }
+    if( n.second.depth() == CV_32FC1 ) { result_.copyTo(output); } else { result_.convertTo(output, n.second.type()); }
     return value_type(n.first, output); 
 }
 
