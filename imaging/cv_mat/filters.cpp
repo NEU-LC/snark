@@ -3256,6 +3256,17 @@ static std::string usage_impl_()
     oss << "                      \"dilate=cross,7,,,\"; apply dilation with a 7x7 cross anchored at the center" << std::endl;
     oss << "                      \"open=circle,7\"; apply opening with a radius 7 circle anchored at the center (note single parameter)" << std::endl;
     oss << "                      \"open=rectangle,7,3\"; apply opening with a 7x3 rectangle anchored at the center (note only two parameters)" << std::endl;
+    oss << "    arithmetic operations:" << std::endl;
+    oss << "        pixel-wise and channel-wise application of arithmetic to the input" << std::endl;
+    oss << "        the input and operand image must have the same dimension, depth, and channels" << std::endl;
+    oss << std::endl;
+    oss << "        muliply=<operand>; input image is multiplied by the operand image" << std::endl;
+    oss << "        subtract=<operand>; input image is subtracted by operand image" << std::endl;
+    oss << "        addition=<operand>; input image is added to by operand image" << std::endl;
+    oss << "        division=<operand>; input image is divided by the operand image" << std::endl;
+    oss << std::endl;
+    oss << "            examples: multiply=load:scaled.bin; a single scaled image is multiplied to each input to give a corresponding result" << std::endl;
+    oss << "                      multiply=accumulated:average|threshold:0.5; the operand image is derived from accumated input data" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations:" << std::endl;
     oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; for 3ub images as b,g,r: t,3ui,256ui,256ui,256ui, etc" << std::endl;
