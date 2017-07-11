@@ -60,7 +60,7 @@ typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::operator()( va
 template < typename H >
 typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::apply_(const value_type& m, const cv::Mat& operand )
 {
-    value_type n( m.first, cv::Mat(m.second.rows, m.second.cols, m.second.type()) );
+    value_type n( m.first, cv::Mat::zeros(m.second.rows, m.second.cols, m.second.type()) );
     switch(operation_)
     {
         case operation::multiply: cv::multiply(m.second, operand, n.second ); break;
