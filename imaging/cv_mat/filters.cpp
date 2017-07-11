@@ -2799,15 +2799,15 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "accumulated" )
         {
-            // This must be serial
+            // This must be serial, but it can be used in multiply=accumulated:average
             f.push_back( filter_type( make_filter_t::make_filter_functor( e, get_timestamp ), false ) );
         }
-        else if( e[0] == "multiply" )
+        else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" )
         {
-             if( e.size() == 1 ) { COMMA_THROW( comma::exception, "multiply: please specify multiply filters" ); }
-             if( e.size() > 2 ) { COMMA_THROW( comma::exception, "multiply: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
+             if( e.size() == 1 ) { COMMA_THROW( comma::exception, e[0] << ": please specify " << e[0] << " filters" ); }
+             if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
              functor_type operand_filters = maker_t( get_timestamp, '|', ':' )( e[1] );
-             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic_impl_< H >( arithmetic_impl_< H >::operation::multiply ), _1, operand_filters ) ) );
+             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic_impl_< H >( arithmetic_impl_< H >::str_to_operation(e[0]) ), _1, operand_filters ) ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
@@ -3222,6 +3222,18 @@ static std::string usage_impl_()
     oss << "            the number of arguments shall be the same as the number of input channels" << std::endl;
     oss << "            example: \"swap-channels=2,1,0\"; revert the order of RGB channels with R becoming B and B becoming R; G is mapped onto itself" << std::endl;
     oss << std::endl;
+    oss << "    arithmetic operations:" << std::endl;
+    oss << "        pixel-wise and channel-wise application of arithmetic to the input" << std::endl;
+    oss << "        the input and operand image must have the same dimension, depth, and channels" << std::endl;
+    oss << std::endl;
+    oss << "        muliply=<operand>; input image is multiplied by the operand image" << std::endl;
+    oss << "        subtract=<operand>; input image is subtracted by operand image" << std::endl;
+    oss << "        add=<operand>; input image is added to by operand image" << std::endl;
+    oss << "        divide=<operand>; input image is divided by the operand image" << std::endl;
+    oss << std::endl;
+    oss << "            examples: multiply=load:scaled.bin; a single scaled image is multiplied to each input to give a corresponding result" << std::endl;
+    oss << "                      divide=accumulated:average|threshold:0.5; the operand image is calculated from accumated input data" << std::endl;
+    oss << std::endl;
     oss << "    operations combining the data of multiple channels:" << std::endl;
     oss << "        ratio=(<a1>r + <a2>g + ... + <ac>)/(<b1>r + <b2>g + ... + <bc>): output grey-scale image that is a ratio of linear combinations of input channels" << std::endl;
     oss << "            with given coefficients and offsets; see below for examples, use '--help filters::ratio' for the detailed explanation of the syntax and examples" << std::endl;
@@ -3274,17 +3286,6 @@ static std::string usage_impl_()
     oss << "                      \"dilate=cross,7,,,\"; apply dilation with a 7x7 cross anchored at the center" << std::endl;
     oss << "                      \"open=circle,7\"; apply opening with a radius 7 circle anchored at the center (note single parameter)" << std::endl;
     oss << "                      \"open=rectangle,7,3\"; apply opening with a 7x3 rectangle anchored at the center (note only two parameters)" << std::endl;
-    oss << "    arithmetic operations:" << std::endl;
-    oss << "        pixel-wise and channel-wise application of arithmetic to the input" << std::endl;
-    oss << "        the input and operand image must have the same dimension, depth, and channels" << std::endl;
-    oss << std::endl;
-    oss << "        muliply=<operand>; input image is multiplied by the operand image" << std::endl;
-    oss << "        subtract=<operand>; input image is subtracted by operand image" << std::endl;
-    oss << "        addition=<operand>; input image is added to by operand image" << std::endl;
-    oss << "        division=<operand>; input image is divided by the operand image" << std::endl;
-    oss << std::endl;
-    oss << "            examples: multiply=load:scaled.bin; a single scaled image is multiplied to each input to give a corresponding result" << std::endl;
-    oss << "                      multiply=accumulated:average|threshold:0.5; the operand image is calculated from accumated input data" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations:" << std::endl;
     oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; for 3ub images as b,g,r: t,3ui,256ui,256ui,256ui, etc" << std::endl;

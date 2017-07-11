@@ -34,6 +34,17 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 
 namespace snark{ namespace cv_mat { namespace impl {
+    
+template < typename H >
+typename arithmetic_impl_< H >::operation arithmetic_impl_< H >::str_to_operation(const std::string& s)
+{
+    if( s == "multiply" ) { return operation::multiply; }
+    else if( s == "divide" ) { return operation::divide; }
+    else if( s == "subtract" ) { return operation::subtract; }
+    else if( s == "add" ) { return operation::add; }
+    else { COMMA_THROW(comma::exception, "unknown arithmetic_impl_ operation: " << s ); }
+}
+
 template < typename H >
 arithmetic_impl_< H >::arithmetic_impl_( operation op ) : operation_(op) {}
 
@@ -43,11 +54,7 @@ typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::operator()( va
     const cv::Mat & rhs = operand( m ).second;
     // TODO use type_as_string_here
     if ( rhs.type() != m.second.type() ) { COMMA_THROW( comma::exception, "the operand type is " << rhs.type() << ", and does not match input type: " << m.second.type() ); }
-    
-    value_type n;
-    n.first = m.first;
-    n.second = m.second;
-    return apply_(n, rhs);
+    return apply_(m, rhs);
 }
 
 template < typename H >
@@ -58,9 +65,14 @@ typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::apply_(const v
     switch(operation_)
     {
         case operation::multiply:
-            n.second = m.second.mul(operand);
-        default:
-            break;
+//             n.second = m.second.mul(operand);
+            cv::multiply(m.second, operand, n.second );
+        case operation::subtract:
+            cv::subtract(m.second, operand, n.second );
+        case operation::divide:
+            cv::divide(m.second, operand, n.second );
+        case operation::add:
+            cv::add(m.second, operand, n.second );
     }
     
     return n;
