@@ -81,7 +81,6 @@
 #include "detail/filter_impl.h"
 #include "detail/utils.h"
 #include "detail/load_impl.h"
-#include "detail/scale_by_mask.h"
 #include "detail/accumulated.h"
 #include "detail/arithmetic_impl.h"
 
@@ -2574,11 +2573,6 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if( morphology_operations.find( e[0] ) != morphology_operations.end() )
     {
         return std::make_pair( boost::bind< value_type_t >( morphology_impl_< H >, _1, morphology_operations.at( e[0] ), parse_structuring_element( e ) ), true );
-    }
-    if( e[0] == "scale-by-mask" )
-    {
-        if( e.size() != 2 ) { COMMA_THROW( comma::exception, "scale-by-mask: please specify expected mask file" ); }
-        return std::make_pair( boost::bind< value_type_t >( impl::scale_by_mask_impl_< H >(e[1]), _1 ), true );
     }
     if( e[0] == "skeleton" || e[0] == "thinning" )
     {
