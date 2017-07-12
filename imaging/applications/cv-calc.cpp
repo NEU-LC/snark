@@ -53,7 +53,7 @@ static void usage( bool verbose=false )
     std::cerr << "    mean" << std::endl;
     std::cerr << "        output image means for all image channels appended to image header" << std::endl;
     std::cerr << "    roi" << std::endl;
-    std::cerr << "        given cv image data associated with a region of interest, either set everything outside the region of interest to zero or clip it" << std::endl;
+    std::cerr << "        given cv image data associated with a region of interest, either set everything outside the region of interest to zero or crop it" << std::endl;
     std::cerr << "    stride" << std::endl;
     std::cerr << "        stride through the image, output images of kernel size for each pixel" << std::endl;
     std::cerr << std::endl;
@@ -87,7 +87,7 @@ static void usage( bool verbose=false )
     std::cerr << "                                          --non-zero=size,,1: output images with all pixels zero (makes sense only when used with --filters" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
-    std::cerr << "        --clip; todo: clip to roi and output instead of setting region outside of roi to zero" << std::endl;
+    std::cerr << "        --crop; todo: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
     std::cerr << "        --discard; discards frames where the roi is not seen" << std::endl;
     std::cerr << "        --show-partial; by default no partial roi is shown in image; use option to change behaviour" << std::endl;
     std::cerr << std::endl;
@@ -421,7 +421,7 @@ int main( int ac, char** av )
         else if( operation == "roi" )
         {
             comma::csv::binary< ::extents > binary( csv );
-            //bool clip = options.exists( "--clip" );
+            bool crop = options.exists( "--crop" );
             bool flush = options.exists("--flush");
             bool show_partial = options.exists("--show-partial");
             ::extents ext;
@@ -454,10 +454,19 @@ int main( int ac, char** av )
                 if( width < 0 || height < 0 ) { std::cerr << name << "roi's width and height can not be negative. Failed on image/frame number: " << count << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1; }                
                 if( ext.min.x >= 0 && ext.min.y >=0 && (ext.min.x + width < mat.cols) && (ext.min.y + height < mat.rows ) ) 
                 {
-                    mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(0);
-                    mat.setTo( cv::Scalar(0), mask );
-                    mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(1);
-                    serialization.write_to_stdout( p, flush );
+                    if( crop )
+                    {
+                        cv::Mat cropped;
+                        p.second( cv::Rect( ext.min.x, ext.min.y, width, height ) ).copyTo( cropped );
+                        serialization.write_to_stdout( std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat >( p.first, cropped ) );
+                    }
+                    else
+                    {
+                        mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(0);
+                        mat.setTo( cv::Scalar(0), mask );
+                        mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(1);
+                        serialization.write_to_stdout( p, flush );
+                    }
                 }
             }
             return 0;
