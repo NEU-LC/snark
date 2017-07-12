@@ -30,37 +30,12 @@
 #pragma once
 
 #include <string>
-#include <deque>
-#include <Eigen/Core>
-#include <boost/shared_ptr.hpp>
-#include <boost/function.hpp>
-#include <boost/optional.hpp>
 #include <opencv2/core/core.hpp>
-#include <comma/base/types.h>
-#include "filter_impl.h"
 
-namespace snark{ namespace cv_mat { namespace impl {
+namespace snark{ namespace cv_mat {
     
-// accumulated_type accumulated_type_to_str( const std::string& s );
-
-template < typename H >
-class accumulated_impl_ : filter_impl_ {
-public:
-    typedef std::pair< H, cv::Mat > value_type;
-    static constexpr bool parallel = false;     // CAN NOT run parallel
-    
-    // window_size: if given use Exponent Moving Average of specified size
-    // output_float_image: force output image to be float depth, else convert to input image depth
-    accumulated_impl_( boost::optional< comma::uint32 > window_size=boost::none );
-
-    value_type operator()( const value_type& n );
-private:
-    typedef boost::function< float( float input_value, float result_value, comma::uint64 count, unsigned int row, unsigned int col ) > apply_function_;
-    enum class accumulated_type { average, exponential_moving_average };
-    comma::uint64 count_;   // How many input images so far
-    cv::Mat result_;        // This is a float depth image
-    accumulated_type type_;
-    apply_function_ average_ema_;
+struct filter_impl_ {
+    static constexpr bool parallel = true;
 };
 
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+} }  // namespace snark { namespace cv_mat {
