@@ -2697,7 +2697,8 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, e[0] << ": please specify " << e[0] << " filters" ); }
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
              functor_type operand_filters = maker_t( get_timestamp, '|', ':' )( e[1] );
-             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic_impl_< H >( arithmetic_impl_< H >::str_to_operation(e[0]) ), _1, operand_filters ), false ) );
+             auto op = arithmetic_impl_< H >::str_to_operation(e[0]);
+             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic_impl_< H >( op ), _1, operand_filters ), false ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
