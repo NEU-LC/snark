@@ -22,4 +22,4 @@ csv-to-bin 6$cv_depth |
     cv-cat --input "no-header;rows=2;cols=1;type=3$cv_depth" --output "no-header=0" | 
     cv-cat "multiply=load:$mask_file" | 
     csv-from-bin "t,3ui,6$cv_depth" |
-    gawk '{ print "image[" NR "]=\"" $0 "\""  }'
+    gawk '{ print "image[" NR-1 "]=\"" $0 "\""  }'
