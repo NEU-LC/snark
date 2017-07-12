@@ -2428,16 +2428,6 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
         }
         return boost::bind< value_type_t >( resize_impl_< H >, _1, width, height, w, h, interpolation );
     }
-    if( e[0] == "mask" )
-    {
-         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
-         if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
-         snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
-         maker m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
-         composer c( m );
-         functor_type f = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer >( c ), result );
-         return boost::bind< value_type_t >( mask_impl_< H >(), _1, f );
-    }
     else if( e[0] == "timestamp" ) { return timestamp_impl_< H >( get_timestamp ); }
     else if( e[0] == "transpose" ) { return transpose_impl_< H >; }
     else if( e[0] == "split" ) { return split_impl_< H >; }
@@ -2666,6 +2656,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
     typedef typename filter_type::output_type output_type;
     typedef boost::function< output_type( input_type ) > functor_type;
     typedef typename make_filter< cv::Mat, H >::maker maker_t;
+    typedef typename make_filter< cv::Mat, H >::composer composer_t;
     typedef make_filter< cv::Mat, H > make_filter_t;
 
     std::vector< std::string > v = comma::split( how, ';' );
@@ -2682,10 +2673,22 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
             f.push_back( filter_type( accumulate_impl_< H >( how_many ), false ) );
         }
+        // todo
+        // - move accumulated to make_filter?
         else if( e[0] == "accumulated" )
         {
             // This must be serial, but it can be used in multiply=accumulated:average
             f.push_back( filter_type( make_filter_t::make_filter_functor( e, get_timestamp ), false ) );
+        }
+        else if( e[0] == "mask" )
+        {
+             if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
+             if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
+             snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
+             maker_t m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
+             composer_t c( m );
+             functor_type functor = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer >( c ), result );
+             f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, functor ), true ) );   // TODO decide if parallel is possible
         }
         else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" )
         {
@@ -2929,6 +2932,13 @@ typename impl::filters< H >::value_type impl::filters< H >::apply( std::vector< 
     for( std::size_t i = 0; i < filters.size(); m = filters[ i++ ].filter_function( m ) );
     return m;
 }
+
+//TODO
+// - document load_impl_
+//      - show using load with file descriptor
+// - tear down scale-by-mask: 
+// - add example in fork arithmetic operations
+// - 
 
 template < typename H >
 static std::string usage_impl_()
