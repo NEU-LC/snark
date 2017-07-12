@@ -3080,10 +3080,10 @@ static std::string usage_impl_()
     oss << "                            cv-cat \"mask=ratio:(r + b - g)/( 1 + r + b )|convert-to:ub|threshold:4 xor ratio:2./(1.5e1 - g + r)|convert-to:ub|threshold:5\"" << std::endl;
     oss << std::endl;
     oss << "       'forked' arithmetic operations" << std::endl;
-    oss << "           add=<filters>: todo" << std::endl;
-    oss << "           divide=<filters>: todo" << std::endl;
-    oss << "           multiply=<filters>: todo" << std::endl;
-    oss << "           subtract=<filters>: todo" << std::endl;
+    oss << "           add=<filters>: forked image is pixelwise added to the input image, see cv::add()" << std::endl;
+    oss << "           divide=<filters>: forked image is pixelwise divided to the input image, see cv::divide()" << std::endl;
+    oss << "           multiply=<filters>: forked image is pixelwise multiplied to the input image, see cv::multiply()" << std::endl;
+    oss << "           subtract=<filters>: forked image is pixelwise subtract to the input image, see cv::subtract()" << std::endl;
     oss << std::endl;
     oss << "    operations on subsets of columns, rows, or channels" << std::endl;
     oss << "        bands-to-cols=x,w[,x,w][,method:<method-name>,output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
