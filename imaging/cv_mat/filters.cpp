@@ -2682,14 +2682,6 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
             f.push_back( filter_type( accumulate_impl_< H >( how_many ), false ) );
         }
-        // todo
-        // - move accumulated to make_filter?
-        else if( e[0] == "accumulated" )
-        {
-            // This must be serial, but it can be used in multiply=accumulated:average
-            // TODO tear down, no longer needed
-            f.push_back( make_filter_t::make_filter_functor( e, get_timestamp ) );
-        }
         else if( e[0] == "mask" )
         {
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
