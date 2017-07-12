@@ -2932,10 +2932,10 @@ typename impl::filters< H >::value_type impl::filters< H >::apply( std::vector< 
 }
 
 //TODO
-// - document load_impl_
-//      - show using load with file descriptor
-// - tear down scale-by-mask: 
-// - add example in fork arithmetic operations
+// done - document load_impl_
+// done     - show using load with file descriptor
+// done - tear down scale-by-mask: 
+// done - add example in fork arithmetic operations
 // - 
 
 template < typename H >
@@ -2988,10 +2988,16 @@ static std::string usage_impl_()
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
-    oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with mask filter" << std::endl;
+    oss << "        load=<filename>[,type]: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
+    oss << "                         <type>: explicitly specify file type, default: use filename extension" << std::endl;
     oss << "                         supported file types by filename extension:" << std::endl;
     oss << "                             - .bin: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
     oss << "                             - otherwise whatever cv::imread supports" << std::endl;
+    oss << "            examples:" << std::endl;
+    oss << "                loading cv-cat image" << std::endl;
+    oss << "                        cv-cat \"load=image.bin\"" << std::endl;
+    oss << "                a contrived example that loads from a file descriptor" << std::endl;
+    oss << "                        cv-cat \"load=\"<( cat image.bin )\",bin\"" << std::endl;
     oss << "        log=<options>: write images to files" << std::endl;
     oss << "            log=<filename>: write images to a single file" << std::endl;
     oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
@@ -3089,8 +3095,8 @@ static std::string usage_impl_()
     oss << "               examples:" << std::endl;
     oss << "                    multiply operation with accumulated and threshold sub filters" << std::endl;
     oss << "                        cat images.bin | cv-cat \"multiply=accumulated:average,5|threshold:0.5,1.0\" >results.bin" << std::endl;
-    oss << "                    add operation with load filter and file descriptor" << std::endl;
-    oss << "                        cat images.bin | cv-cat \"add=load:\"<( $commands )\",bin\" >results.bin" << std::endl;
+    oss << "                    scaling input images by a mask file, input type:  3ub, mask type: 3f" << std::endl;
+    oss << "                        cat images.bin | cv-cat \"convert-to=f;multiply=load:mask.bin;convert-to=ub\" >results.bin" << std::endl;
     oss << std::endl;
     oss << "    operations on subsets of columns, rows, or channels" << std::endl;
     oss << "        bands-to-cols=x,w[,x,w][,method:<method-name>,output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
