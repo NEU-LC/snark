@@ -235,13 +235,7 @@ static std::string make_filename( const boost::posix_time::ptime& t, const std::
 
 static const boost::unordered_map< std::string, int > types_ = impl::fill_types_();
 
-std::string type_as_string( int t ) // to avoid compilation warning
-{
-    static const boost::unordered_map< int, std::string > types_as_string = impl::fill_types_as_string_();
-    boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
-    return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
-}
-
+std::string type_as_string( int t ) { return impl::type_as_string(t); }
 
 template < typename H >
 struct cvt_color_impl_ {

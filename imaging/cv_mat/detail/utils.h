@@ -43,6 +43,8 @@ boost::unordered_map< std::string, unsigned int > fill_cvt_color_types_();
 
 cv::Scalar scalar_from_strings( const std::string* begin, unsigned int size );
 
-unsigned int cvt_color_type_from_string( const std::string& t ); // to avoid compilation warning
+unsigned int cvt_color_type_from_string( const std::string& t );
+
+std::string type_as_string( int t );
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

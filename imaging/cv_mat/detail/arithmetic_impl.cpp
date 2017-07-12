@@ -32,6 +32,7 @@
 #include <string>
 #include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
+#include "utils.h"
 
 namespace snark{ namespace cv_mat { namespace impl {
     
@@ -42,7 +43,7 @@ typename arithmetic_impl_< H >::operation arithmetic_impl_< H >::str_to_operatio
     else if( s == "divide" ) { return operation::divide; }
     else if( s == "subtract" ) { return operation::subtract; }
     else if( s == "add" ) { return operation::add; }
-    else { COMMA_THROW(comma::exception, "unknown arithmetic_impl_ operation: " << s ); }
+    else { COMMA_THROW(comma::exception, "unknown arithmetic operation: \"" << s << "\", expected: multiply, add, subtract or divide" ); }
 }
 
 template < typename H >
@@ -52,8 +53,7 @@ template < typename H >
 typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::operator()( value_type m, boost::function< value_type( value_type ) >& operand ) // have to pass mask by value, since filter functors may change on call
 {
     const cv::Mat & rhs = operand( m ).second;
-    // TODO use type_as_string_here
-    if ( rhs.type() != m.second.type() ) { COMMA_THROW( comma::exception, "the operand type is " << rhs.type() << ", and does not match input type: " << m.second.type() ); }
+    if ( rhs.type() != m.second.type() ) { COMMA_THROW( comma::exception, "the operand type is " << type_as_string( rhs.type() ) << ", and does not match input type: " << type_as_string( m.second.type() ) ); }
     return apply_(m, rhs);
 }
 

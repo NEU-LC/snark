@@ -150,4 +150,11 @@ unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid comp
     return it->second;
 }
 
+std::string type_as_string( int t ) // to avoid compilation warning
+{
+    static const boost::unordered_map< int, std::string > types_as_string = impl::fill_types_as_string_();
+    boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
+    return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
+}
+
 } } }  // namespace snark { namespace cv_mat { namespace impl {

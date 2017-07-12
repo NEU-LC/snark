@@ -41,12 +41,10 @@ class arithmetic_impl_
 {
 public:
     typedef std::pair< H, cv::Mat > value_type;
-//     enum class operation { multiply, subtract, addition, division };
     enum class operation { multiply, subtract, divide, add };
 
     static operation str_to_operation(const std::string& s); 
     
-    // Set load as "bin" to load cv-cat format, else load using cv::imread
     arithmetic_impl_( operation op );
 
     value_type operator()( value_type n, boost::function< value_type( value_type ) >& operand );
