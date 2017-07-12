@@ -3032,7 +3032,6 @@ static std::string usage_impl_()
     oss << "                                  mask number of channels" << std::endl;
     oss << "                                      1: apply the same mask to each channel of the image" << std::endl;
     oss << "                                      same as the input image: apply to each channel the corresponding channel of the mask" << std::endl;
-    oss << "                                  note: for performance's sake, when input image depth is f or d, use the same mask depth: d -> d, and f -> f" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;

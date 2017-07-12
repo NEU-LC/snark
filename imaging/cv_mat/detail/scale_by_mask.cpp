@@ -49,21 +49,21 @@ scale_by_mask_impl_< H >::scale_by_mask_impl_( const std::string& mask_file )
     if( mask_.depth() != CV_32FC1 && mask_.depth() != CV_64FC1 )  { COMMA_THROW(comma::exception, "failed scale-by-mask, mask type must be floating point f or  d"); }
 }
 
-template < typename H >
-void scale_by_mask_impl_< H >::apply_mask(cv::Mat& mat)
-{
-    if( mask_.depth() == mat.depth() )
-    { 
-        mat = mat.mul(mask_);
-    }
-    else
-    {
-        cv::Mat mat_float;
-        mat.convertTo(mat_float, mask_.type());  // convert to floating point                
-        cv::Mat masked = mat_float.mul(mask_);
-        masked.convertTo(mat, mat.type() );       // convert back 
-    }
-}
+// template < typename H >
+// void scale_by_mask_impl_< H >::apply_mask(cv::Mat& mat)
+// {
+//     if( mask_.depth() == mat.depth() )
+//     { 
+//         mat = mat.mul(mask_);
+//     }
+//     else
+//     {
+//         cv::Mat mat_float;
+//         mat.convertTo(mat_float, mask_.type());  // convert to floating point                
+//         cv::Mat masked = mat_float.mul(mask_);
+//         masked.convertTo(mat, mat.type() );       // convert back 
+//     }
+// }
 
 template < typename H >
 typename scale_by_mask_impl_< H >::value_type scale_by_mask_impl_< H >::operator()( const typename scale_by_mask_impl_< H >::value_type& n )
@@ -81,7 +81,8 @@ typename scale_by_mask_impl_< H >::value_type scale_by_mask_impl_< H >::operator
         }
     }        
     if( mask_.channels() != m.second.channels() ) { COMMA_THROW(comma::exception, "mask_ file has more channels than input mat: " << mask_.channels() << " > " << m.second.channels()); }        
-    apply_mask( m.second );
+    
+    cv::multiply( m.second, mask_, m.second, 1.0, m.second.type() );
     return m;
 }
 

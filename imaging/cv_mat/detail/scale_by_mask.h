@@ -42,8 +42,8 @@ struct scale_by_mask_impl_ {
     typedef std::pair< H, cv::Mat > value_type;
     boost::shared_ptr< boost::mutex > mutex_;
     cv::Mat mask_;
-    
-    void apply_mask(cv::Mat& mat);
+/*    
+    void apply_mask(cv::Mat& mat); */
 
     scale_by_mask_impl_( const std::string& mask_file );
 
