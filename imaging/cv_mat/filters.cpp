@@ -78,6 +78,7 @@
 #include "depth_traits.h"
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
+#include "detail/utils.h"
 #include "detail/load_impl.h"
 #include "detail/scale_by_mask.h"
 #include "detail/accumulated.h"
@@ -232,115 +233,16 @@ static std::string make_filename( const boost::posix_time::ptime& t, const std::
     return ss.str();
 }
 
-static boost::unordered_map< std::string, int > fill_types_()
-{
-    boost::unordered_map< std::string, int > types;
-    types[ "CV_8UC1" ] = types[ "ub" ] = CV_8UC1;
-    types[ "CV_8UC2" ] = types[ "2ub" ] = CV_8UC2;
-    types[ "CV_8UC3" ] = types[ "3ub" ] = CV_8UC3;
-    types[ "CV_8UC4" ] = types[ "4ub" ] = CV_8UC4;
-    types[ "CV_8SC1" ] = types[ "b" ] = CV_8SC1;
-    types[ "CV_8SC2" ] = types[ "2b" ] = CV_8SC2;
-    types[ "CV_8SC3" ] = types[ "3b" ] = CV_8SC3;
-    types[ "CV_8SC4" ] = types[ "4b" ] = CV_8SC4;
-    types[ "CV_16UC1" ] = types[ "uw" ] = CV_16UC1;
-    types[ "CV_16UC2" ] = types[ "2uw" ] = CV_16UC2;
-    types[ "CV_16UC3" ] = types[ "3uw" ] = CV_16UC3;
-    types[ "CV_16UC4" ] = types[ "4uw" ] = CV_16UC4;
-    types[ "CV_16SC1" ] = types[ "w" ] = CV_16SC1;
-    types[ "CV_16SC2" ] = types[ "2w" ] = CV_16SC2;
-    types[ "CV_16SC3" ] = types[ "3w" ] = CV_16SC3;
-    types[ "CV_16SC4" ] = types[ "4w" ] = CV_16SC4;
-    types[ "CV_32SC1" ] = types[ "i" ] = CV_32SC1;
-    types[ "CV_32SC2" ] = types[ "2i" ] = CV_32SC2;
-    types[ "CV_32SC3" ] = types[ "3i" ] = CV_32SC3;
-    types[ "CV_32SC4" ] = types[ "4i" ] = CV_32SC4;
-    types[ "CV_32FC1" ] = types[ "f" ] = CV_32FC1;
-    types[ "CV_32FC2" ] = types[ "2f" ] = CV_32FC2;
-    types[ "CV_32FC3" ] = types[ "3f" ] = CV_32FC3;
-    types[ "CV_32FC4" ] = types[ "4f" ] = CV_32FC4;
-    types[ "CV_64FC1" ] = types[ "d" ] = CV_64FC1;
-    types[ "CV_64FC2" ] = types[ "2d" ] = CV_64FC2;
-    types[ "CV_64FC3" ] = types[ "3d" ] = CV_64FC3;
-    types[ "CV_64FC4" ] = types[ "4d" ] = CV_64FC4;
-    return types;
-}
-
-static boost::unordered_map< int, std::string > fill_types_as_string_()
-{
-    boost::unordered_map< int, std::string > types;
-    types[ CV_8UC1 ] = "CV_8UC1";
-    types[ CV_8UC2 ] = "CV_8UC2";
-    types[ CV_8UC3 ] = "CV_8UC3";
-    types[ CV_8UC4 ] = "CV_8UC4";
-    types[ CV_8SC1 ] = "CV_8SC1";
-    types[ CV_8SC2 ] = "CV_8SC2";
-    types[ CV_8SC3 ] = "CV_8SC3";
-    types[ CV_8SC4 ] = "CV_8SC4";
-    types[ CV_16UC1 ] = "CV_16UC1";
-    types[ CV_16UC2 ] = "CV_16UC2";
-    types[ CV_16UC3 ] = "CV_16UC3";
-    types[ CV_16UC4 ] = "CV_16UC4";
-    types[ CV_16SC1 ] = "CV_16SC1";
-    types[ CV_16SC2 ] = "CV_16SC2";
-    types[ CV_16SC3 ] = "CV_16SC3";
-    types[ CV_16SC4 ] = "CV_16SC4";
-    types[ CV_32SC1 ] = "CV_32SC1";
-    types[ CV_32SC2 ] = "CV_32SC2";
-    types[ CV_32SC3 ] = "CV_32SC3";
-    types[ CV_32SC4 ] = "CV_32SC4";
-    types[ CV_32FC1 ] = "CV_32FC1";
-    types[ CV_32FC2 ] = "CV_32FC2";
-    types[ CV_32FC3 ] = "CV_32FC3";
-    types[ CV_32FC4 ] = "CV_32FC4";
-    types[ CV_64FC1 ] = "CV_64FC1";
-    types[ CV_64FC2 ] = "CV_64FC2";
-    types[ CV_64FC3 ] = "CV_64FC3";
-    types[ CV_64FC4 ] = "CV_64FC4";
-    return types;
-}
-
-static const boost::unordered_map< std::string, int > types_ = fill_types_();
-static const boost::unordered_map< int, std::string > types_as_string = fill_types_as_string_();
+static const boost::unordered_map< std::string, int > types_ = impl::fill_types_();
 
 std::string type_as_string( int t ) // to avoid compilation warning
 {
+    static const boost::unordered_map< int, std::string > types_as_string = impl::fill_types_as_string_();
     boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
 }
 
-static boost::unordered_map< std::string, unsigned int > fill_cvt_color_types_()
-{
-    boost::unordered_map<std::string, unsigned int> types;
-    //note RGB is exactly the same as BGR
-    types[ "CV_BGR2GRAY" ] = types[ "BGR,GRAY" ] = types[ "CV_RGB2GRAY" ] = types[ "RGB,GRAY" ] = CV_BGR2GRAY;
-    types[ "CV_GRAY2BGR" ] = types[ "GRAY,BGR" ] = types[ "CV_GRAY2RGB" ] = types[ "GRAY,RGB" ] = CV_GRAY2BGR;
-    types[ "CV_BGR2XYZ" ] = types[ "BGR,XYZ" ] = types[ "CV_RGB2XYZ" ] = types[ "RGB,XYZ" ] = CV_BGR2XYZ;
-    types[ "CV_XYZ2BGR" ] = types[ "XYZ,BGR" ] = types[ "CV_XYZ2RGB" ] = types[ "XYZ,RGB" ] = CV_XYZ2BGR;
-    types[ "CV_BGR2HSV" ] = types[ "BGR,HSV" ] = types[ "CV_RGB2HSV" ] = types[ "RGB,HSV" ] = CV_BGR2HSV;
-    types[ "CV_HSV2BGR" ] = types[ "HSV,BGR" ] = types[ "CV_HSV2RGB" ] = types[ "HSV,RGB" ] = CV_HSV2BGR;
-    types[ "CV_BGR2Lab" ] = types[ "BGR,Lab" ] = types[ "CV_RGB2Lab" ] = types[ "RGB,Lab" ] = CV_BGR2Lab;
-    types[ "CV_Lab2BGR" ] = types[ "Lab,BGR" ] = types[ "CV_Lab2RGB" ] = types[ "Lab,RGB" ] = CV_Lab2BGR;
-    types[ "CV_BayerBG2BGR" ] = types[ "BayerBG,BGR" ] = types[ "CV_BayerBG2RGB" ] = types[ "BayerBG,RGB" ] = CV_BayerBG2BGR;
-    types[ "CV_BayerGB2BGR" ] = types[ "BayerGB,BGR" ] = types[ "CV_BayerGB2RGB" ] = types[ "BayerGB,RGB" ] = CV_BayerGB2BGR;
-    types[ "CV_BayerRG2BGR" ] = types[ "BayerRG,BGR" ] = types[ "CV_BayerRG2RGB" ] = types[ "BayerRG,RGB" ] = CV_BayerRG2BGR;
-    types[ "CV_BayerGR2BGR" ] = types[ "BayerGR,BGR" ] = types[ "CV_BayerGR2RGB" ] = types[ "BayerGR,RGB" ] = CV_BayerGR2BGR;
-    types[ "CV_BayerBG2GRAY" ] = types[ "BayerBG,GRAY" ] = CV_BayerBG2GRAY;
-    types[ "CV_BayerGB2GRAY" ] = types[ "BayerGB,GRAY" ] = CV_BayerGB2GRAY;
-    types[ "CV_BayerRG2GRAY" ] = types[ "BayerRG,GRAY" ] = CV_BayerRG2GRAY;
-    types[ "CV_BayerGR2GRAY" ] = types[ "BayerGR,GRAY" ] = CV_BayerGR2GRAY;
-    types[ "CV_BGR2RGB" ] = types[ "BGR,RGB" ] = CV_BGR2RGB;
-    types[ "CV_RGB2BGR" ] = types[ "RGB,BGR" ] = CV_RGB2BGR;
-    return types;
-}
 
-static boost::unordered_map< std::string, unsigned int > cvt_color_types_ = fill_cvt_color_types_();
-unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid compilation warning
-{
-    boost::unordered_map< std::string, unsigned int >::const_iterator it = cvt_color_types_.find( t );
-    if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); }
-    return it->second;
-}
 template < typename H >
 struct cvt_color_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
@@ -354,18 +256,6 @@ struct cvt_color_impl_ {
     }
 };
 
-static cv::Scalar scalar_from_strings( const std::string* begin, unsigned int size )
-{
-    switch( size )
-    {
-        case 1: return cv::Scalar( boost::lexical_cast< float >( begin[0] ) );
-        case 2: return cv::Scalar( boost::lexical_cast< float >( begin[0] ), boost::lexical_cast< float >( begin[1] ) );
-        case 3: return cv::Scalar( boost::lexical_cast< float >( begin[0] ), boost::lexical_cast< float >( begin[1] ), boost::lexical_cast< float >( begin[2] ) );
-        case 4: return cv::Scalar( boost::lexical_cast< float >( begin[0] ), boost::lexical_cast< float >( begin[1] ), boost::lexical_cast< float >( begin[2] ), boost::lexical_cast< float >( begin[3] ) );
-        default: break;
-    }
-    COMMA_THROW( comma::exception, "expected a scalar of the size up to 4, got: " << size << " elements" );
-}
 template < typename H, unsigned int In, int InType, unsigned int Out, int OutType >
 struct pixel_format_impl_
 {
@@ -2210,7 +2100,7 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
-        return boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, cvt_color_type_from_string( e[1] ) );
+        return boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, impl::cvt_color_type_from_string( e[1] ) );
     }
     if( e[0] == "count" ) { return count_impl_< H >(); }
     if( e[0] == "crop" )
@@ -2663,8 +2553,8 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     {
         const std::vector< std::string >& s = comma::split( e[1], ',' );
         if( s.size() < 2 || s.size() % 2 != 0 ) { COMMA_THROW( comma::exception, "inrange: expected <upper>,<lower> got: \"" << comma::join( e, '=' ) << "\"" ); }
-        cv::Scalar lower = scalar_from_strings( &s[0], s.size() / 2 );
-        cv::Scalar upper = scalar_from_strings( &s[ s.size() / 2 ], s.size() / 2 );
+        cv::Scalar lower = impl::scalar_from_strings( &s[0], s.size() / 2 );
+        cv::Scalar upper = impl::scalar_from_strings( &s[ s.size() / 2 ], s.size() / 2 );
         return boost::bind< value_type_t >( inrange_impl_< H >, _1, lower, upper );
     }
     if( e[0] == "threshold" )
