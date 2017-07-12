@@ -87,8 +87,7 @@ static void usage( bool verbose=false )
     std::cerr << "                                          --non-zero=size,,1: output images with all pixels zero (makes sense only when used with --filters" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
-    std::cerr << "        --show-partial; by default no partial roi is shown in image. Use option to change behaviour." << std::endl;
-    std::cerr << "        --discard; discards frames where the roi is not seen." << std::endl;
+    std::cerr << "        --permissive,--show-partial; allow partial overlaps of ROI and input image, default: set entire image to zeros." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    stride" << std::endl;
     std::cerr << "        --filter,--filters=[<filters>]; see grep operation; added to stride for performance" << std::endl;
@@ -248,8 +247,8 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
-        //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "-.*");
+        //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--permissive", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
@@ -421,7 +420,7 @@ int main( int ac, char** av )
         {
             comma::csv::binary< ::extents > binary( csv );
             bool flush = options.exists("--flush");
-            bool show_partial = options.exists("--show-partial");
+            bool show_partial = options.exists("--show-partial,--permissive");
             
             if( verbose ) { std::cerr << name << "show partial: " << show_partial << std::endl; }
             
