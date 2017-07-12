@@ -2538,7 +2538,8 @@ static functor_type make_filter_functor( const std::vector< std::string >& e, co
     if( e[0] == "load" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
-        return impl::load_impl_< H >( e[1] );
+        // For the case where the file is just a file descriptor, no extenstion, use e[2]
+        return impl::load_impl_< H >( e[1], e.size() >= 3 ? e[2] : "" );
     }
     if( e[0] == "map" )
     {
@@ -3083,6 +3084,11 @@ static std::string usage_impl_()
     oss << "           divide=<filters>: forked image is pixelwise divided to the input image, see cv::divide()" << std::endl;
     oss << "           multiply=<filters>: forked image is pixelwise multiplied to the input image, see cv::multiply()" << std::endl;
     oss << "           subtract=<filters>: forked image is pixelwise subtract to the input image, see cv::subtract()" << std::endl;
+    oss << "               examples:" << std::endl;
+    oss << "                    multiply operation with accumulated and threshold sub filters" << std::endl;
+    oss << "                        cat images.bin | cv-cat \"multiply=accumulated:average,5|threshold:0.5,1.0\" >results.bin" << std::endl;
+    oss << "                    add operation with load filter and file descriptor" << std::endl;
+    oss << "                        cat images.bin | cv-cat \"add=load:\"<( $commands )\",bin\" >results.bin" << std::endl;
     oss << std::endl;
     oss << "    operations on subsets of columns, rows, or channels" << std::endl;
     oss << "        bands-to-cols=x,w[,x,w][,method:<method-name>,output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
