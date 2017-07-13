@@ -79,9 +79,9 @@
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
 #include "detail/utils.h"
-#include "detail/load_impl.h"
+#include "detail/load.h"
 #include "detail/accumulated.h"
-#include "detail/arithmetic_impl.h"
+#include "detail/arithmetic.h"
 
 namespace {
 
