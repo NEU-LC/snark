@@ -87,6 +87,9 @@ static void usage(bool detail)
     std::cerr << "       --k,--k-neighbours=<n>: number of k nearest neighbors to use for the feature estimation; default: 50"<< std::endl;
     std::cerr << std::endl;
     std::cerr<< "iterative-closest-point"<< std::endl;
+    std::cerr << std::endl;
+    std::cerr<< "     WARNING: work in progress, output format subject to change. talk to authors if you need to use icp operation"<< std::endl;
+    std::cerr << std::endl;
     std::cerr<< "     second point cloud file is passed as unnamed option"<< std::endl;
     std::cerr<< "     fields: block,point/x,point/y,point/z"<< std::endl;
     std::cerr<< "     output: <input>,matrix[16]: 4x4 affine transformation matrix"<< std::endl;
