@@ -41,7 +41,7 @@ struct load
     value_type value;
 
     // Set load as "bin" to load cv-cat format, else load using cv::imread
-    load( const std::string& filename, const std::string& load_as="" );
+    load( const std::string& filename );
 
     value_type operator()( value_type ) { return value; }
 };

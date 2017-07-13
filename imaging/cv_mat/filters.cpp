@@ -2523,7 +2523,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
         // For the case where the file is just a file descriptor, no extenstion, use e[2]
-        return std::make_pair( impl::load< H >( e[1], e.size() >= 3 ? e[2] : "" ), true );
+        return std::make_pair( impl::load< H >( e[1] ), true );
     }
     if( e[0] == "map" )
     {
@@ -2988,16 +2988,15 @@ static std::string usage_impl_()
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
-    oss << "        load=<filename>[,type]: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
-    oss << "                         <type>: explicitly specify file type, default: use filename extension" << std::endl;
+    oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
     oss << "                         supported file types by filename extension:" << std::endl;
-    oss << "                             - .bin: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
+    oss << "                             - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
     oss << "                             - otherwise whatever cv::imread supports" << std::endl;
     oss << "            examples:" << std::endl;
     oss << "                loading cv-cat image" << std::endl;
     oss << "                        cv-cat \"load=image.bin\"" << std::endl;
     oss << "                a contrived example that loads from a file descriptor" << std::endl;
-    oss << "                        cv-cat \"load=\"<( cat image.bin )\",bin\"" << std::endl;
+    oss << "                        cv-cat \"load=\"<( cat image.bin )" << std::endl;
     oss << "        log=<options>: write images to files" << std::endl;
     oss << "            log=<filename>: write images to a single file" << std::endl;
     oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
