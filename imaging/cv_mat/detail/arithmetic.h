@@ -44,6 +44,7 @@ public:
     enum class operation { multiply, subtract, divide, add };
 
     static operation str_to_operation(const std::string& s); 
+    static std::string operation_to_str( operation op );
     
     arithmetic( operation op );
 

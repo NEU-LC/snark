@@ -45,6 +45,19 @@ typename arithmetic< H >::operation arithmetic< H >::str_to_operation(const std:
     else if( s == "add" ) { return operation::add; }
     else { COMMA_THROW(comma::exception, "unknown arithmetic operation: \"" << s << "\", expected: multiply, add, subtract or divide" ); }
 }
+template < typename H >
+typename std::string arithmetic< H >::operation_to_str(arithmetic< H >::operation op)
+{
+    switch(op)
+    {
+        case operation::multiply: return "multiply";
+        case operation::divide:   return "divide";
+        case operation::subtract: return "subtract";
+        case operation::add:      return "add";
+    }
+    
+    COMMA_THROW(comma::exception, "arithmetic: unknown operation: " << int(op));
+}
 
 template < typename H >
 arithmetic< H >::arithmetic( operation op ) : operation_(op) {}
@@ -53,7 +66,7 @@ template < typename H >
 typename arithmetic< H >::value_type arithmetic< H >::operator()( value_type m, boost::function< value_type( value_type ) >& operand ) // have to pass mask by value, since filter functors may change on call
 {
     const cv::Mat & rhs = operand( m ).second;
-    if ( rhs.type() != m.second.type() ) { COMMA_THROW( comma::exception, "the operand type is " << type_as_string( rhs.type() ) << ", and does not match input type: " << type_as_string( m.second.type() ) ); }
+    if ( rhs.channels() != m.second.channels() ) { COMMA_THROW( comma::exception,  operation_to_str(operation_) << ": channel mis-match, input image channels: " << m.second.channels() << ", the operand channels: " << rhs.channels() ); }
     return apply_(m, rhs);
 }
 
@@ -63,10 +76,10 @@ typename arithmetic< H >::value_type arithmetic< H >::apply_(const value_type& m
     value_type n( m.first, cv::Mat(m.second.rows, m.second.cols, m.second.type()) );
     switch(operation_)
     {
-        case operation::multiply: cv::multiply(m.second, operand, n.second ); break;
-        case operation::subtract: cv::subtract(m.second, operand, n.second ); break;
-        case operation::divide:   cv::divide(m.second, operand, n.second ); break;
-        case operation::add:      cv::add(m.second, operand, n.second );    break;
+        case operation::multiply: cv::multiply(m.second, operand, n.second, 1.0, m.second.type() ); break;
+        case operation::divide:   cv::divide(m.second, operand, n.second, 1.0, m.second.type() ); break;
+        case operation::subtract: cv::subtract(m.second, operand, n.second, cv::noArray(), m.second.type() ); break;
+        case operation::add:      cv::add(m.second, operand, n.second, cv::noArray(), m.second.type() );    break;
     }
     
     return n;
