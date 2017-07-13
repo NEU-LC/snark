@@ -37,7 +37,7 @@
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
-class arithmetic_impl_
+class arithmetic
 {
 public:
     typedef std::pair< H, cv::Mat > value_type;
@@ -45,7 +45,7 @@ public:
 
     static operation str_to_operation(const std::string& s); 
     
-    arithmetic_impl_( operation op );
+    arithmetic( operation op );
 
     value_type operator()( value_type n, boost::function< value_type( value_type ) >& operand );
     

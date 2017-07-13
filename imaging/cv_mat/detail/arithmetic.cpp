@@ -37,7 +37,7 @@
 namespace snark{ namespace cv_mat { namespace impl {
     
 template < typename H >
-typename arithmetic_impl_< H >::operation arithmetic_impl_< H >::str_to_operation(const std::string& s)
+typename arithmetic< H >::operation arithmetic< H >::str_to_operation(const std::string& s)
 {
     if( s == "multiply" ) { return operation::multiply; }
     else if( s == "divide" ) { return operation::divide; }
@@ -47,10 +47,10 @@ typename arithmetic_impl_< H >::operation arithmetic_impl_< H >::str_to_operatio
 }
 
 template < typename H >
-arithmetic_impl_< H >::arithmetic_impl_( operation op ) : operation_(op) {}
+arithmetic< H >::arithmetic( operation op ) : operation_(op) {}
 
 template < typename H >
-typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::operator()( value_type m, boost::function< value_type( value_type ) >& operand ) // have to pass mask by value, since filter functors may change on call
+typename arithmetic< H >::value_type arithmetic< H >::operator()( value_type m, boost::function< value_type( value_type ) >& operand ) // have to pass mask by value, since filter functors may change on call
 {
     const cv::Mat & rhs = operand( m ).second;
     if ( rhs.type() != m.second.type() ) { COMMA_THROW( comma::exception, "the operand type is " << type_as_string( rhs.type() ) << ", and does not match input type: " << type_as_string( m.second.type() ) ); }
@@ -58,7 +58,7 @@ typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::operator()( va
 }
 
 template < typename H >
-typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::apply_(const value_type& m, const cv::Mat& operand )
+typename arithmetic< H >::value_type arithmetic< H >::apply_(const value_type& m, const cv::Mat& operand )
 {
     value_type n( m.first, cv::Mat(m.second.rows, m.second.cols, m.second.type()) );
     switch(operation_)
@@ -74,5 +74,5 @@ typename arithmetic_impl_< H >::value_type arithmetic_impl_< H >::apply_(const v
     
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
-template class snark::cv_mat::impl::arithmetic_impl_< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::arithmetic_impl_< std::vector< char > >;
+template class snark::cv_mat::impl::arithmetic< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::arithmetic< std::vector< char > >;

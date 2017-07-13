@@ -2089,7 +2089,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( s.front() != "average" ) { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
         boost::optional< comma::uint32 > size;
         if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: expected window size as integer, got \"" << s[1] << "\"" ); }}
-        return std::make_pair( boost::bind< value_type_t >( impl::accumulated_impl_< H >( size ), _1 ), false );
+        return std::make_pair( boost::bind< value_type_t >( impl::accumulated< H >( size ), _1 ), false );
     }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
@@ -2523,7 +2523,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
         // For the case where the file is just a file descriptor, no extenstion, use e[2]
-        return std::make_pair( impl::load_impl_ < H >( e[1], e.size() >= 3 ? e[2] : "" ), true );
+        return std::make_pair( impl::load< H >( e[1], e.size() >= 3 ? e[2] : "" ), true );
     }
     if( e[0] == "map" )
     {
@@ -2691,9 +2691,9 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, e[0] << ": please specify " << e[0] << " filters" ); }
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
              std::pair< functor_type, bool > operand_filters = maker_t( get_timestamp, '|', ':' )( e[1] );
-             auto op = arithmetic_impl_< H >::str_to_operation(e[0]);
+             auto op = arithmetic< H >::str_to_operation(e[0]);
              std::cerr << e[0] << ": is parallel: " << operand_filters.second << std::endl;
-             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic_impl_< H >( op ), _1, operand_filters.first ), operand_filters.second ) );
+             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic< H >( op ), _1, operand_filters.first ), operand_filters.second ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {

@@ -43,14 +43,14 @@ namespace snark{ namespace cv_mat { namespace impl {
 // accumulated_type accumulated_type_to_str( const std::string& s );
 
 template < typename H >
-class accumulated_impl_ {
+class accumulated {
 public:
     typedef std::pair< H, cv::Mat > value_type;
     static constexpr bool parallel = false;     // CAN NOT run parallel
     
     // window_size: if given use Exponent Moving Average of specified size
     // output_float_image: force output image to be float depth, else convert to input image depth
-    accumulated_impl_( boost::optional< comma::uint32 > window_size=boost::none );
+    accumulated( boost::optional< comma::uint32 > window_size=boost::none );
 
     value_type operator()( const value_type& n );
 private:

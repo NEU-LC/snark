@@ -35,13 +35,13 @@
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
-struct load_impl_
+struct load
 {
     typedef std::pair< H, cv::Mat > value_type;
     value_type value;
 
     // Set load as "bin" to load cv-cat format, else load using cv::imread
-    load_impl_( const std::string& filename, const std::string& load_as="" );
+    load( const std::string& filename, const std::string& load_as="" );
 
     value_type operator()( value_type ) { return value; }
 };

@@ -57,7 +57,7 @@ static float accumulated_ema( float in, float avg, comma::uint64 count, comma::u
 }
 
 template < typename H >
-accumulated_impl_< H >::accumulated_impl_( boost::optional< comma::uint32 > window_size ) 
+accumulated< H >::accumulated( boost::optional< comma::uint32 > window_size ) 
     : count_(0), type_(accumulated_type::average)
 {
     if( window_size ) 
@@ -71,7 +71,7 @@ accumulated_impl_< H >::accumulated_impl_( boost::optional< comma::uint32 > wind
 }
 
 template < typename H >
-typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( const typename accumulated_impl_< H >::value_type& n )
+typename accumulated< H >::value_type accumulated< H >::operator()( const typename accumulated< H >::value_type& n )
 {
     ++count_;
     // This filter is not run in parallel, no locking required
@@ -90,5 +90,5 @@ typename accumulated_impl_< H >::value_type accumulated_impl_< H >::operator()( 
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
-template class snark::cv_mat::impl::accumulated_impl_< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::accumulated_impl_< std::vector< char > >;
+template class snark::cv_mat::impl::accumulated< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::accumulated< std::vector< char > >;

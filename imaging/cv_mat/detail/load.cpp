@@ -40,7 +40,7 @@
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
-load_impl_< H >::load_impl_( const std::string& filename, const std::string& load_as )
+load< H >::load( const std::string& filename, const std::string& load_as )
 {
     if( load_as == "bin" || comma::split( filename, '.' ).back() == "bin" ) // quick and dirty
     {
@@ -59,5 +59,5 @@ load_impl_< H >::load_impl_( const std::string& filename, const std::string& loa
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
-template class snark::cv_mat::impl::load_impl_< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::load_impl_< std::vector< char > >;
+template class snark::cv_mat::impl::load< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::load< std::vector< char > >;
