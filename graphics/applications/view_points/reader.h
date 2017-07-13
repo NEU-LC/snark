@@ -69,19 +69,25 @@ struct reader_parameters
     unsigned int point_size;
     bool pass_through;
     bool fill; // quick and dirty
+    std::string labels; //currently used for axis labels e.g. "x:y:z"
+    double length;  //currently used for axis length
 
     reader_parameters( const comma::csv::options& options
                      , const std::string& title
                      , std::size_t size
                      , unsigned int point_size
                      , bool pass_through
-                     , bool fill )
+                     , bool fill 
+                     ,std::string labels
+                     ,double length)
         : options( options )
         , title( title )
         , size( size )
         , point_size( point_size )
         , pass_through( pass_through )
         , fill( fill )
+        ,labels(labels)
+        ,length(length)
     {}
 };
 
