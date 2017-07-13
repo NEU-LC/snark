@@ -1,20 +1,31 @@
-// This file is part of Ark, a generic and flexible library
-// for robotics research.
+// This file is part of snark, a generic and flexible library for robotics research
+// Copyright (c) 2011 The University of Sydney
+// All rights reserved.
 //
-// Copyright (C) 2011 The University of Sydney
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. Neither the name of the University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
 //
-// Ark is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public
-// License as published by the Free Software Foundation; either
-// version 3 of the License, or (at your option) any later version.
-//
-// Ark is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
-// for more details.
-//
-// You should have received a copy of the GNU Lesser General Public
-// License along with Ark. If not, see <http://www.gnu.org/licenses/>.
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
 #include <memory>
@@ -30,7 +41,6 @@
 #include "../../imaging/cv_mat/serialization.h"
 
 const char* name = "cv-calc: ";
-const char* default_input_fields = "min/x,min/y,max/x,max/y,t,rows,cols,type";
 
 static void usage( bool verbose=false )
 {
@@ -53,7 +63,7 @@ static void usage( bool verbose=false )
     std::cerr << "    mean" << std::endl;
     std::cerr << "        output image means for all image channels appended to image header" << std::endl;
     std::cerr << "    roi" << std::endl;
-    std::cerr << "        given cv image data associated with a region of interest, set everything outside the region of interest to zero" << std::endl;
+    std::cerr << "        given cv image data associated with a region of interest, either set everything outside the region of interest to zero or crop it" << std::endl;
     std::cerr << "    stride" << std::endl;
     std::cerr << "        stride through the image, output images of kernel size for each pixel" << std::endl;
     std::cerr << std::endl;
@@ -87,8 +97,9 @@ static void usage( bool verbose=false )
     std::cerr << "                                          --non-zero=size,,1: output images with all pixels zero (makes sense only when used with --filters" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
-    std::cerr << "        --show-partial; by default no partial roi is shown in image. Use option to change behaviour." << std::endl;
-    std::cerr << "        --discard; discards frames where the roi is not seen." << std::endl;
+    std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
+    std::cerr << "        --discard; discards frames where the roi is not seen" << std::endl;
+    std::cerr << "        --permissive,--show-partial; allow partial overlaps of roi and input image, default: if partial roi and image overlap, set entire image to zeros." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    stride" << std::endl;
     std::cerr << "        --filter,--filters=[<filters>]; see grep operation; added to stride for performance" << std::endl;
@@ -248,8 +259,8 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
-        //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--discard", "-.*");
+        //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--permissive", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
@@ -366,76 +377,59 @@ int main( int ac, char** av )
         {
             if( csv.fields.empty() ) { csv.fields = "t,rows,cols,type" ; }
             if( !csv.binary() ) { csv.format("t,3ui"); }
-            
             if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
             if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
         }
         else if( operation == "roi" )
         {
-            if( csv.fields.empty() ) { csv.fields = default_input_fields ; }
+            if( csv.fields.empty() ) { csv.fields = "min/x,min/y,max/x,max/y,t,rows,cols,type"; }
             if( !csv.binary() ) { csv.format("4i,t,3ui"); }
             if( options.exists("--input-fields,--output-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
             if( options.exists("--input-format,--output-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
         }
-        
         if( verbose )
         {
             std::cerr << name << "fields: " << csv.fields << std::endl;
             std::cerr << name << "format: " << csv.format().string() << std::endl;
-        }
-            
+        }            
         snark::cv_mat::serialization serialization( csv.fields, csv.format() ); // todo?
-        
         if( operation == "header" )
         {
-            if( options.exists("--output-fields") ) { std::cout << "rows,cols,type" << std::endl;  exit(0); }
-            
-            if( std::cin.good() && !std::cin.eof() )
-            {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
-                if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
-                
-                comma::csv::options out;
-                out.fields = "rows,cols,type";
-                comma::csv::output_stream< snark::cv_mat::serialization::header > ascii( std::cout, out );
-                ascii.write( serialization.get_header( &serialization.header_buffer()[0] ) );
-            }
-            else{ std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
+            if( options.exists("--output-fields") ) { std::cout << "rows,cols,type" << std::endl;  return 0; }
+            std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
+            if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; return 1; }
+            comma::csv::options out;
+            out.fields = "rows,cols,type";
+            comma::csv::output_stream< snark::cv_mat::serialization::header > ascii( std::cout, out );
+            ascii.write( serialization.get_header( &serialization.header_buffer()[0] ) );
+            return 0;
         }
-        else if( operation == "format" )
+        if( operation == "format" )
         {
-            if( std::cin.good() && !std::cin.eof() )
-            {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
-                if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
-                
-                snark::cv_mat::serialization::header header = serialization.get_header( &serialization.header_buffer()[0] );
-                
-                comma::csv::format format = csv.format();
-                format += "s[" + boost::lexical_cast<std::string>( comma::uint64(header.rows) * header.cols * p.second.elemSize() )  + "]";
-                std::cout << format.string() << std::endl;
-            }
-            else{ std::cerr << name << "failed to read input stream" << std::endl; exit(1); }
+            std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
+            if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; return 1; }
+            snark::cv_mat::serialization::header header = serialization.get_header( &serialization.header_buffer()[0] );
+            comma::csv::format format = csv.format();
+            format += "s[" + boost::lexical_cast<std::string>( comma::uint64(header.rows) * header.cols * p.second.elemSize() )  + "]";
+            std::cout << format.string() << std::endl;
+            return 0;
         }
-        else if( operation == "roi" )
+        if( operation == "roi" )
         {
             comma::csv::binary< ::extents > binary( csv );
+            bool crop = options.exists( "--crop" );
             bool flush = options.exists("--flush");
-            bool show_partial = options.exists("--show-partial");
-            
+            bool show_partial = options.exists("--show-partial,--permissive");
             if( verbose ) { std::cerr << name << "show partial: " << show_partial << std::endl; }
-            
             ::extents ext;
             cv::Mat mask;
             comma::uint64 count = 0;
             while( std::cin.good() && !std::cin.eof() )
             {
                 std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
+                if( p.second.empty() ) { break; }
                 cv::Mat& mat = p.second;
-                if( mat.empty() ) { break; }
-                
                 ++count;
-                
                 binary.get( ext, &serialization.header_buffer()[0] );
                 if(verbose && mask.rows == 0) // Will only trigger once
                 {
@@ -443,41 +437,38 @@ int main( int ac, char** av )
                     std::cerr << name << "min & max: " << ext.min << " " << ext.max << std::endl;
                     std::cerr << name << "rows & cols: " << header.rows << ' ' << header.cols << std::endl;
                 }
-                
-                // If image size changed
                 if( mask.rows != mat.rows || mask.cols != mat.cols ) { mask = cv::Mat::ones(mat.rows, mat.cols, CV_8U); }  // all ones, must be CV_U8 for setTo
-                
-                // roi not in image at all
                 if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows ) { continue; }
-                    
-                // Clip roi to fit in the image
                 if( show_partial )
                 {
                     if( ext.min.x < 0 ) { ext.min.x = 0; }
                     if( ext.max.x >= mat.cols ) { ext.max.x = mat.cols-1; }
                     if( ext.min.y < 0 ) { ext.min.y = 0; }
                     if( ext.max.y >= mat.rows ) { ext.max.y = mat.rows-1; }
-                }
-                
+                }                
                 int width = ext.max.x - ext.min.x;
                 int height = ext.max.y - ext.min.y;
-                // Mask to set anything not in the ROI to 0
-                if( width < 0 || height < 0 ) {
-                    std::cerr << name << "roi's width and height can not be negative. Failed on image/frame number: " << count 
-                        << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1;
-                }
-                
+                if( width < 0 || height < 0 ) { std::cerr << name << "roi's width and height can not be negative. Failed on image/frame number: " << count << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1; }                
                 if( ext.min.x >= 0 && ext.min.y >=0 && (ext.min.x + width < mat.cols) && (ext.min.y + height < mat.rows ) ) 
                 {
-                    mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(0);
-                    mat.setTo( cv::Scalar(0), mask );
-                    mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(1);
-                    serialization.write_to_stdout( p, flush );
+                    if( crop )
+                    {
+                        cv::Mat cropped;
+                        p.second( cv::Rect( ext.min.x, ext.min.y, width, height ) ).copyTo( cropped );
+                        serialization.write_to_stdout( std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat >( p.first, cropped ) );
+                    }
+                    else
+                    {
+                        mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(0);
+                        mat.setTo( cv::Scalar(0), mask );
+                        mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(1);
+                        serialization.write_to_stdout( p, flush );
+                    }
                 }
             }
+            return 0;
         }
-        else { std::cerr << name << " unknown operation: " << operation << std::endl; return 1; }
-        return 0;
+        std::cerr << name << " unknown operation: " << operation << std::endl;
     }
     catch( std::exception& ex ) { std::cerr << "cv-calc: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "cv-calc: unknown exception" << std::endl; }
