@@ -37,14 +37,13 @@
 #include <boost/optional.hpp>
 #include <opencv2/core/core.hpp>
 #include <comma/base/types.h>
-#include "filter_impl.h"
 
 namespace snark{ namespace cv_mat { namespace impl {
     
 // accumulated_type accumulated_type_to_str( const std::string& s );
 
 template < typename H >
-class accumulated_impl_ : filter_impl_ {
+class accumulated_impl_ {
 public:
     typedef std::pair< H, cv::Mat > value_type;
     static constexpr bool parallel = false;     // CAN NOT run parallel

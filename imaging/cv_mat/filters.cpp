@@ -78,7 +78,6 @@
 #include "depth_traits.h"
 #include "../vegetation/filters.h"
 #include "tbb/parallel_reduce.h"
-#include "detail/filter_impl.h"
 #include "detail/utils.h"
 #include "detail/load_impl.h"
 #include "detail/accumulated.h"
@@ -238,7 +237,7 @@ static const boost::unordered_map< std::string, int > types_ = impl::fill_types_
 std::string type_as_string( int t ) { return impl::type_as_string(t); }
 
 template < typename H >
-struct cvt_color_impl_ : public filter_impl_ {
+struct cvt_color_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
 
     value_type operator()( value_type m, unsigned int which )
@@ -251,7 +250,7 @@ struct cvt_color_impl_ : public filter_impl_ {
 };
 
 template < typename H, unsigned int In, int InType, unsigned int Out, int OutType >
-struct pixel_format_impl_ : public filter_impl_
+struct pixel_format_impl_
 {
     static const unsigned int ElementSize = sizeof( typename depth_traits< CV_MAT_DEPTH( InType ) >::value_t );
     static const unsigned int InBytes = In * ElementSize;
@@ -402,7 +401,7 @@ static typename impl::filters< H >::value_type crop_impl_( typename impl::filter
 typedef std::pair< unsigned int, unsigned int > tile_t;
 
 template < typename H >
-struct crop_tile_impl_ : public filter_impl_ {
+struct crop_tile_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     value_type operator()( value_type input, unsigned int number_of_tile_cols, unsigned int number_of_tile_rows, const std::vector< tile_t >& tiles, bool vertical )
     {
@@ -426,7 +425,7 @@ typedef std::pair< unsigned int, unsigned int > stripe_t;
 static unsigned int sum_up( unsigned int v, const stripe_t & s ){ return v + s.second; }
 
 template < typename H >
-struct crop_cols_impl_ : public filter_impl_ {
+struct crop_cols_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
 
     value_type operator()( value_type input, const std::vector< stripe_t > & cols )
@@ -468,7 +467,7 @@ struct crop_rows_impl_ {
 static const int bands_method_default = CV_REDUCE_AVG;
 
 template < typename H >
-struct bands_to_cols_impl_ : public filter_impl_ {
+struct bands_to_cols_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
 
     value_type operator()( value_type input, bool bands_to_cols, const std::vector< stripe_t > & bands, int cv_reduce_method, int cv_reduce_dtype = -1 )
@@ -502,7 +501,7 @@ struct bands_to_cols_impl_ : public filter_impl_ {
 };
 
 template < typename H >
-struct cols_to_channels_impl_ : public filter_impl_ {
+struct cols_to_channels_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
 
     value_type operator()( value_type input, bool cols_to_channels, const std::vector< unsigned int > & values, double padding_value, unsigned int repeat )
@@ -560,7 +559,7 @@ struct cols_to_channels_impl_ : public filter_impl_ {
 };
 
 template < typename H >
-struct channels_to_cols_impl_ : public filter_impl_ {
+struct channels_to_cols_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
 
     value_type operator()( value_type input, bool channels_to_cols )
@@ -1257,7 +1256,7 @@ class file_impl_
 };
 
 template < typename H >
-struct timestamp_impl_ : public filter_impl_ {
+struct timestamp_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     const get_timestamp_functor get_timestamp_;
@@ -1273,7 +1272,7 @@ struct timestamp_impl_ : public filter_impl_ {
 };
 
 template < typename H >
-struct count_impl_ : public filter_impl_
+struct count_impl_
 {
     count_impl_() : count( 0 ) {}
 
@@ -1484,7 +1483,7 @@ static typename impl::filters< H >::value_type text_impl_( typename impl::filter
 }
 
 template < typename H >
-class undistort_impl_ : public filter_impl_
+class undistort_impl_
 {
     public:
         typedef typename impl::filters< H >::value_type value_type;
@@ -1595,7 +1594,7 @@ class max_impl_ // experimental, to debug
 };
 
 template < typename H >
-class map_impl_ : public filter_impl_
+class map_impl_
 {
     typedef typename impl::filters< H >::value_type value_type;
     typedef int key_type;
@@ -1908,7 +1907,7 @@ static cv::Mat convert_and_scale(const cv::Mat& m, int depth)
 }
 
 template < typename H >
-struct overlay_impl_ : public filter_impl_
+struct overlay_impl_
 {
     int x;
     int y;
@@ -2090,14 +2089,14 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( s.front() != "average" ) { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
         boost::optional< comma::uint32 > size;
         if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: expected window size as integer, got \"" << s[1] << "\"" ); }}
-        return std::make_pair( boost::bind< value_type_t >( impl::accumulated_impl_< H >( size ), _1 ), impl::accumulated_impl_< H >::parallel );
+        return std::make_pair( boost::bind< value_type_t >( impl::accumulated_impl_< H >( size ), _1 ), false );
     }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
-        return std::make_pair(boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, impl::cvt_color_type_from_string( e[1] ) ), cvt_color_impl_< H >::parallel );
+        return std::make_pair(boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, impl::cvt_color_type_from_string( e[1] ) ), true );
     }
-    if( e[0] == "count" ) { return std::make_pair(count_impl_< H >(), count_impl_< H >::parallel ); }
+    if( e[0] == "count" ) { return std::make_pair(count_impl_< H >(), true ); }
     if( e[0] == "crop" )
     {
         unsigned int x = 0;
@@ -2135,8 +2134,8 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             unsigned int w = boost::lexical_cast< unsigned int >( inputs[s+1] );
             stripes.push_back( std::make_pair( x, w ) );
         }
-        if ( e[0] == "crop-cols" ) { return std::make_pair(boost::bind< value_type_t >( crop_cols_impl_< H >(), _1, stripes ), crop_cols_impl_< H >::parallel ); }
-        else { return std::make_pair(boost::bind< value_type_t >( crop_rows_impl_< H >(), _1, stripes ), crop_cols_impl_< H >::parallel ); }
+        if ( e[0] == "crop-cols" ) { return std::make_pair(boost::bind< value_type_t >( crop_cols_impl_< H >(), _1, stripes ), true ); }
+        else { return std::make_pair(boost::bind< value_type_t >( crop_rows_impl_< H >(), _1, stripes ), true ); }
     }
     if( e[0] == "bands-to-cols" || e[0] == "bands-to-rows" )
     {
@@ -2200,7 +2199,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             ++s;
         }
         if ( bands.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one band" ); }
-        return std::make_pair( boost::bind< value_type_t >( bands_to_cols_impl_< H >(), _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype ), bands_to_cols_impl_< H >::parallel );
+        return std::make_pair( boost::bind< value_type_t >( bands_to_cols_impl_< H >(), _1, bands_to_cols, bands, cv_reduce_method, cv_reduce_dtype ), true );
     }
     if( e[0] == "crop-tile" )
     {
@@ -2231,7 +2230,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             }
         }
         if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
-        return std::make_pair( boost::bind< value_type_t >( crop_tile_impl_< H >(), _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical ), crop_tile_impl_< H >::parallel );
+        return std::make_pair( boost::bind< value_type_t >( crop_tile_impl_< H >(), _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical ), true );
     }
     if( e[0] == "cols-to-channels" || e[0] == "rows-to-channels" )
     {
@@ -2278,12 +2277,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         }
         if ( values.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << op_what << " to store as channel" ); }
         if ( values.size() > 4 ) { COMMA_THROW( comma::exception, op_name << ": can have at most 4 output channels" ); }
-        return std::make_pair(  boost::bind< value_type_t >( cols_to_channels_impl_< H >(), _1, cols_to_channels, values, padding, repeat ), cols_to_channels_impl_< H >::parallel );
+        return std::make_pair(  boost::bind< value_type_t >( cols_to_channels_impl_< H >(), _1, cols_to_channels, values, padding, repeat ), true );
     }
     if( e[0] == "channels-to-cols" || e[0] == "channels-to-rows" )
     {
         const bool channels_to_cols = e[0] == "channels-to-cols";
-        return std::make_pair( boost::bind< value_type_t >( channels_to_cols_impl_ < H >(), _1, channels_to_cols ), channels_to_cols_impl_< H >::parallel );
+        return std::make_pair( boost::bind< value_type_t >( channels_to_cols_impl_ < H >(), _1, channels_to_cols ), true );
     }
     if( e[0] == "swap-channels" )
     {
@@ -2429,7 +2428,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         }
         return std::make_pair( boost::bind< value_type_t >( resize_impl_< H >, _1, width, height, w, h, interpolation ), true );
     }
-    else if( e[0] == "timestamp" ) { return std::make_pair(timestamp_impl_< H >( get_timestamp ), timestamp_impl_< H >::parallel); }
+    else if( e[0] == "timestamp" ) { return std::make_pair(timestamp_impl_< H >( get_timestamp ), true); }
     else if( e[0] == "transpose" ) { return std::make_pair(transpose_impl_< H >, true); }
     else if( e[0] == "split" ) { return std::make_pair(split_impl_< H >, true); }
     else if( e[0] == "merge" )
@@ -2439,7 +2438,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if ( nchannels == 0 ) { COMMA_THROW( comma::exception, "expected positive number of channels in merge filter, got " << nchannels ); }
         return std::make_pair( boost::bind< value_type_t >( merge_impl_< H >, _1, nchannels ), true );
     }
-    if( e[0] == "undistort" ) { return std::make_pair( undistort_impl_< H >( e[1] ), undistort_impl_< H >::parallel ); }
+    if( e[0] == "undistort" ) { return std::make_pair( undistort_impl_< H >( e[1] ), true ); }
     if( e[0] == "invert" )
     {
         if( e.size() == 1 ) { return std::make_pair( invert_impl_< H >, true ); }
@@ -2524,7 +2523,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
         // For the case where the file is just a file descriptor, no extenstion, use e[2]
-        return std::make_pair( impl::load_impl_ < H >( e[1], e.size() >= 3 ? e[2] : "" ), impl::load_impl_< H >::parallel );
+        return std::make_pair( impl::load_impl_ < H >( e[1], e.size() >= 3 ? e[2] : "" ), true );
     }
     if( e[0] == "map" )
     {
@@ -2533,7 +2532,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         std::string map_filter_options = s.str();
         std::vector< std::string > items = comma::split( map_filter_options, '&' );
         bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
-        return std::make_pair( map_impl_ < H >( map_filter_options, permissive ), map_impl_< H >::parallel );
+        return std::make_pair( map_impl_ < H >( map_filter_options, permissive ), true );
     }
     if( e[0] == "inrange" )
     {
@@ -2589,7 +2588,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             x=boost::lexical_cast<int>(s[1]);
             y=boost::lexical_cast<int>(s[2]);
         }
-        return std::make_pair( overlay_impl_ < H >( s[0], x, y ), overlay_impl_< H >::parallel );
+        return std::make_pair( overlay_impl_ < H >( s[0], x, y ), true );
     }
     boost::function< value_type_t( value_type_t ) > functor = imaging::vegetation::impl::filters< H >::make_functor( e );
     if( functor ) { return std::make_pair( functor, true ); }
@@ -2693,7 +2692,8 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
              std::pair< functor_type, bool > operand_filters = maker_t( get_timestamp, '|', ':' )( e[1] );
              auto op = arithmetic_impl_< H >::str_to_operation(e[0]);
-             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic_impl_< H >( op ), _1, operand_filters.first ), operand_filters.second && arithmetic_impl_< H >::parallel ) );
+             std::cerr << e[0] << ": is parallel: " << operand_filters.second << std::endl;
+             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic_impl_< H >( op ), _1, operand_filters.first ), operand_filters.second ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {

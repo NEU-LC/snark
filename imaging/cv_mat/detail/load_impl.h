@@ -31,12 +31,11 @@
 
 #include <string>
 #include <opencv2/core/core.hpp>
-#include "filter_impl.h"
 
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
-struct load_impl_ : public filter_impl_
+struct load_impl_
 {
     typedef std::pair< H, cv::Mat > value_type;
     value_type value;
