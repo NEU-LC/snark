@@ -33,11 +33,12 @@
 #include <boost/function.hpp>
 #include <comma/base/exception.h>
 #include <opencv2/core/core.hpp>
+#include "filter_impl.h"
 
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
-class arithmetic_impl_
+class arithmetic_impl_ : public filter_impl_
 {
 public:
     typedef std::pair< H, cv::Mat > value_type;
