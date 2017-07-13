@@ -36,8 +36,11 @@
 #include <comma/csv/options.h>
 #include <comma/csv/ascii.h>
 #include <comma/csv/stream.h>
+#include <comma/csv/traits.h>
+#include <comma/name_value/parser.h>
 #include <iostream>
 #include <vector>
+#include <fstream>
 #include <Eigen/Core>
 #include "../../../visiting/eigen.h"
 #include <pcl/point_types.h>
@@ -84,8 +87,9 @@ static void usage(bool detail)
     std::cerr << "       --k,--k-neighbours=<n>: number of k nearest neighbors to use for the feature estimation; default: 50"<< std::endl;
     std::cerr << std::endl;
     std::cerr<< "iterative-closest-point"<< std::endl;
-    std::cerr<< "     fields: "<< std::endl;
-    std::cerr<< "     output: 4x4 transformation matrix"<< std::endl;
+    std::cerr<< "     second point cloud file is passed as unnamed option"<< std::endl;
+    std::cerr<< "     fields: block,point/x,point/y,point/z"<< std::endl;
+    std::cerr<< "     output: <input>,matrix[16]: 4x4 affine transformation matrix"<< std::endl;
     std::cerr<< "     options:"<< std::endl;
     std::cerr << "       --iterations=<n>: maximum number of iterations; the algorithm will stop after this many iterations even if it has not converged; default 100"<< std::endl;
     std::cerr << "       --transformation-epsilon=<d>: distance threshold; if distance between two correspondent points is larger than this, the points will not be used for aligning"<< std::endl;
@@ -103,6 +107,9 @@ static void usage(bool detail)
     }
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
+    std::cerr<< "     cat points.csv | "<<comma::verbose.app_name()<<" normal-estimator | "<<comma::verbose.app_name()<<" region-growing-segmentation " << std::endl;
+    std::cerr << std::endl;
+    std::cerr<< "     cat points1.csv | "<<comma::verbose.app_name()<<" iterative-closest-point points2.csv" << std::endl;
     std::cerr << std::endl;
 }
 
@@ -127,17 +134,8 @@ struct segmentation_output
     segmentation_output(std::uint32_t id=0) : id(id) { }
 };
 
-struct icp_input
-{
-    std::uint32_t block;
-    pcl::PointXYZ first;
-    pcl::PointXYZ second;
-};
-
 struct icp_output
 {
-    std::uint32_t block;
-//     Eigen::Matrix<float,4,4>
     pcl::Registration<pcl::PointXYZ,pcl::PointXYZ>::Matrix4 transformation;
 };
 
@@ -219,32 +217,14 @@ template <> struct traits< segmentation_output >
     }
 };
 
-template <> struct traits< icp_input >
-{
-    template< typename K, typename V > static void visit( const K& k, icp_input& p, V& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "first", p.first );
-        v.apply( "second", p.second );
-    }
-    template< typename K, typename V > static void visit( const K& k, const icp_input& p, V& v )
-    {
-        v.apply( "block", p.block );
-        v.apply( "first", p.first );
-        v.apply( "second", p.second );
-    }
-};
-
 template <> struct traits< icp_output >
 {
     template< typename K, typename V > static void visit( const K& k, icp_output& p, V& v )
     {
-        v.apply( "block", p.block );
         v.apply( "transformation", p.transformation );
     }
     template< typename K, typename V > static void visit( const K& k, const icp_output& p, V& v )
     {
-        v.apply( "block", p.block );
         v.apply( "transformation", p.transformation );
     }
 };
@@ -285,7 +265,7 @@ public:
         csv.full_xpath=true;
         reserve=options.value<std::size_t>("--reserve",10000);
     }
-    void run()
+    virtual void run()
     {
         comma::csv::input_stream<input_t> is( std::cin, csv, default_input);
         comma::csv::output_stream<output_t> os( std::cout, csv.binary(), true, csv.flush );
@@ -363,7 +343,7 @@ struct normal_estimator : public app_t<input_point,pcl::Normal>
     }
 };
 
-struct iterative_closest_point : public app_t<icp_input,icp_output>
+struct iterative_closest_point : public app_t<input_point,icp_output>
 {
     typedef typename pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr;
     std::pair<cloud_ptr,cloud_ptr> clouds;
@@ -372,30 +352,78 @@ struct iterative_closest_point : public app_t<icp_input,icp_output>
     boost::optional<double> transformation_epsilon;
     boost::optional<double> max_correspondence_distance;
     boost::optional<double> euclidean_fitness_epsilon;
-    iterative_closest_point(const comma::command_line_options& options) : app_t(options),
-        clouds(cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>()),cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>()))
+    comma::csv::options second_csv;
+    iterative_closest_point(const comma::command_line_options& options, const comma::csv::options& second) : app_t(options),
+        clouds(cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>()),cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>())), second_csv(second)
     {
         iterations=options.value<int>("--iterations",100);
         transformation_epsilon=options.optional<double>("--transformation-epsilon");
         max_correspondence_distance=options.optional<double>("--max-correspondence-distance");
         euclidean_fitness_epsilon=options.optional<double>("--euclidean-fitness-epsilon");
+        second_csv.full_xpath=true;
+    }
+    void run()
+    {
+        comma::csv::input_stream<input_t> is(std::cin,csv,default_input);
+        std::ifstream ifs(second_csv.filename);
+        if(!ifs.is_open()) { COMMA_THROW( comma::exception, "failed to open file: "<<second_csv.filename); }
+        comma::csv::input_stream<input_t> is2(ifs,second_csv);
+        comma::csv::output_stream<output_t> os(std::cout,csv.binary(),true,csv.flush);
+        std::uint32_t block=0;
+        buffer.reserve(reserve);
+        bool read1=is.ready() || std::cin.good();
+        bool read2=is2.ready() || ifs.good();
+        const input_t* p1=NULL;
+        const input_t* p2=NULL;
+        while(is.ready() || std::cin.good() || is2.ready() || ifs.good())
+        {
+            if(read1)
+            {
+                p1=is.read();
+                if(!p1 || block != p1->block) { read1=false; }
+            }
+            if(read2)
+            {
+                p2=is2.read();
+                if(!p2 || block != p2->block) { read2=false; }
+            }
+            if(!read1 && !read2 && buffer.size())
+            {
+                process();
+                write_output(os);
+                //reset
+                buffer.clear();
+                clear();
+                read1=is.ready() || std::cin.good();
+                read2=is2.ready() || ifs.good();
+            }
+            if(!p1&&!p2){break;}
+            if(p1)
+            {
+                block=p1->block;
+                buffer.push_back(is.last());
+            }
+            push_back(p1,p2);
+        }
     }
     void clear()
     {
         clouds.first->clear();
         clouds.second->clear();
         output=icp_output();
+        cloud_registered->clear();
     }
-    void push_back(const input_t& p)
+    void push_back(const input_t& p) { COMMA_THROW(comma::exception,"invalid method called!"); }
+    void push_back(const input_t* p1,const input_t* p2)
     {
-        clouds.first->push_back(p.first);
-        clouds.second->push_back(p.second);
-        output.block=p.block;
+        if(p1) { clouds.first->push_back(p1->point); }
+        if(p2) { clouds.second->push_back(p2->point); }
     }
+    cloud_ptr cloud_registered;
     void process()
     {
-        cloud_ptr cloud_registered(new pcl::PointCloud<pcl::PointXYZ>());
         pcl::IterativeClosestPoint<pcl::PointXYZ,pcl::PointXYZ> icp;
+        cloud_registered.reset(new pcl::PointCloud<pcl::PointXYZ>());
         icp.setInputSource(clouds.first);
         icp.setInputTarget(clouds.second);
         icp.setMaximumIterations(iterations);
@@ -404,16 +432,17 @@ struct iterative_closest_point : public app_t<icp_input,icp_output>
             comma::verbose<<"max_correspondence_distance "<<*max_correspondence_distance<<std::endl;
             icp.setMaxCorrespondenceDistance(*max_correspondence_distance);
         }
-        if(transformation_epsilon)
-            icp.setTransformationEpsilon(*transformation_epsilon);
-        if(euclidean_fitness_epsilon)
-            icp.setEuclideanFitnessEpsilon(*euclidean_fitness_epsilon);
+        if(transformation_epsilon) { icp.setTransformationEpsilon(*transformation_epsilon); }
+        if(euclidean_fitness_epsilon) { icp.setEuclideanFitnessEpsilon(*euclidean_fitness_epsilon); }
         icp.align(*cloud_registered);
         output.transformation=icp.getFinalTransformation();
     }
     void write_output(comma::csv::output_stream<output_t>& os)
     {
-        os.write(output);
+        for(std::size_t i=0;i<buffer.size();i++)
+        {
+            os.append(buffer[i],output);
+        }
     }
 };
 
@@ -503,31 +532,37 @@ struct region_growing_segmentation : public app_t<input_point_normal,segmentatio
 // do we need to support point double precision for above? (do we need both float and double, or just double)
 // mv icp to points-pcl-calc/registration.h
 
-int main( int argc, char** argv )
+int main(int argc,char** argv)
 {
-    comma::command_line_options options( argc, argv, usage );
+    comma::command_line_options options(argc,argv,usage);
     try
     {
-        const std::vector< std::string >& operations=options.unnamed( "--verbose,-v,--input-fields,--input-format,--output-fields,--output-format,--discard","-.*" );
-        if(operations.size()!=1) { std::cerr<<comma::verbose.app_name()<<": expected one operation, got " << operations.size() << ": " << comma::join(operations,' ' ) << std::endl; return 1; }
-        const std::string& operation=operations[0];
+        const std::vector< std::string >& unnamed=options.unnamed( "--verbose,-v,--input-fields,--input-format,--output-fields,--output-format,--discard","-.*" );
+        if(unnamed.size()<1) { COMMA_THROW( comma::exception, "expected an operation, got none"); }
+        const std::string& operation=unnamed[0];
         std::unique_ptr<app_i> app;
-        if(operation=="region-growing-segmentation")
+        if(operation=="iterative-closest-point")
         {
-            app.reset(new region_growing_segmentation(options));
-        }
-        else if(operation=="normal-estimator")
-        {
-            app.reset(new normal_estimator(options));
-        }
-        else if(operation=="iterative-closest-point")
-        {
-            app.reset(new iterative_closest_point(options));
+            if(unnamed.size()!=2) { COMMA_THROW( comma::exception, "expected one input stream, got "<<unnamed.size()-1<<" "<< comma::join(unnamed,',') ); }
+            comma::name_value::parser parser("filename",';','=',false);
+            app.reset(new iterative_closest_point(options,parser.get<comma::csv::options>(unnamed[1])));
         }
         else
         {
-            std::cerr<<comma::verbose.app_name()<<": unrecognized operation "<<operation<<std::endl;
-            return 1;
+            if(unnamed.size()!=1) { COMMA_THROW( comma::exception, "expected an operation, got "<<unnamed.size()<<" "<< comma::join(unnamed,',') ); }
+            if(operation=="region-growing-segmentation")
+            {
+                app.reset(new region_growing_segmentation(options));
+            }
+            else if(operation=="normal-estimator")
+            {
+                app.reset(new normal_estimator(options));
+            }
+            else
+            {
+                std::cerr<<comma::verbose.app_name()<<": unrecognized operation "<<operation<<std::endl;
+                return 1;
+            }
         }
         if(options.exists("--input-fields")) { app->print_input_fields(); return 0; }
         if(options.exists("--input-format")) { app->print_input_format(); return 0; }
