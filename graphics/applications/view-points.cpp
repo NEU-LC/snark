@@ -178,15 +178,17 @@ static void usage()
         "\n                                     or --shape=triangle --fields=,,corners[0],,,corners[1],,,corners[2],,,"
         "\n                                     or --shape=triangle --fields=,,corners[0]/x,,corners[0]/y,,corners[0]/z,,,,corners[1],,,corners[2],,, etc"
         "\n                     \"axis\": draws three axis lines per record, in red/green/blue corresponding to x/y/z axes, using position and orientation e.g. --shape=axis --fields=position,orientation"
-        "\n                                     fields: position,orientation,length,label,axis_labels"
+        "\n                                     fields: position,orientation"
         "\n                                         default fields: position,orientation"
         "\n                                         position: x,y,z or position/x,position/y,position/z"
         "\n                                         orientation: roll,pitch,yaw or orientation/roll,orientation/pitch,orientation/yaw"
-        "\n                                         length: length of each axis line"
-        "\n                                         axis_labels:  <x>:<y>:<z> colon separated list of axis labels, leave empty for no labels e.g. x:y:z"
+        "\n                                     options: options can be specified as command line option and/or in each stream (without -- prefix)"
+        "\n                                         --length=<d>: length of each axis line"
+        "\n                                         --labels=\"<x>:<y>:<z>\" colon separated list of axis labels, leave empty for no labels."
 #if Qt3D_VERSION==2
-        "\n                                     options: --weight or --point-size can be used for line thickness"
+        "\n                                         --weight or --point-size can be used for line thickness"
 #endif
+        "\n                                         note: colour options are currently not effective for axis shape"
         qt55_unsupported_marker_start
         "\n                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
         "\n                     \"    <options>"
@@ -404,7 +406,9 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
                                                           , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )
-                                                          , options.exists( "--fill" ) );
+                                                          , options.exists( "--fill" )
+                                                          ,options.value<std::string>("--labels","")
+                                                          ,options.value<double>("--length",1));
     std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" )
                       : options.exists( "--color" ) ? options.value< std::string >( "--color" )
                       : options.value< std::string >( "-c", "" );
@@ -426,6 +430,8 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         show = !m.exists( "hide" );
         param.pass_through = param.pass_through || ( m.exists( "pass-through" ) || m.exists( "pass" ));
         param.fill = param.fill || m.exists( "fill" );
+        param.labels=m.value("labels",param.labels);
+        param.length=m.value("length",param.length);
     }
     if( param.pass_through )
     {
@@ -616,7 +622,7 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csv_options( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath" );
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath,--labels,--length" );
 
 #if Qt3D_VERSION==1
         QColor4ub background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );

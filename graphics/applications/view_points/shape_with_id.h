@@ -501,13 +501,13 @@ struct Shapetraits< Eigen::Vector3d, How >
 //     - --help on axis
 //       .- remove 'label' field from the description; it is a generic field, no need to specifically mention it for axis
 //     - axis labels: should not axis_labels be a stream option rather than field? are not the labels defined per stream, not per point? therefore
-//       - add command line option --labels
-//       - add stream option axis-labels, e.g. "axis.csv;shape=axis;labels=x,y,z"
-//       - ? remove axis_labels field, unless you could come up with a compelling use case when different labels per data point might be required
-//       - if decided to keep axis_labels field, rename axis_label to axis_labels to keep it consistent with traits, however see the next item
+//       .- add command line option --labels
+//       .- add stream option axis-labels, e.g. "axis.csv;shape=axis;labels=x,y,z"
+//       .- ? remove axis_labels field, unless you could come up with a compelling use case when different labels per data point might be required
+//       x- if decided to keep axis_labels field, rename axis_label to axis_labels to keep it consistent with traits, however see the next item
 //     - length
-//       - add command line option --length
-//       - add stream option --length, e.g. "axis.csv;shape=axis;length=1.2"
+//       .- add command line option --length
+//       .- add stream option --length, e.g. "axis.csv;shape=axis;length=1.2"
 //     - support colour definitions as for other streams
 //       - the current behaviour is ok as default
 //       - the following does not work (unlike other streams): "axis.csv;shape=axis;color=yellow"; or --shape axis --color yellow; or --shape axis --fields x,y,z,id; etc
@@ -515,9 +515,7 @@ struct axis
 {
     Eigen::Vector3d position;
     snark::roll_pitch_yaw orientation;
-    double length;
-    std::string axis_label;
-    axis() : position( 0, 0, 0 ), orientation( 0, 0, 0 ), length(1) {}
+    axis() : position( 0, 0, 0 ), orientation( 0, 0, 0 ) {}
 };
 
 
@@ -534,10 +532,10 @@ struct Shapetraits< axis >
 
     static void update(shape_reader_base& reader, const ShapeWithId<axis>& s,const Eigen::Vector3d& offset)
     {
-        std::vector<std::string> v=comma::split(s.shape.axis_label,':');
+        std::vector<std::string> v=comma::split(reader.labels,':');
         Eigen::Vector3d pos=s.shape.position - offset;
         Eigen::Matrix3d ori=rotation_matrix::rotation( s.shape.orientation );
-        Eigen::Vector3d una(s.shape.length,0,0);
+        Eigen::Vector3d una(reader.length,0,0);
         Eigen::Vector3d p=pos + ori*una;
         reader.add_vertex( vertex_t(pos,COLOR_RED),s.block);
         reader.add_vertex( vertex_t(p,COLOR_RED),s.block);
@@ -707,8 +705,6 @@ struct traits< snark::graphics::view::axis >
     {
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
-        v.apply( "length", p.length );
-        v.apply( "axis_labels", p.axis_label );
     }
 
     template < typename Key, class Visitor >
@@ -716,8 +712,6 @@ struct traits< snark::graphics::view::axis >
     {
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
-        v.apply( "length", p.length );
-        v.apply( "axis_labels", p.axis_label );
     }
 };
 
