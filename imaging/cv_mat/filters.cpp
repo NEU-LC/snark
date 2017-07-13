@@ -2992,11 +2992,6 @@ static std::string usage_impl_()
     oss << "                         supported file types by filename extension:" << std::endl;
     oss << "                             - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
     oss << "                             - otherwise whatever cv::imread supports" << std::endl;
-    oss << "            examples:" << std::endl;
-    oss << "                loading cv-cat image" << std::endl;
-    oss << "                        cv-cat \"load=image.bin\"" << std::endl;
-    oss << "                a contrived example that loads from a file descriptor" << std::endl;
-    oss << "                        cv-cat \"load=\"<( cat image.bin )" << std::endl;
     oss << "        log=<options>: write images to files" << std::endl;
     oss << "            log=<filename>: write images to a single file" << std::endl;
     oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
@@ -3035,11 +3030,6 @@ static std::string usage_impl_()
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
-    oss << "        scale-to-mask=<mask.bin>: given a mask file matching the input image width and height, scale each channel value by the mask value." << std::endl;
-    oss << "                                  mask type: f or d" << std::endl;
-    oss << "                                  mask number of channels" << std::endl;
-    oss << "                                      1: apply the same mask to each channel of the image" << std::endl;
-    oss << "                                      same as the input image: apply to each channel the corresponding channel of the mask" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
@@ -3095,7 +3085,7 @@ static std::string usage_impl_()
     oss << "                    multiply operation with accumulated and threshold sub filters" << std::endl;
     oss << "                        cat images.bin | cv-cat \"multiply=accumulated:average,5|threshold:0.5,1.0\" >results.bin" << std::endl;
     oss << "                    scaling input images by a mask file, input type:  3ub, mask type: 3f" << std::endl;
-    oss << "                        cat images.bin | cv-cat \"convert-to=f;multiply=load:mask.bin;convert-to=ub\" >results.bin" << std::endl;
+    oss << "                        cat images.bin | cv-cat \"multiply=load:mask.bin\" >results.bin" << std::endl;
     oss << std::endl;
     oss << "    operations on subsets of columns, rows, or channels" << std::endl;
     oss << "        bands-to-cols=x,w[,x,w][,method:<method-name>,output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
