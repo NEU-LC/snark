@@ -537,21 +537,25 @@ struct Shapetraits< axis >
         Eigen::Matrix3d ori=rotation_matrix::rotation( s.shape.orientation );
         Eigen::Vector3d una(reader.length,0,0);
         Eigen::Vector3d p=pos + ori*una;
-        reader.add_vertex( vertex_t(pos,COLOR_RED),s.block);
-        reader.add_vertex( vertex_t(p,COLOR_RED),s.block);
-        if(v.size()>0) { reader.add_label(label_t(p,COLOR_RED,v[0]),s.block); }
+        color_t color=s.color;
+        if(!reader.has_color) { color=COLOR_RED; }
+        reader.add_vertex( vertex_t(pos,color),s.block);
+        reader.add_vertex( vertex_t(p,color),s.block);
+        if(v.size()>0) { reader.add_label(label_t(p,color,v[0]),s.block); }
 
         Eigen::Matrix3d y_r=rotation_matrix::rotation(Eigen::Vector3d(0,0,M_PI/2));
         p=pos+ori*y_r*una;
-        reader.add_vertex( vertex_t(pos,COLOR_GREEN),s.block);
-        reader.add_vertex( vertex_t(p,COLOR_GREEN),s.block);
-        if(v.size()>1) { reader.add_label(label_t(p,COLOR_GREEN,v[1]),s.block); }
+        if(!reader.has_color) { color=COLOR_GREEN; }
+        reader.add_vertex( vertex_t(pos,color),s.block);
+        reader.add_vertex( vertex_t(p,color),s.block);
+        if(v.size()>1) { reader.add_label(label_t(p,color,v[1]),s.block); }
 
         Eigen::Matrix3d z_r=rotation_matrix::rotation(Eigen::Vector3d(0,-M_PI/2,0));
         p=pos+ori*z_r*una;
-        reader.add_vertex( vertex_t(pos,COLOR_BLUE),s.block);
-        reader.add_vertex( vertex_t(p,COLOR_BLUE),s.block);
-        if(v.size()>2) { reader.add_label(label_t(p,COLOR_BLUE,v[2]),s.block); }
+        if(!reader.has_color) { color=COLOR_BLUE; }
+        reader.add_vertex( vertex_t(pos,color),s.block);
+        reader.add_vertex( vertex_t(p,color),s.block);
+        if(v.size()>2) { reader.add_label(label_t(p,color,v[2]),s.block); }
 
         reader.extent_hull(pos.cast<float>());
         reader.extent_hull( p.cast<float>() );

@@ -188,7 +188,8 @@ static void usage()
 #if Qt3D_VERSION==2
         "\n                                         --weight or --point-size can be used for line thickness"
 #endif
-        "\n                                         note: colour options are currently not effective for axis shape"
+        "\n                                         by default each axis is painted with different colors x:red y:green z:blue; unless"
+        "\n                                             if --color option exists or any of id or scalar fields are present it will use the normal coloring for all axis lines"
         qt55_unsupported_marker_start
         "\n                     \"<model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
         "\n                     \"    <options>"
@@ -408,7 +409,8 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
                                                           , options.exists( "--pass-through,--pass" )
                                                           , options.exists( "--fill" )
                                                           ,options.value<std::string>("--labels","")
-                                                          ,options.value<double>("--length",1));
+                                                          ,options.value<double>("--length",1)
+                                                          ,options.exists("--colour,--color,-c"));
     std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" )
                       : options.exists( "--color" ) ? options.value< std::string >( "--color" )
                       : options.value< std::string >( "-c", "" );
@@ -424,14 +426,15 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         param.point_size = m.value( "weight", param.point_size );
         param.title = m.value( "title", param.title.empty() ? param.options.filename : param.title );
         shape = m.value( "shape", shape );
-        if( m.exists( "colour" ) ) { color = m.value( "colour", color ); }
-        else if( m.exists( "color" ) ) { color = m.value( "color", color ); }
+        if( m.exists( "colour" ) ) { color = m.value( "colour", color ); param.has_color=true; }
+        else if( m.exists( "color" ) ) { color = m.value( "color", color ); param.has_color=true; }
         label = m.value( "label", label );
         show = !m.exists( "hide" );
         param.pass_through = param.pass_through || ( m.exists( "pass-through" ) || m.exists( "pass" ));
         param.fill = param.fill || m.exists( "fill" );
         param.labels=m.value("labels",param.labels);
         param.length=m.value("length",param.length);
+        if(param.options.has_field("id,scalar")) { param.has_color=true; }
     }
     if( param.pass_through )
     {

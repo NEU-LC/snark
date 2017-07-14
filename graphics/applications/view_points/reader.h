@@ -71,6 +71,7 @@ struct reader_parameters
     bool fill; // quick and dirty
     std::string labels; //currently used for axis labels e.g. "x:y:z"
     double length;  //currently used for axis length
+    bool has_color; //currently used for shape=axis, when false use three different color for xyz axises
 
     reader_parameters( const comma::csv::options& options
                      , const std::string& title
@@ -79,7 +80,8 @@ struct reader_parameters
                      , bool pass_through
                      , bool fill 
                      ,std::string labels
-                     ,double length)
+                     ,double length
+                     ,bool has_color)
         : options( options )
         , title( title )
         , size( size )
@@ -88,6 +90,7 @@ struct reader_parameters
         , fill( fill )
         ,labels(labels)
         ,length(length)
+        ,has_color(has_color)
     {}
 };
 
