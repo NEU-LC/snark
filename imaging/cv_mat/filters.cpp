@@ -2597,14 +2597,13 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
 
     struct maker
     {
-        maker( const get_timestamp_functor & get_timestamp, char separator = ';', char equal_sign = '=' ) 
-            : get_timestamp_( get_timestamp ), separator_( separator ), equal_sign_( equal_sign ) {}
+        maker( const get_timestamp_functor & get_timestamp, char separator = ';', char equal_sign = '=' ) : get_timestamp_( get_timestamp ), separator_( separator ), equal_sign_( equal_sign ) {}
         std::pair< functor_type, bool > operator()( const std::string & s ) const
         {
             const std::vector< std::string > & w = comma::split( s, separator_ );
             std::pair< functor_type, bool > g = make_filter< O, H >::make_filter_functor( comma::split( w[0], equal_sign_ ), get_timestamp_ );
-            auto functor = g.first;
             bool parallel = g.second;
+            auto functor = g.first;
             for( unsigned int k = 1; k < w.size(); ++k ) 
             { 
                 auto b = make_filter< O, H >::make_filter_functor( comma::split( w[k], equal_sign_ ), get_timestamp_ );
@@ -2613,7 +2612,6 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             }
             return std::make_pair( functor, parallel );
         }
-        
         private:
             const get_timestamp_functor & get_timestamp_;
             char separator_, equal_sign_;
@@ -2624,18 +2622,13 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         composer( const maker & m ) : m_( m ) {}
         const maker & m_;
 
-        typedef typename boost::static_visitor< std::pair< functor_type, bool > >::result_type result_type;
+        typedef typename boost::static_visitor< boost::function< input_type ( input_type ) > >::result_type result_type;
 
-        result_type term( const std::string & s ) const { return m_( s ); };
-        result_type op_and( const result_type & opl, const result_type & opr ) const { 
-            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); return std::make_pair( i.first, l.second & r.second ); }, opl.second && opr.second ); }
-        result_type op_or( const result_type & opl, const result_type & opr ) const { 
-            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); return std::make_pair( i.first, l.second | r.second ); }, opl.second && opr.second ); 
-        }
-        result_type op_xor( const result_type & opl, const result_type & opr ) const { 
-            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); return std::make_pair( i.first, l.second ^ r.second ); }, opl.second && opr.second ); 
-        }
-        result_type op_not( const result_type & op ) const { return std::make_pair( [ op ]( const input_type & i ) -> input_type { const input_type & o = op.first( i ); return std::make_pair( i.first, ~o.second ); }, op.second ); }
+        result_type term( const std::string & s ) const { return m_( s ).first; };
+        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second & r.second ); }; }
+        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second | r.second ); }; }
+        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl( i ); const input_type & r = opr( i ); return std::make_pair( i.first, l.second ^ r.second ); }; }
+        result_type op_not( const result_type & op ) const { return [ op ]( const input_type & i ) -> input_type { const input_type & o = op( i ); return std::make_pair( i.first, ~o.second ); }; }
     };
 
 };
@@ -2689,8 +2682,9 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
              maker_t m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
              composer_t c( m );
-             auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
-             f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, g.first ), g.second ) );
+             // TODO fix parallel
+             functor_type functor = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
+             f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, functor ), true ) );   // TODO decide if parallel is possible
         }
         else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" )
         {
