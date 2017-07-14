@@ -1,0 +1,5 @@
+image[0]="not-a-date-time,2,3,0,0,20,40,60,80,100"
+image[1]="not-a-date-time,2,3,0,1,35,55,75,95,115"
+image[2]="not-a-date-time,2,3,0,3,50,70,90,110,130"
+image[3]="not-a-date-time,2,3,0,5,65,85,105,125,145"
+image[4]="not-a-date-time,2,3,0,6,80,100,120,140,160"

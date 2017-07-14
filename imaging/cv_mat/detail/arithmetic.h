@@ -30,24 +30,30 @@
 #pragma once
 
 #include <string>
-#include <Eigen/Core>
-#include <boost/thread/pthread/mutex.hpp>
-#include <boost/shared_ptr.hpp>
+#include <boost/function.hpp>
+#include <comma/base/exception.h>
 #include <opencv2/core/core.hpp>
 
 namespace snark{ namespace cv_mat { namespace impl {
 
 template < typename H >
-struct scale_by_mask_impl_ {
+class arithmetic
+{
+public:
     typedef std::pair< H, cv::Mat > value_type;
-    boost::shared_ptr< boost::mutex > mutex_;
-    cv::Mat mask_;
+    enum class operation { multiply, subtract, divide, add };
+
+    static operation str_to_operation(const std::string& s); 
+    static std::string operation_to_str( operation op );
     
-    void apply_mask(cv::Mat& mat);
+    arithmetic( operation op );
 
-    scale_by_mask_impl_( const std::string& mask_file );
-
-    value_type operator()( const value_type& n );
+    value_type operator()( value_type n, boost::function< value_type( value_type ) >& operand );
+    
+private:
+    operation operation_;
+    value_type apply_(const value_type& m, const cv::Mat& operand );
 };
+
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

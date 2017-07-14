@@ -30,21 +30,21 @@
 #pragma once
 
 #include <string>
+#include <boost/unordered_map.hpp>
 #include <opencv2/core/core.hpp>
 
 namespace snark{ namespace cv_mat { namespace impl {
 
-template < typename H >
-struct load_impl_
-{
-    typedef std::pair< H, cv::Mat > value_type;
-    value_type value;
+boost::unordered_map< std::string, int > fill_types_();
 
-    // Set load as "bin" to load cv-cat format, else load using cv::imread
-    load_impl_( const std::string& filename, const std::string& load_as="" );
+boost::unordered_map< int, std::string > fill_types_as_string_();
 
-    value_type operator()( value_type ) { return value; }
-};
+boost::unordered_map< std::string, unsigned int > fill_cvt_color_types_();
 
+cv::Scalar scalar_from_strings( const std::string* begin, unsigned int size );
+
+unsigned int cvt_color_type_from_string( const std::string& t );
+
+std::string type_as_string( int t );
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
