@@ -497,20 +497,6 @@ struct Shapetraits< Eigen::Vector3d, How >
     static const Eigen::Vector3d& center( const Eigen::Vector3d& point ) { return point; }
 };
 
-// todo
-//     - --help on axis
-//       .- remove 'label' field from the description; it is a generic field, no need to specifically mention it for axis
-//     - axis labels: should not axis_labels be a stream option rather than field? are not the labels defined per stream, not per point? therefore
-//       .- add command line option --labels
-//       .- add stream option axis-labels, e.g. "axis.csv;shape=axis;labels=x,y,z"
-//       .- ? remove axis_labels field, unless you could come up with a compelling use case when different labels per data point might be required
-//       x- if decided to keep axis_labels field, rename axis_label to axis_labels to keep it consistent with traits, however see the next item
-//     - length
-//       .- add command line option --length
-//       .- add stream option --length, e.g. "axis.csv;shape=axis;length=1.2"
-//     - support colour definitions as for other streams
-//       - the current behaviour is ok as default
-//       - the following does not work (unlike other streams): "axis.csv;shape=axis;color=yellow"; or --shape axis --color yellow; or --shape axis --fields x,y,z,id; etc
 struct axis
 {
     Eigen::Vector3d position;
