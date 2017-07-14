@@ -26,6 +26,11 @@ install( TARGETS ${TARGET_NAME}
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
 
+if( NOT DEFINED vimba_sdk_root_previous )
+    set( vimba_sdk_root_previous "unset" CACHE PATH "previous VIMBA_SDK_ROOT value" )
+    mark_as_advanced( FORCE vimba_sdk_root_previous )
+endif()
+
 set( VIMBA_SDK_ROOT "/opt/vimba" CACHE PATH "Vimba SDK root directory" )
 if( NOT EXISTS ${VIMBA_SDK_ROOT} )
     message( FATAL_ERROR "\nPlease install the Vimba SDK at ${VIMBA_SDK_ROOT} "
@@ -33,6 +38,14 @@ if( NOT EXISTS ${VIMBA_SDK_ROOT} )
         "The SDK is available from https://www.alliedvision.com/en/products/software.html.\n"
         "The code in this project has been developed and principally tested against version 1.4 of the SDK although it will also build and has been partly tested against version 2.0."
         )
+endif()
+
+# If we change VIMBA_SDK_ROOT, reset the dependent options
+if( NOT ${VIMBA_SDK_ROOT} STREQUAL ${vimba_sdk_root_previous} )
+    unset( VIMBA_SDK_INCLUDE_DIR CACHE )
+    unset( VIMBA_SDK_LIB_DIR CACHE )
+    unset( VIMBA_GENICAM_GENTL64_PATH CACHE )
+    set( vimba_sdk_root_previous ${VIMBA_SDK_ROOT} CACHE PATH "previous VIMBA_SDK_ROOT value" FORCE )
 endif()
 
 set( VIMBA_SDK_INCLUDE_DIR "${VIMBA_SDK_ROOT}" CACHE PATH "Path to Vimba SDK include directory" )
