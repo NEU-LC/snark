@@ -2689,7 +2689,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
              maker_t m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
              composer_t c( m );
-             auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
+             std::pair< functor_type, bool > g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
              f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, g.first ), g.second ) );
         }
         else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" )
