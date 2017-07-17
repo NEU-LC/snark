@@ -2096,7 +2096,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
         return std::make_pair(boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, impl::cvt_color_type_from_string( e[1] ) ), true );
     }
-    if( e[0] == "count" ) { return std::make_pair(count_impl_< H >(), true ); }
+    if( e[0] == "count" ) { return std::make_pair(count_impl_< H >(), false ); }
     if( e[0] == "crop" )
     {
         unsigned int x = 0;
@@ -2659,7 +2659,6 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
     typedef boost::function< output_type( input_type ) > functor_type;
     typedef typename make_filter< cv::Mat, H >::maker maker_t;
     typedef typename make_filter< cv::Mat, H >::composer composer_t;
-    typedef make_filter< cv::Mat, H > make_filter_t;
 
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter_type > f;
