@@ -423,6 +423,11 @@ template < typename H > class crop_tile_impl_
         }
 };
 
+template < typename H > struct tile_impl_
+{
+    typename impl::filters< H >::value_type operator()( typename impl::filters< H >::value_type input, unsigned int width, unsigned int height, bool vertical ) { return crop_tile_impl_< H >()( input, input.second.cols / width, input.second.rows / height, std::vector< tile_t >(), vertical ); }
+};
+
 template < typename H > struct untile_impl_
 {
     typedef typename impl::filters< H >::value_type value_type;
@@ -2263,6 +2268,23 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( x && !y ) { COMMA_THROW( comma::exception, "crop-tile: expected tile count along x and y followed by tile positions; got: \"" << e[1] << "\"" ); }
         return std::make_pair( boost::bind< value_type_t >( crop_tile_impl_< H >(), _1, *count_x, *count_y, tiles, vertical ), true );
     }
+    if( e[0] == "tile" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "tile: specify tile width and height" ); }
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        bool vertical = true;
+        boost::optional< unsigned int > width;
+        boost::optional< unsigned int > height;
+        for( unsigned int i = 0; i < s.size(); ++i )
+        {
+            if( s[i] == "horizontal" ) { vertical = false; continue; }
+            if( !width ) { width = boost::lexical_cast< unsigned int >( s[i] ); continue; }
+            height = boost::lexical_cast< unsigned int >( s[i] );
+        }
+        if( !width ) { COMMA_THROW( comma::exception, "untile: expected tile count along x; got: \"" << e[1] << "\"" ); }
+        if( !height ) { COMMA_THROW( comma::exception, "untile: expected tile count along x and y; got: \"" << e[1] << "\"" ); }
+        return std::make_pair( boost::bind< value_type_t >( tile_impl_< H >(), _1, *width, *height, vertical ), true );
+    }
     if( e[0] == "untile" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "untile: specify tile count along x and y" ); }
@@ -3015,7 +3037,7 @@ static std::string usage_impl_()
     oss << "            horizontal: if present, tiles will be stacked horizontally (by default, vertical stacking is used)" << std::endl;
     oss << "            examples" << std::endl;
     oss << "                \"crop-tile=2,5,1,0,2,3\": crop 2 tiles of the image 2x5 tiles: tile at 1,0 and at 2,3" << std::endl;
-    oss << "                \"crop-tile=2,5\": crop all tiles from the image of 2x5 tiles; output image will be composed of 2*5=10 tiles" << std::endl;
+    oss << "                \"crop-tile=2,5\": similar to tile operation; crop all tiles from the image of 2x5 tiles; output image will be composed of 2*5=10 tiles" << std::endl;
     oss << "                \"crop-tile=2,5,1,0,2,3,horizontal\": crop 2 tiles out of image split into 2x5 tiles: tile at 1,0 and at 2,3; arrange tiles horizontally in the output image" << std::endl;
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
     oss << "        encode=<format>[,<quality>]: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
