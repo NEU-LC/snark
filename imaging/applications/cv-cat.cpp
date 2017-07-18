@@ -177,17 +177,21 @@ int main( int argc, char** argv )
         {
             std::string command = vm[ "help" ].as< std::string >();
             if ( ! command.empty() ) { std::cerr << snark::cv_mat::command_specific_help( "cv-cat", command ) << std::endl; return 0; }
-            std::cerr << "acquire images using opencv, apply filters and output with header" << std::endl;
+            std::cerr << "read images from stdin or a camera supported by opencv, apply filters and output to stdout" << std::endl;
             if( !vm.count( "verbose" ) ) { std::cerr << "see --help --verbose for filters usage" << std::endl; }
             std::cerr << std::endl;
-            std::cerr << "usage: cv-cat [options] [<filters>]\n" << std::endl;
-            std::cerr << "output header format: fields: t,rows,cols,type; binary: t,3ui\n" << std::endl;
-            std::cerr << "                note: only the following scenarios are currently supported:" << std::endl;
-            std::cerr << "                      - input has no header (no-header option), output has default header fields (fields=t,rows,cols,type)" << std::endl;
-            std::cerr << "                      - input has no header (no-header option), output has no header (no-header option)" << std::endl;
-            std::cerr << "                      - input has arbitrary fields, input header fields are the same as output header fields" << std::endl;
-            std::cerr << "                      - input has arbitrary fields, output has no header (no-header option)" << std::endl;
-            std::cerr << "                      anything more sophisticated than that can be easily achieved e.g. by piping cv-cat to csv-shuffle" << std::endl;
+            std::cerr << "usage: cv-cat [options] [<filters>]" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "image header" << std::endl;
+            std::cerr << "    default header fields: t,rows,cols,type" << std::endl;
+            std::cerr << "    default header format: t,3ui" << std::endl;
+            std::cerr << "    note: only the following scenarios are currently supported:" << std::endl;
+            std::cerr << "          - input has no header (no-header option), output has default header fields (fields=t,rows,cols,type)" << std::endl;
+            std::cerr << "          - input has no header (no-header option), output has no header (no-header option)" << std::endl;
+            std::cerr << "          - input has arbitrary fields, input header fields are the same as output header fields" << std::endl;
+            std::cerr << "          - input has arbitrary fields, output has no header (no-header option)" << std::endl;
+            std::cerr << "          anything more sophisticated than that can be easily achieved e.g. by piping cv-cat to csv-shuffle" << std::endl;
+            std::cerr << std::endl;
             std::cerr << description << std::endl;
             std::cerr << std::endl;
             std::cerr << "examples" << std::endl;
