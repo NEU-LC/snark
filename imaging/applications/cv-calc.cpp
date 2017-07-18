@@ -432,7 +432,7 @@ int main( int ac, char** av )
                 cv::Mat& mat = p.second;
                 ++count;
                 binary.get( ext, &serialization.header_buffer()[0] );
-                if( mask.rows != mat.rows || mask.cols != mat.cols ) { mask = cv::Mat::ones(mat.rows, mat.cols, CV_8U); }  // all ones, must be CV_U8 for setTo
+                if( mask.rows != mat.rows || mask.cols != mat.cols ) { mask = cv::Mat::ones( mat.rows, mat.cols, CV_8U ); }
                 if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows )
                 {
                     if( no_discard )
@@ -451,8 +451,8 @@ int main( int ac, char** av )
                 }                
                 int width = ext.max.x - ext.min.x;
                 int height = ext.max.y - ext.min.y;
-                if( width < 0 || height < 0 ) { std::cerr << name << "roi's width and height can not be negative. Failed on image/frame number: " << count << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1; }                
-                if( ext.min.x >= 0 && ext.min.y >=0 && ext.max.x < mat.cols && ext.max.y < mat.rows )
+                if( width < 0 || height < 0 ) { std::cerr << name << "roi's width and height can not be negative; failed on image/frame number " << count << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1; }
+                if( ext.min.x >= 0 && ext.min.y >=0 && ext.max.x <= mat.cols && ext.max.y <= mat.rows )
                 {
                     if( crop )
                     {
