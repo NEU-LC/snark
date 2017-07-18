@@ -400,24 +400,27 @@ static typename impl::filters< H >::value_type crop_impl_( typename impl::filter
 
 typedef std::pair< unsigned int, unsigned int > tile_t;
 
-template < typename H > struct crop_tile_impl_
+template < typename H > class crop_tile_impl_
 {
-    typedef typename impl::filters< H >::value_type value_type;
-    value_type operator()( value_type input, unsigned int count_x, unsigned int count_y, const std::vector< tile_t >& tiles, bool vertical )
-    {
-        unsigned int w = input.second.cols / count_x;
-        unsigned int h = input.second.rows / count_y;
-        unsigned int s = tiles.empty() ? count_x * count_y : tiles.size();
-        value_type output( input.first, cv::Mat( vertical ? h * s : h, vertical ? w : w * s, input.second.type() ) );
-        auto copy_tile = [&]( unsigned int n, unsigned int i, unsigned int j )
+    public:
+        typedef typename impl::filters< H >::value_type value_type;
+        value_type operator()( value_type input, unsigned int count_x, unsigned int count_y, const std::vector< tile_t >& tiles, bool vertical )
         {
-            cv::Mat tile( output.second, cv::Rect( vertical ? 0 : n * w, vertical ? n * h: 0, w, h ) );
-            cv::Mat( input.second, cv::Rect( i * w, j * h, w, h ) ).copyTo( tile );
-        };
-        if( tiles.empty() ) { for( unsigned int j( 0 ), n( 0 ); j < count_y; ++j ) { for( unsigned int i = 0; i < count_x; ++i, ++n ) { copy_tile( n, i, j ); } } }
-        else { for( std::size_t i = 0; i < tiles.size(); ++i ) { copy_tile( i, tiles[i].first, tiles[i].second ); } }
-        return output;
-    }
+            unsigned int w = input.second.cols / count_x;
+            unsigned int h = input.second.rows / count_y;
+            unsigned int s = tiles.empty() ? count_x * count_y : tiles.size();
+            value_type output( input.first, cv::Mat( vertical ? h * s : h, vertical ? w : w * s, input.second.type() ) );
+            if( tiles.empty() ) { for( unsigned int j( 0 ), n( 0 ); j < count_y; ++j ) { for( unsigned int i = 0; i < count_x; ++i, ++n ) { copy_tile_( input.second, output.second, n, i, j, w, h, vertical ); } } }
+            else { for( std::size_t i = 0; i < tiles.size(); ++i ) { copy_tile_( input.second, output.second, i, tiles[i].first, tiles[i].second, w, h, vertical ); } }
+            return output;
+        }
+        
+    private:
+        static void copy_tile_( const cv::Mat& input, cv::Mat& output, unsigned int n, unsigned int i, unsigned int j, unsigned int w, unsigned int h, bool vertical )
+        {
+            cv::Mat tile( output, cv::Rect( vertical ? 0 : n * w, vertical ? n * h: 0, w, h ) );
+            cv::Mat( input, cv::Rect( i * w, j * h, w, h ) ).copyTo( tile );
+        }
 };
 
 template < typename H > struct untile_impl_
@@ -441,9 +444,14 @@ template < typename H > struct untile_impl_
             tile_height = input.second.rows;
         }
         value_type output( input.first, cv::Mat( tile_height * count_y, tile_width * count_x, input.second.type() ) );
-        
-        COMMA_THROW( comma::exception, "untile: todo" );
-        
+        for( unsigned int j( 0 ), n( 0 ); j < count_y; ++j )
+        { 
+            for( unsigned int i = 0; i < count_x; ++i, ++n )
+            { 
+                cv::Mat tile( output.second, cv::Rect( i * tile_width, j * tile_height, tile_width, tile_height ) );
+                cv::Mat( input.second, cv::Rect( vertical ? 0 : n * tile_width, vertical ? n * tile_height : 0, tile_width, tile_height ) ).copyTo( tile );
+            }
+        }
         return output;
     }
 };
@@ -2257,7 +2265,20 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "untile" )
     {
-        COMMA_THROW( comma::exception, "untile: todo" );
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "untile: specify tile count along x and y" ); }
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        bool vertical = true;
+        boost::optional< unsigned int > count_x;
+        boost::optional< unsigned int > count_y;
+        for( unsigned int i = 0; i < s.size(); ++i )
+        {
+            if( s[i] == "horizontal" ) { vertical = false; continue; }
+            if( !count_x ) { count_x = boost::lexical_cast< unsigned int >( s[i] ); continue; }
+            count_y = boost::lexical_cast< unsigned int >( s[i] );
+        }
+        if( !count_x ) { COMMA_THROW( comma::exception, "untile: expected tile count along x; got: \"" << e[1] << "\"" ); }
+        if( !count_y ) { COMMA_THROW( comma::exception, "untile: expected tile count along x and y; got: \"" << e[1] << "\"" ); }
+        return std::make_pair( boost::bind< value_type_t >( untile_impl_< H >(), _1, *count_x, *count_y, vertical ), true );
     }
     if( e[0] == "cols-to-channels" || e[0] == "rows-to-channels" )
     {
@@ -3079,6 +3100,14 @@ static std::string usage_impl_()
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
     oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,abc0,efd0" << std::endl;
+    oss << "        untile=<ncols>,<nrows>[,horizontal]: inverse to crop-tile; input image used as a stip of <ncols>*<nrows> tiles, output image will be be composed by <nrows> of tiles with <ncols> tiles per row" << std::endl;
+    oss << "                                             if width or height of input image is not divisible by the corresponding count, the input image will be clipped" << std::endl;
+    oss << "                                             horizontal: if present, input tiles are considered stacked horizontally (by default, vertical stacking is used)" << std::endl;
+    oss << "                                             example" << std::endl;
+    oss << "                                                 > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count' | cv-cat --input 'no-header;rows=1280;cols=64;type=ub' 'encode=png' > original.png" << std::endl;
+    oss << "                                                 > eog original.png" << std::endl;
+    oss << "                                                 > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count' | cv-cat --input 'no-header;rows=1280;cols=64;type=ub' 'untile=5,4;encode=png' > untiled.png" << std::endl;
+    oss << "                                                 > eog untiled.png" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
