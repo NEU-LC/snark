@@ -373,29 +373,18 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if( operation == "header" || operation == "format" )
+        
+        if( operation == "header" )
         {
             if( csv.fields.empty() ) { csv.fields = "t,rows,cols,type" ; }
             if( !csv.binary() ) { csv.format("t,3ui"); }
             if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
             if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
-        }
-        else if( operation == "roi" )
-        {
-            if( csv.fields.empty() ) { csv.fields = "min/x,min/y,max/x,max/y,t,rows,cols,type"; }
-            if( !csv.binary() ) { csv.format("4i,t,3ui"); }
-            if( options.exists("--input-fields,--output-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
-            if( options.exists("--input-format,--output-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
-        }
-        if( verbose )
-        {
-            std::cerr << name << "fields: " << csv.fields << std::endl;
-            std::cerr << name << "format: " << csv.format().string() << std::endl;
-        }            
-        snark::cv_mat::serialization serialization( csv.fields, csv.format() ); // todo?
-        if( operation == "header" )
-        {
+            if( verbose ) { std::cerr << name << "fields: " << csv.fields << std::endl; std::cerr << name << "format: " << csv.format().string() << std::endl; }            
             if( options.exists("--output-fields") ) { std::cout << "rows,cols,type" << std::endl;  return 0; }
+            
+            // TODO use input_serialisation?
+            snark::cv_mat::serialization serialization( csv.fields, csv.format() ); // todo?
             std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; return 1; }
             comma::csv::options out;
@@ -406,6 +395,14 @@ int main( int ac, char** av )
         }
         if( operation == "format" )
         {
+            if( csv.fields.empty() ) { csv.fields = "t,rows,cols,type" ; }
+            if( !csv.binary() ) { csv.format("t,3ui"); }
+            if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
+            if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
+            if( verbose ) { std::cerr << name << "fields: " << csv.fields << std::endl; std::cerr << name << "format: " << csv.format().string() << std::endl; }            
+            
+            // TODO use input_serialisation?
+            snark::cv_mat::serialization serialization( csv.fields, csv.format() ); // todo?
             std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; return 1; }
             snark::cv_mat::serialization::header header = serialization.get_header( &serialization.header_buffer()[0] );
@@ -416,6 +413,15 @@ int main( int ac, char** av )
         }
         if( operation == "roi" )
         {
+            if( csv.fields.empty() ) { csv.fields = "min/x,min/y,max/x,max/y,t,rows,cols,type"; }
+            if( !csv.binary() ) { csv.format("4i,t,3ui"); }
+            if( options.exists("--input-fields,--output-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
+            if( options.exists("--input-format,--output-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
+            if( verbose ) { std::cerr << name << "fields: " << csv.fields << std::endl; std::cerr << name << "format: " << csv.format().string() << std::endl; }            
+            
+            // TODO use input_serialisation?
+            snark::cv_mat::serialization serialization( csv.fields, csv.format() ); // todo?
+            
             comma::csv::binary< ::extents > binary( csv );
             bool crop = options.exists( "--crop" );
             bool flush = options.exists("--flush");
