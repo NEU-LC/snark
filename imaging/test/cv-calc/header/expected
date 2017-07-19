@@ -1,0 +1,12 @@
+basic[0]/output="3,3,0"
+basic[0]/status=0
+basic[1]/output="3,3,6"
+basic[1]/status=0
+basic[2]/output="3,3,0"
+basic[2]/status=0
+basic[3]/output="3,3,0"
+basic[3]/status=0
+input[0]/output="3,3,3"
+input[0]/status=0
+input[1]/output="3,3,5"
+input[1]/status=0
