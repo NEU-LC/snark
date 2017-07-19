@@ -98,7 +98,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
-    std::cerr << "        --discard; discards frames where the roi is not seen" << std::endl;
+    std::cerr << "        --no-discard; do not discards frames where the roi is not seen" << std::endl;
     std::cerr << "        --permissive,--show-partial; allow partial overlaps of roi and input image, default: if partial roi and image overlap, set entire image to zeros." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    stride" << std::endl;
@@ -416,40 +416,43 @@ int main( int ac, char** av )
         }
         if( operation == "roi" )
         {
+            options.assert_mutually_exclusive( "--crop,--no-discard" );
             comma::csv::binary< ::extents > binary( csv );
             bool crop = options.exists( "--crop" );
             bool flush = options.exists("--flush");
-            bool show_partial = options.exists("--show-partial,--permissive");
-            if( verbose ) { std::cerr << name << "show partial: " << show_partial << std::endl; }
+            bool permissive = options.exists("--show-partial,--permissive");
+            bool no_discard = options.exists( "--no-discard" );
             ::extents ext;
             cv::Mat mask;
             comma::uint64 count = 0;
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
+                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
                 if( p.second.empty() ) { break; }
                 cv::Mat& mat = p.second;
                 ++count;
                 binary.get( ext, &serialization.header_buffer()[0] );
-                if(verbose && mask.rows == 0) // Will only trigger once
+                if( mask.rows != mat.rows || mask.cols != mat.cols ) { mask = cv::Mat::ones( mat.rows, mat.cols, CV_8U ); }
+                if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows )
                 {
-                    snark::cv_mat::serialization::header header = serialization.get_header( &serialization.header_buffer()[0] );
-                    std::cerr << name << "min & max: " << ext.min << " " << ext.max << std::endl;
-                    std::cerr << name << "rows & cols: " << header.rows << ' ' << header.cols << std::endl;
+                    if( no_discard )
+                    {
+                        mat.setTo( cv::Scalar(0) );
+                        serialization.write_to_stdout( p, flush );
+                    }
+                    continue;
                 }
-                if( mask.rows != mat.rows || mask.cols != mat.cols ) { mask = cv::Mat::ones(mat.rows, mat.cols, CV_8U); }  // all ones, must be CV_U8 for setTo
-                if( ext.max.x < 0 || ext.min.x >= mat.cols || ext.max.y < 0 || ext.min.y >= mat.rows ) { continue; }
-                if( show_partial )
+                if( permissive )
                 {
-                    if( ext.min.x < 0 ) { ext.min.x = 0; }
-                    if( ext.max.x >= mat.cols ) { ext.max.x = mat.cols-1; }
-                    if( ext.min.y < 0 ) { ext.min.y = 0; }
-                    if( ext.max.y >= mat.rows ) { ext.max.y = mat.rows-1; }
+                    ext.min.x = std::max( ext.min.x, 0 );
+                    ext.min.y = std::max( ext.min.y, 0 );
+                    ext.max.x = std::min( ext.max.x, mat.cols );
+                    ext.max.y = std::min( ext.max.y, mat.rows );
                 }                
                 int width = ext.max.x - ext.min.x;
                 int height = ext.max.y - ext.min.y;
-                if( width < 0 || height < 0 ) { std::cerr << name << "roi's width and height can not be negative. Failed on image/frame number: " << count << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1; }                
-                if( ext.min.x >= 0 && ext.min.y >=0 && (ext.min.x + width < mat.cols) && (ext.min.y + height < mat.rows ) ) 
+                if( width < 0 || height < 0 ) { std::cerr << name << "roi's width and height can not be negative; failed on image/frame number " << count << ", min: " << ext.min << ", max: " << ext.max << ", width: " << width << ", height: " << height << std::endl; return 1; }
+                if( ext.min.x >= 0 && ext.min.y >=0 && ext.max.x <= mat.cols && ext.max.y <= mat.rows )
                 {
                     if( crop )
                     {

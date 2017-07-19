@@ -400,21 +400,62 @@ static typename impl::filters< H >::value_type crop_impl_( typename impl::filter
 
 typedef std::pair< unsigned int, unsigned int > tile_t;
 
-template < typename H >
-struct crop_tile_impl_ {
-    typedef typename impl::filters< H >::value_type value_type;
-    value_type operator()( value_type input, unsigned int number_of_tile_cols, unsigned int number_of_tile_rows, const std::vector< tile_t >& tiles, bool vertical )
-    {
-        unsigned int w = input.second.cols / number_of_tile_cols;
-        unsigned int h = input.second.rows / number_of_tile_rows;
-        unsigned int s = tiles.size();
-        value_type output( input.first, cv::Mat( vertical ? h*s : h, vertical ? w : w*s, input.second.type() ) );
-        for( std::size_t i = 0; i < tiles.size(); ++i)
+template < typename H > class crop_tile_impl_
+{
+    public:
+        typedef typename impl::filters< H >::value_type value_type;
+        value_type operator()( value_type input, unsigned int count_x, unsigned int count_y, const std::vector< tile_t >& tiles, bool vertical )
         {
-            unsigned int x = tiles[i].first * w;
-            unsigned int y = tiles[i].second * h;
-            cv::Mat tile( output.second,  cv::Rect( vertical ? 0 : i*w, vertical ? i*h: 0, w, h ) );
-            cv::Mat( input.second, cv::Rect( x, y, w, h ) ).copyTo( tile );
+            unsigned int w = input.second.cols / count_x;
+            unsigned int h = input.second.rows / count_y;
+            unsigned int s = tiles.empty() ? count_x * count_y : tiles.size();
+            value_type output( input.first, cv::Mat( vertical ? h * s : h, vertical ? w : w * s, input.second.type() ) );
+            if( tiles.empty() ) { for( unsigned int j( 0 ), n( 0 ); j < count_y; ++j ) { for( unsigned int i = 0; i < count_x; ++i, ++n ) { copy_tile_( input.second, output.second, n, i, j, w, h, vertical ); } } }
+            else { for( std::size_t i = 0; i < tiles.size(); ++i ) { copy_tile_( input.second, output.second, i, tiles[i].first, tiles[i].second, w, h, vertical ); } }
+            return output;
+        }
+        
+    private:
+        static void copy_tile_( const cv::Mat& input, cv::Mat& output, unsigned int n, unsigned int i, unsigned int j, unsigned int w, unsigned int h, bool vertical )
+        {
+            cv::Mat tile( output, cv::Rect( vertical ? 0 : n * w, vertical ? n * h: 0, w, h ) );
+            cv::Mat( input, cv::Rect( i * w, j * h, w, h ) ).copyTo( tile );
+        }
+};
+
+template < typename H > struct tile_impl_
+{
+    typename impl::filters< H >::value_type operator()( typename impl::filters< H >::value_type input, unsigned int width, unsigned int height, bool vertical ) { return crop_tile_impl_< H >()( input, input.second.cols / width, input.second.rows / height, std::vector< tile_t >(), vertical ); }
+};
+
+template < typename H > struct untile_impl_
+{
+    typedef typename impl::filters< H >::value_type value_type;
+    value_type operator()( value_type input, unsigned int count_x, unsigned int count_y, bool vertical )
+    {
+        unsigned int count = count_x * count_y;
+        unsigned int tile_width;
+        unsigned int tile_height;
+        if( vertical )
+        {
+            tile_width = input.second.cols;
+            tile_height = input.second.rows / count;
+            if( tile_height == 0 ) { COMMA_THROW( comma::exception, "untile: expected image height at least " << count << " rows; got: " << input.second.rows ); }
+        }
+        else
+        {
+            tile_width = input.second.cols / count;
+            if( tile_width == 0 ) { COMMA_THROW( comma::exception, "untile: expected image width at least " << count << " cols; got: " << input.second.cols ); }
+            tile_height = input.second.rows;
+        }
+        value_type output( input.first, cv::Mat( tile_height * count_y, tile_width * count_x, input.second.type() ) );
+        for( unsigned int j( 0 ), n( 0 ); j < count_y; ++j )
+        { 
+            for( unsigned int i = 0; i < count_x; ++i, ++n )
+            { 
+                cv::Mat tile( output.second, cv::Rect( i * tile_width, j * tile_height, tile_width, tile_height ) );
+                cv::Mat( input.second, cv::Rect( vertical ? 0 : n * tile_width, vertical ? n * tile_height : 0, tile_width, tile_height ) ).copyTo( tile );
+            }
         }
         return output;
     }
@@ -2096,7 +2137,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
         return std::make_pair(boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, impl::cvt_color_type_from_string( e[1] ) ), true );
     }
-    if( e[0] == "count" ) { return std::make_pair(count_impl_< H >(), true ); }
+    if( e[0] == "count" ) { return std::make_pair(count_impl_< H >(), false ); }
     if( e[0] == "crop" )
     {
         unsigned int x = 0;
@@ -2203,34 +2244,63 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "crop-tile" )
     {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-tile: specify number of tiles along x and y, and at least one tile, e.g. crop-tile=1,1,0,0" ); }
-        std::vector< std::string > items = comma::split( e[1], '&' );
-        bool vertical = std::find( items.begin()+1, items.end(), "horizontal" ) == items.end();
-        std::vector< std::string > s = comma::split( items[0], ',' );
-        if( s.size() < 4 ) { COMMA_THROW( comma::exception, "crop-tile: expected number of tiles along x and y, and at least one tile, got " << e[1] ); }
-        if( s.size()%2 != 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected number of tiles along x and y, followed by pairs of integers representing tiles, got " << e[1] ); }
-        std::vector< unsigned int > v( s.size() );
-        for( std::size_t i=0; i < s.size(); ++i ) { v[i] = boost::lexical_cast< unsigned int >( s[i] ); }
-        unsigned int number_of_tile_cols, number_of_tile_rows;
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-tile: specify at least tile count along x and y" ); }
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        bool vertical = true;
+        boost::optional< unsigned int > count_x;
+        boost::optional< unsigned int > count_y;
+        boost::optional< unsigned int > x;
+        boost::optional< unsigned int > y;
         std::vector< tile_t > tiles;
-        if( v.size() == 4 && v[0] < v[2] && v[1] < v[3]) // for backward compatibility only
+        for( unsigned int i = 0; i < s.size(); ++i )
         {
-            number_of_tile_cols = v[2];
-            number_of_tile_rows = v[3];
-            tiles.push_back( tile_t( v[0], v[1] ) );
+            if( s[i] == "horizontal" ) { vertical = false; continue; }
+            if( !count_x ) { count_x = boost::lexical_cast< unsigned int >( s[i] ); continue; }
+            if( !count_y ) { count_y = boost::lexical_cast< unsigned int >( s[i] ); continue; }
+            if( !x ) { x = boost::lexical_cast< unsigned int >( s[i] ); continue; }
+            y = boost::lexical_cast< unsigned int >( s[i] );
+            tiles.push_back( tile_t( *x, *y ) );
+            x.reset();
+            y.reset();
         }
-        else
+        if( !count_x ) { COMMA_THROW( comma::exception, "crop-tile: expected tile count along x; got: \"" << e[1] << "\"" ); }
+        if( !count_y ) { COMMA_THROW( comma::exception, "crop-tile: expected tile count along x and y; got: \"" << e[1] << "\"" ); }
+        if( x && !y ) { COMMA_THROW( comma::exception, "crop-tile: expected tile count along x and y followed by tile positions; got: \"" << e[1] << "\"" ); }
+        return std::make_pair( boost::bind< value_type_t >( crop_tile_impl_< H >(), _1, *count_x, *count_y, tiles, vertical ), true );
+    }
+    if( e[0] == "tile" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "tile: specify tile width and height" ); }
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        bool vertical = true;
+        boost::optional< unsigned int > width;
+        boost::optional< unsigned int > height;
+        for( unsigned int i = 0; i < s.size(); ++i )
         {
-            number_of_tile_cols = v[0];
-            number_of_tile_rows = v[1];
-            for( std::size_t i=2; i < v.size()-1; i+=2 )
-            {
-                if( v[i] >= number_of_tile_cols || v[i+1] >= number_of_tile_rows ) { COMMA_THROW( comma::exception, "crop-tile: encountered an invalid tile " << v[i] << "," << v[i+1] ); }
-                tiles.push_back( tile_t( v[i], v[i+1] ) );
-            }
+            if( s[i] == "horizontal" ) { vertical = false; continue; }
+            if( !width ) { width = boost::lexical_cast< unsigned int >( s[i] ); continue; }
+            height = boost::lexical_cast< unsigned int >( s[i] );
         }
-        if( number_of_tile_cols == 0 || number_of_tile_rows == 0 ) { COMMA_THROW( comma::exception, "crop-tile: expected positive number of tiles along x and y, got " << number_of_tile_cols << "," << number_of_tile_rows ); }
-        return std::make_pair( boost::bind< value_type_t >( crop_tile_impl_< H >(), _1, number_of_tile_cols, number_of_tile_rows, tiles, vertical ), true );
+        if( !width ) { COMMA_THROW( comma::exception, "untile: expected tile count along x; got: \"" << e[1] << "\"" ); }
+        if( !height ) { COMMA_THROW( comma::exception, "untile: expected tile count along x and y; got: \"" << e[1] << "\"" ); }
+        return std::make_pair( boost::bind< value_type_t >( tile_impl_< H >(), _1, *width, *height, vertical ), true );
+    }
+    if( e[0] == "untile" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "untile: specify tile count along x and y" ); }
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        bool vertical = true;
+        boost::optional< unsigned int > count_x;
+        boost::optional< unsigned int > count_y;
+        for( unsigned int i = 0; i < s.size(); ++i )
+        {
+            if( s[i] == "horizontal" ) { vertical = false; continue; }
+            if( !count_x ) { count_x = boost::lexical_cast< unsigned int >( s[i] ); continue; }
+            count_y = boost::lexical_cast< unsigned int >( s[i] );
+        }
+        if( !count_x ) { COMMA_THROW( comma::exception, "untile: expected tile count along x; got: \"" << e[1] << "\"" ); }
+        if( !count_y ) { COMMA_THROW( comma::exception, "untile: expected tile count along x and y; got: \"" << e[1] << "\"" ); }
+        return std::make_pair( boost::bind< value_type_t >( untile_impl_< H >(), _1, *count_x, *count_y, vertical ), true );
     }
     if( e[0] == "cols-to-channels" || e[0] == "rows-to-channels" )
     {
@@ -2659,7 +2729,6 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
     typedef boost::function< output_type( input_type ) > functor_type;
     typedef typename make_filter< cv::Mat, H >::maker maker_t;
     typedef typename make_filter< cv::Mat, H >::composer composer_t;
-    typedef make_filter< cv::Mat, H > make_filter_t;
 
     std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter_type > f;
@@ -2963,9 +3032,13 @@ static std::string usage_impl_()
     oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
-    oss << "        crop-tile=<ncols>,<nrows>,<i>,<j>,...[&horizontal]: divide the image into a grid of tiles (ncols-by-nrows), and output an image made of the croped tiles defined by i,j (count from zero)" << std::endl;
-    oss << "            <horizontal>: if present, tiles will be stacked horizontally (by default, vertical stacking is used)" << std::endl;
-    oss << "            example: \"crop-tile=2,5,1,0,1,4&horizontal\"" << std::endl;
+    oss << "        crop-tile=<ncols>,<nrows>[,<i>,<j>,...[,horizontal]]: divide the image into a grid of tiles (ncols-by-nrows), and output an image made of the croped tiles defined by i,j (count from zero)" << std::endl;
+    oss << "                                                              if width or height of input image is not divisible by the corresponding count, the image will be clipped" << std::endl;
+    oss << "            horizontal: if present, tiles will be stacked horizontally (by default, vertical stacking is used)" << std::endl;
+    oss << "            examples" << std::endl;
+    oss << "                \"crop-tile=2,5,1,0,2,3\": crop 2 tiles of the image 2x5 tiles: tile at 1,0 and at 2,3" << std::endl;
+    oss << "                \"crop-tile=2,5\": similar to tile operation; crop all tiles from the image of 2x5 tiles; output image will be composed of 2*5=10 tiles" << std::endl;
+    oss << "                \"crop-tile=2,5,1,0,2,3,horizontal\": crop 2 tiles out of image split into 2x5 tiles: tile at 1,0 and at 2,3; arrange tiles horizontally in the output image" << std::endl;
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
     oss << "        encode=<format>[,<quality>]: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "                                     <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
@@ -3049,6 +3122,14 @@ static std::string usage_impl_()
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
     oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,abc0,efd0" << std::endl;
+    oss << "        untile=<ncols>,<nrows>[,horizontal]: inverse to crop-tile; input image used as a stip of <ncols>*<nrows> tiles, output image will be be composed by <nrows> of tiles with <ncols> tiles per row" << std::endl;
+    oss << "                                             if width or height of input image is not divisible by the corresponding count, the input image will be clipped" << std::endl;
+    oss << "                                             horizontal: if present, input tiles are considered stacked horizontally (by default, vertical stacking is used)" << std::endl;
+    oss << "                                             example" << std::endl;
+    oss << "                                                 > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count' | cv-cat --input 'no-header;rows=1280;cols=64;type=ub' 'encode=png' > original.png" << std::endl;
+    oss << "                                                 > eog original.png" << std::endl;
+    oss << "                                                 > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count' | cv-cat --input 'no-header;rows=1280;cols=64;type=ub' 'untile=5,4;encode=png' > untiled.png" << std::endl;
+    oss << "                                                 > eog untiled.png" << std::endl;
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
