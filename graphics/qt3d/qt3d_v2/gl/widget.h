@@ -63,7 +63,7 @@ public:
     void end_update();
 public slots:
     void cleanup();
-
+    
 protected:
     virtual void init() {};
 
@@ -74,9 +74,12 @@ protected:
     void mouseMoveEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
     void mouseDoubleClickEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
     void wheelEvent( QWheelEvent *event ) Q_DECL_OVERRIDE;
+    
+//     void set_near_plane(float near_plane);
+    void set_far_plane(float f);
 
 protected:
-    void set_projection();
+    void update_projection();
 
     boost::optional< QVector3D > viewport_to_3d( const QPoint& point_2d );
     boost::optional< QVector3D > pixel_at_point( const QPoint& viewport_point, int search_width );
@@ -92,6 +95,8 @@ protected:
     QVector3D centre_of_rotation_;
     camera_options camera_options_;
     double size_;
+    float near_plane;
+    float far_plane;
 };
 
 } } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {

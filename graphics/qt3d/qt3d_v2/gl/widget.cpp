@@ -33,6 +33,7 @@
 #include <math.h>
 #include "widget.h"
 #include "types.h"
+#include <iostream>
 
 namespace snark { namespace graphics { namespace qt3d { namespace gl {
 
@@ -66,7 +67,7 @@ static const char *fragment_shader_source = R"(
 )";
 
 widget::widget(const camera_options& camera_options, QWidget *parent )
-    : QOpenGLWidget( parent ), program_( 0 ), camera_options_( camera_options ), size_( 0.4f )
+    : QOpenGLWidget( parent ), program_( 0 ), camera_options_( camera_options ), size_( 0.4f ),near_plane(0.01),far_plane(300)
 {
 }
 widget::~widget()
@@ -191,19 +192,31 @@ void widget::paintGL()
                     , QString("Warning: Qt3D v2 support is incomplete"));
 }
 
-void widget::set_projection()
+void widget::update_projection()
 {
+    
     double aspect_ratio = (double) width() / height();
     projection_.setToIdentity();
     if( camera_options_.orthographic )
-        projection_.ortho( -size_ * aspect_ratio, size_ * aspect_ratio, -size_, size_, 0.01f, 100.0f );
+    {
+        projection_.ortho(-size_ * aspect_ratio, size_ * aspect_ratio, -size_, size_,near_plane,far_plane);
+    }
     else
-        projection_.perspective( camera_options_.field_of_view, aspect_ratio, 0.01f, 100.0f );
+    {
+//         std::cerr<<"update_projection "<<near_plane<<" "<<far_plane<<std::endl;
+        projection_.perspective(camera_options_.field_of_view, aspect_ratio,near_plane,far_plane);
+    }
+}
+void widget::set_far_plane(float f)
+{
+    far_plane=f;
+    update_projection();
+    update();
 }
 
 void widget::resizeGL( int w, int h )
 {
-    set_projection();
+    update_projection();
 }
 
 void widget::mousePressEvent( QMouseEvent *event )
@@ -249,10 +262,11 @@ void widget::wheelEvent( QWheelEvent *event )
     if( camera_options_.orthographic )
     {
         size_ *= ( 1 - 0.001 * event->delta() );
-        set_projection();
+        update_projection();
     }
     else
     {
+//         std::cerr<<"wheelEvent"<<event->delta()<<std::endl;
         camera_.translate( 0, 0, 0.01f * event->delta() );
     }
     update();
