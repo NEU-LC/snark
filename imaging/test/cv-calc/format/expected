@@ -1,0 +1,12 @@
+basic[0]/output="t,3ui,s[9]"
+basic[0]/status=0
+basic[1]/output="t,3ui,s[72]"
+basic[1]/status=0
+basic[2]/output="t,3ui,s[9]"
+basic[2]/status=0
+basic[3]/output="3ui,t,s[9]"
+basic[3]/status=0
+input[0]/output="t,3ui,s[18]"
+input[0]/status=0
+input[1]/output="3ui,t,s[36]"
+input[1]/status=0

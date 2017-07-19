@@ -1,0 +1,9 @@
+# format will probably be used in its basic use case below
+basic[0]="echo not-a-date-time,3,3,0,255,255,255,200,200,200,255,255,255 | csv-to-bin t,3ui,9ub | cv-calc format"
+basic[1]="echo not-a-date-time,3,3,6,255,255,255,200,200,200,255,255,255 | csv-to-bin t,3ui,9d | cv-calc format"
+
+# Testing extra features
+basic[2]="echo not-a-date-time,3,3,0,255,255,255,200,200,200,255,255,255 | csv-to-bin t,3ui,9ub | cv-calc format --fields=t,rows,cols,type"
+basic[3]="echo 3,0,3,not-a-date-time,255,255,255,200,200,200,255,255,255 | csv-to-bin 3ui,t,9ub | cv-calc format --fields=cols,type,rows,t --binary 3ui,t"
+input[0]="echo 255,255,255,200,200,200,255,255,255 | csv-to-bin 9w | cv-calc format --input 'rows=3;cols=3;type=w;no-header'"
+input[1]="echo 3,5,3,not-a-date-time,255,255,255,200,200,200,255,255,255 | csv-to-bin 3ui,t,9f | cv-calc format --input 'fields=cols,type,rows,t;binary=3ui,t'"
