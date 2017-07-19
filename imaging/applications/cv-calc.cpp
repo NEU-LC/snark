@@ -68,15 +68,19 @@ static void usage( bool verbose=false )
     std::cerr << "        stride through the image, output images of kernel size for each pixel" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --binary=[<format>]: binary format of header; default: operation-dependent, use --header-format" << std::endl;
-    std::cerr << "    --fields=<fields>; default: operation-dependent, use --header-fields" << std::endl;
+    std::cerr << "    --binary=[<format>]: binary format of header; operation dependent, see --input-format" << std::endl;
+    std::cerr << "    --fields=<fields>; fields in header; operation dependent, see --input-fields" << std::endl;
     std::cerr << "    --flush; flush after every image" << std::endl;
-    std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\"" << std::endl;
-    std::cerr << "    --input-fields; output header fields and exit" << std::endl;
-    std::cerr << "    --input-format; output header format and exit" << std::endl;
+    std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\", see serialization options" << std::endl;
+    std::cerr << "    --input-fields; show header fields and exit" << std::endl;
+    std::cerr << "    --input-format; show header format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "serialization options" << std::endl;
-    if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
+    if( verbose ) { 
+        std::cerr << "  note: --input's fields=<fields> and binary=<format> will be overriden by --fields and --binary if specified" << std::endl;
+        std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; 
+    } 
+    else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
     std::cerr << std::endl;
     std::cerr << "operation options" << std::endl;
     std::cerr << std::endl;
