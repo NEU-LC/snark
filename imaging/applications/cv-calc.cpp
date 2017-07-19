@@ -251,15 +251,16 @@ class non_zero
     
 } } } // namespace snark { namespace imaging { namespace operations {
 
-snark::cv_mat::serialization::options handle_fields_and_format(const comma::csv::options& csv, snark::cv_mat::serialization::options input_options
-                            , const std::string& default_fields, const std::string& default_format)
+snark::cv_mat::serialization::options handle_fields_and_format(const comma::csv::options& csv
+                                                             ,  snark::cv_mat::serialization::options input_options
+                                                             , const std::string& operation)
 {
     // input options override fields, set it if input_options.fields is empty
     if( input_options.fields.empty() && !csv.fields.empty() ) { input_options.fields = csv.fields; }
-    else if( input_options.fields.empty() ) { input_options.fields = default_fields; }
+    if( input_options.fields.empty() ) { input_options.fields = operation == "roi" ? "min/x,min/y,max/x,max/y,t,rows,cols,type" : "t,rows,cols,type"; }
     
     if( csv.binary() && input_options.format.string().empty() ) { input_options.format = csv.format(); }
-    else if( input_options.format.string().empty() ) { input_options.format = comma::csv::format(default_format); }
+    else if( input_options.format.string().empty() ) { input_options.format = comma::csv::format( operation == "roi" ? "4i,t,3ui" : "t,3ui" ); }
     
     return input_options;
 }
@@ -278,7 +279,7 @@ int main( int ac, char** av )
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
         const snark::cv_mat::serialization::options input_parsed = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) );
-        snark::cv_mat::serialization::options input_options = handle_fields_and_format(csv, input_parsed, "t,rows,cols,type", "t,3ui");
+        snark::cv_mat::serialization::options input_options = handle_fields_and_format(csv, input_parsed, ops.front() );
         std::string output_options_string = options.value< std::string >( "--output", "" );
         snark::cv_mat::serialization::options output_options = output_options_string.empty() ? input_options : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         if( input_options.no_header && !output_options.fields.empty() && input_options.fields != output_options.fields )
@@ -289,6 +290,7 @@ int main( int ac, char** av )
         { 
             if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-calc: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; }
         }
+        
         if( output_options.fields.empty() ) { output_options.fields = input_options.fields; } // output fields and format will be empty when the user specifies only --output no-header or --output header-only
         if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-calc: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
@@ -419,8 +421,6 @@ int main( int ac, char** av )
         }
         if( operation == "roi" )
         {
-            input_options = handle_fields_and_format(csv, input_parsed, "min/x,min/y,max/x,max/y,t,rows,cols,type", "4i,t,3ui");
-            output_options = output_options_string.empty() ? input_options : output_options;
             if( options.exists("--input-fields,--output-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
             if( options.exists("--input-format,--output-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
             if( verbose ) { std::cerr << name << "fields: " << input_options.fields << std::endl; std::cerr << name << "format: " << input_options.format.string() << std::endl; }            
