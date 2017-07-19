@@ -228,8 +228,8 @@ struct cell
         }
         return    !min
                || !bearing_between_( p.bearing(), min->bearing(), max->bearing() )
-               || comma::math::less( p.elevation(), min->elevation() )
-               || comma::math::less( max->elevation(), p.elevation() ) ? NULL : e;
+               || !comma::math::less( min->elevation(), p.elevation() )
+               || !comma::math::less( p.elevation(), max->elevation() ) ? NULL : e;
     }
 };
 
