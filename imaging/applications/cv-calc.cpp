@@ -68,16 +68,16 @@ static void usage( bool verbose=false )
     std::cerr << "        stride through the image, output images of kernel size for each pixel" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --binary=[<format>]: binary format of header; default: operation dependent, see --input-format" << std::endl;
-    std::cerr << "    --fields=<fields>; fields in header; default: operation dependent, see --input-fields" << std::endl;
+    std::cerr << "    --binary=[<format>]: binary format of header; default: operation dependent, see --header-format" << std::endl;
+    std::cerr << "    --fields=<fields>; fields in header; default: operation dependent, see --header-fields" << std::endl;
     std::cerr << "    --flush; flush after every image" << std::endl;
     std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\", see serialization options" << std::endl;
-    std::cerr << "    --input-fields; show header fields and exit" << std::endl;
-    std::cerr << "    --input-format; show header format and exit" << std::endl;
+    std::cerr << "    --header-fields; show header fields and exit" << std::endl;
+    std::cerr << "    --header-format; show header format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "serialization options" << std::endl;
     if( verbose ) { 
-        std::cerr << "  note: --input's fields=<fields> and binary=<format> will be overriden by --fields and --binary if specified" << std::endl;
+        std::cerr << "  note: --input's fields=<fields> and binary=<format> will override --fields and --binary" << std::endl;
         std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; 
     } 
     else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
@@ -394,8 +394,8 @@ int main( int ac, char** av )
         
         if( operation == "header" )
         {
-            if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
-            if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
+            if( options.exists("--header-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
+            if( options.exists("--header-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
             if( verbose ) { std::cerr << name << "fields: " << input_options.fields << std::endl; std::cerr << name << "format: " << input_options.format.string() << std::endl; }            
             if( options.exists("--output-fields") ) { std::cout << "rows,cols,type" << std::endl;  return 0; }
             
@@ -410,8 +410,8 @@ int main( int ac, char** av )
         }
         if( operation == "format" )
         {
-            if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
-            if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
+            if( options.exists("--header-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
+            if( options.exists("--header-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
             if( verbose ) { std::cerr << name << "fields: " << input_options.fields << std::endl; std::cerr << name << "format: " << input_options.format.string() << std::endl; }            
             
             snark::cv_mat::serialization serialization( input_options );
@@ -427,8 +427,8 @@ int main( int ac, char** av )
         {
             // TODO: in order to do this, extents need to be built into serialisation::options
             if( input_options.no_header ) { std::cerr << "cv-calc: --input with no-header cannot be used with 'roi' operation, as roi extents is passed in with the header" << std::endl; return 1; }
-            if( options.exists("--input-fields,--output-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
-            if( options.exists("--input-format,--output-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
+            if( options.exists("--header-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
+            if( options.exists("--header-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
             if( verbose ) { std::cerr << name << "fields: " << input_options.fields << std::endl; std::cerr << name << "format: " << input_options.format.string() << std::endl; }            
             
             snark::cv_mat::serialization serialization( input_options );
