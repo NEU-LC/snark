@@ -68,8 +68,8 @@ static void usage( bool verbose=false )
     std::cerr << "        stride through the image, output images of kernel size for each pixel" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --binary=[<format>]: binary format of header; operation dependent, see --input-format" << std::endl;
-    std::cerr << "    --fields=<fields>; fields in header; operation dependent, see --input-fields" << std::endl;
+    std::cerr << "    --binary=[<format>]: binary format of header; default: operation dependent, see --input-format" << std::endl;
+    std::cerr << "    --fields=<fields>; fields in header; default: operation dependent, see --input-fields" << std::endl;
     std::cerr << "    --flush; flush after every image" << std::endl;
     std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\", see serialization options" << std::endl;
     std::cerr << "    --input-fields; show header fields and exit" << std::endl;
