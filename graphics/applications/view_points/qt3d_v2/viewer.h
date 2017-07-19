@@ -56,49 +56,25 @@ public:
     double scene_radius;
     bool scene_radius_fixed_;
     bool scene_center_fixed_;
+    
 public:
-    viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double scene_radius,QMainWindow* parent=NULL) : 
-        qt3d::gl::widget(camera_options,parent),
-        handler(handler),
-        scene_center(scene_center),
-        scene_radius(scene_radius)
-    {
-        QTimer* timer = new QTimer( this );
-        connect( timer, SIGNAL( timeout() ), this, SLOT( on_timeout() ) );
-        timer->start( 40 );
-        scene_radius_fixed_=false;
-        scene_center_fixed_=false;
-    }
-    void reset_handler(controller_base* h=NULL) { handler=h; }
+    viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double scene_radius,QMainWindow* parent=NULL);
+    void reset_handler(controller_base* h=NULL);
+    
 protected:
-    void init() { if(handler!=NULL) handler->init(); }
+    void init();
+    
 private slots:
-    void on_timeout()
-    {
-        if(handler!=NULL)
-            handler->tick();
-    }
-//     double scene_radius() const { return scene_radius_; }
+    void on_timeout();
+    
 public:
-    void update_view( const QVector3D& min, const QVector3D& max )
-    {
-        if( !scene_radius_fixed_ ) { scene_radius = 0.5 * ( max - min ).length(); }
-        if( !scene_center_fixed_ ) { scene_center = 0.5 * ( min + max ); }
-//         updateZFar();
-    }
-    void look_at_center()
-    {
-        double r = 1.5 * scene_radius;
-        QVector3D eye( scene_center.x() + r, scene_center.y() + r, scene_center.z() - r );
-//         camera_.setToIdentity();
-//         camera_.lookAt(eye,scene_center,QVector3D(0,0,-1));
-    }
+    void update_view(const QVector3D& min, const QVector3D& max);
+    void look_at_center();
     boost::optional< Eigen::Vector3d > m_offset;
-    void set_camera_position ( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )
-    {
-        //to be implemented
-    }
+    void set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation);
 
+//     double scene_radius() const { return scene_radius_; }
+    
 //from QGLView
 //     QGLCamera * camera() const;
 };

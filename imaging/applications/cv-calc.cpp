@@ -68,15 +68,19 @@ static void usage( bool verbose=false )
     std::cerr << "        stride through the image, output images of kernel size for each pixel" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --binary=[<format>]: binary format of header; default: operation-dependent, use --header-format" << std::endl;
-    std::cerr << "    --fields=<fields>; default: operation-dependent, use --header-fields" << std::endl;
+    std::cerr << "    --binary=[<format>]: binary format of header; default: operation dependent, see --input-format" << std::endl;
+    std::cerr << "    --fields=<fields>; fields in header; default: operation dependent, see --input-fields" << std::endl;
     std::cerr << "    --flush; flush after every image" << std::endl;
-    std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\"" << std::endl;
-    std::cerr << "    --input-fields; output header fields and exit" << std::endl;
-    std::cerr << "    --input-format; output header format and exit" << std::endl;
+    std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\", see serialization options" << std::endl;
+    std::cerr << "    --input-fields; show header fields and exit" << std::endl;
+    std::cerr << "    --input-format; show header format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "serialization options" << std::endl;
-    if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
+    if( verbose ) { 
+        std::cerr << "  note: --input's fields=<fields> and binary=<format> will be overriden by --fields and --binary if specified" << std::endl;
+        std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; 
+    } 
+    else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
     std::cerr << std::endl;
     std::cerr << "operation options" << std::endl;
     std::cerr << std::endl;
@@ -251,6 +255,20 @@ class non_zero
     
 } } } // namespace snark { namespace imaging { namespace operations {
 
+snark::cv_mat::serialization::options handle_fields_and_format(const comma::csv::options& csv
+                                                             ,  snark::cv_mat::serialization::options input_options
+                                                             , const std::string& operation)
+{
+    // input options override fields, set it if input_options.fields is empty
+    if( input_options.fields.empty() && !csv.fields.empty() ) { input_options.fields = csv.fields; }
+    if( input_options.fields.empty() ) { input_options.fields = operation == "roi" ? "min/x,min/y,max/x,max/y,t,rows,cols,type" : "t,rows,cols,type"; }
+    
+    if( csv.binary() && input_options.format.string().empty() ) { input_options.format = csv.format(); }
+    else if( input_options.format.string().empty() ) { input_options.format = comma::csv::format( operation == "roi" ? "4i,t,3ui" : "t,3ui" ); }
+    
+    return input_options;
+}
+
 int main( int ac, char** av )
 {
     try
@@ -264,7 +282,8 @@ int main( int ac, char** av )
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
-        snark::cv_mat::serialization::options input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) );
+        const snark::cv_mat::serialization::options input_parsed = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) );
+        snark::cv_mat::serialization::options input_options = handle_fields_and_format(csv, input_parsed, ops.front() );
         std::string output_options_string = options.value< std::string >( "--output", "" );
         snark::cv_mat::serialization::options output_options = output_options_string.empty() ? input_options : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         if( input_options.no_header && !output_options.fields.empty() && input_options.fields != output_options.fields )
@@ -275,6 +294,7 @@ int main( int ac, char** av )
         { 
             if( !output_options.fields.empty() && input_options.fields != output_options.fields ) { std::cerr << "cv-calc: customised output header fields not supported (todo); got: input fields: \"" << input_options.fields << "\" output fields: \"" << output_options.fields << "\"" << std::endl; return 1; }
         }
+        
         if( output_options.fields.empty() ) { output_options.fields = input_options.fields; } // output fields and format will be empty when the user specifies only --output no-header or --output header-only
         if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-calc: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
@@ -300,9 +320,7 @@ int main( int ac, char** av )
         }
         if( operation == "mean" )
         {
-            if( csv.fields.empty() ) { csv.fields = "t,rows,cols,type"; }
-            if( !csv.binary() ) { csv.format( "t,3ui" ); }
-            snark::cv_mat::serialization serialization( csv.fields, csv.format() );
+            snark::cv_mat::serialization serialization( input_options );
             while( std::cin.good() && !std::cin.eof() )
             {
                 std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
@@ -373,29 +391,15 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if( operation == "header" || operation == "format" )
-        {
-            if( csv.fields.empty() ) { csv.fields = "t,rows,cols,type" ; }
-            if( !csv.binary() ) { csv.format("t,3ui"); }
-            if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
-            if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
-        }
-        else if( operation == "roi" )
-        {
-            if( csv.fields.empty() ) { csv.fields = "min/x,min/y,max/x,max/y,t,rows,cols,type"; }
-            if( !csv.binary() ) { csv.format("4i,t,3ui"); }
-            if( options.exists("--input-fields,--output-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
-            if( options.exists("--input-format,--output-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
-        }
-        if( verbose )
-        {
-            std::cerr << name << "fields: " << csv.fields << std::endl;
-            std::cerr << name << "format: " << csv.format().string() << std::endl;
-        }            
-        snark::cv_mat::serialization serialization( csv.fields, csv.format() ); // todo?
+        
         if( operation == "header" )
         {
+            if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
+            if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
+            if( verbose ) { std::cerr << name << "fields: " << input_options.fields << std::endl; std::cerr << name << "format: " << input_options.format.string() << std::endl; }            
             if( options.exists("--output-fields") ) { std::cout << "rows,cols,type" << std::endl;  return 0; }
+            
+            snark::cv_mat::serialization serialization( input_options );
             std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; return 1; }
             comma::csv::options out;
@@ -406,17 +410,33 @@ int main( int ac, char** av )
         }
         if( operation == "format" )
         {
+            if( options.exists("--input-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
+            if( options.exists("--input-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
+            if( verbose ) { std::cerr << name << "fields: " << input_options.fields << std::endl; std::cerr << name << "format: " << input_options.format.string() << std::endl; }            
+            
+            snark::cv_mat::serialization serialization( input_options );
             std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; return 1; }
             snark::cv_mat::serialization::header header = serialization.get_header( &serialization.header_buffer()[0] );
-            comma::csv::format format = csv.format();
+            comma::csv::format format = input_options.format;
             format += "s[" + boost::lexical_cast<std::string>( comma::uint64(header.rows) * header.cols * p.second.elemSize() )  + "]";
             std::cout << format.string() << std::endl;
             return 0;
         }
         if( operation == "roi" )
         {
+            // TODO: in order to do this, extents need to be built into serialisation::options
+            if( input_options.no_header ) { std::cerr << "cv-calc: --input with no-header cannot be used with 'roi' operation, as roi extents is passed in with the header" << std::endl; return 1; }
+            if( options.exists("--input-fields,--output-fields") ) { std::cout << comma::join( comma::csv::names<extents>(), ',' ) << "," << "t,rows,cols,type" << std::endl;  exit(0); }
+            if( options.exists("--input-format,--output-format") ) { std::cout << comma::csv::format::value<extents>() << "," << "t,3ui" << std::endl;  exit(0); }
+            if( verbose ) { std::cerr << name << "fields: " << input_options.fields << std::endl; std::cerr << name << "format: " << input_options.format.string() << std::endl; }            
+            
+            snark::cv_mat::serialization serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
+            
             options.assert_mutually_exclusive( "--crop,--no-discard" );
+            csv.fields = input_options.fields;
+            csv.format( input_options.format );
             comma::csv::binary< ::extents > binary( csv );
             bool crop = options.exists( "--crop" );
             bool flush = options.exists("--flush");
@@ -458,14 +478,14 @@ int main( int ac, char** av )
                     {
                         cv::Mat cropped;
                         p.second( cv::Rect( ext.min.x, ext.min.y, width, height ) ).copyTo( cropped );
-                        serialization.write_to_stdout( std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat >( p.first, cropped ) );
+                        output_serialization.write_to_stdout( std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat >( p.first, cropped ) );
                     }
                     else
                     {
                         mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(0);
                         mat.setTo( cv::Scalar(0), mask );
                         mask( cv::Rect( ext.min.x, ext.min.y, width , height ) ) = cv::Scalar(1);
-                        serialization.write_to_stdout( p, flush );
+                        output_serialization.write_to_stdout( p, flush );
                     }
                 }
             }
