@@ -27,7 +27,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 /// @author james underwood
 /// @author vsevolod vlaskine
 
@@ -57,15 +56,15 @@ void usage( bool long_help = false )
 {
     std::cerr << std::endl;
     std::cerr << "a quick-n-dirty application; the interface is way too rigid" << std::endl;
-    std::cerr << "load a point cloud in polar from file; for each point on stdin output whether it is blocked in the ray or not by points of the point cloud" << std::endl;
+    std::cerr << "load a point cloud in polar from file; for each point on stdin output it, if it is blocked by a point in the reference point cloud, appending the blocking point" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: cat points.csv | points-detect-change reference_points.csv [<options>] > points.marked-as-blocked.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --long-help: more help" << std::endl;
+    std::cerr << "    --angle-threshold,-a=<value>: angular radius in radians" << std::endl;
+    std::cerr << "    --help: print this help; more help: --help --verbose" << std::endl;
     std::cerr << "    --range-threshold,-r=<value>: if present, output only the points" << std::endl;
     std::cerr << "                                  that have reference points nearer than range + range-threshold" << std::endl;
-    std::cerr << "    --angle-threshold,-a=<value>: angular radius in radians" << std::endl;
     std::cerr << "    --verbose,-v: more debug output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "fields: r,b,e: range, bearing, elevation; default: r,b,e" << std::endl;
@@ -75,7 +74,7 @@ void usage( bool long_help = false )
         std::cerr << comma::csv::options::usage() << std::endl;
     }
     std::cerr << std::endl;
-    exit( 1 );
+    exit( 0 );
 }
 
 typedef snark::range_bearing_elevation point_t;
@@ -229,8 +228,8 @@ struct cell
         }
         return    !min
                || !bearing_between_( p.bearing(), min->bearing(), max->bearing() )
-               || !comma::math::less( min->elevation(), p.elevation() )
-               || !comma::math::less( p.elevation(), max->elevation() ) ? NULL : e;
+               || comma::math::less( p.elevation(), min->elevation() )
+               || comma::math::less( max->elevation(), p.elevation() ) ? NULL : e;
     }
 };
 
@@ -238,9 +237,7 @@ int main( int argc, char** argv )
 {
     try
     {
-        comma::command_line_options options( argc, argv );
-        if( options.exists( "--help,-h" ) ) { usage(); }
-        if( options.exists( "--long-help" ) ) { usage( true ); }
+        comma::command_line_options options( argc, argv, usage );
         verbose = options.exists( "--verbose,-v" );
         comma::csv::options csv( options, "range,bearing,elevation" );
         std::vector< std::string > v = comma::split( csv.fields, ',' );
@@ -254,7 +251,7 @@ int main( int argc, char** argv )
         csv.full_xpath = false;
         double threshold = options.value< double >( "--angle-threshold,-a" );
         boost::optional< double > range_threshold = options.optional< double >( "--range-threshold,-r" );
-        std::vector< std::string > unnamed = options.unnamed( "--verbose,-v", "--binary,-b,--delimiter,-d,--fields,-f,--range-threshold,-r,--angle-threshold,-a" );
+        std::vector< std::string > unnamed = options.unnamed( "--verbose,-v", "-.*" );
         if( unnamed.empty() ) { std::cerr << "points-detect-change: please specify file with the reference point cloud" << std::endl; return 1; }
         if( unnamed.size() > 1 ) { std::cerr << "points-detect-change: expected file with the reference point cloud, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         #ifdef WIN32
@@ -339,13 +336,7 @@ int main( int argc, char** argv )
         if( is_shutdown ) { std::cerr << "points-detect-change: caught signal" << std::endl; return 1; }
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << "points-detect-change: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << "points-detect-change: unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << "points-detect-change: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "points-detect-change: unknown exception" << std::endl; }
     return 1;
 }
