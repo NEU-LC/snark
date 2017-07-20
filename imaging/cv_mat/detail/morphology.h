@@ -35,7 +35,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-namespace snark{ namespace cv_mat { namespace morpology {
+namespace snark{ namespace cv_mat { namespace morphology {
     
 const std::map< std::string, int >& operations();
 
@@ -48,5 +48,29 @@ public:
     comma::uint32 iterations_;
 };
 
+
+template < typename H >
+typename std::pair< H, cv::Mat > morphology( const typename std::pair< H, cv::Mat > m, int op, const cv::Mat & element, comma::uint32 iterations )
+{
+    typename std::pair< H, cv::Mat > result( m.first, cv::Mat() );
+    cv::morphologyEx( m.second, result.second, op, element, cv::Point(-1,-1), iterations );
+    return result;
+}
+
+template < typename H >
+struct skeleton
+{
+    typedef std::pair< H, cv::Mat > value_type;
+    value_type value;
+
+    // Set load as "bin" to load cv-cat format, else load using cv::imread
+    skeleton( const parameters& param );
+
+    value_type operator()( value_type );
+    
+private:
+    cv::Mat kernel_;
+    int iterations_;
+};
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

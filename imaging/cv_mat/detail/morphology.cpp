@@ -32,11 +32,12 @@
 #include <string>
 #include <iostream>
 #include <boost/lexical_cast.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
 #include <comma/base/exception.h>
 #include <comma/string/split.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
-namespace snark{ namespace cv_mat { namespace morpology {
+namespace snark{ namespace cv_mat { namespace morphology {
     
 
 const std::map< std::string, int >& operations()
@@ -56,7 +57,7 @@ const std::map< std::string, int >& operations()
     return operations;
 }
 
-snark::cv_mat::morpology::parameters::parameters(const std::vector< std::string >& e)
+parameters::parameters(const std::vector< std::string >& e)
 {
     if ( e.size() > 1 )
     {
@@ -100,4 +101,35 @@ snark::cv_mat::morpology::parameters::parameters(const std::vector< std::string 
     else { kernel_ = cv::Mat(); iterations_ = 1; }
 }
 
+template < typename H >
+skeleton< H >::skeleton( const parameters& p ) : kernel_(p.kernel_), iterations_(p.iterations_) {}
+
+template < typename H >
+typename skeleton< H >::value_type skeleton< H >::operator()( value_type m ) 
+{
+    if ( m.second.channels() != 1 ) { COMMA_THROW( comma::exception, "skeleton operations supports only single-channel (grey-scale) images" ); }
+    typename std::pair< H, cv::Mat > result( m.first, cv::Mat( m.second.size(), CV_8UC1, cv::Scalar(0) ) );
+    cv::Mat temp, eroded, img;
+    m.second.copyTo( img );
+    bool done = false;
+    size_t iter = 0;
+    do
+    {
+        cv::erode( img, eroded, kernel_, cv::Point(-1,-1), iterations_ );
+        cv::dilate( eroded, temp, kernel_, cv::Point(-1,-1), iterations_ );
+        cv::subtract( img, temp, temp );
+        cv::bitwise_or( result.second, temp, result.second );
+        eroded.copyTo( img );
+
+        double min, max;
+        cv::minMaxLoc( img, &min, &max );
+        done = ( min == max );
+        if ( ++iter > 1000 ) { COMMA_THROW( comma::exception, "skeleton did not converge after " << iter << " iterations" ); }
+    } while ( !done );
+    return result;
+}
+
 } } }  // namespace snark { namespace cv_mat { namespace impl {
+
+template class snark::cv_mat::morphology::skeleton< boost::posix_time::ptime >;
+template class snark::cv_mat::morphology::skeleton< std::vector< char > >;

@@ -1847,39 +1847,6 @@ static typename impl::filters< H >::value_type ratio_impl_( const typename impl:
     COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
 
-template < typename H >
-static typename impl::filters< H >::value_type morphology_impl_( const typename impl::filters< H >::value_type m, int op, const cv::Mat & element, comma::uint32 iterations )
-{
-    typename impl::filters< H >::value_type result( m.first, cv::Mat() );
-    cv::morphologyEx( m.second, result.second, op, element, cv::Point(-1,-1), iterations );
-    return result;
-}
-
-template < typename H >
-static typename impl::filters< H >::value_type skeleton_impl_( const typename impl::filters< H >::value_type m, const cv::Mat & element, comma::uint32 iterations )
-{
-    if ( m.second.channels() != 1 ) { COMMA_THROW( comma::exception, "skeleton operations supports only single-channel (grey-scale) images" ); }
-    typename impl::filters< H >::value_type result( m.first, cv::Mat( m.second.size(), CV_8UC1, cv::Scalar(0) ) );
-    cv::Mat temp, eroded, img;
-    m.second.copyTo( img );
-    bool done = false;
-    size_t iter = 0;
-    do
-    {
-        cv::erode( img, eroded, element, cv::Point(-1,-1), iterations );
-        cv::dilate( eroded, temp, element, cv::Point(-1,-1), iterations );
-        cv::subtract( img, temp, temp );
-        cv::bitwise_or( result.second, temp, result.second );
-        eroded.copyTo( img );
-
-        double min, max;
-        cv::minMaxLoc( img, &min, &max );
-        done = ( min == max );
-        if ( ++iter > 1000 ) { COMMA_THROW( comma::exception, "skeleton did not converge after " << iter << " iterations" ); }
-    } while ( !done );
-    return result;
-}
-
 static double max_value(int depth)
 {
     switch(depth)
@@ -2595,15 +2562,14 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
         return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] ), true );
     }
-    if( snark::cv_mat::morpology::operations().find( e[0] ) != snark::cv_mat::morpology::operations().end() )
+    if( snark::cv_mat::morphology::operations().find( e[0] ) != snark::cv_mat::morphology::operations().end() )
     {
-        snark::cv_mat::morpology::parameters parameters( e );
-        return std::make_pair( boost::bind< value_type_t >( morphology_impl_< H >, _1, snark::cv_mat::morpology::operations().at( e[0] ), parameters.kernel_, parameters.iterations_ ), true );
+        snark::cv_mat::morphology::parameters parameters( e );
+        return std::make_pair( boost::bind< value_type_t >( morphology::morphology< H >, _1, snark::cv_mat::morphology::operations().at( e[0] ), parameters.kernel_, parameters.iterations_ ), true );
     }
     if( e[0] == "skeleton" || e[0] == "thinning" )
     {
-        snark::cv_mat::morpology::parameters parameters( e );
-        return std::make_pair( boost::bind< value_type_t >( skeleton_impl_< H >, _1, parameters.kernel_, parameters.iterations_ ), true );
+        return std::make_pair( boost::bind< value_type_t >( morphology::skeleton< H >(snark::cv_mat::morphology::parameters( e )), _1 ), true );
     }
     if( e[0] == "overlay" )
     {
