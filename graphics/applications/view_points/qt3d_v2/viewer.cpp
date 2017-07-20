@@ -36,12 +36,12 @@ std::ostream& operator<<(std::ostream& os, const QVector3D& v)
     return os<<v.x()<<","<<v.y()<<","<<v.z();
 }
 
-viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double scene_radius,QMainWindow* parent) : 
+viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double arg_scene_radius,QMainWindow* parent) : 
     qt3d::gl::widget(camera_options,parent),
     handler(handler),
-    scene_center(scene_center),
-    scene_radius(scene_radius)
+    scene_center(scene_center)
 {
+    scene_radius=arg_scene_radius;
     QTimer* timer = new QTimer( this );
     connect( timer, SIGNAL( timeout() ), this, SLOT( on_timeout() ) );
     timer->start( 40 );
@@ -63,23 +63,24 @@ void viewer::update_view(const QVector3D& min, const QVector3D& max)
 void viewer::look_at_center()
 {
 //     std::cerr<<"look_at_center "<<scene_center<<"; "<<scene_radius<<std::endl;
-    centre_of_rotation_=scene_center;
-    world_.setToIdentity();
-    world_.rotate(QQuaternion::fromEulerAngles(45,-180,-135));
-    world_.translate(-centre_of_rotation_);
-    camera_.setToIdentity();
-    camera_.translate(0,0,-2.6*scene_radius);
+    camera.set_center(scene_center);
+    camera.set_orientation(M_PI/4, -M_PI, -3*M_PI/4);
+    camera.set_position(QVector3D(0,0,-2.6*scene_radius));
 }
 void viewer::set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation)
 {
-    std::cerr<<"set_camera_position "<<position<<" "<<orientation<<std::endl;
+    Eigen::Vector3d p = position - *m_offset;
+    double cos_yaw = std::cos( orientation.z() );
+    double sin_yaw = std::sin( orientation.z() );
+    double sin_pitch = std::sin( orientation.y() );
+    double cos_pitch = std::cos( orientation.y() );
+    Eigen::Vector3d direction( cos_pitch * cos_yaw, cos_pitch * sin_yaw, sin_pitch ); // todo: quick and dirty, forget about roll for now
+    Eigen::Vector3d c = p + direction * 50; // quick and dirty
+    scene_center=QVector3D(c.x(),c.y(),c.z());
     //to be tested
-    world_.setToIdentity();
-    world_.translate(centre_of_rotation_);
-    world_.rotate(QQuaternion::fromEulerAngles(orientation.x(),orientation.y(),orientation.z()));
-    world_.translate(-centre_of_rotation_);
-    camera_.setToIdentity();
-    camera_.translate(0,0,position.norm());
+    camera.set_center(scene_center);    //set center
+    camera.set_orientation(orientation.x(),orientation.y(),orientation.z());    //set world orientation
+    camera.set_position(QVector3D(0,0,-p.norm()));    //camera is in 0,0,-z in world coordinate
 }
     
 } } } } // namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
