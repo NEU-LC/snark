@@ -76,10 +76,7 @@ static void usage( bool verbose=false )
     std::cerr << "    --header-format; show header format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "serialization options" << std::endl;
-    if( verbose ) { 
-        std::cerr << "  note: --input's fields=<fields> and binary=<format> will override --fields and --binary" << std::endl;
-        std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; 
-    } 
+    if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } 
     else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
     std::cerr << std::endl;
     std::cerr << "operation options" << std::endl;
