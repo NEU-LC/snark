@@ -67,7 +67,9 @@ static const char *fragment_shader_source = R"(
 )";
 
 widget::widget(const camera_options& camera_options, QWidget *parent )
-    : QOpenGLWidget( parent ), program_( 0 ), camera_options_( camera_options ), size_( 0.4f ),near_plane(0.01),far_plane(300)
+    : QOpenGLWidget( parent ), program_( 0 ), 
+    camera(QVector3D(0,0,camera_options.z_is_up?1:-1)) ,
+    camera_options_( camera_options ), size_( 0.4f ),near_plane(0.01),far_plane(100),scene_radius(10)
 {
 }
 widget::~widget()
@@ -136,15 +138,6 @@ void widget::initializeGL()
     for(auto& i : label_shaders) { i->init(); }
 //     program_->release();
 
-    // The camera always points along the z-axis. Pan moves the camera in x,y
-    // coordinates and zoom moves in and out on the z-axis.
-    // It starts at -1 because in OpenGL-land the transform is actually applied
-    // to the world and the camera is stationary at 0,0,0.
-    camera_.setToIdentity();
-    camera_.translate( 0, 0, -1 );
-
-    world_.setToIdentity();
-    world_.translate( centre_of_rotation_ );
     init();
 }
 
@@ -166,8 +159,8 @@ void widget::paintGL()
     
 //     QOpenGLVertexArrayObject::Binder binder(&(shapes[0]->vao));
     program_->bind();
-    program_->setUniformValue( projection_matrix_location_, projection_ );
-    program_->setUniformValue( mv_matrix_location_, camera_ * world_ );
+    program_->setUniformValue( projection_matrix_location_, camera.projection );
+    program_->setUniformValue( mv_matrix_location_, camera.camera * camera.world );
 
     for(auto& i : shapes) { i->paint(); }
 
@@ -175,16 +168,16 @@ void widget::paintGL()
 
     program_->release();
     
-    for(auto& i : label_shaders) { i->paint(projection_ * camera_ * world_, size()); }
+    for(auto& i : label_shaders) { i->paint(camera.projection * camera.camera * camera.world, size()); }
 
     painter.endNativePainting();
 
     painter.setPen( Qt::gray );
     painter.setFont( QFont( "Arial", 10 ));
     painter.drawText( rect(), Qt::AlignRight | Qt::AlignBottom
-                    , QString("centre of rotation: %1 %2 %3").arg( centre_of_rotation_.x() )
-                                                             .arg( centre_of_rotation_.y() )
-                                                             .arg( centre_of_rotation_.z() ));
+                    , QString("centre of rotation: %1 %2 %3").arg( camera.center.x() )
+                                                             .arg( camera.center.y() )
+                                                             .arg( camera.center.z() ));
 
     painter.setPen( Qt::red );
     painter.setFont( QFont( "Arial", 10 ));
@@ -196,15 +189,15 @@ void widget::update_projection()
 {
     
     double aspect_ratio = (double) width() / height();
-    projection_.setToIdentity();
+    camera.projection.setToIdentity();
     if( camera_options_.orthographic )
     {
-        projection_.ortho(-size_ * aspect_ratio, size_ * aspect_ratio, -size_, size_,near_plane,far_plane);
+        camera.projection.ortho(-size_ * aspect_ratio, size_ * aspect_ratio, -size_, size_,near_plane,far_plane);
     }
     else
     {
 //         std::cerr<<"update_projection "<<near_plane<<" "<<far_plane<<std::endl;
-        projection_.perspective(camera_options_.field_of_view, aspect_ratio,near_plane,far_plane);
+        camera.projection.perspective(camera_options_.field_of_view, aspect_ratio,near_plane,far_plane);
     }
 }
 void widget::set_far_plane(float f)
@@ -231,18 +224,31 @@ void widget::mouseMoveEvent( QMouseEvent *event )
 
     if ( event->buttons() & Qt::LeftButton )
     {
-        world_.translate( centre_of_rotation_ );
-        QMatrix4x4 inverted_world = world_.inverted();
-        QVector4D x_axis = inverted_world * QVector4D( 1, 0, 0, 0 );
-        QVector4D y_axis = inverted_world * QVector4D( 0, 1, 0, 0 );
-        world_.rotate( dy, x_axis.toVector3D() );
-        world_.rotate( dx, y_axis.toVector3D() );
-        world_.translate( -centre_of_rotation_ );
+        camera.pivot(dx,dy);
         update();
     }
     else if ( event->buttons() & Qt::RightButton )
     {
-        camera_.translate( dx / 500, -dy / 500, 0.0f );
+        float factor=1/500;
+        if(camera_options_.orthographic)
+        {
+//             deltaF *= 1.5 * camera()->viewSize().width() / width();
+            factor=3*size_/height();
+        }
+        else
+        {
+            double distance=camera.get_position().length();
+            if( distance > 5 )
+            {
+                factor=1.5 * distance / width();
+            }
+            else
+            {
+                // HACK for the case where the camera center has been moved by zooming in
+                factor=0.5 * scene_radius / width();
+            }
+        }
+        camera.pan(factor*dx, -factor*dy);
         update();
     }
     last_pos_ = event->pos();
@@ -253,7 +259,7 @@ void widget::mouseDoubleClickEvent( QMouseEvent *event )
     if( event->button() == Qt::LeftButton )
     {
         boost::optional< QVector3D > point = viewport_to_3d( event->pos() );
-        if( point ) { centre_of_rotation_ = *point; }
+        if( point ) { camera.set_center(*point); }
     }
 }
 
@@ -266,8 +272,13 @@ void widget::wheelEvent( QWheelEvent *event )
     }
     else
     {
-//         std::cerr<<"wheelEvent"<<event->delta()<<std::endl;
-        camera_.translate( 0, 0, 0.01f * event->delta() );
+        qreal distance=camera.get_position().length();
+        const qreal coef=( event->modifiers() & Qt::ShiftModifier ) ? (0.2 * scene_radius) : qMax(distance, 0.2 * scene_radius);
+        qreal zoomIncrement= 0.001 * event->delta() * coef;
+        if ( !qFuzzyIsNull( zoomIncrement ) )
+        {
+            camera.zoom(zoomIncrement);
+        }
     }
     update();
 }
@@ -281,7 +292,7 @@ boost::optional< QVector3D > widget::viewport_to_3d( const QPoint& viewport_poin
     boost::optional< QVector3D > pixel = pixel_at_point( viewport_point, pixel_search_width );
     if( pixel )
     {
-        QVector3D point_3d = pixel->unproject( camera_ * world_, projection_
+        QVector3D point_3d = pixel->unproject( camera.camera * camera.world, camera.projection
                                              , QRect( 0, 0, width(), height() ));
         return point_3d;
     }

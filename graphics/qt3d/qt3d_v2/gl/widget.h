@@ -40,6 +40,7 @@
 #include "label_shader.h"
 #include <vector>
 #include <memory>
+#include "camera.h"
 
 QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram)
 
@@ -89,14 +90,13 @@ protected:
     QOpenGLShaderProgram *program_;
     int projection_matrix_location_;
     int mv_matrix_location_;
-    QMatrix4x4 projection_;
-    QMatrix4x4 camera_;
-    QMatrix4x4 world_;
-    QVector3D centre_of_rotation_;
+    camera_transform camera;
     camera_options camera_options_;
     double size_;
+public:
     float near_plane;
     float far_plane;
+    double scene_radius;
 };
 
 } } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
