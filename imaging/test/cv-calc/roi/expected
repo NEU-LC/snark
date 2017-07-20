@@ -22,3 +22,8 @@ input[2]/output="1,1,2,2,0,3,3,not-a-date-time,0,0,0,0,200,0,0,0,0"
 input[2]/status=0
 extents_only_header/output="1,1,2,2,0,0,0,0,200,0,0,0,0"
 extents_only_header/status=0
+
+negative_test[0]/output=""
+negative_test[0]/status=1
+negative_test[1]/output=""
+negative_test[1]/status=1
