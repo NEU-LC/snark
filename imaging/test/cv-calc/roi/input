@@ -21,3 +21,6 @@ input[1]="echo 0,3,3,not-a-date-time,255,255,255,200,200,200,255,255,255 | csv-p
 input[2]="echo 0,3,3,not-a-date-time,255,255,255,200,200,200,255,255,255 | csv-paste value=1,1,2,2 - | csv-to-bin 4d,3ui,t,9ub | cv-calc roi --no-discard --permissive --input 'binary=4d,3ui,t' --fields min/x,min/y,max/x,max/y,type,rows,cols,t | csv-from-bin 4d,3ui,t,9ub"
 
 extents_only_header="echo 255,255,255,200,200,200,255,255,255 | csv-paste value=1,1,2,2 - | csv-to-bin 4d,9ub | cv-calc roi --no-discard --permissive --input 'binary=4d;rows=3;cols=3;type=ub' --fields min/x,min/y,max/x,max/y | csv-from-bin 4d,9ub"
+
+negative_test[0]="echo not-a-date-time,3,3,0,255,255,255,200,200,200,255,255,255 | csv-paste value=1,1,2,2 - | csv-to-bin 4d,t,3ui,9ub | cv-calc roi --no-discard --permissive --binary 4d,t,3ui --input 'binary=t,3ui'"
+negative_test[1]="echo not-a-date-time,3,3,0,255,255,255,200,200,200,255,255,255 | csv-paste value=1,1,2,2 - | csv-to-bin 4d,t,3ui,9ub | cv-calc roi --no-discard --permissive --fields=min/x,min/y,max/x,max/y,t,rows,cols,type --input 'fields=t,rows,cols,type'"
