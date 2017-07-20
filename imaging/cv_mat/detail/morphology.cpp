@@ -68,7 +68,7 @@ parameters::parameters(const std::vector< std::string >& e)
         {
             if ( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) 
             {
-                if ( p.size() != 5 && p.size() != 3 && p.size() != 6 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 2, 4 or 5 parameters" ); }
+                if ( p.size() != 5 && p.size() != 3 && p.size() != 6 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 2, or 4 or 5 parameters" ); }
                 if ( p.size() == 3 ) { p.push_back( "" ); p.push_back( "" ); p.push_back( "" ); }
                 else if ( p.size() == 5 ) { p.push_back( "" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
@@ -82,7 +82,7 @@ parameters::parameters(const std::vector< std::string >& e)
             } 
             else if ( eltype == "square" || eltype == "circle" ) 
             {
-                if ( p.size() > 4 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 0, or 1, or 2 parameters" ); }
+                if ( p.size() > 4 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 0, or 1, or 2, or 3 parameters" ); }
                 if ( p.size() < 4 ) { p.push_back( "" ); }
                 if ( p.size() < 4 ) { p.push_back( "" ); }
                 if ( p.size() < 4 ) { p.push_back( "" ); }
