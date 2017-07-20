@@ -62,15 +62,13 @@ parameters::parameters(const std::vector< std::string >& e)
     if ( e.size() > 1 )
     {
         std::vector< std::string > p = comma::split( e[1], ',' );
-        p.reserve( 5 ); // to protect eltype reference in push_back
-        const std::string & eltype = p[0];
+        std::string eltype = p[0];
         try 
         {
             if ( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) 
             {
                 if ( p.size() != 5 && p.size() != 3 && p.size() != 6 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 2, or 4 or 5 parameters" ); }
-                if ( p.size() == 3 ) { p.push_back( "" ); p.push_back( "" ); p.push_back( "" ); }
-                else if ( p.size() == 5 ) { p.push_back( "" ); }
+                while ( p.size() < 6 ) { p.push_back( "" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
                 int size_y = ( p[2].empty() ? size_x : boost::lexical_cast< int >( p[2] ) );
                 if ( size_x == 1 && size_y == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
@@ -83,9 +81,7 @@ parameters::parameters(const std::vector< std::string >& e)
             else if ( eltype == "square" || eltype == "circle" ) 
             {
                 if ( p.size() > 4 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 0, or 1, or 2, or 3 parameters" ); }
-                if ( p.size() < 4 ) { p.push_back( "" ); }
-                if ( p.size() < 4 ) { p.push_back( "" ); }
-                if ( p.size() < 4 ) { p.push_back( "" ); }
+                while ( p.size() < 4 ) { p.push_back( "" ); }
                 int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
                 if ( size_x == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
                 int anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
@@ -95,8 +91,7 @@ parameters::parameters(const std::vector< std::string >& e)
             } else {
                 COMMA_THROW( comma::exception, "the '" << eltype << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
             }
-        }
-        catch( boost::bad_lexical_cast blc ) { COMMA_THROW( comma::exception, "failed to cast parameter(s) for structuring element '" << eltype << "': " << blc.what() ); }
+        } catch( boost::bad_lexical_cast blc ) { COMMA_THROW( comma::exception, "failed to cast parameter(s) for structuring element '" << eltype << "': " << blc.what() ); }
     }
     else { kernel_ = cv::Mat(); iterations_ = 1; }
 }
