@@ -82,6 +82,7 @@
 #include "detail/load.h"
 #include "detail/accumulated.h"
 #include "detail/arithmetic.h"
+#include "detail/morphology.h"
 
 namespace {
 
@@ -165,51 +166,6 @@ namespace {
 //   - specify full size, not half-size  DONE
 //   - fix help  DONE
 //   - fix default values in help  DONE
-
-    const std::map< std::string, int > morphology_operations = { { "erode", cv::MORPH_ERODE }
-                                                               , { "erosion", cv::MORPH_ERODE }
-                                                               , { "dilate", cv::MORPH_DILATE }
-                                                               , { "dilation", cv::MORPH_DILATE }
-                                                               , { "open", cv::MORPH_OPEN }
-                                                               , { "opening", cv::MORPH_OPEN }
-                                                               , { "close", cv::MORPH_CLOSE }
-                                                               , { "closing", cv::MORPH_CLOSE }
-                                                               , { "gradient", cv::MORPH_GRADIENT }
-                                                               , { "tophat", cv::MORPH_TOPHAT }
-                                                               , { "blackhat", cv::MORPH_BLACKHAT } };
-
-    cv::Mat parse_structuring_element( const std::vector< std::string > & e )
-    {
-        if ( e.size() > 1 )
-        {
-            std::vector< std::string > p = comma::split( e[1], ',' );
-            p.reserve( 5 ); // to protect eltype reference in push_back
-            const std::string & eltype = p[0];
-            if ( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) {
-                if ( p.size() != 5 && p.size() != 3 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 2 or 4 parameters" ); }
-                if ( p.size() == 3 ) { p.push_back( "" ); p.push_back( "" ); }
-                int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
-                int size_y = ( p[2].empty() ? size_x : boost::lexical_cast< int >( p[2] ) );
-                if ( size_x == 1 && size_y == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
-                int anchor_x = ( p[3].empty() ? -1 : boost::lexical_cast< int >( p[3] ) );
-                int anchor_y = ( p[4].empty() ? anchor_x : boost::lexical_cast< int >( p[4] ) );
-                int shape = ( eltype == "rectangle" ? cv::MORPH_RECT : ( eltype == "ellipse" ? cv::MORPH_ELLIPSE : cv::MORPH_CROSS ) );
-                return cv::getStructuringElement( shape, cv::Size( size_x, size_y ), cv::Point( anchor_x, anchor_y ) );
-            } else if ( eltype == "square" || eltype == "circle" ) {
-                if ( p.size() > 3 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 0, or 1, or 2 parameters" ); }
-                if ( p.size() < 3 ) { p.push_back( "" ); }
-                if ( p.size() < 3 ) { p.push_back( "" ); }
-                int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
-                if ( size_x == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
-                int anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
-                int shape = ( eltype == "square" ? cv::MORPH_RECT : cv::MORPH_ELLIPSE );
-                return cv::getStructuringElement( shape, cv::Size( size_x, size_x ), cv::Point( anchor_x, anchor_x ) );
-            } else {
-                COMMA_THROW( comma::exception, "the '" << eltype << "' type of the structuring element is not one of rectangle,square,ellipse,circle,cross" );
-            }
-        }
-        return cv::Mat();
-    }
 
 } // anonymous
 
@@ -1892,15 +1848,15 @@ static typename impl::filters< H >::value_type ratio_impl_( const typename impl:
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type morphology_impl_( const typename impl::filters< H >::value_type m, int op, const cv::Mat & element )
+static typename impl::filters< H >::value_type morphology_impl_( const typename impl::filters< H >::value_type m, int op, const cv::Mat & element, comma::uint32 iterations )
 {
     typename impl::filters< H >::value_type result( m.first, cv::Mat() );
-    cv::morphologyEx( m.second, result.second, op, element );
+    cv::morphologyEx( m.second, result.second, op, element, cv::Point(-1,-1), iterations );
     return result;
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type skeleton_impl_( const typename impl::filters< H >::value_type m, const cv::Mat & element )
+static typename impl::filters< H >::value_type skeleton_impl_( const typename impl::filters< H >::value_type m, const cv::Mat & element, comma::uint32 iterations )
 {
     if ( m.second.channels() != 1 ) { COMMA_THROW( comma::exception, "skeleton operations supports only single-channel (grey-scale) images" ); }
     typename impl::filters< H >::value_type result( m.first, cv::Mat( m.second.size(), CV_8UC1, cv::Scalar(0) ) );
@@ -1910,8 +1866,8 @@ static typename impl::filters< H >::value_type skeleton_impl_( const typename im
     size_t iter = 0;
     do
     {
-        cv::erode( img, eroded, element );
-        cv::dilate( eroded, temp, element );
+        cv::erode( img, eroded, element, cv::Point(-1,-1), iterations );
+        cv::dilate( eroded, temp, element, cv::Point(-1,-1), iterations );
         cv::subtract( img, temp, temp );
         cv::bitwise_or( result.second, temp, result.second );
         eroded.copyTo( img );
@@ -2639,13 +2595,15 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
         return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] ), true );
     }
-    if( morphology_operations.find( e[0] ) != morphology_operations.end() )
+    if( snark::cv_mat::morpology::operations().find( e[0] ) != snark::cv_mat::morpology::operations().end() )
     {
-        return std::make_pair( boost::bind< value_type_t >( morphology_impl_< H >, _1, morphology_operations.at( e[0] ), parse_structuring_element( e ) ), true );
+        snark::cv_mat::morpology::parameters parameters( e );
+        return std::make_pair( boost::bind< value_type_t >( morphology_impl_< H >, _1, snark::cv_mat::morpology::operations().at( e[0] ), parameters.kernel_, parameters.iterations_ ), true );
     }
     if( e[0] == "skeleton" || e[0] == "thinning" )
     {
-        return std::make_pair( boost::bind< value_type_t >( skeleton_impl_< H >, _1, parse_structuring_element( e ) ), true );
+        snark::cv_mat::morpology::parameters parameters( e );
+        return std::make_pair( boost::bind< value_type_t >( skeleton_impl_< H >, _1, parameters.kernel_, parameters.iterations_ ), true );
     }
     if( e[0] == "overlay" )
     {
