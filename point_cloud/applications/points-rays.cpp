@@ -63,69 +63,53 @@ void usage( bool verbose = false )
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: help; --help --verbose: more help" << std::endl;
     std::cerr << "    --angle-threshold,-a=<value>: angular radius in radians" << std::endl;
+    std::cerr << "    --input-fields; print input fields for an operation and exit" << std::endl;
     std::cerr << "    --verbose,-v: more debug output" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "csv options" << std::endl;
+    if( verbose ) { std::cerr << std::endl << comma::csv::options::usage() << std::endl; } else { std::cerr << "    run --help --verbose for more..." << std::endl; }
+    std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    trace: for each point on stdin output its distance from the point on the ray with the shortest range and id of that point" << std::endl;
-    std::cerr << "           if id field is not present in the input, point number in the input will be used" << std::endl;
-    std::cerr << "        fields: r,b,e,block: range, bearing, elevation; default: r,b,e" << std::endl;
-    std::cerr << "        output fields: id,distance" << std::endl;
-    std::cerr << "        output format: ui,d" << std::endl;
-    std::cerr << std::endl;
-    if( verbose ) { std::cerr << std::endl << comma::csv::options::usage() << std::endl; }
+    std::cerr << "    trace: for each point on stdin output the point on the ray with the shortest range" << std::endl;
+    std::cerr << "        fields: r,b,e[,block]: range, bearing, elevation; default: r,b,e" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
 
 typedef snark::range_bearing_elevation point_t;
 
+namespace snark { namespace points_rays { namespace operations {
+
 struct input_t
 {
+    typedef std::pair< snark::points_rays::operations::input_t, std::vector< char > > pair_t;
+    
     point_t point;
-    comma::uint32 id;
     comma::uint32 block;
-    const input_t* traced;
+    const pair_t* traced;
     
     input_t() : block( 0 ), traced( NULL ) {}
 };
 
-struct trace_output_t
-{
-    comma::uint32 id;
-    double distance;
-    
-    trace_output_t() : id( 0 ), distance( 0 ) {}
-};
+} } } // namespace snark { namespace points_rays { namespace operations {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< input_t >
+template <> struct traits< snark::points_rays::operations::input_t >
 {
-    template< typename K, typename V > static void visit( const K&, const input_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const snark::points_rays::operations::input_t& t, V& v )
     {
         v.apply( "point", t.point );
-        v.apply( "id", t.id );
         v.apply( "block", t.block );
     }
     
-    template< typename K, typename V > static void visit( const K&, input_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, snark::points_rays::operations::input_t& t, V& v )
     {
         v.apply( "point", t.point );
-        v.apply( "id", t.id );
         v.apply( "block", t.block );
     }
 };
     
-template <> struct traits< trace_output_t >
-{
-    template< typename K, typename V > static void visit( const K&, trace_output_t& t, V& v )
-    {
-        v.apply( "id", t.id );
-        v.apply( "distance", t.distance );
-    }
-};
-
 } } // namespace comma { namespace visiting {
 
 static double distance( const point_t& p, const point_t& q ) // todo: quick and dirty, watch performance
@@ -133,23 +117,24 @@ static double distance( const point_t& p, const point_t& q ) // todo: quick and 
     return snark::spherical::great_circle::arc( snark::spherical::coordinates( p.bearing_elevation() ), snark::spherical::coordinates( q.bearing_elevation() ) ).angle();
 }
 
+typedef std::pair< snark::points_rays::operations::input_t, std::vector< char > > pair_t;
+
 struct cell
 {
-    std::vector< input_t* > points;
+    std::vector< pair_t* > points;
     
-    const input_t* trace( const point_t& p, double threshold ) const
+    const pair_t* trace( const point_t& p, double threshold ) const
     {
-        const input_t* min = NULL;
+        const pair_t* min = NULL;
         for( std::size_t i = 0; i < points.size(); ++i )
         {
-            if( distance( p, points[i]->point ) > threshold ) { continue; }
-            if( !min || points[i]->point.range() < min->point.range() ) { min = points[i]; }
+            if( distance( p, points[i]->first.point ) > threshold ) { continue; }
+            if( !min || points[i]->first.point.range() < min->first.point.range() ) { min = points[i]; }
         }
         return min;
     }
 };
 
-typedef std::pair< input_t, std::vector< char > > pair_t;
 typedef snark::voxel_map< cell, 2 > grid_t;
 
 static void trace_points( const tbb::blocked_range< std::size_t >& range, std::deque< pair_t >& records, const grid_t& grid, double threshold )
@@ -159,12 +144,12 @@ static void trace_points( const tbb::blocked_range< std::size_t >& range, std::d
         grid_t::const_iterator it = grid.find( grid_t::point_type( records[i].first.point.bearing(), records[i].first.point.elevation() ) );
         if( it == grid.end() )
         { 
-            records[i].first.traced = &records[i].first;
+            records[i].first.traced = &records[i];
         }
         else
         {
             records[i].first.traced = it->second.trace( records[i].first.point, threshold );
-            if( !records[i].first.traced ) { records[i].first.traced = &records[i].first; }
+            if( !records[i].first.traced ) { records[i].first.traced = &records[i]; }
         }
     }
 }
@@ -180,10 +165,10 @@ int main( int argc, char** argv )
         const std::string& operation = unnamed[0];
         if( operation == "trace" )
         {
+            if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::points_rays::operations::input_t >( true ), ',' ) << std::endl; }
             comma::csv::options csv( options, "range,bearing,elevation" );
             csv.full_xpath = false;
             std::vector< std::string > v = comma::split( csv.fields, ',' );
-            bool has_id = csv.has_field( "id" );
             for( unsigned int i = 0; i < v.size(); ++i )
             {
                 if( v[i] == "r" ) { v[i] = "range"; }
@@ -193,7 +178,7 @@ int main( int argc, char** argv )
             csv.fields = comma::join( v, ',' );
             csv.full_xpath = false;
             double threshold = options.value< double >( "--angle-threshold,-a" );
-            comma::csv::input_stream< input_t > istream( std::cin, csv );
+            comma::csv::input_stream< snark::points_rays::operations::input_t > istream( std::cin, csv );
             snark::voxel_map< int, 2 >::point_type resolution = grid_t::point_type( threshold, threshold );
             comma::uint32 id = 0;
             boost::optional< pair_t > last;
@@ -205,11 +190,10 @@ int main( int argc, char** argv )
                 if( last ) { records.push_back( *last ); }
                 while( istream.ready() || std::cin.good() )
                 {
-                    const input_t* p = istream.read();
+                    const snark::points_rays::operations::input_t* p = istream.read();
                     if( !p ) { break; }
                     if( !last ) { last = pair_t(); }
                     last->first = *p;
-                    if( !has_id ) { last->first.id = id; }
                     if( csv.binary() ) // quick and dirty
                     {
                         static unsigned int s = istream.binary().binary().format().size();
@@ -233,7 +217,7 @@ int main( int argc, char** argv )
                             else if( bearing >= M_PI ) { bearing -= ( M_PI * 2 ); }
                             double elevation = records.back().first.point.elevation() + threshold * j;
                             grid_t::iterator it = grid.touch_at( grid_t::point_type( bearing, elevation ) );
-                            it->second.points.push_back( &records.back().first );
+                            it->second.points.push_back( &records.back() );
                         }
                     }
                     ++id;
@@ -245,17 +229,10 @@ int main( int argc, char** argv )
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": outputting..." << std::endl; }
                 for( std::size_t i = 0; i < records.size(); ++i )
                 {
-                    double distance = records[i].first.point.range() - records[i].first.traced->point.range();
                     std::cout.write( &records[i].second[0], records[i].second.size() );
-                    if( csv.binary() )
-                    {
-                        std::cout.write( reinterpret_cast< const char* >( &records[i].first.traced->id ), sizeof( comma::uint32 ) );
-                        std::cout.write( reinterpret_cast< const char* >( &distance ), sizeof( double ) );
-                    }
-                    else
-                    {
-                        std::cout << csv.delimiter << records[i].first.traced->id << csv.delimiter << distance << std::endl;
-                    }
+                    if( !csv.binary() ) { std::cout << csv.delimiter; }
+                    std::cout.write( &records[i].first.traced->second[0], records[i].first.traced->second.size() );
+                    if( !csv.binary() ) { std::cout << std::endl; }
                 }
                 if( csv.flush ) { std::cout.flush(); }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": done" << std::endl; }
