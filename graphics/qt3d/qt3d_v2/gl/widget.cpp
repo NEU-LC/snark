@@ -193,7 +193,7 @@ void widget::update_projection()
     camera.projection.setToIdentity();
     if( camera_options_.orthographic )
     {
-        camera.projection.ortho(-size_ * aspect_ratio, size_ * aspect_ratio, -size_, size_,near_plane,far_plane);
+        camera.projection.ortho(-size_ * aspect_ratio, size_ * aspect_ratio, -size_, size_,-far_plane,far_plane);
     }
     else
     {
