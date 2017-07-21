@@ -69,7 +69,7 @@ void camera_transform::set_center(const QVector3D& v)
 void camera_transform::set_orientation(float roll,float pitch,float yaw)
 {
     world.setToIdentity();
-    world.rotate(QQuaternion::fromEulerAngles(roll*180/M_PI,pitch*180/M_PI,yaw*180/M_PI));
+    world.rotate(QQuaternion::fromEulerAngles(pitch*180/M_PI,roll*180/M_PI,yaw*180/M_PI));
     world.translate(-center);
 }
 void camera_transform::set_position(const QVector3D& v)

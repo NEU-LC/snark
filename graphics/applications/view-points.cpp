@@ -219,11 +219,11 @@ static void usage()
         "\n    --fov=<fov>: set camera field of view in degrees"
         qt55_unsupported_marker_start
         "\n    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config"
+        qt55_unsupported_marker_end
         "\n    --camera-position=\"<options>\""
         "\n          <options>: <position>|<stream>"
         "\n          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>"
         "\n          <stream>: position csv stream with options; default fields: x,y,z,roll,pitch,yaw"
-        qt55_unsupported_marker_end
         "\n    --orthographic: use orthographic projection instead of perspective"
         qt55_unsupported_marker_start
         "\n"
@@ -667,6 +667,7 @@ int main( int argc, char** argv )
         bool camera_position_from_stdin = false;
 #if Qt3D_VERSION==1
         QApplication application( argc, argv );
+#endif
         if( options.exists( "--camera-position" ) )
         {
             std::string position = options.value< std::string >( "--camera-position" );
@@ -693,6 +694,7 @@ int main( int argc, char** argv )
                 catch( ... ) {}
             }
         }
+#if Qt3D_VERSION==1
         boost::optional< double > scene_radius = options.optional< double >( "--scene-radius,--radius" );
         boost::optional< Eigen::Vector3d > scene_center;
         boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );

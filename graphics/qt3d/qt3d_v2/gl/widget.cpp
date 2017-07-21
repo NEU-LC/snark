@@ -189,6 +189,7 @@ void widget::update_projection()
 {
     
     double aspect_ratio = (double) width() / height();
+//     std::cerr<<"update_projection "<<near_plane<<" "<<far_plane<<std::endl;
     camera.projection.setToIdentity();
     if( camera_options_.orthographic )
     {
@@ -196,7 +197,6 @@ void widget::update_projection()
     }
     else
     {
-//         std::cerr<<"update_projection "<<near_plane<<" "<<far_plane<<std::endl;
         camera.projection.perspective(camera_options_.field_of_view, aspect_ratio,near_plane,far_plane);
     }
 }
@@ -269,6 +269,7 @@ void widget::wheelEvent( QWheelEvent *event )
     {
         size_ *= ( 1 - 0.001 * event->delta() );
         update_projection();
+//         std::cerr<<"wheelEvent "<<size_<<" "<<event->delta()<<std::endl;
     }
     else
     {
