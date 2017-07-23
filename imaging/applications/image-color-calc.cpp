@@ -27,12 +27,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <algorithm>
+#include <numeric>
+#include <comma/csv/stream.h>
 #include "../color/colorspace.h"
 #include "../color/pixel.h"
 #include "../color/convert.h"
 #include "../color/traits.h"
-
-#include <comma/csv/stream.h>
 
 // todo
 // - <operation> (for now only one operation: convert)  DONE
