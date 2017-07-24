@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <numeric>
 #include <opencv2/core/core.hpp>
 #include <tbb/parallel_for.h>
 #include <comma/base/exception.h>
