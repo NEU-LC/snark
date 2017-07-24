@@ -59,6 +59,7 @@ void usage(bool detail)
     std::cerr << "    --hang-on; waits about three seconds before exiting so that subscribers can receive the last message" << std::endl;
     std::cerr << "    --all; sends all the records as one ros message (when no block field), otherwise send each record as a message" << std::endl;
     std::cerr << "    --node-name: node name for this process, when not specified uses ros::init_options::AnonymousName flag" << std::endl;
+    std::cerr << "    --pass-through,--pass; pass input data to stdout" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    csv options" << std::endl;
     std::cerr << "        --fields: default: x,y,z" << std::endl;
@@ -251,6 +252,7 @@ int main( int argc, char** argv )
         bool all=options.exists("--all");
         std::string frame_id=options.value<std::string>("--frame","");
         boost::optional<std::string> node_name=options.optional<std::string>("--node-name");
+        bool pass_through=options.exists("--pass-through,--pass");
         int arrrgc=1;
         uint32_t node_options=0;
         if(!node_name)
@@ -263,6 +265,7 @@ int main( int argc, char** argv )
         ros::Publisher publisher=ros_node.advertise<sensor_msgs::PointCloud2>(topic, queue_size,options.exists("--latch"));
         ros::spinOnce();
         comma::csv::input_stream<record> is(std::cin, csv);
+        comma::csv::passed<record> passed(is,std::cout,csv.flush);
         unsigned block=0;
         points points(csv,csv.binary() ? csv.format().string() : options.value<std::string>("--format"));
         while(std::cin.good())
@@ -275,6 +278,7 @@ int main( int argc, char** argv )
                 points.send(publisher,frame_id);
             }
             if( !p ) { break; }
+            if(pass_through) { passed.write(); }
             block=p->block;
             points.push_back(is,*p);
             if( !has_block && !all ) { points.send(publisher,frame_id); }
