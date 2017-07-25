@@ -1,0 +1,12 @@
+#!/bin/bash
+
+source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
+
+read cv_depth
+
+cv_depth=${cv_depth:-f} # Default to type f
+
+csv-to-bin 6$cv_depth | 
+    cv-cat --input "no-header;rows=2;cols=3;type=$cv_depth" --output "no-header=0" | 
+    cv-cat "clone-channels=3" | csv-from-bin "t,3ui,18$cv_depth" |
+    gawk '{ print "image[" NR "]=\"" $0 "\""  }'
