@@ -84,7 +84,7 @@ typename accumulated< H >::value_type accumulated< H >::operator()( const typena
     }
     
     cv::Mat output; // copy as result_ will be changed next iteration
-    if( n.second.depth() == CV_32FC1 ) { result_.copyTo(output); } else { result_.convertTo(output, n.second.type()); }
+    result_.convertTo(output, n.second.type());
     return value_type(n.first, output); 
 }
 
@@ -98,7 +98,7 @@ typename sliding_window< H >::value_type sliding_window< H >::operator()( const 
     // This filter is not run in parallel, no locking required
     if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
-    if( count_ == 1 ) { cv::add( result_, n.second, result_, cv::noArray(), result_.type() );  }
+    if( count_ == 1 ) { n.second.convertTo( result_, result_.type() ); }
     else if( window_.size() < size_ ) // window size is not reached
     { 
         // only when input type is 32F
@@ -130,7 +130,7 @@ typename sliding_window< H >::value_type sliding_window< H >::operator()( const 
     n.second.copyTo( window_.back() );      // have to copy, next filter will change it
     
     cv::Mat output; // copy as result_ will be changed next iteration
-    if( n.second.depth() == CV_32FC1 ) { result_.copyTo(output); } else { result_.convertTo(output, n.second.type()); }
+    result_.convertTo(output, n.second.type());
     return value_type(n.first, output); 
 }
 
