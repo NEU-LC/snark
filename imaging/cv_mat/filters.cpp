@@ -3077,6 +3077,11 @@ static std::string usage_impl_()
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
+    oss << "    operations on channels" << std::endl;
+    oss << "        clone-channels=<n>: take 1-channel image, output n-channel image, with each channel a copy of the input" << std::endl;
+    oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
+    oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
+    oss << std::endl;
     oss << "    operations \"forked\" image stream: semantics: take input image, apply some filters to it, then apply the operation between the input and resulting image" << std::endl;
     oss << "                                        usage: <operation>=<filters>" << std::endl;
     oss << "                                        <filters>: any sequence of cv-cat filters that outputs a single-channel image of the same dimensions as the images on stdin" << std::endl;
@@ -3100,12 +3105,7 @@ static std::string usage_impl_()
     oss << "                        example:" << std::endl;
     oss << "                            cv-cat \"mask=ratio:(r + b - g)/( 1 + r + b )|convert-to:ub|threshold:4 xor ratio:2./(1.5e1 - g + r)|convert-to:ub|threshold:5\"" << std::endl;
     oss << std::endl;
-    oss << "    operations on channels" << std::endl;
-    oss << "        clone-channels=<n>: take 1-channel image, output n-channel image, with each channel a copy of the input" << std::endl;
-    oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
-    oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
-    oss << std::endl;
-    oss << "    'forked' arithmetic operations" << std::endl;
+    oss << "        'forked' arithmetic operations" << std::endl;
     oss << "           add=<filters>: forked image is pixelwise added to the input image, see cv::add()" << std::endl;
     oss << "           divide=<filters>: forked image is pixelwise divided to the input image, see cv::divide()" << std::endl;
     oss << "           multiply=<filters>: forked image is pixelwise multiplied to the input image, see cv::multiply()" << std::endl;
