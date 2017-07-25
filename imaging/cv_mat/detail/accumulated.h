@@ -65,12 +65,10 @@ private:
 template < typename H >
 struct sliding_window {
     typedef std::pair< H, cv::Mat > value_type;
-    typedef boost::function< float( float , float , float, unsigned int row, unsigned int col ) > apply_function;
     comma::uint64 count_;
     cv::Mat result_;
     comma::uint32 size_;  // sliding window size
     std::deque< cv::Mat > window_;
-    apply_function average_;
     
     sliding_window( comma::uint32 size );
     

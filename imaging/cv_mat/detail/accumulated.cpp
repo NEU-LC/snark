@@ -98,11 +98,30 @@ typename sliding_window< H >::value_type sliding_window< H >::operator()( const 
     // This filter is not run in parallel, no locking required
     if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
-    
-    if( count_ == 1 ) { result_ += n.second;  }
-    else if( window_.size() < size_ ) { result_ += (n.second - result_)/double(count_); }
-    else {
-        result_ += ( (n.second - window_.front()) / double(size_));     // remove data from front of window, add in data from this image
+    if( count_ == 1 ) { cv::add( result_, n.second, result_, cv::noArray(), result_.type() );  }
+    else if( window_.size() < size_ ) // window size is not reached
+    { 
+        // only when input type is 32F
+        // Formula is below, only works if input data type is also floats 
+        if( n.second.depth() == result_.depth() ) { result_ += (n.second - result_)/float(count_); }
+        else 
+        {
+            cv::Mat temp;
+            cv::subtract( n.second, result_, temp, cv::noArray(), result_.type() );
+            result_ += temp/float(count_);
+        }
+    }
+    else 
+    {
+        // remove data from front of window, add in data from this image
+        // Formula is below, only works if input data type is also floats 
+        if( n.second.depth() == result_.depth() ) { result_ += ( (n.second - window_.front()) / float(size_)); }
+        else 
+        {
+            cv::Mat temp;
+            cv::subtract( n.second, window_.front(), temp, cv::noArray(), result_.type() );
+            result_ += temp / float(size_);
+        }
     }
     
     // update sliding window
@@ -113,9 +132,7 @@ typename sliding_window< H >::value_type sliding_window< H >::operator()( const 
     cv::Mat output; // copy as result_ will be changed next iteration
     if( n.second.depth() == CV_32FC1 ) { result_.copyTo(output); } else { result_.convertTo(output, n.second.type()); }
     return value_type(n.first, output); 
-    
 }
-
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
