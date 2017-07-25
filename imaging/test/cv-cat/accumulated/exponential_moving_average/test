@@ -6,7 +6,6 @@ read cv_depth
 read window_size
 
 cv_depth=${cv_depth:-f} # Default to type f
-window_size=${window_sie:-2} # Default to 2
 
 csv-to-bin 6$cv_depth | 
     cv-cat --input "no-header;rows=2;cols=3;type=$cv_depth" --output "no-header=0" | 
