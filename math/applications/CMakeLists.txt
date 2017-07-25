@@ -44,3 +44,5 @@ if(snark_build_math_fft)
     target_link_libraries( math-fft ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} fftw3 )
     install( TARGETS math-fft RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 endif(snark_build_math_fft)
+
+install( PROGRAMS csv-from-mat DESTINATION ${snark_INSTALL_BIN_DIR} )
