@@ -88,7 +88,38 @@ typename accumulated< H >::value_type accumulated< H >::operator()( const typena
     return value_type(n.first, output); 
 }
 
+template < typename H >
+sliding_window< H >::sliding_window( comma::uint32 size ) : count_(0), size_(size) {}
+
+template < typename H >
+typename sliding_window< H >::value_type sliding_window< H >::operator()( const typename sliding_window< H >::value_type& n )
+{
+    ++count_;
+    // This filter is not run in parallel, no locking required
+    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    
+    
+    if( count_ == 1 ) { result_ += n.second;  }
+    else if( window_.size() < size_ ) { result_ += (n.second - result_)/double(count_); }
+    else {
+        result_ += ( (n.second - window_.front()) / double(size_));     // remove data from front of window, add in data from this image
+    }
+    
+    // update sliding window
+    if( window_.size() >= size_ ) { window_.pop_front(); }
+    window_.push_back( cv::Mat() );
+    n.second.copyTo( window_.back() );      // have to copy, next filter will change it
+    
+    cv::Mat output; // copy as result_ will be changed next iteration
+    if( n.second.depth() == CV_32FC1 ) { result_.copyTo(output); } else { result_.convertTo(output, n.second.type()); }
+    return value_type(n.first, output); 
+    
+}
+
+
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
 template class snark::cv_mat::impl::accumulated< boost::posix_time::ptime >;
 template class snark::cv_mat::impl::accumulated< std::vector< char > >;
+template class snark::cv_mat::impl::sliding_window< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::sliding_window< std::vector< char > >;
