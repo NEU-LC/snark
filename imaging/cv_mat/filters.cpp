@@ -2960,9 +2960,10 @@ static std::string usage_impl_()
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
     oss << "        accumulated=<operation>[,<window>]: apply a pixel-wise operation to the images in a given sliding window" << std::endl;
     oss << "            <operation>" << std::endl;
-    oss << "                average: pixelwise average or exponential moving average" << std::endl;
+    oss << "                average: pixelwise average using all images from the beginning of the stream" << std::endl;
+    oss << "                moving-average,<window>: pixelwise moving average" << std::endl;
+    oss << "                ema,<window>: pixelwise exponential moving average" << std::endl;
     oss << "            <window>: number of images to apply pixelwise operation to" << std::endl;
-    oss << "                      default: all images from the beginning of the stream" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
     oss << "            blur=box,<kernel_size> " << std::endl;
