@@ -307,8 +307,8 @@ int main( int ac, char** av )
             {
                 std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
                 if( p.second.empty() ) { return 0; }
-                auto filtered = p;
-                if( !filters.empty() ) { p.second.copyTo( filtered.second ); }
+                std::pair< boost::posix_time::ptime, cv::Mat > filtered;
+                if( filters.empty() ) { filtered = p; } else { p.second.copyTo( filtered.second ); }
                 for( auto& filter: filters ) { filtered = filter( filtered ); }
                 non_zero.size( filtered.second.rows * filtered.second.cols );
                 if( non_zero.keep( filtered.second ) ) { output_serialization.write_to_stdout( p ); }
