@@ -139,11 +139,8 @@ def is_compound( variable ):
 
 
 def step_down( mat ):
-    while mat.dtype == numpy.dtype('O'): # sometimes there's extra nesting
-        try:
-            mat = mat[0]
-        except IndexError:
-            raise ValueError
+    if mat.dtype == numpy.dtype('O'):    # sometimes there's extra nesting
+        mat = mat.flat[0]
     if not isinstance( mat, numpy.ndarray ):
         raise ValueError
     return mat
