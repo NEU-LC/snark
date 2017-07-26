@@ -12,4 +12,8 @@ cmd_args=../$cmd_args           # first arg is necessarily the path to the data 
 
 csv-from-mat $cmd_args \
     | if [[ $cmd_args =~ --binary ]]; then csv-from-bin $( csv-from-mat $cmd_args --output-format ); else cat; fi \
-    | name-value-from-csv -f line -d : -n -p output
+    | if [[ $cmd_args =~ -- ]]; then
+          name-value-from-csv -f line -d : -n -p output
+      else
+          name-value-convert --no-brackets
+      fi
