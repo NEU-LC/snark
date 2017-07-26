@@ -51,15 +51,15 @@ void usage(bool detail)
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --help,-h: show help; --help --verbose: show more help" << std::endl;
-    std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
-    std::cerr << "    --topic=<topic>: name of topic to publish to" << std::endl;
-    std::cerr << "    --queue-size=[<n>]: ROS publisher queue size, default 1" << std::endl;
-    std::cerr << "    --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
-    std::cerr << "    --hang-on; waits about three seconds before exiting so that subscribers can receive the last message" << std::endl;
     std::cerr << "    --all; sends all the records as one ros message (when no block field), otherwise send each record as a message" << std::endl;
+    std::cerr << "    --hang-on,--stay; waits about three seconds before exiting so that subscribers can receive the last message" << std::endl;
+    std::cerr << "    --help,-h: show help; --help --verbose: show more help" << std::endl;
+    std::cerr << "    --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
     std::cerr << "    --node-name: node name for this process, when not specified uses ros::init_options::AnonymousName flag" << std::endl;
     std::cerr << "    --pass-through,--pass; pass input data to stdout" << std::endl;
+    std::cerr << "    --queue-size=[<n>]: ROS publisher queue size, default 1" << std::endl;
+    std::cerr << "    --topic=<topic>: name of topic to publish to" << std::endl;
+    std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    csv options" << std::endl;
     std::cerr << "        --fields: default: x,y,z" << std::endl;
@@ -283,7 +283,7 @@ int main( int argc, char** argv )
             points.push_back(is,*p);
             if( !has_block && !all ) { points.send(publisher,frame_id); }
         }
-        if(options.exists("--hang-on"))
+        if(options.exists("--hang-on,--stay"))
         {
             for(int i=0;i<3;i++)
             {
