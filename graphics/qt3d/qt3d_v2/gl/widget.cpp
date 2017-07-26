@@ -147,11 +147,8 @@ void widget::paintGL()
     painter.beginNativePainting();
 
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-//     glEnable( GL_DEPTH_TEST );
+    glEnable( GL_DEPTH_TEST );
     glEnable( GL_BLEND );
-//     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE); //use gl_PointSize from shader
-//     glHint(GL_POINT_SMOOTH, GL_NICEST);
-//     glEnable(GL_POINT_SMOOTH);  //circular point, otherwise draws square points
     glBlendEquation( GL_FUNC_ADD );
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 //     glEnable( GL_CULL_FACE );
@@ -164,7 +161,7 @@ void widget::paintGL()
 
     for(auto& i : shapes) { i->paint(); }
 
-//     glDisable( GL_DEPTH_TEST );
+    glDisable( GL_DEPTH_TEST );
 
     program_->release();
     
@@ -189,7 +186,6 @@ void widget::update_projection()
 {
     
     double aspect_ratio = (double) width() / height();
-//     std::cerr<<"update_projection "<<near_plane<<" "<<far_plane<<std::endl;
     camera.projection.setToIdentity();
     if( camera_options_.orthographic )
     {
@@ -269,7 +265,6 @@ void widget::wheelEvent( QWheelEvent *event )
     {
         size_ *= ( 1 - 0.001 * event->delta() );
         update_projection();
-//         std::cerr<<"wheelEvent "<<size_<<" "<<event->delta()<<std::endl;
     }
     else
     {
