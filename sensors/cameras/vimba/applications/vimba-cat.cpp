@@ -158,62 +158,8 @@ static void output_frame( const snark::vimba::frame& frame
                         , snark::cv_mat::serialization& serialization
                         , snark::vimba::camera& camera )
 {
-    static VmbUint64_t last_frame_id = 0;
-
-    // For the timestamp, if PTP is available use frame.timestamp(),
-    // otherwise just use current time.
-
-    // It takes about 4ms to interrogate the camera for a feature value,
-    // so we can update this information as we run.
-
-    static std::string ptp_status = "unknown";
-    static bool use_ptp = false;
-
-    // Get the current time as soon as possible after entering the callback
-    boost::posix_time::ptime current_time = boost::posix_time::microsec_clock::universal_time();
-
-    boost::optional< snark::vimba::attribute > ptp_status_attribute = camera.get_attribute( "PtpStatus" );
-    if( ptp_status_attribute && ptp_status_attribute->value_as_string() != ptp_status )
-    {
-        ptp_status = ptp_status_attribute->value_as_string();
-        comma::verbose << "PtpStatus changed value to " << ptp_status << std::endl;
-        use_ptp = ( ptp_status == "Slave" );
-        comma::verbose << ( use_ptp ? "" : "not " ) << "using PTP time source" << std::endl;
-    }
-
-    boost::posix_time::ptime timestamp =
-        ( use_ptp
-        ? boost::posix_time::ptime( boost::gregorian::date( 1970, 1, 1 ))
-              + boost::posix_time::microseconds( frame.timestamp() / 1000 )
-        : current_time );
-
-    if( frame.status() == VmbFrameStatusComplete )
-    {
-        if( last_frame_id != 0 )
-        {
-            VmbUint64_t missing_frames = frame.id() - last_frame_id - 1;
-            if( missing_frames > 0 )
-            {
-                std::cerr << "Warning: " << missing_frames << " missing frame"
-                          << ( missing_frames == 1 ? "" : "s" )
-                          << " detected" << std::endl;
-            }
-        }
-        last_frame_id = frame.id();
-
-        snark::vimba::frame::pixel_format_desc fd = frame.format_desc();
-
-        cv::Mat cv_mat( frame.height()
-                      , frame.width() * fd.width_adjustment
-                      , fd.type
-                      , frame.image_buffer() );
-
-        serialization.write( std::cout, std::make_pair( timestamp, cv_mat ));
-    }
-    else
-    {
-        std::cerr << "Warning: frame " << frame.id() << " status " << frame.status_as_string() << std::endl;
-    }
+    snark::vimba::camera::timestamped_frame timestamped_frame = camera.frame_to_timestamped_frame( frame );
+    serialization.write( std::cout, timestamped_frame );
 }
 
 static void print_attribute_entry( const std::string& label, const std::string& value )
@@ -339,6 +285,7 @@ int main( int argc, char** argv )
 
         snark::cv_mat::serialization serialization( fields, format, header_only );
 
+        camera.set_acquisition_mode( snark::vimba::camera::ACQUISITION_MODE_CONTINUOUS );
         camera.start_acquisition( boost::bind( &output_frame, _1, boost::ref( serialization ), boost::ref( camera )));
 
         comma::signal_flag is_shutdown;
