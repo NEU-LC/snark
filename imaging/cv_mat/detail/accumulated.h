@@ -40,7 +40,7 @@
 
 namespace snark{ namespace cv_mat { namespace accumulated {
     
-typedef boost::function< float( float input_value, float result_value, comma::uint64 count, unsigned int row, unsigned int col ) > apply_function_;
+typedef boost::function< float( float input_value, float result_value, comma::uint64 count, unsigned int row, unsigned int col ) > apply_function;
 
 template < typename H >
 class average {
@@ -64,7 +64,7 @@ public:
 private:
     comma::uint64 count_;   // How many input images so far
     cv::Mat result_;        // This is a float depth image
-    apply_function_ average_ema_;
+    apply_function average_ema_;
 };
 
 template < typename H >
@@ -74,6 +74,8 @@ struct sliding_window {
     cv::Mat result_;
     comma::uint32 size_;  // sliding window size
     std::deque< cv::Mat > window_;
+    
+    apply_function average_;
     
     sliding_window( comma::uint32 size );
     

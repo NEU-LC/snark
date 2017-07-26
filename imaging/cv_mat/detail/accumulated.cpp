@@ -79,6 +79,36 @@ typename average< H >::value_type average< H >::operator()( const typename avera
     return value_type(n.first, output); 
 }
 
+template < int DepthIn >
+static float sliding_average( float in, float avg, comma::uint64 count,
+                              comma::uint32 row, comma::uint32 col,
+                              const std::deque< cv::Mat >& window, comma::uint32 size)
+{
+    typedef typename depth_traits< DepthIn >::value_t value_in_t;
+    // Haven't reach the window size yet
+    if( window.size() < size ) { return (avg + (in - avg)/count); }
+    else
+    {
+        const auto* back_of_window = window.front().ptr< value_in_t >(row);
+        value_in_t val = *(back_of_window + col);
+        return avg + (in - val)/float(size);
+    }
+}
+
+static apply_function make_sliding_window_functor(int depth, const std::deque< cv::Mat >& window, comma::uint32 size)
+{
+    switch( depth )
+    {
+        case CV_8U : return boost::bind( &sliding_average< CV_8U >, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_8S : return boost::bind( &sliding_average< CV_8S >, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_16U: return boost::bind( &sliding_average< CV_16U >, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_16S: return boost::bind( &sliding_average< CV_16S >, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_32S: return boost::bind( &sliding_average< CV_32S >, _1, _2, _3, _4, _5, boost::ref(window), size );
+        case CV_32F: return boost::bind( &sliding_average< CV_32F >, _1, _2, _3, _4, _5, boost::ref(window), size );
+        default: return boost::bind( &sliding_average< CV_64F >, _1, _2, _3, _4, _5, boost::ref(window), size );
+    }
+}
+
 template < typename H >
 typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::value_type& n )
 {
@@ -101,33 +131,14 @@ typename sliding_window< H >::value_type sliding_window< H >::operator()( const 
 {
     ++count_;
     // This filter is not run in parallel, no locking required
-    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    if( result_.empty() )
+    {  // This filter is not run in parallel, no locking required
+        result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) );
+        average_ = make_sliding_window_functor(n.second.depth(), window_, size_);
+    }
     
     if( count_ == 1 ) { n.second.convertTo( result_, result_.type() ); }
-    else if( window_.size() < size_ ) // window size is not reached
-    { 
-        // only when input type is 32F
-        // Formula is below, only works if input data type is also floats 
-        if( n.second.depth() == result_.depth() ) { result_ += (n.second - result_)/float(count_); }
-        else 
-        {
-            cv::Mat temp;
-            cv::subtract( n.second, result_, temp, cv::noArray(), result_.type() );
-            result_ += temp/float(count_);
-        }
-    }
-    else 
-    {
-        // remove data from front of window, add in data from this image
-        // Formula is below, only works if input data type is also floats 
-        if( n.second.depth() == result_.depth() ) { result_ += ( (n.second - window_.front()) / float(size_)); }
-        else 
-        {
-            cv::Mat temp;
-            cv::subtract( n.second, window_.front(), temp, cv::noArray(), result_.type() );
-            result_ += temp / float(size_);
-        }
-    }
+    else { impl::iterate_by_input_type< H >(n.second, result_, average_, count_); }
     
     // update sliding window
     if( window_.size() >= size_ ) { window_.pop_front(); }
