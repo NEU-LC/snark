@@ -334,14 +334,9 @@ int main( int argc, char** argv )
         comma::csv::format format = format_from_fields( fields );
         bool               header_only = false;
 
-        if( options.exists( "--no-header" ))
-        {
-            fields = "";
-        }
-        else
-        {
-            header_only = ( options.exists( "--header" ));
-        }
+        if( options.exists( "--no-header" )) { fields = ""; }
+        else { header_only = ( options.exists( "--header" )); }
+
         snark::cv_mat::serialization serialization( fields, format, header_only );
 
         camera.start_acquisition( boost::bind( &output_frame, _1, boost::ref( serialization ), boost::ref( camera )));
