@@ -72,7 +72,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --verbose,-v:       more output" << std::endl;
     std::cerr << "    --version:          output the library version" << std::endl;
     std::cerr << "    --list-cameras:     list all cameras and exit" << std::endl;
-    std::cerr << "    --list-attributes [<names>]: list camera attributes, default: list all" << std::endl;
+    std::cerr << "    --list-attributes [<names>]: list camera attributes; default: list all" << std::endl;
     std::cerr << "    --set <attributes>: set camera attributes" << std::endl;
     std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
     std::cerr << "    --id=<camera id>:   default: first available camera" << std::endl;
