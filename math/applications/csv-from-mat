@@ -224,7 +224,7 @@ def main():
                 message( "only non-compound variables can be output in csv format" )
             else:
                 for t in mat:
-                    t.tofile( sys.stdout, "," )
+                    t.tofile( sys.stdout, ",", "%s" )
                     print
         else:
             if compound_variable:
