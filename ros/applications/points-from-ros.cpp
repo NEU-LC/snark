@@ -286,17 +286,12 @@ struct points
                     }
                 }
             }
+            return 0;
         }
-        catch( std::exception& ex )
-        {
-            std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl;
-            ros::shutdown();
-        }
-        catch( ... )
-        {
-            std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl;
-            ros::shutdown();
-        }
+        catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; }
+        catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; }
+        ros::shutdown();
+        return 1;
     }
 };
 
