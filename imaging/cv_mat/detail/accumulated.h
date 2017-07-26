@@ -38,27 +38,32 @@
 #include <opencv2/core/core.hpp>
 #include <comma/base/types.h>
 
-namespace snark{ namespace cv_mat { namespace impl {
+namespace snark{ namespace cv_mat { namespace accumulated {
     
-// accumulated_type accumulated_type_to_str( const std::string& s );
+typedef boost::function< float( float input_value, float result_value, comma::uint64 count, unsigned int row, unsigned int col ) > apply_function_;
 
 template < typename H >
-class accumulated {
+class average {
 public:
     typedef std::pair< H, cv::Mat > value_type;
-    static constexpr bool parallel = false;     // CAN NOT run parallel
     
-    // window_size: if given use Exponent Moving Average of specified size
-    // output_float_image: force output image to be float depth, else convert to input image depth
-    accumulated( boost::optional< comma::uint32 > window_size=boost::none );
-
     value_type operator()( const value_type& n );
 private:
-    typedef boost::function< float( float input_value, float result_value, comma::uint64 count, unsigned int row, unsigned int col ) > apply_function_;
-    enum class accumulated_type { average, exponential_moving_average };
     comma::uint64 count_;   // How many input images so far
     cv::Mat result_;        // This is a float depth image
-    accumulated_type type_;
+};
+
+template < typename H >
+class ema {
+public:
+    typedef std::pair< H, cv::Mat > value_type;
+    
+    // https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+    ema( float alpha, comma::uint32 spin_up_size=1 );
+    value_type operator()( const value_type& n );
+private:
+    comma::uint64 count_;   // How many input images so far
+    cv::Mat result_;        // This is a float depth image
     apply_function_ average_ema_;
 };
 
@@ -75,4 +80,4 @@ struct sliding_window {
     value_type operator()( const value_type& n );
 };
 
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+} } }  // namespace snark { namespace cv_mat { namespace accumulated {

@@ -41,7 +41,7 @@
 #include "../depth_traits.h"
 #include "mat_iterator.h"
 
-namespace snark{ namespace cv_mat {  namespace impl {
+namespace snark{ namespace cv_mat {  namespace accumulated {
 
 static float accumulated_average( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
@@ -50,38 +50,43 @@ static float accumulated_average( float in, float avg, comma::uint64 count, comm
 
 // exponential moving average
 static float accumulated_ema( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col, 
-                        comma::uint32 window_size, double multiplier)
+                        comma::uint32 spin_up_size, double alpha)
 {
-    // Do Simple Moving Average until the count is greater than window size
-    if( count <= window_size ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * multiplier; }
+    // Spin up initial value for EMA
+    if( count <= spin_up_size ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha; }
 }
 
 template < typename H >
-accumulated< H >::accumulated( boost::optional< comma::uint32 > window_size ) 
-    : count_(0), type_(accumulated_type::average)
+ema< H >::ema( float alpha, comma::uint32 spin_up_size ) 
+    : count_(0)
 {
-    if( window_size ) 
-    {
-        if( *window_size < 2 ) { COMMA_THROW(comma::exception, "accumulated: window size for Exponential Moving Average must be >= 2, got " << *window_size ) }
-        type_ = accumulated_type::exponential_moving_average;
-        double multiplier = 2.0 / ( *window_size + 1 );    
-        
-        average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, *window_size, multiplier);
-    }
+    if( alpha < 0 || alpha > 1.0 ) { COMMA_THROW(comma::exception, "accumulated: please specify ema alpha in the range 0 <= alpha <= 1.0, got " << alpha ); }
+    
+    average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, spin_up_size, alpha);
 }
 
 template < typename H >
-typename accumulated< H >::value_type accumulated< H >::operator()( const typename accumulated< H >::value_type& n )
+typename average< H >::value_type average< H >::operator()( const typename average< H >::value_type& n )
 {
     ++count_;
     // This filter is not run in parallel, no locking required
     if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
-    switch (type_)  // call to parallel by row ranges
-    {
-        case accumulated_type::average: iterate_by_input_type< H >(n.second, result_, &accumulated_average, count_); break;
-        case accumulated_type::exponential_moving_average: iterate_by_input_type< H >(n.second, result_, average_ema_, count_); break;
-    }
+    impl::iterate_by_input_type< H >(n.second, result_, &accumulated_average, count_);
+    
+    cv::Mat output; // copy as result_ will be changed next iteration
+    result_.convertTo(output, n.second.type());
+    return value_type(n.first, output); 
+}
+
+template < typename H >
+typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::value_type& n )
+{
+    ++count_;
+    // This filter is not run in parallel, no locking required
+    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    
+    impl::iterate_by_input_type< H >(n.second, result_, average_ema_, count_);
     
     cv::Mat output; // copy as result_ will be changed next iteration
     result_.convertTo(output, n.second.type());
@@ -134,9 +139,11 @@ typename sliding_window< H >::value_type sliding_window< H >::operator()( const 
     return value_type(n.first, output); 
 }
 
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+} } }  // namespace snark { namespace cv_mat { namespace accumulated {
 
-template class snark::cv_mat::impl::accumulated< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::accumulated< std::vector< char > >;
-template class snark::cv_mat::impl::sliding_window< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::sliding_window< std::vector< char > >;
+template class snark::cv_mat::accumulated::average< boost::posix_time::ptime >;
+template class snark::cv_mat::accumulated::average< std::vector< char > >;
+template class snark::cv_mat::accumulated::ema< boost::posix_time::ptime >;
+template class snark::cv_mat::accumulated::ema< std::vector< char > >;
+template class snark::cv_mat::accumulated::sliding_window< boost::posix_time::ptime >;
+template class snark::cv_mat::accumulated::sliding_window< std::vector< char > >;

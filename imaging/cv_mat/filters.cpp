@@ -2062,14 +2062,20 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
         auto s = comma::split(e[1], ',');
-        comma::uint32 size;
-        if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: expected window size as integer, got \"" << s[1] << "\"" ); }}
-        if( s.size() < 2 && s.front() != "average" ){ COMMA_THROW(comma::exception, "accumulated: error please provide window size for " << s.front() ); }
-        
-        if( s.front() == "average" ) { return std::make_pair( boost::bind< value_type_t >( impl::accumulated< H >( boost::none ), _1 ), false ); }
-        else if( s.front() == "ema" ) { return std::make_pair( boost::bind< value_type_t >( impl::accumulated< H >( size ), _1 ), false ); }
-        else if(  "moving-average" ) { return std::make_pair( boost::bind< value_type_t >( impl::sliding_window< H >( size ), _1 ), false ); }
-        else { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
+        try
+        {
+            if( s.front() == "average" ) { return std::make_pair(  boost::bind< value_type_t >( accumulated::average< H >(), _1 ), false ); }
+            else if(  "moving-average" ) { 
+                if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: error please provide window size for " << s.front() ); }
+                return std::make_pair(  boost::bind< value_type_t >( accumulated::sliding_window< H >( boost::lexical_cast< comma::uint32 >(s[1]) ), _1 ), false ); 
+            }
+            else if( s.front() == "ema" ) { 
+                if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: error please provide alpha value for " << s.front() ); }
+                return std::make_pair( boost::bind< value_type_t >( accumulated::ema< H >( boost::lexical_cast< float >(s[1]), s.size() < 3 ? 1 : boost::lexical_cast< comma::uint32 >(s[2]) ), _1 ), false ); 
+            }
+            else { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
+        }
+        catch( boost::bad_lexical_cast bc ) { COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what()); }
     }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
@@ -2958,12 +2964,13 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
-    oss << "        accumulated=<operation>[,<window>]: apply a pixel-wise operation to the images in a given sliding window" << std::endl;
+    oss << "        accumulated=<operation>: apply a pixel-wise operation to the input images" << std::endl;
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
-    oss << "               <window>: number of images to apply pixelwise operation to" << std::endl;
+    oss << "                 ema,alpha,<spin_up_number>: pixelwise exponential moving average, using ema += (new_pixel_value - ema) * alpha" << std::endl;
+    oss << "                        <spin_up_number>: default = 1; first ema = average(first <spin_up_number> of input images)" << std::endl;
     oss << "                 moving-average,<window>: pixelwise simple moving average" << std::endl;
-    oss << "                 ema,<window>: pixelwise exponential moving average, using multiplier=2/(<window>+1); ema += (new_pixel_value - ema) * multiplier" << std::endl;
+    oss << "                        <window>: number of images to apply pixelwise operation to" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
     oss << "            blur=box,<kernel_size> " << std::endl;
