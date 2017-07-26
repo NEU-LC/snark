@@ -112,14 +112,12 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "    thin" << std::endl;
     std::cerr << "        by thinning rate" << std::endl;
-    std::cerr << "            --how=<how>; thinning method" << std::endl;
-    std::cerr << "                <how>" << std::endl;
-    std::cerr << "                    deterministic: output frames at a given thinning rate with as uniform intervals as possible" << std::endl;
-    std::cerr << "                    random (default): output frames at a given thinning rate at random with uniform distribution" << std::endl;
+    std::cerr << "            --deterministic; output frames at a given thinning rate with as uniform intervals as possible" << std::endl;
+    std::cerr << "                             default: output frames at a given thinning rate at random with uniform distribution" << std::endl;
     std::cerr << "            --rate=<rate>; thinning rate between 0 and 1" << std::endl;
     std::cerr << "        by frames per second" << std::endl;
     std::cerr << "            --from-fps,--input-fps=<fps>; input fps (since it is impossible to know it upfront)" << std::endl;
-    std::cerr << "            --to-fps,--fps=<fps>; thin to a given <fps>, same as --rate=<to-fps>/<from-fps> --how=deterministic" << std::endl;
+    std::cerr << "            --to-fps,--fps=<fps>; thin to a given <fps>, same as --rate=<to-fps>/<from-fps> --deterministic" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "  header" << std::endl;
@@ -276,7 +274,7 @@ class keep
         {
         }
         
-        operator bool() { return deterministic_ ? deterministic_impl_() : random() < rate_; }
+        operator bool() { return deterministic_ ? deterministic_impl_() : random_() < rate_; }
         
     private:
         double rate_;
@@ -320,7 +318,7 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--permissive", "-.*");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--permissive,--deterministic", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
@@ -441,9 +439,9 @@ int main( int ac, char** av )
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
             options.assert_mutually_exclusive( "--rate,--to-fps,--fps" );
-            options.assert_mutually_exclusive( "--how,--to-fps,--fps" );
+            options.assert_mutually_exclusive( "--deterministic,--to-fps,--fps" );
             if( !options.exists( "--rate" ) && !options.exists( "--to-fps,--fps" ) ) { std::cerr << "cv-calc: thin: please specify either --rate or --to-fps" << std::endl; }
-            bool deterministic = options.exists( "--to-fps,--fps" ) || options.value< std::string >( "--how", "random" ) == "deterministic";
+            bool deterministic = options.exists( "--to-fps,--fps" ) || options.exists( "--deterministic" );
             double rate = options.exists( "--rate" ) ? options.value< double >( "--rate" ) : options.value< double >( "--to-fps,--fps" ) / options.value< double >( "--from-fps" );
             snark::imaging::operations::thin::keep keep( rate, deterministic );
             while( std::cin.good() && !std::cin.eof() )
