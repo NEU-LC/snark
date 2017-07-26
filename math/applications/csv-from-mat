@@ -139,32 +139,18 @@ def is_compound( variable ):
 
 
 def step_down( mat ):
-    if mat.dtype == numpy.dtype('O'): # sometimes there's extra nesting
-        mat = mat[0][0]
+    while mat.dtype == numpy.dtype('O'): # sometimes there's extra nesting
+        try:
+            mat = mat[0]
+        except IndexError:
+            raise ValueError
     if not isinstance( mat, numpy.ndarray ):
         raise ValueError
     return mat
 
 
-def print_tree( path, tree, sep ):
-    if is_compound( tree ):
-        # at the top level, mat is a dictionary, but as we drill down
-        # it turns into nested numpy.ndarray objects
-        keys = ( [ i for i in tree.keys() if i[0] != '_' ]
-                 if isinstance( tree, dict )
-                 else tree.dtype.fields.keys() )
-        for k in keys:
-            try:
-                d = step_down( tree[k] )
-            except ValueError:
-                return
-            print_tree( k if path is None else "%s%s%s" % ( path, sep, k ), d, sep )
-    else:
-        print path
-
-
 # convert python version of matlab data to fundamental python data types
-def mat_to_fundamental( mat ):
+def traverse( mat, path="", sep="" ):
     if is_compound( mat ):
         # at the top level, mat is a dictionary, but as we drill down
         # it turns into nested numpy.ndarray objects
@@ -174,13 +160,20 @@ def mat_to_fundamental( mat ):
         d = dict()
         for k in keys:
             try:
-                d[k] = mat_to_fundamental( step_down( mat[k] ))
+                next_item = step_down( mat[k] )
             except ValueError:
-                print >> sys.stderr, "warning: didn't understand %s" % k
-                pass
+                print >> sys.stderr, "warning: didn't understand %s%s%s" % (path, sep, k )
+                continue
+            if sep == "":
+                d[k] = traverse( next_item )
+            else:
+                traverse( next_item, k if path is None else "%s%s%s" % ( path, sep, k ), sep )
         return d
     else:
-        return mat.tolist()
+        if sep == "":
+            return mat.tolist()
+        else:
+            print path
 
 
 def main():
@@ -205,7 +198,7 @@ def main():
                 return
 
     if args.list:
-        print_tree( args.variable, mat, args.path_separator )
+        traverse( mat, args.variable, args.path_separator )
         return
 
     compound_variable = is_compound( mat )
@@ -241,7 +234,7 @@ def main():
                 leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
                 d[ leaf_var_name ] = mat
                 dump_var = d
-            print json.dumps( mat_to_fundamental( dump_var ))
+            print json.dumps( traverse( dump_var ))
 
 
 if __name__ == '__main__':
