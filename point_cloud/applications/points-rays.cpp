@@ -165,7 +165,7 @@ int main( int argc, char** argv )
         const std::string& operation = unnamed[0];
         if( operation == "trace" )
         {
-            if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::points_rays::operations::input_t >( true ), ',' ) << std::endl; }
+            if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::points_rays::operations::input_t >( false ), ',' ) << std::endl; return 0; }
             comma::csv::options csv( options, "range,bearing,elevation" );
             csv.full_xpath = false;
             std::vector< std::string > v = comma::split( csv.fields, ',' );

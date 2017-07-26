@@ -2035,6 +2035,18 @@ static typename impl::filters< H >::value_type remove_mean_impl_(const typename 
     return n;
 }
 
+template < typename H >
+static typename impl::filters< H >::value_type clone_channels_impl_( typename impl::filters< H >::value_type m, unsigned int nchannels )
+{
+    if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "clone-channels: expected one channel, got " << m.second.channels() ); }
+    typename impl::filters< H >::value_type n;
+    n.first = m.first;
+    std::vector< cv::Mat > channels( nchannels );
+    for( std::size_t i = 0; i < nchannels; ++i ) { m.second.copyTo( channels[i] ); }
+    cv::merge( channels, n.second );
+    return n;
+}
+
 template < typename O, typename H >
 struct make_filter {
     typedef typename impl::filters< H >::value_type value_type_t;
@@ -2050,10 +2062,14 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
         auto s = comma::split(e[1], ',');
-        if( s.front() != "average" ) { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
-        boost::optional< comma::uint32 > size;
+        comma::uint32 size;
         if( s.size() > 1 ) { try { size = boost::lexical_cast< comma::uint32 >(s[1]); } catch( boost::bad_lexical_cast ) { COMMA_THROW(comma::exception, "accumulated: expected window size as integer, got \"" << s[1] << "\"" ); }}
-        return std::make_pair( boost::bind< value_type_t >( impl::accumulated< H >( size ), _1 ), false );
+        if( s.size() < 2 && s.front() != "average" ){ COMMA_THROW(comma::exception, "accumulated: error please provide window size for " << s.front() ); }
+        
+        if( s.front() == "average" ) { return std::make_pair( boost::bind< value_type_t >( impl::accumulated< H >( boost::none ), _1 ), false ); }
+        else if( s.front() == "ema" ) { return std::make_pair( boost::bind< value_type_t >( impl::accumulated< H >( size ), _1 ), false ); }
+        else if(  "moving-average" ) { return std::make_pair( boost::bind< value_type_t >( impl::sliding_window< H >( size ), _1 ), false ); }
+        else { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
     }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
@@ -2430,6 +2446,11 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         unsigned int nchannels = e.size() == 1 ? default_number_of_channels : boost::lexical_cast< unsigned int >( e[1] );
         if ( nchannels == 0 ) { COMMA_THROW( comma::exception, "expected positive number of channels in merge filter, got " << nchannels ); }
         return std::make_pair( boost::bind< value_type_t >( merge_impl_< H >, _1, nchannels ), true );
+    }
+    else if( e[0] == "clone-channels" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "clone-channels: please specify number of channels" ); }
+        return std::make_pair( boost::bind< value_type_t >( clone_channels_impl_< H >, _1, boost::lexical_cast< unsigned int >( e[1] ) ), true );
     }
     if( e[0] == "undistort" ) { return std::make_pair( undistort_impl_< H >( e[1] ), true ); }
     if( e[0] == "invert" )
@@ -2939,9 +2960,10 @@ static std::string usage_impl_()
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
     oss << "        accumulated=<operation>[,<window>]: apply a pixel-wise operation to the images in a given sliding window" << std::endl;
     oss << "            <operation>" << std::endl;
-    oss << "                average: pixelwise average or exponential moving average" << std::endl;
-    oss << "            <window>: number of images to apply pixelwise operation to" << std::endl;
-    oss << "                      default: all images from the beginning of the stream" << std::endl;
+    oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
+    oss << "               <window>: number of images to apply pixelwise operation to" << std::endl;
+    oss << "                 moving-average,<window>: pixelwise simple moving average" << std::endl;
+    oss << "                 ema,<window>: pixelwise exponential moving average, using multiplier=2/(<window>+1); ema += (new_pixel_value - ema) * multiplier" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
     oss << "            blur=box,<kernel_size> " << std::endl;
@@ -3002,7 +3024,6 @@ static std::string usage_impl_()
     oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
     oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
     oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
-    oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
     oss << "        normalize=<how>: normalize image and scale to 0 to 1 float (or double if input is CV_64F)" << std::endl;
     oss << "            normalize=max: normalize each pixel channel by its max value" << std::endl;
     oss << "            normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
@@ -3026,7 +3047,6 @@ static std::string usage_impl_()
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
-    oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
@@ -3057,6 +3077,11 @@ static std::string usage_impl_()
     oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
     oss << std::endl;
+    oss << "    operations on channels" << std::endl;
+    oss << "        clone-channels=<n>: take 1-channel image, output n-channel image, with each channel a copy of the input" << std::endl;
+    oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
+    oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
+    oss << std::endl;
     oss << "    operations \"forked\" image stream: semantics: take input image, apply some filters to it, then apply the operation between the input and resulting image" << std::endl;
     oss << "                                        usage: <operation>=<filters>" << std::endl;
     oss << "                                        <filters>: any sequence of cv-cat filters that outputs a single-channel image of the same dimensions as the images on stdin" << std::endl;
@@ -3080,7 +3105,7 @@ static std::string usage_impl_()
     oss << "                        example:" << std::endl;
     oss << "                            cv-cat \"mask=ratio:(r + b - g)/( 1 + r + b )|convert-to:ub|threshold:4 xor ratio:2./(1.5e1 - g + r)|convert-to:ub|threshold:5\"" << std::endl;
     oss << std::endl;
-    oss << "       'forked' arithmetic operations" << std::endl;
+    oss << "        'forked' arithmetic operations" << std::endl;
     oss << "           add=<filters>: forked image is pixelwise added to the input image, see cv::add()" << std::endl;
     oss << "           divide=<filters>: forked image is pixelwise divided to the input image, see cv::divide()" << std::endl;
     oss << "           multiply=<filters>: forked image is pixelwise multiplied to the input image, see cv::multiply()" << std::endl;

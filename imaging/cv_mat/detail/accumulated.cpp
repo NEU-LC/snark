@@ -84,7 +84,53 @@ typename accumulated< H >::value_type accumulated< H >::operator()( const typena
     }
     
     cv::Mat output; // copy as result_ will be changed next iteration
-    if( n.second.depth() == CV_32FC1 ) { result_.copyTo(output); } else { result_.convertTo(output, n.second.type()); }
+    result_.convertTo(output, n.second.type());
+    return value_type(n.first, output); 
+}
+
+template < typename H >
+sliding_window< H >::sliding_window( comma::uint32 size ) : count_(0), size_(size) {}
+
+template < typename H >
+typename sliding_window< H >::value_type sliding_window< H >::operator()( const typename sliding_window< H >::value_type& n )
+{
+    ++count_;
+    // This filter is not run in parallel, no locking required
+    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    
+    if( count_ == 1 ) { n.second.convertTo( result_, result_.type() ); }
+    else if( window_.size() < size_ ) // window size is not reached
+    { 
+        // only when input type is 32F
+        // Formula is below, only works if input data type is also floats 
+        if( n.second.depth() == result_.depth() ) { result_ += (n.second - result_)/float(count_); }
+        else 
+        {
+            cv::Mat temp;
+            cv::subtract( n.second, result_, temp, cv::noArray(), result_.type() );
+            result_ += temp/float(count_);
+        }
+    }
+    else 
+    {
+        // remove data from front of window, add in data from this image
+        // Formula is below, only works if input data type is also floats 
+        if( n.second.depth() == result_.depth() ) { result_ += ( (n.second - window_.front()) / float(size_)); }
+        else 
+        {
+            cv::Mat temp;
+            cv::subtract( n.second, window_.front(), temp, cv::noArray(), result_.type() );
+            result_ += temp / float(size_);
+        }
+    }
+    
+    // update sliding window
+    if( window_.size() >= size_ ) { window_.pop_front(); }
+    window_.push_back( cv::Mat() );
+    n.second.copyTo( window_.back() );      // have to copy, next filter will change it
+    
+    cv::Mat output; // copy as result_ will be changed next iteration
+    result_.convertTo(output, n.second.type());
     return value_type(n.first, output); 
 }
 
@@ -92,3 +138,5 @@ typename accumulated< H >::value_type accumulated< H >::operator()( const typena
 
 template class snark::cv_mat::impl::accumulated< boost::posix_time::ptime >;
 template class snark::cv_mat::impl::accumulated< std::vector< char > >;
+template class snark::cv_mat::impl::sliding_window< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::sliding_window< std::vector< char > >;

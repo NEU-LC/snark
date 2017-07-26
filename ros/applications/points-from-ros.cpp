@@ -55,17 +55,17 @@ void usage(bool detail)
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --help,-h: show help; --help --verbose: show more help" << std::endl;
-    std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
-    std::cerr << "    --topic=<topic>: name of the topic to subscribe to" << std::endl;
     std::cerr << "    --flush; call flush on stdout after each write (otherwise may buffer with small size messages)" << std::endl;
-    std::cerr << "    --queue-size=[<n>]: ROS Subscriber queue size, default 1" << std::endl;
+    std::cerr << "    --help,-h: show help; --help --verbose: show more help" << std::endl;
     std::cerr << "    --max-datagram-size: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)" << std::endl;
     std::cerr << "    --node-name: node name for this process, when not specified uses ros::init_options::AnonymousName flag" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "field names and format are extracted from the first message of the subscribed topic; following options wait until they receive a message" << std::endl;
     std::cerr << "    --output-fields; print field names and exit" << std::endl;
     std::cerr << "    --output-format; print format and exit" << std::endl;
+    std::cerr << "    --queue-size=[<n>]: ROS Subscriber queue size, default 1" << std::endl;
+    std::cerr << "    --topic=<topic>: name of the topic to subscribe to" << std::endl;
+    std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "field names and format are extracted from the first message of the subscribed topic; following options wait until they receive a message" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    csv options" << std::endl;
     std::cerr << "        either --format or --binary option must be specified" << std::endl;
@@ -279,24 +279,13 @@ struct points
                         std::cout.write(buf,bin_shuffle.size());
                         if(flush) { std::cout.flush(); }
                     }
-                    if(!std::cout.good())
-                    {
-                        ros::shutdown();
-                        break;
-                    }
+                    if( !std::cout.good() ) { ros::shutdown(); break; }
                 }
             }
         }
-        catch( std::exception& ex )
-        {
-            std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl;
-            ros::shutdown();
-        }
-        catch( ... )
-        {
-            std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl;
-            ros::shutdown();
-        }
+        catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; }
+        catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; }
+        ros::shutdown();
     }
 };
 
@@ -325,13 +314,7 @@ int main( int argc, char** argv )
         ros::spin();
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; }
     return 1;
 }

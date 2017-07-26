@@ -253,7 +253,7 @@ void serialization::write( std::ostream& os, const std::pair< header::buffer_t, 
 // * switching from std::cout.write() to write( 1, ... ) was successful
 //
 // We don't understand why std::cout would exhibit this behaviour so for now we
-// will have a second method (below) that using the c-style write() function.
+// will have a second method (below) that uses the c-style write() function.
 // This is used by pipeline::write_()
 
 static void write_( int fd, const char* buf, size_t count )

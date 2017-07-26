@@ -32,8 +32,10 @@
 
 #include <map>
 #include <vector>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
+#include <opencv2/core/core.hpp>
 #include <VimbaCPP/Include/Camera.h>
 #include "frame_observer.h"
 
@@ -44,10 +46,17 @@ class attribute;
 class camera
 {
     public:
+        typedef std::pair< boost::posix_time::ptime, cv::Mat > timestamped_frame;
         typedef std::map< std::string, std::string> name_values;
+        typedef enum
+        {
+            ACQUISITION_MODE_UNKNOWN,
+            ACQUISITION_MODE_CONTINUOUS,
+            ACQUISITION_MODE_SINGLE
+        } acquisition_mode_t;
 
         camera( const std::string& camera_id );
-        camera( const AVT::VmbAPI::CameraPtr& camera_ptr ) : camera_( camera_ptr ) {}
+        camera( const AVT::VmbAPI::CameraPtr& camera_ptr );
         ~camera();
 
         name_values info() const;
@@ -56,9 +65,12 @@ class camera
 
         void set_feature( const std::string& name, const std::string& value = "" ) const;
         void set_features( const std::string& name_values ) const;
-        
+
+        void set_acquisition_mode( acquisition_mode_t acquisition_mode ) { acquisition_mode_ = acquisition_mode; }
         void start_acquisition( frame_observer::callback_fn callback ) const;
         void stop_acquisition() const;
+
+        timestamped_frame frame_to_timestamped_frame( const snark::vimba::frame& frame ) const;
 
     private:
         typedef const boost::function< VmbErrorType( std::string& ) > getter_fn;
@@ -66,6 +78,8 @@ class camera
         static void add_name_value( const char* label, getter_fn fn, name_values& name_value_pairs );
 
         AVT::VmbAPI::CameraPtr camera_;
+        acquisition_mode_t acquisition_mode_;
+        mutable VmbUint64_t last_frame_id_;
 };
 
 } } // namespace snark { namespace vimba {

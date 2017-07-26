@@ -30,6 +30,9 @@
 #include <algorithm>
 #include <memory>
 #include <numeric>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <opencv2/core/core.hpp>
 #include <tbb/parallel_for.h>
 #include <comma/base/exception.h>
@@ -55,18 +58,13 @@ static void usage( bool verbose=false )
     std::cerr << "usage: cat images.bin | cv-calc <operation> [<options>] > processed.bin " << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
-    std::cerr << "    format" << std::endl;
-    std::cerr << "        output header and data format string in ascii" << std::endl;
-    std::cerr << "    grep" << std::endl;
-    std::cerr << "        output only images that satisfy conditions" << std::endl;
-    std::cerr << "    header" << std::endl;
-    std::cerr << "        output header information in ascii csv" << std::endl;
-    std::cerr << "    mean" << std::endl;
-    std::cerr << "        output image means for all image channels appended to image header" << std::endl;
-    std::cerr << "    roi" << std::endl;
-    std::cerr << "        given cv image data associated with a region of interest, either set everything outside the region of interest to zero or crop it" << std::endl;
-    std::cerr << "    stride" << std::endl;
-    std::cerr << "        stride through the image, output images of kernel size for each pixel" << std::endl;
+    std::cerr << "    format: output header and data format string in ascii" << std::endl;
+    std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
+    std::cerr << "    header: output header information in ascii csv" << std::endl;
+    std::cerr << "    mean: output image means for all image channels appended to image header" << std::endl;
+    std::cerr << "    roi: given cv image data associated with a region of interest, either set everything outside the region of interest to zero or crop it" << std::endl;
+    std::cerr << "    stride: stride through the image, output images of kernel size for each pixel" << std::endl;
+    std::cerr << "    thin: thin image stream by discarding some images" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --binary=[<format>]: binary format of header; default: operation dependent, see --header-format" << std::endl;
@@ -111,6 +109,15 @@ static void usage( bool verbose=false )
     std::cerr << "        --padding=[<padding>]; padding, 'same' or 'valid' (see e.g. tensorflow for the meaning); default: valid" << std::endl;
     std::cerr << "        --shape,--kernel,--size=<x>,<y>; image size" << std::endl;
     std::cerr << "        --strides=[<x>,<y>]; stride size; default: 1,1" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    thin" << std::endl;
+    std::cerr << "        by thinning rate" << std::endl;
+    std::cerr << "            --deterministic; output frames at a given thinning rate with as uniform intervals as possible" << std::endl;
+    std::cerr << "                             default: output frames at a given thinning rate at random with uniform distribution" << std::endl;
+    std::cerr << "            --rate=<rate>; thinning rate between 0 and 1" << std::endl;
+    std::cerr << "        by frames per second" << std::endl;
+    std::cerr << "            --from-fps,--input-fps=<fps>; input fps (since it is impossible to know it upfront)" << std::endl;
+    std::cerr << "            --to-fps,--fps=<fps>; thin to a given <fps>, same as --rate=<to-fps>/<from-fps> --deterministic" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "  header" << std::endl;
@@ -250,16 +257,52 @@ class non_zero
 };
 
 } // namespace grep {
+
+namespace thin {
+
+class keep
+{
+    public:
+        keep( double rate, bool deterministic )
+            : rate_( rate )
+            , deterministic_( deterministic )
+            , distribution_( 0, 1 )
+            , random_( generator_, distribution_ )
+            , size_( 1.0e+9 )
+            , step_( 0 )
+            , count_( 0 )
+        {
+        }
+        
+        operator bool() { return deterministic_ ? deterministic_impl_() : random_() < rate_; }
+        
+    private:
+        double rate_;
+        bool deterministic_;
+        boost::mt19937 generator_;
+        boost::uniform_real<> distribution_;
+        boost::variate_generator< boost::mt19937&, boost::uniform_real<> > random_;
+        comma::uint64 size_;
+        comma::uint64 step_;
+        comma::uint64 count_;
+        bool deterministic_impl_()
+        {
+            ++count_;
+            if( count_ < ( step_ + 1 ) / rate_ ) { return false; }
+            ++step_;
+            if( step_ == size_ ) { count_ = 0; step_ = 0; }
+            return true;
+        }
+};
+    
+} // namespace thin {
     
 } } } // namespace snark { namespace imaging { namespace operations {
 
-snark::cv_mat::serialization::options handle_fields_and_format(const comma::csv::options& csv
-                                                             , snark::cv_mat::serialization::options input_options
-                                                             , const std::string& operation)
+static snark::cv_mat::serialization::options handle_fields_and_format( const comma::csv::options& csv, snark::cv_mat::serialization::options input_options, const std::string& operation )
 {
     if( !csv.fields.empty() && !input_options.fields.empty() ) { COMMA_THROW(comma::exception, "cv-calc: please set fields in --fields or --input, not both"); }
     if( csv.binary() && !input_options.format.elements().empty() ) { COMMA_THROW(comma::exception, "cv-calc: please set binary format in --binary or --input, not both"); }
-    
     if( !csv.fields.empty() && input_options.fields.empty() ) { input_options.fields = csv.fields; }
     if( csv.binary() && input_options.format.string().empty() ) { input_options.format = csv.format(); }
     
@@ -275,7 +318,7 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--permissive", "-.*");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--permissive,--deterministic", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
@@ -307,8 +350,8 @@ int main( int ac, char** av )
             {
                 std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
                 if( p.second.empty() ) { return 0; }
-                auto filtered = p;
-                if( !filters.empty() ) { p.second.copyTo( filtered.second ); }
+                std::pair< boost::posix_time::ptime, cv::Mat > filtered;
+                if( filters.empty() ) { filtered = p; } else { p.second.copyTo( filtered.second ); }
                 for( auto& filter: filters ) { filtered = filter( filtered ); }
                 non_zero.size( filtered.second.rows * filtered.second.cols );
                 if( non_zero.keep( filtered.second ) ) { output_serialization.write_to_stdout( p ); }
@@ -318,8 +361,6 @@ int main( int ac, char** av )
         }
         if( operation == "mean" )
         {
-            snark::cv_mat::serialization input_serialization( input_options );
-            snark::cv_mat::serialization output_serialization( output_options );
             snark::cv_mat::serialization serialization( input_options );
             while( std::cin.good() && !std::cin.eof() )
             {
@@ -336,7 +377,6 @@ int main( int ac, char** av )
         {
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
-            
             const std::vector< std::string >& strides_vector = comma::split( options.value< std::string >( "--strides", "1,1" ), ',' );
             if( strides_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected strides as <x>,<y>, got: \"" << options.value< std::string >( "--strides" ) << std::endl; return 1; }
             std::pair< unsigned int, unsigned int > strides( boost::lexical_cast< unsigned int >( strides_vector[0] ), boost::lexical_cast< unsigned int >( strides_vector[1] ) );
@@ -362,7 +402,7 @@ int main( int ac, char** av )
                 {
                     p.second.copyTo( filtered.second );
                     for( auto& filter: filters ) { filtered = filter( filtered ); }
-                    if( filtered.second.rows != p.second.rows || filtered.second.cols != p.second.cols ) { std::cerr << "cv-calc: expected original and filtered images of the same size, got " << p.second.rows << "," << p.second.cols << " vs " << filtered.second.rows << "," << filtered.second.cols << std::endl; return 1; }
+                    if( filtered.second.rows != p.second.rows || filtered.second.cols != p.second.cols ) { std::cerr << "cv-calc: stride: expected original and filtered images of the same size, got " << p.second.rows << "," << p.second.cols << " vs " << filtered.second.rows << "," << filtered.second.cols << std::endl; return 1; }
                 }
                 switch( padding )
                 {
@@ -370,7 +410,7 @@ int main( int ac, char** av )
                         break;
                     case padding_types::valid:
                     {
-                        if( p.second.cols < int( shape.first ) || p.second.rows < int( shape.second ) ) { std::cerr << "cv-calc: expected image greater than rows: " << shape.second << " cols: " << shape.first << "; got rows: " << p.second.rows << " cols: " << p.second.cols << std::endl; return 1; }
+                        if( p.second.cols < int( shape.first ) || p.second.rows < int( shape.second ) ) { std::cerr << "cv-calc: stride: expected image greater than rows: " << shape.second << " cols: " << shape.first << "; got rows: " << p.second.rows << " cols: " << p.second.cols << std::endl; return 1; }
                         std::pair< boost::posix_time::ptime, cv::Mat > q;
                         q.first = p.first;
                         for( unsigned int i = 0; i < ( p.second.cols + 1 - shape.first ); i += strides.first )
@@ -394,7 +434,24 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        
+        if( operation == "thin" )
+        {
+            snark::cv_mat::serialization input_serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
+            options.assert_mutually_exclusive( "--rate,--to-fps,--fps" );
+            options.assert_mutually_exclusive( "--deterministic,--to-fps,--fps" );
+            if( !options.exists( "--rate" ) && !options.exists( "--to-fps,--fps" ) ) { std::cerr << "cv-calc: thin: please specify either --rate or --to-fps" << std::endl; }
+            bool deterministic = options.exists( "--to-fps,--fps" ) || options.exists( "--deterministic" );
+            double rate = options.exists( "--rate" ) ? options.value< double >( "--rate" ) : options.value< double >( "--to-fps,--fps" ) / options.value< double >( "--from-fps" );
+            snark::imaging::operations::thin::keep keep( rate, deterministic );
+            while( std::cin.good() && !std::cin.eof() )
+            {
+                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                if( keep ) { output_serialization.write_to_stdout( p ); std::cout.flush(); }
+            }
+            return 0;
+        }
         if( operation == "header" )
         {
             snark::cv_mat::serialization input_serialization( input_options );
