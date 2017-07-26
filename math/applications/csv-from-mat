@@ -32,6 +32,7 @@
 import sys
 import signal
 import argparse
+import json
 import comma.csv.format
 
 def import_advice( module ):
@@ -68,15 +69,13 @@ def bash_completion (parser):
 
 def parse_args():
     description="""
-extract variable from Matlab save file and return as csv
+extract variable from Matlab save file and return as csv or json
 """
 
     epilog="""
 output format:
-  If the variable given is a leaf node then the data in that node is output in
-  csv-style ascii or binary. If it's higher than a leaf node then all variables
-  from that point down are output in path-value form with the value in
-  python-style ascii.
+  If the variable given is a leaf node then the data is output in csv-style
+  ascii or binary. If it's a compound variable then it is output in json.
 
 file format:
   Currently supports file format v7 and earlier, which is the default for all
@@ -92,6 +91,7 @@ examples:
   {script_name} data.mat foo --list
   {script_name} data.mat foo.bar --binary
   {script_name} data.mat foo.bar --output-format
+  {script_name} data.mat | name-value-convert --no-brackets
 """.format( script_name=sys.argv[0].split('/')[-1] )
 
     fmt=lambda prog: argparse.RawDescriptionHelpFormatter( prog, max_help_position=50 )
@@ -139,30 +139,39 @@ def is_compound( variable ):
 
 
 def step_down( mat ):
-    if mat.dtype == numpy.dtype('O'): # sometimes there's extra nesting
-        mat = mat[0][0]
+    while mat.dtype == numpy.dtype('O'): # sometimes there's extra nesting
+        try:
+            mat = mat[0]
+        except IndexError:
+            raise ValueError
     if not isinstance( mat, numpy.ndarray ):
         raise ValueError
     return mat
 
 
-def print_tree( path, tree, sep, with_values ):
-    if is_compound( tree ):
+# convert python version of matlab data to fundamental python data types
+def traverse( mat, path="", sep="" ):
+    if is_compound( mat ):
         # at the top level, mat is a dictionary, but as we drill down
         # it turns into nested numpy.ndarray objects
-        keys = ( [ i for i in tree.keys() if i[0] != '_' ]
-                 if isinstance( tree, dict )
-                 else tree.dtype.fields.keys() )
+        keys = ( [ i for i in mat.keys() if i[0] != '_' ]
+                 if isinstance( mat, dict )
+                 else mat.dtype.fields.keys() )
+        d = dict()
         for k in keys:
             try:
-                d = step_down( tree[k] )
+                next_item = step_down( mat[k] )
             except ValueError:
-                return
-            print_tree( k if path is None else "%s%s%s" % ( path, sep, k ),
-                        d, sep, with_values )
+                print >> sys.stderr, "warning: didn't understand %s%s%s" % (path, sep, k )
+                continue
+            if sep == "":
+                d[k] = traverse( next_item )
+            else:
+                traverse( next_item, k if path is None else "%s%s%s" % ( path, sep, k ), sep )
+        return d
     else:
-        if with_values:
-            print "%s=%s" % ( path, tree.tolist() )
+        if sep == "":
+            return mat.tolist()
         else:
             print path
 
@@ -189,7 +198,7 @@ def main():
                 return
 
     if args.list:
-        print_tree( args.variable, mat, args.path_separator, False )
+        traverse( mat, args.variable, args.path_separator )
         return
 
     compound_variable = is_compound( mat )
@@ -215,10 +224,17 @@ def main():
                 message( "only non-compound variables can be output in csv format" )
             else:
                 for t in mat:
-                    t.tofile( sys.stdout, "," )
+                    t.tofile( sys.stdout, ",", "%s" )
                     print
         else:
-            print_tree( args.variable, mat, args.path_separator, True )
+            if compound_variable:
+                dump_var = mat
+            else:
+                d = dict()
+                leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
+                d[ leaf_var_name ] = mat
+                dump_var = d
+            print json.dumps( traverse( dump_var ))
 
 
 if __name__ == '__main__':
