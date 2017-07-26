@@ -279,19 +279,13 @@ struct points
                         std::cout.write(buf,bin_shuffle.size());
                         if(flush) { std::cout.flush(); }
                     }
-                    if(!std::cout.good())
-                    {
-                        ros::shutdown();
-                        break;
-                    }
+                    if( !std::cout.good() ) { ros::shutdown(); break; }
                 }
             }
-            return 0;
         }
         catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; }
         catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; }
         ros::shutdown();
-        return 1;
     }
 };
 
@@ -320,13 +314,7 @@ int main( int argc, char** argv )
         ros::spin();
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; }
     return 1;
 }
