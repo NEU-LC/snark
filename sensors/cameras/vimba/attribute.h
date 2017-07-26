@@ -47,6 +47,8 @@ class attribute
         const std::string& description() const { return description_; }
         const std::vector< std::string >& allowed_values() const { return allowed_values_; }
 
+        unsigned int int_value() const { return value_.int_value; }
+
         const std::string& value_as_string() const { return value_as_string_; }
         const char*        type_as_string() const;
         std::string        allowed_values_as_string() const;

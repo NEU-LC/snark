@@ -165,7 +165,7 @@ static void output_frame( const snark::vimba::frame& frame
 static void print_attribute_entry( const std::string& label, const std::string& value )
 {
     std::string prefix( label.length() + 2, ' ' );
-    std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
+    std::cerr << label << ": " << wrap( value, 80, prefix ) << "\n";
 }
 
 static void print_attribute( const snark::vimba::attribute& attribute, bool verbose )
@@ -178,11 +178,28 @@ static void print_attribute( const snark::vimba::attribute& attribute, bool verb
         print_attribute_entry( "Description   ", attribute.description() );
         if( !attribute.allowed_values().empty() )
             print_attribute_entry( "Allowed Values", attribute.allowed_values_as_string() );
-        std::cout << std::endl;
+        std::cerr << std::endl;
     }
     else
     {
-        std::cout << attribute.name() << "=" << attribute.value_as_string() << std::endl;
+        std::cerr << attribute.name() << "=" << attribute.value_as_string() << std::endl;
+    }
+}
+
+static void print_stats( const snark::vimba::camera& camera )
+{
+    static const std::vector< std::string > stat_attributes
+    {
+        "StatFrameRate", "StatFrameDelivered", "StatFrameDropped", "StatFrameRescued",
+        "StatFrameShoved", "StatFrameUnderrun", "StatLocalRate", "StatPacketErrors",
+        "StatPacketMissed", "StatPackerReceived", "StatPacketRequested", "StatPacketResent",
+        "StatTimeElapsed"
+    };
+    boost::optional< snark::vimba::attribute > a;
+    for( const std::string& attribute : stat_attributes )
+    {
+        a = camera.get_attribute( attribute );
+        if( a ) { print_attribute( *a, false ); }
     }
 }
 
@@ -286,15 +303,42 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization serialization( fields, format, header_only );
 
         camera.set_acquisition_mode( snark::vimba::camera::ACQUISITION_MODE_CONTINUOUS );
-        camera.start_acquisition( boost::bind( &output_frame, _1, boost::ref( serialization ), boost::ref( camera )));
 
-        comma::signal_flag is_shutdown;
-        do {
-            sleep( 1 );
-        } while( !is_shutdown );
+        bool acquiring = true;
+        while( acquiring )
+        {
+            camera.start_acquisition( boost::bind( &output_frame, _1
+                                                 , boost::ref( serialization )
+                                                 , boost::ref( camera )));
+            comma::signal_flag is_shutdown;
+            long frames_delivered = 0;
+            do {
+                sleep( 1 );
+                boost::optional< snark::vimba::attribute > frames_delivered_attribute = camera.get_attribute( "StatFrameDelivered" );
+                if( frames_delivered_attribute )
+                {
+                    long frames_delivered_prev = frames_delivered;
+                    frames_delivered = frames_delivered_attribute->int_value();
+                    if( frames_delivered % 100 < 5 ) { comma::verbose << "frames delivered = " << frames_delivered << std::endl; }
+                    if( frames_delivered == frames_delivered_prev )
+                    {
+                        std::cerr << comma::verbose.app_name() << ": warning - we appear to be stuck" << std::endl;
+                        if( comma::verbose ) { print_stats( camera ); }
+                        break;
+                    }
+                    if( frames_delivered % 5000 < 5 && comma::verbose ) { print_stats( camera ); }
+                }
+            } while( !is_shutdown );
 
-        camera.stop_acquisition();
+            if( is_shutdown )
+            {
+                comma::verbose << "caught shutdown signal " << std::endl;
+                acquiring = false;
+            }
+            comma::verbose << "exited acquisition loop" << std::endl;
 
+            camera.stop_acquisition();
+        }
         return 0;
     }
     catch( std::exception& ex )
