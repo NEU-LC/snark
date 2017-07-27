@@ -84,8 +84,8 @@ file format:
   required then python library h5py can help, or possibly hdf5storage.
 
   If you're not seeing anything it's probable that the file has been saved with
-  "opaque" Matlab variables. Try struct( myvar ) from within Matlab and save
-  again.
+  "opaque" Matlab variables. Try ">> mynewvar = struct( myvar )" from within
+  Matlab, delete myvar, and save again.
 
 examples:
   {script_name} data.mat
