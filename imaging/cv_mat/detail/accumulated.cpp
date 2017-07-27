@@ -34,10 +34,7 @@
 #include <vector>
 #include <map>
 #include <boost/bind.hpp>
-#include <boost/thread/pthread/pthread_mutex_scoped_lock.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range.h>
 #include "../depth_traits.h"
 #include "mat_iterator.h"
 
@@ -63,12 +60,11 @@ static float accumulated_ema( float in, float avg, comma::uint64 count, comma::u
 }
 
 template < typename H >
-ema< H >::ema( float alpha, comma::uint32 spin_up_size ) 
-    : count_(0)
+ema< H >::ema( float alpha, comma::uint32 spin_up_size ) : count_(0), alpha_(alpha), spin_up_(spin_up_size)
 {
-    if( spin_up_size == 0 ) { COMMA_THROW(comma::exception, "accumulated=ema: error please specify spin up value greater than 0"); }
-    if( alpha <= 0 || alpha >= 1.0 ) { COMMA_THROW(comma::exception, "accumulated: please specify ema alpha in the range 0 < alpha < 1.0, got " << alpha ); }
-    average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, spin_up_size, alpha);
+    if( spin_up_ == 0 ) { COMMA_THROW(comma::exception, "accumulated=ema: error please specify spin up value greater than 0"); }
+    if( alpha_ <= 0 || alpha_ >= 1.0 ) { COMMA_THROW(comma::exception, "accumulated: please specify ema alpha in the range 0 < alpha < 1.0, got " << alpha_ ); }
+    average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, spin_up_, alpha_);
 }
 
 template < typename H >
@@ -122,7 +118,11 @@ typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::val
     // This filter is not run in parallel, no locking required
     if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
-    impl::iterate_by_input_type< H >(n.second, result_, average_ema_, count_);
+        // Spin up initial value for EMA
+    auto ema_functor = [this](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) {
+        if( count <= spin_up_ ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha_; }
+    };
+    impl::iterate_by_input_type< H >(n.second, result_, ema_functor, count_);
     
     cv::Mat output; // copy as result_ will be changed next iteration
     result_.convertTo(output, n.second.type());
@@ -137,12 +137,30 @@ typename moving_average< H >::value_type moving_average< H >::operator()( const 
 {
     ++count_;
     // This filter is not run in parallel, no locking required
-    if( result_.empty() )
+    if( count_ == 1 )
     {  // This filter is not run in parallel, no locking required
         average_ = make_moving_average_functor(n.second.depth(), window_, size_);
-        n.second.convertTo( result_, result_.type() );
+        n.second.convertTo( result_, CV_MAKETYPE(CV_32F, n.second.channels()) );
     }
-    else { impl::iterate_by_input_type< H >(n.second, result_, average_, count_); }
+    else { 
+    /*
+    int depth = n.second.depth();
+    auto ema_functor = [&window_, &size_](float new_value, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) -> float 
+    {
+        switch( depth )
+        {
+            case CV_8U : return boost::bind( &sliding_average< CV_8U >, _1, _2, _3, _4, _5, boost::ref(window), size );
+            case CV_8S : return boost::bind( &sliding_average< CV_8S >, _1, _2, _3, _4, _5, boost::ref(window), size );
+            case CV_16U: return boost::bind( &sliding_average< CV_16U >, _1, _2, _3, _4, _5, boost::ref(window), size );
+            case CV_16S: return boost::bind( &sliding_average< CV_16S >, _1, _2, _3, _4, _5, boost::ref(window), size );
+            case CV_32S: return boost::bind( &sliding_average< CV_32S >, _1, _2, _3, _4, _5, boost::ref(window), size );
+            case CV_32F: return boost::bind( &sliding_average< CV_32F >, _1, _2, _3, _4, _5, boost::ref(window), size );
+            default: return boost::bind( &sliding_average< CV_64F >, _1, _2, _3, _4, _5, boost::ref(window), size );
+        }
+    };
+    */
+        impl::iterate_by_input_type< H >(n.second, result_, average_, count_); 
+    }
     
     // update sliding window
     if( window_.size() >= size_ ) { window_.pop_front(); }

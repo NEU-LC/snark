@@ -64,7 +64,8 @@ public:
 private:
     comma::uint64 count_;   // How many input images so far
     cv::Mat result_;        // This is a float depth image
-    apply_function average_ema_;
+    float alpha_;
+    comma::uint32 spin_up_;
 };
 
 template < typename H >
