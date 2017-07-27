@@ -2962,11 +2962,15 @@ static std::string usage_impl_()
     oss << "                 moving-average,<window>: pixelwise moving average" << std::endl;
     oss << "                        <window>: number of images in sliding window" << std::endl;
     oss << "                        formula: sum(pixel values in sliding window)/<window>" << std::endl;
+    oss << "                        formula:" << std::endl;
+    oss << "                           - first <window> input images: same as 'average' operation above" << std::endl;
+    oss << "                           - sub-sequence input images: ema += (new_pixel_value - pixel_back_of_window)/<window>; move sliding window forward" << std::endl;
+    oss << "                                ** formula above is the equivalent of: moving sliding window; sum(corresponding pixel values in sliding window)/<window>" << std::endl;
     oss << "                 ema,alpha[,<spin_up>]: pixelwise exponential moving average" << std::endl;
     oss << "                        <alpha>: range: between 0 and 1.0, larger value will retain more historical data." << std::endl;
-    oss << "                        <spin_up>: default = 1; see formula below" << std::endl;
+    oss << "                        <spin_up>: default = 1;" << std::endl;
     oss << "                        formula:" << std::endl;
-    oss << "                           - first <spin_up> input images: same output as 'average' operation above" << std::endl;
+    oss << "                           - first <spin_up> input images: same as 'average' operation above" << std::endl;
     oss << "                           - sub-sequence input images: ema += (new_pixel_value - ema) * <alpha>" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
