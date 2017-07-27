@@ -2966,9 +2966,9 @@ static std::string usage_impl_()
     oss << "        accumulated=<operation>: apply a pixel-wise operation to the input images" << std::endl;
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
-    oss << "                 ema,alpha,<spin_up_number>: pixelwise exponential moving average, using ema += (new_pixel_value - ema) * alpha" << std::endl;
+    oss << "                 ema,alpha,<window>: pixelwise exponential moving average, using ema += (new_pixel_value - ema) * alpha" << std::endl;
     oss << "                        <alpha>: range: between 0 and 1.0, larger value will retain more historical data." << std::endl;
-    oss << "                        <spin_up_number>: default = 1; first ema = average(first <spin_up_number> of input images)" << std::endl;
+    oss << "                        <window>: default = 1; (a.k.a spin up size) number of initial images that produce the same outputs as 'average' operation above" << std::endl;
     oss << "                 moving-average,<window>: pixelwise simple moving average" << std::endl;
     oss << "                        <window>: number of images to apply pixelwise operation to" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
