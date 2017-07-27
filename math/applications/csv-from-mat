@@ -148,6 +148,7 @@ def step_down( mat ):
 
 # convert python version of matlab data to fundamental python data types
 def traverse( mat, path="", sep="" ):
+    listing = ( sep != "" )
     if is_compound( mat ):
         # at the top level, mat is a dictionary, but as we drill down
         # it turns into nested numpy.ndarray objects
@@ -156,21 +157,37 @@ def traverse( mat, path="", sep="" ):
                  else mat.dtype.fields.keys() )
         d = dict()
         for k in keys:
-            try:
-                next_item = step_down( mat[k] )
-            except ValueError:
-                print >> sys.stderr, "warning: didn't understand %s%s%s" % (path, sep, k )
-                continue
-            if sep == "":
-                d[k] = traverse( next_item )
-            else:
-                traverse( next_item, k if path is None else "%s%s%s" % ( path, sep, k ), sep )
+            next_item = mat[k]
+
+            handled = False
+            if next_item.dtype == numpy.dtype('O'):    # sometimes there's extra nesting
+                if next_item.size == 1 or listing:
+                    next_item = next_item.flat[0]
+                else:
+                    d[k] = list()
+                    index = 0
+                    for item in next_item.flat:
+                        if listing:
+                            traverse( item, "%s%s%s[%s]" % ( path, sep, k, index ), sep )
+                            index += 1
+                        else:
+                            d[k].append( traverse( item ))
+                    handled = True
+
+            if not handled:
+                if isinstance( next_item, scipy.io.matlab.mio5_params.MatlabOpaque ):
+                    print >> sys.stderr, "warning: didn't understand %s%s%s" % (path, sep, k )
+                    continue
+                if listing:
+                    traverse( next_item, k if path is None else "%s%s%s" % ( path, sep, k ), sep )
+                else:
+                    d[k] = traverse( next_item )
         return d
     else:
-        if sep == "":
-            return mat.tolist()
-        else:
+        if listing:
             print path
+        else:
+            return mat.tolist()
 
 
 def main():
