@@ -41,6 +41,7 @@
 
 static const char* possible_fields = "t,rows,cols,type,size";
 static const char* default_fields = "t,rows,cols,type";
+static int max_stuck_before_exiting = 3;
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -305,6 +306,8 @@ int main( int argc, char** argv )
         camera.set_acquisition_mode( snark::vimba::camera::ACQUISITION_MODE_CONTINUOUS );
 
         bool acquiring = true;
+        int stuck_count = 0;
+        int exit_code = 0;
         while( acquiring )
         {
             camera.start_acquisition( boost::bind( &output_frame, _1
@@ -323,6 +326,12 @@ int main( int argc, char** argv )
                     {
                         std::cerr << comma::verbose.app_name() << ": warning - we appear to be stuck" << std::endl;
                         if( comma::verbose ) { print_stats( camera ); }
+                        if( ++stuck_count == max_stuck_before_exiting )
+                        {
+                            std::cerr << comma::verbose.app_name() << ": we've been stuck " << stuck_count << " times. Exiting..." << std::endl;
+                            acquiring = false;
+                            exit_code = 1;
+                        }
                         break;
                     }
                 }
@@ -337,7 +346,7 @@ int main( int argc, char** argv )
 
             camera.stop_acquisition();
         }
-        return 0;
+        return exit_code;
     }
     catch( std::exception& ex )
     {
