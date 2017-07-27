@@ -31,17 +31,12 @@
 
 #include <string>
 #include <deque>
-#include <Eigen/Core>
-#include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
-#include <boost/optional.hpp>
 #include <opencv2/core/core.hpp>
 #include <comma/base/types.h>
 
 namespace snark{ namespace cv_mat { namespace accumulated {
     
-typedef boost::function< float( float input_value, float result_value, comma::uint64 count, unsigned int row, unsigned int col ) > apply_function;
-
 template < typename H >
 class average {
 public:
@@ -64,22 +59,24 @@ public:
 private:
     comma::uint64 count_;   // How many input images so far
     cv::Mat result_;        // This is a float depth image
-    apply_function average_ema_;
+    float alpha_;
+    comma::uint32 spin_up_;
 };
 
 template < typename H >
-struct sliding_window {
+class moving_average {
+public:
     typedef std::pair< H, cv::Mat > value_type;
+    
+    moving_average( comma::uint32 size );
+    
+    value_type operator()( const value_type& n );
+    
+private:
     comma::uint64 count_;
     cv::Mat result_;
     comma::uint32 size_;  // sliding window size
     std::deque< cv::Mat > window_;
-    
-    apply_function average_;
-    
-    sliding_window( comma::uint32 size );
-    
-    value_type operator()( const value_type& n );
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace accumulated {
