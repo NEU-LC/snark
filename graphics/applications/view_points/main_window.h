@@ -94,7 +94,7 @@ class CheckBox : public QCheckBox // quick and dirty
 
 #elif Qt3D_VERSION==2
 
-#include "../../qt3d/qt3d_v2/gl/widget.h"
+#include "../../qt5.5/qopengl/widget.h"
 #include <QMainWindow>
 #include <QKeyEvent>
 

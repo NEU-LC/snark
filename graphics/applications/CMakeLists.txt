@@ -85,11 +85,15 @@ if( build_view_points )
                                ${comma_ALL_LIBRARIES}
                                ${OPENGL_LIBRARY} )
     elseif( QT_VERSION_MAJOR EQUAL 5 )
-        target_link_libraries( ${view_points}
-                               Qt5::Widgets
-                               snark_render
-                               snark_graphics_qt3d
-                               ${comma_ALL_LIBRARIES} )
+        if( QT_VERSION_MINOR LESS 5 )
+            target_link_libraries( ${view_points}
+                                Qt5::Widgets
+                                snark_render
+                                snark_graphics_qt3d
+                                ${comma_ALL_LIBRARIES} )
+        else()
+            target_link_libraries( ${view_points} snark_render snark_graphics_qopengl ${comma_ALL_LIBRARIES} )
+        endif()
     endif()
 endif()
 

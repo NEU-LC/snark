@@ -13,18 +13,12 @@ endif()
 file( GLOB source  ${dir}/*.cpp ${dir}/${snark_qt3d_specific_dir}/*.cpp )
 file( GLOB include ${dir}/*.h   ${dir}/${snark_qt3d_specific_dir}/*.h )
 
-if( Qt3D_VERSION EQUAL 2 )
-file( GLOB gl_source   ${dir}/${snark_qt3d_specific_dir}/gl/*.cpp )
-endif()
-
 if( Qt3D_VERSION EQUAL 1 )
     if( QT_VERSION_MAJOR EQUAL 4 )
         QT4_WRAP_CPP( snark_graphics_qt3d_moc ${dir}/${snark_qt3d_specific_dir}/view.h OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED )
     elseif( QT_VERSION_MAJOR EQUAL 5 )
         QT5_WRAP_CPP( snark_graphics_qt3d_moc ${dir}/${snark_qt3d_specific_dir}/view.h )
     endif()
-else()
-    QT5_WRAP_CPP( snark_graphics_qt3d_moc ${dir}/${snark_qt3d_specific_dir}/gl/widget.h )
 endif()
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} ${snark_graphics_qt3d_moc} ${gl_source} )

@@ -42,7 +42,7 @@
 #include <Qt3D/qglnamespace.h>
 #include <Qt3D/qglpainter.h>
 #else
-#include "../../../graphics/qt3d/qt3d_v2/gl/shapes.h"
+#include "../../../graphics/qt5.5/qopengl/shapes.h"
 #endif
 #include <memory>
 #include "types.h"
@@ -54,7 +54,7 @@
 namespace snark { namespace graphics { namespace view {
 
 #if Qt3D_VERSION==2
-typedef std::shared_ptr<snark::graphics::qt3d::gl::shape> gl_shape_ptr_t;
+typedef std::shared_ptr<snark::graphics::qopengl::shape> gl_shape_ptr_t;
 struct gl_parameters
 {
     gl_parameters(unsigned point_size,bool fill) : point_size(point_size),fill(fill) { }
@@ -100,7 +100,7 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::line_strip());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip());
     }
 #endif
 
@@ -173,7 +173,7 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::lines());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::lines());
     }
 #endif
 
@@ -212,7 +212,7 @@ struct Shapetraits< loop< Size > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::triangles(gl.fill));
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::triangles(gl.fill));
     }
 #endif
 
@@ -273,7 +273,7 @@ struct Shapetraits< Ellipse< Size > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::line_loop());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop());
     }
 #endif
 
@@ -329,7 +329,7 @@ struct Shapetraits< arc< Size > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::line_strip());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip());
     }
 #endif
 
@@ -445,21 +445,21 @@ template<> struct how_traits<how_t::points>
 {
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::point(gl.point_size));
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::point(gl.point_size));
     }
 };
 template<> struct how_traits<how_t::loop>
 {
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::line_loop());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop());
     }
 };
 template<> struct how_traits<how_t::connected>
 {
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::line_strip());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip());
     }
 };
 
@@ -512,7 +512,7 @@ struct Shapetraits< axis >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qt3d::gl::shapes::lines(gl.point_size));
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::lines(gl.point_size));
     }
 #endif
 
