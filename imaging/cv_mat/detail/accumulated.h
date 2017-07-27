@@ -29,9 +29,7 @@
 
 #pragma once
 
-#include <string>
 #include <deque>
-#include <boost/function.hpp>
 #include <opencv2/core/core.hpp>
 #include <comma/base/types.h>
 

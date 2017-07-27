@@ -30,21 +30,68 @@
 #include "accumulated.h"
 
 #include <comma/base/exception.h>
-#include <iostream>
 #include <vector>
-#include <map>
-#include <boost/bind.hpp>
+#include <functional>
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/bind.hpp>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
 #include "../depth_traits.h"
-#include "mat_iterator.h"
-
-// todo:
-// - remove unused includes
-// - move mat_iterator to accumulated.cpp
-// - replace bind directly with lambda functions to pass to mat_iterator
-// - sliding_average: try to make it non-template; try to avoid bind
 
 namespace snark{ namespace cv_mat {  namespace accumulated {
+    
+namespace impl {
+    
+// Row and Col tells you which pixel to access or was accessed to get input nd result pixel
+// The returned value will also be set into this pixel in 'result' cv::Mat 
+// 'count' is the image number being accessed
+typedef std::function< float( float input_value, float result_value, comma::uint32 count, unsigned int row, unsigned int col ) > apply_function;
+    
+template< int DepthIn >
+static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )
+{
+    typedef typename depth_traits< DepthIn >::value_t value_in_t;
+    typedef float value_out_t;
+    const unsigned int channels = m.channels();
+    const unsigned int cols = m.cols * channels;
+    for( unsigned int i = r.begin(); i < r.end(); ++i )
+    {
+        const value_in_t* in = m.ptr< value_in_t >(i);
+        auto* ret = result.ptr< value_out_t >(i);
+        for( unsigned int j = 0; j < cols; ++j ) 
+        {
+            *ret = fn( *in, *ret, count, i, j);
+            ++ret;
+            ++in;
+        }
+    }
+}
+
+template< typename H, int DepthIn >
+static void divide_by_rows( const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )
+{
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.rows ), 
+                       boost::bind( &iterate_pixels< DepthIn >, _1, m, boost::ref( result ), boost::ref(fn), count ) );
+}
+
+template< typename H >
+static void iterate_by_input_type( const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count)
+{
+    int otype = m.depth(); // This will work?
+    switch( otype )
+    {
+        case CV_8U : divide_by_rows< H, CV_8U  >( m, result, fn, count ); break;
+        case CV_8S : divide_by_rows< H, CV_8S  >( m, result, fn, count ); break;
+        case CV_16U: divide_by_rows< H, CV_16U >( m, result, fn, count ); break;
+        case CV_16S: divide_by_rows< H, CV_16S >( m, result, fn, count ); break;
+        case CV_32S: divide_by_rows< H, CV_32S >( m, result, fn, count ); break;
+        case CV_32F: divide_by_rows< H, CV_32F >( m, result, fn, count ); break;
+        case CV_64F: divide_by_rows< H, CV_64F >( m, result, fn, count ); break;
+        default: COMMA_THROW( comma::exception, "accumulated: unrecognised output image type " << otype );
+    }
+}
+
+} // namespace impl {
 
 template < typename H >
 ema< H >::ema( float alpha, comma::uint32 spin_up_size ) : count_(0), alpha_(alpha), spin_up_(spin_up_size)
