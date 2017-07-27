@@ -246,9 +246,12 @@ def main():
             if compound_variable:
                 message( "only non-compound variables can be output in csv format" )
             else:
-                for t in mat:
-                    t.tofile( sys.stdout, ",", "%s" )
-                    print
+                if len( mat.shape ) > 2:
+                    message( "--csv only supported for 2d matrices, %s is %sd" % ( args.variable, len( mat.shape )))
+                else:
+                    for t in mat:
+                        t.tofile( sys.stdout, ",", "%s" )
+                        print
         else:
             if compound_variable:
                 dump_var = mat
