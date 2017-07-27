@@ -68,18 +68,20 @@ private:
 };
 
 template < typename H >
-struct sliding_window {
+class moving_average {
+public:
     typedef std::pair< H, cv::Mat > value_type;
+    
+    moving_average( comma::uint32 size );
+    
+    value_type operator()( const value_type& n );
+    
+private:
     comma::uint64 count_;
     cv::Mat result_;
     comma::uint32 size_;  // sliding window size
     std::deque< cv::Mat > window_;
-    
     apply_function average_;
-    
-    sliding_window( comma::uint32 size );
-    
-    value_type operator()( const value_type& n );
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace accumulated {

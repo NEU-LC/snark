@@ -41,11 +41,17 @@
 #include "../depth_traits.h"
 #include "mat_iterator.h"
 
+// todo:
+// - remove unused includes
+// - move mat_iterator to accumulated.cpp
+// - replace bind directly with lambda functions to pass to mat_iterator
+// - sliding_average: try to make it non-template; try to avoid bind
+
 namespace snark{ namespace cv_mat {  namespace accumulated {
 
 static float accumulated_average( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
 {
-    return (avg + (in - avg)/count);
+    return avg + (in - avg)/count;
 }
 
 // exponential moving average
@@ -95,7 +101,7 @@ static float sliding_average( float in, float avg, comma::uint64 count,
     }
 }
 
-static apply_function make_sliding_window_functor(int depth, const std::deque< cv::Mat >& window, comma::uint32 size)
+static apply_function make_moving_average_functor(int depth, const std::deque< cv::Mat >& window, comma::uint32 size)
 {
     switch( depth )
     {
@@ -124,20 +130,18 @@ typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::val
 }
 
 template < typename H >
-sliding_window< H >::sliding_window( comma::uint32 size ) : count_(0), size_(size) {}
+moving_average< H >::moving_average( comma::uint32 size ) : count_(0), size_(size) {}
 
 template < typename H >
-typename sliding_window< H >::value_type sliding_window< H >::operator()( const typename sliding_window< H >::value_type& n )
+typename moving_average< H >::value_type moving_average< H >::operator()( const typename moving_average< H >::value_type& n )
 {
     ++count_;
     // This filter is not run in parallel, no locking required
     if( result_.empty() )
     {  // This filter is not run in parallel, no locking required
-        result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) );
-        average_ = make_sliding_window_functor(n.second.depth(), window_, size_);
+        average_ = make_moving_average_functor(n.second.depth(), window_, size_);
+        n.second.convertTo( result_, result_.type() );
     }
-    
-    if( count_ == 1 ) { n.second.convertTo( result_, result_.type() ); }
     else { impl::iterate_by_input_type< H >(n.second, result_, average_, count_); }
     
     // update sliding window
@@ -156,5 +160,5 @@ template class snark::cv_mat::accumulated::average< boost::posix_time::ptime >;
 template class snark::cv_mat::accumulated::average< std::vector< char > >;
 template class snark::cv_mat::accumulated::ema< boost::posix_time::ptime >;
 template class snark::cv_mat::accumulated::ema< std::vector< char > >;
-template class snark::cv_mat::accumulated::sliding_window< boost::posix_time::ptime >;
-template class snark::cv_mat::accumulated::sliding_window< std::vector< char > >;
+template class snark::cv_mat::accumulated::moving_average< boost::posix_time::ptime >;
+template class snark::cv_mat::accumulated::moving_average< std::vector< char > >;
