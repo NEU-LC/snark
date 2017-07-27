@@ -261,9 +261,7 @@ static void usage()
         "\n    left press and hold: rotate the scene around the centre"
         "\n    right press and hold: translate the scene"
         "\n    double left click: change the centre of the scene"
-        qt55_unsupported_marker_start
         "\n    double right click: output to stdout approximate coordinates of the clicked point"
-        qt55_unsupported_marker_end
         "\n    scroll wheel: zoom"
         "\n"
         "\nexamples"

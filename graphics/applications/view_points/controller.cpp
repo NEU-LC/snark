@@ -93,7 +93,6 @@ controller::controller(QMainWindow* parent, const color_t& background_color
     : m_lookAt( false )
     , m_cameraposition( cameraposition )
     , m_cameraorientation( cameraorientation )
-    , m_stdout_allowed( true )
     , m_exit_on_end_of_input( exit_on_end_of_input )
 {
 #if Qt3D_VERSION==1
@@ -121,7 +120,7 @@ controller::~controller()
 //     viewer=NULL;
     shutdown(false);
 }
-
+void controller::inhibit_stdout() { viewer->stdout_allowed = false; }
 void controller::shutdown(bool kill)
 {
     m_shutdown = true;

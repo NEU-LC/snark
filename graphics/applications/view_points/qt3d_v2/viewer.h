@@ -33,7 +33,6 @@
 #include "../types.h"
 #include <QMainWindow>
 #include <QTimer>
-#include <iostream>
 
 namespace snark { namespace graphics { namespace qt3d {
 class camera_options;
@@ -62,6 +61,7 @@ public:
     
 protected:
     void init();
+    void double_right_click(const boost::optional<QVector3D>& point);
     
 private slots:
     void on_timeout();
@@ -71,6 +71,7 @@ public:
     void look_at_center();
     boost::optional< Eigen::Vector3d > m_offset;
     void set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation);
+    bool stdout_allowed;
 
 //     double scene_radius() const { return scene_radius_; }
     

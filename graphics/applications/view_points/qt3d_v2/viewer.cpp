@@ -28,6 +28,8 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "viewer.h"
+#include <iostream>
+#include <iomanip>
 
 namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
 
@@ -39,7 +41,8 @@ std::ostream& operator<<(std::ostream& os, const QVector3D& v)
 viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double arg_scene_radius,QMainWindow* parent) : 
     qt3d::gl::widget(camera_options,parent),
     handler(handler),
-    scene_center(scene_center)
+    scene_center(scene_center),
+    stdout_allowed(true)
 {
     scene_radius=arg_scene_radius;
     QTimer* timer = new QTimer( this );
@@ -51,7 +54,19 @@ viewer::viewer(controller_base* handler, const color_t& background_color, const 
 void viewer::reset_handler(controller_base* h){ handler=h; }
 void viewer::init() { if(handler!=NULL) { handler->init(); } }
 void viewer::on_timeout() { if(handler!=NULL) { handler->tick(); } }
-
+void viewer::double_right_click(const boost::optional<QVector3D>& point)
+{
+    if(!stdout_allowed)
+    {
+        std::cerr << "point under mouse output is disabled when \"pass\" option is in use" << std::endl;
+        return;
+    }
+    if( !point ) { std::cerr << "warning: no point found near the double right click" << std::endl; return; }
+    Eigen::Vector3d p( point->x(), point->y(), point->z() );
+    if( !m_offset ) { std::cerr << "warning: offset is not defined yet, wait until it is found first" << std::endl; return; }
+    p += *m_offset;
+    std::cout << std::setprecision(16) << p.x() << "," << p.y() << "," << p.z() << std::endl;
+}
 void viewer::update_view(const QVector3D& min, const QVector3D& max)
 {
     if( !scene_radius_fixed_ ) { scene_radius = 0.5 * ( max - min ).length(); }

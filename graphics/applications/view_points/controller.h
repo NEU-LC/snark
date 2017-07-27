@@ -76,7 +76,7 @@ public:
               , double scene_radius
               , bool output_camera_position = false);
     ~controller();
-    void inhibit_stdout() { m_stdout_allowed = false; }
+    void inhibit_stdout();
     void shutdown(bool kill=true);
     void tick() { read(); }
 
@@ -90,7 +90,6 @@ private:
     boost::optional< Eigen::Vector3d > m_cameraorientation;
     bool m_cameraFixed;
     //add camera_position_output
-    bool m_stdout_allowed;
     bool m_exit_on_end_of_input;
     
 public:

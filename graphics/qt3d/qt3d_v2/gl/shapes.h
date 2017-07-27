@@ -49,6 +49,7 @@ namespace snark { namespace graphics { namespace qt3d { namespace gl {
 //     void paint();
 //     void destroy();
 // };
+
 class shape : protected QOpenGLFunctions
 {
 protected:

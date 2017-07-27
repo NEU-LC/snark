@@ -252,7 +252,12 @@ void widget::mouseMoveEvent( QMouseEvent *event )
 
 void widget::mouseDoubleClickEvent( QMouseEvent *event )
 {
-    if( event->button() == Qt::LeftButton )
+    if(event->button()==Qt::RightButton)
+    {
+        boost::optional<QVector3D> point=viewport_to_3d(event->pos());
+        double_right_click(point);
+    }
+    else if( event->button() == Qt::LeftButton )
     {
         boost::optional< QVector3D > point = viewport_to_3d( event->pos() );
         if( point ) { camera.set_center(*point); }

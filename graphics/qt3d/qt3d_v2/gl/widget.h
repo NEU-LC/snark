@@ -66,8 +66,12 @@ public slots:
     void cleanup();
     
 protected:
-    virtual void init() {};
+    // this will be called in initializeGL
+    virtual void init() { }
+    /// this will be called on mouse double click with right button if a 3d points is found/clicked
+    virtual void double_right_click(const boost::optional<QVector3D>& point) { }
 
+protected:
     void initializeGL() Q_DECL_OVERRIDE;
     void paintGL() Q_DECL_OVERRIDE;
     void resizeGL( int width, int height ) Q_DECL_OVERRIDE;
