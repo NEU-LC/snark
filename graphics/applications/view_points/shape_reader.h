@@ -63,13 +63,13 @@ class ShapeReader : public shape_reader_base
 
 #if Qt3D_VERSION==2
 public:
-    std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape();
-    std::shared_ptr<snark::graphics::qt3d::gl::label_shader> make_label_shader();
+    std::shared_ptr<snark::graphics::qopengl::shape> make_shape();
+    std::shared_ptr<snark::graphics::qopengl::label_shader> make_label_shader();
     void update_shape();
     void update_labels();
 private:
-    std::shared_ptr<snark::graphics::qt3d::gl::shape> shape;
-    std::shared_ptr<snark::graphics::qt3d::gl::label_shader> label_shader;
+    std::shared_ptr<snark::graphics::qopengl::shape> shape;
+    std::shared_ptr<snark::graphics::qopengl::label_shader> label_shader;
 #endif
 
     private:
@@ -83,15 +83,15 @@ private:
 };
 #if Qt3D_VERSION==2
 template< typename S, typename How >
-std::shared_ptr<snark::graphics::qt3d::gl::shape> ShapeReader< S, How >::make_shape()
+std::shared_ptr<snark::graphics::qopengl::shape> ShapeReader< S, How >::make_shape()
 {
     shape=Shapetraits< S, How >::make_shape(gl_parameters(point_size,fill));
     return shape;
 }
 template< typename S, typename How >
-std::shared_ptr<snark::graphics::qt3d::gl::label_shader> ShapeReader< S, How >::make_label_shader()
+std::shared_ptr<snark::graphics::qopengl::label_shader> ShapeReader< S, How >::make_label_shader()
 {
-    label_shader=std::shared_ptr<snark::graphics::qt3d::gl::label_shader>(new snark::graphics::qt3d::gl::label_shader());
+    label_shader=std::shared_ptr<snark::graphics::qopengl::label_shader>(new snark::graphics::qopengl::label_shader());
     return label_shader;
 }
 template< typename S, typename How >
@@ -109,14 +109,14 @@ void ShapeReader< S, How >::update_labels()
     {
         if(!labels_.values()[i].text.empty())
         {
-            label_shader->labels.push_back(std::shared_ptr<snark::graphics::qt3d::gl::label>(
-                new snark::graphics::qt3d::gl::text_label( labels_.values()[i].position - m_offset, labels_.values()[i].text, labels_.values()[i].color )));
+            label_shader->labels.push_back(std::shared_ptr<snark::graphics::qopengl::label>(
+                new snark::graphics::qopengl::text_label( labels_.values()[i].position - m_offset, labels_.values()[i].text, labels_.values()[i].color )));
         }
     }
     if( !m_label.empty() )
     {
-        label_shader->labels.push_back(std::shared_ptr<snark::graphics::qt3d::gl::label>(
-                new snark::graphics::qt3d::gl::text_label( m_translation - m_offset, m_label, m_color )));
+        label_shader->labels.push_back(std::shared_ptr<snark::graphics::qopengl::label>(
+                new snark::graphics::qopengl::text_label( m_translation - m_offset, m_label, m_color )));
     }
     label_shader->update();
 }

@@ -27,10 +27,12 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author Navid Pirmarzdashti
+
 #include "shapes.h"
 #include <iostream>
 
-namespace snark { namespace graphics { namespace qt3d { namespace gl {
+namespace snark { namespace graphics { namespace qopengl {
     
 shape::shape(GLenum mode):mode(mode),size_(0)
 {
@@ -121,5 +123,5 @@ void triangles::paint()
 
 } // namespace shapes {
 
-} } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
+} } } // namespace snark { namespace graphics { namespace qopengl {
     

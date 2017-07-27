@@ -27,39 +27,27 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author Navid Pirmarzdashti
+
 #pragma once
+#include "label_shader.h"
+#include "types.h"
 
-#include <Eigen/Core>
-#include <QMatrix4x4>
+namespace snark { namespace graphics { namespace qopengl {
 
-namespace snark { namespace graphics { namespace qt3d { namespace gl {
-    
-struct camera_transform
+class text_label : public label
 {
-    camera_transform(const QVector3D& up=QVector3D(0,0,-1),const QVector3D& center=QVector3D(),float z=-1);
-    void pan(float dx,float dy);
-    /// negative numbers push camera backward (zoom out)
-    void zoom(float dz);
-    /// rotate world on its own x and y axis
-    /// apparent rotation of view point around pivot point
-    void pivot(float dx,float dy);
-    
-    // sets world's center position
-    void set_center(const QVector3D& v);
-    /// sets world's orientation to euler angels
-    void set_orientation(float roll,float pitch,float yaw);
-    /// sets camera position in world coordinate
-    /// z is distance to center and (x,y) component is pan
-    void set_position(const QVector3D& v);
-    QVector3D get_position() const;
-    
-    
-    QMatrix4x4 world;
-    QMatrix4x4 camera;
-    QMatrix4x4 projection;
-    QVector3D center;
-    QVector3D up;   //not plugged in yet
+    Eigen::Vector3d position;
+    std::string text;
+    color_t color;
+    int width;
+    int height;
+public:
+    text_label(Eigen::Vector3d position, std::string text,color_t color);
+    virtual void update();
+protected:
+    virtual void draw(QPainter& painter);
 };
     
-} } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
-   
+} } } // namespace snark { namespace graphics { namespace qopengl {
+    

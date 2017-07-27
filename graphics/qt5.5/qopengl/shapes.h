@@ -27,6 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author Navid Pirmarzdashti
+
 #pragma once
 
 #include "types.h"
@@ -34,7 +36,7 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
 
-namespace snark { namespace graphics { namespace qt3d { namespace gl {
+namespace snark { namespace graphics { namespace qopengl {
 
 // class shape;    
 // class shape_container
@@ -118,5 +120,5 @@ protected:
 
 } // namespace shapes {
 
-} } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
+} } } // namespace snark { namespace graphics { namespace qopengl {
     

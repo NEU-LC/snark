@@ -29,7 +29,7 @@
 
 #include "camera.h"
 
-namespace snark { namespace graphics { namespace qt3d { namespace gl {
+namespace snark { namespace graphics { namespace qopengl {
 
 camera_transform::camera_transform(const QVector3D& up,const QVector3D& c,float z) : center(c), up(up)
 {
@@ -82,5 +82,5 @@ QVector3D camera_transform::get_position() const
     return camera.column(3).toVector3DAffine();
 }
     
-} } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
+} } } // namespace snark { namespace graphics { namespace qopengl {
     

@@ -30,45 +30,74 @@
 #include "accumulated.h"
 
 #include <comma/base/exception.h>
-#include <iostream>
 #include <vector>
-#include <map>
-#include <boost/bind.hpp>
-#include <boost/thread/pthread/pthread_mutex_scoped_lock.hpp>
+#include <functional>
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/bind.hpp>
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 #include "../depth_traits.h"
-#include "mat_iterator.h"
-
-// todo:
-// - remove unused includes
-// - move mat_iterator to accumulated.cpp
-// - replace bind directly with lambda functions to pass to mat_iterator
-// - sliding_average: try to make it non-template; try to avoid bind
 
 namespace snark{ namespace cv_mat {  namespace accumulated {
-
-static float accumulated_average( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
+    
+namespace impl {
+    
+// Row and Col tells you which pixel to access or was accessed to get input nd result pixel
+// The returned value will also be set into this pixel in 'result' cv::Mat 
+// 'count' is the image number being accessed
+typedef std::function< float( float input_value, float result_value, comma::uint32 count, unsigned int row, unsigned int col ) > apply_function;
+    
+template< int DepthIn >
+static void iterate_pixels( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )
 {
-    return avg + (in - avg)/count;
+    typedef typename depth_traits< DepthIn >::value_t value_in_t;
+    typedef float value_out_t;
+    const unsigned int channels = m.channels();
+    const unsigned int cols = m.cols * channels;
+    for( unsigned int i = r.begin(); i < r.end(); ++i )
+    {
+        const value_in_t* in = m.ptr< value_in_t >(i);
+        auto* ret = result.ptr< value_out_t >(i);
+        for( unsigned int j = 0; j < cols; ++j ) 
+        {
+            *ret = fn( *in, *ret, count, i, j);
+            ++ret;
+            ++in;
+        }
+    }
 }
 
-// exponential moving average
-static float accumulated_ema( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col, 
-                        comma::uint32 spin_up_size, double alpha)
+template< typename H, int DepthIn >
+static void divide_by_rows( const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count )
 {
-    // Spin up initial value for EMA
-    if( count <= spin_up_size ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha; }
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.rows ), 
+                       boost::bind( &iterate_pixels< DepthIn >, _1, m, boost::ref( result ), boost::ref(fn), count ) );
 }
+
+template< typename H >
+static void iterate_by_input_type( const cv::Mat& m, cv::Mat& result, const apply_function& fn, comma::uint64 count)
+{
+    int otype = m.depth(); // This will work?
+    switch( otype )
+    {
+        case CV_8U : divide_by_rows< H, CV_8U  >( m, result, fn, count ); break;
+        case CV_8S : divide_by_rows< H, CV_8S  >( m, result, fn, count ); break;
+        case CV_16U: divide_by_rows< H, CV_16U >( m, result, fn, count ); break;
+        case CV_16S: divide_by_rows< H, CV_16S >( m, result, fn, count ); break;
+        case CV_32S: divide_by_rows< H, CV_32S >( m, result, fn, count ); break;
+        case CV_32F: divide_by_rows< H, CV_32F >( m, result, fn, count ); break;
+        case CV_64F: divide_by_rows< H, CV_64F >( m, result, fn, count ); break;
+        default: COMMA_THROW( comma::exception, "accumulated: unrecognised output image type " << otype );
+    }
+}
+
+} // namespace impl {
 
 template < typename H >
-ema< H >::ema( float alpha, comma::uint32 spin_up_size ) 
-    : count_(0)
+ema< H >::ema( float alpha, comma::uint32 spin_up_size ) : count_(0), alpha_(alpha), spin_up_(spin_up_size)
 {
-    if( spin_up_size == 0 ) { COMMA_THROW(comma::exception, "accumulated=ema: error please specify spin up value greater than 0"); }
-    if( alpha <= 0 || alpha >= 1.0 ) { COMMA_THROW(comma::exception, "accumulated: please specify ema alpha in the range 0 < alpha < 1.0, got " << alpha ); }
-    average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, spin_up_size, alpha);
+    if( spin_up_ == 0 ) { COMMA_THROW(comma::exception, "accumulated=ema: error please specify spin up value greater than 0"); }
+    if( alpha_ <= 0 || alpha_ >= 1.0 ) { COMMA_THROW(comma::exception, "accumulated: please specify ema alpha in the range 0 < alpha < 1.0, got " << alpha_ ); }
 }
 
 template < typename H >
@@ -78,7 +107,27 @@ typename average< H >::value_type average< H >::operator()( const typename avera
     // This filter is not run in parallel, no locking required
     if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
-    impl::iterate_by_input_type< H >(n.second, result_, &accumulated_average, count_);
+    impl::iterate_by_input_type< H >(n.second, result_, [](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) { return avg + (in - avg)/count; } , count_);
+    
+    cv::Mat output; // copy as result_ will be changed next iteration
+    result_.convertTo(output, n.second.type());
+    return value_type(n.first, output); 
+}
+
+template < typename H >
+typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::value_type& n )
+{
+    ++count_;
+    
+    if( count_ == 1 ) { n.second.convertTo( result_, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    else { 
+        // if count < spin_up then do normal average
+        impl::iterate_by_input_type< H >(n.second, result_, 
+            [this](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) { 
+                if( count <= spin_up_ ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha_; } 
+            },
+            count_); 
+    }
     
     cv::Mat output; // copy as result_ will be changed next iteration
     result_.convertTo(output, n.second.type());
@@ -101,34 +150,6 @@ static float sliding_average( float in, float avg, comma::uint64 count,
     }
 }
 
-static apply_function make_moving_average_functor(int depth, const std::deque< cv::Mat >& window, comma::uint32 size)
-{
-    switch( depth )
-    {
-        case CV_8U : return boost::bind( &sliding_average< CV_8U >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_8S : return boost::bind( &sliding_average< CV_8S >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_16U: return boost::bind( &sliding_average< CV_16U >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_16S: return boost::bind( &sliding_average< CV_16S >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_32S: return boost::bind( &sliding_average< CV_32S >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_32F: return boost::bind( &sliding_average< CV_32F >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        default: return boost::bind( &sliding_average< CV_64F >, _1, _2, _3, _4, _5, boost::ref(window), size );
-    }
-}
-
-template < typename H >
-typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::value_type& n )
-{
-    ++count_;
-    // This filter is not run in parallel, no locking required
-    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
-    
-    impl::iterate_by_input_type< H >(n.second, result_, average_ema_, count_);
-    
-    cv::Mat output; // copy as result_ will be changed next iteration
-    result_.convertTo(output, n.second.type());
-    return value_type(n.first, output); 
-}
-
 template < typename H >
 moving_average< H >::moving_average( comma::uint32 size ) : count_(0), size_(size) {}
 
@@ -137,12 +158,28 @@ typename moving_average< H >::value_type moving_average< H >::operator()( const 
 {
     ++count_;
     // This filter is not run in parallel, no locking required
-    if( result_.empty() )
-    {  // This filter is not run in parallel, no locking required
-        average_ = make_moving_average_functor(n.second.depth(), window_, size_);
-        n.second.convertTo( result_, result_.type() );
+    if( count_ == 1 ) { n.second.convertTo( result_, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    else 
+    { 
+        int depth = n.second.depth();
+        auto& window = window_;
+        auto size = size_;
+        impl::iterate_by_input_type< H >(n.second, result_, 
+            [&window, size, depth](float new_value, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) -> float 
+            {
+                switch( depth )
+                {
+                    case CV_8U : return sliding_average< CV_8U > ( new_value, avg, count, row, col, window, size );
+                    case CV_8S : return sliding_average< CV_8S > ( new_value, avg, count, row, col, window, size );
+                    case CV_16U: return sliding_average< CV_16U >( new_value, avg, count, row, col, window, size );
+                    case CV_16S: return sliding_average< CV_16S >( new_value, avg, count, row, col, window, size );
+                    case CV_32S: return sliding_average< CV_32S >( new_value, avg, count, row, col, window, size );
+                    case CV_32F: return sliding_average< CV_32F >( new_value, avg, count, row, col, window, size );
+                    default: return     sliding_average< CV_64F >( new_value, avg, count, row, col, window, size );
+                }
+            },
+            count_); 
     }
-    else { impl::iterate_by_input_type< H >(n.second, result_, average_, count_); }
     
     // update sliding window
     if( window_.size() >= size_ ) { window_.pop_front(); }

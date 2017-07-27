@@ -33,9 +33,9 @@
 #include <Eigen/Core>
 #include <QColor>
 #include <GL/gl.h>
-#include "../../../../visiting/eigen.h"
+#include "../../../visiting/eigen.h"
 
-namespace snark { namespace graphics { namespace qt3d { namespace gl {
+namespace snark { namespace graphics { namespace qopengl {
 
 struct color_t
 {
@@ -111,14 +111,14 @@ struct vertex_t
 //         : position( position ), color( color ),point_size(5) {}
 };
 
-} } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
+} } } // namespace snark { namespace graphics { namespace qopengl {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::graphics::qt3d::gl::color_t >
+template <> struct traits< snark::graphics::qopengl::color_t >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::graphics::qt3d::gl::color_t& p, Visitor& v )
+    static void visit( Key, snark::graphics::qopengl::color_t& p, Visitor& v )
     {
         int red   = 0;
         int green = 0;
@@ -128,11 +128,11 @@ template <> struct traits< snark::graphics::qt3d::gl::color_t >
         v.apply( "g", green );
         v.apply( "b", blue );
         v.apply( "a", alpha );
-        p = snark::graphics::qt3d::gl::color_t( red, green, blue, alpha );
+        p = snark::graphics::qopengl::color_t( red, green, blue, alpha );
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::graphics::qt3d::gl::color_t& p, Visitor& v )
+    static void visit( Key, const snark::graphics::qopengl::color_t& p, Visitor& v )
     {
         v.apply( "r", p.red() );
         v.apply( "g", p.green() );

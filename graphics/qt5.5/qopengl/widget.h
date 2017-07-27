@@ -35,7 +35,7 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLBuffer>
 #include <QMatrix4x4>
-#include "../../camera_options.h"
+#include "../../qt3d/camera_options.h"
 #include "shapes.h"
 #include "label_shader.h"
 #include <vector>
@@ -44,14 +44,14 @@
 
 QT_FORWARD_DECLARE_CLASS(QOpenGLShaderProgram)
 
-namespace snark { namespace graphics { namespace qt3d { namespace gl {
+namespace snark { namespace graphics { namespace qopengl {
 
 class widget : public QOpenGLWidget, protected QOpenGLFunctions
 {
     Q_OBJECT
 
 public:
-    widget(const camera_options& camera_options, QWidget *parent = 0 );
+    widget(const qt3d::camera_options& camera_options, QWidget *parent = 0 );
     ~widget();
 
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;
@@ -95,7 +95,7 @@ protected:
     int projection_matrix_location_;
     int mv_matrix_location_;
     camera_transform camera;
-    camera_options camera_options_;
+    qt3d::camera_options camera_options_;
     double size_;
 public:
     float near_plane;
@@ -103,5 +103,5 @@ public:
     double scene_radius;
 };
 
-} } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
+} } } // namespace snark { namespace graphics { namespace qopengl {
 

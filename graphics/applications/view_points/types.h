@@ -36,7 +36,7 @@
 #include <Qt3D/qcolor4ub.h>
 
 #else
-#include "../../../graphics/qt3d/qt3d_v2/gl/types.h"
+#include "../../qt5.5/qopengl/types.h"
 
 #endif
 
@@ -50,7 +50,7 @@ typedef QColor4ub color_t;
 
 #elif Qt3D_VERSION==2
 
-typedef snark::graphics::qt3d::gl::color_t color_t;
+typedef snark::graphics::qopengl::color_t color_t;
 
 struct stock
 {
@@ -100,7 +100,7 @@ struct vertex_t
     vertex_t(const Eigen::Vector3d& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
 };
 #elif Qt3D_VERSION==2
-typedef qt3d::gl::vertex_t vertex_t;
+typedef qopengl::vertex_t vertex_t;
 #endif
 
     

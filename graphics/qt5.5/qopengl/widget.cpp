@@ -35,7 +35,7 @@
 #include "types.h"
 #include <iostream>
 
-namespace snark { namespace graphics { namespace qt3d { namespace gl {
+namespace snark { namespace graphics { namespace qopengl {
 
 // If you want a good explanation of the projection, model and view matrices
 // used in the shader code (model and view combined in the mv_matrix) see
@@ -66,7 +66,7 @@ static const char *fragment_shader_source = R"(
     }
 )";
 
-widget::widget(const camera_options& camera_options, QWidget *parent )
+widget::widget(const qt3d::camera_options& camera_options, QWidget *parent )
     : QOpenGLWidget( parent ), program_( 0 ), 
     camera(QVector3D(0,0,camera_options.z_is_up?1:-1)) ,
     camera_options_( camera_options ), size_( 0.4f ),near_plane(0.01),far_plane(100),scene_radius(10)
@@ -353,4 +353,4 @@ boost::optional< QVector3D > widget::pixel_nearest_centre( const std::vector< fl
     return best_offset;
 }
 
-} } } } // namespace snark { namespace graphics { namespace qt3d { namespace gl {
+} } } // namespace snark { namespace graphics { namespace qopengl {
