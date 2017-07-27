@@ -46,25 +46,11 @@
 
 namespace snark{ namespace cv_mat {  namespace accumulated {
 
-static float accumulated_average( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col)
-{
-    return avg + (in - avg)/count;
-}
-
-// exponential moving average
-static float accumulated_ema( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col, 
-                        comma::uint32 spin_up_size, double alpha)
-{
-    // Spin up initial value for EMA
-    if( count <= spin_up_size ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha; }
-}
-
 template < typename H >
 ema< H >::ema( float alpha, comma::uint32 spin_up_size ) : count_(0), alpha_(alpha), spin_up_(spin_up_size)
 {
     if( spin_up_ == 0 ) { COMMA_THROW(comma::exception, "accumulated=ema: error please specify spin up value greater than 0"); }
     if( alpha_ <= 0 || alpha_ >= 1.0 ) { COMMA_THROW(comma::exception, "accumulated: please specify ema alpha in the range 0 < alpha < 1.0, got " << alpha_ ); }
-    average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, spin_up_, alpha_);
 }
 
 template < typename H >
@@ -74,7 +60,7 @@ typename average< H >::value_type average< H >::operator()( const typename avera
     // This filter is not run in parallel, no locking required
     if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
-    impl::iterate_by_input_type< H >(n.second, result_, &accumulated_average, count_);
+    impl::iterate_by_input_type< H >(n.second, result_, [](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) { return avg + (in - avg)/count; } , count_);
     
     cv::Mat output; // copy as result_ will be changed next iteration
     result_.convertTo(output, n.second.type());
