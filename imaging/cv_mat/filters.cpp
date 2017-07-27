@@ -2949,13 +2949,6 @@ typename impl::filters< H >::value_type impl::filters< H >::apply( std::vector< 
     return m;
 }
 
-//TODO
-// done - document load_impl_
-// done     - show using load with file descriptor
-// done - tear down scale-by-mask: 
-// done - add example in fork arithmetic operations
-// - 
-
 template < typename H >
 static std::string usage_impl_()
 {
@@ -2966,11 +2959,15 @@ static std::string usage_impl_()
     oss << "        accumulated=<operation>: apply a pixel-wise operation to the input images" << std::endl;
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
-    oss << "                 ema,alpha[,<window>]: pixelwise exponential moving average, using ema += (new_pixel_value - ema) * alpha" << std::endl;
+    oss << "                 moving-average,<window>: pixelwise moving average" << std::endl;
+    oss << "                        <window>: number of images in sliding window" << std::endl;
+    oss << "                        formula: sum(pixel values in sliding window)/<window>" << std::endl;
+    oss << "                 ema,alpha[,<spin_up>]: pixelwise exponential moving average" << std::endl;
     oss << "                        <alpha>: range: between 0 and 1.0, larger value will retain more historical data." << std::endl;
-    oss << "                        <window>: default = 1; (a.k.a spin up size) number of initial images that produce the same outputs as 'average' operation above" << std::endl;
-    oss << "                 moving-average,<window>: pixelwise simple moving average" << std::endl;
-    oss << "                        <window>: number of images to apply pixelwise operation to" << std::endl;
+    oss << "                        <spin_up>: default = 1; see formula below" << std::endl;
+    oss << "                        formula:" << std::endl;
+    oss << "                           - first <spin_up> input images: same output as 'average' operation above" << std::endl;
+    oss << "                           - sub-sequence input images: ema += (new_pixel_value - ema) * <alpha>" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
     oss << "            blur=box,<kernel_size> " << std::endl;
