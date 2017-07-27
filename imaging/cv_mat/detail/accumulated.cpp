@@ -67,6 +67,24 @@ typename average< H >::value_type average< H >::operator()( const typename avera
     return value_type(n.first, output); 
 }
 
+template < typename H >
+typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::value_type& n )
+{
+    ++count_;
+    // This filter is not run in parallel, no locking required
+    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    
+    auto ema_functor = [this](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) {
+        // Spin up initial value for EMA
+        if( count <= spin_up_ ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha_; }
+    };
+    impl::iterate_by_input_type< H >(n.second, result_, ema_functor, count_);
+    
+    cv::Mat output; // copy as result_ will be changed next iteration
+    result_.convertTo(output, n.second.type());
+    return value_type(n.first, output); 
+}
+
 template < int DepthIn >
 static float sliding_average( float in, float avg, comma::uint64 count,
                               comma::uint32 row, comma::uint32 col,
@@ -83,38 +101,6 @@ static float sliding_average( float in, float avg, comma::uint64 count,
     }
 }
 
-static apply_function make_moving_average_functor(int depth, const std::deque< cv::Mat >& window, comma::uint32 size)
-{
-    switch( depth )
-    {
-        case CV_8U : return boost::bind( &sliding_average< CV_8U >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_8S : return boost::bind( &sliding_average< CV_8S >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_16U: return boost::bind( &sliding_average< CV_16U >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_16S: return boost::bind( &sliding_average< CV_16S >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_32S: return boost::bind( &sliding_average< CV_32S >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        case CV_32F: return boost::bind( &sliding_average< CV_32F >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        default: return boost::bind( &sliding_average< CV_64F >, _1, _2, _3, _4, _5, boost::ref(window), size );
-    }
-}
-
-template < typename H >
-typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::value_type& n )
-{
-    ++count_;
-    // This filter is not run in parallel, no locking required
-    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
-    
-        // Spin up initial value for EMA
-    auto ema_functor = [this](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) {
-        if( count <= spin_up_ ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha_; }
-    };
-    impl::iterate_by_input_type< H >(n.second, result_, ema_functor, count_);
-    
-    cv::Mat output; // copy as result_ will be changed next iteration
-    result_.convertTo(output, n.second.type());
-    return value_type(n.first, output); 
-}
-
 template < typename H >
 moving_average< H >::moving_average( comma::uint32 size ) : count_(0), size_(size) {}
 
@@ -123,29 +109,27 @@ typename moving_average< H >::value_type moving_average< H >::operator()( const 
 {
     ++count_;
     // This filter is not run in parallel, no locking required
-    if( count_ == 1 )
-    {  // This filter is not run in parallel, no locking required
-        average_ = make_moving_average_functor(n.second.depth(), window_, size_);
-        n.second.convertTo( result_, CV_MAKETYPE(CV_32F, n.second.channels()) );
-    }
-    else { 
-    /*
-    int depth = n.second.depth();
-    auto ema_functor = [&window_, &size_](float new_value, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) -> float 
-    {
-        switch( depth )
-        {
-            case CV_8U : return boost::bind( &sliding_average< CV_8U >, _1, _2, _3, _4, _5, boost::ref(window), size );
-            case CV_8S : return boost::bind( &sliding_average< CV_8S >, _1, _2, _3, _4, _5, boost::ref(window), size );
-            case CV_16U: return boost::bind( &sliding_average< CV_16U >, _1, _2, _3, _4, _5, boost::ref(window), size );
-            case CV_16S: return boost::bind( &sliding_average< CV_16S >, _1, _2, _3, _4, _5, boost::ref(window), size );
-            case CV_32S: return boost::bind( &sliding_average< CV_32S >, _1, _2, _3, _4, _5, boost::ref(window), size );
-            case CV_32F: return boost::bind( &sliding_average< CV_32F >, _1, _2, _3, _4, _5, boost::ref(window), size );
-            default: return boost::bind( &sliding_average< CV_64F >, _1, _2, _3, _4, _5, boost::ref(window), size );
-        }
-    };
-    */
-        impl::iterate_by_input_type< H >(n.second, result_, average_, count_); 
+    if( count_ == 1 ) { n.second.convertTo( result_, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    else 
+    { 
+        int depth = n.second.depth();
+        auto& window = window_;
+        auto size = size_;
+        impl::iterate_by_input_type< H >(n.second, result_, 
+            [&window, size, depth](float new_value, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) -> float 
+            {
+                switch( depth )
+                {
+                    case CV_8U : return sliding_average< CV_8U > ( new_value, avg, count, row, col, window, size );
+                    case CV_8S : return sliding_average< CV_8S > ( new_value, avg, count, row, col, window, size );
+                    case CV_16U: return sliding_average< CV_16U >( new_value, avg, count, row, col, window, size );
+                    case CV_16S: return sliding_average< CV_16S >( new_value, avg, count, row, col, window, size );
+                    case CV_32S: return sliding_average< CV_32S >( new_value, avg, count, row, col, window, size );
+                    case CV_32F: return sliding_average< CV_32F >( new_value, avg, count, row, col, window, size );
+                    default: return     sliding_average< CV_64F >( new_value, avg, count, row, col, window, size );
+                }
+            },
+            count_); 
     }
     
     // update sliding window
