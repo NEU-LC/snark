@@ -38,12 +38,6 @@
 #include <tbb/blocked_range.h>
 #include "../depth_traits.h"
 
-// todo:
-// - remove unused includes
-// - move mat_iterator to accumulated.cpp
-// - replace bind directly with lambda functions to pass to mat_iterator
-// - sliding_average: try to make it non-template; try to avoid bind
-
 namespace snark{ namespace cv_mat {  namespace accumulated {
     
 namespace impl {
