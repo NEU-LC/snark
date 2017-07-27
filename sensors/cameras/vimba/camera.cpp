@@ -35,6 +35,7 @@
 #include "attribute.h"
 #include "camera.h"
 #include "error.h"
+#include "frame.h"
 #include "frame_observer.h"
 #include "system.h"
 
@@ -45,9 +46,17 @@ namespace snark { namespace vimba {
 static const unsigned int num_frames = 3;
 
 camera::camera( const std::string& camera_id )
+    : acquisition_mode_( ACQUISITION_MODE_UNKNOWN )
+    , last_frame_id_( 0 )
 {
     camera_ = system::open_camera( camera_id );
 }
+
+camera::camera( const AVT::VmbAPI::CameraPtr& camera_ptr )
+    : camera_( camera_ptr )
+    , acquisition_mode_( ACQUISITION_MODE_UNKNOWN )
+    , last_frame_id_( 0 )
+{}
 
 camera::~camera()
 {
@@ -142,6 +151,8 @@ void camera::start_acquisition( frame_observer::callback_fn callback ) const
 {
     comma::verbose << "start image acquisition" << std::endl;
 
+    last_frame_id_ = 0;
+
     // Create a frame observer for this camera.
     // This will be wrapped in a shared_ptr so we don't delete it.
     frame_observer* fo = new frame_observer( camera_, callback );
@@ -157,6 +168,69 @@ void camera::stop_acquisition() const
 {
     comma::verbose << "stop image acquisition" << std::endl;
     camera_->StopContinuousImageAcquisition();
+}
+
+camera::timestamped_frame camera::frame_to_timestamped_frame( const snark::vimba::frame& frame ) const
+{
+    // For the timestamp, if PTP is available use frame.timestamp(),
+    // otherwise just use current time.
+
+    // It takes about 4ms to interrogate the camera for a feature value,
+    // so we can update this information as we run.
+
+    static std::string ptp_status = "unknown";
+    static bool use_ptp = false;
+
+    // Get the current time as soon as possible after entering the callback
+    boost::posix_time::ptime current_time = boost::posix_time::microsec_clock::universal_time();
+
+    boost::optional< snark::vimba::attribute > ptp_status_attribute = get_attribute( "PtpStatus" );
+    if( ptp_status_attribute && ptp_status_attribute->value_as_string() != ptp_status )
+    {
+        ptp_status = ptp_status_attribute->value_as_string();
+        comma::verbose << "PtpStatus changed value to " << ptp_status << std::endl;
+        use_ptp = ( ptp_status == "Slave" );
+        comma::verbose << ( use_ptp ? "" : "not " ) << "using PTP time source" << std::endl;
+    }
+
+    boost::posix_time::ptime timestamp =
+        ( use_ptp
+        ? boost::posix_time::ptime( boost::gregorian::date( 1970, 1, 1 ))
+              + boost::posix_time::microseconds( frame.timestamp() / 1000 )
+        : current_time );
+
+    if( frame.status() == VmbFrameStatusComplete )
+    {
+        if( acquisition_mode_ == ACQUISITION_MODE_CONTINUOUS )
+        {
+            if( last_frame_id_ != 0 )
+            {
+                VmbUint64_t missing_frames = frame.id() - last_frame_id_ - 1;
+                if( missing_frames > 0 )
+                {
+                    std::cerr << comma::verbose.app_name() << ": warning - "
+                              << missing_frames << " missing frame" << ( missing_frames == 1 ? "" : "s" )
+                              << " detected" << std::endl;
+                }
+            }
+            last_frame_id_ = frame.id();
+        }
+
+        snark::vimba::frame::pixel_format_desc fd = frame.format_desc();
+
+        cv::Mat cv_mat( frame.height()
+                      , frame.width() * fd.width_adjustment
+                      , fd.type
+                      , frame.image_buffer() );
+
+        return std::make_pair( timestamp, cv_mat );
+    }
+    else
+    {
+        std::cerr << comma::verbose.app_name() << ": warning - frame " << frame.id() << " status " << frame.status_as_string() << std::endl;
+    }
+    comma::verbose << "returning empty frame" << std::endl;
+    return timestamped_frame();
 }
 
 } } // namespace snark { namespace vimba {

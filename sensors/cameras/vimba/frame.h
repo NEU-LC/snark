@@ -54,6 +54,7 @@ class frame
         const char*        status_as_string() const;
         VmbUint32_t        height() const { return height_; }
         VmbUint32_t        width() const { return width_; }
+        VmbUint32_t        size() const { return size_; }
         VmbUchar_t*        image_buffer() const { return image_buffer_; }
         VmbPixelFormatType pixel_format() const { return pixel_format_; }
         VmbUint64_t        timestamp() const { return timestamp_; }

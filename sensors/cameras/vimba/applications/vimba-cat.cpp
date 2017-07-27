@@ -41,6 +41,7 @@
 
 static const char* possible_fields = "t,rows,cols,type,size";
 static const char* default_fields = "t,rows,cols,type";
+static int max_stuck_before_exiting = 3;
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -72,7 +73,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --verbose,-v:       more output" << std::endl;
     std::cerr << "    --version:          output the library version" << std::endl;
     std::cerr << "    --list-cameras:     list all cameras and exit" << std::endl;
-    std::cerr << "    --list-attributes [<names>]: list camera attributes, default: list all" << std::endl;
+    std::cerr << "    --list-attributes [<names>]: list camera attributes; default: list all" << std::endl;
     std::cerr << "    --set <attributes>: set camera attributes" << std::endl;
     std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
     std::cerr << "    --id=<camera id>:   default: first available camera" << std::endl;
@@ -158,68 +159,14 @@ static void output_frame( const snark::vimba::frame& frame
                         , snark::cv_mat::serialization& serialization
                         , snark::vimba::camera& camera )
 {
-    static VmbUint64_t last_frame_id = 0;
-
-    // For the timestamp, if PTP is available use frame.timestamp(),
-    // otherwise just use current time.
-
-    // It takes about 4ms to interrogate the camera for a feature value,
-    // so we can update this information as we run.
-
-    static std::string ptp_status = "unknown";
-    static bool use_ptp = false;
-
-    // Get the current time as soon as possible after entering the callback
-    boost::posix_time::ptime current_time = boost::posix_time::microsec_clock::universal_time();
-
-    boost::optional< snark::vimba::attribute > ptp_status_attribute = camera.get_attribute( "PtpStatus" );
-    if( ptp_status_attribute && ptp_status_attribute->value_as_string() != ptp_status )
-    {
-        ptp_status = ptp_status_attribute->value_as_string();
-        comma::verbose << "PtpStatus changed value to " << ptp_status << std::endl;
-        use_ptp = ( ptp_status == "Slave" );
-        comma::verbose << ( use_ptp ? "" : "not " ) << "using PTP time source" << std::endl;
-    }
-
-    boost::posix_time::ptime timestamp =
-        ( use_ptp
-        ? boost::posix_time::ptime( boost::gregorian::date( 1970, 1, 1 ))
-              + boost::posix_time::microseconds( frame.timestamp() / 1000 )
-        : current_time );
-
-    if( frame.status() == VmbFrameStatusComplete )
-    {
-        if( last_frame_id != 0 )
-        {
-            VmbUint64_t missing_frames = frame.id() - last_frame_id - 1;
-            if( missing_frames > 0 )
-            {
-                std::cerr << "Warning: " << missing_frames << " missing frame"
-                          << ( missing_frames == 1 ? "" : "s" )
-                          << " detected" << std::endl;
-            }
-        }
-        last_frame_id = frame.id();
-
-        snark::vimba::frame::pixel_format_desc fd = frame.format_desc();
-
-        cv::Mat cv_mat( frame.height()
-                      , frame.width() * fd.width_adjustment
-                      , fd.type
-                      , frame.image_buffer() );
-
-        serialization.write( std::cout, std::make_pair( timestamp, cv_mat ));
-    }
-    else
-    {
-        std::cerr << "Warning: frame " << frame.id() << " status " << frame.status_as_string() << std::endl;
-    }
+    snark::vimba::camera::timestamped_frame timestamped_frame = camera.frame_to_timestamped_frame( frame );
+    serialization.write( std::cout, timestamped_frame );
 }
 
 static void print_attribute_entry( const std::string& label, const std::string& value )
 {
     std::string prefix( label.length() + 2, ' ' );
-    std::cout << label << ": " << wrap( value, 80, prefix ) << "\n";
+    std::cerr << label << ": " << wrap( value, 80, prefix ) << "\n";
 }
 
 static void print_attribute( const snark::vimba::attribute& attribute, bool verbose )
@@ -232,11 +179,28 @@ static void print_attribute( const snark::vimba::attribute& attribute, bool verb
         print_attribute_entry( "Description   ", attribute.description() );
         if( !attribute.allowed_values().empty() )
             print_attribute_entry( "Allowed Values", attribute.allowed_values_as_string() );
-        std::cout << std::endl;
+        std::cerr << std::endl;
     }
     else
     {
-        std::cout << attribute.name() << "=" << attribute.value_as_string() << std::endl;
+        std::cerr << attribute.name() << "=" << attribute.value_as_string() << std::endl;
+    }
+}
+
+static void print_stats( const snark::vimba::camera& camera )
+{
+    static const std::vector< std::string > stat_attributes
+    {
+        "StatFrameRate", "StatFrameDelivered", "StatFrameDropped", "StatFrameRescued",
+        "StatFrameShoved", "StatFrameUnderrun", "StatLocalRate", "StatPacketErrors",
+        "StatPacketMissed", "StatPackerReceived", "StatPacketRequested", "StatPacketResent",
+        "StatTimeElapsed"
+    };
+    boost::optional< snark::vimba::attribute > a;
+    for( const std::string& attribute : stat_attributes )
+    {
+        a = camera.get_attribute( attribute );
+        if( a ) { print_attribute( *a, false ); }
     }
 }
 
@@ -334,26 +298,55 @@ int main( int argc, char** argv )
         comma::csv::format format = format_from_fields( fields );
         bool               header_only = false;
 
-        if( options.exists( "--no-header" ))
-        {
-            fields = "";
-        }
-        else
-        {
-            header_only = ( options.exists( "--header" ));
-        }
+        if( options.exists( "--no-header" )) { fields = ""; }
+        else { header_only = ( options.exists( "--header" )); }
+
         snark::cv_mat::serialization serialization( fields, format, header_only );
 
-        camera.start_acquisition( boost::bind( &output_frame, _1, boost::ref( serialization ), boost::ref( camera )));
+        camera.set_acquisition_mode( snark::vimba::camera::ACQUISITION_MODE_CONTINUOUS );
 
-        comma::signal_flag is_shutdown;
-        do {
-            sleep( 1 );
-        } while( !is_shutdown );
+        bool acquiring = true;
+        int stuck_count = 0;
+        int exit_code = 0;
+        while( acquiring )
+        {
+            camera.start_acquisition( boost::bind( &output_frame, _1
+                                                 , boost::ref( serialization )
+                                                 , boost::ref( camera )));
+            comma::signal_flag is_shutdown;
+            long frames_delivered = 0;
+            do {
+                sleep( 1 );
+                boost::optional< snark::vimba::attribute > frames_delivered_attribute = camera.get_attribute( "StatFrameDelivered" );
+                if( frames_delivered_attribute )
+                {
+                    long frames_delivered_prev = frames_delivered;
+                    frames_delivered = frames_delivered_attribute->int_value();
+                    if( frames_delivered == frames_delivered_prev )
+                    {
+                        std::cerr << comma::verbose.app_name() << ": warning - we appear to be stuck" << std::endl;
+                        if( comma::verbose ) { print_stats( camera ); }
+                        if( ++stuck_count == max_stuck_before_exiting )
+                        {
+                            std::cerr << comma::verbose.app_name() << ": we've been stuck " << stuck_count << " times. Exiting..." << std::endl;
+                            acquiring = false;
+                            exit_code = 1;
+                        }
+                        break;
+                    }
+                }
+            } while( !is_shutdown );
 
-        camera.stop_acquisition();
+            if( is_shutdown )
+            {
+                comma::verbose << "caught shutdown signal " << std::endl;
+                acquiring = false;
+            }
+            comma::verbose << "exited acquisition loop" << std::endl;
 
-        return 0;
+            camera.stop_acquisition();
+        }
+        return exit_code;
     }
     catch( std::exception& ex )
     {
