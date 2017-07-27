@@ -83,6 +83,10 @@ file format:
   Matlab save command to force a version when saving. If v7.3 support is
   required then python library h5py can help, or possibly hdf5storage.
 
+  If you're not seeing anything it's probable that the file has been saved with
+  "opaque" Matlab variables. Try struct( myvar ) from within Matlab and save
+  again.
+
 examples:
   {script_name} data.mat
   {script_name} data.mat foo.bar
@@ -152,9 +156,14 @@ def traverse( mat, path="", sep="" ):
     if is_compound( mat ):
         # at the top level, mat is a dictionary, but as we drill down
         # it turns into nested numpy.ndarray objects
-        keys = ( [ i for i in mat.keys() if i[0] != '_' ]
-                 if isinstance( mat, dict )
-                 else mat.dtype.fields.keys() )
+        try:
+            keys = ( [ i for i in mat.keys() if i[0] != '_' ]
+                     if isinstance( mat, dict )
+                     else mat.dtype.fields.keys() )
+        except AttributeError:
+            print >> sys.stderr, "warning: didn't understand %s" % path
+            return None
+
         d = dict()
         for k in keys:
             next_item = mat[k]
@@ -237,9 +246,12 @@ def main():
             if compound_variable:
                 message( "only non-compound variables can be output in csv format" )
             else:
-                for t in mat:
-                    t.tofile( sys.stdout, ",", "%s" )
-                    print
+                if len( mat.shape ) > 2:
+                    message( "--csv only supported for 2d matrices, %s is %sd" % ( args.variable, len( mat.shape )))
+                else:
+                    for t in mat:
+                        t.tofile( sys.stdout, ",", "%s" )
+                        print
         else:
             if compound_variable:
                 dump_var = mat
