@@ -1,13 +1,41 @@
 #!/bin/bash
 
 source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
+source $( type -p comma-application-util ) || { echo "$0: failed to source comma-application-util" >&2 ; exit 1 ; }
 
-read cv_depth
-read window_size
+read alpha
+read spin_up
 
-cv_depth=${cv_depth:-f} # Default to type f
+inputs=$( cat )
 
-csv-to-bin 6$cv_depth | 
+cv_depth=ub
+echo "$inputs" |
+    csv-to-bin 6$cv_depth | 
     cv-cat --input "no-header;rows=2;cols=3;type=$cv_depth" --output "no-header=0" | 
-    cv-cat "accumulated=ema,$window_size" | csv-from-bin "t,3ui,6$cv_depth" |
-    gawk '{ print "image[" NR "]=\"" $0 "\""  }'
+    cv-cat "accumulated=ema,$alpha,$spin_up" | csv-from-bin "t,3ui,6$cv_depth" --precision 5 |
+    gawk '{ print "ub/image[" NR-1 "]=\"" $0 "\""  }'
+comma_status_ok
+code=$?
+echo "ub/status=$code"
+
+cv_depth=f
+echo "$inputs" |
+    csv-to-bin 6$cv_depth | 
+    cv-cat --input "no-header;rows=2;cols=3;type=$cv_depth" --output "no-header=0" | 
+    cv-cat "accumulated=ema,$alpha,$spin_up" | csv-from-bin "t,3ui,6$cv_depth" --precision 5 |
+    gawk '{ print "float/image[" NR-1 "]=\"" $0 "\""  }'
+
+comma_status_ok
+code=$?
+echo "float/status=$code"
+
+cv_depth=d
+echo "$inputs" |
+    csv-to-bin 6$cv_depth | 
+    cv-cat --input "no-header;rows=2;cols=3;type=$cv_depth" --output "no-header=0" | 
+    cv-cat "accumulated=ema,$alpha,$spin_up" | csv-from-bin "t,3ui,6$cv_depth" --precision 5 |
+    gawk '{ print "double/image[" NR-1 "]=\"" $0 "\""  }'
+
+comma_status_ok
+code=$?
+echo "float/status=$code"

@@ -1,0 +1,37 @@
+# Spin up window is 5, alpha is 0.75
+ub/image[0]="not-a-date-time,2,3,0,0,1,2,3,4,5"
+ub/image[1]="not-a-date-time,2,3,0,0,2,2,4,4,6"
+ub/image[2]="not-a-date-time,2,3,0,1,2,3,4,5,6"
+ub/image[3]="not-a-date-time,2,3,0,2,2,4,4,6,6"
+ub/image[4]="not-a-date-time,2,3,0,2,3,4,5,6,7"
+# EMA being calculated from this line
+ub/image[5]="not-a-date-time,2,3,0,4,5,6,7,8,9"
+ub/image[6]="not-a-date-time,2,3,0,6,7,8,9,10,11"
+ub/image[7]="not-a-date-time,2,3,0,7,8,9,10,11,12"
+ub/image[8]="not-a-date-time,2,3,0,8,9,10,11,12,13"
+ub/image[9]="not-a-date-time,2,3,0,9,10,11,12,13,14"
+ub/status=0
+# In spin up window
+float/image[0]="not-a-date-time,2,3,5,0,1,2,3,4,5"
+float/image[1]="not-a-date-time,2,3,5,0.5,1.5,2.5,3.5,4.5,5.5"
+float/image[2]="not-a-date-time,2,3,5,1,2,3,4,5,6"
+float/image[3]="not-a-date-time,2,3,5,1.5,2.5,3.5,4.5,5.5,6.5"
+float/image[4]="not-a-date-time,2,3,5,2,3,4,5,6,7"
+# EMA being calculated from this line
+float/image[5]="not-a-date-time,2,3,5,4.25,5.25,6.25,7.25,8.25,9.25"
+float/image[6]="not-a-date-time,2,3,5,5.5625,6.5625,7.5625,8.5625,9.5625,10.562"
+float/image[7]="not-a-date-time,2,3,5,6.6406,7.6406,8.6406,9.6406,10.641,11.641"
+float/image[8]="not-a-date-time,2,3,5,7.6602,8.6602,9.6602,10.66,11.66,12.66"
+float/image[9]="not-a-date-time,2,3,5,8.665,9.665,10.665,11.665,12.665,13.665"
+float/status=0
+double/image[0]="not-a-date-time,2,3,6,0,1,2,3,4,5"
+double/image[1]="not-a-date-time,2,3,6,0.5,1.5,2.5,3.5,4.5,5.5"
+double/image[2]="not-a-date-time,2,3,6,1,2,3,4,5,6"
+double/image[3]="not-a-date-time,2,3,6,1.5,2.5,3.5,4.5,5.5,6.5"
+double/image[4]="not-a-date-time,2,3,6,2,3,4,5,6,7"
+double/image[5]="not-a-date-time,2,3,6,4.25,5.25,6.25,7.25,8.25,9.25"
+double/image[6]="not-a-date-time,2,3,6,5.5625,6.5625,7.5625,8.5625,9.5625,10.562"
+double/image[7]="not-a-date-time,2,3,6,6.6406,7.6406,8.6406,9.6406,10.641,11.641"
+double/image[8]="not-a-date-time,2,3,6,7.6602,8.6602,9.6602,10.66,11.66,12.66"
+double/image[9]="not-a-date-time,2,3,6,8.665,9.665,10.665,11.665,12.665,13.665"
+float/status=0
