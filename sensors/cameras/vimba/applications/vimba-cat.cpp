@@ -319,14 +319,12 @@ int main( int argc, char** argv )
                 {
                     long frames_delivered_prev = frames_delivered;
                     frames_delivered = frames_delivered_attribute->int_value();
-                    if( frames_delivered % 100 < 5 ) { comma::verbose << "frames delivered = " << frames_delivered << std::endl; }
                     if( frames_delivered == frames_delivered_prev )
                     {
                         std::cerr << comma::verbose.app_name() << ": warning - we appear to be stuck" << std::endl;
                         if( comma::verbose ) { print_stats( camera ); }
                         break;
                     }
-                    if( frames_delivered % 5000 < 5 && comma::verbose ) { print_stats( camera ); }
                 }
             } while( !is_shutdown );
 
