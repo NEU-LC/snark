@@ -2065,7 +2065,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         try
         {
             if( s.front() == "average" ) { return std::make_pair(  boost::bind< value_type_t >( accumulated::average< H >(), _1 ), false ); }
-            else if(  "moving-average" ) { 
+            else if( s.front() == "moving-average" ) { 
                 if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: error please provide window size for " << s.front() ); }
                 return std::make_pair(  boost::bind< value_type_t >( accumulated::sliding_window< H >( boost::lexical_cast< comma::uint32 >(s[1]) ), _1 ), false ); 
             }
@@ -2074,8 +2074,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
                 return std::make_pair( boost::bind< value_type_t >( accumulated::ema< H >( boost::lexical_cast< float >(s[1]), s.size() < 3 ? 1 : boost::lexical_cast< comma::uint32 >(s[2]) ), _1 ), false ); 
             }
             else { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
-        }
-        catch( boost::bad_lexical_cast bc ) { COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what()); }
+        } catch( boost::bad_lexical_cast bc ) { COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what()); }
     }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
@@ -2968,6 +2967,7 @@ static std::string usage_impl_()
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
     oss << "                 ema,alpha,<spin_up_number>: pixelwise exponential moving average, using ema += (new_pixel_value - ema) * alpha" << std::endl;
+    oss << "                        <alpha>: range: between 0 and 1.0, larger value will retain more historical data." << std::endl;
     oss << "                        <spin_up_number>: default = 1; first ema = average(first <spin_up_number> of input images)" << std::endl;
     oss << "                 moving-average,<window>: pixelwise simple moving average" << std::endl;
     oss << "                        <window>: number of images to apply pixelwise operation to" << std::endl;

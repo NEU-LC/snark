@@ -60,8 +60,7 @@ template < typename H >
 ema< H >::ema( float alpha, comma::uint32 spin_up_size ) 
     : count_(0)
 {
-    if( alpha < 0 || alpha > 1.0 ) { COMMA_THROW(comma::exception, "accumulated: please specify ema alpha in the range 0 <= alpha <= 1.0, got " << alpha ); }
-    
+    if( alpha <= 0 || alpha >= 1.0 ) { COMMA_THROW(comma::exception, "accumulated: please specify ema alpha in the range 0 < alpha < 1.0, got " << alpha ); }
     average_ema_ = boost::bind( &accumulated_ema, _1, _2, _3, _4, _5, spin_up_size, alpha);
 }
 
