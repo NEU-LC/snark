@@ -2966,7 +2966,7 @@ static std::string usage_impl_()
     oss << "        accumulated=<operation>: apply a pixel-wise operation to the input images" << std::endl;
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
-    oss << "                 ema,alpha,<window>: pixelwise exponential moving average, using ema += (new_pixel_value - ema) * alpha" << std::endl;
+    oss << "                 ema,alpha[,<window>]: pixelwise exponential moving average, using ema += (new_pixel_value - ema) * alpha" << std::endl;
     oss << "                        <alpha>: range: between 0 and 1.0, larger value will retain more historical data." << std::endl;
     oss << "                        <window>: default = 1; (a.k.a spin up size) number of initial images that produce the same outputs as 'average' operation above" << std::endl;
     oss << "                 moving-average,<window>: pixelwise simple moving average" << std::endl;
