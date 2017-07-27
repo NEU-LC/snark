@@ -30,10 +30,7 @@
 #include "accumulated.h"
 
 #include <comma/base/exception.h>
-#include <iostream>
 #include <vector>
-#include <map>
-#include <boost/bind.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include "../depth_traits.h"
 #include "mat_iterator.h"
