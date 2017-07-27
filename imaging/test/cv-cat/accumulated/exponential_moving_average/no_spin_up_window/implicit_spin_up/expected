@@ -1,0 +1,20 @@
+# Spin up window of 1, the default
+# Results with precision 5, verified in excel
+ub/image[0]="not-a-date-time,2,3,0,0,10,20,30,40,50"
+ub/image[1]="not-a-date-time,2,3,0,0,12,22,32,42,52"
+ub/image[2]="not-a-date-time,2,3,0,1,17,27,37,47,57"
+ub/image[3]="not-a-date-time,2,3,0,1,23,33,43,53,63"
+ub/image[4]="not-a-date-time,2,3,0,2,29,39,49,59,69"
+ub/status=0
+float/image[0]="not-a-date-time,2,3,5,0,10,20,30,40,50"
+float/image[1]="not-a-date-time,2,3,5,0.25,12.5,22.5,32.5,42.5,52.5"
+float/image[2]="not-a-date-time,2,3,5,0.6875,16.875,26.875,36.875,46.875,56.875"
+float/image[3]="not-a-date-time,2,3,5,1.2656,22.656,32.656,42.656,52.656,62.656"
+float/image[4]="not-a-date-time,2,3,5,1.6992,29.492,39.492,49.492,59.492,69.492"
+float/status=0
+double/image[0]="not-a-date-time,2,3,6,0,10,20,30,40,50"
+double/image[1]="not-a-date-time,2,3,6,0.25,12.5,22.5,32.5,42.5,52.5"
+double/image[2]="not-a-date-time,2,3,6,0.6875,16.875,26.875,36.875,46.875,56.875"
+double/image[3]="not-a-date-time,2,3,6,1.2656,22.656,32.656,42.656,52.656,62.656"
+double/image[4]="not-a-date-time,2,3,6,1.6992,29.492,39.492,49.492,59.492,69.492"
+double/status=0

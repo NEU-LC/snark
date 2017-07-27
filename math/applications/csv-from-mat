@@ -83,6 +83,10 @@ file format:
   Matlab save command to force a version when saving. If v7.3 support is
   required then python library h5py can help, or possibly hdf5storage.
 
+  If you're not seeing anything it's probable that the file has been saved with
+  "opaque" Matlab variables. Try struct( myvar ) from within Matlab and save
+  again.
+
 examples:
   {script_name} data.mat
   {script_name} data.mat foo.bar
@@ -139,11 +143,8 @@ def is_compound( variable ):
 
 
 def step_down( mat ):
-    while mat.dtype == numpy.dtype('O'): # sometimes there's extra nesting
-        try:
-            mat = mat[0]
-        except IndexError:
-            raise ValueError
+    if mat.dtype == numpy.dtype('O'):    # sometimes there's extra nesting
+        mat = mat.flat[0]
     if not isinstance( mat, numpy.ndarray ):
         raise ValueError
     return mat
@@ -151,29 +152,51 @@ def step_down( mat ):
 
 # convert python version of matlab data to fundamental python data types
 def traverse( mat, path="", sep="" ):
+    listing = ( sep != "" )
     if is_compound( mat ):
         # at the top level, mat is a dictionary, but as we drill down
         # it turns into nested numpy.ndarray objects
-        keys = ( [ i for i in mat.keys() if i[0] != '_' ]
-                 if isinstance( mat, dict )
-                 else mat.dtype.fields.keys() )
+        try:
+            keys = ( [ i for i in mat.keys() if i[0] != '_' ]
+                     if isinstance( mat, dict )
+                     else mat.dtype.fields.keys() )
+        except AttributeError:
+            print >> sys.stderr, "warning: didn't understand %s" % path
+            return None
+
         d = dict()
         for k in keys:
-            try:
-                next_item = step_down( mat[k] )
-            except ValueError:
-                print >> sys.stderr, "warning: didn't understand %s%s%s" % (path, sep, k )
-                continue
-            if sep == "":
-                d[k] = traverse( next_item )
-            else:
-                traverse( next_item, k if path is None else "%s%s%s" % ( path, sep, k ), sep )
+            next_item = mat[k]
+
+            handled = False
+            if next_item.dtype == numpy.dtype('O'):    # sometimes there's extra nesting
+                if next_item.size == 1 or listing:
+                    next_item = next_item.flat[0]
+                else:
+                    d[k] = list()
+                    index = 0
+                    for item in next_item.flat:
+                        if listing:
+                            traverse( item, "%s%s%s[%s]" % ( path, sep, k, index ), sep )
+                            index += 1
+                        else:
+                            d[k].append( traverse( item ))
+                    handled = True
+
+            if not handled:
+                if isinstance( next_item, scipy.io.matlab.mio5_params.MatlabOpaque ):
+                    print >> sys.stderr, "warning: didn't understand %s%s%s" % (path, sep, k )
+                    continue
+                if listing:
+                    traverse( next_item, k if path is None else "%s%s%s" % ( path, sep, k ), sep )
+                else:
+                    d[k] = traverse( next_item )
         return d
     else:
-        if sep == "":
-            return mat.tolist()
-        else:
+        if listing:
             print path
+        else:
+            return mat.tolist()
 
 
 def main():
@@ -223,9 +246,12 @@ def main():
             if compound_variable:
                 message( "only non-compound variables can be output in csv format" )
             else:
-                for t in mat:
-                    t.tofile( sys.stdout, ",", "%s" )
-                    print
+                if len( mat.shape ) > 2:
+                    message( "--csv only supported for 2d matrices, %s is %sd" % ( args.variable, len( mat.shape )))
+                else:
+                    for t in mat:
+                        t.tofile( sys.stdout, ",", "%s" )
+                        print
         else:
             if compound_variable:
                 dump_var = mat
