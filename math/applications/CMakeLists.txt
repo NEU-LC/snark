@@ -46,4 +46,4 @@ if(snark_build_math_fft)
 endif(snark_build_math_fft)
 
 install( PROGRAMS csv-from-mat DESTINATION ${snark_INSTALL_BIN_DIR} )
-install( PROGRAMS math-numpy-array DESTINATION ${snark_INSTALL_BIN_DIR} )
+install( PROGRAMS math-array DESTINATION ${snark_INSTALL_BIN_DIR} )
