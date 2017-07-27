@@ -325,7 +325,7 @@ int main( int argc, char** argv )
                 {
                     long frames_delivered_prev = frames_delivered;
                     frames_delivered = frames_delivered_attribute->int_value();
-                    if( frames_delivered == frames_delivered_prev )
+                    if( frames_delivered == frames_delivered_prev && !is_shutdown )
                     {
                         std::cerr << comma::verbose.app_name() << ": warning - we appear to be stuck" << std::endl;
                         if( comma::verbose ) { print_stats( camera ); }
