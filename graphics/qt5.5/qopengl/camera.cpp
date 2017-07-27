@@ -27,58 +27,60 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "camera.h"
 
-#include "../../../qt5.5/qopengl/widget.h"
-#include "../types.h"
-#include <QMainWindow>
-#include <QTimer>
+namespace snark { namespace graphics { namespace qopengl {
 
-namespace snark { namespace graphics { namespace qt3d {
-class camera_options;
-} } }
-typedef snark::graphics::qopengl::color_t color_t;
-
-namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
-
-/**
- * redner and camera functions
- * qt3d v2 specific rednering, most functions are implemented in widget
- * this class implements interface used by controller
- */
-class viewer : public qopengl::widget
+camera_transform::camera_transform(const QVector3D& up,const QVector3D& c,float z) : center(c), up(up)
 {
-    Q_OBJECT
-public:
-    controller_base* handler;
-    QVector3D scene_center;
-    bool scene_radius_fixed_;
-    bool scene_center_fixed_;
+    // The camera always points along the z-axis. Pan moves the camera in x,y
+    // coordinates and zoom moves in and out on the z-axis.
+    // It starts at -1 because in OpenGL-land the transform is actually applied
+    // to the world and the camera is stationary at 0,0,0.
+    camera.setToIdentity();
+    camera.translate(0, 0, -1);
+    world.setToIdentity();
+    world.translate(-center);
+}
+void camera_transform::pan(float dx,float dy)
+{
+    camera.translate(dx,dy,0);
+}
+void camera_transform::zoom(float dz)
+{
+    camera.translate(0,0,dz);
+}
+void camera_transform::pivot(float dx,float dy)
+{
+    world.translate(center);
+    QMatrix4x4 inverted_world = world.inverted();
+    QVector4D x_axis = inverted_world * QVector4D(1, 0, 0, 0);
+    QVector4D y_axis = inverted_world * QVector4D(0, 1, 0, 0);
+    world.rotate(dy, x_axis.toVector3D());
+    world.rotate(dx, y_axis.toVector3D());
+    world.translate(-center);
+}
+void camera_transform::set_center(const QVector3D& v)
+{
+//     world.translate(center);
+    center=v;
+//     world.translate(-center);
+}
+void camera_transform::set_orientation(float roll,float pitch,float yaw)
+{
+    world.setToIdentity();
+    world.rotate(QQuaternion::fromEulerAngles(pitch*180/M_PI,roll*180/M_PI,yaw*180/M_PI));
+    world.translate(-center);
+}
+void camera_transform::set_position(const QVector3D& v)
+{
+    camera.setToIdentity();
+    camera.translate(v);
+}
+QVector3D camera_transform::get_position() const
+{
+    return camera.column(3).toVector3DAffine();
+}
     
-public:
-    viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double scene_radius,QMainWindow* parent=NULL);
-    void reset_handler(controller_base* h=NULL);
+} } } // namespace snark { namespace graphics { namespace qopengl {
     
-protected:
-    void init();
-    void double_right_click(const boost::optional<QVector3D>& point);
-    
-private slots:
-    void on_timeout();
-    
-public:
-    void update_view(const QVector3D& min, const QVector3D& max);
-    void look_at_center();
-    boost::optional< Eigen::Vector3d > m_offset;
-    void set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation);
-    bool stdout_allowed;
-
-//     double scene_radius() const { return scene_radius_; }
-    
-//from QGLView
-//     QGLCamera * camera() const;
-};
-    
-
-} } } } // namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
-

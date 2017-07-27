@@ -27,58 +27,50 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+/// @author Navid Pirmarzdashti
 
-#include "../../../qt5.5/qopengl/widget.h"
-#include "../types.h"
-#include <QMainWindow>
-#include <QTimer>
+#include "labels.h"
+#include <QPainter>
+#include <QOpenGLPaintDevice>
+#include <iostream>
 
-namespace snark { namespace graphics { namespace qt3d {
-class camera_options;
-} } }
-typedef snark::graphics::qopengl::color_t color_t;
-
-namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
-
-/**
- * redner and camera functions
- * qt3d v2 specific rednering, most functions are implemented in widget
- * this class implements interface used by controller
- */
-class viewer : public qopengl::widget
+namespace snark { namespace graphics { namespace qopengl {
+    
+text_label::text_label(Eigen::Vector3d position, std::string text,color_t color) : position(position), text(text), color(color), width(1), height(1)
 {
-    Q_OBJECT
-public:
-    controller_base* handler;
-    QVector3D scene_center;
-    bool scene_radius_fixed_;
-    bool scene_center_fixed_;
-    
-public:
-    viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double scene_radius,QMainWindow* parent=NULL);
-    void reset_handler(controller_base* h=NULL);
-    
-protected:
-    void init();
-    void double_right_click(const boost::optional<QVector3D>& point);
-    
-private slots:
-    void on_timeout();
-    
-public:
-    void update_view(const QVector3D& min, const QVector3D& max);
-    void look_at_center();
-    boost::optional< Eigen::Vector3d > m_offset;
-    void set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation);
-    bool stdout_allowed;
+}
 
-//     double scene_radius() const { return scene_radius_; }
-    
-//from QGLView
-//     QGLCamera * camera() const;
-};
-    
+void text_label::update()
+{
+    init();
+    resize(width,height);
+    //calculate width and height from text using font
+    if(fbo)
+    {
+        fbo->bind();
+        QOpenGLPaintDevice paint_dev(width, height);
+        QPainter painter(&paint_dev);
+        painter.setFont(QFont("System",16));
+        QRect rect=painter.boundingRect(QRect(2,4,1000, 1000), Qt::AlignTop, QString(text.data()));
+        width=rect.width();
+        height=rect.height();
+        fbo->release();
+    }
+//     else
+//         std::cerr<<"no fbo!"<<std::endl;
+    resize(width,height);
+    label::update(position.x(),position.y(),position.z());
+    label::draw();
+}
 
-} } } } // namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
+void text_label::draw(QPainter& painter)
+{
+    painter.setFont(QFont("System",16));
+//     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
+//     painter.fillRect(0,0,width,height,Qt::green);
+    painter.setPen( QColor(color.rgba[0]*255, color.rgba[1]*255, color.rgba[2]*255, color.rgba[3]*255 ) );
+    painter.drawText(QRect(2,4,width, height), Qt::AlignTop, QString(text.data()));
+}
 
+} } } // namespace snark { namespace graphics { namespace qopengl {
+    

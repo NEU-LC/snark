@@ -27,58 +27,28 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
-
-#include "../../../qt5.5/qopengl/widget.h"
-#include "../types.h"
-#include <QMainWindow>
-#include <QTimer>
-
-namespace snark { namespace graphics { namespace qt3d {
-class camera_options;
-} } }
-typedef snark::graphics::qopengl::color_t color_t;
-
-namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
-
-/**
- * redner and camera functions
- * qt3d v2 specific rednering, most functions are implemented in widget
- * this class implements interface used by controller
- */
-class viewer : public qopengl::widget
-{
-    Q_OBJECT
-public:
-    controller_base* handler;
-    QVector3D scene_center;
-    bool scene_radius_fixed_;
-    bool scene_center_fixed_;
-    
-public:
-    viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double scene_radius,QMainWindow* parent=NULL);
-    void reset_handler(controller_base* h=NULL);
-    
-protected:
-    void init();
-    void double_right_click(const boost::optional<QVector3D>& point);
-    
-private slots:
-    void on_timeout();
-    
-public:
-    void update_view(const QVector3D& min, const QVector3D& max);
-    void look_at_center();
-    boost::optional< Eigen::Vector3d > m_offset;
-    void set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation);
-    bool stdout_allowed;
-
-//     double scene_radius() const { return scene_radius_; }
-    
-//from QGLView
-//     QGLCamera * camera() const;
-};
-    
-
-} } } } // namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
-
+/// draw image from texture in 3d projection
+static const char *texture_shader_source = R"(
+    #version 150
+    in vec3 vertex;
+    in vec2 offset;
+    out vec2 textCoord;
+    uniform mat4 projection_matrix;
+    void main() {
+       gl_Position = projection_matrix* vec4(vertex,1) ;
+       textCoord = offset;
+    }
+)";
+// frag_color = clamp( textCoord, 0.0, 1.0 );
+// frag_color = texture2D(sampler,vec2(4,4));
+//frag_color = clamp( sampler, 0.0, 1.0 );
+    //uniform highp vec4 sampler;
+static const char *texture_fragment_source = R"(
+    #version 150
+    in vec2 textCoord;
+    uniform sampler2D sampler;
+    out highp vec4 frag_color;
+    void main() {
+       frag_color = texture2D(sampler,textCoord);
+    }
+)";

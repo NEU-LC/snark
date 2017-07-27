@@ -47,12 +47,12 @@ namespace snark { namespace graphics { namespace view {
 void controller::add(std::unique_ptr<snark::graphics::view::Reader>&& reader)
 {
 #if Qt3D_VERSION==2
-    std::shared_ptr<snark::graphics::qt3d::gl::shape> shape=reader->make_shape();
+    std::shared_ptr<snark::graphics::qopengl::shape> shape=reader->make_shape();
     if(shape)
     {
         viewer->shapes.push_back(shape);
     }
-    std::shared_ptr<snark::graphics::qt3d::gl::label_shader> label_shader=reader->make_label_shader();
+    std::shared_ptr<snark::graphics::qopengl::label_shader> label_shader=reader->make_label_shader();
     if(label_shader)
     {
         viewer->label_shaders.push_back(label_shader);

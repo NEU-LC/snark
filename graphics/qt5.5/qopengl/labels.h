@@ -27,58 +27,27 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author Navid Pirmarzdashti
+
 #pragma once
+#include "label_shader.h"
+#include "types.h"
 
-#include "../../../qt5.5/qopengl/widget.h"
-#include "../types.h"
-#include <QMainWindow>
-#include <QTimer>
+namespace snark { namespace graphics { namespace qopengl {
 
-namespace snark { namespace graphics { namespace qt3d {
-class camera_options;
-} } }
-typedef snark::graphics::qopengl::color_t color_t;
-
-namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
-
-/**
- * redner and camera functions
- * qt3d v2 specific rednering, most functions are implemented in widget
- * this class implements interface used by controller
- */
-class viewer : public qopengl::widget
+class text_label : public label
 {
-    Q_OBJECT
+    Eigen::Vector3d position;
+    std::string text;
+    color_t color;
+    int width;
+    int height;
 public:
-    controller_base* handler;
-    QVector3D scene_center;
-    bool scene_radius_fixed_;
-    bool scene_center_fixed_;
-    
-public:
-    viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double scene_radius,QMainWindow* parent=NULL);
-    void reset_handler(controller_base* h=NULL);
-    
+    text_label(Eigen::Vector3d position, std::string text,color_t color);
+    virtual void update();
 protected:
-    void init();
-    void double_right_click(const boost::optional<QVector3D>& point);
-    
-private slots:
-    void on_timeout();
-    
-public:
-    void update_view(const QVector3D& min, const QVector3D& max);
-    void look_at_center();
-    boost::optional< Eigen::Vector3d > m_offset;
-    void set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation);
-    bool stdout_allowed;
-
-//     double scene_radius() const { return scene_radius_; }
-    
-//from QGLView
-//     QGLCamera * camera() const;
+    virtual void draw(QPainter& painter);
 };
     
-
-} } } } // namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
-
+} } } // namespace snark { namespace graphics { namespace qopengl {
+    

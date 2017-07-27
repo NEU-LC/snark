@@ -45,8 +45,8 @@
 #include <Qt3D/qglview.h>
 #else
 #include <QQuaternion>
-#include "../../qt3d/qt3d_v2/gl/shapes.h"
-#include "../../../graphics/qt3d/qt3d_v2/gl/labels.h"
+#include "../../qt5.5/qopengl/shapes.h"
+#include "../../qt5.5/qopengl/labels.h"
 #include <memory>
 #endif
 #include "types.h"
@@ -125,8 +125,8 @@ class Reader : public reader_parameters
 #elif Qt3D_VERSION==2
     friend class controller;
 public:
-    virtual std::shared_ptr<snark::graphics::qt3d::gl::shape> make_shape()=0;
-    virtual std::shared_ptr<snark::graphics::qt3d::gl::label_shader> make_label_shader()=0;
+    virtual std::shared_ptr<snark::graphics::qopengl::shape> make_shape()=0;
+    virtual std::shared_ptr<snark::graphics::qopengl::label_shader> make_label_shader()=0;
     virtual void update_shape()=0;
     virtual void update_labels()=0;
 #endif

@@ -39,7 +39,7 @@ std::ostream& operator<<(std::ostream& os, const QVector3D& v)
 }
 
 viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double arg_scene_radius,QMainWindow* parent) : 
-    qt3d::gl::widget(camera_options,parent),
+    qopengl::widget(camera_options,parent),
     handler(handler),
     scene_center(scene_center),
     stdout_allowed(true)
