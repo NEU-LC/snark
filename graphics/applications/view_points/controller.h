@@ -33,7 +33,7 @@
 #include "qt3d_v1/viewer.h"
 
 #elif Qt3D_VERSION==2
-#include "qt3d_v2/viewer.h"
+#include "qopengl/viewer.h"
 
 #endif
 
