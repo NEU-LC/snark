@@ -75,6 +75,8 @@ static void usage( bool verbose=false )
     std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\", see serialization options" << std::endl;
     std::cerr << "    --header-fields; show header fields and exit" << std::endl;
     std::cerr << "    --header-format; show header format and exit" << std::endl;
+    std::cerr << "    --output-fields; show output fields and exit" << std::endl;
+    std::cerr << "    --output-format; show output format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "serialization options" << std::endl;
     if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } 
@@ -367,6 +369,8 @@ int main( int ac, char** av )
         }
         if( operation == "count" )
         {
+            if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,count" << std::endl;  exit(0); }
+            if( options.exists("--output-format") ) { std::cout << "t,3ui,ui" << std::endl;  exit(0); }
             snark::cv_mat::serialization serialization( input_options );
             while( std::cin.good() && !std::cin.eof() )
             {
@@ -387,7 +391,10 @@ int main( int ac, char** av )
         }
         if( operation == "mean" )
         {
+            if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,count,mean" << std::endl;  exit(0); }
+            if( options.exists("--output-format") ) { std::cout << "t,3ui,ui,d" << std::endl;  exit(0); }
             auto threshold = options.optional< double >("--threshold");
+            snark::cv_mat::serialization serialization( input_options );
             snark::cv_mat::serialization serialization( input_options );
             while( std::cin.good() && !std::cin.eof() )
             {
@@ -396,11 +403,21 @@ int main( int ac, char** av )
                 if( p.second.empty() ) { return 0; }
                 
                 cv::Mat mask;
-                if( threshold ) { cv::threshold(p.second, mask, *threshold, 255, cv::THRESH_BINARY); }
+                comma::uint32 count = p.second.rows * p.second.cols;
+                if( threshold ) 
+                { 
+                    cv::threshold(p.second, mask, *threshold, 255, cv::THRESH_BINARY); 
+                    std::vector< cv::Point > non_zeros;
+                    cv::findNonZero(mask, non_zeros );
+                    comma::uint32 count = non_zeros.size();
+                }
                 
                 cv::Scalar mean = cv::mean( p.second, !threshold ? cv::noArray() : mask );
                 std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
-                for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); }
+                for( int i = 0; i < p.second.channels(); ++i ) { 
+                    std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); 
+                    std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); 
+                }
                 std::cout.flush();
             }
             return 0;
