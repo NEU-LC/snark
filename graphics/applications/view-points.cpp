@@ -150,9 +150,7 @@ static void usage()
         "\n"
         "\n            default: stretched by elevation from cyan to magenta from 0:1"
         "\n"
-        qt55_unsupported_marker_start
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
-        qt55_unsupported_marker_end
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
         "\n    --fill: fill the shape; currently implemented only for triangles"
         "\n    --label <label>: text label displayed next to the latest point"
@@ -204,12 +202,10 @@ static void usage()
         qt55_unsupported_marker_end
         "\n    --size <size>: render last <size> points (or other shapes)"
         "\n                   default 2000000 for points, for 200000 for other shapes"
-        qt55_unsupported_marker_start
         "\n    --title <title>: title for source, defaults to filename"
         "\n                     if set to \"none\" don't show source in selection box"
         "\n                     (but still display data and checkbox)"
         "\n"
-        qt55_unsupported_marker_end
         "\ncamera options"
         "\n    --camera=\"<options>\""
         "\n          <options>: [fov=<fov>];[<type>]"
@@ -225,14 +221,16 @@ static void usage()
         "\n          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>"
         "\n          <stream>: position csv stream with options; default fields: x,y,z,roll,pitch,yaw"
         "\n    --orthographic: use orthographic projection instead of perspective"
-        qt55_unsupported_marker_start
         "\n"
         "\nmore options"
+        qt55_unsupported_marker_start
         "\n    --background-colour <colour> : default: black"
         "\n    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout"
+        qt55_unsupported_marker_end
         "\n    --scene-center,--center=<value>: fixed scene center as \"x,y,z\""
         "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
         "\n                            scene size from the dataset (e.g. for streams)"
+        qt55_unsupported_marker_start
         "\n    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )"
         qt55_unsupported_marker_end
         "\n";
@@ -285,12 +283,13 @@ static void usage()
         "\n    view multiple files"
         "\n        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id;point-size=2\""
         "\n"
-        qt55_unsupported_marker_start
         "\n    view multiple files with titles"
         "\n        view-points \"raw.csv;colour=0:20;title=raw\" \"partitioned.csv;fields=x,y,z,id;point-size=2;title=partitioned\""
         "\n"
+        qt55_unsupported_marker_start
         "\n    view a cad model"
         "\n        echo \"0,0,0\" | view-points --shape /usr/local/etc/segway.shrimp.obj --z-is-up --orthographic"
+        qt55_unsupported_marker_end
         "\n"
         "\n    use stdin as the primary source for scene radius:"
         "\n        cat xyz.csv | view-points \"-\" scan.csv"
@@ -298,7 +297,6 @@ static void usage()
         "\n    specify fixed scene radius explicitly:"
         "\n        cat xyz.csv | view-points --scene-radius=100"
         "\n"
-        qt55_unsupported_marker_end
         "\n    passing input data through:"
         "\n        cat xyz.csv | view-points \"-;pass-through\" scan.csv"
         "\n"
@@ -321,6 +319,7 @@ static void usage()
         "\n        echo 0,0,0,1 >> points.csv"
         "\n        echo 0,0,0,2 >> points.csv"
         "\n        echo points.csv | view-points \"-;shape=image1.jpg,image2.jpg,image3.jpg;fields=x,y,z,id\""
+        qt55_unsupported_marker_end
         "\n"
         "\n    show points selected with a double right click"
         "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"rose.st.ground.csv;fields=x,y,z,r,g,b\" \"-;colour=sky;weight=10\" > pipe"
@@ -333,7 +332,6 @@ static void usage()
         "\n        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345"
         "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z,id,label;weight=10\" | csv-paste \"-\" line-number line-number > pipe"
         "\n"
-        qt55_unsupported_marker_end
         "\n    an example of many of the supported shapes"
         "\n        for i in {0..15}; do echo \"a=2*3.1415926532/16*$i;s(a)*3;c(a)*3;s(a)*3\" | bc -l | paste -s -d,; done \\"
         "\n            | view-points \"-;weight=5;color=cyan;label=points\" \\"
@@ -341,7 +339,7 @@ static void usage()
         "\n                  <( echo 0,0,2,0,0,0,0.5,2 )\";shape=ellipse;label=ellipse;color=salad\" \\"
         "\n                  <( echo -e \"0,0,-2,0\\n0,1,-2,1\\n0.5,1.5,-2,2\\n1,1,-2,3\\n1,0,-2,4\\n0.5,-0.5,-2,5\" )\";shape=loop;fields=x,y,z,id;label=loop\" \\"
         "\n                  <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\"\\"
-        "\n                  <( echo '-3,-3,-3,0,0,0,6,\"X:Y:Z\"' )\";shape=axis;fields=position,orientation,length,axis_labels\""
+        "\n                  <( echo '-3,-3,-3,0,0,0' )\";shape=axis;fields=position,orientation;length=6;labels=X:Y:Z;label=axis\""
         "\n";
 
     std::cerr
