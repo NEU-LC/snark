@@ -59,11 +59,11 @@ static void usage( bool verbose=false )
     std::cerr << "usage: cat images.bin | cv-calc <operation> [<options>] > processed.bin " << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
-    std::cerr << "    count: output count the number of none zero pixels (ub input images only)" << std::endl;
+    std::cerr << "    count: prepend the count the number of non-zero pixels (ub input images only)" << std::endl;
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
     std::cerr << "    header: output header information in ascii csv" << std::endl;
-    std::cerr << "    mean: output image means for all image channels appended to image header" << std::endl;
+    std::cerr << "    mean: prepend image means for all image channels, pixel count used to calculate mean value also prepended" << std::endl;
     std::cerr << "    roi: given cv image data associated with a region of interest, either set everything outside the region of interest to zero or crop it" << std::endl;
     std::cerr << "    stride: stride through the image, output images of kernel size for each pixel" << std::endl;
     std::cerr << "    thin: thin image stream by discarding some images" << std::endl;
@@ -369,9 +369,10 @@ int main( int ac, char** av )
         }
         if( operation == "count" )
         {
-            if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,count" << std::endl;  exit(0); }
-            if( options.exists("--output-format") ) { std::cout << "t,3ui,ui" << std::endl;  exit(0); }
+            if( options.exists("--output-fields") ) { std::cout << "count,t,rows,cols,type,data" << std::endl;  exit(0); }
+            if( options.exists("--prepended-format") ) { std::cout << "ui" << std::endl;  exit(0); }
             snark::cv_mat::serialization serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
             while( std::cin.good() && !std::cin.eof() )
             {
                 
@@ -383,19 +384,18 @@ int main( int ac, char** av )
                 cv::findNonZero(p.second, non_zeros );
                 comma::uint32 count = non_zeros.size();
                 
-                std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
                 for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); }
-                std::cout.flush();
+                output_serialization.write(std::cout, p);
             }
             return 0;
         }
         if( operation == "mean" )
         {
-            if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,count,mean" << std::endl;  exit(0); }
-            if( options.exists("--output-format") ) { std::cout << "t,3ui,ui,d" << std::endl;  exit(0); }
+            if( options.exists("--output-fields") ) { std::cout << "count,mean,t,rows,cols,type,data" << std::endl;  exit(0); }
+            if( options.exists("--prepended-format") ) { std::cout << "ui,d" << std::endl;  exit(0); }
             auto threshold = options.optional< double >("--threshold");
             snark::cv_mat::serialization serialization( input_options );
-            snark::cv_mat::serialization serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
             while( std::cin.good() && !std::cin.eof() )
             {
                 
@@ -409,16 +409,16 @@ int main( int ac, char** av )
                     cv::threshold(p.second, mask, *threshold, 255, cv::THRESH_BINARY); 
                     std::vector< cv::Point > non_zeros;
                     cv::findNonZero(mask, non_zeros );
-                    comma::uint32 count = non_zeros.size();
+                    count = non_zeros.size();
                 }
                 
                 cv::Scalar mean = cv::mean( p.second, !threshold ? cv::noArray() : mask );
-                std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
-                for( int i = 0; i < p.second.channels(); ++i ) { 
+                for( int i = 0; i < p.second.channels(); ++i ) 
+                { 
                     std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); 
                     std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); 
                 }
-                std::cout.flush();
+                output_serialization.write(std::cout, p);
             }
             return 0;
         }

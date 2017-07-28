@@ -9,8 +9,9 @@ cv_depth=ub
 echo "$inputs" |
     csv-to-bin 6$cv_depth | 
     cv-cat --input "no-header;rows=2;cols=3;type=$cv_depth" --output "no-header=0" | 
-    cv-calc count | csv-from-bin "t,3ui,ui" --precision 5 |
-    gawk '{ print "image[" NR-1 "]=\"" $0 "\""  }'
+    cv-calc count --output header-only | csv-from-bin "ui,t,3ui" --precision 5 |
+    csv-shuffle --fields count,t,rows,cols,type -o count |
+    name-value-from-csv count --prefix image -n
 comma_status_ok
 code=$?
 echo "status=$code"
