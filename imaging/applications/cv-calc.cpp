@@ -59,7 +59,7 @@ static void usage( bool verbose=false )
     std::cerr << "usage: cat images.bin | cv-calc <operation> [<options>] > processed.bin " << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
-    std::cerr << "    count: output count the number of none zero pixels" << std::endl;
+    std::cerr << "    count: output count the number of none zero pixels (ub input images only)" << std::endl;
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
     std::cerr << "    header: output header information in ascii csv" << std::endl;
@@ -100,6 +100,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "    mean" << std::endl;
     std::cerr << "        --threshold=[<thresh>]: apply a mask (binary threshold) and only calculate mean on pixel matching the mask." << std::endl;
+    std::cerr << "              default: calculate a mean on all pixels" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
