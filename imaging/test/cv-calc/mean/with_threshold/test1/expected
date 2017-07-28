@@ -1,0 +1,6 @@
+# Note with a threshold of 2.0, exact pixel with 2.0 are filtered out
+image[0]="not-a-date-time,2,3,0,4.5"
+image[1]="not-a-date-time,2,3,0,5"
+image[2]="not-a-date-time,2,3,0,5.5"
+image[3]="not-a-date-time,2,3,0,6"
+status=0
