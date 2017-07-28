@@ -160,7 +160,10 @@ static void output_frame( const snark::vimba::frame& frame
                         , snark::vimba::camera& camera )
 {
     snark::vimba::camera::timestamped_frame timestamped_frame = camera.frame_to_timestamped_frame( frame );
-    serialization.write( std::cout, timestamped_frame );
+    if( !timestamped_frame.first.is_not_a_date_time() )
+    {
+        serialization.write( std::cout, timestamped_frame );
+    }
 }
 
 static void print_attribute_entry( const std::string& label, const std::string& value )
@@ -322,7 +325,7 @@ int main( int argc, char** argv )
                 {
                     long frames_delivered_prev = frames_delivered;
                     frames_delivered = frames_delivered_attribute->int_value();
-                    if( frames_delivered == frames_delivered_prev )
+                    if( frames_delivered == frames_delivered_prev && !is_shutdown )
                     {
                         std::cerr << comma::verbose.app_name() << ": warning - we appear to be stuck" << std::endl;
                         if( comma::verbose ) { print_stats( camera ); }

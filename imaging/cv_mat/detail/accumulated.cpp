@@ -118,14 +118,16 @@ template < typename H >
 typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::value_type& n )
 {
     ++count_;
-    // This filter is not run in parallel, no locking required
-    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
-    auto ema_functor = [this](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) {
-        // Spin up initial value for EMA
-        if( count <= spin_up_ ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha_; }
-    };
-    impl::iterate_by_input_type< H >(n.second, result_, ema_functor, count_);
+    if( count_ == 1 ) { n.second.convertTo( result_, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    else { 
+        // if count < spin_up then do normal average
+        impl::iterate_by_input_type< H >(n.second, result_, 
+            [this](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) { 
+                if( count <= spin_up_ ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha_; } 
+            },
+            count_); 
+    }
     
     cv::Mat output; // copy as result_ will be changed next iteration
     result_.convertTo(output, n.second.type());
