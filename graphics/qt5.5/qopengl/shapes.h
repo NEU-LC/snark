@@ -64,6 +64,9 @@ public:
     //this can only be called between begin_update and end_update
     //size: size of array e.g. update(v.data(),v.size())
     virtual void update(const vertex_t* data, std::size_t size);    //write data to internal buffer
+public:
+    /// set true to draw, false to hide; call widget update to take effect
+    bool visible;
 protected:
     //GL context should be set and voa bound for these functions by caller (i.e. gl_widget)
     virtual void init();    //create buffer

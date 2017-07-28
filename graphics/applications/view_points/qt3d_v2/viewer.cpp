@@ -38,18 +38,19 @@ std::ostream& operator<<(std::ostream& os, const QVector3D& v)
     return os<<v.x()<<","<<v.y()<<","<<v.z();
 }
 
-viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double arg_scene_radius,QMainWindow* parent) : 
+viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, 
+               const QVector3D& arg_scene_center, double arg_scene_radius,QMainWindow* parent) : 
     qopengl::widget(camera_options,parent),
     handler(handler),
-    scene_center(scene_center),
+    scene_center(arg_scene_center),
+    scene_radius_fixed(false),
+    scene_center_fixed(false),
     stdout_allowed(true)
 {
     scene_radius=arg_scene_radius;
     QTimer* timer = new QTimer( this );
     connect( timer, SIGNAL( timeout() ), this, SLOT( on_timeout() ) );
     timer->start( 40 );
-    scene_radius_fixed_=false;
-    scene_center_fixed_=false;
 }
 void viewer::reset_handler(controller_base* h){ handler=h; }
 void viewer::init() { if(handler!=NULL) { handler->init(); } }
@@ -69,8 +70,8 @@ void viewer::double_right_click(const boost::optional<QVector3D>& point)
 }
 void viewer::update_view(const QVector3D& min, const QVector3D& max)
 {
-    if( !scene_radius_fixed_ ) { scene_radius = 0.5 * ( max - min ).length(); }
-    if( !scene_center_fixed_ ) { scene_center = 0.5 * ( min + max ); }
+    if(!scene_radius_fixed) { scene_radius = 0.5 * ( max - min ).length(); }
+    if(!scene_center_fixed) { scene_center = 0.5 * ( min + max ); }
 //     update the position of the far plane so that the full scene is displayed
     set_far_plane(4.6*scene_radius);
 }

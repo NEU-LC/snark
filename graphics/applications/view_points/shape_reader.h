@@ -97,13 +97,18 @@ std::shared_ptr<snark::graphics::qopengl::label_shader> ShapeReader< S, How >::m
 template< typename S, typename How >
 void ShapeReader< S, How >::update_shape()
 {
-    if(shape) { shape->update(buffer_.values().data(),buffer_.size()); }
+    if(shape)
+    {
+        shape->visible=m_show;
+        shape->update(buffer_.values().data(),buffer_.size());
+    }
 }
 
 template< typename S, typename How >
 void ShapeReader< S, How >::update_labels()
 {
     label_shader->clear();
+    label_shader->visible=m_show;
     label_shader->labels.reserve(labels_.size());
     for( unsigned int i = 0; i < labels_.size(); i++ )
     {

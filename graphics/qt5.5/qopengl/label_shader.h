@@ -104,7 +104,10 @@ public:
     virtual ~label_shader();
     void clear();   //delete labels
     void update();  //init and update all added labels
+    
+public:
     std::vector<std::shared_ptr<label>> labels;
+    bool visible;
 
 protected:
     //GL context should be set and voa bound for these functions by caller (i.e. gl_widget)

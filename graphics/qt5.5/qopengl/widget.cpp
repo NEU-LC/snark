@@ -159,7 +159,7 @@ void widget::paintGL()
     program_->setUniformValue( projection_matrix_location_, camera.projection );
     program_->setUniformValue( mv_matrix_location_, camera.camera * camera.world );
 
-    for(auto& i : shapes) { i->paint(); }
+    for(auto& i : shapes) { if(i->visible) { i->paint(); } }
 
     glDisable( GL_DEPTH_TEST );
 

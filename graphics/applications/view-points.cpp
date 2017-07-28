@@ -739,13 +739,15 @@ int main( int argc, char** argv )
         color_t background_color;
         double scene_radius=options.value<double>("--scene-radius,--radius",10);
         QVector3D scene_center(0,0,0);
-        boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
+        boost::optional< std::string > s = options.optional< std::string >("--scene-center,--center");
         if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
 
         QApplication app(argc, argv);
         snark::graphics::view::main_window main_window;
         snark::graphics::view::controller controller(&main_window, background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
                                                      options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" ));
+        controller.viewer->scene_radius_fixed=options.exists("--scene-radius,--radius");
+        controller.viewer->scene_center_fixed=options.exists("--scene-center,--center");
         bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {

@@ -136,18 +136,21 @@ void label_shader::init()
 }
 void label_shader::paint(const QMatrix4x4& projection_matrix, const QSize& size)
 {
-    program.bind();
-    program.setUniformValue(projection_matrix_location,projection_matrix);
-    program.setUniformValue(sampler_location,0);
-    program.setUniformValue(screen_size_location,QVector2D(size.width()/2,size.height()/2));
-//     static int counter=0;
-//     if(counter++<10)
-//         std::cerr<<"label_shader::paint "<<size.width()/2<<", "<<size.height()/2<<std::endl;
-    
-    //?disable back-face culling
-    //?disable depth test
-    for(auto& j : labels) { j->paint(); }
-    program.release();
+    if(visible)
+    {
+        program.bind();
+        program.setUniformValue(projection_matrix_location,projection_matrix);
+        program.setUniformValue(sampler_location,0);
+        program.setUniformValue(screen_size_location,QVector2D(size.width()/2,size.height()/2));
+    //     static int counter=0;
+    //     if(counter++<10)
+    //         std::cerr<<"label_shader::paint "<<size.width()/2<<", "<<size.height()/2<<std::endl;
+        
+        //?disable back-face culling
+        //?disable depth test
+        for(auto& j : labels) { j->paint(); }
+        program.release();
+    }
 }
 void label_shader::destroy()   //destroy buffer
 {
