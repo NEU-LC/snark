@@ -663,9 +663,7 @@ int main( int argc, char** argv )
         }
 
         bool camera_position_from_stdin = false;
-#if Qt3D_VERSION==1
         QApplication application( argc, argv );
-#endif
         if( options.exists( "--camera-position" ) )
         {
             std::string position = options.value< std::string >( "--camera-position" );
@@ -712,27 +710,7 @@ int main( int argc, char** argv )
                                                                                  , scene_center
                                                                                  , scene_radius
                                                                                  , options.exists( "--output-camera-config,--output-camera" ) );
-        bool stdin_explicitly_defined = false;
-        for( unsigned int i = 0; i < properties.size(); ++i )
-        {
-            if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
-            controller->add( make_reader( options, csv_options, properties[i] ) );
-        }
-        if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
-        {
-            csv_options.filename = "-";
-            controller->add( make_reader( options, csv_options ) );
-        }
-        if( data_passed_through )
-        {
-            controller->inhibit_stdout();
-            if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
-        }
-        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller );
-        main_window.show();
-        application.exec();
-        return 0;       // We never actually reach this line because we raise SIGINT when closing
-
+        
 #elif Qt3D_VERSION==2
 
         color_t background_color;
@@ -741,12 +719,13 @@ int main( int argc, char** argv )
         boost::optional< std::string > s = options.optional< std::string >("--scene-center,--center");
         if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
 
-        QApplication app(argc, argv);
-//         snark::graphics::view::main_window main_window;
         std::shared_ptr<snark::graphics::view::controller> controller(new snark::graphics::view::controller(background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
                                                      options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" )));
         controller->viewer->scene_radius_fixed=options.exists("--scene-radius,--radius");
         controller->viewer->scene_center_fixed=options.exists("--scene-center,--center");
+#else
+#error Qt3D_VERSION must be 1 or 2
+#endif
         bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
@@ -763,14 +742,11 @@ int main( int argc, char** argv )
             controller->inhibit_stdout();
             if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
-//         main_window.resize( main_window.sizeHint() );
         snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller );
         main_window.show();
-        return app.exec();
+        application.exec();
+        return 0;       // We never actually reach this line because we raise SIGINT when closing
 
-#else
-#error Qt3D_VERSION must be 1 or 2
-#endif
     }
     catch( std::exception& ex ) { std::cerr << "view-points: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "view-points: unknown exception" << std::endl; }

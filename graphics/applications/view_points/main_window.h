@@ -93,29 +93,4 @@ class CheckBox : public QCheckBox // quick and dirty
 
 } } } // namespace snark { namespace graphics { namespace view {
 
-// #elif Qt3D_VERSION==2
-// 
-// #include "../../qt5.5/qopengl/widget.h"
-// #include <QMainWindow>
-// #include <QKeyEvent>
-// 
-// namespace snark { namespace graphics { namespace view {
-// 
-// class Reader;
-// 
-// class main_window : public QMainWindow
-// {
-//     Q_OBJECT
-// public:
-//     main_window();
-// private:
-//     void keyPressEvent( QKeyEvent *e );
-// };
-// 
-// } } } // namespace snark { namespace graphics { namespace view {
-// 
-// #else
-// #error Qt3D_VERSION must be 1 or 2
-// #endif
-
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_*/
