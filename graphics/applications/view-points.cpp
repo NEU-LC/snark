@@ -702,7 +702,7 @@ int main( int argc, char** argv )
         if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
 
 #if Qt3D_VERSION==1
-        snark::graphics::view::Viewer* viewer = new snark::graphics::view::Viewer( background_color
+        std::shared_ptr<snark::graphics::view::Viewer> controller(new snark::graphics::view::Viewer( background_color
                                                                                  , camera_options
                                                                                  , options.exists( "--exit-on-end-of-input" )
                                                                                  , camera_csv
@@ -716,22 +716,21 @@ int main( int argc, char** argv )
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
             if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
-            viewer->readers.push_back( make_reader( options, csv_options, properties[i] ) );
+            controller->add( make_reader( options, csv_options, properties[i] ) );
         }
         if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
         {
             csv_options.filename = "-";
-            viewer->readers.push_back( make_reader( options, csv_options ) );
+            controller->add( make_reader( options, csv_options ) );
         }
         if( data_passed_through )
         {
-            viewer->inhibit_stdout();
+            controller->inhibit_stdout();
             if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
-        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), viewer );
+        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller );
         main_window.show();
         application.exec();
-        delete viewer;
         return 0;       // We never actually reach this line because we raise SIGINT when closing
 
 #elif Qt3D_VERSION==2
@@ -743,28 +742,29 @@ int main( int argc, char** argv )
         if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
 
         QApplication app(argc, argv);
-        snark::graphics::view::main_window main_window;
-        snark::graphics::view::controller controller(&main_window, background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
-                                                     options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" ));
-        controller.viewer->scene_radius_fixed=options.exists("--scene-radius,--radius");
-        controller.viewer->scene_center_fixed=options.exists("--scene-center,--center");
+//         snark::graphics::view::main_window main_window;
+        std::shared_ptr<snark::graphics::view::controller> controller(new snark::graphics::view::controller(background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
+                                                     options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" )));
+        controller->viewer->scene_radius_fixed=options.exists("--scene-radius,--radius");
+        controller->viewer->scene_center_fixed=options.exists("--scene-center,--center");
         bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
             if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
-            controller.add(make_reader( options, csv_options, properties[i] ));
+            controller->add(make_reader( options, csv_options, properties[i] ));
         }
         if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
         {
             csv_options.filename = "-";
-            controller.add(make_reader( options, csv_options ));
+            controller->add(make_reader( options, csv_options ));
         }
         if( data_passed_through )
         {
-            controller.inhibit_stdout();
+            controller->inhibit_stdout();
             if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
-        main_window.resize( main_window.sizeHint() );
+//         main_window.resize( main_window.sizeHint() );
+        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller );
         main_window.show();
         return app.exec();
 

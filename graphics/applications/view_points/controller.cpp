@@ -67,20 +67,7 @@ void controller::init()
     for(auto& i : readers) { i->start(); }
 }
 
-void controller::update_shapes()
-{
-#if Qt3D_VERSION==2
-    viewer->begin_update();
-    for(auto& i : readers)
-    {
-        i->update_shape();
-        i->update_labels();
-    }
-    viewer->end_update();
-#endif
-}
-
-controller::controller(QMainWindow* parent, const color_t& background_color
+controller::controller(const color_t& background_color
               , const qt3d::camera_options& camera_options
               , bool exit_on_end_of_input
               , boost::optional< comma::csv::options > camera_csv
@@ -99,8 +86,8 @@ controller::controller(QMainWindow* parent, const color_t& background_color
 //     viewer=new viewer_t(background_color, camera_options, scene_center, scene_radius,parent);
     COMMA_THROW( comma::exception," not implemented ");
 #elif Qt3D_VERSION==2
-    viewer=new viewer_t(this,background_color, camera_options, scene_center, scene_radius,parent);
-    parent->setCentralWidget(viewer);
+    viewer.reset(new viewer_t(this,background_color, camera_options, scene_center, scene_radius));
+//     parent->setCentralWidget(viewer.get());
 #endif
 //     if( output_camera_position ) { camera_position_output_.reset( new camera_position_output( *this ) ); }
     if( camera_csv ) { m_cameraReader.reset( new CameraReader( *camera_csv ) ); }
@@ -189,10 +176,24 @@ void controller::read()
     }
     if( need_update )
     {
-        update_shapes();
-        viewer->update();
+        update_view();
     }
     if( m_shutdown && m_exit_on_end_of_input ) { shutdown(); }
+}
+
+void controller::update_view()
+{
+#if Qt3D_VERSION==2
+    //update shapes
+    viewer->begin_update();
+    for(auto& i : readers)
+    {
+        i->update_shape();
+        i->update_labels();
+    }
+    viewer->end_update();
+#endif
+    viewer->update();
 }
 
 } } } // namespace snark { namespace graphics { namespace view {

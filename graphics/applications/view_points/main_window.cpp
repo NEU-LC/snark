@@ -30,8 +30,6 @@
 
 /// @author Vsevolod Vlaskine
 
-#if Qt3D_VERSION==1
-
 #include "qglobal.h"
 #if QT_VERSION >= 0x050000
 #include <QtWidgets>
@@ -46,9 +44,9 @@
 
 namespace snark { namespace graphics { namespace view {
 
-MainWindow::MainWindow( const std::string& title, Viewer* viewer )
-    : m_viewer( *viewer )
-    , m_fileFrameVisible( m_viewer.readers.size() > 1 )
+MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& c )
+    : controller( c )
+    , m_fileFrameVisible( controller->readers.size() > 1 )
 {
     QMenu* fileMenu = menuBar()->addMenu( "File" );
     menuBar()->addMenu( fileMenu );
@@ -77,10 +75,15 @@ MainWindow::MainWindow( const std::string& title, Viewer* viewer )
     layout->setContentsMargins( 0, 0, 0, 0 );
     layout->setSpacing( 0 );
     layout->addWidget( m_fileFrame, 0, 0 );
+    viewer_t* viewer=controller_traits<snark::graphics::view::controller>::get_widget(controller);
 #if QT_VERSION >= 0x050000
+#if Qt3D_VERSION==1
     layout->addWidget( QWidget::createWindowContainer( viewer ), 0, 1 );
+#elif Qt3D_VERSION==2
+    layout->addWidget(viewer,0,1);
+#endif
 #else
-    layout->addWidget( viewer, 0, 1 );
+    layout->addWidget( viewer , 0, 1 );
 #endif
     layout->setColumnStretch( 0, 0 );
     layout->setColumnStretch( 1, 1 );
@@ -113,7 +116,7 @@ void MainWindow::showFileGroup( std::string name, bool shown )
 
 void MainWindow::updateFileFrame() // quick and dirty
 {
-    for( std::size_t i = 0; i < m_viewer.readers.size(); ++i ) // quick and dirty: clean
+    for( std::size_t i = 0; i < controller->readers.size(); ++i ) // quick and dirty: clean
     {
         for( unsigned int k = 0; k < 2; ++k )
         {
@@ -125,16 +128,16 @@ void MainWindow::updateFileFrame() // quick and dirty
     }
     bool sameFields = true;
     std::string fields;
-    for( std::size_t i = 0; sameFields && i < m_viewer.readers.size(); ++i )
+    for( std::size_t i = 0; sameFields && i < controller->readers.size(); ++i )
     {
-        if( i == 0 ) { fields = m_viewer.readers[0]->options.fields; } // quick and dirty
-        else { sameFields = m_viewer.readers[i]->options.fields == fields; }
+        if( i == 0 ) { fields = controller->readers[0]->options.fields; } // quick and dirty
+        else { sameFields = controller->readers[i]->options.fields == fields; }
     }
     m_fileGroups.clear();
-    for( std::size_t i = 0; i < m_viewer.readers.size(); ++i )
+    for( std::size_t i = 0; i < controller->readers.size(); ++i )
     {
         static const std::size_t maxLength = 30; // arbitrary
-        std::string title = m_viewer.readers[i]->title;
+        std::string title = controller->readers[i]->title;
 
         if( title.length() > maxLength )
         {
@@ -145,17 +148,17 @@ void MainWindow::updateFileFrame() // quick and dirty
             #endif
             title = leaf.length() >= maxLength ? leaf : std::string( "..." ) + title.substr( title.length() - maxLength );
         }
-        if( !sameFields ) { title += ": \"" + m_viewer.readers[i]->options.fields + "\""; }
+        if( !sameFields ) { title += ": \"" + controller->readers[i]->options.fields + "\""; }
         m_fileLayout->addWidget( new QLabel( title.c_str() ), i + 1, 0, Qt::AlignLeft | Qt::AlignTop );
-        CheckBox* viewBox = new CheckBox( boost::bind( &Reader::show, boost::ref( *m_viewer.readers[i] ), _1 ) );
-        viewBox->setCheckState( m_viewer.readers[i]->show() ? Qt::Checked : Qt::Unchecked );
-        connect( viewBox, SIGNAL( toggled( bool ) ), &m_viewer, SLOT( update() ) ); // redraw when box is toggled
+        CheckBox* viewBox = new CheckBox( boost::bind( &Reader::show, boost::ref( *controller->readers[i] ), _1 ) );
+        viewBox->setCheckState( controller->readers[i]->show() ? Qt::Checked : Qt::Unchecked );
+        connect( viewBox, SIGNAL( toggled( bool ) ), this, SLOT( update_view() ) ); // redraw when box is toggled
         viewBox->setToolTip( ( std::string( "check to make " ) + title + " visible" ).c_str() );
         m_fileLayout->addWidget( viewBox, i + 1, 1, Qt::AlignRight | Qt::AlignTop );
-        m_fileLayout->setRowStretch( i + 1, i + 1 == m_viewer.readers.size() ? 1 : 0 );
-        m_fileGroups[ m_viewer.readers[i]->options.fields ].push_back( viewBox );
+        m_fileLayout->setRowStretch( i + 1, i + 1 == controller->readers.size() ? 1 : 0 );
+        m_fileGroups[ controller->readers[i]->options.fields ].push_back( viewBox );
     }
-    std::size_t i = 1 + m_viewer.readers.size();
+    std::size_t i = 1 + controller->readers.size();
     QLabel* titleLabel = new QLabel( "<b>groups</b>" );
     m_fileLayout->addWidget( titleLabel, i++, 0, Qt::AlignLeft | Qt::AlignTop );
     for( FileGroupMap::const_iterator it = m_fileGroups.begin(); it != m_fileGroups.end(); ++it, ++i )
@@ -164,10 +167,13 @@ void MainWindow::updateFileFrame() // quick and dirty
         CheckBox* viewBox = new CheckBox( boost::bind( &MainWindow::showFileGroup, this, it->first, _1 ) );
         viewBox->setToolTip( ( std::string( "check to make files with fields \"" ) + it->first + "\" visible" ).c_str() );
         m_fileLayout->addWidget( viewBox, i, 1, Qt::AlignRight | Qt::AlignTop );
-        m_fileLayout->setRowStretch( i, i + 1 == m_viewer.readers.size() + fields.size() ? 1 : 0 );
+        m_fileLayout->setRowStretch( i, i + 1 == controller->readers.size() + fields.size() ? 1 : 0 );
     }
 }
-
+void MainWindow::update_view()
+{
+    controller->update_view();
+}
 void MainWindow::toggleFileFrame( bool visible )
 {
     m_fileFrameVisible = visible;
@@ -176,7 +182,7 @@ void MainWindow::toggleFileFrame( bool visible )
 
 void MainWindow::closeEvent( QCloseEvent * )
 {
-    m_viewer.shutdown();
+    controller->shutdown();
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *e)
@@ -189,26 +195,26 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
 } } } // namespace snark { namespace graphics { namespace view {
 
-#elif Qt3D_VERSION==2
-
-#include "reader.h"
-#include "main_window.h"
-
-namespace snark { namespace graphics { namespace view {
-
-main_window::main_window()
-{
-}
-void main_window::keyPressEvent(QKeyEvent *e)
-{
-    if (e->key() == Qt::Key_Escape)
-        close();
-    else
-        QWidget::keyPressEvent(e);
-}
-
-} } } // namespace snark { namespace graphics { namespace view {
-
-#else
-#error Qt3D_VERSION must be 1 or 2
-#endif
+// #elif Qt3D_VERSION==2
+// 
+// #include "reader.h"
+// #include "main_window.h"
+// 
+// namespace snark { namespace graphics { namespace view {
+// 
+// main_window::main_window()
+// {
+// }
+// void main_window::keyPressEvent(QKeyEvent *e)
+// {
+//     if (e->key() == Qt::Key_Escape)
+//         close();
+//     else
+//         QWidget::keyPressEvent(e);
+// }
+// 
+// } } } // namespace snark { namespace graphics { namespace view {
+// 
+// #else
+// #error Qt3D_VERSION must be 1 or 2
+// #endif
