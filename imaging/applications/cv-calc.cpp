@@ -34,6 +34,7 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <tbb/parallel_for.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
@@ -95,6 +96,9 @@ static void usage( bool verbose=false )
     std::cerr << "                                          --non-zero=size,10: output images that have at least 10 non-zero pixels" << std::endl;
     std::cerr << "                                          --non-zero=size,,1000: output images that have not more than 999 non-zero pixels" << std::endl;
     std::cerr << "                                          --non-zero=size,,1: output images with all pixels zero (makes sense only when used with --filters" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    mean" << std::endl;
+    std::cerr << "        --threshold=[<min,max>]: apply a mask (binary threshold, where min <= pixel <= max ) and only calculate mean on pixel matching the mask." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
@@ -361,12 +365,27 @@ int main( int ac, char** av )
         }
         if( operation == "mean" )
         {
+            std::string threshold = options.value< std::string >("--threshold", "");
+            double min = 1, max = 255;
+            if( !threshold.empty() )
+            {
+                auto v = comma::split(threshold, ',');
+                try { 
+                    min = boost::lexical_cast< double >(v[0]); 
+                    max = boost::lexical_cast< double >(v[1]);
+                } catch( boost::bad_lexical_cast bl ) { COMMA_THROW(comma::exception, "cv-calc: mean operation, please set correct --threshold value(s), got '" <<threshold << "'"); }
+            }
             snark::cv_mat::serialization serialization( input_options );
             while( std::cin.good() && !std::cin.eof() )
             {
+                
                 std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
                 if( p.second.empty() ) { return 0; }
-                cv::Scalar mean = cv::mean( p.second );
+                
+                cv::Mat mask;
+                if( !threshold.empty() ) { cv::threshold(p.second, mask, min, max, cv::THRESH_BINARY); }
+                
+                cv::Scalar mean = cv::mean( p.second, threshold.empty() ? cv::noArray() : mask );
                 std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
                 for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); }
                 std::cout.flush();
