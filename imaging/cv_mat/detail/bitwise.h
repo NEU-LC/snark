@@ -75,9 +75,9 @@ namespace bitwise
     };
 
     template< typename I, typename O, typename C >
-    struct visitor : boost::static_visitor< boost::function< O ( I ) > >
+    struct visitor : boost::static_visitor< std::pair< boost::function< O ( I ) >, bool > >
     {
-        typedef typename boost::static_visitor< boost::function< O ( I ) > >::result_type result_type;
+        typedef typename boost::static_visitor< std::pair< boost::function< O ( I ) >, bool > >::result_type result_type;
 
         visitor( const C & c ) : c_( c ) {}
         const C & c_;
