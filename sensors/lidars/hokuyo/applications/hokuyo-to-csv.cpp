@@ -62,10 +62,12 @@ static void usage(bool verbose)
     std::cerr << "options" << std::endl;
     std::cerr << "    --binary,-b:          output binary equivalent of csv" << std::endl;
     std::cerr << "    --fields=<fields>:    output only given fields" << std::endl;
+    std::cerr << "    --dont-omit-on-error: default: skip error responses from device. do not omit output on error, set x,y,z to 0,0,0" << std::endl;
     std::cerr << "    --help,-h:            show this message, optionaly --verbose to see more help" << std::endl;
     std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
     std::cerr << "    --output-fields:      output fields to stdout and exit; requires --serial or --laser" << std::endl;
     std::cerr << "    --output-format,--format: output binary format for given fields to stdout and exit; requires --serial or --laser" << std::endl;
+    std::cerr << "    --permissive:         do not throw error if receiving response for previous request to device" << std::endl;
     std::cerr << "    --reboot-on-error:    if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
     std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
     std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
