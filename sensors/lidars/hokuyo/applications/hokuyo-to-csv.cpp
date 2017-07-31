@@ -49,7 +49,7 @@ using namespace snark::hokuyo;
 namespace hok = snark::hokuyo;
 bool debug_verbose=false;
 bool verbose=false;
-static void usage()
+static void usage(bool verbose)
 {
     std::cerr << std::endl;
     std::cerr << "It puts the laser scanner into scanning mode and broad cast laser data." << std::endl;
@@ -57,34 +57,55 @@ static void usage()
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
     std::cerr << "    hokuyo-to-csv --laser <host:port> [ --fields t,x,y,z,range,bearing,elevation,intensity ]" << std::endl;
-    std::cerr << "    hokuyo-to-csv --serial <device> [--baud-rate=<rate>] [ --fields t,x,y,z,block,range,bearing,elevation,intensity ]" << std::endl;
+    std::cerr << "    hokuyo-to-csv --serial <device> [--baud-rate=<rate>] [ --fields t,x,y,z,block,range,bearing,elevation ]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --binary,-b:          output binary equivalent of csv" << std::endl;
     std::cerr << "    --fields=<fields>:    output only given fields" << std::endl;
-//     std::cerr << "        default: " << comma::join( comma::csv::names< csv_point >( false ), ',' ) << " (" << comma::csv::format::value< csv_point >() << ")" << std::endl;
+    std::cerr << "    --help,-h:            show this message, optionaly --verbose to see more help" << std::endl;
+    std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
+    std::cerr << "    --output-fields:      output fields to stdout and exit; requires --serial or --laser" << std::endl;
+    std::cerr << "    --output-format,--format: output binary format for given fields to stdout and exit; requires --serial or --laser" << std::endl;
+    std::cerr << "    --reboot-on-error:    if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
+    std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
+    std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
+    std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
+    std::cerr << "    --verbose,-v: show more information" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "TCP device option:" << std::endl;
+    std::cerr << "    --laser=:             the TCP connection to the laser <host:port>, mutually exclusive with --serial" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "serial device option:" << std::endl;
+    std::cerr << "    --baud-rate=[<bps>]:  connect using this baud rate, default 0 which means auto (tries all different settings)" << std::endl;
+    std::cerr << "                          supported baud rates for URG-04LX: 19200, 57600, 115200, 500000, (750000)" << std::endl;
+    std::cerr << "    --serial,--port=<device_name>:" << std::endl;
+    std::cerr << "                          device filename for serial port to connect to (e.g. COM1 or /dev/ttyS0 or /dev/usb/ttyUSB0), mutually exclusive with --laser " << std::endl;
+    std::cerr << "    --set-baud-rate=[<bps>]:" << std::endl;
+    std::cerr << "                          default: 500000, change the device's baud rate to <bps>; pass 0 to disable changing baud-rate" << std::endl;
+    std::cerr << std::endl;
+//     if( !verbose ) { exit(0); }
+    
+    std::cerr << "Output fields" << std::endl;
+    std::cerr << "  TCP" << std::endl;
+    std::cerr << "    fields: " << comma::join( comma::csv::names< snark::hokuyo::data_point >(), ','  ) << std::endl;
     std::cerr << "        t:                timestamp" << std::endl;
     std::cerr << "        x,y,z:            cartesian coordinates in sensor frame, where <0,0,0> is no data" << std::endl;
     std::cerr << "        range,bearing,elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
     std::cerr << "        intensity or i:   intensity of the data point" << std::endl;
-    std::cerr << "    --help,-h:            show this message" << std::endl;
-    std::cerr << "    --laser=:             the TCP connection to the laser <host:port>, mutually exclusive with --serial" << std::endl;
-    std::cerr << "    --output-fields:      output fields to stdout and exit; requires --serial or --laser" << std::endl;
-    std::cerr << "    --output-format,--format: output binary format for given fields to stdout and exit; requires --serial or --laser" << std::endl;
-    std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
-    std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
-    std::cerr << "    --reboot-on-error:    if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
-    std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
-    std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
-    std::cerr << "    --verbose: show more information" << std::endl;
+    std::cerr << "    format: " << comma::csv::format::value< snark::hokuyo::data_point >() << std::endl;
     std::cerr << std::endl;
-    std::cerr << "Output" << std::endl;
-    std::cerr << "   fields: " << comma::join( comma::csv::names< snark::hokuyo::data_point >(), ','  ) << std::endl;
-    std::cerr << "   format: " << comma::csv::format::value< snark::hokuyo::data_point >() << std::endl;
-    
+    std::cerr << "  serial" << std::endl;
+    std::cerr << "    fields: " << comma::join( comma::csv::names< snark::hokuyo::scip2_device::output_t >(), ','  ) << std::endl;
+    std::cerr << "        t:                timestamp" << std::endl;
+    std::cerr << "        block:            block of response data from device" << std::endl;
+    std::cerr << "        x,y,z:            cartesian coordinates in sensor frame, where <0,0,0> is no data" << std::endl;
+    std::cerr << "        range,bearing,elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
+    std::cerr << "    format: " << comma::csv::format::value< snark::hokuyo::scip2_device::output_t >() << std::endl;
     std::cerr << std::endl;
-    scip2_device::usage();
-    std::cerr << std::endl;
+    std::cerr << "examples:" << std::endl;
+    std::cerr << "  serial" << std::endl;
+    std::cerr << "    sudo mknod /dev/usb/ttyUSB0 c 188 0" << std::endl;
+    std::cerr << "    sudo hokuyo-to-csv --serial=\"/dev/usb/ttyUSB0\" --num-of-scans=5 --omit-error | view-points --fields=t,x,y,z,block" << std::endl;
     exit( 0 );
 }
 
@@ -178,12 +199,12 @@ static const int UST_SMALL_STEPS = 271;
 int main( int ac, char** av )
 {
     comma::command_line_options options( ac, av );
-    if( options.exists( "--help,-h" ) ) { usage(); }
+    verbose = options.exists( "--verbose,-v" );
+    if( options.exists( "--help,-h" ) ) { usage(verbose); }
 
     try
     {
         options.assert_mutually_exclusive("--laser,--serial");
-        verbose=options.exists( "--verbose" );
         scan_break = options.value< comma::uint32 > ( "--scan-break", 20 ); // time in us
         num_of_scans = options.value< comma::uint32 > ( "--num-of-scans", 100 ); // time in us
         reboot_on_error = options.exists( "--reboot-on-error" );
