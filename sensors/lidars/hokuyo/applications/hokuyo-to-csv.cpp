@@ -57,12 +57,13 @@ static void usage(bool verbose)
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
     std::cerr << "    hokuyo-to-csv --laser <host:port> [ --fields t,x,y,z,range,bearing,elevation,intensity ]" << std::endl;
+    std::cerr << "  or" << std::endl;
     std::cerr << "    hokuyo-to-csv --serial <device> [--baud-rate=<rate>] [ --fields t,x,y,z,block,range,bearing,elevation ]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --binary,-b:          output binary equivalent of csv" << std::endl;
     std::cerr << "    --fields=<fields>:    output only given fields" << std::endl;
-    std::cerr << "    --dont-omit-on-error: default: skip error responses from device. do not omit output on error, set x,y,z to 0,0,0" << std::endl;
+    std::cerr << "    --dont-omit-on-error: default: omit. Do not omit output on error, set x,y,z to 0,0,0" << std::endl;
     std::cerr << "    --help,-h:            show this message, optionaly --verbose to see more help" << std::endl;
     std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
     std::cerr << "    --output-fields:      output fields to stdout and exit; requires --serial or --laser" << std::endl;
