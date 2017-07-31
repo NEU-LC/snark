@@ -707,7 +707,7 @@ int main( int argc, char** argv )
                                                                                  , options.exists( "--camera-config" ) ? &camera_config : NULL
                                                                                  , scene_center
                                                                                  , scene_radius
-                                                                                 , options.exists( "--output-camera-config,--output-camera" ) );
+                                                                                 , options.exists( "--output-camera-config,--output-camera" ) ) );
         
 #elif Qt3D_VERSION==2
 
