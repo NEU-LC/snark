@@ -35,8 +35,10 @@
 
 #include <string>
 #include "types.h"
+#ifndef Q_MOC_RUN
 #include "../../../render/colour_map.h"
 #include "point_with_id.h"
+#endif
 
 namespace snark { namespace graphics { namespace view {
 

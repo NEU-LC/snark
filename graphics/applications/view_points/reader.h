@@ -33,14 +33,16 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_READER_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_READER_H_
 
+#ifndef Q_MOC_RUN
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
-#include <Eigen/Core>
+#include "../../../math/interval.h"
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
+#endif
+#include <Eigen/Core>
 #include "colored.h"
-#include "../../../math/interval.h"
 #if Qt3D_VERSION==1
 #include <Qt3D/qglview.h>
 #else

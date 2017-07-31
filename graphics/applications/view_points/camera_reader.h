@@ -33,11 +33,13 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_CAMERAREADER_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_CAMERAREADER_H_
 
+#ifndef Q_MOC_RUN
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
+#include "../../../visiting/eigen.h"
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
-#include "../../../visiting/eigen.h"
+#endif
 
 namespace snark { namespace graphics { namespace view {
 

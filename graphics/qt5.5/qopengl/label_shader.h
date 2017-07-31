@@ -39,7 +39,6 @@
 #include <QPainter>
 #include <Eigen/Core>
 #include <memory>
-#include <boost/array.hpp>
 
 namespace snark { namespace graphics { namespace qopengl {
 
