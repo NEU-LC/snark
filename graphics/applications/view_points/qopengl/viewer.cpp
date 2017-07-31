@@ -31,7 +31,7 @@
 #include <iostream>
 #include <iomanip>
 
-namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
+namespace snark { namespace graphics { namespace view { namespace qopengl {
 
 std::ostream& operator<<(std::ostream& os, const QVector3D& v)
 {
@@ -40,7 +40,7 @@ std::ostream& operator<<(std::ostream& os, const QVector3D& v)
 
 viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, 
                const QVector3D& arg_scene_center, double arg_scene_radius,QMainWindow* parent) : 
-    qopengl::widget(camera_options,parent),
+    snark::graphics::qopengl::widget(camera_options,parent),
     handler(handler),
     scene_center(arg_scene_center),
     scene_radius_fixed(false),
@@ -106,5 +106,5 @@ void viewer::set_camera_position(const Eigen::Vector3d& position, const Eigen::V
     camera.set_position(QVector3D(0,0,-p.norm()));    //camera is in 0,0,-z in world coordinate
 }
     
-} } } } // namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
+} } } } // namespace snark { namespace graphics { namespace view { namespace qopengl {
     

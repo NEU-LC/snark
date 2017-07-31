@@ -71,6 +71,9 @@ class Viewer : public qt3d::view
         void inhibit_stdout() { m_stdout_allowed = false; }
 
         void shutdown();
+        
+        void add(std::unique_ptr<snark::graphics::view::Reader>&& reader) { readers.push_back( std::move(reader) ); }
+        void update_view() { update(); }
 
         //moved here from reader
 public:

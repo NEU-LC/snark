@@ -150,9 +150,7 @@ static void usage()
         "\n"
         "\n            default: stretched by elevation from cyan to magenta from 0:1"
         "\n"
-        qt55_unsupported_marker_start
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
-        qt55_unsupported_marker_end
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
         "\n    --fill: fill the shape; currently implemented only for triangles"
         "\n    --label <label>: text label displayed next to the latest point"
@@ -204,12 +202,10 @@ static void usage()
         qt55_unsupported_marker_end
         "\n    --size <size>: render last <size> points (or other shapes)"
         "\n                   default 2000000 for points, for 200000 for other shapes"
-        qt55_unsupported_marker_start
         "\n    --title <title>: title for source, defaults to filename"
         "\n                     if set to \"none\" don't show source in selection box"
         "\n                     (but still display data and checkbox)"
         "\n"
-        qt55_unsupported_marker_end
         "\ncamera options"
         "\n    --camera=\"<options>\""
         "\n          <options>: [fov=<fov>];[<type>]"
@@ -225,14 +221,16 @@ static void usage()
         "\n          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>"
         "\n          <stream>: position csv stream with options; default fields: x,y,z,roll,pitch,yaw"
         "\n    --orthographic: use orthographic projection instead of perspective"
-        qt55_unsupported_marker_start
         "\n"
         "\nmore options"
+        qt55_unsupported_marker_start
         "\n    --background-colour <colour> : default: black"
         "\n    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout"
+        qt55_unsupported_marker_end
         "\n    --scene-center,--center=<value>: fixed scene center as \"x,y,z\""
         "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
         "\n                            scene size from the dataset (e.g. for streams)"
+        qt55_unsupported_marker_start
         "\n    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )"
         qt55_unsupported_marker_end
         "\n";
@@ -285,12 +283,13 @@ static void usage()
         "\n    view multiple files"
         "\n        view-points \"raw.csv;colour=0:20\" \"partitioned.csv;fields=x,y,z,id;point-size=2\""
         "\n"
-        qt55_unsupported_marker_start
         "\n    view multiple files with titles"
         "\n        view-points \"raw.csv;colour=0:20;title=raw\" \"partitioned.csv;fields=x,y,z,id;point-size=2;title=partitioned\""
         "\n"
+        qt55_unsupported_marker_start
         "\n    view a cad model"
         "\n        echo \"0,0,0\" | view-points --shape /usr/local/etc/segway.shrimp.obj --z-is-up --orthographic"
+        qt55_unsupported_marker_end
         "\n"
         "\n    use stdin as the primary source for scene radius:"
         "\n        cat xyz.csv | view-points \"-\" scan.csv"
@@ -298,7 +297,6 @@ static void usage()
         "\n    specify fixed scene radius explicitly:"
         "\n        cat xyz.csv | view-points --scene-radius=100"
         "\n"
-        qt55_unsupported_marker_end
         "\n    passing input data through:"
         "\n        cat xyz.csv | view-points \"-;pass-through\" scan.csv"
         "\n"
@@ -321,6 +319,7 @@ static void usage()
         "\n        echo 0,0,0,1 >> points.csv"
         "\n        echo 0,0,0,2 >> points.csv"
         "\n        echo points.csv | view-points \"-;shape=image1.jpg,image2.jpg,image3.jpg;fields=x,y,z,id\""
+        qt55_unsupported_marker_end
         "\n"
         "\n    show points selected with a double right click"
         "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"rose.st.ground.csv;fields=x,y,z,r,g,b\" \"-;colour=sky;weight=10\" > pipe"
@@ -333,7 +332,6 @@ static void usage()
         "\n        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345"
         "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z,id,label;weight=10\" | csv-paste \"-\" line-number line-number > pipe"
         "\n"
-        qt55_unsupported_marker_end
         "\n    an example of many of the supported shapes"
         "\n        for i in {0..15}; do echo \"a=2*3.1415926532/16*$i;s(a)*3;c(a)*3;s(a)*3\" | bc -l | paste -s -d,; done \\"
         "\n            | view-points \"-;weight=5;color=cyan;label=points\" \\"
@@ -341,7 +339,7 @@ static void usage()
         "\n                  <( echo 0,0,2,0,0,0,0.5,2 )\";shape=ellipse;label=ellipse;color=salad\" \\"
         "\n                  <( echo -e \"0,0,-2,0\\n0,1,-2,1\\n0.5,1.5,-2,2\\n1,1,-2,3\\n1,0,-2,4\\n0.5,-0.5,-2,5\" )\";shape=loop;fields=x,y,z,id;label=loop\" \\"
         "\n                  <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\"\\"
-        "\n                  <( echo '-3,-3,-3,0,0,0,6,\"X:Y:Z\"' )\";shape=axis;fields=position,orientation,length,axis_labels\""
+        "\n                  <( echo '-3,-3,-3,0,0,0' )\";shape=axis;fields=position,orientation;length=6;labels=X:Y:Z;label=axis\""
         "\n";
 
     std::cerr
@@ -663,9 +661,7 @@ int main( int argc, char** argv )
         }
 
         bool camera_position_from_stdin = false;
-#if Qt3D_VERSION==1
         QApplication application( argc, argv );
-#endif
         if( options.exists( "--camera-position" ) )
         {
             std::string position = options.value< std::string >( "--camera-position" );
@@ -702,7 +698,7 @@ int main( int argc, char** argv )
         if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
 
 #if Qt3D_VERSION==1
-        snark::graphics::view::Viewer* viewer = new snark::graphics::view::Viewer( background_color
+        std::shared_ptr<snark::graphics::view::Viewer> controller(new snark::graphics::view::Viewer( background_color
                                                                                  , camera_options
                                                                                  , options.exists( "--exit-on-end-of-input" )
                                                                                  , camera_csv
@@ -711,29 +707,8 @@ int main( int argc, char** argv )
                                                                                  , options.exists( "--camera-config" ) ? &camera_config : NULL
                                                                                  , scene_center
                                                                                  , scene_radius
-                                                                                 , options.exists( "--output-camera-config,--output-camera" ) );
-        bool stdin_explicitly_defined = false;
-        for( unsigned int i = 0; i < properties.size(); ++i )
-        {
-            if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
-            viewer->readers.push_back( make_reader( options, csv_options, properties[i] ) );
-        }
-        if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
-        {
-            csv_options.filename = "-";
-            viewer->readers.push_back( make_reader( options, csv_options ) );
-        }
-        if( data_passed_through )
-        {
-            viewer->inhibit_stdout();
-            if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
-        }
-        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), viewer );
-        main_window.show();
-        application.exec();
-        delete viewer;
-        return 0;       // We never actually reach this line because we raise SIGINT when closing
-
+                                                                                 , options.exists( "--output-camera-config,--output-camera" ) ) );
+        
 #elif Qt3D_VERSION==2
 
         color_t background_color;
@@ -742,35 +717,34 @@ int main( int argc, char** argv )
         boost::optional< std::string > s = options.optional< std::string >("--scene-center,--center");
         if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
 
-        QApplication app(argc, argv);
-        snark::graphics::view::main_window main_window;
-        snark::graphics::view::controller controller(&main_window, background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
-                                                     options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" ));
-        controller.viewer->scene_radius_fixed=options.exists("--scene-radius,--radius");
-        controller.viewer->scene_center_fixed=options.exists("--scene-center,--center");
+        std::shared_ptr<snark::graphics::view::controller> controller(new snark::graphics::view::controller(background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
+                                                     options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" )));
+        controller->viewer->scene_radius_fixed=options.exists("--scene-radius,--radius");
+        controller->viewer->scene_center_fixed=options.exists("--scene-center,--center");
+#else
+#error Qt3D_VERSION must be 1 or 2
+#endif
         bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
             if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
-            controller.add(make_reader( options, csv_options, properties[i] ));
+            controller->add(make_reader( options, csv_options, properties[i] ));
         }
         if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
         {
             csv_options.filename = "-";
-            controller.add(make_reader( options, csv_options ));
+            controller->add(make_reader( options, csv_options ));
         }
         if( data_passed_through )
         {
-            controller.inhibit_stdout();
+            controller->inhibit_stdout();
             if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
-        main_window.resize( main_window.sizeHint() );
+        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller );
         main_window.show();
-        return app.exec();
+        application.exec();
+        return 0;       // We never actually reach this line because we raise SIGINT when closing
 
-#else
-#error Qt3D_VERSION must be 1 or 2
-#endif
     }
     catch( std::exception& ex ) { std::cerr << "view-points: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "view-points: unknown exception" << std::endl; }

@@ -55,10 +55,6 @@ namespace snark { namespace graphics { namespace view {
 
 #if Qt3D_VERSION==1
 class Viewer;
-#elif Qt3D_VERSION==2
-namespace qt3d_v2 {
-class viewer;
-}
 #endif
 
 struct reader_parameters
