@@ -69,13 +69,23 @@ namespace {
 
     struct writer
     {
-        typedef boost::static_visitor< boost::function< std::ostream & ( std::ostream & ) > >::result_type result_type;
+        typedef boost::static_visitor< std::pair< boost::function< std::ostream & ( std::ostream & ) >, bool > >::result_type result_type;
 
-        result_type term( const std::string & s ) const { return [ &s ]( std::ostream & os ) -> std::ostream & { os << s; return os; }; }
-        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " & "; opr( os ); os << ')'; return os; }; }
-        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " | "; opr( os ); os << ')'; return os; }; }
-        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl( os ); os << " ^ "; opr( os ); os << ')'; return os; }; }
-        result_type op_not( const result_type & op ) const { return [ op ]( std::ostream & os ) -> std::ostream & { os << "(~"; op( os ); os << ')'; return os; }; }
+        result_type term( const std::string & s ) const {
+            return std::make_pair( [ &s ]( std::ostream & os ) -> std::ostream & { os << s; return os; }, true );
+        }
+        result_type op_and( const result_type & opl, const result_type & opr ) const {
+            return std::make_pair( [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl.first( os ); os << " & "; opr.first( os ); os << ')'; return os; }, opl.second && opr.second );
+        }
+        result_type op_or(  const result_type & opl, const result_type & opr ) const {
+            return std::make_pair( [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl.first( os ); os << " | "; opr.first( os ); os << ')'; return os; }, opl.second && opr.second );
+        }
+        result_type op_xor( const result_type & opl, const result_type & opr ) const {
+            return std::make_pair( [ opl, opr ]( std::ostream & os ) -> std::ostream & { os << '('; opl.first( os ); os << " ^ "; opr.first( os ); os << ')'; return os; }, opl.second && opr.second );
+        }
+        result_type op_not( const result_type & op ) const {
+            return std::make_pair( [ op ]( std::ostream & os ) -> std::ostream & { os << "(~"; op.first( os ); os << ')'; return os; }, op.second );
+        }
     };
 
     template< typename T >
@@ -87,13 +97,23 @@ namespace {
         logician( const lookup_map_t< T > & m ) : m_( m ) {}
         const lookup_map_t< T > & m_;
 
-        typedef typename boost::static_visitor< boost::function< T ( boost::none_t ) > >::result_type result_type;
+        typedef typename boost::static_visitor< std::pair< boost::function< T ( boost::none_t ) >, bool > >::result_type result_type;
 
-        result_type term( const std::string & s ) const { return [ &s, m = m_ ]( boost::none_t ) -> T { return m.at( s ); }; }
-        result_type op_and( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> T { const T & il = opl( boost::none ); const T & ir = opr( boost::none ); return il & ir; }; }
-        result_type op_or(  const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> T { const T & il = opl( boost::none ); const T & ir = opr( boost::none ); return il | ir; }; }
-        result_type op_xor( const result_type & opl, const result_type & opr ) const { return [ opl, opr ]( boost::none_t ) -> T { const T & il = opl( boost::none ); const T & ir = opr( boost::none ); return il ^ ir; }; }
-        result_type op_not( const result_type & op ) const { return [ op ]( boost::none_t ) -> T { const T & i = op( boost::none ); return ~i; }; }
+        result_type term( const std::string & s ) const {
+            return std::make_pair( [ &s, m = m_ ]( boost::none_t ) -> T { return m.at( s ); }, true );
+        }
+        result_type op_and( const result_type & opl, const result_type & opr ) const {
+            return std::make_pair( [ opl, opr ]( boost::none_t ) -> T { const T & il = opl.first( boost::none ); const T & ir = opr.first( boost::none ); return il & ir; }, opl.second && opr.second );
+        }
+        result_type op_or(  const result_type & opl, const result_type & opr ) const {
+            return std::make_pair( [ opl, opr ]( boost::none_t ) -> T { const T & il = opl.first( boost::none ); const T & ir = opr.first( boost::none ); return il | ir; }, opl.second && opr.second );
+        }
+        result_type op_xor( const result_type & opl, const result_type & opr ) const {
+            return std::make_pair( [ opl, opr ]( boost::none_t ) -> T { const T & il = opl.first( boost::none ); const T & ir = opr.first( boost::none ); return il ^ ir; }, opl.second && opr.second );
+        }
+        result_type op_not( const result_type & op ) const {
+            return std::make_pair( [ op ]( boost::none_t ) -> T { const T & i = op.first( boost::none ); return ~i; }, op.second );
+        }
     };
 
     namespace global
@@ -268,7 +288,7 @@ TEST( bitwise, writer )
             std::ostringstream os;
             writer w;
             auto scribe = boost::apply_visitor( visitor< std::ostream &, std::ostream &, writer >( w ), result );
-            scribe( os );
+            scribe.first( os );
             EXPECT_EQ( os.str(), global::expected[i] );
         }
     }
@@ -290,7 +310,7 @@ TEST( bitwise, logical_int )
             {
                 logician< int > l( m );
                 auto worker = boost::apply_visitor( visitor< boost::none_t, int, logician< int > >( l ), result );
-                int r = worker( boost::none );
+                int r = worker.first( boost::none );
                 int q = call_direct( m, global::direct[i] );
                 EXPECT_EQ( r, q );
             }
@@ -326,7 +346,7 @@ TEST( bitwise, logical_matrix )
             {
                 logician< cv::Mat > l( lookup_matrices[j] );
                 auto worker = boost::apply_visitor( visitor< boost::none_t, cv::Mat, logician< cv::Mat > >( l ), result );
-                cv::Mat r = worker( boost::none );
+                cv::Mat r = worker.first( boost::none );
                 int ri = r.at< comma::int16 >(2, 3);
                 int q = call_direct( lookup_ints[j], global::direct[i] );
                 EXPECT_EQ( ri, q );
