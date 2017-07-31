@@ -56,7 +56,7 @@ static void usage(bool verbose)
     std::cerr << "By default it scans using 1081 steps/rays/data points as fast as possible, you can limit it to 271 steps with --start-step." << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
-    std::cerr << "    hokuyo-to-csv --laser <host:port> [ --fields t,x,y,z,range,bearing,elevation,intensity ]" << std::endl;
+    std::cerr << "    hokuyo-to-csv --tcp <host:port> [ --fields t,x,y,z,range,bearing,elevation,intensity ]" << std::endl;
     std::cerr << "  or" << std::endl;
     std::cerr << "    hokuyo-to-csv --serial <device> [--baud-rate=<rate>] [ --fields t,x,y,z,block,range,bearing,elevation ]" << std::endl;
     std::cerr << std::endl;
@@ -66,8 +66,8 @@ static void usage(bool verbose)
     std::cerr << "    --dont-omit-on-error: default: omit. Do not omit output on error, set x,y,z to 0,0,0" << std::endl;
     std::cerr << "    --help,-h:            show this message, optionaly --verbose to see more help" << std::endl;
     std::cerr << "    --num-of-scans:       How many scans is requested for ME requests, default is 100 - 0 for continuous ( data verification problem with 0 )." << std::endl;
-    std::cerr << "    --output-fields:      output fields to stdout and exit; requires --serial or --laser" << std::endl;
-    std::cerr << "    --output-format,--format: output binary format for given fields to stdout and exit; requires --serial or --laser" << std::endl;
+    std::cerr << "    --output-fields:      output fields to stdout and exit; requires --serial or --tcp" << std::endl;
+    std::cerr << "    --output-format,--format: output binary format for given fields to stdout and exit; requires --serial or --tcp" << std::endl;
     std::cerr << "    --permissive:         do not throw error if receiving response for previous request to device" << std::endl;
     std::cerr << "    --reboot-on-error:    if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
     std::cerr << "    --scan-break:         How many usec of sleep time between ME request and reponses received before issuing another ME request, default is 20us." << std::endl;
@@ -76,13 +76,14 @@ static void usage(bool verbose)
     std::cerr << "    --verbose,-v: show more information" << std::endl;
     std::cerr << std::endl;
     std::cerr << "TCP device option:" << std::endl;
-    std::cerr << "    --laser=:             the TCP connection to the laser <host:port>, mutually exclusive with --serial" << std::endl;
+    std::cerr << "    --tcp,--laser=:       the TCP connection to the laser <host:port>, mutually exclusive with --serial" << std::endl;
+    std::cerr << "                          not removing --laser because of backward compatibility only, use --tcp" << std::endl;
     std::cerr << std::endl;
     std::cerr << "serial device option:" << std::endl;
     std::cerr << "    --baud-rate=[<bps>]:  connect using this baud rate, default 0 which means auto (tries all different settings)" << std::endl;
     std::cerr << "                          supported baud rates for URG-04LX: 19200, 57600, 115200, 500000, (750000)" << std::endl;
     std::cerr << "    --serial,--port=<device_name>:" << std::endl;
-    std::cerr << "                          device filename for serial port to connect to (e.g. COM1 or /dev/ttyS0 or /dev/usb/ttyUSB0), mutually exclusive with --laser " << std::endl;
+    std::cerr << "                          device filename for serial port to connect to (e.g. COM1 or /dev/ttyS0 or /dev/usb/ttyUSB0), mutually exclusive with --tcp " << std::endl;
     std::cerr << "    --set-baud-rate=[<bps>]:" << std::endl;
     std::cerr << "                          default: 500000, change the device's baud rate to <bps>; pass 0 to disable changing baud-rate" << std::endl;
     std::cerr << std::endl;
@@ -207,6 +208,7 @@ int main( int ac, char** av )
 
     try
     {
+        options.assert_mutually_exclusive("--tcp,--serial");
         options.assert_mutually_exclusive("--laser,--serial");
         scan_break = options.value< comma::uint32 > ( "--scan-break", 20 ); // time in us
         num_of_scans = options.value< comma::uint32 > ( "--num-of-scans", 100 ); // time in us
@@ -218,7 +220,7 @@ int main( int ac, char** av )
         omit_on_error = ! options.exists("--dont-omit-on-error");
         bool permissive = options.exists( "--permissive" );
         std::vector< std::string > unnamed = options.unnamed( "--output-fields,--output-format,--format,--verbose,-v,--flush,--reboot-on-error,--debug,--output-samples,--dont-omit-on-errork,--permissive",
-                                                              "--frames,--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--binary,-b,--baud-rate,--set-baud-rate");
+                                                              "--frames,--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--tcp,--laser,--fields,--binary,-b,--baud-rate,--set-baud-rate");
         if(!unnamed.empty()) { std::cerr<<"invalid option(s):"<< comma::join(unnamed, ',') <<std::endl; return 1; }
         
         scip2_device scip2;
@@ -242,7 +244,7 @@ int main( int ac, char** av )
         // see sick-ldmrs-to-csv
         if( options.exists( "--output-format,--format" ) ) 
         {
-            if( !options.exists("--laser") && !options.exists("--serial") ) { std::cerr << name() << "please specify --serial for serial deivice or --laser for tcp device" << std::endl; return 1; }
+            if( !options.exists("--tcp") && !options.exists("--serial") ) { std::cerr << name() << "please specify --serial or --tcp" << std::endl; return 1; }
             if(serial) { std::cout << comma::csv::format::value< scip2_device::output_t >( csv.fields, false ) << std::endl; }
             else { std::cout << comma::csv::format::value< snark::hokuyo::data_point >( csv.fields, false ) << std::endl; }
             return 0; 
@@ -250,7 +252,7 @@ int main( int ac, char** av )
         }
         if(options.exists("--output-fields"))
         {
-            if( !options.exists("--laser") && !options.exists("--serial") ) { std::cerr << name() << "please specify --serial for serial deivice or --laser for tcp device" << std::endl; return 1; }
+            if( !options.exists("--tcp") && !options.exists("--serial") ) { std::cerr << name() << "please specify --serial or --tcp" << std::endl; return 1; }
             if(!csv.fields.empty()) {std::cout<<csv.fields<<std::endl;}
             else if(serial) { std::cout<<comma::join(comma::csv::names<scip2_device::output_t>(), ',')<<std::endl;}
             else {std::cout<<comma::join(comma::csv::names<snark::hokuyo::data_point>(), ',')<<std::endl;}

@@ -31,7 +31,7 @@ struct ust_device:public laser_device
     virtual void init(comma::command_line_options options)
     {
         //get args
-        address=options.value< std::string >( "--laser" );
+        address=options.value< std::string >( "--tcp,--laser" );
     }
     virtual boost::shared_ptr< stream_base > connect();
     virtual void setup(stream_base& ios) { } //nothing to do
