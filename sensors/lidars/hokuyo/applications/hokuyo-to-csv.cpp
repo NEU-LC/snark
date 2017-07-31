@@ -57,10 +57,9 @@ static void usage()
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
     std::cerr << "    hokuyo-to-csv --laser <host:port> [ --fields t,x,y,z,range,bearing,elevation,intensity ]" << std::endl;
+    std::cerr << "    hokuyo-to-csv --serial <device> [--baud-rate=<rate>] [ --fields t,x,y,z,block,range,bearing,elevation,intensity ]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --laser=:             the TCP connection to the laser <host:port>" << std::endl;
-    std::cerr << "    --help,-h:            show this message" << std::endl;
     std::cerr << "    --binary,-b:          output binary equivalent of csv" << std::endl;
     std::cerr << "    --fields=<fields>:    output only given fields" << std::endl;
 //     std::cerr << "        default: " << comma::join( comma::csv::names< csv_point >( false ), ',' ) << " (" << comma::csv::format::value< csv_point >() << ")" << std::endl;
@@ -68,8 +67,10 @@ static void usage()
     std::cerr << "        x,y,z:            cartesian coordinates in sensor frame, where <0,0,0> is no data" << std::endl;
     std::cerr << "        range,bearing,elevation or r,b,e: polar coordinates in sensor frame" << std::endl;
     std::cerr << "        intensity or i:   intensity of the data point" << std::endl;
-    std::cerr << "    --output-fields:      output fields to stdout and exit; use --scip2 for scip2 fields" << std::endl;
-    std::cerr << "    --output-format,--format: output binary format for given fields to stdout and exit" << std::endl;
+    std::cerr << "    --help,-h:            show this message" << std::endl;
+    std::cerr << "    --laser=:             the TCP connection to the laser <host:port>, mutually exclusive with --serial" << std::endl;
+    std::cerr << "    --output-fields:      output fields to stdout and exit; requires --serial or --laser" << std::endl;
+    std::cerr << "    --output-format,--format: output binary format for given fields to stdout and exit; requires --serial or --laser" << std::endl;
     std::cerr << "    --start-step=<0-890>: Scan starting at a start step and go to (step+270) wich covers 67.75\" which is 270\"/4." << std::endl;
     std::cerr << "                          Does not perform a full 270\" scan." << std::endl;
     std::cerr << "    --reboot-on-error:    if failed to put scanner into scanning mode, reboot the scanner." << std::endl;
@@ -181,6 +182,7 @@ int main( int ac, char** av )
 
     try
     {
+        options.assert_mutually_exclusive("--laser,--serial");
         verbose=options.exists( "--verbose" );
         scan_break = options.value< comma::uint32 > ( "--scan-break", 20 ); // time in us
         num_of_scans = options.value< comma::uint32 > ( "--num-of-scans", 100 ); // time in us
@@ -191,18 +193,14 @@ int main( int ac, char** av )
         frames=options.value<int>("--frames",-1);
         omit_on_error = ! options.exists("--dont-omit-on-error");
         bool permissive = options.exists( "--permissive" );
-        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--output-format,--format,--verbose,-v,--flush,--reboot-on-error,--debug,--scip2,--output-samples,--dont-omit-on-errork,--permissive",
+        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--output-format,--format,--verbose,-v,--flush,--reboot-on-error,--debug,--output-samples,--dont-omit-on-errork,--permissive",
                                                               "--frames,--scan-break,--num-of-scans,--start-step,--end-step,--serial,--port,--laser,--fields,--binary,-b,--baud-rate,--set-baud-rate");
-        if(!unnamed.empty())
-        {
-            std::cerr<<"invalid option(s):"<< comma::join(unnamed, ',') <<std::endl;
-            return 1;
-        }
+        if(!unnamed.empty()) { std::cerr<<"invalid option(s):"<< comma::join(unnamed, ',') <<std::endl; return 1; }
         
         scip2_device scip2;
         ust_device<UST_SMALL_STEPS> ust_small( permissive );
         ust_device<UST_MAX_STEPS> ust_max( permissive );
-        bool serial=options.exists("--scip2") || options.exists( "--serial");
+        const bool serial = options.exists( "--serial");
         laser_device& device = serial ? scip2 : (start_step ?  (laser_device&)ust_small : (laser_device&)ust_max);
         
         // Sets up output data
@@ -220,6 +218,7 @@ int main( int ac, char** av )
         // see sick-ldmrs-to-csv
         if( options.exists( "--output-format,--format" ) ) 
         {
+            if( !options.exists("--laser") && !options.exists("--serial") ) { std::cerr << name() << "please specify --serial for serial deivice or --laser for tcp device" << std::endl; return 1; }
             if(serial) { std::cout << comma::csv::format::value< scip2_device::output_t >( csv.fields, false ) << std::endl; }
             else { std::cout << comma::csv::format::value< snark::hokuyo::data_point >( csv.fields, false ) << std::endl; }
             return 0; 
@@ -227,6 +226,7 @@ int main( int ac, char** av )
         }
         if(options.exists("--output-fields"))
         {
+            if( !options.exists("--laser") && !options.exists("--serial") ) { std::cerr << name() << "please specify --serial for serial deivice or --laser for tcp device" << std::endl; return 1; }
             if(!csv.fields.empty()) {std::cout<<csv.fields<<std::endl;}
             else if(serial) { std::cout<<comma::join(comma::csv::names<scip2_device::output_t>(), ',')<<std::endl;}
             else {std::cout<<comma::join(comma::csv::names<snark::hokuyo::data_point>(), ',')<<std::endl;}
@@ -246,27 +246,17 @@ int main( int ac, char** av )
         device.setup(*ios);
         if(serial)
         {
-            if(debug_verbose)
-                ((serial_stream&)*ios).dump_setting();
+            if(debug_verbose) { ((serial_stream&)*ios).dump_setting(); }
 //             debug_msg("change serial settings");
 //             const char* ss_cmd="SS500000\n";
             process(scip2);
         }
         else
         {
-            if(start_step)
-                process(ust_small);
-            else
-                process(ust_max);
+            if(start_step) { process(ust_small); } else { process(ust_max); }
         }
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << name() << ex.what() << std::endl; return 1;
-    }
-    catch( ... )
-    {
-        std::cerr << name() << "unknown exception" << std::endl; return 1;
-    }
+    catch( std::exception& ex ) { std::cerr << name() << ex.what() << std::endl; return 1; }
+    catch( ... ) { std::cerr << name() << "unknown exception" << std::endl; return 1; }
     return 0;
 }

@@ -19,12 +19,11 @@ utm_30lx scip2_device::utm_30lx_;
 
 void scip2_device::usage()
 {
-    std::cerr << "scip2 options:" << std::endl;
-    std::cerr << "    --scip2: use SCIP2 protocol (for URG-04LX device using serial communication, optional" << std::endl;
-    std::cerr << "    --serial,--port=<device_name>: device filename for serial port to connect to (e.g. COM1 or /dev/ttyS0 or /dev/usb/ttyUSB0) " << std::endl;
-    std::cerr << "        either this option or --laser must be specified, the protocol will be selected to match" << std::endl;
+    std::cerr << "serial options:" << std::endl;
     std::cerr << "    --baud-rate=<bps>: connect using this baud rate, default 0 which means auto (tries all different settings)" << std::endl;
     std::cerr << "        supported baud rates for URG-04LX: 19200, 57600, 115200, 500000, (750000)" << std::endl;
+    std::cerr << "    --serial,--port=<device_name>: device filename for serial port to connect to (e.g. COM1 or /dev/ttyS0 or /dev/usb/ttyUSB0) " << std::endl;
+    std::cerr << "        either this option or --laser must be specified, the protocol will be selected to match" << std::endl;
     std::cerr << "    --set-baud-rate=<bps>: change the device's baud rate to <bps>, default 500000; pass 0 to disable changing baud-rate" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    output:" << std::endl;
