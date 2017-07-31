@@ -29,11 +29,13 @@
 
 #pragma once
 
+#ifndef Q_MOC_RUN
 #include <boost/array.hpp>
+#include "../../../visiting/eigen.h"
+#endif
 #include <Eigen/Core>
 #include <QColor>
 #include <GL/gl.h>
-#include "../../../visiting/eigen.h"
 
 namespace snark { namespace graphics { namespace qopengl {
 
