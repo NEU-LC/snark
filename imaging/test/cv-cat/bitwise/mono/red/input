@@ -1,1 +1,1 @@
-filter="linear-combination:r|convert-to:ub|threshold:4"
+mask="linear-combination:r|convert-to:ub|threshold:4"
