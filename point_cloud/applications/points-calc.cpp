@@ -452,20 +452,6 @@ static void angle_axis_for_pairs()
     }
 }
 
-void output_points(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2)
-{
-    if( csv.binary() )
-    {
-        std::cout.write( reinterpret_cast< const char* >( &p1 ), sizeof( double ) * 3 );
-        std::cout.write( reinterpret_cast< const char* >( &p2 ), sizeof( double ) * 3 );
-        if( csv.flush ) { std::cout.flush(); }
-    }
-    else 
-    {
-        std::cout << ascii.put( p1 ) << csv.delimiter << ascii.put( p2 ) << std::endl; 
-    }
-}
-
 static void discretise( double step, double tolerance )
 {
     if( csv.has_some_of_fields( "first,first/x,first/y,first/z,second,second/x,second/y,second/z" ) )
