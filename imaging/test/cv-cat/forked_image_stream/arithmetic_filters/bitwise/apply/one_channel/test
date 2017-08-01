@@ -1,0 +1,42 @@
+#!/bin/bash
+
+source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
+
+mask_values="122,122,127,130,130,130"
+
+function make_mask()
+{
+    echo "$mask_values" \
+        | csv-to-bin 6ub \
+        | cv-cat --input "no-header;rows=2;cols=3;type=ub" --output "no-header=0"
+}
+
+mask_file=mask.bin
+[[ -d output ]] && mask_file="output/mask.bin"
+
+make_mask >"$mask_file"
+
+function print_mask()
+{
+    cv-cat "$1" | image-to-csv | csv-shuffle --fields=t,r,c,v --output-fields=r,c,v | name-value-from-csv r,c,v --indices=r,c | csv-quote --delimiter = --unquote
+}
+
+cat "$mask_file" | print_mask "invert;threshold=127" | sed "s@^@first/@"
+cat "$mask_file" | print_mask "threshold=124" | sed "s@^@second/@"
+
+function process()
+{
+    local op=$1
+    csv-to-bin 6i \
+        | cv-cat --input "no-header;rows=2;cols=3;type=i" --output "no-header=0" \
+        | cv-cat "bitwise=load:$mask_file|invert|threshold:127 $op load:$mask_file|threshold:124;convert-to=f,normalize" \
+        | csv-from-bin "t,3ui,6f" \
+        | csv-shuffle --fields="t,rows,cols,type,v0,v1,v2,v3,v4,v5" --output-fields="v0,v1,v2,v3,v4,v5" \
+        | gawk '{ print "image[" NR-1 "]=\"" $0 "\""  }'
+}
+
+input=$( cat )
+
+echo "$input" | process "xor" | sed 's@^@xor/@'
+echo "$input" | process "or"  | sed 's@^@or/@'
+echo "$input" | process "and" | sed 's@^@and/@'

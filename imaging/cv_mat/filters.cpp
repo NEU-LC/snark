@@ -697,7 +697,18 @@ struct mask_impl_ {
         m.second.copyTo( n.second, f );
         return n;
     }
+};
 
+template < typename H >
+struct bitwise_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    value_type operator()( value_type m, boost::function< value_type( value_type ) > operation )
+    {
+        value_type n;
+        n.first = m.first;
+        n.second = operation( m ).second;
+        return n;
+    }
 };
 
 struct blur_t
@@ -2721,6 +2732,16 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              auto operand_filters = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
              auto op = arithmetic< H >::str_to_operation(e[0]);
              f.push_back( filter_type( boost::bind< value_type_t >( arithmetic< H >( op ), _1, operand_filters.first ), operand_filters.second ) );
+        }
+        else if( e[0] == "bitwise" )
+        {
+             if( e.size() == 1 ) { COMMA_THROW( comma::exception, e[0] << ": please specify " << e[0] << " filters" ); }
+             if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
+             snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
+             maker_t m( get_timestamp, '|', ':' );
+             composer_t c( m );
+             auto operand_filters = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
+             f.push_back( filter_type( boost::bind< value_type_t >( bitwise_impl_< H >(), _1, operand_filters.first ), operand_filters.second ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
