@@ -1,0 +1,5 @@
+input=../points.csv
+resolution=1.0
+rate=0.5
+payload=foo,bar,baz
+fields=x,y,z,a,b,c
