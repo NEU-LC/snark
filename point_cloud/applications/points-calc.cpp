@@ -452,33 +452,6 @@ static void angle_axis_for_pairs()
     }
 }
 
-static void thin( double resolution )
-{
-    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
-    boost::optional< Eigen::Vector3d > last;
-    double distance = 0;
-    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
-    {
-        const Eigen::Vector3d* p = istream.read();
-        if( !p ) { break; }
-        distance += last ? ( *p - *last ).norm() : 0;
-        if( !last || distance >= resolution )
-        {
-            distance = 0;
-            if( csv.binary() )
-            {
-                std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
-                if( csv.flush ) { std::cout.flush(); }
-            }
-            else
-            {
-                std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << std::endl;
-            }
-        }
-        last = *p;
-    }
-}
-
 void output_points(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2)
 {
     if( csv.binary() )
@@ -940,7 +913,29 @@ int main( int ac, char** av )
             double resolution = options.value< double >( "--resolution" );
             if( options.exists( "--linear" ))
             {
-                thin( resolution );
+                comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+                boost::optional< Eigen::Vector3d > last;
+                double distance = 0;
+                while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+                {
+                    const Eigen::Vector3d* p = istream.read();
+                    if( !p ) { break; }
+                    distance += last ? ( *p - *last ).norm() : 0;
+                    if( !last || distance >= resolution )
+                    {
+                        distance = 0;
+                        if( csv.binary() )
+                        {
+                            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+                            if( csv.flush ) { std::cout.flush(); }
+                        }
+                        else
+                        {
+                            std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << std::endl;
+                        }
+                    }
+                    last = *p;
+                }
             }
             else
             {
