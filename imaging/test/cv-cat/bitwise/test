@@ -35,10 +35,10 @@ function bin_to_path_value()
 
 function apply_mask()
 {
-    local filter=$1
+    local mask=$1
     local prefix=$2
     cat "$output_dir/original.bin" \
-        | cv-cat "mask=$filter" > "$output_dir/$prefix.bin" || { echo "$scriptname: error in cv-cat filter '$filter'" >&2; return 1; }
+        | cv-cat "mask=$mask" > "$output_dir/$prefix.bin" || { echo "$scriptname: error in cv-cat mask '$mask'" >&2; return 1; }
     bin_to_path_value "$prefix" || return 1
     return 0
 }
@@ -60,4 +60,4 @@ comma_status_ok || { echo "$scriptname: cannot generate '$output_dir/original.bi
 
 bin_to_path_value "original" || return 1
 
-apply_mask "$input_filter" "filtered" || exit 1
+apply_mask "$input_mask" "filtered" || exit 1
