@@ -2706,7 +2706,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
              snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
-             maker_t m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
+             maker_t m( get_timestamp, '|', ':' );
              composer_t c( m );
              auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
              f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, g.first ), g.second ) );
@@ -2715,7 +2715,10 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         {
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, e[0] << ": please specify " << e[0] << " filters" ); }
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
-             std::pair< functor_type, bool > operand_filters = maker_t( get_timestamp, '|', ':' )( e[1] );
+             snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
+             maker_t m( get_timestamp, '|', ':' );
+             composer_t c( m );
+             auto operand_filters = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
              auto op = arithmetic< H >::str_to_operation(e[0]);
              f.push_back( filter_type( boost::bind< value_type_t >( arithmetic< H >( op ), _1, operand_filters.first ), operand_filters.second ) );
         }
