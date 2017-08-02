@@ -380,9 +380,7 @@ int main( int ac, char** av )
                 if( p.second.empty() ) { return 0; }
                 
                 // TBD apply a mask first then count non-zeros
-                std::vector< cv::Point > non_zeros;
-                cv::findNonZero(p.second, non_zeros );
-                comma::uint32 count = non_zeros.size();
+                comma::uint32 count = cv::countNonZero(p.second);
                 
                 for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); }
                 output_serialization.write(std::cout, p);
@@ -407,9 +405,7 @@ int main( int ac, char** av )
                 if( threshold ) 
                 { 
                     cv::threshold(p.second, mask, *threshold, 255, cv::THRESH_BINARY); 
-                    std::vector< cv::Point > non_zeros;
-                    cv::findNonZero(mask, non_zeros );
-                    count = non_zeros.size();
+                    count = cv::countNonZero(mask);
                 }
                 
                 cv::Scalar mean = cv::mean( p.second, !threshold ? cv::noArray() : mask );
