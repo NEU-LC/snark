@@ -102,7 +102,8 @@ static void usage( bool verbose=false )
     std::cerr << "    mean" << std::endl;
     std::cerr << "        --threshold=[<thresh>]: apply a mask (binary threshold) and only calculate mean on pixel matching the mask." << std::endl;
     std::cerr << "              default: calculate a mean on all pixels" << std::endl;
-    std::cerr << "        default output fields: t,rows,cols,type,pixel_count,mean" << std::endl;
+    std::cerr << "        default output fields: t,rows,cols,type,mean,count" << std::endl;
+    std::cerr << "                               count: total number of non-zero pixels used in calculating the mean" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
@@ -369,8 +370,8 @@ int main( int ac, char** av )
         }
         if( operation == "mean" )
         {
-            if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,count,mean" << std::endl;  exit(0); }
-            if( options.exists("--output-format") ) { std::cout << "t,3ui,ui,d" << std::endl;  exit(0); }
+            if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,mean,count" << std::endl;  exit(0); }
+            if( options.exists("--output-format") ) { std::cout << "t,3ui,d,ui" << std::endl;  exit(0); }
             auto threshold = options.optional< double >("--threshold");
             snark::cv_mat::serialization serialization( input_options );
             while( std::cin.good() && !std::cin.eof() )
@@ -390,11 +391,7 @@ int main( int ac, char** av )
                 cv::Scalar mean = cv::mean( p.second, !threshold ? cv::noArray() : mask );
                 
                 std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
-                for( int i = 0; i < p.second.channels(); ++i ) 
-                { 
-                    std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); 
-                    std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); 
-                }
+                for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); }
                 std::cout.flush();
             }
             return 0;
