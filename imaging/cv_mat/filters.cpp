@@ -2659,14 +2659,19 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
 
         result_type term( const std::string & s ) const { return m_( s ); };
         result_type op_and( const result_type & opl, const result_type & opr ) const { 
-            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); return std::make_pair( i.first, l.second & r.second ); }, opl.second && opr.second ); }
+            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); composer::assert_integer( l ); composer::assert_integer( r ); return std::make_pair( i.first, l.second & r.second ); }, opl.second && opr.second ); }
         result_type op_or( const result_type & opl, const result_type & opr ) const { 
-            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); return std::make_pair( i.first, l.second | r.second ); }, opl.second && opr.second ); 
+            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); composer::assert_integer( l ); composer::assert_integer( r ); return std::make_pair( i.first, l.second | r.second ); }, opl.second && opr.second ); 
         }
         result_type op_xor( const result_type & opl, const result_type & opr ) const { 
-            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); return std::make_pair( i.first, l.second ^ r.second ); }, opl.second && opr.second ); 
+            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); composer::assert_integer( l ); composer::assert_integer( r ); return std::make_pair( i.first, l.second ^ r.second ); }, opl.second && opr.second ); 
         }
-        result_type op_not( const result_type & op ) const { return std::make_pair( [ op ]( const input_type & i ) -> input_type { const input_type & o = op.first( i ); return std::make_pair( i.first, ~o.second ); }, op.second ); }
+        result_type op_not( const result_type & op ) const { return std::make_pair( [ op ]( const input_type & i ) -> input_type { const input_type & o = op.first( i ); composer::assert_integer( o ); return std::make_pair( i.first, ~o.second ); }, op.second ); }
+
+        static void assert_integer( const input_type & i )
+        {
+            if ( i.second.depth() == CV_32F || i.second.depth() == CV_64F ) { COMMA_THROW( comma::exception, "bitwise operations shall be done on integer inputs" ); }
+        }
     };
 
 };
