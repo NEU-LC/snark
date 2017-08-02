@@ -39,24 +39,25 @@ class camera_options;
 } } }
 typedef snark::graphics::qopengl::color_t color_t;
 
-namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
+namespace snark { namespace graphics { namespace view { namespace qopengl {
 
 /**
  * redner and camera functions
  * qt3d v2 specific rednering, most functions are implemented in widget
  * this class implements interface used by controller
  */
-class viewer : public qopengl::widget
+class viewer : public snark::graphics::qopengl::widget
 {
     Q_OBJECT
 public:
     controller_base* handler;
     QVector3D scene_center;
-    bool scene_radius_fixed_;
-    bool scene_center_fixed_;
+    bool scene_radius_fixed;
+    bool scene_center_fixed;
     
 public:
-    viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, const QVector3D& scene_center, double scene_radius,QMainWindow* parent=NULL);
+    viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, 
+           const QVector3D& scene_center, double scene_radius,QMainWindow* parent=NULL);
     void reset_handler(controller_base* h=NULL);
     
 protected:
@@ -80,5 +81,5 @@ public:
 };
     
 
-} } } } // namespace snark { namespace graphics { namespace view { namespace qt3d_v2 {
+} } } } // namespace snark { namespace graphics { namespace view { namespace qopengl {
 

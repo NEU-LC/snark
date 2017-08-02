@@ -103,6 +103,17 @@ struct vertex_t
 typedef qopengl::vertex_t vertex_t;
 #endif
 
-    
+#if Qt3D_VERSION==1
+class Viewer;
+typedef Viewer viewer_t;
+
+#elif Qt3D_VERSION==2
+namespace qopengl {
+class viewer;
+} // namespace qopengl {
+typedef qopengl::viewer viewer_t;
+
+#endif
+
 } } } // namespace snark { namespace graphics { namespace view {
 

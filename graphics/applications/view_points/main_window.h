@@ -33,11 +33,10 @@
 #ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
 
-#if Qt3D_VERSION==1
-
 #include <QCheckBox>
 #include <QMainWindow>
-#include "qt3d_v1/viewer.h"
+
+#include "controller.h"
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -57,11 +56,13 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        MainWindow( const std::string& title, snark::graphics::view::Viewer* viewer );
+        MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& controller );
     
+private slots:
+    void update_view();
     private:
         QMenu* m_viewMenu;
-        Viewer& m_viewer;
+        std::shared_ptr<snark::graphics::view::controller> controller;
         QFrame* m_fileFrame;
         QGridLayout* m_fileLayout;
         bool m_fileFrameVisible;
@@ -91,30 +92,5 @@ class CheckBox : public QCheckBox // quick and dirty
 };
 
 } } } // namespace snark { namespace graphics { namespace view {
-
-#elif Qt3D_VERSION==2
-
-#include "../../qt5.5/qopengl/widget.h"
-#include <QMainWindow>
-#include <QKeyEvent>
-
-namespace snark { namespace graphics { namespace view {
-
-class Reader;
-
-class main_window : public QMainWindow
-{
-    Q_OBJECT
-public:
-    main_window();
-private:
-    void keyPressEvent( QKeyEvent *e );
-};
-
-} } } // namespace snark { namespace graphics { namespace view {
-
-#else
-#error Qt3D_VERSION must be 1 or 2
-#endif
 
 #endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_*/

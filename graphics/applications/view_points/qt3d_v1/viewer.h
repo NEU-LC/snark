@@ -42,10 +42,8 @@
 #include <boost/property_tree/ptree.hpp>
 #endif
 #include "../../../qt3d/qt3d_v1/view.h"
-#ifndef Q_MOC_RUN
 #include "../camera_reader.h"
 #include "../reader.h"
-#endif
 #include <memory>
 
 namespace snark { namespace graphics { namespace view {
@@ -71,6 +69,9 @@ class Viewer : public qt3d::view
         void inhibit_stdout() { m_stdout_allowed = false; }
 
         void shutdown();
+        
+        void add(std::unique_ptr<snark::graphics::view::Reader>&& reader);
+        void update_view() { update(); }
 
         //moved here from reader
 public:

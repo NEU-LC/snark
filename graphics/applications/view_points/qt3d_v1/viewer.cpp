@@ -107,7 +107,7 @@ void Viewer::shutdown()
     if( m_cameraReader ) { m_cameraReader->shutdown(); }
     for( unsigned int i = 0; i < readers.size(); ++i ) { readers[i]->shutdown(); }
 }
-
+void Viewer::add(std::unique_ptr<snark::graphics::view::Reader>&& reader) { readers.push_back(std::move(reader)); }
 void Viewer::initializeGL( QGLPainter *painter )
 {
     (void) painter;
