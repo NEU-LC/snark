@@ -47,6 +47,16 @@
 #include <boost/assign/list_of.hpp>
 #include <boost/mpl/list.hpp>
 #include <boost/mpl/for_each.hpp>
+#include <Eigen/Core>
+#include <opencv2/contrib/contrib.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/imgproc/imgproc_c.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui/highgui_c.h>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_reduce.h>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <comma/csv/ascii.h>
@@ -57,32 +67,22 @@
 #include <comma/name_value/parser.h>
 #include <comma/name_value/serialize.h>
 #include <comma/application/verbose.h>
-#include <Eigen/Core>
-#include <opencv2/contrib/contrib.hpp>
-#include <opencv2/features2d/features2d.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/imgproc/imgproc_c.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/highgui/highgui_c.h>
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range.h>
 #include "../camera/pinhole.h"
 #include "../camera/traits.h"
 #include "../../timing/timestamped.h"
 #include "../../timing/traits.h"
 #include "filters.h"
-#include "detail/ratio.h"
-#include "detail/bitwise.h"
 #include "serialization.h"
 #include "traits.h"
 #include "depth_traits.h"
 #include "../vegetation/filters.h"
-#include "tbb/parallel_reduce.h"
-#include "detail/utils.h"
-#include "detail/load.h"
 #include "detail/accumulated.h"
 #include "detail/arithmetic.h"
+#include "detail/bitwise.h"
+#include "detail/load.h"
 #include "detail/morphology.h"
+#include "detail/ratio.h"
+#include "detail/utils.h"
 
 namespace {
 
@@ -2698,8 +2698,6 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
     typedef typename impl::filters< H >::value_type value_type_t;
     typedef typename impl::filters< H >::filter_type filter_type;
     typedef typename filter_type::input_type input_type;
-    typedef typename filter_type::output_type output_type;
-    typedef boost::function< output_type( input_type ) > functor_type;
     typedef typename make_filter< cv::Mat, H >::maker maker_t;
     typedef typename make_filter< cv::Mat, H >::composer composer_t;
 
