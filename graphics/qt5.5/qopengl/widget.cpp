@@ -184,7 +184,8 @@ void widget::paintGL()
 
 void widget::update_projection()
 {
-    
+    // convert far plane from user space coordinates to camera/world, taking into account camera zoom
+    double fp=far_plane+camera.get_position().length();
     double aspect_ratio = (double) width() / height();
     camera.projection.setToIdentity();
     if( camera_options_.orthographic )
@@ -193,7 +194,7 @@ void widget::update_projection()
     }
     else
     {
-        camera.projection.perspective(camera_options_.field_of_view, aspect_ratio,near_plane,far_plane);
+        camera.projection.perspective(camera_options_.field_of_view, aspect_ratio,near_plane,fp);
     }
 }
 void widget::set_far_plane(float f)

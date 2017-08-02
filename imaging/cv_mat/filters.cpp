@@ -697,7 +697,18 @@ struct mask_impl_ {
         m.second.copyTo( n.second, f );
         return n;
     }
+};
 
+template < typename H >
+struct bitwise_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    value_type operator()( value_type m, boost::function< value_type( value_type ) > operation )
+    {
+        value_type n;
+        n.first = m.first;
+        n.second = operation( m ).second;
+        return n;
+    }
 };
 
 struct blur_t
@@ -2648,14 +2659,19 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
 
         result_type term( const std::string & s ) const { return m_( s ); };
         result_type op_and( const result_type & opl, const result_type & opr ) const { 
-            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); return std::make_pair( i.first, l.second & r.second ); }, opl.second && opr.second ); }
+            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); composer::assert_integer( l ); composer::assert_integer( r ); return std::make_pair( i.first, l.second & r.second ); }, opl.second && opr.second ); }
         result_type op_or( const result_type & opl, const result_type & opr ) const { 
-            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); return std::make_pair( i.first, l.second | r.second ); }, opl.second && opr.second ); 
+            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); composer::assert_integer( l ); composer::assert_integer( r ); return std::make_pair( i.first, l.second | r.second ); }, opl.second && opr.second ); 
         }
         result_type op_xor( const result_type & opl, const result_type & opr ) const { 
-            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); return std::make_pair( i.first, l.second ^ r.second ); }, opl.second && opr.second ); 
+            return std::make_pair([ opl, opr ]( const input_type & i ) -> input_type { const input_type & l = opl.first( i ); const input_type & r = opr.first( i ); composer::assert_integer( l ); composer::assert_integer( r ); return std::make_pair( i.first, l.second ^ r.second ); }, opl.second && opr.second ); 
         }
-        result_type op_not( const result_type & op ) const { return std::make_pair( [ op ]( const input_type & i ) -> input_type { const input_type & o = op.first( i ); return std::make_pair( i.first, ~o.second ); }, op.second ); }
+        result_type op_not( const result_type & op ) const { return std::make_pair( [ op ]( const input_type & i ) -> input_type { const input_type & o = op.first( i ); composer::assert_integer( o ); return std::make_pair( i.first, ~o.second ); }, op.second ); }
+
+        static void assert_integer( const input_type & i )
+        {
+            if ( i.second.depth() == CV_32F || i.second.depth() == CV_64F ) { COMMA_THROW( comma::exception, "bitwise operations shall be done on integer inputs" ); }
+        }
     };
 
 };
@@ -2706,7 +2722,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
              snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
-             maker_t m( get_timestamp, '|', ':' ); // quick and dirty, running out of delimiters
+             maker_t m( get_timestamp, '|', ':' );
              composer_t c( m );
              auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
              f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, g.first ), g.second ) );
@@ -2715,9 +2731,22 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         {
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, e[0] << ": please specify " << e[0] << " filters" ); }
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
-             std::pair< functor_type, bool > operand_filters = maker_t( get_timestamp, '|', ':' )( e[1] );
+             snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
+             maker_t m( get_timestamp, '|', ':' );
+             composer_t c( m );
+             auto operand_filters = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
              auto op = arithmetic< H >::str_to_operation(e[0]);
              f.push_back( filter_type( boost::bind< value_type_t >( arithmetic< H >( op ), _1, operand_filters.first ), operand_filters.second ) );
+        }
+        else if( e[0] == "bitwise" )
+        {
+             if( e.size() == 1 ) { COMMA_THROW( comma::exception, e[0] << ": please specify " << e[0] << " filters" ); }
+             if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
+             snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
+             maker_t m( get_timestamp, '|', ':' );
+             composer_t c( m );
+             auto operand_filters = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
+             f.push_back( filter_type( boost::bind< value_type_t >( bitwise_impl_< H >(), _1, operand_filters.first ), operand_filters.second ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
@@ -3089,39 +3118,46 @@ static std::string usage_impl_()
     oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << std::endl;
-    oss << "    operations \"forked\" image stream: semantics: take input image, apply some filters to it, then apply the operation between the input and resulting image" << std::endl;
-    oss << "                                        usage: <operation>=<filters>" << std::endl;
-    oss << "                                        <filters>: any sequence of cv-cat filters that outputs a single-channel image of the same dimensions as the images on stdin" << std::endl;
-    oss << "                                            the separator between the filters is '|'" << std::endl;
-    oss << "                                            the equal sign for a filter is ':'" << std::endl;
-    oss << "                                        e.g: cat images.bin | cv-mat subtract=\"average|threshold:0.5\"" << std::endl;
-    oss << "        mask=<filters>: apply mask to image (see cv::copyTo for details)" << std::endl;
-    oss << "                        examples" << std::endl;
-    oss << "                            apply a constant mask from a file" << std::endl;
-    oss << "                                cat images.bin | cv-cat 'mask=load:mask.bin' > masked.bin" << std::endl;
-    oss << "                                cat images.bin | cv-cat 'mask=load:mask.png' > masked.bin" << std::endl;
-    oss << "                            extract pixels brighter than 100" << std::endl;
-    oss << "                                cat images.bin | cv-cat 'mask=convert-color:BGR,GRAY|threshold=otsu,100' > masked.bin" << std::endl;
-    oss << "                        todo: bitwise operations on masks:" << std::endl;
-    oss << "                            mask=<mask1> and <mask2>: apply bitwise 'and' of <mask1> and <mask2>" << std::endl;
-    oss << "                            mask=<mask1> or <mask2>: apply bitwise 'or'" << std::endl;
-    oss << "                            mask=<mask1> xor <mask2>: apply bitwise 'xor'" << std::endl;
-    oss << "                            mask=not <mask1>: apply bitwise 'not' (complement, tilde in C++)" << std::endl;
-    oss << "                            mask=(( not <mask1> ) and <mask2>) or <mask3>: apply the given logical expression of 3 masks" << std::endl;
-    oss << "                        note: standard precedence rules apply; use brackets to explicitly denote precedence" << std::endl;
-    oss << "                        example:" << std::endl;
-    oss << "                            cv-cat \"mask=ratio:(r + b - g)/( 1 + r + b )|convert-to:ub|threshold:4 xor ratio:2./(1.5e1 - g + r)|convert-to:ub|threshold:5\"" << std::endl;
+    oss << "    operations on \"forked\" image stream:" << std::endl;
+    oss << "        semantics: take input image, apply some filters to it, then apply the operation between the input and resulting image" << std::endl;
+    oss << "        'double-forked' operations are not supported, e.g., you cannot use mask inside an arithmetic operation or vise versa" << std::endl;
+    oss << "        usage: <operation>=<filters>" << std::endl;
+    oss << "            <filters>: any sequence of cv-cat filters that outputs a single-channel image of the same dimensions as the images on stdin" << std::endl;
+    oss << "                the separator between the filters is '|'" << std::endl;
+    oss << "                the equal sign for a filter is ':'" << std::endl;
+    oss << "            e.g: cat images.bin | cv-mat subtract=\"average|threshold:0.5\"" << std::endl;
     oss << std::endl;
-    oss << "        'forked' arithmetic operations" << std::endl;
-    oss << "           add=<filters>: forked image is pixelwise added to the input image, see cv::add()" << std::endl;
-    oss << "           divide=<filters>: forked image is pixelwise divided to the input image, see cv::divide()" << std::endl;
-    oss << "           multiply=<filters>: forked image is pixelwise multiplied to the input image, see cv::multiply()" << std::endl;
-    oss << "           subtract=<filters>: forked image is pixelwise subtract to the input image, see cv::subtract()" << std::endl;
-    oss << "               examples:" << std::endl;
+    oss << "        arithmetic operations" << std::endl;
+    oss << "            add=<filters>: forked image is pixelwise added to the input image, see cv::add()" << std::endl;
+    oss << "            divide=<filters>: forked image is pixelwise divided to the input image, see cv::divide()" << std::endl;
+    oss << "            multiply=<filters>: forked image is pixelwise multiplied to the input image, see cv::multiply()" << std::endl;
+    oss << "            subtract=<filters>: forked image is pixelwise subtract to the input image, see cv::subtract()" << std::endl;
+    oss << "                examples:" << std::endl;
     oss << "                    multiply operation with accumulated and threshold sub filters" << std::endl;
     oss << "                        cat images.bin | cv-cat \"multiply=accumulated:average,5|threshold:0.5,1.0\" >results.bin" << std::endl;
     oss << "                    scaling input images by a mask file, input type:  3ub, mask type: 3f" << std::endl;
     oss << "                        cat images.bin | cv-cat \"multiply=load:mask.bin\" >results.bin" << std::endl;
+    oss << "            forked arithmetic operations can use bitwise combinations of filters" << std::endl;
+    oss << std::endl;
+    oss << "        bitwise operations on filters:" << std::endl;
+    oss << "            bitwise=<filter1> and <filter2>: apply bitwise 'and' of <filter1> and <filter2> outputs" << std::endl;
+    oss << "            bitwise=<filter1> or <filter2>: apply bitwise 'or'" << std::endl;
+    oss << "            bitwise=<filter1> xor <filter2>: apply bitwise 'xor'" << std::endl;
+    oss << "            bitwise=not <filter1>: apply bitwise 'not' (complement, tilde in C++)" << std::endl;
+    oss << "            bitwise=(( not <filter1> ) and <filter2>) or <filter3>: apply the given logical expression of 3 masks" << std::endl;
+    oss << "            note: standard precedence rules apply; use brackets to explicitly denote precedence" << std::endl;
+    oss << std::endl;
+    oss << "        mask=<filters>: apply mask to image (see cv::copyTo for details)" << std::endl;
+    oss << "            examples" << std::endl;
+    oss << "                apply a constant mask from a file" << std::endl;
+    oss << "                    cat images.bin | cv-cat 'mask=load:mask.bin' > masked.bin" << std::endl;
+    oss << "                    cat images.bin | cv-cat 'mask=load:mask.png' > masked.bin" << std::endl;
+    oss << "                extract pixels brighter than 100" << std::endl;
+    oss << "                    cat images.bin | cv-cat 'mask=convert-color:BGR,GRAY|threshold=otsu,100' > masked.bin" << std::endl;
+    oss << "            masks can use bitwise operations, e.g." << std::endl;
+    oss << "                cv-cat \"mask=ratio:(r + b - g)/( 1 + r + b )|convert-to:ub|threshold:4 xor ratio:2./(1.5e1 - g + r)|convert-to:ub|threshold:5\"" << std::endl;
+    oss << std::endl;
+    oss << "        it is the user responsibility to convert data to integer format before applying bitwise combinations" << std::endl;
     oss << std::endl;
     oss << "    operations on subsets of columns, rows, or channels" << std::endl;
     oss << "        bands-to-cols=x,w[,x,w][,method:<method-name>,output-depth:<depth>]; take a number of columns (bands) from the input, process together by method," << std::endl;
