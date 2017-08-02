@@ -102,7 +102,7 @@ static void usage( bool verbose=false )
     std::cerr << "    mean" << std::endl;
     std::cerr << "        --threshold=[<thresh>]: apply a mask (binary threshold) and only calculate mean on pixel matching the mask." << std::endl;
     std::cerr << "              default: calculate a mean on all pixels" << std::endl;
-    std::cerr << "        default fields: t,rows,cols,type,pixel_count,mean" << std::endl;
+    std::cerr << "        default output fields: t,rows,cols,type,pixel_count,mean" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
