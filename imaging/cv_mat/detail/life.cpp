@@ -33,8 +33,6 @@
 #include <comma/base/exception.h>
 #include "life.h"
 
-#include <iostream>
-
 namespace snark { namespace cv_mat { namespace impl {
 
 template < typename H > life< H >::life( double procreation_treshold, double stability_threshold, double step )

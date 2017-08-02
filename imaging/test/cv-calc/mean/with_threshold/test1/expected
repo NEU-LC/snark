@@ -1,0 +1,11 @@
+# Note with a threshold of 2.0, exact pixel with 2.0 are filtered out
+image[0]/count="3"
+image[1]/count="4"
+image[2]/count="5"
+image[3]/count="6"
+
+image[0]/mean="4"
+image[1]/mean="4.5"
+image[2]/mean="5"
+image[3]/mean="5.5"
+status=0

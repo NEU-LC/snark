@@ -34,6 +34,7 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <tbb/parallel_for.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
@@ -75,6 +76,8 @@ static void usage( bool verbose=false )
     std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\", see serialization options" << std::endl;
     std::cerr << "    --header-fields; show header fields and exit" << std::endl;
     std::cerr << "    --header-format; show header format and exit" << std::endl;
+    std::cerr << "    --output-fields; show output fields and exit" << std::endl;
+    std::cerr << "    --output-format; show output format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "serialization options" << std::endl;
     if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } 
@@ -102,6 +105,12 @@ static void usage( bool verbose=false )
     std::cerr << "        --procreation-treshold,--procreation=[<threshold>]: todo: document; default: 3.0" << std::endl;
     std::cerr << "        --stability-treshold,--stability=[<threshold>]: todo: document; default: 4.0" << std::endl;
     std::cerr << "        --step=[<step>]: todo: document; default: 1.0" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    mean" << std::endl;
+    std::cerr << "        --threshold=[<thresh>]: apply a mask (binary threshold) and only calculate mean on pixel matching the mask." << std::endl;
+    std::cerr << "              default: calculate a mean on all pixels" << std::endl;
+    std::cerr << "        default output fields: t,rows,cols,type,mean,count" << std::endl;
+    std::cerr << "                               count: total number of non-zero pixels used in calculating the mean" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
@@ -390,14 +399,28 @@ int main( int ac, char** av )
         }
         if( operation == "mean" )
         {
+            if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,mean,count" << std::endl;  exit(0); }
+            if( options.exists("--output-format") ) { std::cout << "t,3ui,d,ui" << std::endl;  exit(0); }
+            auto threshold = options.optional< double >("--threshold");
             snark::cv_mat::serialization serialization( input_options );
             while( std::cin.good() && !std::cin.eof() )
             {
+                
                 std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
                 if( p.second.empty() ) { return 0; }
-                cv::Scalar mean = cv::mean( p.second );
+                
+                cv::Mat mask;
+                comma::uint32 count = p.second.rows * p.second.cols;
+                if( threshold ) 
+                { 
+                    cv::threshold(p.second, mask, *threshold, 255, cv::THRESH_BINARY); 
+                    count = cv::countNonZero(mask);
+                }
+                
+                cv::Scalar mean = cv::mean( p.second, !threshold ? cv::noArray() : mask );
+                
                 std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
-                for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); }
+                for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); }
                 std::cout.flush();
             }
             return 0;
