@@ -378,6 +378,7 @@ int main( int argc, char** argv )
 
             camera.stop_acquisition();
         }
+        if( comma::verbose ) { print_stats( camera ); }
         return exit_code;
     }
     catch( std::exception& ex )
