@@ -1,0 +1,17 @@
+#!/bin/bash
+
+source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
+source $( type -p comma-application-util ) || { echo "$0: failed to source comma-application-util" >&2 ; exit 1 ; }
+
+inputs=$( cat )
+
+cv_depth=ub
+echo "$inputs" |
+    csv-to-bin 6$cv_depth | 
+    cv-cat --input "no-header;rows=2;cols=3;type=$cv_depth" --output "no-header=0" | 
+    cv-calc mean | csv-from-bin $( cv-calc mean --output-format ) --precision 5 |
+    csv-shuffle --fields $( cv-calc mean --output-fields ) -o count,mean |
+    name-value-from-csv count,mean --prefix image -n
+comma_status_ok
+code=$?
+echo "status=$code"

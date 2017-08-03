@@ -1,0 +1,9 @@
+image[0]/count="2"
+image[1]/count="3"
+image[2]/count="4"
+image[3]/count="5"
+image[0]/mean="4.5"
+image[1]/mean="5"
+image[2]/mean="5.5"
+image[3]/mean="6"
+status=0

@@ -52,7 +52,6 @@ struct utm_30lx : public scip2_profile
 
 struct scip2_device:public laser_device
 {
-    static void usage();
     static urg_04lx urg_04lx_;
     static uhg_08lx uhg_08lx_;
     static utm_30lx utm_30lx_;

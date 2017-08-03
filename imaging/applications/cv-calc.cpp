@@ -34,6 +34,7 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <tbb/parallel_for.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
@@ -43,6 +44,7 @@
 #include <comma/visiting/traits.h>
 #include "../../imaging/cv_mat/filters.h"
 #include "../../imaging/cv_mat/serialization.h"
+#include "../../imaging/cv_mat/detail/life.h"
 
 const char* name = "cv-calc: ";
 
@@ -61,6 +63,7 @@ static void usage( bool verbose=false )
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
     std::cerr << "    header: output header information in ascii csv" << std::endl;
+    std::cerr << "    life: take image on stdin, output game of life on each channel" << std::endl;
     std::cerr << "    mean: output image means for all image channels appended to image header" << std::endl;
     std::cerr << "    roi: given cv image data associated with a region of interest, either set everything outside the region of interest to zero or crop it" << std::endl;
     std::cerr << "    stride: stride through the image, output images of kernel size for each pixel" << std::endl;
@@ -73,6 +76,8 @@ static void usage( bool verbose=false )
     std::cerr << "    --input=<options>; default values for image header; e.g. --input=\"rows=1000;cols=500;type=ub\", see serialization options" << std::endl;
     std::cerr << "    --header-fields; show header fields and exit" << std::endl;
     std::cerr << "    --header-format; show header format and exit" << std::endl;
+    std::cerr << "    --output-fields; show output fields and exit" << std::endl;
+    std::cerr << "    --output-format; show output format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "serialization options" << std::endl;
     if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } 
@@ -95,6 +100,17 @@ static void usage( bool verbose=false )
     std::cerr << "                                          --non-zero=size,10: output images that have at least 10 non-zero pixels" << std::endl;
     std::cerr << "                                          --non-zero=size,,1000: output images that have not more than 999 non-zero pixels" << std::endl;
     std::cerr << "                                          --non-zero=size,,1: output images with all pixels zero (makes sense only when used with --filters" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    life" << std::endl;
+    std::cerr << "        --procreation-treshold,--procreation=[<threshold>]: todo: document; default: 3.0" << std::endl;
+    std::cerr << "        --stability-treshold,--stability=[<threshold>]: todo: document; default: 4.0" << std::endl;
+    std::cerr << "        --step=[<step>]: todo: document; default: 1.0" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    mean" << std::endl;
+    std::cerr << "        --threshold=[<thresh>]: apply a mask (binary threshold) and only calculate mean on pixel matching the mask." << std::endl;
+    std::cerr << "              default: calculate a mean on all pixels" << std::endl;
+    std::cerr << "        default output fields: t,rows,cols,type,mean,count" << std::endl;
+    std::cerr << "                               count: total number of non-zero pixels used in calculating the mean" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
@@ -120,26 +136,30 @@ static void usage( bool verbose=false )
     std::cerr << "            --to-fps,--fps=<fps>; thin to a given <fps>, same as --rate=<to-fps>/<from-fps> --deterministic" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "  header" << std::endl;
-    std::cerr << "      cat data.bin | cv-calc header" << std::endl;
+    std::cerr << "    header" << std::endl;
+    std::cerr << "        cat data.bin | cv-calc header" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "  format" << std::endl;
-    std::cerr << "      cat data.bin | cv-calc format" << std::endl;
+    std::cerr << "    format" << std::endl;
+    std::cerr << "        cat data.bin | cv-calc format" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "  roi" << std::endl;
-    std::cerr << "      Setting everything but the roi rectangle to 0 for all images" << std::endl;
-    std::cerr << "      ROI fields must be pre-pended. This roi is is a square of (100,100) to (300,300)" << std::endl;
-    std::cerr << "      Given a cv-cat image stream with format 't,3ui,s[1572864]'." << std::endl;
+    std::cerr << "    life" << std::endl;
+    std::cerr << "        a combination of parameters producing fairly long-living colony:" << std::endl;
+    std::cerr << "        cv-cat --file ~/tmp/some-image.jpg | cv-calc life --procreation 3 --stability 5.255 --step 0.02 | cv-cat \"count;view;null\"" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "      cat data.bin | csv-paste \"value=100,100,300,300;binary=4i\" \"-;binary=t,3ui,s[1572864]\" \\" << std::endl;
-    std::cerr << "          | cv-calc roi -v | csv-bin-cut '4i,t,3ui,s[1572864]' --fields 5-9 >output.bin" << std::endl;
+    std::cerr << "    roi" << std::endl;
+    std::cerr << "        Setting everything but the roi rectangle to 0 for all images" << std::endl;
+    std::cerr << "        ROI fields must be pre-pended. This roi is is a square of (100,100) to (300,300)" << std::endl;
+    std::cerr << "        Given a cv-cat image stream with format 't,3ui,s[1572864]'." << std::endl;
     std::cerr << std::endl;
-    std::cerr << "      Explicity specifying fields. Image payload data field is not specified for cv-calc, not set for --binary either" << std::endl;
-    std::cerr << "      The user must explcitly list all four roi fields. Using 'min,max' is not possible." << std::endl;
+    std::cerr << "        cat data.bin | csv-paste \"value=100,100,300,300;binary=4i\" \"-;binary=t,3ui,s[1572864]\" \\" << std::endl;
+    std::cerr << "            | cv-calc roi -v | csv-bin-cut '4i,t,3ui,s[1572864]' --fields 5-9 >output.bin" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "      cat data.bin | csv-paste \"value=100,100,999,300,300;binary=5i\" \"-;binary=t,3ui,s[1572864]\" \\" << std::endl;
-    std::cerr << "          | cv-calc roi --fields min/x,min/y,,max/x,max/y,t,rows,cols,type --binary '5i,t,3ui' \\" << std::endl;
-    std::cerr << "          | csv-bin-cut '5i,t,3ui,s[1572864]' --fields 6-10 >output.bin" << std::endl;
+    std::cerr << "        Explicity specifying fields. Image payload data field is not specified for cv-calc, not set for --binary either" << std::endl;
+    std::cerr << "        The user must explcitly list all four roi fields. Using 'min,max' is not possible." << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        cat data.bin | csv-paste \"value=100,100,999,300,300;binary=5i\" \"-;binary=t,3ui,s[1572864]\" \\" << std::endl;
+    std::cerr << "            | cv-calc roi --fields min/x,min/y,,max/x,max/y,t,rows,cols,type --binary '5i,t,3ui' \\" << std::endl;
+    std::cerr << "            | csv-bin-cut '5i,t,3ui,s[1572864]' --fields 6-10 >output.bin" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -359,16 +379,48 @@ int main( int ac, char** av )
             }
             return 0;
         }
+        if( operation == "life" )
+        {
+            snark::cv_mat::serialization input_serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
+            double procreation_threshold = options.value( "--procreation-threshold,--procreation", 3.0 );
+            double stability_threshold = options.value( "--stability-threshold,--stability", 4.0 );
+            double step = options.value( "--step", 1.0 );
+            snark::cv_mat::impl::life< boost::posix_time::ptime > life( procreation_threshold, stability_threshold, step );
+            auto iterations = options.optional< unsigned int >( "--iterations,-i" );
+            std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+            if( p.second.empty() ) { return 0; }
+            for( unsigned int i = 0; ( !iterations || i < *iterations ) && std::cout.good(); ++i )
+            {
+                output_serialization.write_to_stdout( life( p ) ); // todo: decouple step from output
+                std::cout.flush();
+            }
+            return 0;
+        }
         if( operation == "mean" )
         {
+            if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,mean,count" << std::endl;  exit(0); }
+            if( options.exists("--output-format") ) { std::cout << "t,3ui,d,ui" << std::endl;  exit(0); }
+            auto threshold = options.optional< double >("--threshold");
             snark::cv_mat::serialization serialization( input_options );
             while( std::cin.good() && !std::cin.eof() )
             {
+                
                 std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
                 if( p.second.empty() ) { return 0; }
-                cv::Scalar mean = cv::mean( p.second );
+                
+                cv::Mat mask;
+                comma::uint32 count = p.second.rows * p.second.cols;
+                if( threshold ) 
+                { 
+                    cv::threshold(p.second, mask, *threshold, 255, cv::THRESH_BINARY); 
+                    count = cv::countNonZero(mask);
+                }
+                
+                cv::Scalar mean = cv::mean( p.second, !threshold ? cv::noArray() : mask );
+                
                 std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
-                for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); }
+                for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); }
                 std::cout.flush();
             }
             return 0;

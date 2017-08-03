@@ -29,22 +29,27 @@
 
 #pragma once
 
+#include <array>
 #include <string>
 #include <opencv2/core/core.hpp>
+#include <boost/optional.hpp>
 
-namespace snark{ namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace impl {
 
 template < typename H >
-struct load
+class life
 {
-    typedef std::pair< H, cv::Mat > value_type;
-    value_type value;
-
-    // Set load as "bin" to load cv-cat format, else load using cv::imread
-    load( const std::string& filename );
-
-    value_type operator()( value_type ) const { return std::make_pair( value.first, value.second.clone() ); }
+    public:
+        life( double procreation_treshold = 3, double stability_threshold = 4, double step = 1 );
+        
+        typename std::pair< H, cv::Mat > operator()( typename std::pair< H, cv::Mat > p );
+        
+    private:
+        double procreation_treshold_;
+        double stability_treshold_;
+        double step_;
+        boost::optional< unsigned int > index_;
+        std::array< typename std::pair< H, cv::Mat >, 2 > generations_;
 };
-
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
