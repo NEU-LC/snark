@@ -41,7 +41,7 @@
 
 static const char* possible_fields = "t,rows,cols,type,size";
 static const char* default_fields = "t,rows,cols,type";
-static int max_stuck_before_exiting = 3;
+static int default_retries_on_no_frames = 3;
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -54,6 +54,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --set --set-and-exit"
         " --id --fields"
         " --header --no-header"
+        " --dont-check-frames --retries-on-no-frames"
         ;
 
     std::cout << completion_options << std::endl;
@@ -69,23 +70,30 @@ static void usage( bool verbose = false )
     std::cerr << "Usage: " << comma::verbose.app_name() << " [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options: " << std::endl;
-    std::cerr << "    --help,-h:          show this help, --help --verbose for more help" << std::endl;
-    std::cerr << "    --verbose,-v:       more output" << std::endl;
-    std::cerr << "    --version:          output the library version" << std::endl;
-    std::cerr << "    --list-cameras:     list all cameras and exit" << std::endl;
+    std::cerr << "    --help,-h:           show this help, --help --verbose for more help" << std::endl;
+    std::cerr << "    --verbose,-v:        more output" << std::endl;
+    std::cerr << "    --version:           output the library version" << std::endl;
+    std::cerr << "    --list-cameras:      list all cameras and exit" << std::endl;
     std::cerr << "    --list-attributes [<names>]: list camera attributes; default: list all" << std::endl;
-    std::cerr << "    --set <attributes>: set camera attributes" << std::endl;
+    std::cerr << "    --set <attributes>:  set camera attributes" << std::endl;
     std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
-    std::cerr << "    --id=<camera id>:   default: first available camera" << std::endl;
-    std::cerr << "    --fields=<fields>:  header fields; default: " << default_fields << std::endl;
-    std::cerr << "    --header:           output header only" << std::endl;
-    std::cerr << "    --no-header:        output image data only" << std::endl;
+    std::cerr << "    --id=<camera id>:    default: first available camera" << std::endl;
+    std::cerr << "    --fields=<fields>:   header fields; default: " << default_fields << std::endl;
+    std::cerr << "    --header:            output header only" << std::endl;
+    std::cerr << "    --no-header:         output image data only" << std::endl;
+    std::cerr << "    --dont-check-frames: don't check if we've stop receiving frames" << std::endl;
+    std::cerr << "    --retries-on-no-frames=<n>: retry attempts if no frames detected; default: " << default_retries_on_no_frames << std::endl;
     std::cerr << std::endl;
     std::cerr << "    Possible values for <fields> are: " << possible_fields << "." << std::endl;
     std::cerr << "    <attributes> are semicolon-separated name-value pairs." << std::endl;
     std::cerr << "    <names> are semicolon-semicolon feature names." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    --list-cameras and --list-attributes provide more detail with --verbose" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    --dont-check-frames restores the old behaviour of not checking or retrying" << std::endl;
+    std::cerr << "    --retries-on-no-frames=0 means the app will exit immediately if no frames" << std::endl;
+    std::cerr << "    detected, otherwise it will try to stop and restart acquisition up to the" << std::endl;
+    std::cerr << "    given number of times" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " --id=\"02-2623A-07136\" --set \"ExposureAuto=Off;ExposureTimeAbs=60\"" << std::endl;
@@ -297,9 +305,11 @@ int main( int argc, char** argv )
             return 0;
         }
 
-        std::string        fields = options.value< std::string >( "--fields", default_fields );
+        std::string fields = options.value< std::string >( "--fields", default_fields );
         comma::csv::format format = format_from_fields( fields );
-        bool               header_only = false;
+        bool header_only = false;
+        bool check_frames = !options.exists( "--dont-check-frames" );
+        unsigned int retries_on_no_frames = options.value< unsigned int >( "--retries-on-no-frames", default_retries_on_no_frames );
 
         if( options.exists( "--no-header" )) { fields = ""; }
         else { header_only = ( options.exists( "--header" )); }
@@ -309,7 +319,7 @@ int main( int argc, char** argv )
         camera.set_acquisition_mode( snark::vimba::camera::ACQUISITION_MODE_CONTINUOUS );
 
         bool acquiring = true;
-        int stuck_count = 0;
+        unsigned int acquisition_restarts = 0;
         int exit_code = 0;
         while( acquiring )
         {
@@ -320,22 +330,41 @@ int main( int argc, char** argv )
             long frames_delivered = 0;
             do {
                 sleep( 1 );
-                boost::optional< snark::vimba::attribute > frames_delivered_attribute = camera.get_attribute( "StatFrameDelivered" );
-                if( frames_delivered_attribute )
+                if( check_frames )
                 {
-                    long frames_delivered_prev = frames_delivered;
-                    frames_delivered = frames_delivered_attribute->int_value();
-                    if( frames_delivered == frames_delivered_prev && !is_shutdown )
+                    boost::optional< snark::vimba::attribute > frames_delivered_attribute = camera.get_attribute( "StatFrameDelivered" );
+                    if( frames_delivered_attribute )
                     {
-                        std::cerr << comma::verbose.app_name() << ": warning - we appear to be stuck" << std::endl;
-                        if( comma::verbose ) { print_stats( camera ); }
-                        if( ++stuck_count == max_stuck_before_exiting )
+                        long frames_delivered_prev = frames_delivered;
+                        frames_delivered = frames_delivered_attribute->int_value();
+                        if( frames_delivered == frames_delivered_prev && !is_shutdown )
                         {
-                            std::cerr << comma::verbose.app_name() << ": we've been stuck " << stuck_count << " times. Exiting..." << std::endl;
-                            acquiring = false;
-                            exit_code = 1;
+                            std::cerr << comma::verbose.app_name() << ": warning - no frames received in the last second" << std::endl;
+                            if( comma::verbose ) { print_stats( camera ); }
+                            if( acquisition_restarts == retries_on_no_frames )
+                            {
+                                std::cerr << comma::verbose.app_name() << ": ";
+                                if( retries_on_no_frames > 0 )
+                                {
+                                    std::cerr << "we've tried restarting acquisition "
+                                              << acquisition_restarts << " time"
+                                              << ( acquisition_restarts == 1 ? "" : "s" );
+                                }
+                                else
+                                {
+                                    std::cerr << "we're not going to try restarting acquisition";
+                                }
+                                std::cerr << ". Exiting..." << std::endl;
+                                acquiring = false;
+                                exit_code = 1;
+                            }
+                            else
+                            {
+                                std::cerr << comma::verbose.app_name() << ": restarting acquisition" << std::endl;
+                                acquisition_restarts++;
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             } while( !is_shutdown );
