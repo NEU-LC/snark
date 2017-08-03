@@ -180,7 +180,7 @@ static void print_attribute_entry( const std::string& label, const std::string& 
     std::cerr << label << ": " << wrap( value, 80, prefix ) << "\n";
 }
 
-static void print_attribute( const snark::vimba::attribute& attribute, bool verbose )
+static void print_attribute( const snark::vimba::attribute& attribute, bool verbose, const std::string& prefix="" )
 {
     if( verbose )
     {
@@ -194,6 +194,7 @@ static void print_attribute( const snark::vimba::attribute& attribute, bool verb
     }
     else
     {
+        if( !prefix.empty() ) { std::cerr << prefix << ": "; }
         std::cerr << attribute.name() << "=" << attribute.value_as_string() << std::endl;
     }
 }
@@ -211,7 +212,7 @@ static void print_stats( const snark::vimba::camera& camera )
     for( const std::string& attribute : stat_attributes )
     {
         a = camera.get_attribute( attribute );
-        if( a ) { print_attribute( *a, false ); }
+        if( a ) { print_attribute( *a, false, comma::verbose.app_name() ); }
     }
 }
 
