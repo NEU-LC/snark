@@ -38,8 +38,8 @@
 
 namespace snark { namespace graphics { namespace qopengl {
 
-// class shape;    
-// class shape_container
+// TODO refactor shape shader into separate class out of widget, similar to label_shader
+// class shape_shader
 // {
 // public:
 //     std::vector<std::shared_ptr<shape>> shapes;

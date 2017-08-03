@@ -48,6 +48,7 @@
 #include "view_points/qt3d_v1/texture_reader.h"
 #else
 #include "view_points/controller.h"
+#include "view_points/image_reader.h"
 #endif
 
 #if Qt3D_VERSION==2
@@ -543,9 +544,33 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
                 reader->show( show );
                 return reader;
             }
-#else
+#elif Qt3D_VERSION==2
+        std::vector<snark::graphics::view::image_options> image_options;
+        std::vector< std::string > v = comma::split( shape, ':' );
+        for( unsigned int i = 0; i < v.size(); ++i )
+        {
+            std::vector< std::string > w = comma::split(v[i], ',' );
+            std::string e = comma::split( w[0], '.' ).back();
+            if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
+            switch( w.size() )
+            {
+                case 1: image_options.push_back(snark::graphics::view::image_options(w[0])); break;
+                case 2: image_options.push_back(snark::graphics::view::image_options(w[0], boost::lexical_cast< double >( w[1] ))); break;
+                case 3: image_options.push_back(snark::graphics::view::image_options(w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ))); break;
+                default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
+            }
+        }
+        if( image_options.empty() )
+        {
             std::cerr << "view-points: cad models and images are not supported yet for qt version " << Qt3D_VERSION << std::endl;
             exit( 1 );
+        }
+        else
+        {
+            std::unique_ptr<snark::graphics::view::Reader> reader(new snark::graphics::view::image_reader(param, image_options));
+            reader->show(show);
+            return reader;
+        }
 #endif
     }
     std::vector< std::string > v = comma::split( param.options.fields, ',' );

@@ -92,6 +92,7 @@ void widget::cleanup()
     makeCurrent();
     for(auto& i : shapes) { i->destroy(); }
     for(auto& i : label_shaders) { i->destroy(); }
+    for(auto& i : texture_shaders) { i->destroy(); }
     if(program_)
     {
         delete program_;
@@ -107,6 +108,19 @@ void widget::begin_update()
 void widget::end_update()
 {
     doneCurrent();
+}
+
+void widget::add_shape(const std::shared_ptr<shape>& shape)
+{
+    shapes.push_back(shape);
+}
+void widget::add_label_shader(const std::shared_ptr<label_shader>& label_shader)
+{
+    label_shaders.push_back(label_shader);
+}
+void widget::add_texture_shader(const std::shared_ptr<texture_shader>& texture_shader)
+{
+    texture_shaders.push_back(texture_shader);
 }
 
 void widget::initializeGL()
@@ -136,6 +150,7 @@ void widget::initializeGL()
 
     for(auto& i : shapes) { i->init(); }
     for(auto& i : label_shaders) { i->init(); }
+    for(auto& i : texture_shaders) { i->init(); }
 //     program_->release();
 
     init();
@@ -166,6 +181,7 @@ void widget::paintGL()
     program_->release();
     
     for(auto& i : label_shaders) { i->paint(camera.projection * camera.camera * camera.world, size()); }
+    for(auto& i : texture_shaders) { i->paint(camera.projection * camera.camera * camera.world, size()); }
 
     painter.endNativePainting();
 
@@ -184,8 +200,6 @@ void widget::paintGL()
 
 void widget::update_projection()
 {
-    // convert far plane from user space coordinates to camera/world, taking into account camera zoom
-    double fp=far_plane+camera.get_position().length();
     double aspect_ratio = (double) width() / height();
     camera.projection.setToIdentity();
     if( camera_options_.orthographic )
@@ -194,6 +208,8 @@ void widget::update_projection()
     }
     else
     {
+        // add camera translation (zoom)
+        double fp=far_plane+camera.get_position().length();
         camera.projection.perspective(camera_options_.field_of_view, aspect_ratio,near_plane,fp);
     }
 }

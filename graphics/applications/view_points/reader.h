@@ -45,11 +45,9 @@
 #include "colored.h"
 #if Qt3D_VERSION==1
 #include <Qt3D/qglview.h>
-#else
+#elif Qt3D_VERSION==2
 #include <QQuaternion>
-#include "../../qt5.5/qopengl/shapes.h"
-#include "../../qt5.5/qopengl/labels.h"
-#include <memory>
+#include "../../qt5.5/qopengl/viewer_base.h"
 #endif
 #include "types.h"
 
@@ -123,10 +121,8 @@ class Reader : public reader_parameters
 #elif Qt3D_VERSION==2
     friend class controller;
 public:
-    virtual std::shared_ptr<snark::graphics::qopengl::shape> make_shape()=0;
-    virtual std::shared_ptr<snark::graphics::qopengl::label_shader> make_label_shader()=0;
-    virtual void update_shape()=0;
-    virtual void update_labels()=0;
+    virtual void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)=0;
+    virtual void update_view()=0;
 #endif
              
     protected:

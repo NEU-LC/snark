@@ -42,6 +42,8 @@
 #include "reader.h"
 #if Qt3D_VERSION==1
 #include "qt3d_v1/viewer.h"
+#elif Qt3D_VERSION==2
+#include "../../qt5.5/qopengl/labels.h"
 #endif
 
 namespace snark { namespace graphics { namespace view {
@@ -63,8 +65,9 @@ class ShapeReader : public shape_reader_base
 
 #if Qt3D_VERSION==2
 public:
-    std::shared_ptr<snark::graphics::qopengl::shape> make_shape();
-    std::shared_ptr<snark::graphics::qopengl::label_shader> make_label_shader();
+    virtual void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base);
+    virtual void update_view();
+protected:
     void update_shape();
     void update_labels();
 private:
@@ -83,16 +86,18 @@ private:
 };
 #if Qt3D_VERSION==2
 template< typename S, typename How >
-std::shared_ptr<snark::graphics::qopengl::shape> ShapeReader< S, How >::make_shape()
+void ShapeReader< S, How >::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
 {
     shape=Shapetraits< S, How >::make_shape(gl_parameters(point_size,fill));
-    return shape;
+    viewer_base->add_shape(shape);
+    label_shader=std::shared_ptr<snark::graphics::qopengl::label_shader>(new snark::graphics::qopengl::label_shader());
+    viewer_base->add_label_shader(label_shader);
 }
 template< typename S, typename How >
-std::shared_ptr<snark::graphics::qopengl::label_shader> ShapeReader< S, How >::make_label_shader()
+void ShapeReader< S, How >::update_view()
 {
-    label_shader=std::shared_ptr<snark::graphics::qopengl::label_shader>(new snark::graphics::qopengl::label_shader());
-    return label_shader;
+    update_shape();
+    update_labels();
 }
 template< typename S, typename How >
 void ShapeReader< S, How >::update_shape()

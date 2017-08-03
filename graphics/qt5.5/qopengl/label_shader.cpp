@@ -84,14 +84,6 @@ static const char *fragment_source = R"(
     }
 )";
 
-/*
-    TODO
-        texture frame buffer size to text size for text label
-        remove test draw
-        create subclass for text_label
-        call draw in update? or resize? or add comment for correct usage form
-*/    
-
 label_vertex::label_vertex(float x,float y,float z,float ox, float oy,float w,float h) : position(x,y,z), offset(ox,oy), texture_size(w,h)
 {
 }
@@ -174,11 +166,6 @@ void label::init()
     glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, sizeof( label_vertex ), reinterpret_cast<void *>( offsetof( label_vertex, offset )));
     glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, sizeof( label_vertex ), reinterpret_cast<void *>( offsetof( label_vertex, texture_size )));
     vbo.release();
-
-    //sample test
-//     resize(200,50);
-//     update(1,2,1);
-//     draw();
 }
 void label::resize(int w,int h)
 {
@@ -192,12 +179,6 @@ void label::resize(int w,int h)
         fbo.reset(new QOpenGLFramebufferObject(width, height, format));
     }
 }
-// //updates quad buffer
-// void label::update(float x,float y,float z,int w,int h)
-// {
-//     resize(w,h);
-//     update(x,y,z);
-// }
 void label::update(float x,float y,float z)
 {
 //     std::cerr<<"label::update "<<width<<", "<<height<<std::endl;

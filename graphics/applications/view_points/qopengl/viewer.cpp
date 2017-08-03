@@ -72,6 +72,7 @@ void viewer::update_view(const QVector3D& min, const QVector3D& max)
 {
     if(!scene_radius_fixed) { scene_radius = 0.5 * ( max - min ).length(); }
     if(!scene_center_fixed) { scene_center = 0.5 * ( min + max ); }
+//     std::cerr<<"viewer::update_view "<<min<<" "<<max<<"; "<<scene_radius<<"; "<<scene_center<<std::endl;
 //     update the position of the far plane so that the full scene is displayed
     set_far_plane(4.6*scene_radius);
 }
