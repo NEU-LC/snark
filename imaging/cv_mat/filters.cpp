@@ -2221,6 +2221,11 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( !count_x ) { COMMA_THROW( comma::exception, "crop-tile: expected tile count along x; got: \"" << e[1] << "\"" ); }
         if( !count_y ) { COMMA_THROW( comma::exception, "crop-tile: expected tile count along x and y; got: \"" << e[1] << "\"" ); }
         if( x && !y ) { COMMA_THROW( comma::exception, "crop-tile: expected tile count along x and y followed by tile positions; got: \"" << e[1] << "\"" ); }
+        for( auto tile: tiles )
+        {
+            if( tile.first >= *count_x ) { COMMA_THROW( comma::exception, "crop-tile: expected tile column index less than " << *count_x << "; got: " << tile.first ); }
+            if( tile.second >= *count_y ) { COMMA_THROW( comma::exception, "crop-tile: expected tile row index less than " << *count_y << "; got: " << tile.second ); }
+        }
         return std::make_pair( boost::bind< value_type_t >( crop_tile_impl_< H >(), _1, *count_x, *count_y, tiles, vertical ), true );
     }
     if( e[0] == "tile" )
@@ -3027,8 +3032,8 @@ static std::string usage_impl_()
     oss << "            options: inverse: do inverse fft" << std::endl;
     oss << "                     real: output real part only" << std::endl;
     oss << "                     magnitude: output magnitude only" << std::endl;
-    oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
-    oss << "                      cv-cat --file image.jpg \"split;crop-tile=0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
+    oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=2,5,0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
+    oss << "                      cv-cat --file image.jpg \"split;crop-tile=2,5,0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
     oss << "        file=<format>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
     oss << "                                   <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
     oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
@@ -3100,7 +3105,7 @@ static std::string usage_impl_()
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
     oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << "        unpack12: convert from 12-bit packed (2 pixels in 3 bytes) to 16UC1; use before other filters; equivalent to unpack=12,abc0,efd0" << std::endl;
-    oss << "        untile=<ncols>,<nrows>[,horizontal]: inverse to crop-tile; input image used as a stip of <ncols>*<nrows> tiles, output image will be be composed by <nrows> of tiles with <ncols> tiles per row" << std::endl;
+    oss << "        untile=<ncols>,<nrows>[,horizontal]: inverse to tile; input image used as a stip of <ncols>*<nrows> tiles, output image will be be composed by <nrows> of tiles with <ncols> tiles per row" << std::endl;
     oss << "                                             if width or height of input image is not divisible by the corresponding count, the input image will be clipped" << std::endl;
     oss << "                                             horizontal: if present, input tiles are considered stacked horizontally (by default, vertical stacking is used)" << std::endl;
     oss << "                                             example" << std::endl;
