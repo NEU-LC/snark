@@ -42,6 +42,7 @@
 
 namespace snark { namespace graphics { namespace qopengl {
 
+/// has a 3d point and its normalized position on texture plus texture size
 struct label_vertex
 {
     /// x,y,z of the corner point 
@@ -53,29 +54,21 @@ struct label_vertex
     label_vertex(float x,float y,float z,float ox,float oy,float width, float height);
 };
     
+/// a billboard 2d texture, drawn at the apparent position of a 3d point
+/// this class has the texture buffer for each label
 class label : protected QOpenGLFunctions
 {
     friend class label_shader;
 public:
     label();
     virtual ~label();
+protected:
+    /// see labels::text for an example of implementation
     virtual void update()=0;
-//     {
-//         init();
-//         resize(w,h);
-//         update(x,y,z);
-//         draw();
-//     }
     /// update position vertex
     void update(float x,float y,float z);
     /// resize texture buffer
     void resize(int width,int height);
-    /// resize and update position
-//     void update(float x,float y,float z,int w,int h)
-//     {
-//         resize(w,h);
-//         update(x,y,z);
-//     }
 protected:
     /// draw the label
     virtual void draw(QPainter& painter)=0;
@@ -95,6 +88,8 @@ protected:
     int height;
 };
 
+/// manages shader program and has a vector of labels
+/// e.g. each reader adds one shader to the widget and many labels to that shader
 class label_shader : protected QOpenGLFunctions
 {
     friend class widget;

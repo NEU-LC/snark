@@ -40,16 +40,25 @@ namespace snark { namespace graphics { namespace qopengl { namespace textures {
 class image : public texture
 {
 public:
-    QImage qimage;
-    //TODO add orientation
-    std::vector<texture_vertex> quad;
-public:
     image(const QImage& qimage);
-    //build the quad and call update vertex
-    virtual void update();
-    void update_quad(Eigen::Vector3d position,Eigen::Vector3d orientation,Eigen::Vector2d size);
+    
+    /// update 3d quad of the image
+    /// @param position: 3d position of top left of image
+    /// @param orientation: roll,pitch,yaw to rotate image in radians
+    /// @param size: width and height of quad in 3d coordinate unit
+    /// @param index: index of image to draw
+    void update_quad(const Eigen::Vector3d& position,const Eigen::Vector3d& orientation,const Eigen::Vector2d& size);
+    
+    std::vector<texture_vertex> get_quad() const;
+    
 protected:
+    //calls update vertex
+    virtual void update();
     virtual void draw(QPainter& painter);
+
+    QImage qimage;
+    std::vector<texture_vertex> quad;
+    bool image_changed;
 };
 
 } } } } // namespace snark { namespace graphics { namespace qopengl { namespace textures {

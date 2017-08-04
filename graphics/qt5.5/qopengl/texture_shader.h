@@ -59,14 +59,11 @@ class texture : protected QOpenGLFunctions
 public:
     texture();
     virtual ~texture();
-    virtual void update()=0;
-//     {
-//         init();
-//         resize(w,h);
-//         update(x,y,z);
-//         draw();
-//     }
     
+    /// set to false to hide it
+    bool visible;
+    
+protected:
     /// update vertices
     void update(const texture_vertex* vertices, std::size_t size);
     /// resize texture buffer
@@ -74,6 +71,8 @@ public:
     void resize(int width,int height);
 
 protected:
+    /// update vertices and texture buffer
+    virtual void update()=0;
     /// draw the label
     virtual void draw(QPainter& painter)=0;
     

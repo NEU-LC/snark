@@ -111,7 +111,7 @@ void texture_shader::destroy()
     for(auto& j : textures) { j->destroy(); }
 }
 //**********************************************************************************
-texture::texture() : width(0), height(0) { }
+texture::texture() : visible(true), width(0), height(0) { }
 texture::~texture() { }
 void texture::init()
 {
@@ -151,7 +151,7 @@ void texture::update(const texture_vertex* vertices, std::size_t size)
 }
 void texture::paint()
 {
-    if(fbo)
+    if(visible && fbo)
     {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, fbo->texture());

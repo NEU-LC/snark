@@ -47,16 +47,19 @@ struct image_options
     image_options(const std::string& filename, double width, double height);
 };
 
+#if Qt3D_VERSION==2
+//TODO move this to qt3d_v2?
 struct image
 {
-    PointWithId point;
+    image(const image_options& options);
+    void update_view(const Eigen::Vector3d& position,const Eigen::Vector3d& orientation);
+    snark::math::closed_interval<float,3> extents() const;
+    
     Eigen::Vector2d size;
-#if Qt3D_VERSION==2
     std::shared_ptr<snark::graphics::qopengl::textures::image> image_texture;
-    void update_view();
-    snark::math::closed_interval<float,3> extents();
-#endif
 };
+typedef image image_t;
+#endif
     
 struct image_reader : public Reader
 {
@@ -80,7 +83,7 @@ protected:
     boost::scoped_ptr< comma::csv::passed< PointWithId > > passed;
 #if Qt3D_VERSION==2
     std::shared_ptr<snark::graphics::qopengl::texture_shader> texture_shader;
-    view::image image;
+    std::vector<std::unique_ptr<image_t>> images;
 #endif
 };
     

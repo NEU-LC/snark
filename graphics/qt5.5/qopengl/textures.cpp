@@ -31,28 +31,40 @@
 
 #include "textures.h"
 #include <iostream>
+#include "../../../math/rotation_matrix.h"
 
 namespace snark { namespace graphics { namespace qopengl { namespace textures {
 
-image::image(const QImage& qimage) : qimage(qimage)
+image::image(const QImage& qimage) : qimage(qimage), image_changed(true)
 {
     
 }
-void image::update_quad(Eigen::Vector3d position,Eigen::Vector3d orientation,Eigen::Vector2d size)
+void image::update_quad(const Eigen::Vector3d& position,const Eigen::Vector3d& orientation,const Eigen::Vector2d& size)
 {
     float x=position.x(), y=position.y(), z=position.z(), w=size.x(), h=size.y();
+//     std::cerr<<"texture::update "<<x<<" "<<y<<" "<<z<<"; "<<w<<"x"<<h<<std::endl;
     quad.clear();
     quad.push_back(texture_vertex(x,y,z,0,0));
     quad.push_back(texture_vertex(x+w,y,z,1,0));
     quad.push_back(texture_vertex(x+w,y+h,z,1,1));
     quad.push_back(texture_vertex(x,y+h,z,0,1));
-//     std::cerr<<"texture::update "<<x<<" "<<y<<" "<<z<<"; "<<w<<"x"<<h<<std::endl;
+    //calculate rotation matrix
+    Eigen::Matrix3f rotation=rotation_matrix(orientation).rotation().cast<float>();
+    //apply to all points
+    for(std::size_t i=0;i<quad.size();i++)
+    {
+        quad[i].position=rotation*quad[i].position;
+    }
 }
+std::vector<texture_vertex> image::get_quad() const { return quad; }
 void image::update()
 {
-    init();
-    resize(qimage.size().width(),qimage.size().height());
-    texture::draw();
+    if(image_changed)
+    {
+        resize(qimage.size().width(),qimage.size().height());
+        texture::draw();
+        image_changed=false;
+    }
     texture::update(&quad[0],quad.size());
 }
 void image::draw(QPainter& painter)
