@@ -114,7 +114,7 @@ bool image_reader::read_once()
 void image_reader::render( Viewer& viewer, QGLPainter* painter )
 {
     if( !m_point ) { return; }
-    comma::uint32 id = id_;
+//    comma::uint32 id = id_;
 //     if( id >= images_.size() ) { return; }
     painter->setStandardEffect( QGL::FlatReplaceTexture2D );
     painter->modelViewMatrix().push();
