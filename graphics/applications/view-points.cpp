@@ -194,13 +194,13 @@ static void usage()
         "\n                          <options>"
         "\n                              flip\": flip the model around the x-axis"
         "\n                              scale=<value>\": resize model (ply only, todo), e.g. show model half-size: scale=0.5"
+        qt55_unsupported_marker_end
         "\n                     \"<image file>[,<image options>]:<image file>[,<image options>]\": show image, e.g. --shape=\"vehicle-lights-on.jpg,vehicle-lights-off.jpg\""
         "\n                            <image options>: <width>,<height> or <pixel-size>"
         "\n                                <width>,<height>: image width and height in meters when displaying images in the scene; default: 1,1"
         "\n                                <pixel size>: single pixel size in metres"
         "\n                            note 1: just like for the cad models, the images will be pinned to the latest point in the stream"
         "\n                            note 2: specify id in fields to switch between multiple images, see examples below"
-        qt55_unsupported_marker_end
         "\n    --size <size>: render last <size> points (or other shapes)"
         "\n                   default 2000000 for points, for 200000 for other shapes"
         "\n    --title <title>: title for source, defaults to filename"
@@ -301,7 +301,6 @@ static void usage()
         "\n    passing input data through:"
         "\n        cat xyz.csv | view-points \"-;pass-through\" scan.csv"
         "\n"
-        qt55_unsupported_marker_start
         "\nusing images"
         "\n    show image with given position"
         "\n        echo 0,0,0 | view-points \"-;shape=image.jpg\""
@@ -320,7 +319,6 @@ static void usage()
         "\n        echo 0,0,0,1 >> points.csv"
         "\n        echo 0,0,0,2 >> points.csv"
         "\n        echo points.csv | view-points \"-;shape=image1.jpg,image2.jpg,image3.jpg;fields=x,y,z,id\""
-        qt55_unsupported_marker_end
         "\n"
         "\n    show points selected with a double right click"
         "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"rose.st.ground.csv;fields=x,y,z,r,g,b\" \"-;colour=sky;weight=10\" > pipe"
@@ -562,7 +560,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         }
         if( image_options.empty() )
         {
-            std::cerr << "view-points: cad models and images are not supported yet for qt version " << Qt3D_VERSION << std::endl;
+            std::cerr << "view-points: cad models are not supported yet for qt 5.5+ " << Qt3D_VERSION << std::endl;
             exit( 1 );
         }
         else
