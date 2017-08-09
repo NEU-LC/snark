@@ -1,4 +1,3 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //
@@ -32,6 +31,7 @@
 #include <numeric>
 #include <queue>
 #include <sstream>
+#include <unordered_map>
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -1483,10 +1483,17 @@ static typename impl::filters< H >::value_type normalize_sum_impl_( typename imp
     return typename impl::filters< H >::value_type(m.first, filter.normalize_sum(m.second));
 }
 
+static float colour_scale_factor( int const depth )
+{
+    static auto const factors = std::unordered_map< int, float > { { CV_8S, 0.5 }, { CV_16U, 256.0 }, { CV_16S, 128.0 }, { CV_32S, 8388608.0 }, { CV_32F, 1.0 / 255.0 } };
+    auto found = factors.find( depth );
+    return ( factors.cend() != found ? found->second : 1.0 );
+}
+
 template < typename H >
 static typename impl::filters< H >::value_type text_impl_( typename impl::filters< H >::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
 {
-    cv::putText( m.second, s, origin, cv::FONT_HERSHEY_SIMPLEX, 1.0, colour, 1, CV_AA );
+    cv::putText( m.second, s, origin, cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar( colour * colour_scale_factor( m.second.depth() ) ), 1, CV_AA );
     return m;
 }
 
@@ -1653,7 +1660,7 @@ class map_impl_
         }
 
     private:
-        typedef boost::unordered_map< key_type, output_value_type > map_t_;
+        typedef std::unordered_map< key_type, output_value_type > map_t_;
         map_t_ map_;
         bool permissive_;
 
