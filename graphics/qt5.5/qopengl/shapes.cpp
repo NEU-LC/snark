@@ -109,9 +109,27 @@ void lines::paint()
 // glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
 }
 
-line_strip::line_strip() : shape(GL_LINE_STRIP) { }
+line_strip::line_strip(float line_width) : shape(GL_LINE_STRIP),line_width(line_width) { }
+void line_strip::paint()
+{
+    if(line_width!=1)
+    {
+        glLineWidth(line_width);
+        glEnable(GL_LINE_SMOOTH);
+    }
+    shape::paint();
+}
 
-line_loop::line_loop() : shape(GL_LINE_LOOP) { }
+line_loop::line_loop(float line_width) : shape(GL_LINE_LOOP),line_width(line_width) { }
+void line_loop::paint()
+{
+    if(line_width!=1)
+    {
+        glLineWidth(line_width);
+        glEnable(GL_LINE_SMOOTH);
+    }
+    shape::paint();
+}
 
 triangles::triangles(bool fill) : shape(GL_TRIANGLES),fill(fill) { }
 void triangles::paint()

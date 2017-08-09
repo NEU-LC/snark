@@ -101,15 +101,21 @@ protected:
 /// The adjacent vertices are considered lines. Vertice 0 and 1; then vertices 1 and 2, etc.
 class line_strip : public shape
 {
+    float line_width;
 public:
-    line_strip();
+    line_strip(float line_width=1);
+protected:
+    void paint();
 };
 
 /// The adjacent vertices are considered lines (similar to line_strip) and then last vertice and first to close the loop
 class line_loop : public shape
 {
+    float line_width;
 public:
-    line_loop();
+    line_loop(float line_width=1);
+protected:
+    void paint();
 };
 
 class triangles : public shape

@@ -206,6 +206,7 @@ static void usage()
         "\n    --title <title>: title for source, defaults to filename"
         "\n                     if set to \"none\" don't show source in selection box"
         "\n                     (but still display data and checkbox)"
+        "\n    --version: print Qt version and exit"
         "\n"
         "\ncamera options"
         "\n    --camera=\"<options>\""
@@ -643,7 +644,7 @@ int main( int argc, char** argv )
         if( options.exists( "--version" )) { version(); exit(0); }
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csv_options( argc, argv );
-        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input"
+        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill"
                 , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath,--labels,--length" );
 
 #if Qt3D_VERSION==1

@@ -7,8 +7,16 @@ comma_path_value_to_var
 cmd="view-points $files $args"
 
 if [[ $input ]]; then
+cat >&2 <<EOF
+running:
+    eval $input | eval $cmd &
+EOF
     eval $input | eval $cmd &
 else
+cat >&2 <<EOF
+running:
+    eval $cmd
+EOF
     eval $cmd &
 fi
 eval_pid=$!
@@ -18,6 +26,11 @@ dialog_test+="Do you see $expected?"
 
 zenity --question --text="$dialog_test"
 result=$?
+
+cat >&2 <<EOF
+dialog_test: $dialog_test
+result: $result
+EOF
 
 # view-points is the child of eval
 kill $( pgrep -P $eval_pid )
