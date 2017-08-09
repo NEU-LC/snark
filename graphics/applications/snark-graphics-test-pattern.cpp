@@ -58,7 +58,8 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --help,-h:       show this help, --help --verbose for more help";
     std::cerr << "\n    --output-fields: show output fields and exit";
     std::cerr << "\n    --output-format: show binary output format and exit";
-    std::cerr << "\n    --binary,-b:     output in binary (default is ascii)";
+    std::cerr << "\n    --binary,-b:     output in binary (default is ascii)"<<std::endl;
+    std::cerr << "    --seed=[<n>]: seed for random generator (see srand); when not specified uses time"<<std::endl;
     std::cerr << "\n";
     std::cerr << "\nExamples: ";
     std::cerr << "\n    " << comma::verbose.app_name() << " cube 100000 0.1 0.02";
@@ -202,6 +203,8 @@ int main( int argc, char** argv )
             exit( 0 );
         }
 
+        unsigned seed=options.value<unsigned>("--seed",time(0));
+        srand(seed);
         comma::csv::options output_csv;
         if( options.exists( "--binary,-b" )) { output_csv.format( comma::csv::format::value< vertex_t >() ); }
         comma::csv::output_stream< vertex_t > ostream( std::cout, output_csv );
