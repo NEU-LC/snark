@@ -72,7 +72,7 @@ static void usage( bool verbose = false )
     std::cerr << "         options" << std::endl;
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
     std::cerr << "                  default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
-    std::cerr << "                  polygons: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
+    std::cerr << "                  polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
     std::cerr << "             --fields" << std::endl;
     std::cerr << "                 x,y: input is points" << std::endl;
     std::cerr << "                 first,second,first/x,first/y,second/x,second/y: if any of these fields present, input is line segments" << std::endl;
@@ -126,13 +126,15 @@ static void usage( bool verbose = false )
     std::cerr << "        cat cube.csv | points-grep planes --normals <( echo 0,0,-1,0 ; echo 0,-1,0,0 ; echo -1,0,0,0 ; echo 1,1,1,3 ) > filtered.csv" << std::endl;
     std::cerr << "        view-points \"cube.csv;colour=grey;hide\" \"filtered.csv;colour=red\" <( echo 0,0,0,0:0:0 )\";colour=green;weight=10;fields=x,y,z,label\"" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    testing point inside of any polygon" << std::endl;
+    std::cerr << "    polygons" << std::endl;
+    std::cerr << "      testing for points inside of polygon" << std::endl;
     std::cerr << "        ( echo 0,5; echo 5,5; echo 5,0; echo 0,5 ) | csv-paste - value=1 >polygons.csv" << std::endl;
     std::cerr << "        ( echo 5,10; echo 10,10; echo 10,5; echo 5,5; echo 5,10 ) | csv-paste - value=2 >>polygons.csv" << std::endl;
     std::cerr << "        ( for i in $( seq 0 0.2 10 ) ; do for j in $( seq 0 0.2 10 ) ; do echo $i,$j ; done ; done ) | points-grep polygons --polygons polygons.csv" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    testing line inside of any polygon" << std::endl;
+    std::cerr << "      testing of line totally contained in a polygon" << std::endl;
     std::cerr << "        ( echo 0,0,5,5; echo 7,7,9,9) | points-grep lines --polygons polygons.csv" << std::endl;
+    std::cerr << "        the first line is not fully contained in any polygon, the second is contained in one polygon" << std::endl;
     exit( 0 );
 }
 
@@ -447,10 +449,10 @@ template < typename Species, typename Genus > int run( const Genus& shape, const
 
 // todo
 // done - group all polygons-related definitions at one place in a namespace
-// - add working lines example
+// improve - add working lines example
 // done - try polygon with no repetition of first and last record; review with seva
 // done ( no longer needed )- reading polygons: add closing the loop
-// - --help: document polygon definitions
+// done - --help: document polygon definitions
 // done - tear down traits for point_t
 // done - tear down unused structures, includes, traits, etc
 
