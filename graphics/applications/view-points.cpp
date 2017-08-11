@@ -215,9 +215,7 @@ static void usage()
         "\n          <type>: orthographic | perspective"
         "\n              default: perspective"
         "\n    --fov=<fov>: set camera field of view in degrees"
-        qt55_unsupported_marker_start
         "\n    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config"
-        qt55_unsupported_marker_end
         "\n    --camera-position=\"<options>\""
         "\n          <options>: <position>|<stream>"
         "\n          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>"
@@ -227,8 +225,8 @@ static void usage()
         "\nmore options"
         qt55_unsupported_marker_start
         "\n    --background-colour <colour> : default: black"
-        "\n    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout"
         qt55_unsupported_marker_end
+        "\n    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout"
         "\n    --scene-center,--center=<value>: fixed scene center as \"x,y,z\""
         "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
         "\n                            scene size from the dataset (e.g. for streams)"
