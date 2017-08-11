@@ -33,12 +33,7 @@
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <boost/geometry/algorithms/within.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
-// #include <boost/geometry/geometries/adapted/boost_polygon.hpp>
-// #include <boost/geometry/geometries/adapted/boost_array.hpp>
-// #include <boost/geometry/geometries/adapted/boost_tuple.hpp>
 #include <boost/geometry/strategies/agnostic/point_in_poly_winding.hpp>
-#include <boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp>
-#include <boost/geometry/strategies/cartesian/point_in_poly_crossings_multiply.hpp>
 #include <boost/geometry/geometries/linestring.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
@@ -77,6 +72,7 @@ static void usage( bool verbose = false )
     std::cerr << "         options" << std::endl;
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
     std::cerr << "                  default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
+    std::cerr << "                  polygons: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
     std::cerr << "             --fields" << std::endl;
     std::cerr << "                 x,y: input is points" << std::endl;
     std::cerr << "                 first,second,first/x,first/y,second/x,second/y: if any of these fields present, input is line segments" << std::endl;
@@ -453,15 +449,15 @@ template < typename Species, typename Genus > int run( const Genus& shape, const
 // done - group all polygons-related definitions at one place in a namespace
 // - add working lines example
 // done - try polygon with no repetition of first and last record; review with seva
-// - reading polygons: add closing the loop
+// done ( no longer needed )- reading polygons: add closing the loop
 // - --help: document polygon definitions
-// - tear down traits for point_t
-// - tear down unused structures, includes, traits, etc
+// done - tear down traits for point_t
+// done - tear down unused structures, includes, traits, etc
 
 namespace snark { namespace operations { namespace polygons {
 
 typedef boost::geometry::model::d2::point_xy< double > point_t;
-typedef boost::geometry::model::polygon< point_t > polygon_t;
+typedef boost::geometry::model::polygon< point_t, true, false > polygon_t;
 
 std::vector< polygon_t > read_polygons(comma::command_line_options& options)
 {
@@ -471,8 +467,6 @@ std::vector< polygon_t > read_polygons(comma::command_line_options& options)
     comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< polygon_input_t > polystream( *is, filter_csv );
     
-    bool verbose = options.exists("--verbose,-v");
-    typedef boost::geometry::model::polygon< point_t > polygon_t;
     std::vector< polygon_t > polygons;
     std::vector< point_t > ring;    // counter clockwise
     comma::uint32 current_id = 0;
@@ -491,10 +485,8 @@ std::vector< polygon_t > read_polygons(comma::command_line_options& options)
         }
         current_id = p->id; 
     }
-    if( !ring.empty() ) { 
-        polygons.push_back( polygon_t() );  boost::geometry::append( polygons.back(), ring ); 
-    }
-    if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
+    if( !ring.empty() ) { polygons.push_back( polygon_t() );  boost::geometry::append( polygons.back(), ring ); }
+    if( options.exists("--verbose,-v") ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
     
     return std::move(polygons);
 }
