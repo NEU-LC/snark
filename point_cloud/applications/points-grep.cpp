@@ -134,6 +134,8 @@ static void usage( bool verbose = false )
     std::cerr << "        ( echo 5,10; echo 10,10; echo 10,5; echo 5,5; echo 5,10 ) | csv-paste - value=2 >>polygons.csv" << std::endl;
     std::cerr << "        ( for i in $( seq 0 0.2 10 ) ; do for j in $( seq 0 0.2 10 ) ; do echo $i,$j ; done ; done ) | points-grep polygons --polygons polygons.csv" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    testing line inside of any polygon" << std::endl;
+    std::cerr << "        ( echo 0,0,5,5; echo 7,7,9,9) | points-grep lines --polygons polygons.csv" << std::endl;
     exit( 0 );
 }
 
@@ -452,6 +454,47 @@ template < typename Species, typename Genus > static int run( const boost::optio
 
 template < typename Species, typename Genus > int run( const Genus& shape, const comma::command_line_options& options ) { return run< Species >( boost::optional< Genus >( shape ), options ); }
 
+typedef boost::geometry::model::d2::point_xy< double > point_t;
+typedef boost::geometry::model::polygon< point_t > polygon_t;
+
+std::vector< polygon_t > read_polygons(comma::command_line_options& options)
+{
+    const std::string& polygons_file = options.value< std::string >( "--polygons", "" );
+    comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( polygons_file );
+    filter_csv.full_xpath = true;
+    comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
+    comma::csv::input_stream< polygon_input_t > polystream( *is, filter_csv );
+    
+    bool verbose = options.exists("--verbose,-v");
+    typedef boost::geometry::model::polygon< point_t > polygon_t;
+    std::vector< polygon_t > polygons;
+    std::vector< point_t > ring;    // counter clockwise
+    comma::uint32 current_id = 0;
+    while( polystream.ready() || ( is->good() && !is->eof() ) )
+    {
+        const polygon_input_t* p = polystream.read();
+        if( !p ) { break; }
+        
+        if( ring.empty() || current_id == p->id ) { ring.push_back( *p ); } 
+        else 
+        { 
+            if( verbose ) { std::cerr << "points-grep: polygon '" << current_id << "' has " << ring.size() << " points" << std::endl;  }
+            polygons.push_back( polygon_t() ); 
+            boost::geometry::append( polygons.back(), ring );
+            ring.clear(); 
+            ring.push_back( *p );
+        }
+        current_id = p->id; 
+    }
+    if( !ring.empty() ) { 
+        if( verbose ) { std::cerr << "points-grep: polygon '" << current_id << "' has " << ring.size() << " points" << std::endl;  }
+        polygons.push_back( polygon_t() );  boost::geometry::append( polygons.back(), ring ); 
+    }
+    if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
+    
+    return std::move(polygons);
+}
+
 int main( int argc, char** argv )
 {
     try
@@ -519,48 +562,13 @@ int main( int argc, char** argv )
         }
         else if( what == "polygons" )
         {
+            
+            const std::vector< polygon_t >& polygons = read_polygons(options);
+            if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
+            
             comma::csv::options csv(options);
             csv.full_xpath = true;
-            
-            //todo read polygon ID
-            typedef boost::geometry::model::d2::point_xy< double > point_t;
             comma::csv::input_stream< Eigen::Vector2d > istream( std::cin, csv );
-            
-            const std::string& polygons_file = options.value< std::string >( "--polygons", "" );
-            comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( polygons_file );
-            filter_csv.full_xpath = true;
-            comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
-            comma::csv::input_stream< polygon_input_t > polystream( *is, filter_csv );
-            
-            bool verbose = options.exists("--verbose,-v");
-            typedef boost::geometry::model::polygon< point_t > polygon_t;
-            std::vector< polygon_t > polygons;
-            std::vector< point_t > ring;    // counter clockwise
-            comma::uint32 current_id = 0;
-            while( polystream.ready() || ( is->good() && !is->eof() ) )
-            {
-                const polygon_input_t* p = polystream.read();
-                if( !p ) { break; }
-                
-                if( ring.empty() || current_id == p->id ) { ring.push_back( *p ); } 
-                else 
-                { 
-                    if( verbose ) { std::cerr << "points-grep: polygon '" << current_id << "' has " << ring.size() << " points" << std::endl;  }
-                    polygons.push_back( polygon_t() ); 
-                    boost::geometry::append( polygons.back(), ring );
-                    ring.clear(); 
-                    ring.push_back( *p );
-                }
-                current_id = p->id; 
-            }
-            if( !ring.empty() ) { 
-                if( verbose ) { std::cerr << "points-grep: polygon '" << current_id << "' has " << ring.size() << " points" << std::endl;  }
-                polygons.push_back( polygon_t() );  boost::geometry::append( polygons.back(), ring ); 
-            }
-            else if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon" << std::endl; return 0; }
-            
-            if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
-            
             flags_t outputs(polygons.size());
             comma::csv::output_stream< flags_t > ostream( std::cout, csv.binary(), true, false, outputs );
             comma::csv::tied< Eigen::Vector2d, flags_t > tied( istream, ostream );
