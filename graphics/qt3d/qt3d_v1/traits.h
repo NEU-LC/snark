@@ -29,8 +29,37 @@
 
 #pragma once
 
-#include "../../traits.h"
+#include <comma/visiting/traits.h>
+// #include <QColor4ub>
+#include <Qt3D/qcolor4ub.h>
 
-#if Qt3D_VERSION==1
-#include "../../qt3d/qt3d_v1/traits.h"
-#endif
+namespace comma { namespace visiting {
+
+template <> struct traits< QColor4ub >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, QColor4ub& p, Visitor& v )
+    {
+        unsigned char red = 0;
+        unsigned char green = 0;
+        unsigned char blue = 0;
+        unsigned char alpha = 255;
+        v.apply( "r", red );
+        v.apply( "g", green );
+        v.apply( "b", blue );
+        v.apply( "a", alpha );
+        p = QColor4ub( red, green, blue, alpha );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const QColor4ub& p, Visitor& v )
+    {
+        v.apply( "r", p.red() );
+        v.apply( "g", p.green() );
+        v.apply( "b", p.blue() );
+        v.apply( "a", p.alpha() );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+    

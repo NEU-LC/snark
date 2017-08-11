@@ -30,6 +30,12 @@
 #include "viewer.h"
 #include <iostream>
 #include <iomanip>
+#include "../../../qt5.5/qopengl/traits.h"
+#ifndef Q_MOC_RUN
+#include <boost/property_tree/json_parser.hpp>
+#include <comma/name_value/ptree.h>
+#include <comma/visiting/apply.h>
+#endif
 
 namespace snark { namespace graphics { namespace view { namespace qopengl {
 
@@ -106,11 +112,17 @@ void viewer::set_camera_position(const Eigen::Vector3d& position, const Eigen::V
 }
 void viewer::load_camera_config(const std::string& file_name)
 {
-    
+    boost::property_tree::ptree camera_config;
+    boost::property_tree::read_json( file_name, camera_config );
+    comma::from_ptree from_ptree( camera_config, true );
+    comma::visiting::apply( from_ptree ).to( camera );
 }
 void viewer::write_camera_config(std::ostream& os)
 {
-    
+    boost::property_tree::ptree p;
+    comma::to_ptree to_ptree( p );
+    comma::visiting::apply( to_ptree ).to( camera );
+    boost::property_tree::write_json( os, p );
 }
     
 } } } } // namespace snark { namespace graphics { namespace view { namespace qopengl {

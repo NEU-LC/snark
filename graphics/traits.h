@@ -27,57 +27,52 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @author Navid Pirmarzdashti
-
 #pragma once
+#include <comma/visiting/traits.h>
+#include <QVector3D>
+#include <QSizeF>
 
-#include <Eigen/Core>
-#include <QMatrix4x4>
+namespace comma { namespace visiting {
 
-namespace snark { namespace graphics { namespace qopengl {
+#define COMMA_VISITING_TRAITS_QVECTOR3d
     
-struct camera_transform
+template <> struct traits< QVector3D >
 {
-    camera_transform(bool orthographic,double field_of_view,const QVector3D& up=QVector3D(0,0,-1),const QVector3D& center=QVector3D(),float z=-1);
-    void pan(float dx,float dy);
-    /// negative numbers push camera backward (zoom out)
-    void zoom(float dz);
-    /// rotate world on its own x and y axis
-    /// apparent rotation of view point around pivot point
-    void pivot(float dx,float dy);
-    
-    // sets world's center position
-    void set_center(const QVector3D& v);
-    /// sets world's orientation to euler angels
-    void set_orientation(float roll,float pitch,float yaw);
-    void set_orientation(const QVector3D& v) { set_orientation(v.x(),v.y(),v.z()); }
-    QVector3D get_orientation() const;
-    /// sets camera position in world coordinate
-    /// z is distance to center and (x,y) component is pan
-    void set_position(const QVector3D& v);
-    QVector3D get_position() const;
-    /// distance between camera and center
-    double distance();
+    template < typename Key, class Visitor >
+    static void visit( Key, QVector3D& p, Visitor& v )
+    {
+        double d;
+        d= p.x(); v.apply( "x", d ); p.setX( d );
+        d = p.y(); v.apply( "y", d ); p.setY( d );
+        d = p.z(); v.apply( "z", d ); p.setZ( d );
+    }
 
-    /// updates projection matrix
-    /// if called with no argument (default 0,0), it uses view_size data member
-    /// call this on window resize passing widget.size(); or after updating any projection fields
-    void update_projection(const QSize& view_size=QSize(0,0));
-    
-    QMatrix4x4 world;
-    QMatrix4x4 camera;
-    QMatrix4x4 projection;
-    QVector3D center;
-    //call update_projection if you set any of the following
-    QVector3D up;   //not plugged in yet
-    bool orthographic;
-    double near_plane;
-    double far_plane;
-    double field_of_view;
-
-    QSize view_size;
+    template < typename Key, class Visitor >
+    static void visit( Key, const QVector3D& p, Visitor& v )
+    {
+        v.apply( "x", p.x() );
+        v.apply( "y", p.y() );
+        v.apply( "z", p.z() );
+    }
 };
-   
-} } } // namespace snark { namespace graphics { namespace qopengl {
-   
+
+template <> struct traits< QSizeF >
+{
+    template < typename Key, class Visitor >
+    static void visit( Key, QSizeF& p, Visitor& v )
+    {
+        double d;
+        d = p.width(); v.apply( "width", d ); p.setWidth( d );
+        d = p.height(); v.apply( "height", d ); p.setHeight( d );
+    }
+
+    template < typename Key, class Visitor >
+    static void visit( Key, const QSizeF& p, Visitor& v )
+    {
+        v.apply( "width", p.width() );
+        v.apply( "height", p.height() );
+    }
+};
+
+} } // namespace comma { namespace visiting {
     

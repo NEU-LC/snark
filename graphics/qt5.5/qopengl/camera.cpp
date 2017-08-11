@@ -27,6 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author Navid Pirmarzdashti
+
 #include "camera.h"
 #include <cmath>
 #include <iostream>
@@ -72,7 +74,6 @@ void camera_transform::set_center(const QVector3D& v)
     center=v;
 //     world.translate(-center);
 }
-QVector3D camera_transform::get_center() { return center; }
 void camera_transform::set_orientation(float roll,float pitch,float yaw)
 {
 //     std::cerr<<"camera_transform::set_orientation "<<roll<<", "<<pitch<<", "<<yaw<<std::endl;
@@ -81,7 +82,7 @@ void camera_transform::set_orientation(float roll,float pitch,float yaw)
     world.translate(-center);
 //     get_orientation();
 }
-QVector3D camera_transform::get_orientation()
+QVector3D camera_transform::get_orientation() const
 {
     Eigen::Matrix3d m=Eigen::Matrix3d::Identity();
     for(unsigned row=0;row<3;row++)
