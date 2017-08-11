@@ -47,8 +47,7 @@ static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
     std::cerr << "filter points from dynamic objects represented by a position and orientation stream" << std::endl;
-    std::cerr << "input: point-cloud, bounding stream" << std::endl;
-    std::cerr << "       bounding data may either be joined to each point or provided through a separate stream in which points-grep will time-join the two streams" << std::endl;
+    std::cerr << "stdin: stream of points to filter" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage: cat points.csv | points-grep <what> [<options>]" << std::endl;
     std::cerr << std::endl;
