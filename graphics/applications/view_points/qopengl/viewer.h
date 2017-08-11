@@ -63,6 +63,7 @@ public:
 protected:
     void init();
     void double_right_click(const boost::optional<QVector3D>& point);
+    void paintGL();
     
 private slots:
     void on_timeout();
@@ -70,14 +71,15 @@ private slots:
 public:
     void update_view(const QVector3D& min, const QVector3D& max);
     void look_at_center();
-    boost::optional< Eigen::Vector3d > m_offset;
     void set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation);
+    void load_camera_config(const std::string& file_name);
+    void write_camera_config(std::ostream& os);
+    
+    boost::optional< Eigen::Vector3d > m_offset;
     bool stdout_allowed;
+    bool output_camera_config;
 
 //     double scene_radius() const { return scene_radius_; }
-    
-//from QGLView
-//     QGLCamera * camera() const;
 };
     
 

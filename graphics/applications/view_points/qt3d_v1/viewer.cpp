@@ -46,14 +46,19 @@
 
 namespace snark { namespace graphics { namespace view {
 
-Viewer::camera_position_output::camera_position_output( const Viewer& viewer ) : viewer_( viewer ) {}
-
-void Viewer::camera_position_output::write()
+void Viewer::load_camera_config(const std::string& file_name)
+{
+    boost::property_tree::ptree camera_config;
+    boost::property_tree::read_json( file_name, camera_config );
+    comma::from_ptree from_ptree( camera_config, true );
+    comma::visiting::apply( from_ptree ).to( *camera() );
+}
+void Viewer::write_camera_config(std::ostream& os)
 {
     boost::property_tree::ptree p;
     comma::to_ptree to_ptree( p );
-    comma::visiting::apply( to_ptree ).to( *viewer_.camera() );
-    boost::property_tree::write_json( std::cout, p );
+    comma::visiting::apply( to_ptree ).to( *camera() );
+    boost::property_tree::write_json( os, p );
 }
 
 Viewer::Viewer( const QColor4ub& background_color
@@ -61,10 +66,10 @@ Viewer::Viewer( const QColor4ub& background_color
               , bool exit_on_end_of_input
               , boost::optional< comma::csv::options > camera_csv, boost::optional< Eigen::Vector3d > cameraposition
               , boost::optional< Eigen::Vector3d > cameraorientation
-              , boost::property_tree::ptree* camera_config
+              , const std::string& camera_config_file_name
               , boost::optional< Eigen::Vector3d > scene_center
               , boost::optional< double > scene_radius
-              , bool output_camera_position )
+              , bool output_camera_config )
     : qt3d::view( background_color
                 , camera_options
                 , scene_center ? boost::optional< QVector3D >( QVector3D( scene_center->x()
@@ -77,23 +82,22 @@ Viewer::Viewer( const QColor4ub& background_color
     , m_cameraorientation( cameraorientation )
     , m_stdout_allowed( true )
     , m_exit_on_end_of_input( exit_on_end_of_input )
+    , output_camera_config(output_camera_config)
 {
-    if( output_camera_position ) { camera_position_output_.reset( new camera_position_output( *this ) ); }
     QTimer* timer = new QTimer( this );
     timer->start( 40 );
     connect( timer, SIGNAL( timeout() ), this, SLOT( read() ) );
     if( camera_csv ) { m_cameraReader.reset( new CameraReader( *camera_csv ) ); }
-    if( camera_config )
+    if( !camera_config_file_name.empty() )
     {
-        comma::from_ptree from_ptree( *camera_config, true );
-        comma::visiting::apply( from_ptree ).to( *camera() );
+        load_camera_config(camera_config_file_name);
         //boost::property_tree::ptree p;
         //comma::to_ptree to_ptree( p );
         //comma::visiting::apply( to_ptree ).to( *camera() );
         //std::cerr << "view-points: camera set to:" << std::endl;
         //boost::property_tree::write_json( std::cerr, p );
     }
-    m_cameraFixed = m_cameraposition || m_cameraReader || camera_config;
+    m_cameraFixed = m_cameraposition || m_cameraReader || !camera_config_file_name.empty();
 }
 
 void Viewer::shutdown()
@@ -186,7 +190,7 @@ void Viewer::paintGL( QGLPainter *painter )
         if( readers[i]->point_size > 1 ) { ::glDisable( GL_POINT_SMOOTH ); }
     }
     draw_coordinates( painter );
-    if( camera_position_output_ && m_stdout_allowed ) { camera_position_output_->write(); }
+    if( output_camera_config && m_stdout_allowed ) { write_camera_config(std::cout); }
 }
 
 void Viewer::set_camera_position ( const Eigen::Vector3d& position, const Eigen::Vector3d& orientation )

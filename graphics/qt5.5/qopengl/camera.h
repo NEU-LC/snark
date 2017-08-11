@@ -36,7 +36,7 @@ namespace snark { namespace graphics { namespace qopengl {
     
 struct camera_transform
 {
-    camera_transform(const QVector3D& up=QVector3D(0,0,-1),const QVector3D& center=QVector3D(),float z=-1);
+    camera_transform(bool orthographic,double field_of_view,const QVector3D& up=QVector3D(0,0,-1),const QVector3D& center=QVector3D(),float z=-1);
     void pan(float dx,float dy);
     /// negative numbers push camera backward (zoom out)
     void zoom(float dz);
@@ -46,20 +46,35 @@ struct camera_transform
     
     // sets world's center position
     void set_center(const QVector3D& v);
+    QVector3D get_center();
     /// sets world's orientation to euler angels
     void set_orientation(float roll,float pitch,float yaw);
+    QVector3D get_orientation();
     /// sets camera position in world coordinate
     /// z is distance to center and (x,y) component is pan
     void set_position(const QVector3D& v);
     QVector3D get_position() const;
-    
+    /// distance between camera and center
+    double distance();
+
+    /// updates projection matrix
+    /// if called with no argument (default 0,0), it uses view_size data member
+    /// call this on window resize passing widget.size(); or after updating any projection fields
+    void update_projection(const QSize& view_size=QSize(0,0));
     
     QMatrix4x4 world;
     QMatrix4x4 camera;
     QMatrix4x4 projection;
     QVector3D center;
+    //call update_projection if you set any of the following
     QVector3D up;   //not plugged in yet
+    bool orthographic;
+    double near_plane;
+    double far_plane;
+    double field_of_view;
+
+    QSize view_size;
 };
-    
+   
 } } } // namespace snark { namespace graphics { namespace qopengl {
    

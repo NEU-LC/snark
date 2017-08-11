@@ -104,8 +104,6 @@ protected:
     int projection_matrix_location_;
     int mv_matrix_location_;
     camera_transform camera;
-    qt3d::camera_options camera_options_;
-    double size_;
 public:
     float near_plane;
     float far_plane;

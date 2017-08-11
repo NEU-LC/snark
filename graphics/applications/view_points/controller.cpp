@@ -64,10 +64,10 @@ controller::controller(const color_t& background_color
               , boost::optional< comma::csv::options > camera_csv
               , boost::optional< Eigen::Vector3d > cameraposition
               , boost::optional< Eigen::Vector3d > cameraorientation
-              , boost::property_tree::ptree* camera_config
+              , const std::string& camera_config_file_name
               , const QVector3D& scene_center
               , double scene_radius
-              , bool output_camera_position)
+              , bool output_camera_config)
     : m_lookAt( false )
     , m_cameraposition( cameraposition )
     , m_cameraorientation( cameraorientation )
@@ -78,24 +78,15 @@ controller::controller(const color_t& background_color
     COMMA_THROW( comma::exception," not implemented ");
 #elif Qt3D_VERSION==2
     viewer.reset(new viewer_t(this,background_color, camera_options, scene_center, scene_radius));
-//     parent->setCentralWidget(viewer.get());
+    viewer->output_camera_config=output_camera_config;
 #endif
-//     if( output_camera_position ) { camera_position_output_.reset( new camera_position_output( *this ) ); }
+    if(!camera_config_file_name.empty()) { viewer->load_camera_config(camera_config_file_name); }
     if( camera_csv ) { m_cameraReader.reset( new CameraReader( *camera_csv ) ); }
-    if( camera_config )
-    {
-        comma::from_ptree from_ptree( *camera_config, true );
-//         comma::visiting::apply( from_ptree ).to( *camera() );
-    }
-    m_cameraFixed = m_cameraposition || m_cameraReader || camera_config;
+    m_cameraFixed = m_cameraposition || m_cameraReader || !camera_config_file_name.empty();
 }
 
 controller::~controller()
 {
-    //don't delete viewer it will be deleted by main window
-    viewer->reset_handler();
-//     delete viewer;
-//     viewer=NULL;
     shutdown(false);
 }
 void controller::inhibit_stdout() { viewer->stdout_allowed = false; }

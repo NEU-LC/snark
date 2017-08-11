@@ -718,8 +718,6 @@ int main( int argc, char** argv )
         boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
         if( s ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( *s ); }
 #endif
-        boost::property_tree::ptree camera_config; // quick and dirty
-        if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
 
 #if Qt3D_VERSION==1
         std::shared_ptr<snark::graphics::view::Viewer> controller(new snark::graphics::view::Viewer( background_color
@@ -728,7 +726,7 @@ int main( int argc, char** argv )
                                                                                  , camera_csv
                                                                                  , cameraposition
                                                                                  , cameraorientation
-                                                                                 , options.exists( "--camera-config" ) ? &camera_config : NULL
+                                                                                 , options.value< std::string >( "--camera-config", "" )
                                                                                  , scene_center
                                                                                  , scene_radius
                                                                                  , options.exists( "--output-camera-config,--output-camera" ) ));
@@ -742,7 +740,7 @@ int main( int argc, char** argv )
         if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
 
         std::shared_ptr<snark::graphics::view::controller> controller(new snark::graphics::view::controller(background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
-                                                     options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" )));
+                                                     options.value<std::string>("--camera-config",""), scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" )));
         controller->viewer->scene_radius_fixed=options.exists("--scene-radius,--radius");
         controller->viewer->scene_center_fixed=options.exists("--scene-center,--center");
 #else
