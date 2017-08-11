@@ -41,6 +41,8 @@
 #include <QLayout>
 #include "action.h"
 #include "main_window.h"
+#include <QFileDialog>
+#include <fstream>
 
 namespace snark { namespace graphics { namespace view {
 
@@ -50,6 +52,8 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::g
 {
     QMenu* fileMenu = menuBar()->addMenu( "File" );
     menuBar()->addMenu( fileMenu );
+    fileMenu->addAction(new Action("Load Camera Config...", boost::bind(&MainWindow::load_camera_config,this)));
+    fileMenu->addAction( new Action( "Save Camera Config...", boost::bind( &MainWindow::save_camera_config, this ) ) );
 
     m_fileFrame = new QFrame;
     m_fileFrame->setFrameStyle( QFrame::Plain | QFrame::NoFrame );
@@ -191,6 +195,21 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         close();
     else
         QWidget::keyPressEvent(e);
+}
+
+void MainWindow::load_camera_config()
+{
+    std::string filename=QFileDialog::getOpenFileName(this,"Load Camera Config").toStdString();
+//     std::cerr<<"MainWindow::load_camera_config "<<filename<<std::endl;
+    controller->load_camera_config(filename);
+}
+
+void MainWindow::save_camera_config()
+{
+    std::string filename=QFileDialog::getSaveFileName(this, "Save Camera Config").toStdString();
+//     std::cerr<<"MainWindow::save_camera_config "<<filename<<std::endl;
+    std::ofstream fs(filename);
+    controller->write_camera_config(fs);
 }
 
 } } } // namespace snark { namespace graphics { namespace view {

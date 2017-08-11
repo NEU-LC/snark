@@ -75,6 +75,8 @@ private slots:
         void toggleFileFrame( bool shown );
         void makeFileGroups();
         void showFileGroup( std::string name, bool shown );
+        void load_camera_config();
+        void save_camera_config();
 };
 
 class CheckBox : public QCheckBox // quick and dirty

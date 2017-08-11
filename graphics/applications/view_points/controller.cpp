@@ -176,6 +176,14 @@ void controller::update_view()
 #endif
     viewer->update();
 }
+void controller::load_camera_config(const std::string& file_name)
+{
+    viewer->load_camera_config(file_name);
+}
+void controller::write_camera_config(std::ostream& os)
+{
+    viewer->write_camera_config(os);
+}
 
 } } } // namespace snark { namespace graphics { namespace view {
 

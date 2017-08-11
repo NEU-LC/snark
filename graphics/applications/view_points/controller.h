@@ -93,6 +93,8 @@ public:
 
     void read();
     void update_view();
+    void load_camera_config(const std::string& file_name);
+    void write_camera_config(std::ostream& os);
 
 private:
     bool m_shutdown;
