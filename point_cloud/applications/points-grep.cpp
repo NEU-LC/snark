@@ -140,12 +140,8 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-typedef boost::geometry::model::d2::point_xy< double > point_t;
-//typedef boost::geometry::model::d2::s
 
-struct polygon_input_t : public boost::geometry::model::d2::point_xy< double >
-{
-    typedef boost::geometry::model::d2::point_xy< double > type;
+struct polygon_input_t : public Eigen::Vector2d {
     comma::uint32 id;   // default is 0
 };
 
@@ -153,8 +149,6 @@ struct flags_t {
     flags_t( comma::uint32 size ) : flags( size, false ) {}
     std::vector< bool > flags;
 };
-
-struct input_line_t : public boost::array< point_t, 2 > {};
 
 struct normal
 {
@@ -219,36 +213,17 @@ struct output_t
 
 namespace comma { namespace visiting {
     
-template <  > struct traits< boost::geometry::model::d2::point_xy< double > >
-{
-    template < typename K, typename V > static void visit( const K& k, boost::geometry::model::d2::point_xy< double >& t, V& v )
-    {
-        double x = t.x();
-        double y = t.y();
-        v.apply( "x", x );
-        t.x(x);
-        v.apply( "y", y );
-        t.y(y);
-    }
-    
-    template < typename K, typename V > static void visit( const K& k, const boost::geometry::model::d2::point_xy< double >& t, V& v )
-    {
-        v.apply( "x", t.x() );
-        v.apply( "y", t.y() );
-    }
-};
-    
 template <> struct traits< polygon_input_t >
 {
     template < typename K, typename V > static void visit( const K& k, ::polygon_input_t& t, V& v )
     {
-        traits< boost::geometry::model::d2::point_xy< double > >::visit( k, t, v );
+        traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
     }
     
     template < typename K, typename V > static void visit( const K& k, const ::polygon_input_t& t, V& v )
     {
-        traits< boost::geometry::model::d2::point_xy< double > >::visit( k, t, v );
+        traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
     }
 };
@@ -266,21 +241,6 @@ template <  > struct traits< flags_t >
     }
 };
 
-template <  > struct traits< input_line_t >
-{
-    template < typename K, typename V > static void visit( const K& k, input_line_t& t, V& v )
-    {
-        v.apply( "from", t.front() );
-        v.apply( "to", t.back() );
-    }
-    
-    template < typename K, typename V > static void visit( const K& k, const input_line_t& t, V& v )
-    {
-        v.apply( "from", t.front() );
-        v.apply( "to", t.back() );
-    }
-};
-    
 template <> struct traits< ::position >
 {
     template < typename K, typename V > static void visit( const K& k, ::position& t, V& v )
@@ -489,6 +449,18 @@ template < typename Species, typename Genus > static int run( const boost::optio
 
 template < typename Species, typename Genus > int run( const Genus& shape, const comma::command_line_options& options ) { return run< Species >( boost::optional< Genus >( shape ), options ); }
 
+// todo
+// done - group all polygons-related definitions at one place in a namespace
+// - add working lines example
+// done - try polygon with no repetition of first and last record; review with seva
+// - reading polygons: add closing the loop
+// - --help: document polygon definitions
+// - tear down traits for point_t
+// - tear down unused structures, includes, traits, etc
+
+namespace snark { namespace operations { namespace polygons {
+
+typedef boost::geometry::model::d2::point_xy< double > point_t;
 typedef boost::geometry::model::polygon< point_t > polygon_t;
 
 std::vector< polygon_t > read_polygons(comma::command_line_options& options)
@@ -509,36 +481,23 @@ std::vector< polygon_t > read_polygons(comma::command_line_options& options)
         const polygon_input_t* p = polystream.read();
         if( !p ) { break; }
         
-        if( ring.empty() || current_id == p->id ) { ring.push_back( *p ); } 
+        if( ring.empty() || current_id == p->id ) { ring.push_back( { p->x(), p->y() } ); } 
         else 
         { 
-            if( verbose ) { std::cerr << "points-grep: polygon '" << current_id << "' has " << ring.size() << " points" << std::endl;  }
             polygons.push_back( polygon_t() ); 
             boost::geometry::append( polygons.back(), ring );
             ring.clear(); 
-            ring.push_back( *p );
+            ring.push_back( { p->x(), p->y() } );
         }
         current_id = p->id; 
     }
     if( !ring.empty() ) { 
-        if( verbose ) { std::cerr << "points-grep: polygon '" << current_id << "' has " << ring.size() << " points" << std::endl;  }
         polygons.push_back( polygon_t() );  boost::geometry::append( polygons.back(), ring ); 
     }
     if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
     
     return std::move(polygons);
 }
-
-// todo
-// - group all polygons-related definitions at one place in a namespace
-// - add working lines example
-// - try polygon with no repetition of first and last record; review with seva
-// - reading polygons: add closing the loop
-// - --help: document polygon definitions
-// - tear down traits for point_t
-// - tear down unused structures, includes, traits, etc
-
-namespace snark { namespace operations { namespace polygons {
 
 static point_t make_geometry( const Eigen::Vector2d& v ) { return point_t( v.x(), v.y() ); }
 //typedef boost::geometry::model::d2::point_xy< double > point_t;
@@ -649,7 +608,7 @@ int main( int argc, char** argv )
         }
         else if( what == "polygons" )
         {
-            const std::vector< polygon_t >& polygons = read_polygons(options);
+            const auto& polygons = snark::operations::polygons::read_polygons(options);
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
             comma::csv::options csv(options);
             csv.full_xpath = true;
