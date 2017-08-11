@@ -29,12 +29,19 @@
 
 /// @authors abdallah kassir, vsevolod vlaskine
 
-#include <iostream>
+#include <boost/geometry/geometries/polygon.hpp> // todo: take a look at multipolygon
+#include <boost/geometry/algorithms/within.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/adapted/boost_polygon.hpp>
+#include <boost/geometry/geometries/adapted/boost_array.hpp>
+#include <boost/geometry/geometries/adapted/boost_tuple.hpp>
+#include <boost/geometry/strategies/agnostic/point_in_poly_winding.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
 #include <comma/io/stream.h>
 #include <comma/name_value/parser.h>
+#include <snark/visiting/eigen.h>
 #include "../../math/roll_pitch_yaw.h"
 #include "../../math/rotation_matrix.h"
 #include "../../math/geometry/polygon.h"
@@ -73,6 +80,18 @@ static void usage( bool verbose = false )
     std::cerr << "             --size=<x>,<y>,<z>: size of the box" << std::endl;
     std::cerr << "             any two of the options above are sufficient to specify a box" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "     line: testing if a 2D input line segment is fully inside a 2D cartesian polygon" << std::endl;
+    std::cerr << "         options" << std::endl;
+    std::cerr << "             --input-fields: output input fields and exit" << std::endl;
+    std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
+    std::cerr << "                  default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "     polygons: testing if a 2D input point is in a 2D cartesian polygon" << std::endl;
+    std::cerr << "         options" << std::endl;
+    std::cerr << "             --input-fields: output input fields and exit" << std::endl;
+    std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
+    std::cerr << "                  default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "     prism" << std::endl;
     std::cerr << "         options" << std::endl;
     std::cerr << "             --axis=<x>,<y>,<z>,<length>: prism axis vector; default: 0,0,1,0" << std::endl;
@@ -110,8 +129,24 @@ static void usage( bool verbose = false )
     std::cerr << "        cat cube.csv | points-grep planes --normals <( echo 0,0,-1,0 ; echo 0,-1,0,0 ; echo -1,0,0,0 ; echo 1,1,1,3 ) > filtered.csv" << std::endl;
     std::cerr << "        view-points \"cube.csv;colour=grey;hide\" \"filtered.csv;colour=red\" <( echo 0,0,0,0:0:0 )\";colour=green;weight=10;fields=x,y,z,label\"" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    testing point inside of any polygon" << std::endl;
+    std::cerr << "        ( echo 0,5; echo 5,5; echo 5,0; echo 0,5 ) | csv-paste - value=1 >polygons.csv" << std::endl;
+    std::cerr << "        ( echo 5,10; echo 10,10; echo 10,5; echo 5,5; echo 5,10 ) | csv-paste - value=2 >>polygons.csv" << std::endl;
+    std::cerr << "        ( for i in $( seq 0 0.2 10 ) ; do for j in $( seq 0 0.2 10 ) ; do echo $i,$j ; done ; done ) | points-grep polygons --polygons polygons.csv" << std::endl;
+    std::cerr << std::endl;
     exit( 0 );
 }
+
+struct polygon_input_t : public boost::geometry::model::d2::point_xy< double >
+{
+    typedef boost::geometry::model::d2::point_xy< double > type;
+    comma::uint32 id;   // default is 0
+};
+
+struct flags_t {
+    flags_t( comma::uint32 size ) : flags( size, false ) {}
+    std::vector< bool > flags;
+};
 
 struct normal
 {
@@ -175,6 +210,39 @@ struct output_t
 };
 
 namespace comma { namespace visiting {
+    
+template <> struct traits< polygon_input_t >
+{
+    template < typename K, typename V > static void visit( const K& k, ::polygon_input_t& t, V& v )
+    {
+        double x = t.x();
+        double y = t.y();
+        v.apply( "x", x );
+        t.x(x);
+        v.apply( "y", y );
+        t.y(y);
+        v.apply( "id", t.id );
+    }
+    
+    template < typename K, typename V > static void visit( const K& k, const ::polygon_input_t& t, V& v )
+    {
+        v.apply( "x", t.x() );
+        v.apply( "y", t.y() );
+        v.apply( "id", t.id );
+    }
+};
+template <  > struct traits< flags_t >
+{
+    template < typename K, typename V > static void visit( const K& k, flags_t& t, V& v )
+    {
+        v.apply( "contains", t.flags );
+    }
+    
+    template < typename K, typename V > static void visit( const K& k, const flags_t& t, V& v )
+    {
+        v.apply( "contains", t.flags );
+    }
+};
     
 template <> struct traits< ::position >
 {
@@ -448,6 +516,64 @@ int main( int argc, char** argv )
                 return run< species::polytope >( snark::geometry::convex_polytope( normals, distances ), options );
             }
             return run< species::polytope >( boost::optional< snark::geometry::convex_polytope >(), options );
+        }
+        else if( what == "polygons" )
+        {
+            comma::csv::options csv(options);
+            csv.full_xpath = true;
+            
+            //todo read polygon ID
+            typedef boost::geometry::model::d2::point_xy< double > point_t;
+            comma::csv::input_stream< Eigen::Vector2d > istream( std::cin, csv );
+            
+            const std::string& polygons_file = options.value< std::string >( "--polygons", "" );
+            comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( polygons_file );
+            filter_csv.full_xpath = true;
+            comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
+            comma::csv::input_stream< polygon_input_t > polystream( *is, filter_csv );
+            
+            bool verbose = options.exists("--verbose,-v");
+            typedef boost::geometry::model::polygon< point_t > polygon_t;
+            std::vector< polygon_t > polygons;
+            std::vector< point_t > ring;    // counter clockwise
+            comma::uint32 current_id = 0;
+            while( polystream.ready() || ( is->good() && !is->eof() ) )
+            {
+                const polygon_input_t* p = polystream.read();
+                if( !p ) { break; }
+                
+                if( ring.empty() || current_id == p->id ) { ring.push_back( *p ); } 
+                else 
+                { 
+                    if( verbose ) { std::cerr << "points-grep: polygon '" << current_id << "' has " << ring.size() << " points" << std::endl;  }
+                    polygons.push_back( polygon_t() ); 
+                    boost::geometry::append( polygons.back(), ring );
+                    ring.clear(); 
+                    ring.push_back( *p );
+                }
+                current_id = p->id; 
+            }
+            if( !ring.empty() ) { 
+                if( verbose ) { std::cerr << "points-grep: polygon '" << current_id << "' has " << ring.size() << " points" << std::endl;  }
+                polygons.push_back( polygon_t() );  boost::geometry::append( polygons.back(), ring ); 
+            }
+            else if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon" << std::endl; return 0; }
+            
+            if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
+            
+            flags_t outputs(polygons.size());
+            comma::csv::output_stream< flags_t > ostream( std::cout, csv.binary(), true, false, outputs );
+            comma::csv::tied< Eigen::Vector2d, flags_t > tied( istream, ostream );
+            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+            {
+                const Eigen::Vector2d* p = istream.read();
+                if( !p ) { break; }
+                for( std::size_t i=0; i<polygons.size(); ++i ) { 
+                    outputs.flags[i] = boost::geometry::within ( point_t( p->x(), p->y() ), polygons[i] ); 
+                }
+                tied.append( outputs );
+            }
+            return 0;
         }
         else if( what == "prism" )
         {
