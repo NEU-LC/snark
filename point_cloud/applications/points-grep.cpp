@@ -73,6 +73,8 @@ static void usage( bool verbose = false )
     std::cerr << "                 x,y: input is points" << std::endl;
     std::cerr << "                 first,second,first/x,first/y,second/x,second/y: if any of these fields present, input is line segments" << std::endl;
     std::cerr << "                 default: x,y" << std::endl;
+    std::cerr << "             --polygon-fields: show polygon fields and exit, see --polygons" << std::endl;
+    std::cerr << "             --polygon-format: show polygon format and exit, see --polygons" << std::endl;
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
     std::cerr << "                 default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
     std::cerr << "                 polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
@@ -228,12 +230,14 @@ template <> struct traits< snark::operations::polygons::polygon_point >
     {
         traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
+        v.apply( "restrictive", t.restrictive );
     }
     
     template < typename K, typename V > static void visit( const K& k, const snark::operations::polygons::polygon_point& t, V& v )
     {
         traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
+        v.apply( "restrictive", t.restrictive );
     }
 };
 
@@ -457,8 +461,6 @@ typedef boost::geometry::model::d2::point_xy< double > point_t;
 typedef boost::geometry::model::linestring< point_t > line_t;
 typedef line_t boundary_t;
 
-static bool restrictive = false; // are all polygons considered restrictive
-
 struct polygon_t
 {
     boost::geometry::model::polygon< point_t, true, false > polygon;
@@ -478,9 +480,11 @@ std::vector< polygon_t > read_polygons(comma::command_line_options& options)
     const std::string& polygons_file = options.value< std::string >( "--polygons", "" );
     comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( polygons_file );
     filter_csv.full_xpath = true;
+    if( filter_csv.fields.empty() ) { filter_csv.fields = "x,y"; }
     comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< polygon_point > polystream( *is, filter_csv );
     
+    bool make_all_restrictive = options.exists("--restrictive");
     std::vector< polygon_t > polygons;
     boundary_t ring;    // clockwise, or counter-clockwise, it does not seem to matter
     bool is_restrictive = false;
@@ -492,14 +496,14 @@ std::vector< polygon_t > read_polygons(comma::command_line_options& options)
         if( ring.empty() || current_id == p->id ) { ring.push_back( { p->x(), p->y() } ); is_restrictive = p->restrictive; } 
         else 
         { 
-            polygons.push_back( polygon_t( ring, restrictive ? true : is_restrictive ) ); 
+            polygons.push_back( polygon_t( ring, make_all_restrictive ? true : is_restrictive ) ); 
             ring.clear(); 
             ring.push_back( { p->x(), p->y() } );
             is_restrictive = p->restrictive;
         }
         current_id = p->id; 
     }
-    if( !ring.empty() ) { polygons.push_back( polygon_t( ring, restrictive ? true : is_restrictive ) ); }
+    if( !ring.empty() ) { polygons.push_back( polygon_t( ring, make_all_restrictive ? true : is_restrictive ) ); }
     if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
     return std::move( polygons );
 }
@@ -514,9 +518,14 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
     return std::move(line);
 }
 
-static bool within_( const point_t& g, const polygon_t& p ) { return boost::geometry::within( g, p.polygon ); }
+static bool within_( const point_t& g, const polygon_t& p ) { return p.restrictive ? !boost::geometry::within( g, p.polygon ) : !boost::geometry::within( g, p.polygon ); }
 
-static bool within_( const line_t& g, const polygon_t& p ) { return boost::geometry::within( g[0], p.polygon ) && boost::geometry::within( g[1], p.polygon ) && !boost::geometry::intersects( g, p.boundary ); }
+static bool within_( const line_t& g, const polygon_t& p ) { 
+    
+    return !p.restrictive ?
+        boost::geometry::within( g[0], p.polygon ) && boost::geometry::within( g[1], p.polygon ) && !boost::geometry::intersects( g, p.boundary )   // totally inside
+      : !boost::geometry::within( g[0], p.polygon ) && !boost::geometry::within( g[1], p.polygon ) && !boost::geometry::intersects( g, p.boundary );    // totally outside 
+}
 
 // todo
 // - flags_t -> snark::operations::polygons::flags_t
@@ -627,7 +636,8 @@ int main( int argc, char** argv )
             if( options.exists( "--input-fields" ) ) { std::cerr << "points-grep polygons: --input-fields not implemented, since it is ambiguous; see --help instead" << std::endl; return 1; }
             if( options.exists( "--output-fields" ) ) { std::cerr << "points-grep polygons: --output-fields not implemented, since it is hard to define; see --help instead" << std::endl; return 1; }
             if( options.exists( "--output-format" ) ) { std::cerr << "points-grep polygons: --output-format not implemented, since it is hard to define; see --help instead" << std::endl; return 1; }
-            // todo: --polygon-fields
+            if( options.exists("--polygon-fields") ) { std::cout << comma::join( comma::csv::names< snark::operations::polygons::polygon_point >(), ',' ) << std::endl; return 0; }
+            if( options.exists("--polygon-format") ) { std::cout << comma::csv::format::value< snark::operations::polygons::polygon_point >() << std::endl; return 0; }
             const auto& polygons = snark::operations::polygons::read_polygons(options);
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
             comma::csv::options csv(options);
