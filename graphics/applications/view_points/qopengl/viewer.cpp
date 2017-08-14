@@ -46,7 +46,7 @@ std::ostream& operator<<(std::ostream& os, const QVector3D& v)
 
 viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, 
                const QVector3D& arg_scene_center, double arg_scene_radius,QMainWindow* parent) : 
-    snark::graphics::qopengl::widget(camera_options,parent),
+    snark::graphics::qopengl::widget(background_color,camera_options,parent),
     handler(handler),
     scene_center(arg_scene_center),
     scene_radius_fixed(false),

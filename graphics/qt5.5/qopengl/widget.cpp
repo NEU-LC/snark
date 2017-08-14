@@ -66,10 +66,10 @@ static const char *fragment_shader_source = R"(
     }
 )";
 
-widget::widget(const qt3d::camera_options& camera_options, QWidget *parent )
+widget::widget(const color_t& background_color, const qt3d::camera_options& camera_options, QWidget *parent )
     : QOpenGLWidget( parent ), program_( 0 ), 
     camera(camera_options.orthographic,camera_options.field_of_view,QVector3D(0,0,camera_options.z_is_up?1:-1)) ,
-    scene_radius(10)
+    scene_radius(10), background_color(background_color)
 {
 }
 widget::~widget()
@@ -135,7 +135,6 @@ void widget::initializeGL()
     connect( context(), &QOpenGLContext::aboutToBeDestroyed, this, &widget::cleanup );
 
     initializeOpenGLFunctions();
-    glClearColor( 0, 0, 0, 1 );
     program_ = new QOpenGLShaderProgram();
     program_->addShaderFromSourceCode( QOpenGLShader::Vertex, vertex_shader_source );
     program_->addShaderFromSourceCode( QOpenGLShader::Fragment, fragment_shader_source );
@@ -161,6 +160,7 @@ void widget::paintGL()
     QPainter painter( this );
     painter.beginNativePainting();
 
+    glClearColor(background_color.red(),background_color.green(),background_color.blue(),background_color.alpha());
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_BLEND );
@@ -168,7 +168,6 @@ void widget::paintGL()
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 //     glEnable( GL_CULL_FACE );
 
-    
 //     QOpenGLVertexArrayObject::Binder binder(&(shapes[0]->vao));
     program_->bind();
     program_->setUniformValue( projection_matrix_location_, camera.projection );
