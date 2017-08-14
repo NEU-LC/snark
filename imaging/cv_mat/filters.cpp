@@ -69,6 +69,7 @@
 #include <comma/application/verbose.h>
 #include "../camera/pinhole.h"
 #include "../camera/traits.h"
+#include "../../timing/time.h"
 #include "../../timing/timestamped.h"
 #include "../../timing/traits.h"
 #include "filters.h"
@@ -154,19 +155,6 @@ namespace {
             return m;
         }
     };
-
-// todo
-// - comma, snark: c++11, c++14
-//   - shrimp littleboard: compiler version, if c++11 not supported, regroup
-//   - tear down c++11 option
-//   - always check what flag to use
-//   - announce
-// - use ',' instead of ':'  DONE
-// - size
-//   - specify full size, not half-size  DONE
-//   - fix help  DONE
-//   - fix default values in help  DONE
-
 } // anonymous
 
 namespace snark{ namespace cv_mat {
@@ -182,7 +170,7 @@ static bool is_empty( typename impl::filters< H >::value_type m, const typename 
 static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension, boost::optional< unsigned int > index = boost::none )
 {
     std::ostringstream ss;
-    ss << boost::posix_time::to_iso_string( t );
+    ss << snark::timing::to_iso_string_always_with_fractions( t );
     if( index ) { ss << '.' << *index; }
     ss << '.' << extension;
     return ss.str();

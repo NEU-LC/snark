@@ -27,17 +27,15 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#pragma once
 
-#ifndef SNARK_TIMING_TIME_H_
-#define SNARK_TIMING_TIME_H_
-
-#include <string>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark{ namespace timing {
 
 static const boost::gregorian::date epoch( 1970, 1, 1 );
 
+std::string to_iso_string_always_with_fractions( const boost::posix_time::ptime& t );
+
 } } // namespace snark{ namespace timing
 
-#endif /*SNARK_TIMING_TIME_H_*/
