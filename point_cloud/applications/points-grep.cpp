@@ -76,6 +76,7 @@ static void usage( bool verbose = false )
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
     std::cerr << "                 default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
     std::cerr << "                 polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
+    std::cerr << "             --restrictive: make all polygons in --polygons restrictive, ignores restrictive field in --polygons if any" << std::endl;
     std::cerr << std::endl;
     std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
     std::cerr << "         options" << std::endl;
@@ -146,6 +147,9 @@ namespace snark { namespace operations { namespace polygons {
     
 struct polygon_point : public Eigen::Vector2d {
     comma::uint32 id;   // default is 0
+    bool restrictive;
+    
+    polygon_point() : id(0), restrictive(false) {}
 };
 
 struct flags_t {
@@ -450,12 +454,26 @@ template < typename Species, typename Genus > int run( const Genus& shape, const
 namespace snark { namespace operations { namespace polygons {
 
 typedef boost::geometry::model::d2::point_xy< double > point_t;
-typedef boost::geometry::model::polygon< point_t, true, false > polygon_t;
 typedef boost::geometry::model::linestring< point_t > line_t;
 typedef line_t boundary_t;
 
+static bool restrictive = false; // are all polygons considered restrictive
+
+struct polygon_t
+{
+    boost::geometry::model::polygon< point_t, true, false > polygon;
+    boost::geometry::model::linestring< point_t > boundary;
+    bool restrictive;
+    
+    polygon_t() : restrictive(false) {}
+    polygon_t(const line_t& ring, bool is_restrictive) : boundary(ring), restrictive(is_restrictive) {
+        boost::geometry::append( polygon, boundary );
+        boundary.push_back( boundary.front() ); // make linestring to be a loop, polygon's boundary
+    }
+};
+
 // returns a list of polygons, boundary_t is its ring boundary
-std::vector< std::pair< polygon_t, boundary_t > > read_polygons(comma::command_line_options& options)
+std::vector< polygon_t > read_polygons(comma::command_line_options& options)
 {
     const std::string& polygons_file = options.value< std::string >( "--polygons", "" );
     comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( polygons_file );
@@ -463,26 +481,25 @@ std::vector< std::pair< polygon_t, boundary_t > > read_polygons(comma::command_l
     comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< polygon_point > polystream( *is, filter_csv );
     
-    std::vector< std::pair< polygon_t, boundary_t > > polygons;
+    std::vector< polygon_t > polygons;
     boundary_t ring;    // clockwise, or counter-clockwise, it does not seem to matter
+    bool is_restrictive = false;
     comma::uint32 current_id = 0;
     while( polystream.ready() || ( is->good() && !is->eof() ) )
     {
         const polygon_point* p = polystream.read();
         if( !p ) { break; }
-        if( ring.empty() || current_id == p->id ) { ring.push_back( { p->x(), p->y() } ); } 
+        if( ring.empty() || current_id == p->id ) { ring.push_back( { p->x(), p->y() } ); is_restrictive = p->restrictive; } 
         else 
         { 
-            auto data = std::make_pair(polygon_t(), ring);
-            boost::geometry::append( data.first, ring );
-            data.second.push_back( ring.front() ); // make linestring to be a loop, polygon's boundary
-            polygons.push_back( std::move(data)  ); 
+            polygons.push_back( polygon_t( ring, restrictive ? true : is_restrictive ) ); 
             ring.clear(); 
             ring.push_back( { p->x(), p->y() } );
+            is_restrictive = p->restrictive;
         }
         current_id = p->id; 
     }
-    if( !ring.empty() ) { polygons.push_back( std::make_pair(polygon_t(), ring) );  boost::geometry::append( polygons.back().first, ring ); polygons.back().second.push_back( ring.front() ); }
+    if( !ring.empty() ) { polygons.push_back( polygon_t( ring, restrictive ? true : is_restrictive ) ); }
     if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
     return std::move( polygons );
 }
@@ -497,9 +514,9 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
     return std::move(line);
 }
 
-static bool within_( const point_t& g, const std::pair< polygon_t, boundary_t >& p ) { return boost::geometry::within( g, p.first ); }
+static bool within_( const point_t& g, const polygon_t& p ) { return boost::geometry::within( g, p.polygon ); }
 
-static bool within_( const line_t& g, const std::pair< polygon_t, boundary_t >& p ) { return boost::geometry::within( g[0], p.first ) && boost::geometry::within( g[1], p.first ) && !boost::geometry::intersects( g, p.second ); }
+static bool within_( const line_t& g, const polygon_t& p ) { return boost::geometry::within( g[0], p.polygon ) && boost::geometry::within( g[1], p.polygon ) && !boost::geometry::intersects( g, p.boundary ); }
 
 // todo
 // - flags_t -> snark::operations::polygons::flags_t
@@ -520,7 +537,7 @@ static bool within_( const line_t& g, const std::pair< polygon_t, boundary_t >& 
 //   --output-format
 // - ark, leafy: git grep points-grep: fix --input/--output-fields; --output-format (pass operation)
 
-template < typename T > static int run( const comma::csv::options& csv, const std::vector< std::pair< polygon_t, boundary_t > >& polygons )
+template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons )
 {
     comma::csv::input_stream< T > istream( std::cin, csv );
     flags_t outputs( polygons.size() );
