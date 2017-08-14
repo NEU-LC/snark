@@ -140,6 +140,7 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
+static bool verbose;
 
 struct polygon_input_t : public Eigen::Vector2d {
     comma::uint32 id;   // default is 0
@@ -462,7 +463,8 @@ namespace snark { namespace operations { namespace polygons {
 
 typedef boost::geometry::model::d2::point_xy< double > point_t;
 typedef boost::geometry::model::polygon< point_t, true, false > polygon_t;
-typedef boost::geometry::model::linestring< point_t > boundary_t;
+typedef boost::geometry::model::linestring< point_t > line_t;
+typedef line_t boundary_t;
 
 // returns a list of polygons, boundary_t is its ring boundary
 std::vector< std::pair< polygon_t, boundary_t > > read_polygons(comma::command_line_options& options)
@@ -494,13 +496,12 @@ std::vector< std::pair< polygon_t, boundary_t > > read_polygons(comma::command_l
         current_id = p->id; 
     }
     if( !ring.empty() ) { polygons.push_back( std::make_pair(polygon_t(), ring) );  boost::geometry::append( polygons.back().first, ring ); polygons.back().second.push_back( ring.front() ); }
-    if( options.exists("--verbose,-v") ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
-    
-    return std::move(polygons);
+    if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
+    return std::move( polygons );
 }
 
 static point_t make_geometry( const Eigen::Vector2d& v ) { return point_t( v.x(), v.y() ); }
-typedef boundary_t line_t;
+
 static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >& v )
 { 
     line_t line;
@@ -511,17 +512,16 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
 
 static bool within_( const point_t& g, const std::pair< polygon_t, boundary_t >& p ) { return boost::geometry::within( g, p.first ); }
 
-static bool within_( const line_t& g, const std::pair< polygon_t, boundary_t >& p )
-{
-    //return boost::geometry::within( g, p ); // uncomment once supported in boost
-    if( !boost::geometry::within( g[0], p.first ) || !boost::geometry::within( g[1], p.first ) ) { return false; }
-    return !boost::geometry::intersects( g, p.second );
-}
+static bool within_( const line_t& g, const std::pair< polygon_t, boundary_t >& p ) { return boost::geometry::within( g[0], p.first ) && boost::geometry::within( g[1], p.first ) && !boost::geometry::intersects( g, p.second ); }
+
+// todo
+// - polygon_input_t -> snark::operations::polygons::input
+// - fix --*-fields, --*-format (make it operation-dependent)
 
 template < typename T > static int run( const comma::csv::options& csv, const std::vector< std::pair< polygon_t, boundary_t > >& polygons )
 {
     comma::csv::input_stream< T > istream( std::cin, csv );
-    flags_t outputs(polygons.size());
+    flags_t outputs( polygons.size() );
     comma::csv::output_stream< flags_t > ostream( std::cout, csv.binary(), true, false, outputs );
     comma::csv::tied< T, flags_t > tied( istream, ostream );
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -542,6 +542,7 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv, usage );
+        verbose = options.exists( "--verbose,-v" );
         bool output_all = options.exists( "--output-all,--all" );
         if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< input_t< species::polytope > >( true ), ',' ) << std::endl; return 0; }
         if( options.exists( "--input-format" ) ) { std::cerr << comma::csv::format::value< input_t< species::polytope > >() << std::endl; return 0; }
@@ -608,9 +609,7 @@ int main( int argc, char** argv )
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
             comma::csv::options csv(options);
             csv.full_xpath = true;
-            
             bool is_line_mode = csv.has_some_of_fields( "first,second,first/x,first/y,second/x,second/y" );
-            if( options.exists("--verbose,-v") ) { std::cerr << "points-grep: testing 2D " << (is_line_mode ? "lines" : "points") << " in 2D polygons" << std::endl; }
             return is_line_mode
                  ? snark::operations::polygons::run< std::pair< Eigen::Vector2d, Eigen::Vector2d > >( csv, polygons )
                  : snark::operations::polygons::run< Eigen::Vector2d >( csv, polygons );
