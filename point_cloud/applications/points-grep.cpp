@@ -462,10 +462,10 @@ namespace snark { namespace operations { namespace polygons {
 
 typedef boost::geometry::model::d2::point_xy< double > point_t;
 typedef boost::geometry::model::polygon< point_t, true, false > polygon_t;
-typedef boost::geometry::model::linestring< point_t > linestring_t;
+typedef boost::geometry::model::linestring< point_t > boundary_t;
 
-// returns a list of polygons, linestring_t is its boundary
-std::vector< std::pair< polygon_t, linestring_t > > read_polygons(comma::command_line_options& options)
+// returns a list of polygons, boundary_t is its ring boundary
+std::vector< std::pair< polygon_t, boundary_t > > read_polygons(comma::command_line_options& options)
 {
     const std::string& polygons_file = options.value< std::string >( "--polygons", "" );
     comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( polygons_file );
@@ -473,8 +473,8 @@ std::vector< std::pair< polygon_t, linestring_t > > read_polygons(comma::command
     comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< polygon_input_t > polystream( *is, filter_csv );
     
-    std::vector< std::pair< polygon_t, linestring_t > > polygons;
-    linestring_t ring;    // counter clockwise
+    std::vector< std::pair< polygon_t, boundary_t > > polygons;
+    boundary_t ring;    // counter clockwise
     comma::uint32 current_id = 0;
     while( polystream.ready() || ( is->good() && !is->eof() ) )
     {
@@ -500,7 +500,7 @@ std::vector< std::pair< polygon_t, linestring_t > > read_polygons(comma::command
 }
 
 static point_t make_geometry( const Eigen::Vector2d& v ) { return point_t( v.x(), v.y() ); }
-typedef linestring_t line_t;
+typedef boundary_t line_t;
 static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >& v )
 { 
     line_t line;
@@ -509,16 +509,16 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
     return std::move(line);
 }
 
-static bool within_( const point_t& g, const std::pair< polygon_t, linestring_t >& p ) { return boost::geometry::within( g, p.first ); }
+static bool within_( const point_t& g, const std::pair< polygon_t, boundary_t >& p ) { return boost::geometry::within( g, p.first ); }
 
-static bool within_( const line_t& g, const std::pair< polygon_t, linestring_t >& p )
+static bool within_( const line_t& g, const std::pair< polygon_t, boundary_t >& p )
 {
     //return boost::geometry::within( g, p ); // uncomment once supported in boost
     if( !boost::geometry::within( g[0], p.first ) || !boost::geometry::within( g[1], p.first ) ) { return false; }
     return !boost::geometry::intersects( g, p.second );
 }
 
-template < typename T > static int run( const comma::csv::options& csv, const std::vector< std::pair< polygon_t, linestring_t > >& polygons )
+template < typename T > static int run( const comma::csv::options& csv, const std::vector< std::pair< polygon_t, boundary_t > >& polygons )
 {
     comma::csv::input_stream< T > istream( std::cin, csv );
     flags_t outputs(polygons.size());
