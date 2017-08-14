@@ -148,12 +148,12 @@ struct polygon_point : public Eigen::Vector2d {
     comma::uint32 id;   // default is 0
 };
 
-} } } // namespace snark { namespace operations { namespace polygons {
-
 struct flags_t {
     flags_t( comma::uint32 size ) : flags( size, false ) {}
     std::vector< bool > flags;
 };
+
+} } } // namespace snark { namespace operations { namespace polygons {
 
 struct normal
 {
@@ -233,10 +233,10 @@ template <> struct traits< snark::operations::polygons::polygon_point >
     }
 };
 
-template <> struct traits< flags_t >
+template <> struct traits< snark::operations::polygons::flags_t >
 {
-    template < typename K, typename V > static void visit( const K& k, flags_t& t, V& v ) { v.apply( "contains", t.flags ); }
-    template < typename K, typename V > static void visit( const K& k, const flags_t& t, V& v ) { v.apply( "contains", t.flags ); }
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polygons::flags_t& t, V& v ) { v.apply( "flags", t.flags ); }
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polygons::flags_t& t, V& v ) { v.apply( "flags", t.flags ); }
 };
 
 template <> struct traits< ::position >
