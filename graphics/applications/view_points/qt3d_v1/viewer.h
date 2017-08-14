@@ -61,10 +61,10 @@ class Viewer : public qt3d::view
               , boost::optional< comma::csv::options > cameracsv = boost::optional< comma::csv::options >()
               , boost::optional< Eigen::Vector3d > cameraposition = boost::optional< Eigen::Vector3d >()
               , boost::optional< Eigen::Vector3d > cameraorientation = boost::optional< Eigen::Vector3d >()
-              , boost::property_tree::ptree* camera_config = NULL // massively quick and dirty
+              , const std::string& camera_config_file_name = "" // quick and dirty
               , boost::optional< Eigen::Vector3d > scene_center = boost::optional< Eigen::Vector3d >()
               , boost::optional< double > scene_radius = boost::optional< double >()
-              , bool output_camera_position = false );
+              , bool output_camera_config = false );
 
         void inhibit_stdout() { m_stdout_allowed = false; }
 
@@ -72,6 +72,8 @@ class Viewer : public qt3d::view
         
         void add(std::unique_ptr<snark::graphics::view::Reader>&& reader);
         void update_view() { update(); }
+        void load_camera_config(const std::string& file_name);
+        void write_camera_config(std::ostream& os);
 
         //moved here from reader
 public:
@@ -94,20 +96,9 @@ private:
         boost::optional< Eigen::Vector3d > m_cameraposition;
         boost::optional< Eigen::Vector3d > m_cameraorientation;
         bool m_cameraFixed;
-        class camera_position_output // quick and dirty
-        {
-            public:
-                camera_position_output( const Viewer& viewer );
-                void write();
-
-            private:
-                const Viewer& viewer_;
-                std::vector< char > last_;
-        };
-        friend class camera_position_output;
-        boost::scoped_ptr< camera_position_output > camera_position_output_;
         bool m_stdout_allowed;
         bool m_exit_on_end_of_input;
+        bool output_camera_config;
         void look_at_center() { lookAtCenter(); }
         void update_view(const QVector3D& min, const QVector3D& max) { updateView(min,max); }
 };

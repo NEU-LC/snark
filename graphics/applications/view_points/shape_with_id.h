@@ -100,7 +100,7 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip(gl.point_size));
     }
 #endif
 
@@ -173,7 +173,7 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::lines());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::lines(gl.point_size));
     }
 #endif
 
@@ -273,7 +273,7 @@ struct Shapetraits< Ellipse< Size > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop(gl.point_size));
     }
 #endif
 
@@ -329,7 +329,7 @@ struct Shapetraits< arc< Size > >
 #if Qt3D_VERSION==2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip(gl.point_size));
     }
 #endif
 
@@ -452,14 +452,14 @@ template<> struct how_traits<how_t::loop>
 {
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop(gl.point_size));
     }
 };
 template<> struct how_traits<how_t::connected>
 {
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip());
+        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip(gl.point_size));
     }
 };
 

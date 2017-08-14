@@ -306,6 +306,8 @@ int main( int argc, char** argv )
             return 0;
         }
 
+        comma::verbose << "starting as pid " << getpid() << std::endl;
+
         std::string fields = options.value< std::string >( "--fields", default_fields );
         comma::csv::format format = format_from_fields( fields );
         bool header_only = false;
@@ -380,6 +382,7 @@ int main( int argc, char** argv )
             camera.stop_acquisition();
         }
         if( comma::verbose ) { print_stats( camera ); }
+        comma::verbose << "exiting with code " << exit_code << std::endl;
         return exit_code;
     }
     catch( std::exception& ex )

@@ -54,6 +54,7 @@
 #if Qt3D_VERSION==2
 #include "view_points/traits.h"
 #endif
+#include "view_points/types.h"
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -74,7 +75,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --camera-config"
         " --camera-position"
         " --orthographic"
-        " --background-colour"
+        " --background-colour --background-color"
         " --output-camera-config --output-camera"
         " --scene-center --center"
         " --scene-radius --radius"
@@ -206,6 +207,7 @@ static void usage()
         "\n    --title <title>: title for source, defaults to filename"
         "\n                     if set to \"none\" don't show source in selection box"
         "\n                     (but still display data and checkbox)"
+        "\n    --version: print Qt version and exit"
         "\n"
         "\ncamera options"
         "\n    --camera=\"<options>\""
@@ -214,9 +216,7 @@ static void usage()
         "\n          <type>: orthographic | perspective"
         "\n              default: perspective"
         "\n    --fov=<fov>: set camera field of view in degrees"
-        qt55_unsupported_marker_start
         "\n    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config"
-        qt55_unsupported_marker_end
         "\n    --camera-position=\"<options>\""
         "\n          <options>: <position>|<stream>"
         "\n          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>"
@@ -224,10 +224,8 @@ static void usage()
         "\n    --orthographic: use orthographic projection instead of perspective"
         "\n"
         "\nmore options"
-        qt55_unsupported_marker_start
-        "\n    --background-colour <colour> : default: black"
+        "\n    --background-colour,--background-color=<colour> : default: black"
         "\n    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout"
-        qt55_unsupported_marker_end
         "\n    --scene-center,--center=<value>: fixed scene center as \"x,y,z\""
         "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
         "\n                            scene size from the dataset (e.g. for streams)"
@@ -643,12 +641,10 @@ int main( int argc, char** argv )
         if( options.exists( "--version" )) { version(); exit(0); }
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csv_options( argc, argv );
-        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath,--labels,--length" );
+        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill"
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--background-color,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath,--labels,--length" );
 
-#if Qt3D_VERSION==1
-        QColor4ub background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
-#endif
+        snark::graphics::view::color_t  background_color( QColor( QString( options.value< std::string >( "--background-colour,--background-color", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
@@ -717,8 +713,6 @@ int main( int argc, char** argv )
         boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
         if( s ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( *s ); }
 #endif
-        boost::property_tree::ptree camera_config; // quick and dirty
-        if( options.exists( "--camera-config" ) ) { boost::property_tree::read_json( options.value< std::string >( "--camera-config" ), camera_config ); }
 
 #if Qt3D_VERSION==1
         std::shared_ptr<snark::graphics::view::Viewer> controller(new snark::graphics::view::Viewer( background_color
@@ -727,21 +721,20 @@ int main( int argc, char** argv )
                                                                                  , camera_csv
                                                                                  , cameraposition
                                                                                  , cameraorientation
-                                                                                 , options.exists( "--camera-config" ) ? &camera_config : NULL
+                                                                                 , options.value< std::string >( "--camera-config", "" )
                                                                                  , scene_center
                                                                                  , scene_radius
                                                                                  , options.exists( "--output-camera-config,--output-camera" ) ));
         
 #elif Qt3D_VERSION==2
 
-        color_t background_color;
         double scene_radius=options.value<double>("--scene-radius,--radius",10);
         QVector3D scene_center(0,0,0);
         boost::optional< std::string > s = options.optional< std::string >("--scene-center,--center");
         if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
 
         std::shared_ptr<snark::graphics::view::controller> controller(new snark::graphics::view::controller(background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
-                                                     options.exists( "--camera-config" ) ? &camera_config : NULL, scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" )));
+                                                     options.value<std::string>("--camera-config",""), scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" )));
         controller->viewer->scene_radius_fixed=options.exists("--scene-radius,--radius");
         controller->viewer->scene_center_fixed=options.exists("--scene-center,--center");
 #else

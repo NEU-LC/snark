@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# --exit-on-end-of-input
+# takes about 9 s; then exits
+snark-graphics-test-pattern cube 1000000 5 0.1 | view-points --fields=x,y,z,r,g,b,a --exit-on-end-of-input
+
+# --fill
+# triangle
+cat triangles.csv | view-points --shape triangle --fill --fields corners,id
+
+# --label
+# --weight
+cat points.csv | view-points "-" --weight 5 --color cyan --label=points "triangles.csv;shape=triangle;color=red;label=triangle"
+
+# --no-stdin
+view-points --weight 5 --color cyan --label=points "triangles.csv;shape=triangle;color=red;label=triangle" --no-stdin
+
+# --pass-through
+cat points.csv | view-points --weight 5 --color red --pass-through | column -ts,
+
+# --point-size
+cat points.csv | view-points "-" --point-size 15 --color yellow
+
+# weighted line
+cat points.csv | tail -n+3 | csv-paste points.csv - | view-points --shape line --fields first,second --weight 4
+
+
+# shapes
+# --title
+cat points.csv | view-points "-;weight=5;color=cyan;label=points" --title points \
+                  <( echo 0,0,0,1,1,1 )";shape=extents;label=extents;color=blue;title=extents" \
+                  <( echo 0,0,2,0,0,0,0.5,2 )";shape=ellipse;label=ellipse;color=salad;title=salad" \
+                  <( echo -e "0,0,-2,0\n0,1,-2,1\n0.5,1.5,-2,2\n1,1,-2,3\n1,0,-2,4\n0.5,-0.5,-2,5" )";shape=loop;fields=x,y,z,id;label=loop;title=loop" \
+                  <( echo 2,2,-1,-2,-1,-1 )";shape=arc;label=arc;color=magenta;title=arc"\
+                  <( echo '-3,-3,-3,0,0,0' )";shape=axis;fields=position,orientation;length=6;labels=X:Y:Z;label=axis;title=axis"
+
+# image
+echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0.01"
+
+# camera position
+echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0.01" --camera-position -35,10,-15,$(math-deg2rad -90),0,0
+
+# --camera
+echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0.01" --camera "fov=90"
+
+# --fov
+echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0.01" --fov 30
+
+snark-graphics-test-pattern cube 10000 1 0.1 | view-points --fields=x,y,z,r,g,b,a --camera "fov=45;orthographic"
+snark-graphics-test-pattern cube 10000 1 0.1 | view-points --fields=x,y,z,r,g,b,a --camera "fov=45;perspective"
+snark-graphics-test-pattern cube 10000 1 0.1 | view-points --fields=x,y,z,r,g,b,a --orthographic
+
+
+snark-graphics-test-pattern cube 1000 1 0.1 | view-points --fields=x,y,z,r,g,b,a --scene-center 1,4,0
+snark-graphics-test-pattern cube 1000 1 0.1 | view-points --fields=x,y,z,r,g,b,a --scene-radius 25
+
+# size
+for i in {0..1000}; do snark-graphics-test-pattern cube 10000 1 0.1 | csv-eval --fields x,y,z,r,g,b,a "z2=z+($i/100.0)"; done | view-points --fields x,y,,r,g,b,a,z --size 25000
+
+# stream
+# cat ~/data/snark/view-points/bigData/12*.bin | view-points --binary t,3d,2ui --fields t,x,y,z,block,id

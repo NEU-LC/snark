@@ -29,13 +29,14 @@
 
 #pragma once
 
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "time.h"
 
-namespace snark{ namespace timing {
+namespace snark { namespace timing {
 
-static const boost::gregorian::date epoch( 1970, 1, 1 );
-
-std::string to_iso_string_always_with_fractions( const boost::posix_time::ptime& t );
+std::string to_iso_string_always_with_fractions( const boost::posix_time::ptime& t )
+{
+    const std::string& s = boost::posix_time::to_iso_string( t );
+    return !t.is_special() && s.find( "." ) == std::string::npos ? s + ".000000" : s; // quick and dirty
+}
 
 } } // namespace snark{ namespace timing
-

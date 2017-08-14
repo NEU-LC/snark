@@ -30,6 +30,12 @@
 #include "viewer.h"
 #include <iostream>
 #include <iomanip>
+#include "../../../qt5.5/qopengl/traits.h"
+#ifndef Q_MOC_RUN
+#include <boost/property_tree/json_parser.hpp>
+#include <comma/name_value/ptree.h>
+#include <comma/visiting/apply.h>
+#endif
 
 namespace snark { namespace graphics { namespace view { namespace qopengl {
 
@@ -40,7 +46,7 @@ std::ostream& operator<<(std::ostream& os, const QVector3D& v)
 
 viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, 
                const QVector3D& arg_scene_center, double arg_scene_radius,QMainWindow* parent) : 
-    snark::graphics::qopengl::widget(camera_options,parent),
+    snark::graphics::qopengl::widget(background_color,camera_options,parent),
     handler(handler),
     scene_center(arg_scene_center),
     scene_radius_fixed(false),
@@ -68,6 +74,11 @@ void viewer::double_right_click(const boost::optional<QVector3D>& point)
     p += *m_offset;
     std::cout << std::setprecision(16) << p.x() << "," << p.y() << "," << p.z() << std::endl;
 }
+void viewer::paintGL()
+{
+    widget::paintGL();
+    if(output_camera_config && stdout_allowed) { write_camera_config(std::cout); }
+}
 void viewer::update_view(const QVector3D& min, const QVector3D& max)
 {
     if(!scene_radius_fixed) { scene_radius = 0.5 * ( max - min ).length(); }
@@ -82,14 +93,7 @@ void viewer::look_at_center()
 //     std::cerr<<"look_at_center "<<scene_center<<"; "<<scene_radius<<std::endl;
     camera.set_center(scene_center);
     camera.set_orientation(0, 3*M_PI/4, M_PI/4);
-    if(camera_options_.orthographic)
-    {
-        size_=1.3*scene_radius;
-    }
-    else
-    {
-        camera.set_position(QVector3D(0,0,-2.6*scene_radius));
-    }
+    camera.set_position(QVector3D(0,0,-2.6*scene_radius));
 }
 void viewer::set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation)
 {
@@ -105,6 +109,20 @@ void viewer::set_camera_position(const Eigen::Vector3d& position, const Eigen::V
     camera.set_center(scene_center);    //set center
     camera.set_orientation(orientation.x(),M_PI-orientation.y(),-M_PI/2-orientation.z());
     camera.set_position(QVector3D(0,0,-p.norm()));    //camera is in 0,0,-z in world coordinate
+}
+void viewer::load_camera_config(const std::string& file_name)
+{
+    boost::property_tree::ptree camera_config;
+    boost::property_tree::read_json( file_name, camera_config );
+    comma::from_ptree from_ptree( camera_config, true );
+    comma::visiting::apply( from_ptree ).to( camera );
+}
+void viewer::write_camera_config(std::ostream& os)
+{
+    boost::property_tree::ptree p;
+    comma::to_ptree to_ptree( p );
+    comma::visiting::apply( to_ptree ).to( camera );
+    boost::property_tree::write_json( os, p );
 }
     
 } } } } // namespace snark { namespace graphics { namespace view { namespace qopengl {

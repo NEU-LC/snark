@@ -149,7 +149,7 @@ void camera::set_features( const std::string& name_value_pairs ) const
 
 void camera::start_acquisition( frame_observer::callback_fn callback ) const
 {
-    comma::verbose << "start image acquisition" << std::endl;
+    comma::verbose << "starting image acquisition..." << std::endl;
 
     last_frame_id_ = 0;
 
@@ -162,12 +162,14 @@ void camera::start_acquisition( frame_observer::callback_fn callback ) const
     if( status != VmbErrorSuccess ) {
         COMMA_THROW( comma::exception, error_msg( "StartContinuousImageAcquisition() failed", status ));
     }
+    comma::verbose << "started image acquisition" << std::endl;
 }
 
 void camera::stop_acquisition() const
 {
-    comma::verbose << "stop image acquisition" << std::endl;
+    comma::verbose << "stopping image acquisition..." << std::endl;
     camera_->StopContinuousImageAcquisition();
+    comma::verbose << "stopped image acquisition" << std::endl;
 }
 
 camera::timestamped_frame camera::frame_to_timestamped_frame( const snark::vimba::frame& frame ) const

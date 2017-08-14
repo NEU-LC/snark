@@ -82,10 +82,10 @@ public:
               , boost::optional< comma::csv::options > cameracsv //= boost::optional< comma::csv::options >()
               , boost::optional< Eigen::Vector3d > cameraposition //= boost::optional< Eigen::Vector3d >()
               , boost::optional< Eigen::Vector3d > cameraorientation //= boost::optional< Eigen::Vector3d >()
-              , boost::property_tree::ptree* camera_config //= NULL // massively quick and dirty
+              , const std::string& camera_config_file_name //="" pass empty string, for not loading any config
               , const QVector3D& scene_center
               , double scene_radius
-              , bool output_camera_position = false);
+              , bool output_camera_config = false);
     ~controller();
     void inhibit_stdout();
     void shutdown(bool kill=true);
@@ -93,6 +93,8 @@ public:
 
     void read();
     void update_view();
+    void load_camera_config(const std::string& file_name);
+    void write_camera_config(std::ostream& os);
 
 private:
     bool m_shutdown;

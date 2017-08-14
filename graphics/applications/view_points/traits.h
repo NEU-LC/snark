@@ -28,66 +28,9 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include <comma/visiting/traits.h>
-#include <QVector3D>
-#if Qt3D_VERSION==1
-// #include <QColor4ub>
-#include <Qt3D/qcolor4ub.h>
-#endif
 
-namespace comma { namespace visiting {
-
-#ifndef COMMA_VISITING_TRAITS_QVECTOR3d
-#define COMMA_VISITING_TRAITS_QVECTOR3d
-template <> struct traits< QVector3D >
-{
-    template < typename Key, class Visitor >
-    static void visit( Key, QVector3D& p, Visitor& v )
-    {
-        double d;
-        d= p.x(); v.apply( "x", d ); p.setX( d );
-        d = p.y(); v.apply( "y", d ); p.setY( d );
-        d = p.z(); v.apply( "z", d ); p.setZ( d );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( Key, const QVector3D& p, Visitor& v )
-    {
-        v.apply( "x", p.x() );
-        v.apply( "y", p.y() );
-        v.apply( "z", p.z() );
-    }
-};
-#endif
+#include "../../traits.h"
 
 #if Qt3D_VERSION==1
-template <> struct traits< QColor4ub >
-{
-    template < typename Key, class Visitor >
-    static void visit( Key, QColor4ub& p, Visitor& v )
-    {
-        unsigned char red = 0;
-        unsigned char green = 0;
-        unsigned char blue = 0;
-        unsigned char alpha = 255;
-        v.apply( "r", red );
-        v.apply( "g", green );
-        v.apply( "b", blue );
-        v.apply( "a", alpha );
-        p = QColor4ub( red, green, blue, alpha );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( Key, const QColor4ub& p, Visitor& v )
-    {
-        v.apply( "r", p.red() );
-        v.apply( "g", p.green() );
-        v.apply( "b", p.blue() );
-        v.apply( "a", p.alpha() );
-    }
-};
+#include "../../qt3d/qt3d_v1/traits.h"
 #endif
-
-    
-} } // namespace comma { namespace visiting {
-   
