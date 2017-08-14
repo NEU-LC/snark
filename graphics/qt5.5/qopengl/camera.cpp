@@ -66,7 +66,6 @@ void camera_transform::pivot(float dx,float dy)
     world.rotate(dy, x_axis.toVector3D());
     world.rotate(dx, y_axis.toVector3D());
     world.translate(-center);
-//     get_orientation();
 }
 void camera_transform::set_center(const QVector3D& v)
 {
@@ -76,11 +75,11 @@ void camera_transform::set_center(const QVector3D& v)
 }
 void camera_transform::set_orientation(float roll,float pitch,float yaw)
 {
+    Eigen::Quaterniond  q=snark::rotation_matrix(Eigen::Vector3d(roll,pitch,yaw)).quaternion();
 //     std::cerr<<"camera_transform::set_orientation "<<roll<<", "<<pitch<<", "<<yaw<<std::endl;
     world.setToIdentity();
-    world.rotate(QQuaternion::fromEulerAngles(pitch*180/M_PI,roll*180/M_PI,yaw*180/M_PI));
+    world.rotate(QQuaternion(q.w(),QVector3D(q.x(),q.y(),q.z())));
     world.translate(-center);
-//     get_orientation();
 }
 QVector3D camera_transform::get_orientation() const
 {
@@ -89,11 +88,11 @@ QVector3D camera_transform::get_orientation() const
     {
         for(unsigned col=0;col<3;col++)
         {
-            m(row,col)=world(col,row);
+            m(row,col)=world(row,col);
         }
     }
     auto rpy=snark::rotation_matrix::roll_pitch_yaw(m);
-    double roll=rpy.y(), pitch=-rpy.x(), yaw=-rpy.z();
+    double roll=rpy.x(), pitch=rpy.y(), yaw=rpy.z();
 //     std::cerr<<"camera_transform::get_orientation "<<roll<<", "<<pitch<<", "<<yaw<<std::endl;
     return QVector3D(roll,pitch,yaw);
 }

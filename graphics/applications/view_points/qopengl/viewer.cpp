@@ -92,7 +92,7 @@ void viewer::look_at_center()
 {
 //     std::cerr<<"look_at_center "<<scene_center<<"; "<<scene_radius<<std::endl;
     camera.set_center(scene_center);
-    camera.set_orientation(0, 3*M_PI/4, M_PI/4);
+    camera.set_orientation(3*M_PI/4, -M_PI/4, -M_PI/4);
     camera.set_position(QVector3D(0,0,-2.6*scene_radius));
 }
 void viewer::set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation)
@@ -107,7 +107,8 @@ void viewer::set_camera_position(const Eigen::Vector3d& position, const Eigen::V
     scene_center=QVector3D(c.x(),c.y(),c.z());
     //to be tested
     camera.set_center(scene_center);    //set center
-    camera.set_orientation(orientation.x(),M_PI-orientation.y(),-M_PI/2-orientation.z());
+//     camera.set_orientation(orientation.x(),M_PI-orientation.y(),-M_PI/2-orientation.z());
+    camera.set_orientation(orientation.x(),orientation.y(),orientation.z());
     camera.set_position(QVector3D(0,0,-p.norm()));    //camera is in 0,0,-z in world coordinate
 }
 void viewer::load_camera_config(const std::string& file_name)
