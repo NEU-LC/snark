@@ -53,7 +53,7 @@ class widget : public QOpenGLWidget, protected QOpenGLFunctions, public viewer_b
     Q_OBJECT
 
 public:
-    widget(const qt3d::camera_options& camera_options, QWidget *parent = 0 );
+    widget(const color_t& background_color, const qt3d::camera_options& camera_options, QWidget *parent = 0 );
     ~widget();
 
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;
@@ -108,6 +108,7 @@ public:
     float near_plane;
     float far_plane;
     double scene_radius;
+    color_t background_color;
 };
 
 } } } // namespace snark { namespace graphics { namespace qopengl {

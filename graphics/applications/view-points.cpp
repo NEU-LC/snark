@@ -54,6 +54,7 @@
 #if Qt3D_VERSION==2
 #include "view_points/traits.h"
 #endif
+#include "view_points/types.h"
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -74,7 +75,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --camera-config"
         " --camera-position"
         " --orthographic"
-        " --background-colour"
+        " --background-colour --background-color"
         " --output-camera-config --output-camera"
         " --scene-center --center"
         " --scene-radius --radius"
@@ -223,9 +224,7 @@ static void usage()
         "\n    --orthographic: use orthographic projection instead of perspective"
         "\n"
         "\nmore options"
-        qt55_unsupported_marker_start
-        "\n    --background-colour <colour> : default: black"
-        qt55_unsupported_marker_end
+        "\n    --background-colour,--background-color=<colour> : default: black"
         "\n    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout"
         "\n    --scene-center,--center=<value>: fixed scene center as \"x,y,z\""
         "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
@@ -643,11 +642,9 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csv_options( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath,--labels,--length" );
+                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--background-color,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath,--labels,--length" );
 
-#if Qt3D_VERSION==1
-        QColor4ub background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
-#endif
+        snark::graphics::view::color_t  background_color( QColor( QString( options.value< std::string >( "--background-colour,--background-color", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
@@ -731,7 +728,6 @@ int main( int argc, char** argv )
         
 #elif Qt3D_VERSION==2
 
-        color_t background_color;
         double scene_radius=options.value<double>("--scene-radius,--radius",10);
         QVector3D scene_center(0,0,0);
         boost::optional< std::string > s = options.optional< std::string >("--scene-center,--center");
