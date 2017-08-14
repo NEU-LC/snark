@@ -73,12 +73,9 @@ static void usage( bool verbose = false )
     std::cerr << "                 x,y: input is points" << std::endl;
     std::cerr << "                 first,second,first/x,first/y,second/x,second/y: if any of these fields present, input is line segments" << std::endl;
     std::cerr << "                 default: x,y" << std::endl;
-    std::cerr << "             --line: use with --input-fields or --input-format, see --point and --fields" << std::endl;
-    std::cerr << "             --num-of-polygons,-n: mutually exclusive with --polygons, --output-fields and --output-format must be given the number of input polygons" << std::endl;
-    std::cerr << "             --point: use with --input-fields or --input-format, see --line and --fields" << std::endl;
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
-    std::cerr << "                  default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
-    std::cerr << "                  polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
+    std::cerr << "                 default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
+    std::cerr << "                 polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
     std::cerr << std::endl;
     std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
     std::cerr << "         options" << std::endl;
@@ -147,7 +144,7 @@ static bool verbose;
 
 namespace snark { namespace operations { namespace polygons {
     
-struct input_t : public Eigen::Vector2d {
+struct polygon_point : public Eigen::Vector2d {
     comma::uint32 id;   // default is 0
 };
 
@@ -221,32 +218,25 @@ struct output_t
 
 namespace comma { namespace visiting {
     
-template <> struct traits< snark::operations::polygons::input_t >
+template <> struct traits< snark::operations::polygons::polygon_point >
 {
-    template < typename K, typename V > static void visit( const K& k, snark::operations::polygons::input_t& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polygons::polygon_point& t, V& v )
     {
         traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const snark::operations::polygons::input_t& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polygons::polygon_point& t, V& v )
     {
         traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
     }
 };
 
-template <  > struct traits< flags_t >
+template <> struct traits< flags_t >
 {
-    template < typename K, typename V > static void visit( const K& k, flags_t& t, V& v )
-    {
-        v.apply( "contains", t.flags );
-    }
-    
-    template < typename K, typename V > static void visit( const K& k, const flags_t& t, V& v )
-    {
-        v.apply( "contains", t.flags );
-    }
+    template < typename K, typename V > static void visit( const K& k, flags_t& t, V& v ) { v.apply( "contains", t.flags ); }
+    template < typename K, typename V > static void visit( const K& k, const flags_t& t, V& v ) { v.apply( "contains", t.flags ); }
 };
 
 template <> struct traits< ::position >
@@ -471,16 +461,15 @@ std::vector< std::pair< polygon_t, boundary_t > > read_polygons(comma::command_l
     comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( polygons_file );
     filter_csv.full_xpath = true;
     comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
-    comma::csv::input_stream< input_t > polystream( *is, filter_csv );
+    comma::csv::input_stream< polygon_point > polystream( *is, filter_csv );
     
     std::vector< std::pair< polygon_t, boundary_t > > polygons;
     boundary_t ring;    // clockwise, or counter-clockwise, it does not seem to matter
     comma::uint32 current_id = 0;
     while( polystream.ready() || ( is->good() && !is->eof() ) )
     {
-        const input_t* p = polystream.read();
+        const polygon_point* p = polystream.read();
         if( !p ) { break; }
-        
         if( ring.empty() || current_id == p->id ) { ring.push_back( { p->x(), p->y() } ); } 
         else 
         { 
@@ -513,8 +502,23 @@ static bool within_( const point_t& g, const std::pair< polygon_t, boundary_t >&
 static bool within_( const line_t& g, const std::pair< polygon_t, boundary_t >& p ) { return boost::geometry::within( g[0], p.first ) && boost::geometry::within( g[1], p.first ) && !boost::geometry::intersects( g, p.second ); }
 
 // todo
-// done - polygon_input_t -> snark::operations::polygons::input
+// - flags_t -> snark::operations::polygons::flags_t
+// - rename "contains" to "flags" in fields
+// - move all polytope-related stuff into snark::operations::polytopes
+// - --restrictive: if present, consider polygon restrictive (mutually exclusive with "restrictive" field, if the latter is present)
+// - --polygon-fields
 // done - fix --*-fields, --*-format (make it operation-dependent)
+// - polygons
+//   - --polygons: default fields: x,y
+// - box
+//   --input-fields
+//   --output-fields
+//   --output-format
+// - prism
+//   --input-fields
+//   --output-fields
+//   --output-format
+// - ark, leafy: git grep points-grep: fix --input/--output-fields; --output-format (pass operation)
 
 template < typename T > static int run( const comma::csv::options& csv, const std::vector< std::pair< polygon_t, boundary_t > >& polygons )
 {
@@ -542,11 +546,9 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv, usage );
         verbose = options.exists( "--verbose,-v" );
         bool output_all = options.exists( "--output-all,--all" );
-        
         const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--verbose,-v,--flush","-.*");
         if(!unnamed.size()) { std::cerr << "points-grep: expected filter name, got nothing"<< std::endl; return 1; }
         std::string what = unnamed[0];
-        
         if( what == "polytope" || what == "planes" )
         {
             if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< input_t< species::polytope > >( true ), ',' ) << std::endl; return 0; }
@@ -605,29 +607,10 @@ int main( int argc, char** argv )
         }
         else if( what == "polygons" )
         {
-            options.assert_mutually_exclusive("--line,--point");
-            options.assert_mutually_exclusive("-n,--polygons");
-            options.assert_mutually_exclusive("--num-of-polygons,--polygons");
-            if( options.exists("--input-fields") )
-            {
-                if(options.exists("--line")) { std::cout << comma::join( comma::csv::names< std::pair< Eigen::Vector2d, Eigen::Vector2d > >(), ',' ) << std::endl; return 0; }
-                else if(options.exists("--point")) { std::cout << comma::join( comma::csv::names< Eigen::Vector2d >(), ',' ) << std::endl; return 0; }
-                else { std::cerr << "points-grep: please specify --point or --line for --input-fields or ---input-format" << std::endl; return 1; }
-            }
-            if( options.exists("--input-format") )
-            {
-                if(options.exists("--line")) { std::cout << comma::csv::format::value< std::pair< Eigen::Vector2d, Eigen::Vector2d > >() << std::endl; return 0; }
-                else if(options.exists("--point")) { std::cout << comma::csv::format::value< Eigen::Vector2d >() << std::endl; return 0; }
-                else { std::cerr << "points-grep: please specify --point or --line for --input-fields or ---input-format" << std::endl; return 1; }
-            }
-            
-            if( options.exists("--output-fields,--output-format") ) 
-            { 
-                flags_t sample( options.exists("--polygons") ? snark::operations::polygons::read_polygons(options).size() : options.value< comma::uint32 >("--num-of-polygons,-n") );
-                if( options.exists("--output-fields") ) { std::cout << comma::join( comma::csv::names< flags_t >( sample ), ',' ) << std::endl; return 0; }
-                if( options.exists("--output-format") ) { std::cout << comma::csv::format::value< flags_t >( sample ) << std::endl; return 0; }
-            }
-            
+            if( options.exists( "--input-fields" ) ) { std::cerr << "points-grep polygons: --input-fields not implemented, since it is ambiguous; see --help instead" << std::endl; return 1; }
+            if( options.exists( "--output-fields" ) ) { std::cerr << "points-grep polygons: --output-fields not implemented, since it is hard to define; see --help instead" << std::endl; return 1; }
+            if( options.exists( "--output-format" ) ) { std::cerr << "points-grep polygons: --output-format not implemented, since it is hard to define; see --help instead" << std::endl; return 1; }
+            // todo: --polygon-fields
             const auto& polygons = snark::operations::polygons::read_polygons(options);
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
             comma::csv::options csv(options);
