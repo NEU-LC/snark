@@ -59,3 +59,10 @@ for i in {0..1000}; do snark-graphics-test-pattern cube 10000 1 0.1 | csv-eval -
 
 # stream
 # cat ~/data/snark/view-points/bigData/12*.bin | view-points --binary t,3d,2ui --fields t,x,y,z,block,id
+
+cat points.csv | view-points --weight 5 --color blue --background-color grey
+cat points.csv | view-points --weight 5 --color cyan --background-color "#508000"
+
+cat points.csv | view-points --weight 5 --color cyan --output-camera-config
+cat points.csv | view-points --weight 5 --color cyan --camera-config camera-config.json
+

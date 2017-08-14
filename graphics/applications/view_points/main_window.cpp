@@ -199,17 +199,23 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
 void MainWindow::load_camera_config()
 {
-    std::string filename=QFileDialog::getOpenFileName(this,"Load Camera Config").toStdString();
+    QString filename=QFileDialog::getOpenFileName(this,"Load Camera Config");
 //     std::cerr<<"MainWindow::load_camera_config "<<filename<<std::endl;
-    controller->load_camera_config(filename);
+    if(!filename.isNull())
+    {
+        controller->load_camera_config(filename.toStdString());
+    }
 }
 
 void MainWindow::save_camera_config()
 {
-    std::string filename=QFileDialog::getSaveFileName(this, "Save Camera Config").toStdString();
+    QString filename=QFileDialog::getSaveFileName(this, "Save Camera Config");
 //     std::cerr<<"MainWindow::save_camera_config "<<filename<<std::endl;
-    std::ofstream fs(filename);
-    controller->write_camera_config(fs);
+    if(!filename.isNull())
+    {
+        std::ofstream fs(filename.toStdString());
+        controller->write_camera_config(fs);
+    }
 }
 
 } } } // namespace snark { namespace graphics { namespace view {
