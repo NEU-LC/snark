@@ -69,13 +69,16 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "     polygons: take input 2d points or line segments, identify whether they are fully contained in a set of 2d polygons" << std::endl;
     std::cerr << "         options" << std::endl;
-    std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
-    std::cerr << "                  default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
-    std::cerr << "                  polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
     std::cerr << "             --fields" << std::endl;
     std::cerr << "                 x,y: input is points" << std::endl;
     std::cerr << "                 first,second,first/x,first/y,second/x,second/y: if any of these fields present, input is line segments" << std::endl;
     std::cerr << "                 default: x,y" << std::endl;
+    std::cerr << "             --line: use with --input-fields or --input-format, see --point and --fields" << std::endl;
+    std::cerr << "             --num-of-polygons,-n: mutually exclusive with --polygons, --output-fields and --output-format must be given the number of input polygons" << std::endl;
+    std::cerr << "             --point: use with --input-fields or --input-format, see --line and --fields" << std::endl;
+    std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
+    std::cerr << "                  default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
+    std::cerr << "                  polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
     std::cerr << std::endl;
     std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
     std::cerr << "         options" << std::endl;
@@ -142,9 +145,13 @@ static void usage( bool verbose = false )
 
 static bool verbose;
 
-struct polygon_input_t : public Eigen::Vector2d {
+namespace snark { namespace operations { namespace polygons {
+    
+struct input_t : public Eigen::Vector2d {
     comma::uint32 id;   // default is 0
 };
+
+} } } // namespace snark { namespace operations { namespace polygons {
 
 struct flags_t {
     flags_t( comma::uint32 size ) : flags( size, false ) {}
@@ -214,15 +221,15 @@ struct output_t
 
 namespace comma { namespace visiting {
     
-template <> struct traits< polygon_input_t >
+template <> struct traits< snark::operations::polygons::input_t >
 {
-    template < typename K, typename V > static void visit( const K& k, ::polygon_input_t& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polygons::input_t& t, V& v )
     {
         traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const ::polygon_input_t& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polygons::input_t& t, V& v )
     {
         traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
@@ -450,15 +457,6 @@ template < typename Species, typename Genus > static int run( const boost::optio
 
 template < typename Species, typename Genus > int run( const Genus& shape, const comma::command_line_options& options ) { return run< Species >( boost::optional< Genus >( shape ), options ); }
 
-// todo
-// done - group all polygons-related definitions at one place in a namespace
-// done - add working lines example
-// done - try polygon with no repetition of first and last record; review with seva
-// done ( no longer needed )- reading polygons: add closing the loop
-// done - --help: document polygon definitions
-// done - tear down traits for point_t
-// done - tear down unused structures, includes, traits, etc
-
 namespace snark { namespace operations { namespace polygons {
 
 typedef boost::geometry::model::d2::point_xy< double > point_t;
@@ -473,14 +471,14 @@ std::vector< std::pair< polygon_t, boundary_t > > read_polygons(comma::command_l
     comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( polygons_file );
     filter_csv.full_xpath = true;
     comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
-    comma::csv::input_stream< polygon_input_t > polystream( *is, filter_csv );
+    comma::csv::input_stream< input_t > polystream( *is, filter_csv );
     
     std::vector< std::pair< polygon_t, boundary_t > > polygons;
     boundary_t ring;    // counter clockwise
     comma::uint32 current_id = 0;
     while( polystream.ready() || ( is->good() && !is->eof() ) )
     {
-        const polygon_input_t* p = polystream.read();
+        const input_t* p = polystream.read();
         if( !p ) { break; }
         
         if( ring.empty() || current_id == p->id ) { ring.push_back( { p->x(), p->y() } ); } 
@@ -515,8 +513,8 @@ static bool within_( const point_t& g, const std::pair< polygon_t, boundary_t >&
 static bool within_( const line_t& g, const std::pair< polygon_t, boundary_t >& p ) { return boost::geometry::within( g[0], p.first ) && boost::geometry::within( g[1], p.first ) && !boost::geometry::intersects( g, p.second ); }
 
 // todo
-// - polygon_input_t -> snark::operations::polygons::input
-// - fix --*-fields, --*-format (make it operation-dependent)
+// done - polygon_input_t -> snark::operations::polygons::input
+// done - fix --*-fields, --*-format (make it operation-dependent)
 
 template < typename T > static int run( const comma::csv::options& csv, const std::vector< std::pair< polygon_t, boundary_t > >& polygons )
 {
@@ -544,21 +542,23 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv, usage );
         verbose = options.exists( "--verbose,-v" );
         bool output_all = options.exists( "--output-all,--all" );
-        if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< input_t< species::polytope > >( true ), ',' ) << std::endl; return 0; }
-        if( options.exists( "--input-format" ) ) { std::cerr << comma::csv::format::value< input_t< species::polytope > >() << std::endl; return 0; }
-        if( options.exists( "--normals-fields" ) ) { std::cerr << comma::join( comma::csv::names< ::normal >( true ), ',' ) << std::endl; return 0; }
-        if( options.exists( "--normals-format" ) ) { std::cerr << comma::csv::format::value< ::normal >() << std::endl; return 0; }
-        if( options.exists( "--planes-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::triangle >( true ), ',' ) << std::endl; return 0; }
-        if( options.exists( "--planes-format" ) ) { std::cerr << comma::csv::format::value< snark::triangle >() << std::endl; return 0; }
-        if( options.exists( "--corners-fields" ) ) { std::cerr << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl; return 0; }
-        if( options.exists( "--corners-format" ) ) { std::cerr << comma::csv::format::value< Eigen::Vector3d >() << std::endl; return 0; }
-        if( options.exists( "--output-fields" ) ) { if( output_all ) { std::cerr << comma::join( comma::csv::names< output_t >( true ), ',' ) << std::endl; } return 0; }
-        if( options.exists( "--output-format" ) ) { if( output_all ) { std::cerr << comma::csv::format::value< output_t >() << std::endl; } return 0; }
+        
         const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--verbose,-v,--flush","-.*");
         if(!unnamed.size()) { std::cerr << "points-grep: expected filter name, got nothing"<< std::endl; return 1; }
         std::string what = unnamed[0];
+        
         if( what == "polytope" || what == "planes" )
         {
+            if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< input_t< species::polytope > >( true ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--input-format" ) ) { std::cerr << comma::csv::format::value< input_t< species::polytope > >() << std::endl; return 0; }
+            if( options.exists( "--output-fields" ) ) { if( output_all ) { std::cerr << comma::join( comma::csv::names< output_t >( true ), ',' ) << std::endl; } return 0; }
+            if( options.exists( "--output-format" ) ) { if( output_all ) { std::cerr << comma::csv::format::value< output_t >() << std::endl; } return 0; }
+            
+            if( options.exists( "--normals-fields" ) ) { std::cerr << comma::join( comma::csv::names< ::normal >( true ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--normals-format" ) ) { std::cerr << comma::csv::format::value< ::normal >() << std::endl; return 0; }
+            if( options.exists( "--planes-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::triangle >( true ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--planes-format" ) ) { std::cerr << comma::csv::format::value< snark::triangle >() << std::endl; return 0; }
+            
             options.assert_mutually_exclusive( "--normals,--planes" );
             const std::string& normals_input = options.value< std::string >( "--normals", "" );
             const std::string& planes_input = options.value< std::string >( "--planes", "" );
@@ -605,6 +605,29 @@ int main( int argc, char** argv )
         }
         else if( what == "polygons" )
         {
+            options.assert_mutually_exclusive("--line,--point");
+            options.assert_mutually_exclusive("-n,--polygons");
+            options.assert_mutually_exclusive("--num-of-polygons,--polygons");
+            if( options.exists("--input-fields") )
+            {
+                if(options.exists("--line")) { std::cout << comma::join( comma::csv::names< std::pair< Eigen::Vector2d, Eigen::Vector2d > >(), ',' ) << std::endl; return 0; }
+                else if(options.exists("--point")) { std::cout << comma::join( comma::csv::names< Eigen::Vector2d >(), ',' ) << std::endl; return 0; }
+                else { std::cerr << "points-grep: please specify --point or --line for --input-fields or ---input-format" << std::endl; return 1; }
+            }
+            if( options.exists("--input-format") )
+            {
+                if(options.exists("--line")) { std::cout << comma::csv::format::value< std::pair< Eigen::Vector2d, Eigen::Vector2d > >() << std::endl; return 0; }
+                else if(options.exists("--point")) { std::cout << comma::csv::format::value< Eigen::Vector2d >() << std::endl; return 0; }
+                else { std::cerr << "points-grep: please specify --point or --line for --input-fields or ---input-format" << std::endl; return 1; }
+            }
+            
+            if( options.exists("--output-fields,--output-format") ) 
+            { 
+                flags_t sample( options.exists("--polygons") ? snark::operations::polygons::read_polygons(options).size() : options.value< comma::uint32 >("--num-of-polygons,-n") );
+                if( options.exists("--output-fields") ) { std::cout << comma::join( comma::csv::names< flags_t >( sample ), ',' ) << std::endl; return 0; }
+                if( options.exists("--output-format") ) { std::cout << comma::csv::format::value< flags_t >( sample ) << std::endl; return 0; }
+            }
+            
             const auto& polygons = snark::operations::polygons::read_polygons(options);
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
             comma::csv::options csv(options);
@@ -616,6 +639,9 @@ int main( int argc, char** argv )
         }
         else if( what == "prism" )
         {
+            if( options.exists( "--corners-fields" ) ) { std::cerr << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--corners-format" ) ) { std::cerr << comma::csv::format::value< Eigen::Vector3d >() << std::endl; return 0; }
+            
             const std::string& corners_input = options.value< std::string >( "--corners", "" );
             if( corners_input.empty() ) { return run< species::prism >( boost::optional< snark::geometry::convex_polytope >(), options ); }
             comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( corners_input );
