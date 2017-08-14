@@ -12,6 +12,9 @@ cat triangles.csv | view-points --shape triangle --fill --fields corners,id
 # --weight
 cat points.csv | view-points "-" --weight 5 --color cyan --label=points "triangles.csv;shape=triangle;color=red;label=triangle"
 
+# label fields
+cat sample.csv | view-points --fields x,y,z,label --weight 5 --color cyan
+
 # --no-stdin
 view-points --weight 5 --color cyan --label=points "triangles.csv;shape=triangle;color=red;label=triangle" --no-stdin
 
@@ -38,7 +41,7 @@ cat points.csv | view-points "-;weight=5;color=cyan;label=points" --title points
 echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0.01"
 
 # camera position
-echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0.01" --camera-position -35,10,-15,$(math-deg2rad -90),0,0
+echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0.01" --camera-position -35,10,-15,$(math-deg2rad -120),$(math-deg2rad 30),0
 
 # --camera
 echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0.01" --camera "fov=90"
