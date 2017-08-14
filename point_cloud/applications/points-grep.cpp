@@ -474,7 +474,7 @@ std::vector< std::pair< polygon_t, boundary_t > > read_polygons(comma::command_l
     comma::csv::input_stream< input_t > polystream( *is, filter_csv );
     
     std::vector< std::pair< polygon_t, boundary_t > > polygons;
-    boundary_t ring;    // counter clockwise
+    boundary_t ring;    // clockwise, or counter-clockwise, it does not seem to matter
     comma::uint32 current_id = 0;
     while( polystream.ready() || ( is->good() && !is->eof() ) )
     {
