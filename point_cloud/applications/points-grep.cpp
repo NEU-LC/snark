@@ -132,8 +132,10 @@ static void usage( bool verbose = false )
     std::cerr << "        ( echo 5,10; echo 10,10; echo 10,5; echo 5,5; echo 5,10 ) | csv-paste - value=2 >>polygons.csv" << std::endl;
     std::cerr << "        ( for i in $( seq 0 0.2 10 ) ; do for j in $( seq 0 0.2 10 ) ; do echo $i,$j ; done ; done ) | points-grep polygons --polygons polygons.csv" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "      making a concave polygon" << std::endl;
+    std::cerr << "        ( echo 0,5; echo 5,5; echo 0,0; echo 5,-5; echo 0,-5; echo -5,0 ) | csv-paste - value=1 >polygons.csv" << std::endl;
     std::cerr << "      testing of line totally contained in a polygon" << std::endl;
-    std::cerr << "        ( echo 0,0,5,5; echo 7,7,9,9) | points-grep lines --polygons polygons.csv" << std::endl;
+    std::cerr << "        ( echo -1.0,0,2; echo 1,2,1,-2) | points-grep polygons --polygons polygons.csv" << std::endl;
     std::cerr << "        the first line is not fully contained in any polygon, the second is contained in one polygon" << std::endl;
     exit( 0 );
 }
@@ -606,7 +608,10 @@ int main( int argc, char** argv )
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
             comma::csv::options csv(options);
             csv.full_xpath = true;
-            return csv.has_some_of_fields( "first,second,first/x,first/y,second/x,second/y" )
+            
+            bool is_line_mode = csv.has_some_of_fields( "first,second,first/x,first/y,second/x,second/y" );
+            if( options.exists("--verbose,-v") ) { std::cerr << "points-grep: testing 2D " << (is_line_mode ? "lines" : "points") << " in 2D polygons" << std::endl; }
+            return is_line_mode
                  ? snark::operations::polygons::run< std::pair< Eigen::Vector2d, Eigen::Vector2d > >( csv, polygons )
                  : snark::operations::polygons::run< Eigen::Vector2d >( csv, polygons );
         }
