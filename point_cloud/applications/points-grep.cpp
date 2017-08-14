@@ -134,9 +134,10 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "      making a concave polygon" << std::endl;
     std::cerr << "        ( echo 0,5; echo 5,5; echo 0,0; echo 5,-5; echo 0,-5; echo -5,0 ) | csv-paste - value=1 >polygons.csv" << std::endl;
-    std::cerr << "      testing of line totally contained in a polygon" << std::endl;
-    std::cerr << "        ( echo -1.0,0,2; echo 1,2,1,-2) | points-grep polygons --polygons polygons.csv" << std::endl;
-    std::cerr << "        the first line is not fully contained in any polygon, the second is contained in one polygon" << std::endl;
+    std::cerr << "      testing of line totally contained in a concave polygon" << std::endl;
+    std::cerr << "        ( echo -2,0,-1,2,inside; echo 1,2,1,-2,partial; echo 2,0,4,0,outside) | points-grep polygons --fields first,second --polygons polygons.csv | tee results.csv" << std::endl;
+    std::cerr << "        visualisation:" << std::endl;
+    std::cerr << "           view-points 'results.csv;fields=first/x,first/y,second/x,second/y,label,id;shape=line' 'polygons.csv;colour=grey;weight=10;fields=x,y;shape=loop'" << std::endl;
     exit( 0 );
 }
 
@@ -451,7 +452,7 @@ template < typename Species, typename Genus > int run( const Genus& shape, const
 
 // todo
 // done - group all polygons-related definitions at one place in a namespace
-// improve - add working lines example
+// done - add working lines example
 // done - try polygon with no repetition of first and last record; review with seva
 // done ( no longer needed )- reading polygons: add closing the loop
 // done - --help: document polygon definitions
