@@ -528,23 +528,23 @@ static bool within_( const line_t& g, const polygon_t& p ) {
 }
 
 // todo
-// - flags_t -> snark::operations::polygons::flags_t
-// - rename "contains" to "flags" in fields
+// done - flags_t -> snark::operations::polygons::flags_t
+// done - rename "contains" to "flags" in fields
 // - move all polytope-related stuff into snark::operations::polytopes
-// - --restrictive: if present, consider polygon restrictive (mutually exclusive with "restrictive" field, if the latter is present)
-// - --polygon-fields
+// done - --restrictive: if present, consider polygon restrictive (mutually exclusive with "restrictive" field, if the latter is present)
+// done - --polygon-fields
 // done - fix --*-fields, --*-format (make it operation-dependent)
-// - polygons
-//   - --polygons: default fields: x,y
-// - box
-//   --input-fields
-//   --output-fields
-//   --output-format
-// - prism
-//   --input-fields
-//   --output-fields
-//   --output-format
-// - ark, leafy: git grep points-grep: fix --input/--output-fields; --output-format (pass operation)
+// done - polygons
+// done   - --polygons: default fields: x,y
+// done - box
+// done   --input-fields
+// done   --output-fields
+// done   --output-format
+// done - prism
+// done   --input-fields
+// done   --output-fields
+// done   --output-format
+// done - ark, leafy: git grep points-grep: fix --input/--output-fields; --output-format (pass operation)
 
 template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons )
 {
@@ -575,13 +575,16 @@ int main( int argc, char** argv )
         const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--verbose,-v,--flush","-.*");
         if(!unnamed.size()) { std::cerr << "points-grep: expected filter name, got nothing"<< std::endl; return 1; }
         std::string what = unnamed[0];
-        if( what == "polytope" || what == "planes" )
+        if( what == "polytope" || what == "planes" || what == "prism" || what == "box" ) 
         {
             if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< input_t< species::polytope > >( true ), ',' ) << std::endl; return 0; }
             if( options.exists( "--input-format" ) ) { std::cerr << comma::csv::format::value< input_t< species::polytope > >() << std::endl; return 0; }
             if( options.exists( "--output-fields" ) ) { if( output_all ) { std::cerr << comma::join( comma::csv::names< output_t >( true ), ',' ) << std::endl; } return 0; }
             if( options.exists( "--output-format" ) ) { if( output_all ) { std::cerr << comma::csv::format::value< output_t >() << std::endl; } return 0; }
-            
+        }
+        
+        if( what == "polytope" || what == "planes" )
+        {
             if( options.exists( "--normals-fields" ) ) { std::cerr << comma::join( comma::csv::names< ::normal >( true ), ',' ) << std::endl; return 0; }
             if( options.exists( "--normals-format" ) ) { std::cerr << comma::csv::format::value< ::normal >() << std::endl; return 0; }
             if( options.exists( "--planes-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::triangle >( true ), ',' ) << std::endl; return 0; }
