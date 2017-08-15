@@ -323,6 +323,7 @@ int main( int argc, char** argv )
 
         bool acquiring = true;
         unsigned int acquisition_restarts = 0;
+        long acquisition_time_elapsed = 0;
         int exit_code = 0;
         while( acquiring )
         {
@@ -333,7 +334,9 @@ int main( int argc, char** argv )
             long frames_delivered = 0;
             do {
                 sleep( 1 );
-                if( check_frames )
+                acquisition_time_elapsed++;
+                // on the first time through, wait a few seconds before checking
+                if( check_frames && acquisition_time_elapsed > 3 )
                 {
                     boost::optional< snark::vimba::attribute > frames_delivered_attribute = camera.get_attribute( "StatFrameDelivered" );
                     if( frames_delivered_attribute )
