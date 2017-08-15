@@ -29,7 +29,7 @@
 
 /// @authors abdallah kassir, vsevolod vlaskine
 
-#include <boost/geometry/geometries/polygon.hpp> // todo: take a look at multipolygon
+#include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <boost/geometry/algorithms/within.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
@@ -67,7 +67,7 @@ static void usage( bool verbose = false )
     std::cerr << "             --size=<x>,<y>,<z>: size of the box" << std::endl;
     std::cerr << "             any two of the options above are sufficient to specify a box" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "     polygons: take input 2d points or line segments, identify whether they are fully contained in a set of 2d polygons" << std::endl;
+    std::cerr << "     polygons: take input 2d points or line segments, identify whether they are fully contained in or fully outside a set of 2d polygons" << std::endl;
     std::cerr << "         options" << std::endl;
     std::cerr << "             --fields" << std::endl;
     std::cerr << "                 x,y: input is points" << std::endl;
@@ -76,9 +76,11 @@ static void usage( bool verbose = false )
     std::cerr << "             --polygon-fields: show polygon fields and exit, see --polygons" << std::endl;
     std::cerr << "             --polygon-format: show polygon format and exit, see --polygons" << std::endl;
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
-    std::cerr << "                 default fields: x,y, where id is the polygon id of this bounding corner" << std::endl;
+    std::cerr << "                 default fields: x,y" << std::endl;
     std::cerr << "                 polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
-    std::cerr << "             --restrictive: make all polygons in --polygons restrictive, ignores restrictive field in --polygons if any" << std::endl;
+    std::cerr << "                 restrictive field: control wether the output flag indicate 'contained in' or 'fully outside', default: 0 for 'contained in'" << std::endl;
+    std::cerr << "         output fields" << std::endl;
+    std::cerr << "              append a boolean pass/fail field for every polygon in --polygons=" << std::endl;
     std::cerr << std::endl;
     std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
     std::cerr << "         options" << std::endl;
@@ -502,7 +504,6 @@ std::vector< polygon_t > read_polygons(comma::command_line_options& options)
     comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< polygon_point > polystream( *is, filter_csv );
     
-    bool make_all_restrictive = options.exists("--restrictive");
     std::vector< polygon_t > polygons;
     boundary_t ring;    // clockwise, or counter-clockwise, it does not seem to matter
     bool is_restrictive = false;
@@ -511,17 +512,17 @@ std::vector< polygon_t > read_polygons(comma::command_line_options& options)
     {
         const polygon_point* p = polystream.read();
         if( !p ) { break; }
-        if( ring.empty() || current_id == p->id ) { ring.push_back( { p->x(), p->y() } ); is_restrictive = p->restrictive; } 
+        if( ring.empty() || current_id == p->id ) { ring.push_back( { p->x(), p->y() } ); } 
         else 
         { 
-            polygons.push_back( polygon_t( ring, make_all_restrictive ? true : is_restrictive ) ); 
+            polygons.push_back( polygon_t( ring, is_restrictive ) ); 
             ring.clear(); 
             ring.push_back( { p->x(), p->y() } );
-            is_restrictive = p->restrictive;
         }
+        is_restrictive = p->restrictive;
         current_id = p->id; 
     }
-    if( !ring.empty() ) { polygons.push_back( polygon_t( ring, make_all_restrictive ? true : is_restrictive ) ); }
+    if( !ring.empty() ) { polygons.push_back( polygon_t( ring, is_restrictive ) ); }
     if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
     return std::move( polygons );
 }
@@ -537,8 +538,10 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
 }
 
 // todo
-// - --help: document output
-// - tear down --restrictive
+// done - --help: document output
+// done - tear down --restrictive
+
+// Also documented restrictive field
 
 template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons )
 {
