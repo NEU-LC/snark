@@ -76,7 +76,7 @@ static void usage( bool verbose = false )
     std::cerr << "             --polygon-fields: show polygon fields and exit, see --polygons" << std::endl;
     std::cerr << "             --polygon-format: show polygon format and exit, see --polygons" << std::endl;
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
-    std::cerr << "                 default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
+    std::cerr << "                 default fields: x,y, where id is the polygon id of this bounding corner" << std::endl;
     std::cerr << "                 polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
     std::cerr << "             --restrictive: make all polygons in --polygons restrictive, ignores restrictive field in --polygons if any" << std::endl;
     std::cerr << std::endl;
@@ -537,23 +537,8 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
 }
 
 // todo
-// done - flags_t -> snark::operations::polygons::flags_t
-// done - rename "contains" to "flags" in fields
-// done - move all polytope-related stuff into snark::operations::polytopes
-// done - --restrictive: if present, consider polygon restrictive (mutually exclusive with "restrictive" field, if the latter is present)
-// done - --polygon-fields
-// done - fix --*-fields, --*-format (make it operation-dependent)
-// done - polygons
-// done   - --polygons: default fields: x,y
-// done - box
-// done   --input-fields
-// done   --output-fields
-// done   --output-format
-// done - prism
-// done   --input-fields
-// done   --output-fields
-// done   --output-format
-// done - ark, leafy: git grep points-grep: fix --input/--output-fields; --output-format (pass operation)
+// - --help: document output
+// - tear down --restrictive
 
 template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons )
 {
