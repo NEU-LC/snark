@@ -471,15 +471,25 @@ typedef line_t boundary_t;
 
 struct polygon_t
 {
-    boost::geometry::model::polygon< point_t, true, false > polygon;
-    boost::geometry::model::linestring< point_t > boundary;
-    bool restrictive;
-    
     polygon_t() : restrictive(false) {}
     polygon_t(const line_t& ring, bool is_restrictive) : boundary(ring), restrictive(is_restrictive) {
         boost::geometry::append( polygon, boundary );
-        boundary.push_back( boundary.front() ); // make linestring to be a loop, polygon's boundary
+        // if the user did not close the loop, we need to do it. Use first point as last point
+        if( boundary.front().x() != boundary.back().x() || boundary.front().y() != boundary.back().y() ) { boundary.push_back( boundary.front() ); } 
     }
+    
+    bool within( const point_t& g ) const { return boost::geometry::within( g, polygon ); } // totally inside
+    bool outside( const point_t& g ) const { return !boost::geometry::within( g, polygon ); } // totally outside
+    bool within( const line_t& g ) const { return boost::geometry::within( g[0], polygon ) && boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
+    bool outside( const line_t& g ) const { return !boost::geometry::within( g[0], polygon ) && !boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
+    
+    bool test( const point_t& g ) const { return restrictive ? outside(g) : within(g); }
+    bool test( const line_t& g )  const { return restrictive ? outside(g) : within(g); }
+    
+private:
+    boost::geometry::model::polygon< point_t, true, false > polygon;
+    boost::geometry::model::linestring< point_t > boundary;
+    bool restrictive;
 };
 
 // returns a list of polygons, boundary_t is its ring boundary
@@ -526,15 +536,6 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
     return std::move(line);
 }
 
-static bool within_( const point_t& g, const polygon_t& p ) { return p.restrictive ? !boost::geometry::within( g, p.polygon ) : !boost::geometry::within( g, p.polygon ); }
-
-static bool within_( const line_t& g, const polygon_t& p ) { 
-    
-    return !p.restrictive ?
-        boost::geometry::within( g[0], p.polygon ) && boost::geometry::within( g[1], p.polygon ) && !boost::geometry::intersects( g, p.boundary )   // totally inside
-      : !boost::geometry::within( g[0], p.polygon ) && !boost::geometry::within( g[1], p.polygon ) && !boost::geometry::intersects( g, p.boundary );    // totally outside 
-}
-
 // todo
 // done - flags_t -> snark::operations::polygons::flags_t
 // done - rename "contains" to "flags" in fields
@@ -565,7 +566,7 @@ template < typename T > static int run( const comma::csv::options& csv, const st
         const T* p = istream.read();
         if( !p ) { break; }
         const auto& g = make_geometry( *p );
-        for( std::size_t i=0; i<polygons.size(); ++i ) { outputs.flags[i] = within_( g, polygons[i] ); }
+        for( std::size_t i=0; i<polygons.size(); ++i ) { outputs.flags[i] = polygons[i].test( g ); }
         tied.append( outputs );
     }
     return 0;
