@@ -384,7 +384,7 @@ int main( int argc, char** argv )
 
             camera.stop_acquisition();
         }
-        if( comma::verbose ) { print_stats( camera ); }
+        if( comma::verbose && acquisition_time_elapsed > 5 ) { print_stats( camera ); }
         comma::verbose << "exiting with code " << exit_code << std::endl;
         return exit_code;
     }
