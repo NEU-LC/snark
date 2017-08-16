@@ -67,7 +67,7 @@ static void usage( bool verbose = false )
     std::cerr << "             --size=<x>,<y>,<z>: size of the box" << std::endl;
     std::cerr << "             any two of the options above are sufficient to specify a box" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "     polygons: take input 2d points or line segments, identify whether they are fully contained in or fully outside a set of 2d polygons" << std::endl;
+    std::cerr << "     polygons: take input 2d points or line segments, filter them based upon whether they are fully contained in or fully outside a set of 2d polygons" << std::endl;
     std::cerr << "         options" << std::endl;
     std::cerr << "             --fields" << std::endl;
     std::cerr << "                 x,y: input is points" << std::endl;
@@ -78,9 +78,9 @@ static void usage( bool verbose = false )
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
     std::cerr << "                 default fields: x,y" << std::endl;
     std::cerr << "                 polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
-    std::cerr << "                 restrictive field: control wether the output flag indicate 'contained in' or 'fully outside', default: 0 for 'contained in'" << std::endl;
-    std::cerr << "         output fields" << std::endl;
-    std::cerr << "              append a boolean pass/fail field for every polygon in --polygons=" << std::endl;
+    std::cerr << "                 restrictive field: control wether a polygon act as fully 'contained in' or 'fully outside' filter, default: 0 for 'contained in'" << std::endl;
+    std::cerr << "         output fields: same as input fields unless --output-all|--all is specified" << std::endl;
+    std::cerr << "             --output-all,--all: instead of filtering input records, append a boolean pass/fail field for every polygon in --polygons=" << std::endl;
     std::cerr << std::endl;
     std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
     std::cerr << "         options" << std::endl;
@@ -540,10 +540,14 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
 // todo
 // done - --help: document output
 // done - tear down --restrictive
+// done - add --output-all,--all to append flags, default is to filter input records
 
 // Also documented restrictive field
 
-template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons )
+/// Test every input geometry against each polygons
+// if output_all is true, this act as a filter where all polygon tests must be true
+//    if false then append a boolean flag for every polygon test
+template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons, bool output_all )
 {
     comma::csv::input_stream< T > istream( std::cin, csv );
     flags_t outputs( polygons.size() );
@@ -554,8 +558,21 @@ template < typename T > static int run( const comma::csv::options& csv, const st
         const T* p = istream.read();
         if( !p ) { break; }
         const auto& g = make_geometry( *p );
-        for( std::size_t i=0; i<polygons.size(); ++i ) { outputs.flags[i] = polygons[i].test( g ); }
-        tied.append( outputs );
+        bool all_passed = true;
+        for( std::size_t i=0; i<polygons.size(); ++i ) 
+        { 
+            outputs.flags[i] = polygons[i].test( g ); 
+            if( !output_all && outputs.flags[i] == false ) { all_passed = false; break; }
+        }
+        
+        if( !output_all ) 
+        { 
+            if( !all_passed ) { continue; } // filtered out
+            //passthrough
+            if( istream.is_binary()) { std::cout.write( istream.binary().last(), istream.binary().size() ); }
+            else { std::cout << comma::join( istream.ascii().last(), istream.ascii().ascii().delimiter() )<< std::endl; }
+        } 
+        else { tied.append( outputs ); }
     }
     return 0;
 }
@@ -648,8 +665,8 @@ int main( int argc, char** argv )
             csv.full_xpath = true;
             bool is_line_mode = csv.has_some_of_fields( "first,second,first/x,first/y,second/x,second/y" );
             return is_line_mode
-                 ? snark::operations::polygons::run< std::pair< Eigen::Vector2d, Eigen::Vector2d > >( csv, polygons )
-                 : snark::operations::polygons::run< Eigen::Vector2d >( csv, polygons );
+                 ? snark::operations::polygons::run< std::pair< Eigen::Vector2d, Eigen::Vector2d > >( csv, polygons, options.exists("--output-all,--all") )
+                 : snark::operations::polygons::run< Eigen::Vector2d >( csv, polygons, options.exists("--output-all,--all") );
         }
         else if( what == "prism" )
         {
