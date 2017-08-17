@@ -134,12 +134,12 @@ static void usage( bool verbose = false )
     std::cerr << "      testing for points inside of polygon" << std::endl;
     std::cerr << "        ( echo 0,5; echo 5,5; echo 5,0; echo 0,5 ) | csv-paste - value=1 >polygons.csv" << std::endl;
     std::cerr << "        ( echo 5,10; echo 10,10; echo 10,5; echo 5,5; echo 5,10 ) | csv-paste - value=2 >>polygons.csv" << std::endl;
-    std::cerr << "        ( for i in $( seq 0 0.2 10 ) ; do for j in $( seq 0 0.2 10 ) ; do echo $i,$j ; done ; done ) | points-grep polygons --polygons polygons.csv" << std::endl;
+    std::cerr << "        ( for i in $( seq 0 0.2 10 ) ; do for j in $( seq 0 0.2 10 ) ; do echo $i,$j ; done ; done ) | points-grep polygons --polygons polygons.csv --all" << std::endl;
     std::cerr << std::endl;
     std::cerr << "      making a concave polygon" << std::endl;
     std::cerr << "        ( echo 0,5; echo 5,5; echo 0,0; echo 5,-5; echo 0,-5; echo -5,0 ) | csv-paste - value=1 >polygons.csv" << std::endl;
     std::cerr << "      testing of line totally contained in a concave polygon" << std::endl;
-    std::cerr << "        ( echo -2,0,-1,2,inside; echo 1,2,1,-2,partial; echo 2,0,4,0,outside) | points-grep polygons --fields first,second --polygons polygons.csv | tee results.csv" << std::endl;
+    std::cerr << "        ( echo -2,0,-1,2,inside; echo 1,2,1,-2,partial; echo 2,0,4,0,outside) | points-grep polygons --fields first,second --polygons polygons.csv --all | tee results.csv" << std::endl;
     std::cerr << "        visualisation:" << std::endl;
     std::cerr << "           view-points 'results.csv;fields=first/x,first/y,second/x,second/y,label,id;shape=line' 'polygons.csv;colour=grey;weight=10;fields=x,y;shape=loop'" << std::endl;
     exit( 0 );
@@ -483,7 +483,7 @@ struct polygon_t
     bool within( const point_t& g ) const { return boost::geometry::within( g, polygon ); } // totally inside
     bool outside( const point_t& g ) const { return !boost::geometry::within( g, polygon ); } // totally outside
     bool within( const line_t& g ) const { return boost::geometry::within( g[0], polygon ) && boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
-    bool outside( const line_t& g ) const { return !boost::geometry::within( g[0], polygon ) && !boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
+    bool outside( const line_t& g ) const { return !boost::geometry::intersects( g, polygon ); }
     
     bool test( const point_t& g ) const { return restrictive ? outside(g) : within(g); }
     bool test( const line_t& g )  const { return restrictive ? outside(g) : within(g); }
