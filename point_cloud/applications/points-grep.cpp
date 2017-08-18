@@ -488,9 +488,14 @@ struct polygon_t
         if( boundary.front().x() != boundary.back().x() || boundary.front().y() != boundary.back().y() ) { boundary.push_back( boundary.front() ); } 
     }
     
-    bool within( const point_t& g ) const { return boost::geometry::within( g, polygon ) && !boost::geometry::within( g, boundary ); }
+    bool within( const point_t& g ) const { return boost::geometry::within( g, polygon ); }
     
-    bool outside( const point_t& g ) const { return !boost::geometry::within( g, polygon ) && !boost::geometry::within( g, boundary ); }
+    bool outside( const point_t& g ) const { 
+        line_t line;
+        line.push_back(g);
+        line.push_back(g);
+        return !boost::geometry::within( g, polygon ) && !boost::geometry::within( line, boundary ); 
+    }
     
     bool within( const line_t& g ) const { return boost::geometry::within( g[0], polygon ) && boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
     
