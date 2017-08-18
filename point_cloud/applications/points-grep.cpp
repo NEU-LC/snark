@@ -32,6 +32,7 @@
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <boost/geometry/algorithms/within.hpp>
+#include <boost/geometry/algorithms/distance.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/strategies/agnostic/point_in_poly_winding.hpp>
 #include <boost/geometry/geometries/linestring.hpp>
@@ -69,18 +70,19 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "     polygons: take input 2d points or line segments, filter them based upon whether they are fully contained in or fully outside a set of 2d polygons" << std::endl;
     std::cerr << "         options" << std::endl;
+//     std::cerr << "             --exclude-boundary: exclude points on the boundary for both permissive and restrictive polygons; the only mode currently implemented" << std::endl;
+    std::cerr << "             Due to limitations of Boost 1.53, points on boundary are not excluded from restrictive polygons, while lines are excluded." << std::endl;
     std::cerr << "             --fields" << std::endl;
     std::cerr << "                 x,y: input is points" << std::endl;
     std::cerr << "                 first,second,first/x,first/y,second/x,second/y: if any of these fields present, input is line segments" << std::endl;
     std::cerr << "                 default: x,y" << std::endl;
+    std::cerr << "             --output-all,--all: instead of filtering input records, append a boolean pass/fail field for every polygon in --polygons=" << std::endl;
     std::cerr << "             --polygon-fields: show polygon fields and exit, see --polygons" << std::endl;
     std::cerr << "             --polygon-format: show polygon format and exit, see --polygons" << std::endl;
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
     std::cerr << "                 default fields: x,y" << std::endl;
     std::cerr << "                 polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
     std::cerr << "                 restrictive field: control wether a polygon act as fully 'contained in' or 'fully outside' filter, default: 0 for 'contained in'" << std::endl;
-    std::cerr << "         output fields: same as input fields unless --output-all|--all is specified" << std::endl;
-    std::cerr << "             --output-all,--all: instead of filtering input records, append a boolean pass/fail field for every polygon in --polygons=" << std::endl;
     std::cerr << std::endl;
     std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
     std::cerr << "         options" << std::endl;
@@ -487,17 +489,15 @@ struct polygon_t
         if( boundary.front().x() != boundary.back().x() || boundary.front().y() != boundary.back().y() ) { boundary.push_back( boundary.front() ); } 
     }
     
-    bool within( const point_t& g ) const  { return boost::geometry::within( g, polygon ); } // totally inside
-    bool outside( const point_t& g ) const { return !within(g) && !boost::geometry::intersects( g, boundary ); } // totally outside
-    bool within( const line_t& g ) const   { return boost::geometry::within( g[0], polygon ) && boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
-    bool outside( const line_t& g ) const  { return !boost::geometry::within( g[0], polygon ) && !boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
-    // Enable when Boost documentation is corrected, not compiling on Boost 1.58
-//     bool within( const line_t& g ) const { return boost::geometry::within( g, polygon ); } // totally outside
-    // enable when we have boost 1.58 in Jenkins  
-//     bool outside( const line_t& g ) const { return !boost::geometry::intersects( g, polygon ); }
+    bool within( const point_t& g ) const { return boost::geometry::within( g, polygon ); }
     
-    bool test( const point_t& g ) const { return restrictive ? outside(g) : within(g); }
-    bool test( const line_t& g )  const { return restrictive ? outside(g) : within(g); }
+    bool outside( const point_t& g ) const { return !boost::geometry::within( g, polygon );  }
+    
+    bool within( const line_t& g ) const { return boost::geometry::within( g[0], polygon ) && boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
+    
+    bool outside( const line_t& g ) const  { return !boost::geometry::within( g[0], polygon ) && !boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
+    
+    template < typename T > bool allowed( const T& g ) const { return restrictive ? outside( g ) : within( g ); }
     
 private:
     boost::geometry::model::polygon< point_t, true, false > polygon;
@@ -548,16 +548,6 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
     return std::move(line);
 }
 
-// todo
-// done - --help: document output
-// done - tear down --restrictive
-// done - add --output-all,--all to append flags, default is to filter input records
-
-// Also documented restrictive field
-
-/// Test every input geometry against each polygons
-// if output_all is true, this act as a filter where all polygon tests must be true
-//    if false then append a boolean flag for every polygon test
 template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons, bool output_all )
 {
     comma::csv::input_stream< T > istream( std::cin, csv );
@@ -572,7 +562,7 @@ template < typename T > static int run( const comma::csv::options& csv, const st
         bool all_passed = true;
         for( std::size_t i=0; i<polygons.size(); ++i ) 
         { 
-            outputs.flags[i] = polygons[i].test( g ); 
+            outputs.flags[i] = polygons[i].allowed( g ); 
             if( !output_all && outputs.flags[i] == false ) { all_passed = false; break; }
         }
         
@@ -670,6 +660,7 @@ int main( int argc, char** argv )
             if( options.exists( "--output-format" ) ) { std::cerr << "points-grep polygons: --output-format not implemented, since it is hard to define; see --help instead" << std::endl; return 1; }
             if( options.exists("--polygon-fields") ) { std::cout << comma::join( comma::csv::names< polygons::polygon_point >(), ',' ) << std::endl; return 0; }
             if( options.exists("--polygon-format") ) { std::cout << comma::csv::format::value< polygons::polygon_point >() << std::endl; return 0; }
+//             if( !options.exists( "--exclude-boundary" ) ) { std::cout << "points-grep polygons: please specify --exclude-boundary (the only mode currently implemented)" << std::endl; return 1; }
             const auto& polygons = snark::operations::polygons::read_polygons(options);
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
             comma::csv::options csv(options);
