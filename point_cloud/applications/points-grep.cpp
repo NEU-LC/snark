@@ -32,6 +32,7 @@
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <boost/geometry/algorithms/within.hpp>
+#include <boost/geometry/algorithms/distance.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/strategies/agnostic/point_in_poly_winding.hpp>
 #include <boost/geometry/geometries/linestring.hpp>
@@ -488,7 +489,7 @@ struct polygon_t
     }
     
     bool within( const point_t& g ) const  { return boost::geometry::within( g, polygon ); } // totally inside
-    bool outside( const point_t& g ) const { return !within(g); } // totally outside
+    bool outside( const point_t& g ) const { return !within(g) && 0 != boost::geometry::distance(g, boundary); } // totally outside
     // Again this needs Boost 1.58
 //     bool outside( const point_t& g ) const { return !boost::geometry::intersects( g, polygon ); } // totally outside
     bool within( const line_t& g ) const   { return boost::geometry::within( g[0], polygon ) && boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
