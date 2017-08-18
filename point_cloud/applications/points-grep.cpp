@@ -70,7 +70,8 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "     polygons: take input 2d points or line segments, filter them based upon whether they are fully contained in or fully outside a set of 2d polygons" << std::endl;
     std::cerr << "         options" << std::endl;
-    std::cerr << "             --exclude-boundary: exclude points on the boundary for both permissive and restrictive polygons; the only mode currently implemented" << std::endl;
+//     std::cerr << "             --exclude-boundary: exclude points on the boundary for both permissive and restrictive polygons; the only mode currently implemented" << std::endl;
+    std::cerr << "             Due to limitations of Boost 1.53, points on boundary are not excluded from restrictive polygons, while lines are excluded." << std::endl;
     std::cerr << "             --fields" << std::endl;
     std::cerr << "                 x,y: input is points" << std::endl;
     std::cerr << "                 first,second,first/x,first/y,second/x,second/y: if any of these fields present, input is line segments" << std::endl;
@@ -490,12 +491,7 @@ struct polygon_t
     
     bool within( const point_t& g ) const { return boost::geometry::within( g, polygon ); }
     
-    bool outside( const point_t& g ) const { 
-        line_t line;
-        line.push_back(g);
-        line.push_back(g);
-        return !boost::geometry::within( g, polygon ) && !boost::geometry::within( line, boundary ); 
-    }
+    bool outside( const point_t& g ) const { return !boost::geometry::within( g, polygon );  }
     
     bool within( const line_t& g ) const { return boost::geometry::within( g[0], polygon ) && boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
     
@@ -664,7 +660,7 @@ int main( int argc, char** argv )
             if( options.exists( "--output-format" ) ) { std::cerr << "points-grep polygons: --output-format not implemented, since it is hard to define; see --help instead" << std::endl; return 1; }
             if( options.exists("--polygon-fields") ) { std::cout << comma::join( comma::csv::names< polygons::polygon_point >(), ',' ) << std::endl; return 0; }
             if( options.exists("--polygon-format") ) { std::cout << comma::csv::format::value< polygons::polygon_point >() << std::endl; return 0; }
-            if( !options.exists( "--exclude-boundary" ) ) { std::cout << "points-grep polygons: please specify --exclude-boundary (the only mode currently implemented)" << std::endl; return 1; }
+//             if( !options.exists( "--exclude-boundary" ) ) { std::cout << "points-grep polygons: please specify --exclude-boundary (the only mode currently implemented)" << std::endl; return 1; }
             const auto& polygons = snark::operations::polygons::read_polygons(options);
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
             comma::csv::options csv(options);
