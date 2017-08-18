@@ -488,7 +488,7 @@ struct polygon_t
     }
     
     bool within( const point_t& g ) const  { return boost::geometry::within( g, polygon ); } // totally inside
-    bool outside( const point_t& g ) const { return !boost::geometry::within( g, polygon ); } // totally outside
+    bool outside( const point_t& g ) const { return !within(g) && !boost::geometry::intersects( g, boundary ); } // totally outside
     bool within( const line_t& g ) const   { return boost::geometry::within( g[0], polygon ) && boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
     bool outside( const line_t& g ) const  { return !boost::geometry::within( g[0], polygon ) && !boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
     // Enable when Boost documentation is corrected, not compiling on Boost 1.58
