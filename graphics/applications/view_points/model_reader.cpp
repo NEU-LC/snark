@@ -31,33 +31,32 @@
 /// @author Cedric Wohlleber
 
 #include "model_reader.h"
-#include "texture.h"
-#include "viewer.h"
+#if Qt3D_VERSION==1
+#include "qt3d_v1/viewer.h"
+#endif
 
 namespace snark { namespace graphics { namespace view {
 
 /// constructor
 /// @param params csv options for the position input
-/// @param file model filename
-/// @param flip flip model around the x-axis
+/// @param mo model options
 /// @param c color used for the label
 /// @param label text displayed as label
-ModelReader::ModelReader( const reader_parameters& params
-                        , const std::string& file
-                        , bool flip
-                        , double scale
+model_reader::model_reader( const reader_parameters& params
+                        , const model_options& mo
                         , snark::graphics::view::colored* c
                         , const std::string& label )
     : Reader( reader_parameters( params ), c, label, Eigen::Vector3d( 0, 1, 1 ) ) // TODO make offset configurable ?
-    , m_file( file )
-    , m_flip( flip )
-    , scale_( scale )
+    , m_file( mo.filename )
+    , m_flip( mo.flip )
+    , scale_( mo.scale )
     , colored_( c )
 {
 }
 
-void ModelReader::start()
+void model_reader::start()
 {
+#if Qt3D_VERSION==1
     if( m_file.substr( m_file.size() - 3, 3 ) == "ply" )
     {
         boost::optional< QColor4ub > color;
@@ -67,28 +66,32 @@ void ModelReader::start()
     if( !m_plyLoader )
     {
         if( !comma::math::equal( scale_, 1.0 ) ) { std::cerr << "view-points: warning: scale supported only for ply models; others: todo" << std::endl; }
-        m_scene = QGLAbstractScene::loadScene( QLatin1String( m_file.c_str() ) );
+        model.load(m_file);
     }
+#elif Qt3D_VERSION==2
+    model.load(m_file);
+#endif
     m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );
 }
 
-std::size_t ModelReader::update( const Eigen::Vector3d& offset )
+std::size_t model_reader::update( const Eigen::Vector3d& offset )
 {
     return updatePoint( offset ) ? 1 : 0;
 }
 
-bool ModelReader::empty() const
+bool model_reader::empty() const
 {
     return !m_point;
 }
 
-const Eigen::Vector3d& ModelReader::somePoint() const
+const Eigen::Vector3d& model_reader::somePoint() const
 {
     boost::mutex::scoped_lock lock( m_mutex );
     return *m_point;
 }
 
-void ModelReader::render( Viewer& viewer, QGLPainter* painter )
+#if Qt3D_VERSION==1
+void model_reader::render( Viewer& viewer, QGLPainter* painter )
 {
     painter->modelViewMatrix().push();
     Eigen::Vector3d d = m_translation - m_offset;
@@ -96,17 +99,23 @@ void ModelReader::render( Viewer& viewer, QGLPainter* painter )
     painter->modelViewMatrix().rotate( m_quaternion );
     if( m_flip ) { painter->modelViewMatrix().rotate( 180, 1, 0, 0 ); }
     if( m_plyLoader ) { m_plyLoader->draw( painter ); }
-    else
-    {
-        QGLSceneNode* node = m_scene->mainNode();
-    //     painter->setStandardEffect( QGL::LitMaterial ); // no effect ?
-        node->draw(painter);
-    }
+    else { model.render(painter); }
     painter->modelViewMatrix().pop();
     if( !m_label.empty() ) { viewer.draw_label( painter, m_translation - m_offset, m_color, m_label ); }
 }
 
-bool ModelReader::read_once()
+#elif Qt3D_VERSION==2
+void model_reader::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
+{
+    model.add_shaders(viewer_base);
+}
+void model_reader::update_view()
+{
+    model.update_view();
+}
+#endif
+
+bool model_reader::read_once()
 {
     if( !m_stream ) // quick and dirty: handle named pipes
     {
@@ -131,3 +140,5 @@ bool ModelReader::read_once()
 
 
 } } } // namespace snark { namespace graphics { namespace view {
+    
+

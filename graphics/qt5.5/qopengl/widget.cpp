@@ -90,9 +90,11 @@ QSize widget::sizeHint() const
 void widget::cleanup()
 {
     makeCurrent();
+    //TODO refactor all shader types to have unifrom interface (pure virtual base); is order of paint important?
     for(auto& i : shapes) { i->destroy(); }
     for(auto& i : label_shaders) { i->destroy(); }
     for(auto& i : texture_shaders) { i->destroy(); }
+    for(auto& i : mesh_shaders) { i->destroy(); }
     if(program_)
     {
         delete program_;
@@ -122,6 +124,10 @@ void widget::add_texture_shader(const std::shared_ptr<texture_shader>& texture_s
 {
     texture_shaders.push_back(texture_shader);
 }
+void widget::add_mesh_shader(const std::shared_ptr<mesh_shader>& mesh_shader)
+{
+    mesh_shaders.push_back(mesh_shader);
+}
 
 void widget::initializeGL()
 {
@@ -150,6 +156,7 @@ void widget::initializeGL()
     for(auto& i : shapes) { i->init(); }
     for(auto& i : label_shaders) { i->init(); }
     for(auto& i : texture_shaders) { i->init(); }
+    for(auto& i : mesh_shaders) { i->init(); }
 //     program_->release();
 
     init();
@@ -181,6 +188,7 @@ void widget::paintGL()
     
     for(auto& i : label_shaders) { i->paint(camera.projection * camera.camera * camera.world, size()); }
     for(auto& i : texture_shaders) { i->paint(camera.projection * camera.camera * camera.world, size()); }
+    for(auto& i : mesh_shaders) { i->paint(camera.projection * camera.camera * camera.world, size()); }
 
     painter.endNativePainting();
 

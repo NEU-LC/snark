@@ -44,12 +44,12 @@
 #include "../qt3d/camera_options.h"
 #if Qt3D_VERSION==1
 #include "view_points/qt3d_v1/viewer.h"
-#include "view_points/qt3d_v1/model_reader.h"
 #include "view_points/qt3d_v1/texture_reader.h"
 #else
 #include "view_points/controller.h"
 #include "view_points/image_reader.h"
 #endif
+#include "view_points/model_reader.h"
 
 #if Qt3D_VERSION==2
 #include "view_points/traits.h"
@@ -356,35 +356,6 @@ static void usage()
     exit( 1 );
 }
 
-struct model_options
-{
-    std::string filename;
-    bool flip;
-    double scale;
-    model_options() : flip( false ), scale( 1.0 ) {}
-};
-
-namespace comma { namespace visiting {
-
-template <> struct traits< model_options >
-{
-    template < typename Key, class Visitor > static void visit( Key, model_options& p, Visitor& v )
-    {
-        v.apply( "filename", p.filename );
-        v.apply( "flip", p.flip );
-        v.apply( "scale", p.scale );
-    }
-
-    template < typename Key, class Visitor > static void visit( Key, const model_options& p, Visitor& v )
-    {
-        v.apply( "filename", p.filename );
-        v.apply( "flip", p.flip );
-        v.apply( "scale", p.scale );
-    }
-};
-
-} } // namespace comma { namespace visiting {
-
 static bool data_passed_through = false;
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
@@ -510,36 +481,21 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     {
         if( param.options.fields == "" ) { param.options.fields="point,orientation"; param.options.full_xpath = true; }
 #if Qt3D_VERSION==1
-            std::vector< snark::graphics::view::TextureReader::image_options > image_options;
-            std::vector< std::string > v = comma::split( shape, ':' );
-            for( unsigned int i = 0; i < v.size(); ++i )
+        std::vector< snark::graphics::view::TextureReader::image_options > image_options;
+        std::vector< std::string > v = comma::split( shape, ':' );
+        for( unsigned int i = 0; i < v.size(); ++i )
+        {
+            std::vector< std::string > w = comma::split( v[i], ',' );
+            std::string e = comma::split( w[0], '.' ).back();
+            if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
+            switch( w.size() )
             {
-                std::vector< std::string > w = comma::split( v[i], ',' );
-                std::string e = comma::split( w[0], '.' ).back();
-                if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
-                switch( w.size() )
-                {
-                    case 1: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0] ) ); break;
-                    case 2: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
-                    case 3: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
-                    default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
-                }
+                case 1: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0] ) ); break;
+                case 2: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
+                case 3: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
+                default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
             }
-            if( image_options.empty() )
-            {
-                model_options m = comma::name_value::parser( ';', '=' ).get< model_options >( properties );
-                m.filename = shape;
-                if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
-                std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ModelReader( param, shape, m.flip, m.scale, colored, label ) );
-                reader->show( show );
-                return reader;
-            }
-            else
-            {
-                std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( param, image_options ) );
-                reader->show( show );
-                return reader;
-            }
+        }
 #elif Qt3D_VERSION==2
         std::vector<snark::graphics::view::image_options> image_options;
         std::vector< std::string > v = comma::split( shape, ':' );
@@ -556,18 +512,26 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
                 default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
             }
         }
+#endif
         if( image_options.empty() )
         {
-            std::cerr << "view-points: cad models are not supported yet for qt 5.5+ " << Qt3D_VERSION << std::endl;
-            exit( 1 );
+            snark::graphics::view::model_options m = comma::name_value::parser( ';', '=' ).get< snark::graphics::view::model_options >( properties );
+            m.filename = shape;
+            if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
+            std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::model_reader( param, m, colored, label ) );
+            reader->show( show );
+            return reader;
         }
         else
         {
+#if Qt3D_VERSION==1
+            std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( param, image_options ) );
+#elif Qt3D_VERSION==2
             std::unique_ptr<snark::graphics::view::Reader> reader(new snark::graphics::view::image_reader(param, image_options));
-            reader->show(show);
+#endif
+            reader->show( show );
             return reader;
         }
-#endif
     }
     std::vector< std::string > v = comma::split( param.options.fields, ',' );
     for( std::size_t i = 0; i < v.size(); ++i )

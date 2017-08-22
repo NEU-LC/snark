@@ -104,10 +104,17 @@ class Reader : public reader_parameters
         virtual std::size_t update( const Eigen::Vector3d& offset ) = 0;
         virtual const Eigen::Vector3d& somePoint() const = 0;
         virtual bool read_once() = 0;
-#if Qt3D_VERSION==1
-        virtual void render( Viewer& viewer, QGLPainter *painter ) = 0;
-#endif
         virtual bool empty() const = 0;
+        
+#if Qt3D_VERSION==1
+        friend class Viewer;
+        virtual void render( Viewer& viewer, QGLPainter *painter ) = 0;
+        
+#elif Qt3D_VERSION==2
+    friend class controller;
+    virtual void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)=0;
+    virtual void update_view()=0;
+#endif
 
         void show( bool s );
         bool show() const;
@@ -116,14 +123,6 @@ class Reader : public reader_parameters
         void shutdown();
         void read();
 
-#if Qt3D_VERSION==1
-        friend class Viewer;
-#elif Qt3D_VERSION==2
-    friend class controller;
-public:
-    virtual void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)=0;
-    virtual void update_view()=0;
-#endif
              
     protected:
         bool updatePoint( const Eigen::Vector3d& offset );

@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2017 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,49 +27,36 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author Navid Pirmarzdashti
 
-/// @author Cedric Wohlleber
+#include "model.h"
+#include "comma/base/exception.h"
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_
+namespace snark { namespace graphics { namespace view { namespace qopengl {
 
-
-#include "../reader.h"
-#include "ply_loader.h"
-
-class QGLAbstractScene;
-
-namespace snark { namespace graphics { namespace view {
-
-/// display 3d models ( obj or 3ds ), set its position from an input csv stream
-class ModelReader : public Reader
+void model::load(const std::string& file_name)
 {
-    public:
-        ModelReader( const reader_parameters& params
-                   , const std::string& file
-                   , bool flip
-                   , double scale
-                   , colored* c
-                   , const std::string& label );
-
-        void start();
-        std::size_t update( const Eigen::Vector3d& offset );
-        const Eigen::Vector3d& somePoint() const;
-        bool read_once();
-        void render( Viewer& viewer, QGLPainter *painter );
-        bool empty() const;
-
-    protected:
-        boost::scoped_ptr< comma::csv::input_stream< PointWithId > > m_stream;
-        boost::scoped_ptr< comma::csv::passed< PointWithId > > m_passed;
-        const std::string m_file;
-        QGLAbstractScene* m_scene;
-        bool m_flip;
-        double scale_;
-        boost::optional< PlyLoader > m_plyLoader;
-        const colored* colored_;
-};
-
-} } } // namespace snark { namespace graphics { namespace view {
-
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MODEL_READER_H_*/
+    mesh.reset(new snark::graphics::qopengl::model());
+    //or move this to inside import
+    if(!((snark::graphics::qopengl::model*)mesh.get())->import(file_name)) { COMMA_THROW( comma::exception, "failed to load model from: "<<file_name); }
+}
+void model::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
+{
+    mesh_shader.reset(new snark::graphics::qopengl::mesh_shader);
+    viewer_base->add_mesh_shader(mesh_shader);
+}
+void model::update_view()
+{
+    //if first time draw
+    if(mesh_shader->meshes.empty())
+    {
+        mesh_shader->meshes.push_back(mesh);
+//         ((snark::graphics::qopengl::model*)mesh.get())->make_mesh();
+        //we could separate model from mesh by doing: mesh=model->make_mesh(); mesh_shader->add(mesh);
+    }
+    //update position and orientation
+//     mesh_shader->visible=m_show; //this should go in reader
+}
+     
+} } } } // namespace snark { namespace graphics { namespace view { namespace qopengl {
+    

@@ -29,50 +29,22 @@
 
 /// @author Navid Pirmarzdashti
 
-#include "textures.h"
-#include <iostream>
-#include "../../../math/rotation_matrix.h"
+#pragma once
 
-namespace snark { namespace graphics { namespace qopengl { namespace textures {
+#include "../../../qt5.5/qopengl/viewer_base.h"
+#include "../../../qt5.5/qopengl/model.h"
 
-image::image(const QImage& qimage) : qimage(qimage), image_changed(true)
+namespace snark { namespace graphics { namespace view { namespace qopengl {
+
+struct model
 {
+    void load(const std::string& file_name);
+    void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base);
+    void update_view();
     
-}
-void image::update_quad(const Eigen::Vector3d& position,const Eigen::Vector3d& orientation,const Eigen::Vector2d& size)
-{
-    float x=position.x(), y=position.y(), z=position.z(), w=size.x(), h=size.y();
-//     std::cerr<<"texture::update "<<x<<" "<<y<<" "<<z<<"; "<<w<<"x"<<h<<std::endl;
-    quad.clear();
-    quad.push_back(texture_vertex(x,y,z,0,0));
-    quad.push_back(texture_vertex(x+w,y,z,1,0));
-    quad.push_back(texture_vertex(x+w,y+h,z,1,1));
-    quad.push_back(texture_vertex(x,y+h,z,0,1));
-    //calculate rotation matrix
-    Eigen::Matrix3f rotation=rotation_matrix(orientation).rotation().cast<float>();
-    //apply to all points
-    for(std::size_t i=0;i<quad.size();i++)
-    {
-        quad[i].position=rotation*quad[i].position;
-    }
-}
-std::vector<texture_vertex> image::get_quad() const { return quad; }
-//TODO: maybe remove this and do the update in above update_quad which is also called from update_view in the controller
-void image::update()
-{
-    if(image_changed)
-    {
-        resize(qimage.size().width(),qimage.size().height());
-        texture::draw();
-        image_changed=false;
-    }
-    texture::update(&quad[0],quad.size());
-}
-void image::draw(QPainter& painter)
-{
-//     std::cerr<<"image::draw"<<std::endl;
-    painter.drawImage(0,0,qimage);
-}
+    std::shared_ptr<snark::graphics::qopengl::mesh_shader> mesh_shader;
+    std::shared_ptr<snark::graphics::qopengl::mesh> mesh;
+};
     
-} } } } // namespace snark { namespace graphics { namespace qopengl { namespace textures {
+} } } } // namespace snark { namespace graphics { namespace view { namespace qopengl {
     

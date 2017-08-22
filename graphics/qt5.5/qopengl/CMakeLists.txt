@@ -25,7 +25,7 @@ add_library( ${TARGET_NAME} ${source} ${includes} ${snark_graphics_qopengl_moc} 
 set_target_properties( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 
 # Qt5::3DCore 
-target_link_libraries( ${TARGET_NAME} snark_math Qt5::Widgets ${OPENGL_LIBRARY} ${snark_ALL_EXTERNAL_LIBRARIES} )
+target_link_libraries( ${TARGET_NAME} snark_math Qt5::Widgets ${OPENGL_LIBRARY} ${snark_ALL_EXTERNAL_LIBRARIES} assimp )
 
 # install( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
 install(

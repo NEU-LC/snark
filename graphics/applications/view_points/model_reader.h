@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2017 The University of Sydney
+// Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,67 +27,91 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
+/// @author Cedric Wohlleber
+
 #pragma once
 
 #include "reader.h"
 
-#if Qt3D_VERSION==2
-#include "../../qt5.5/qopengl/textures.h"
+#if Qt3D_VERSION==1
+#include "qt3d_v1/model.h"
+#include "qt3d_v1/ply_loader.h"
+
+#elif Qt3D_VERSION==2
+#include "qopengl/model.h"
 #endif
 
 namespace snark { namespace graphics { namespace view {
 
-struct image_options
+struct model_options
 {
     std::string filename;
-    Eigen::Vector2d size;
-    image_options();
-    image_options(const std::string& filename);
-    image_options(const std::string& filename, double pixel_size );
-    image_options(const std::string& filename, double width, double height);
+    bool flip;
+    double scale;
+    model_options() : flip( false ), scale( 1.0 ) {}
 };
 
-#if Qt3D_VERSION==2
-//TODO move this to qt3d_v2?
-struct image
+/// display 3d models ( obj or 3ds ), set its position from an input csv stream
+class model_reader : public Reader
 {
-    image(const image_options& options);
-    void update_view(const Eigen::Vector3d& position,const Eigen::Vector3d& orientation);
-    snark::math::closed_interval<float,3> extents() const;
-    
-    Eigen::Vector2d size;
-    std::shared_ptr<snark::graphics::qopengl::textures::image> image_texture;
-};
-typedef image image_t;
-#endif
-    
-struct image_reader : public Reader
-{
-    image_reader(const reader_parameters& params, const std::vector<image_options>& io);
+    public:
+        model_reader( const reader_parameters& params
+                   , const model_options& options
+                   , colored* c
+                   , const std::string& label );
 
-    void start();
-    std::size_t update( const Eigen::Vector3d& offset );
-    const Eigen::Vector3d& somePoint() const;
-    bool read_once();
-    bool empty() const;
-    
+        void start();
+        std::size_t update( const Eigen::Vector3d& offset );
+        const Eigen::Vector3d& somePoint() const;
+        bool read_once();
+        bool empty() const;
+        
 #if Qt3D_VERSION==1
-    void render( Viewer& viewer, QGLPainter *painter );
-    
+        void render( Viewer& viewer, QGLPainter *painter );
+        
 #elif Qt3D_VERSION==2
     virtual void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base);
     virtual void update_view();
 #endif
+
+    protected:
+        boost::scoped_ptr< comma::csv::input_stream< PointWithId > > m_stream;
+        boost::scoped_ptr< comma::csv::passed< PointWithId > > m_passed;
         
-    
-protected:
-    boost::scoped_ptr< comma::csv::input_stream< PointWithId > > stream;
-    boost::scoped_ptr< comma::csv::passed< PointWithId > > passed;
-#if Qt3D_VERSION==2
-    std::shared_ptr<snark::graphics::qopengl::texture_shader> texture_shader;
-    std::vector<std::unique_ptr<image_t>> images;
+#if Qt3D_VERSION==1
+        qt3d_v1::model model;
+        boost::optional< PlyLoader > m_plyLoader;
+        
+#elif Qt3D_VERSION==2
+        qopengl::model model;
 #endif
+        const std::string m_file;
+        bool m_flip;
+        double scale_;
+        const colored* colored_;
 };
-    
+
 } } } // namespace snark { namespace graphics { namespace view {
     
+namespace comma { namespace visiting {
+
+template <> struct traits< snark::graphics::view::model_options >
+{
+    template < typename Key, class Visitor > static void visit( Key, snark::graphics::view::model_options& p, Visitor& v )
+    {
+        v.apply( "filename", p.filename );
+        v.apply( "flip", p.flip );
+        v.apply( "scale", p.scale );
+    }
+
+    template < typename Key, class Visitor > static void visit( Key, const snark::graphics::view::model_options& p, Visitor& v )
+    {
+        v.apply( "filename", p.filename );
+        v.apply( "flip", p.flip );
+        v.apply( "scale", p.scale );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+   
