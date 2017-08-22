@@ -520,6 +520,10 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
             if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
             std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::model_reader( param, m, colored, label ) );
             reader->show( show );
+#if Qt3D_VERSION==2
+            std::cerr << "view-points: cad models are not supported yet for qt 5.5+ " << Qt3D_VERSION << std::endl;
+            exit(1);
+#endif
             return reader;
         }
         else
