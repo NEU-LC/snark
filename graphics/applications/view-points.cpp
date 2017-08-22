@@ -331,12 +331,15 @@ static void usage()
         "\n"
         "\n    an example of many of the supported shapes"
         "\n        for i in {0..15}; do echo \"a=2*3.1415926532/16*$i;s(a)*3;c(a)*3;s(a)*3\" | bc -l | paste -s -d,; done \\"
-        "\n            | view-points \"-;weight=5;color=cyan;label=points\" \\"
-        "\n                  <( echo 0,0,0,1,1,1 )\";shape=extents;label=extents;color=blue\" \\"
-        "\n                  <( echo 0,0,2,0,0,0,0.5,2 )\";shape=ellipse;label=ellipse;color=salad\" \\"
-        "\n                  <( echo -e \"0,0,-2,0\\n0,1,-2,1\\n0.5,1.5,-2,2\\n1,1,-2,3\\n1,0,-2,4\\n0.5,-0.5,-2,5\" )\";shape=loop;fields=x,y,z,id;label=loop\" \\"
-        "\n                  <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\"\\"
-        "\n                  <( echo '-3,-3,-3,0,0,0' )\";shape=axis;fields=position,orientation;length=6;labels=X:Y:Z;label=axis\""
+        "\n            | view-points \"-;weight=5;color=cyan;label=point\" \\"
+        "\n                 <( echo 0,0,0,1,1,1 )\";shape=extents;label=extents;color=blue\" \\"
+        "\n                 <( echo 0,0,2,0,0,0,0.5,2 )\";shape=ellipse;label=ellipse;color=salad\" \\"
+        "\n                 <( echo -e \"0,0,-2,0\\n0,1,-2,1\\n0.5,1.5,-2,2\\n1,1,-2,3\\n1,0,-2,4\\n0.5,-0.5,-2,5\" )\";shape=loop;fields=x,y,z,id;label=loop\" \\"
+        "\n                 <( echo 2,2,-1,-2,-1,-1 )\";shape=arc;label=arc;color=magenta\"\\"
+        "\n                 <( echo '-3,-3,-3,0,0,0' )\";shape=axis;fields=position,orientation;length=6;labels=X:Y:Z;label=axis\"\\"
+        "\n                 <( echo 0,0,3,0,1,3; echo 1,0,3,1,1,3; echo 2,0,3,2,1,3)\";shape=line;fields=first,second;label=line;color=red\"\\"
+        "\n                 <( echo 2,0,4; echo 2,1,4; echo 3,1,4; echo 3,0,4)\";shape=lines;label=lines;color=green\"\\"
+        "\n                 <( echo -1,-1,5,0,-2,5,1,-1,5 )\";shape=triangle;label=triangle;color=yellow\""
         "\n";
 
     std::cerr
