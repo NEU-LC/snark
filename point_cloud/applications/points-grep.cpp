@@ -29,9 +29,10 @@
 
 /// @authors abdallah kassir, vsevolod vlaskine
 
-#include <boost/geometry/geometries/polygon.hpp> // todo: take a look at multipolygon
+#include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <boost/geometry/algorithms/within.hpp>
+#include <boost/geometry/algorithms/distance.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/strategies/agnostic/point_in_poly_winding.hpp>
 #include <boost/geometry/geometries/linestring.hpp>
@@ -67,18 +68,21 @@ static void usage( bool verbose = false )
     std::cerr << "             --size=<x>,<y>,<z>: size of the box" << std::endl;
     std::cerr << "             any two of the options above are sufficient to specify a box" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "     polygons: take input 2d points or line segments, identify whether they are fully contained in a set of 2d polygons" << std::endl;
+    std::cerr << "     polygons: take input 2d points or line segments, filter them based upon whether they are fully contained in or fully outside a set of 2d polygons" << std::endl;
     std::cerr << "         options" << std::endl;
+//     std::cerr << "             --exclude-boundary: exclude points on the boundary for both permissive and restrictive polygons; the only mode currently implemented" << std::endl;
+    std::cerr << "             Due to limitations of Boost 1.53, points on boundary are not excluded from restrictive polygons, while lines are excluded." << std::endl;
     std::cerr << "             --fields" << std::endl;
     std::cerr << "                 x,y: input is points" << std::endl;
     std::cerr << "                 first,second,first/x,first/y,second/x,second/y: if any of these fields present, input is line segments" << std::endl;
     std::cerr << "                 default: x,y" << std::endl;
-    std::cerr << "             --line: use with --input-fields or --input-format, see --point and --fields" << std::endl;
-    std::cerr << "             --num-of-polygons,-n: mutually exclusive with --polygons, --output-fields and --output-format must be given the number of input polygons" << std::endl;
-    std::cerr << "             --point: use with --input-fields or --input-format, see --line and --fields" << std::endl;
+    std::cerr << "             --output-all,--all: instead of filtering input records, append a boolean pass/fail field for every polygon in --polygons=" << std::endl;
+    std::cerr << "             --polygon-fields: show polygon fields and exit, see --polygons" << std::endl;
+    std::cerr << "             --polygon-format: show polygon format and exit, see --polygons" << std::endl;
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
-    std::cerr << "                  default fields: x,y[,id], where id is the polygon id of this bounding corner" << std::endl;
-    std::cerr << "                  polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
+    std::cerr << "                 default fields: x,y" << std::endl;
+    std::cerr << "                 polygons: defined by boundary points identified by id field, default id: 0, both clockwise and anti-clockwise direction accepted" << std::endl;
+    std::cerr << "                 restrictive field: control wether a polygon act as fully 'contained in' or 'fully outside' filter, default: 0 for 'contained in'" << std::endl;
     std::cerr << std::endl;
     std::cerr << "     polytope,planes: arbitrary polytope that can be specified either as a set of planes or a set of plane normals and distances from 0,0,0" << std::endl;
     std::cerr << "         options" << std::endl;
@@ -131,13 +135,20 @@ static void usage( bool verbose = false )
     std::cerr << "    polygons" << std::endl;
     std::cerr << "      testing for points inside of polygon" << std::endl;
     std::cerr << "        ( echo 0,5; echo 5,5; echo 5,0; echo 0,5 ) | csv-paste - value=1 >polygons.csv" << std::endl;
-    std::cerr << "        ( echo 5,10; echo 10,10; echo 10,5; echo 5,5; echo 5,10 ) | csv-paste - value=2 >>polygons.csv" << std::endl;
-    std::cerr << "        ( for i in $( seq 0 0.2 10 ) ; do for j in $( seq 0 0.2 10 ) ; do echo $i,$j ; done ; done ) | points-grep polygons --polygons polygons.csv" << std::endl;
+    std::cerr << "        ( for i in $( seq 0 0.2 6 ) ; do for j in $( seq 0 0.2 6 ) ; do echo $i,$j ; done ; done ) | points-grep polygons --polygons polygons.csv --all >results.csv" << std::endl;
+    std::cerr << "        visualisation:" << std::endl;
+    std::cerr << "           view-points 'results.csv;fields=x,y,scalar' 'polygons.csv;shape=loop;fields=x,y;colour=yellow'" << std::endl;
+    std::cerr << "      testing for points outside of polygon" << std::endl;
+    std::cerr << "        ( for i in $( seq 0 0.2 6 ) ; do for j in $( seq 0 0.2 6 ) ; do echo $i,$j ; done ; done ) | points-grep polygons --polygons <( csv-paste polygons.csv value=1 )';fields=x,y,id,restrictive' --all >results.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "      making a concave polygon" << std::endl;
     std::cerr << "        ( echo 0,5; echo 5,5; echo 0,0; echo 5,-5; echo 0,-5; echo -5,0 ) | csv-paste - value=1 >polygons.csv" << std::endl;
     std::cerr << "      testing of line totally contained in a concave polygon" << std::endl;
-    std::cerr << "        ( echo -2,0,-1,2,inside; echo 1,2,1,-2,partial; echo 2,0,4,0,outside) | points-grep polygons --fields first,second --polygons polygons.csv | tee results.csv" << std::endl;
+    std::cerr << "        ( echo -2,0,-1,2,inside; echo 1,2,1,-2,partial; echo 2,0,4,0,outside) | points-grep polygons --fields first,second --polygons polygons.csv --all | tee results.csv" << std::endl;
+    std::cerr << "        visualisation:" << std::endl;
+    std::cerr << "           view-points 'results.csv;fields=first/x,first/y,second/x,second/y,label,id;shape=line' 'polygons.csv;colour=grey;weight=10;fields=x,y;shape=loop'" << std::endl;
+    std::cerr << "      testing of line totally fully outside the same concave polygon" << std::endl;
+    std::cerr << "        ( echo -2,0,-1,2,inside; echo 1,2,1,-2,partial; echo 2,0,4,0,outside) | points-grep polygons --fields first,second --polygons <( csv-paste polygons.csv value=1 )';fields=x,y,id,restrictive' --all | tee results.csv" << std::endl;
     std::cerr << "        visualisation:" << std::endl;
     std::cerr << "           view-points 'results.csv;fields=first/x,first/y,second/x,second/y,label,id;shape=line' 'polygons.csv;colour=grey;weight=10;fields=x,y;shape=loop'" << std::endl;
     exit( 0 );
@@ -147,17 +158,22 @@ static bool verbose;
 
 namespace snark { namespace operations { namespace polygons {
     
-struct input_t : public Eigen::Vector2d {
+struct polygon_point : public Eigen::Vector2d {
     comma::uint32 id;   // default is 0
+    bool restrictive;
+    
+    polygon_point() : id(0), restrictive(false) {}
 };
-
-} } } // namespace snark { namespace operations { namespace polygons {
 
 struct flags_t {
     flags_t( comma::uint32 size ) : flags( size, false ) {}
     std::vector< bool > flags;
 };
 
+} } } // namespace snark { namespace operations { namespace polygons {
+
+namespace snark { namespace operations { namespace polytopes {
+    
 struct normal
 {
     Eigen::Vector3d coordinates;
@@ -178,28 +194,28 @@ namespace species {
     
 struct polytope
 {
-    struct filter : public ::position // quick and dirty
+    struct filter : public position // quick and dirty
     {
-        std::vector< ::normal > normals;
+        std::vector< normal > normals;
         
-        filter( const ::position& p = ::position() ) : ::position( p ) {}
+        filter( const position& p = position() ) : position( p ) {}
     };
 };
 
 struct prism
 {
-    struct filter : public ::position // quick and dirty
+    struct filter : public position // quick and dirty
     {
-        ::normal axis;
+        normal axis;
         std::vector< Eigen::Vector3d > corners;
         
-        filter( const ::position& p = ::position() ) : ::position( p ) {}
+        filter( const position& p = position() ) : position( p ) {}
     };
 };
 
 struct box
 {
-    typedef ::position filter;
+    typedef position filter;
 };
 
 } // namespace species {
@@ -219,116 +235,113 @@ struct output_t
     output_t( bool included = false ) : included( included ) {}
 };
 
+} } } // namespace snark { namespace operations { namespace polytopes {
+
 namespace comma { namespace visiting {
     
-template <> struct traits< snark::operations::polygons::input_t >
+template <> struct traits< snark::operations::polygons::polygon_point >
 {
-    template < typename K, typename V > static void visit( const K& k, snark::operations::polygons::input_t& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polygons::polygon_point& t, V& v )
     {
         traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
+        v.apply( "restrictive", t.restrictive );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const snark::operations::polygons::input_t& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polygons::polygon_point& t, V& v )
     {
         traits< Eigen::Vector2d >::visit( k, t, v );
         v.apply( "id", t.id );
+        v.apply( "restrictive", t.restrictive );
     }
 };
 
-template <  > struct traits< flags_t >
+template <> struct traits< snark::operations::polygons::flags_t >
 {
-    template < typename K, typename V > static void visit( const K& k, flags_t& t, V& v )
-    {
-        v.apply( "contains", t.flags );
-    }
-    
-    template < typename K, typename V > static void visit( const K& k, const flags_t& t, V& v )
-    {
-        v.apply( "contains", t.flags );
-    }
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polygons::flags_t& t, V& v ) { v.apply( "flags", t.flags ); }
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polygons::flags_t& t, V& v ) { v.apply( "flags", t.flags ); }
 };
 
-template <> struct traits< ::position >
+template <> struct traits< snark::operations::polytopes::position >
 {
-    template < typename K, typename V > static void visit( const K& k, ::position& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polytopes::position& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "orientation", t.orientation );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const ::position& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polytopes::position& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "orientation", t.orientation );
     }
 };
 
-template <> struct traits< ::normal >
+template <> struct traits< snark::operations::polytopes::normal >
 {
-    template < typename K, typename V > static void visit( const K& k, ::normal& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polytopes::normal& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "distance", t.distance );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const ::normal& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polytopes::normal& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "distance", t.distance );
     }
 };
 
-template <> struct traits< species::polytope::filter >
+template <> struct traits< snark::operations::polytopes::species::polytope::filter >
 {
-    template < typename K, typename V > static void visit( const K& k, species::polytope::filter& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polytopes::species::polytope::filter& t, V& v )
     {
-        traits< ::position >::visit( k, t, v );
+        traits< snark::operations::polytopes::position >::visit( k, t, v );
         v.apply( "normals", t.normals );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const species::polytope::filter& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polytopes::species::polytope::filter& t, V& v )
     {
-        traits< ::position >::visit( k, t, v );
+        traits< snark::operations::polytopes::position >::visit( k, t, v );
         v.apply( "normals", t.normals );
     }
 };
 
-template <> struct traits< species::prism::filter >
+template <> struct traits< snark::operations::polytopes::species::prism::filter >
 {
-    template < typename K, typename V > static void visit( const K& k, species::prism::filter& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polytopes::species::prism::filter& t, V& v )
     {
-        traits< ::position >::visit( k, t, v );
+        traits< snark::operations::polytopes::position >::visit( k, t, v );
         v.apply( "axis", t.axis );
         v.apply( "corners", t.corners );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const species::prism::filter& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polytopes::species::prism::filter& t, V& v )
     {
-        traits< ::position >::visit( k, t, v );
+        traits< snark::operations::polytopes::position >::visit( k, t, v );
         v.apply( "axis", t.axis );
         v.apply( "corners", t.corners );
     }
 };
 
-template < typename F > struct traits< input_t< F > >
+template < typename F > struct traits< snark::operations::polytopes::input_t< F > >
 {
-    template < typename K, typename V > static void visit( const K& k, input_t< F >& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::operations::polytopes::input_t< F >& t, V& v )
     {
         traits< Eigen::Vector3d >::visit( k, t, v );
         v.apply( "filter", t.filter );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const input_t< F >& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polytopes::input_t< F >& t, V& v )
     {
         traits< Eigen::Vector3d >::visit( k, t, v );
         v.apply( "filter", t.filter );
     }
 };
 
-template <> struct traits< output_t >
+template <> struct traits< snark::operations::polytopes::output_t >
 { 
-    template < typename K, typename V > static void visit( const K& k, const output_t& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::polytopes::output_t& t, V& v )
     {
         v.apply( "included", t.included );
     }
@@ -336,7 +349,9 @@ template <> struct traits< output_t >
 
 } } // namespace comma { namespace visiting { 
 
-static snark::geometry::convex_polytope transform( const snark::geometry::convex_polytope& polytope, const ::position& position ) { return polytope.transformed( position.coordinates, position.orientation ); } 
+namespace snark { namespace operations { namespace polytopes {
+    
+static snark::geometry::convex_polytope transform( const snark::geometry::convex_polytope& polytope, const position& position ) { return polytope.transformed( position.coordinates, position.orientation ); } 
 
 template < typename Species, typename Genus = snark::geometry::convex_polytope > struct shape_traits;
 
@@ -412,7 +427,7 @@ template <> struct shape_traits< species::prism, snark::geometry::convex_polytop
         }
         if( !has_corners ) { std::cerr << "points-grep: prism: please specify --corners, or filter/corners in input fields" << std::endl; exit( 1 ); }
         f.corners.resize( options.value< unsigned int >( "--corners-size,--number-of-corners" ) );
-        f.axis = comma::csv::ascii< ::normal >().get( options.value< std::string >( "--axis", "0,0,1,0" ) );
+        f.axis = comma::csv::ascii< normal >().get( options.value< std::string >( "--axis", "0,0,1,0" ) );
     }
 };
 
@@ -433,7 +448,7 @@ template < typename Species, typename Genus > static int run( const boost::optio
     }
     csv.fields = comma::join( fields, ',' );
     input_t< Species > default_input( comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--point", "0,0,0" ) )
-                                    , typename Species::filter( comma::csv::ascii< ::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) ) ) );
+                                    , typename Species::filter( comma::csv::ascii< position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) ) ) );
     shape_traits< Species, Genus >::set_default_filter( default_input.filter, options, csv );
     bool output_all = options.exists( "--output-all,--all" );
     double inflate_by = options.value( "--inflate-by", 0.0 );
@@ -457,43 +472,68 @@ template < typename Species, typename Genus > static int run( const boost::optio
 
 template < typename Species, typename Genus > int run( const Genus& shape, const comma::command_line_options& options ) { return run< Species >( boost::optional< Genus >( shape ), options ); }
 
+} } } // namespace snark { namespace operations { namespace polytopes {
+
 namespace snark { namespace operations { namespace polygons {
 
 typedef boost::geometry::model::d2::point_xy< double > point_t;
-typedef boost::geometry::model::polygon< point_t, true, false > polygon_t;
 typedef boost::geometry::model::linestring< point_t > line_t;
 typedef line_t boundary_t;
 
+struct polygon_t
+{
+    polygon_t() : restrictive(false) {}
+    polygon_t(const line_t& ring, bool is_restrictive) : boundary(ring), restrictive(is_restrictive) {
+        boost::geometry::append( polygon, boundary );
+        // if the user did not close the loop, we need to do it. Use first point as last point
+        if( boundary.front().x() != boundary.back().x() || boundary.front().y() != boundary.back().y() ) { boundary.push_back( boundary.front() ); } 
+    }
+    
+    bool within( const point_t& g ) const { return boost::geometry::within( g, polygon ); }
+    
+    bool outside( const point_t& g ) const { return !boost::geometry::within( g, polygon );  }
+    
+    bool within( const line_t& g ) const { return boost::geometry::within( g[0], polygon ) && boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
+    
+    bool outside( const line_t& g ) const  { return !boost::geometry::within( g[0], polygon ) && !boost::geometry::within( g[1], polygon ) && !boost::geometry::intersects( g, boundary ); }
+    
+    template < typename T > bool allowed( const T& g ) const { return restrictive ? outside( g ) : within( g ); }
+    
+private:
+    boost::geometry::model::polygon< point_t, true, false > polygon;
+    boost::geometry::model::linestring< point_t > boundary;
+    bool restrictive;
+};
+
 // returns a list of polygons, boundary_t is its ring boundary
-std::vector< std::pair< polygon_t, boundary_t > > read_polygons(comma::command_line_options& options)
+std::vector< polygon_t > read_polygons(comma::command_line_options& options)
 {
     const std::string& polygons_file = options.value< std::string >( "--polygons", "" );
     comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( polygons_file );
     filter_csv.full_xpath = true;
+    if( filter_csv.fields.empty() ) { filter_csv.fields = "x,y"; }
     comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
-    comma::csv::input_stream< input_t > polystream( *is, filter_csv );
+    comma::csv::input_stream< polygon_point > polystream( *is, filter_csv );
     
-    std::vector< std::pair< polygon_t, boundary_t > > polygons;
+    std::vector< polygon_t > polygons;
     boundary_t ring;    // clockwise, or counter-clockwise, it does not seem to matter
+    bool is_restrictive = false;
     comma::uint32 current_id = 0;
     while( polystream.ready() || ( is->good() && !is->eof() ) )
     {
-        const input_t* p = polystream.read();
+        const polygon_point* p = polystream.read();
         if( !p ) { break; }
-        
         if( ring.empty() || current_id == p->id ) { ring.push_back( { p->x(), p->y() } ); } 
         else 
         { 
-            auto data = std::make_pair(polygon_t(), ring);
-            boost::geometry::append( data.first, ring );
-            data.second.push_back( ring.front() ); // make linestring to be a loop, polygon's boundary
-            polygons.push_back( std::move(data)  ); 
+            polygons.push_back( polygon_t( ring, is_restrictive ) ); 
             ring.clear(); 
             ring.push_back( { p->x(), p->y() } );
         }
+        is_restrictive = p->restrictive;
         current_id = p->id; 
     }
-    if( !ring.empty() ) { polygons.push_back( std::make_pair(polygon_t(), ring) );  boost::geometry::append( polygons.back().first, ring ); polygons.back().second.push_back( ring.front() ); }
+    if( !ring.empty() ) { polygons.push_back( polygon_t( ring, is_restrictive ) ); }
     if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
     return std::move( polygons );
 }
@@ -508,15 +548,7 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
     return std::move(line);
 }
 
-static bool within_( const point_t& g, const std::pair< polygon_t, boundary_t >& p ) { return boost::geometry::within( g, p.first ); }
-
-static bool within_( const line_t& g, const std::pair< polygon_t, boundary_t >& p ) { return boost::geometry::within( g[0], p.first ) && boost::geometry::within( g[1], p.first ) && !boost::geometry::intersects( g, p.second ); }
-
-// todo
-// done - polygon_input_t -> snark::operations::polygons::input
-// done - fix --*-fields, --*-format (make it operation-dependent)
-
-template < typename T > static int run( const comma::csv::options& csv, const std::vector< std::pair< polygon_t, boundary_t > >& polygons )
+template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons, bool output_all )
 {
     comma::csv::input_stream< T > istream( std::cin, csv );
     flags_t outputs( polygons.size() );
@@ -527,8 +559,21 @@ template < typename T > static int run( const comma::csv::options& csv, const st
         const T* p = istream.read();
         if( !p ) { break; }
         const auto& g = make_geometry( *p );
-        for( std::size_t i=0; i<polygons.size(); ++i ) { outputs.flags[i] = within_( g, polygons[i] ); }
-        tied.append( outputs );
+        bool all_passed = true;
+        for( std::size_t i=0; i<polygons.size(); ++i ) 
+        { 
+            outputs.flags[i] = polygons[i].allowed( g ); 
+            if( !output_all && outputs.flags[i] == false ) { all_passed = false; break; }
+        }
+        
+        if( !output_all ) 
+        { 
+            if( !all_passed ) { continue; } // filtered out
+            //passthrough
+            if( istream.is_binary()) { std::cout.write( istream.binary().last(), istream.binary().size() ); }
+            else { std::cout << comma::join( istream.ascii().last(), istream.ascii().ascii().delimiter() )<< std::endl; }
+        } 
+        else { tied.append( outputs ); }
     }
     return 0;
 }
@@ -537,25 +582,29 @@ template < typename T > static int run( const comma::csv::options& csv, const st
 
 int main( int argc, char** argv )
 {
+    namespace species = snark::operations::polytopes::species;
+    namespace polytopes = snark::operations::polytopes;
+    namespace polygons = snark::operations::polygons;
     try
     {
         comma::command_line_options options( argc, argv, usage );
         verbose = options.exists( "--verbose,-v" );
         bool output_all = options.exists( "--output-all,--all" );
-        
         const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--verbose,-v,--flush","-.*");
         if(!unnamed.size()) { std::cerr << "points-grep: expected filter name, got nothing"<< std::endl; return 1; }
         std::string what = unnamed[0];
+        if( what == "polytope" || what == "planes" || what == "prism" || what == "box" ) 
+        {
+            if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< polytopes::input_t< species::polytope > >( true ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--input-format" ) ) { std::cerr << comma::csv::format::value< polytopes::input_t< species::polytope > >() << std::endl; return 0; }
+            if( options.exists( "--output-fields" ) ) { if( output_all ) { std::cerr << comma::join( comma::csv::names< polytopes::output_t >( true ), ',' ) << std::endl; } return 0; }
+            if( options.exists( "--output-format" ) ) { if( output_all ) { std::cerr << comma::csv::format::value< polytopes::output_t >() << std::endl; } return 0; }
+        }
         
         if( what == "polytope" || what == "planes" )
         {
-            if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< input_t< species::polytope > >( true ), ',' ) << std::endl; return 0; }
-            if( options.exists( "--input-format" ) ) { std::cerr << comma::csv::format::value< input_t< species::polytope > >() << std::endl; return 0; }
-            if( options.exists( "--output-fields" ) ) { if( output_all ) { std::cerr << comma::join( comma::csv::names< output_t >( true ), ',' ) << std::endl; } return 0; }
-            if( options.exists( "--output-format" ) ) { if( output_all ) { std::cerr << comma::csv::format::value< output_t >() << std::endl; } return 0; }
-            
-            if( options.exists( "--normals-fields" ) ) { std::cerr << comma::join( comma::csv::names< ::normal >( true ), ',' ) << std::endl; return 0; }
-            if( options.exists( "--normals-format" ) ) { std::cerr << comma::csv::format::value< ::normal >() << std::endl; return 0; }
+            if( options.exists( "--normals-fields" ) ) { std::cerr << comma::join( comma::csv::names< polytopes::normal >( true ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--normals-format" ) ) { std::cerr << comma::csv::format::value< polytopes::normal >() << std::endl; return 0; }
             if( options.exists( "--planes-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::triangle >( true ), ',' ) << std::endl; return 0; }
             if( options.exists( "--planes-format" ) ) { std::cerr << comma::csv::format::value< snark::triangle >() << std::endl; return 0; }
             
@@ -563,20 +612,21 @@ int main( int argc, char** argv )
             const std::string& normals_input = options.value< std::string >( "--normals", "" );
             const std::string& planes_input = options.value< std::string >( "--planes", "" );
             double inflate_by = options.value( "--inflate-by", 0.0 );
+            
             if( !normals_input.empty() )
             {
                 comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( normals_input );
                 filter_csv.full_xpath = true;
                 comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
-                comma::csv::input_stream< ::normal > istream( *is, filter_csv );
-                species::polytope::filter f;
+                comma::csv::input_stream< polytopes::normal > istream( *is, filter_csv );
+                snark::operations::polytopes::species::polytope::filter f;
                 while( istream.ready() || ( is->good() && !is->eof() ) )
                 {
-                    const ::normal* p = istream.read();
+                    const polytopes::normal* p = istream.read();
                     if( !p ) { break; }
                     f.normals.push_back( *p );
                 }
-                return run< species::polytope >( shape_traits< species::polytope >::make( f, inflate_by ), options );
+                return polytopes::run< species::polytope >( polytopes::shape_traits< species::polytope >::make( f, inflate_by ), options );
             }
             else if( !planes_input.empty() )
             {
@@ -599,43 +649,26 @@ int main( int argc, char** argv )
                     normals.row( i ) = normal;
                     distances[i] = normal.dot( planes[i].corners[0] + normal * inflate_by );
                 }
-                return run< species::polytope >( snark::geometry::convex_polytope( normals, distances ), options );
+                return snark::operations::polytopes::run< species::polytope >( snark::geometry::convex_polytope( normals, distances ), options );
             }
-            return run< species::polytope >( boost::optional< snark::geometry::convex_polytope >(), options );
+            return snark::operations::polytopes::run< species::polytope >( boost::optional< snark::geometry::convex_polytope >(), options );
         }
         else if( what == "polygons" )
         {
-            options.assert_mutually_exclusive("--line,--point");
-            options.assert_mutually_exclusive("-n,--polygons");
-            options.assert_mutually_exclusive("--num-of-polygons,--polygons");
-            if( options.exists("--input-fields") )
-            {
-                if(options.exists("--line")) { std::cout << comma::join( comma::csv::names< std::pair< Eigen::Vector2d, Eigen::Vector2d > >(), ',' ) << std::endl; return 0; }
-                else if(options.exists("--point")) { std::cout << comma::join( comma::csv::names< Eigen::Vector2d >(), ',' ) << std::endl; return 0; }
-                else { std::cerr << "points-grep: please specify --point or --line for --input-fields or ---input-format" << std::endl; return 1; }
-            }
-            if( options.exists("--input-format") )
-            {
-                if(options.exists("--line")) { std::cout << comma::csv::format::value< std::pair< Eigen::Vector2d, Eigen::Vector2d > >() << std::endl; return 0; }
-                else if(options.exists("--point")) { std::cout << comma::csv::format::value< Eigen::Vector2d >() << std::endl; return 0; }
-                else { std::cerr << "points-grep: please specify --point or --line for --input-fields or ---input-format" << std::endl; return 1; }
-            }
-            
-            if( options.exists("--output-fields,--output-format") ) 
-            { 
-                flags_t sample( options.exists("--polygons") ? snark::operations::polygons::read_polygons(options).size() : options.value< comma::uint32 >("--num-of-polygons,-n") );
-                if( options.exists("--output-fields") ) { std::cout << comma::join( comma::csv::names< flags_t >( sample ), ',' ) << std::endl; return 0; }
-                if( options.exists("--output-format") ) { std::cout << comma::csv::format::value< flags_t >( sample ) << std::endl; return 0; }
-            }
-            
+            if( options.exists( "--input-fields" ) ) { std::cerr << "points-grep polygons: --input-fields not implemented, since it is ambiguous; see --help instead" << std::endl; return 1; }
+            if( options.exists( "--output-fields" ) ) { std::cerr << "points-grep polygons: --output-fields not implemented, since it is hard to define; see --help instead" << std::endl; return 1; }
+            if( options.exists( "--output-format" ) ) { std::cerr << "points-grep polygons: --output-format not implemented, since it is hard to define; see --help instead" << std::endl; return 1; }
+            if( options.exists("--polygon-fields") ) { std::cout << comma::join( comma::csv::names< polygons::polygon_point >(), ',' ) << std::endl; return 0; }
+            if( options.exists("--polygon-format") ) { std::cout << comma::csv::format::value< polygons::polygon_point >() << std::endl; return 0; }
+//             if( !options.exists( "--exclude-boundary" ) ) { std::cout << "points-grep polygons: please specify --exclude-boundary (the only mode currently implemented)" << std::endl; return 1; }
             const auto& polygons = snark::operations::polygons::read_polygons(options);
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
             comma::csv::options csv(options);
             csv.full_xpath = true;
             bool is_line_mode = csv.has_some_of_fields( "first,second,first/x,first/y,second/x,second/y" );
             return is_line_mode
-                 ? snark::operations::polygons::run< std::pair< Eigen::Vector2d, Eigen::Vector2d > >( csv, polygons )
-                 : snark::operations::polygons::run< Eigen::Vector2d >( csv, polygons );
+                 ? snark::operations::polygons::run< std::pair< Eigen::Vector2d, Eigen::Vector2d > >( csv, polygons, options.exists("--output-all,--all") )
+                 : snark::operations::polygons::run< Eigen::Vector2d >( csv, polygons, options.exists("--output-all,--all") );
         }
         else if( what == "prism" )
         {
@@ -643,7 +676,7 @@ int main( int argc, char** argv )
             if( options.exists( "--corners-format" ) ) { std::cerr << comma::csv::format::value< Eigen::Vector3d >() << std::endl; return 0; }
             
             const std::string& corners_input = options.value< std::string >( "--corners", "" );
-            if( corners_input.empty() ) { return run< species::prism >( boost::optional< snark::geometry::convex_polytope >(), options ); }
+            if( corners_input.empty() ) { return snark::operations::polytopes::run< species::prism >( boost::optional< snark::geometry::convex_polytope >(), options ); }
             comma::csv::options filter_csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( corners_input );
             comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
             comma::csv::input_stream< Eigen::Vector3d > istream( *is, filter_csv );
@@ -654,8 +687,8 @@ int main( int argc, char** argv )
                 if( !p ) { break; }
                 f.corners.push_back( *p );
             }
-            f.axis = comma::csv::ascii< ::normal >().get( options.value< std::string >( "--axis", "0,0,1,0" ) );
-            return run< species::prism >( shape_traits< species::prism >::make( f, options.value( "--inflate-by", 0.0 ) ), options );
+            f.axis = comma::csv::ascii< snark::operations::polytopes::normal >().get( options.value< std::string >( "--axis", "0,0,1,0" ) );
+            return snark::operations::polytopes::run< species::prism >( snark::operations::polytopes::shape_traits< species::prism >::make( f, options.value( "--inflate-by", 0.0 ) ), options );
         }
         else if( what == "box" )
         {
@@ -690,7 +723,7 @@ int main( int argc, char** argv )
                        -1,  0,  0;
             Eigen::VectorXd distances( 6 );
             distances << radius.x(), radius.x(), radius.y(), radius.y(), radius.z(), radius.z();
-            return run< species::box >( snark::geometry::convex_polytope( normals, distances ), options );
+            return snark::operations::polytopes::run< species::box >( snark::geometry::convex_polytope( normals, distances ), options );
         }
         std::cerr << "points-grep: expected filter name, got: \"" << what << "\"" << std::endl;
         return 1;
