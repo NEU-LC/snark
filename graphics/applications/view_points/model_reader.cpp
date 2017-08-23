@@ -112,6 +112,8 @@ void model_reader::add_shaders(snark::graphics::qopengl::viewer_base* viewer_bas
 void model_reader::update_view()
 {
     model.update_view();
+    model.mesh_shader->update_transform(m_translation-m_offset, m_orientation ? *m_orientation : Eigen::Vector3d(0,0,0));
+    model.mesh_shader->visible=m_show;
 }
 #endif
 

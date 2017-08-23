@@ -43,7 +43,7 @@ struct model
     void update_view();
     
     std::shared_ptr<snark::graphics::qopengl::mesh_shader> mesh_shader;
-    std::shared_ptr<snark::graphics::qopengl::mesh> mesh;
+    snark::graphics::qopengl::model model_importer;
 };
     
 } } } } // namespace snark { namespace graphics { namespace view { namespace qopengl {

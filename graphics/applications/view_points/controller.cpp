@@ -47,6 +47,7 @@ namespace snark { namespace graphics { namespace view {
 void controller::add(std::unique_ptr<snark::graphics::view::Reader>&& reader)
 {
 #if Qt3D_VERSION==2
+    //TODO rename add_shaders to init
     reader->add_shaders(viewer.get());
 #endif
     readers.push_back(std::move(reader));

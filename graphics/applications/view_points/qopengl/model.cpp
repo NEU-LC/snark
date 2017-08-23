@@ -36,9 +36,7 @@ namespace snark { namespace graphics { namespace view { namespace qopengl {
 
 void model::load(const std::string& file_name)
 {
-    mesh.reset(new snark::graphics::qopengl::model());
-    //or move this to inside import
-    if(!((snark::graphics::qopengl::model*)mesh.get())->import(file_name)) { COMMA_THROW( comma::exception, "failed to load model from: "<<file_name); }
+    model_importer.import(file_name);
 }
 void model::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
 {
@@ -47,15 +45,11 @@ void model::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
 }
 void model::update_view()
 {
-    //if first time draw
+    // create model meshes
     if(mesh_shader->meshes.empty())
     {
-        mesh_shader->meshes.push_back(mesh);
-//         ((snark::graphics::qopengl::model*)mesh.get())->make_mesh();
-        //we could separate model from mesh by doing: mesh=model->make_mesh(); mesh_shader->add(mesh);
+        model_importer.make_meshes(*mesh_shader);
     }
-    //update position and orientation
-//     mesh_shader->visible=m_show; //this should go in reader
 }
      
 } } } } // namespace snark { namespace graphics { namespace view { namespace qopengl {

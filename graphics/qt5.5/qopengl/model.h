@@ -35,6 +35,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <iostream>
+#include "mesh_shader.h"
 
 namespace snark { namespace graphics { namespace qopengl {
 
@@ -45,80 +46,17 @@ namespace snark { namespace graphics { namespace qopengl {
 /// options: 
 ///     hold an array of shared ptr to meshes in case they need updating -> this is better for future animation
 ///     clear shader mesh array and add new ones every time we load model
-class model : public mesh
+class model
 {
 public:
-    model() : scene(NULL) { }
+    model();
     /// load model from file
-    /// returns true for success, or false if fails to import
-//     bool load(const std::string& file_name,mesh_shader* shader)
-    bool import(const std::string& file_name)
-    {
-//         aiSetImportPropertyInteger(props,AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
-//         ReadFileEx(... prop)
-        
-//         aiProcess_PreTransformVertices | aiProcess_GenUVCoords | aiProcess_TransformUVCoords 
-        scene = importer.ReadFile(file_name, aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType);
-//             aiProcess_CalcTangentSpace       |
-//             aiProcess_Triangulate            |
-//             aiProcess_JoinIdenticalVertices  |
-//             aiProcess_SortByPType);
-        if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)
-        {
-            std::cerr<<"failed to import model file: "<<file_name<<std::endl;
-            return false;
-        }
-        debug();
-        return true;
-    }
-    void debug()
-    {
-        std::cerr<<"import msh "<<scene->mNumMeshes<<", mt "<<scene->mNumMaterials<<", tx "<<scene->mNumTextures<<", cam "<<scene->mNumCameras<<std::endl;
-        if(scene->HasMeshes())
-        {
-            aiMesh* mesh=scene->mMeshes[0];
-            std::cerr<<"first mesh v "<<mesh->mNumVertices<<", f "<<mesh->mNumFaces<<", mt "<<mesh->mMaterialIndex<<", uv[0] "<<mesh->mNumUVComponents[0]<<std::endl;
-            std::cerr<<"colors ";
-            for(unsigned i=0;i<AI_MAX_NUMBER_OF_COLOR_SETS;i++)
-                std::cerr<<mesh->mColors[i]<<", ";
-            std::cerr<<std::endl;
-            if(scene->HasMaterials())
-            {
-                aiMaterial* mat=scene->mMaterials[mesh->mMaterialIndex];
-                std::cerr<<"material "<<mat->mNumProperties<<std::endl;
-                for(unsigned i=0;i<mat->mNumProperties;i++)
-                {
-                    aiMaterialProperty* prop=mat->mProperties[i];
-                    std::cerr<<"prop "<<prop->mKey.C_Str()<<" "<<prop->mDataLength<<" ";
-                    if(prop->mType==aiPTI_String)
-                    {
-                        aiString str;
-                        mat->Get(prop->mKey.C_Str(),0,0,str);
-                        std::cerr<<str.C_Str();
-                    }
-                    else
-                    {
-                        for(unsigned j=0;j<prop->mDataLength/4;j++)
-                        {
-                            switch(prop->mType)
-                            {
-                                case aiPTI_Float:
-                                    if(!j) std::cerr<<"float ";
-                                    std::cerr<<((float*)prop->mData)[j]<<" ";
-                                    break;
-                                case aiPTI_Integer:
-                                    if(!j) std::cerr<<"int ";
-                                    std::cerr<<((int*)prop->mData)[j]<<" ";
-                                    break;
-                            }
-                        }
-                    }
-                    std::cerr<<std::endl;
-                }
-            }
-        }
-    }
-    std::vector<int> vertex;
+    void import(const std::string& file_name);
+    /// creates meshes from model and adds them to shader
+    void make_meshes(mesh_shader& shader);
+    void node_make_meshes(aiNode* node,mesh_shader& shader);
+    void debug();
+//     std::vector<int> vertex;
 protected:
     Assimp::Importer importer;
     const aiScene* scene;

@@ -32,39 +32,58 @@
 #include "mesh_shader.h"
 #include <QOpenGLPaintDevice>
 #include <iostream>
+#include "../../../math/rotation_matrix.h"
 
 namespace snark { namespace graphics { namespace qopengl {
-    
+
 
 /// draw model
-static const char *mesh_shader_source = R"(
+// static const char *mesh_shader_source = R"(
+//     #version 150
+//     in vec3 vertex;
+//     in vec2 offset;
+//     out vec2 textCoord;
+//     uniform mat4 view_transform;
+//     uniform mat4 model_transform;
+//     void main() {
+//        gl_Position = view_transform*model_transform*vec4(vertex,1) ;
+//        textCoord = offset;
+//     }
+// )";
+// 
+// 
+// static const char *mesh_fragment_source = R"(
+//     #version 150
+//     in vec2 textCoord;
+//     uniform sampler2D sampler;
+//     out highp vec4 frag_color;
+//     void main() {
+//        frag_color = texture2D(sampler,textCoord);
+//     }
+// )";
+
+static const char *vertex_shader_source = R"(
     #version 150
-    in vec3 vertex;
-    in vec2 offset;
-    in int mesh_index;
-    out vec2 textCoord;
+    in vec4 vertex;
     uniform mat4 view_transform;
-    uniform mat4 mesh_transform[100];
+    uniform mat4 model_transform;
     void main() {
-       gl_Position = transform_matrix*mesh_transform[mesh_index]*vec4(vertex,1) ;
-       textCoord = offset;
+       gl_Position = view_transform* model_transform*vertex;
     }
 )";
 
-static const char *mesh_fragment_source = R"(
+static const char *fragment_shader_source = R"(
     #version 150
-    in vec2 textCoord;
-    uniform sampler2D sampler;
     out highp vec4 frag_color;
     void main() {
-       frag_color = texture2D(sampler,textCoord);
+       frag_color = vec4(1,1,1,1);
     }
 )";
 
 mesh_data::mesh_data() : vertices(NULL), normals(NULL), size(0), faces(NULL), faces_size(0) { }
 
 //**********************************************************************************
-mesh_shader::mesh_shader() { }
+mesh_shader::mesh_shader() { model_transform.setToIdentity(); }
 mesh_shader::~mesh_shader() { }
 void mesh_shader::clear()
 {
@@ -73,15 +92,16 @@ void mesh_shader::clear()
 }
 void mesh_shader::init()
 {
-    std::cerr<<"mesh_shader::init "<<GL_MAX_UNIFORM_LOCATIONS<<" "<<GL_MAX_VERTEX_UNIFORM_COMPONENTS<<std::endl;
+    std::cerr<<"mesh_shader::init "<<std::endl;
     initializeOpenGLFunctions();
-    program.addShaderFromSourceCode( QOpenGLShader::Vertex, mesh_shader_source );
-    program.addShaderFromSourceCode( QOpenGLShader::Fragment, mesh_fragment_source);
+    program.addShaderFromSourceCode( QOpenGLShader::Vertex, vertex_shader_source );
+    program.addShaderFromSourceCode( QOpenGLShader::Fragment, fragment_shader_source);
     program.bindAttributeLocation("vertex",0);
-    program.bindAttributeLocation("offset",1);
+//     program.bindAttributeLocation("offset",1);
     program.link();
     program.bind();
-    transform_matrix_location=program.uniformLocation("transform_matrix");
+    view_transform_location=program.uniformLocation("view_transform");
+    model_transform_location=program.uniformLocation("model_transform");
 //     sampler_location=program.uniformLocation("sampler");
     program.release();
     
@@ -92,7 +112,8 @@ void mesh_shader::paint(const QMatrix4x4& transform_matrix, const QSize& size)
     if(visible)
     {
         program.bind();
-        program.setUniformValue(transform_matrix_location,transform_matrix);
+        program.setUniformValue(view_transform_location,transform_matrix);
+        program.setUniformValue(model_transform_location,model_transform);
 //         program.setUniformValue(sampler_location,0);
 
         glEnable(GL_DEPTH_TEST);
@@ -107,11 +128,24 @@ void mesh_shader::destroy()
 {
     for(auto& j : meshes) { j->destroy(); }
 }
-//**********************************************************************************
-mesh::mesh() : visible(true) { }
+void mesh_shader::update_transform(const Eigen::Vector3d& position,const Eigen::Vector3d& orientation)
+{
+    std::cerr<<"mesh_shader::update_transform"<<std::endl;
+    model_transform.setToIdentity();
+    Eigen::Quaterniond  q=snark::rotation_matrix(orientation).quaternion();
+    model_transform.rotate(QQuaternion(q.w(),QVector3D(q.x(),q.y(),q.z())));
+    model_transform.translate(QVector3D(position.x(),position.y(),position.z()));
+}
+
+// //**********************************************************************************
+
+mesh::mesh() : visible(true), size(0),initd(false) { }
 mesh::~mesh() { }
+
 void mesh::init()
 {
+    if(initd)return;
+//     std::cerr<<"mesh::init"<<std::endl;
     initializeOpenGLFunctions();
 
     vao.create();
@@ -120,24 +154,36 @@ void mesh::init()
     vbo.setUsagePattern(QOpenGLBuffer::StreamDraw);
     vbo.bind();
     glEnableVertexAttribArray( 0 );
-    glEnableVertexAttribArray( 1 );
-//     glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( mesh_vertex ), reinterpret_cast<void *>( offsetof( mesh_vertex, position )));
+//     glEnableVertexAttribArray( 1 );
+    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof( mesh_vertex_t ), 0);
 //     glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, sizeof( mesh_vertex ), reinterpret_cast<void *>( offsetof( mesh_vertex, offset )));
     vbo.release();
-//     std::cerr<<"mesh::init"<<std::endl;
+//     std::cerr<<"/mesh::init"<<std::endl;
+    initd=true;
 }
-void mesh::update(const mesh_data& data)
+// void mesh::update(const mesh_data& data)
+// void mesh::update(const vertex_t* data,unsigned sz)
+
+void mesh::update(const mesh_vertex_t* data,unsigned sz)
 {
+    if(!initd)init();
+//     std::cerr<<"mesh::update"<<std::endl;
     QOpenGLVertexArrayObject::Binder binder(&vao);
     vbo.bind();
-    vbo.allocate(data.size*sizeof(Eigen::Vector3f));
-    vbo.write(0,data.vertices,data.size*sizeof(Eigen::Vector3f));
-    size=data.size;
+    size=sz;
+    vbo.allocate(size*sizeof(mesh_vertex_t));
+    vbo.write(0,data,size*sizeof(mesh_vertex_t));
     vbo.release();
+//     std::cerr<<"/mesh::update"<<std::endl;
 }
+
 void mesh::paint()
 {
-    if(visible)// && fbo)
+//     std::cerr<<"mesh::paint"<<std::endl;
+    QOpenGLVertexArrayObject::Binder binder(&vao);
+    glDrawArrays(GL_POINTS,0,size);
+//     std::cerr<<"/mesh::paint"<<std::endl;
+    /*if(visible)// && fbo)
     {
         glActiveTexture(GL_TEXTURE0);
 //         glBindTexture(GL_TEXTURE_2D, fbo->mesh());
@@ -148,8 +194,9 @@ void mesh::paint()
 //         static int debug=0;
 //         if(debug++<10)
 //             std::cerr<<"mesh::paint"<<std::endl;
-    }
+    }*/
 }
+
 // void mesh::draw()
 // {
 //     if(fbo)
@@ -163,8 +210,11 @@ void mesh::paint()
 // //         std::cerr<<"mesh::draw"<<std::endl;
 //     }
 // }
+
 void mesh::destroy()
 {
+//     std::cerr<<"mesh::destroy"<<std::endl;
+
 //     fbo.release();
 //     std::cerr<<"mesh::destroy"<<std::endl;
 }
