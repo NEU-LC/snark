@@ -1,0 +1,3 @@
+input=../points.csv
+resolution=2.0
+rate=0.5

@@ -247,13 +247,25 @@ static void usage( bool verbose = false )
     std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
     std::cerr << "    thin" << std::endl;
-    std::cerr << "        read input data and thin them down" << std::endl;
-    std::cerr << std::endl;
+    std::cerr << "        read input data and thin it down" << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        options:" << std::endl;
-    std::cerr << "            --linear: assume the input is a sequence of points of a trajectory; only this option is currently implemented" << std::endl;
-    std::cerr << "            --resolution=<distance>: minimum distance from one point to the next" << std::endl;
+    std::cerr << "        there are two modes:" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        spatial:" << std::endl;
+    std::cerr << "            thins data uniformly across space by creating voxels and thinning" << std::endl;
+    std::cerr << "            within each. Respects block fields." << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            options:" << std::endl;
+    std::cerr << "                --rate: rate of thinning, between 0.0 and 1.0" << std::endl;
+    std::cerr << "                --resolution=<distance>: size of voxels" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        linear:" << std::endl;
+    std::cerr << "            assume the input is a sequence of points of a trajectory" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            options:" << std::endl;
+    std::cerr << "                --linear: activates this mode" << std::endl;
+    std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
     std::cerr << std::endl;
     vector_calc::usage();
     exit( 0 );
@@ -440,47 +452,6 @@ static void angle_axis_for_pairs()
     }
 }
 
-static void thin( double resolution )
-{
-    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
-    boost::optional< Eigen::Vector3d > last;
-    double distance = 0;
-    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
-    {
-        const Eigen::Vector3d* p = istream.read();
-        if( !p ) { break; }
-        distance += last ? ( *p - *last ).norm() : 0;
-        if( !last || distance >= resolution )
-        {
-            distance = 0;
-            if( csv.binary() )
-            {
-                std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
-                if( csv.flush ) { std::cout.flush(); }
-            }
-            else
-            {
-                std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << std::endl;
-            }
-        }
-        last = *p;
-    }
-}
-
-void output_points(const Eigen::Vector3d& p1, const Eigen::Vector3d& p2)
-{
-    if( csv.binary() )
-    {
-        std::cout.write( reinterpret_cast< const char* >( &p1 ), sizeof( double ) * 3 );
-        std::cout.write( reinterpret_cast< const char* >( &p2 ), sizeof( double ) * 3 );
-        if( csv.flush ) { std::cout.flush(); }
-    }
-    else 
-    {
-        std::cout << ascii.put( p1 ) << csv.delimiter << ascii.put( p2 ) << std::endl; 
-    }
-}
-
 static void discretise( double step, double tolerance )
 {
     if( csv.has_some_of_fields( "first,first/x,first/y,first/z,second,second/x,second/y,second/z" ) )
@@ -564,6 +535,46 @@ static int cumulative_discretise( const comma::command_line_options& options )
     if( !comma::math::equal( length, stepped ) ) { comma::csv::append( istream, ostream, previous_point ); }
     return 0;
 }
+
+namespace thin_operation {
+
+struct point
+{
+    Eigen::Vector3d coordinates;
+    unsigned block;
+    point() : coordinates( Eigen::Vector3d::Zero() ), block( 0 ) {}
+};
+
+struct record
+{
+    thin_operation::point point;
+    std::string line;
+    
+    record() {}
+    record( const thin_operation::point& p, const std::string& line ) : point( p ), line( line ) {}
+};
+
+class thinner
+{
+    public:
+        thinner( double rate ) : increment( 1.0 / rate )
+        {
+            count = ( std::isinf( increment ) ? 0.0 : increment / 2.0 );
+        }
+
+        bool keep()
+        {
+            count += 1.0;
+            if( count >= increment ) { count -= increment; return true; }
+            else { return false; }
+        }
+
+    private:
+        double increment;
+        double count;
+};
+
+} // namespace thin_operation {
 
 namespace local_operation {
 
@@ -745,6 +756,21 @@ static void output_nearest_extremum_block( const std::deque< local_operation::re
 
 namespace comma { namespace visiting {
 
+template <> struct traits< thin_operation::point >
+{
+    template< typename K, typename V > static void visit( const K&, const thin_operation::point& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "block", t.block );
+    }
+
+    template< typename K, typename V > static void visit( const K&, thin_operation::point& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "block", t.block );
+    }
+};
+
 template <> struct traits< local_operation::point >
 {
     template< typename K, typename V > static void visit( const K&, const local_operation::point& t, V& v )
@@ -870,10 +896,79 @@ int main( int ac, char** av )
         }
         if( operation == "thin" )
         {
-            if( !options.exists( "--linear" )) { COMMA_THROW( comma::exception, "thin operation requires --linear flag" ); }
-            if( !options.exists( "--resolution" ) ) { std::cerr << "points-calc: --resolution is not specified " << std::endl; return 1; }
-            double resolution = options.value( "--resolution" , 0.0 );
-            thin( resolution );
+            double resolution = options.value< double >( "--resolution" );
+            if( options.exists( "--linear" ))
+            {
+                comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+                boost::optional< Eigen::Vector3d > last;
+                double distance = 0;
+                while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+                {
+                    const Eigen::Vector3d* p = istream.read();
+                    if( !p ) { break; }
+                    distance += last ? ( *p - *last ).norm() : 0;
+                    if( !last || distance >= resolution )
+                    {
+                        distance = 0;
+                        if( csv.binary() )
+                        {
+                            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
+                            if( csv.flush ) { std::cout.flush(); }
+                        }
+                        else
+                        {
+                            std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << std::endl;
+                        }
+                    }
+                    last = *p;
+                }
+            }
+            else
+            {
+                typedef snark::voxel_map< thin_operation::thinner, 3 > voxel_map_t;
+
+                if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+                csv.full_xpath = false;
+                double rate = options.value< double >( "--rate" );
+                if( comma::math::less( rate, 0 ) || comma::math::less( 1, rate )) { std::cerr << "points-calc: expected rate between 0 and 1, got " << rate << std::endl; return 1; }
+
+                Eigen::Vector3d resolution_vector( resolution, resolution, resolution );
+                voxel_map_t grid( resolution_vector );
+                thin_operation::thinner empty_thinner( rate );
+
+                comma::uint32 block = 0;
+                comma::csv::input_stream< thin_operation::point > istream( std::cin, csv );
+                while( istream.ready() || std::cin.good() )
+                {
+                    const thin_operation::point* p = istream.read();
+                    if( !p ) { break; }
+
+                    std::string line;
+                    if( csv.binary() ) // quick and dirty
+                    {
+                        line.resize( csv.format().size() );
+                        ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
+                    }
+                    else
+                    {
+                        line = comma::join( istream.ascii().last(), csv.delimiter );
+                    }
+
+                    if( block != p->block ) { grid.clear(); }
+                    block = p->block;
+
+                    thin_operation::record record( *p, line );
+                    // return the thinner for this voxel if it exists, or create a new one
+                    thin_operation::thinner* thinner = &grid.insert( p->coordinates, empty_thinner ).first->second;
+
+                    if( thinner->keep() )
+                    {
+                        std::cout.write( &line[0], line.size() );
+                        if( !csv.binary() ) { std::cout << "\n"; }
+                        if( csv.flush ) { std::cout.flush(); }
+                    }
+                }
+            }
             return 0;
         }
         if( operation == "discretise" || operation == "discretize" )

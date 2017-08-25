@@ -1,0 +1,61 @@
+#!/bin/bash
+
+source $( type -p comma-name-value-util )
+
+# Strip leading and trailing white-space, comments and blank lines
+test_input=$( sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sed -n '/^[[:alnum:]]/p' )
+comma_path_value_to_var < <( grep "=" <<< "$test_input" )
+
+input=$( readlink -e $input )
+
+output_dir=output
+
+[[ -d $output_dir ]] || mkdir $output_dir
+cd $output_dir
+
+[[ $fields ]] || fields=x,y,z
+format=3d
+if [[ $blocks ]]; then
+    fields=x,y,z,block
+    format=3d,ui
+    options+=" --fields $fields"
+fi
+
+binary_in=cat
+binary_out=cat
+if [[ $binary ]]; then
+    binary_in="csv-to-bin $format"
+    options+=" --binary $format"
+    binary_out="csv-from-bin $format"
+fi
+
+function input()
+{
+    if [[ $blocks ]]; then
+        for i in $( seq 1 $blocks ); do csv-paste $input value=$i; done
+    else
+        if [[ $payload ]]; then
+            csv-paste $input value=$payload
+        else
+            cat $input
+        fi
+    fi
+}
+
+result=$( input | $binary_in \
+                | points-calc thin --resolution $resolution --rate $rate $options \
+                | $binary_out | tee output.csv \
+                | points-to-voxel-indices --resolution $resolution \
+                | csv-shuffle --fields $fields,vx,vy,vz --output vx \
+                | sort | uniq -c | sed 's/^ *//;s/ /,/' )
+
+all_voxels=$( cat $input | points-to-voxel-indices --resolution $resolution \
+                    | csv-shuffle --fields x,y,z,vx,vy,vz --output vx | sort -u )
+
+empty_outputs=$( echo "$all_voxels" | csv-join --fields=x <( echo "$result" )";fields=,x" --not-matching )
+
+{
+    echo "$result"
+    echo "$empty_outputs" | csv-paste value=0 -
+} | grep -v "^$" | csv-sort --fields=,x \
+  | sed -r 's/([[:digit:]]+),([[:digit:]]+)/voxel[\2]\/count=\1/'
