@@ -113,6 +113,7 @@ examples:
     parser.add_argument( '--list', action='store_true', help="list variables in given file" )
     parser.add_argument( '--output-format', action='store_true', help="show format of data" )
     parser.add_argument( '--path-separator', metavar="<char>", default=".", help="separator for input and output of variable paths (default=.)" )
+    parser.add_argument('--pretty-printing',action='store_true',help='pretty print json (adds indentation..)')
 
     args = parser.parse_args()
 
@@ -154,6 +155,14 @@ def step_down( mat ):
 def traverse( mat, path="", sep="" ):
     listing = ( sep != "" )
     if is_compound( mat ):
+        if isinstance(mat,numpy.ndarray) and mat.dtype.fields is None:
+            return [ traverse(j, path, sep) for j in mat.tolist() ]
+        if isinstance(mat,unicode):
+            if listing:
+                print path
+                return
+            else:
+                return mat;
         # at the top level, mat is a dictionary, but as we drill down
         # it turns into nested numpy.ndarray objects
         try:
@@ -260,7 +269,10 @@ def main():
                 leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
                 d[ leaf_var_name ] = mat
                 dump_var = d
-            print json.dumps( traverse( dump_var ))
+            if args.pretty_printing:
+                print json.dumps( traverse( dump_var ), indent=4, separators=(',', ': '))
+            else:
+                print json.dumps( traverse( dump_var ))
 
 
 if __name__ == '__main__':
