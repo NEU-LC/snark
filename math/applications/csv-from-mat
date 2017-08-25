@@ -155,8 +155,16 @@ def step_down( mat ):
 def traverse( mat, path="", sep="" ):
     listing = ( sep != "" )
     if is_compound( mat ):
-        if isinstance(mat,numpy.ndarray) and mat.dtype.fields is None:
-            return [ traverse(j, path, sep) for j in mat.tolist() ]
+        if isinstance(mat,numpy.ndarray):
+            if mat.dtype.fields is None:
+                return [ traverse(j, path, sep) for j in mat.tolist() ]
+            elif mat.size!=1:
+                ix=0
+                ls=list()
+                while ix < mat.size:
+                    ls.append( traverse(mat.flat[ix], path, sep) )
+                    ix+=1
+                return ls
         if isinstance(mat,unicode):
             if listing:
                 print path
