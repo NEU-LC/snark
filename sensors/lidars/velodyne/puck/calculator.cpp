@@ -37,7 +37,7 @@ namespace snark { namespace velodyne { namespace puck {
 static boost::array< double, 16 > elevation_ = {{ -15.0 * M_PI / 180
                                                 , 1 * M_PI / 180
                                                 , -13 * M_PI / 180
-                                                , -3 * M_PI / 180
+                                                , 3 * M_PI / 180
                                                 , -11 * M_PI / 180
                                                 , 5 * M_PI / 180
                                                 , -9 * M_PI / 180
