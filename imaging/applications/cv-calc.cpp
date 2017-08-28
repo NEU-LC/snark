@@ -69,6 +69,7 @@ static void usage( bool verbose=false )
     std::cerr << "    roi: given cv image data associated with a region of interest, either set everything outside the region of interest to zero or crop it" << std::endl;
     std::cerr << "    stride: stride through the image, output images of kernel size for each pixel" << std::endl;
     std::cerr << "    thin: thin image stream by discarding some images" << std::endl;
+    std::cerr << "    unstride-positions: take stride index and positions within the stride, append positions in original (unstrided) image" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --binary=[<format>]: binary format of header; default: operation dependent, see --header-format" << std::endl;
@@ -147,6 +148,12 @@ static void usage( bool verbose=false )
     std::cerr << "            --from-fps,--input-fps=<fps>; input fps (since it is impossible to know it upfront)" << std::endl;
     std::cerr << "            --to-fps,--fps=<fps>; thin to a given <fps>, same as --rate=<to-fps>/<from-fps> --deterministic" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    unstride-positions" << std::endl;
+    std::cerr << "        --positions=<n>: number of positions in stride; fields: positions[i]/x,positions[i]/y, (default: 1)" << std::endl;
+    std::cerr << "        --shape,--kernel,--size=<x>,<y>; (tile) image size (see: stride operation)" << std::endl;
+    std::cerr << "        --strides=[<x>,<y>]; stride size; default: 1,1 (see: stride operation)" << std::endl;
+    std::cerr << "        --unstrided-size,--unstrided=<width>,<height>; original (unstrided) image size" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "    draw" << std::endl;
     std::cerr << "        cv-cat --file image.jpg \\" << std::endl;
@@ -184,8 +191,39 @@ static void usage( bool verbose=false )
     std::cerr << "            | cv-calc roi --fields min/x,min/y,,max/x,max/y,t,rows,cols,type --binary '5i,t,3ui' \\" << std::endl;
     std::cerr << "            | csv-bin-cut '5i,t,3ui,s[1572864]' --fields 6-10 >output.bin" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    unstride-positions" << std::endl;
+    std::cerr << "        <process strides, output stride index and rectangle> |" << std::endl;
+    std::cerr << "            cv-calc unstride-positions --fields index,positions --positions 2 --size 600,400 --strides 300,200 --unstrided-size 1200,800" << std::endl;
+    std::cerr << std::endl;
     exit( 0 );
 }
+
+struct positions_t
+{
+    struct config
+    {
+        comma::uint32 size;
+        config() : size( 1 ) {}
+    };
+    
+    std::vector< cv::Point2d > positions;
+
+    positions_t() {}
+    positions_t( const comma::command_line_options& options )
+    {
+        std::string config_string = options.value< std::string >( "--positions", "1" );
+        if( config_string.empty() ) { return; }
+        const auto& config = comma::name_value::parser( "size", ',', '=' ).get< positions_t::config >( config_string );
+        positions.resize( config.size );
+    }
+};
+
+struct stride_positions_t : public positions_t
+{
+    comma::uint32 index;
+    stride_positions_t() {}
+    stride_positions_t( const comma::command_line_options& options ) : positions_t( options ) {}
+};
 
 struct extents
 {
@@ -301,16 +339,57 @@ private:
 } } } } // namespace snark { namespace imaging { namespace operations { namespace draw {
 
 namespace comma { namespace visiting {
-    
-template <> struct traits< cv::Point2i >
+
+template <> struct traits< positions_t::config >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, cv::Point2i& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, positions_t::config& p, Visitor& v )
+    {
+        v.apply( "size", p.size );
+    }
+
+    template < typename Key, class Visitor > static void visit( const Key&, const positions_t::config& p, Visitor& v )
+    {
+        v.apply( "size", p.size );
+    }
+};
+
+template <> struct traits< positions_t >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, positions_t& p, Visitor& v )
+    {
+        v.apply( "positions", p.positions );
+    }
+
+    template < typename Key, class Visitor > static void visit( const Key&, const positions_t& p, Visitor& v )
+    {
+        v.apply( "positions", p.positions );
+    }
+};
+
+template <> struct traits< stride_positions_t >
+{
+    template < typename Key, class Visitor > static void visit( const Key& k, stride_positions_t& p, Visitor& v )
+    {
+        v.apply( "index", p.index );
+        traits< ::positions_t >::visit( k, p, v );
+    }
+
+    template < typename Key, class Visitor > static void visit( const Key& k, const stride_positions_t& p, Visitor& v )
+    {
+        v.apply( "index", p.index );
+        traits< ::positions_t >::visit( k, p, v );
+    }
+};
+
+template < typename T > struct traits< cv::Point_< T > >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, cv::Point_< T >& p, Visitor& v )
     {
         v.apply( "x", p.x );
         v.apply( "y", p.y );
     }
     
-    template < typename Key, class Visitor > static void visit( const Key&, const cv::Point2i& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const cv::Point_< T >& p, Visitor& v )
     {
         v.apply( "x", p.x );
         v.apply( "y", p.y );
@@ -756,6 +835,56 @@ int main( int ac, char** av )
                 std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
                 if( p.second.empty() ) { return 0; }
                 if( keep ) { output_serialization.write_to_stdout( p ); std::cout.flush(); }
+            }
+            return 0;
+        }
+        if( operation == "unstride-positions" ) // TODO move to another utility since it doesn't operate on an image ?
+        {
+            const std::vector< std::string >& unstrided_vector = comma::split( options.value< std::string >( "--unstrided-size,--unstrided" ), ',' );
+            if( unstrided_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected --unstrided-size as <width>,<height>, got: \"" << options.value< std::string >( "--unstrided-size,--unstrided" ) << std::endl; return 1; }
+            cv::Point2i unstrided( boost::lexical_cast< unsigned int >( unstrided_vector[0] ), boost::lexical_cast< unsigned int >( unstrided_vector[1] ) );
+            const std::vector< std::string >& strides_vector = comma::split( options.value< std::string >( "--strides", "1,1" ), ',' );
+            if( strides_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected strides as <x>,<y>, got: \"" << options.value< std::string >( "--strides" ) << std::endl; return 1; }
+            cv::Point2i strides( boost::lexical_cast< unsigned int >( strides_vector[0] ), boost::lexical_cast< unsigned int >( strides_vector[1] ) );
+            const std::vector< std::string >& shape_vector = comma::split( options.value< std::string >( "--shape,--size,--kernel" ), ',' );
+            if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
+            cv::Point2i shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
+
+            // TODO --padding
+            unsigned int stride_rows = ( unstrided.y - shape.y ) / strides.y + 1;
+            unsigned int stride_cols = ( unstrided.x - shape.x ) / strides.x + 1;
+            unsigned int num_strides = stride_rows * stride_cols;
+            if( verbose ) { std::cerr << name << "stride rows: " << stride_rows << ", stride cols: " << stride_cols << std::endl; }
+
+            stride_positions_t input( options );
+            positions_t output( options );
+
+            if( options.exists("--input-fields") ) { std::cout << comma::join( comma::csv::names< stride_positions_t >( true, input ), ',' ) << std::endl; return 0; }
+            if( options.exists("--input-format") ) { std::cout << comma::csv::format::value< stride_positions_t >( "", true, input ) << std::endl; return 0; }
+            if( options.exists("--output-fields") ) { std::cout << comma::join( comma::csv::names< positions_t >( true, output ), ',' ) << std::endl; return 0; }
+            if( options.exists("--output-format") ) { std::cout << comma::csv::format::value< positions_t >( "", true, output ) << std::endl; return 0; }
+
+            comma::csv::options icsv( options );
+            icsv.full_xpath = true;
+            comma::csv::input_stream< stride_positions_t > is( std::cin, icsv, input );
+            comma::csv::options ocsv;
+            ocsv.fields = comma::join( comma::csv::names< positions_t >( "positions", true, output ), ',' );
+            ocsv.flush = true;
+            ocsv.full_xpath = true;
+            if( options.exists( "--binary" ) ) { ocsv.format( comma::csv::format::value< positions_t >( ocsv.fields, true, output ) ); }
+            comma::csv::output_stream< positions_t > os( std::cout, ocsv, output );
+            comma::csv::tied< stride_positions_t, positions_t > tied( is, os );
+
+            while( is.ready() || std::cin.good() )
+            {
+                const stride_positions_t* p = is.read();
+                if( !p ) { break; }
+                if( p->index >= num_strides ) { COMMA_THROW( comma::exception, "invalid stride index: " << p->index << "; expected index < " << num_strides ); }
+                unsigned int stride_col = p->index / stride_rows;
+                unsigned int stride_row = p->index % stride_rows;
+                cv::Point2d offset( stride_col * strides.x, stride_row * strides.y );
+                for( unsigned int i = 0; i < p->positions.size(); ++i ) { output.positions[i] = p->positions[i] + offset; }
+                tied.append( output );
             }
             return 0;
         }
