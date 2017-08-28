@@ -162,7 +162,7 @@ def traverse( mat, path="", sep="" ):
                 ix=0
                 ls=list()
                 while ix < mat.size:
-                    ls.append( traverse(mat.flat[ix], path, sep) )
+                    ls.append( traverse(mat.flat[ix], '%s[%d]' % (path,ix), sep) )
                     ix+=1
                 return ls
         if isinstance(mat,unicode):
