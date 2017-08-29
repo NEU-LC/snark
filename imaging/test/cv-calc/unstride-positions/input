@@ -1,0 +1,2 @@
+rectangles[0]="echo 20170101T000000,0,0,19,19,0.5,0 | csv-to-bin t,5d,ui | cv-calc unstride-positions --binary t,5d,ui --fields ,positions,,index --positions 2 --size 20,20 --strides 10,10 --unstrided-size 40,40 | csv-from-bin t,5d,ui,4d"
+rectangles[1]="echo 20170101T000000,0,0,19,19,0.5,8 | csv-to-bin t,5d,ui | cv-calc unstride-positions --binary t,5d,ui --fields ,positions,,index --positions 2 --size 20,20 --strides 10,10 --unstrided-size 40,40 | csv-from-bin t,5d,ui,4d"
