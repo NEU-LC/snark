@@ -77,6 +77,7 @@ static void usage( bool verbose = false )
     std::cerr << "                 first,second,first/x,first/y,second/x,second/y: if any of these fields present, input is line segments" << std::endl;
     std::cerr << "                 default: x,y" << std::endl;
     std::cerr << "             --output-all,--all: instead of filtering input records, append a boolean pass/fail field for every polygon in --polygons=" << std::endl;
+    std::cerr << "             --or: polygons become OR filters, output 2d point or line segment if it is allowed by any polygon in the polygon set. Default: AND filters" << std::endl;
     std::cerr << "             --polygon-fields: show polygon fields and exit, see --polygons" << std::endl;
     std::cerr << "             --polygon-format: show polygon format and exit, see --polygons" << std::endl;
     std::cerr << "             --polygons=<filename>[;<csv options>]: polygon points specified in clockwise order" << std::endl;
@@ -166,7 +167,7 @@ struct polygon_point : public Eigen::Vector2d {
 };
 
 struct flags_t {
-    flags_t( comma::uint32 size ) : flags( size, false ) {}
+    flags_t( comma::uint32 size, bool state=false ) : flags( size, state ) {}
     std::vector< bool > flags;
 };
 
@@ -499,6 +500,7 @@ struct polygon_t
     
     template < typename T > bool allowed( const T& g ) const { return restrictive ? outside( g ) : within( g ); }
     
+    bool is_restrictive() const { return restrictive; }
 private:
     boost::geometry::model::polygon< point_t, true, false > polygon;
     boost::geometry::model::linestring< point_t > boundary;
@@ -515,6 +517,8 @@ std::vector< polygon_t > read_polygons(comma::command_line_options& options)
     comma::io::istream is( filter_csv.filename, filter_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< polygon_point > polystream( *is, filter_csv );
     
+    bool or_option = options.exists("--or");
+    
     std::vector< polygon_t > polygons;
     boundary_t ring;    // clockwise, or counter-clockwise, it does not seem to matter
     bool is_restrictive = false;
@@ -529,11 +533,17 @@ std::vector< polygon_t > read_polygons(comma::command_line_options& options)
             polygons.push_back( polygon_t( ring, is_restrictive ) ); 
             ring.clear(); 
             ring.push_back( { p->x(), p->y() } );
+            
+            if( or_option && polygons.back().is_restrictive() ) { std::cerr << "points-grep: 'warning' --or option found with restrictive polygon, use permissive polygon(s) only" << std::endl; }
         }
         is_restrictive = p->restrictive;
         current_id = p->id; 
     }
-    if( !ring.empty() ) { polygons.push_back( polygon_t( ring, is_restrictive ) ); }
+    if( !ring.empty() ) 
+    { 
+        polygons.push_back( polygon_t( ring, is_restrictive ) ); 
+        if( or_option && polygons.back().is_restrictive() ) { std::cerr << "points-grep: 'warning' --or option found with restrictive polygon, use permissive polygon(s) only" << std::endl; }
+    }
     if( verbose ) { std::cerr << "points-grep: total number of polygons: " << polygons.size() << std::endl; }
     return std::move( polygons );
 }
@@ -548,27 +558,29 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
     return std::move(line);
 }
 
-template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons, bool output_all )
+template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons, bool output_all, bool or_filters )
 {
     comma::csv::input_stream< T > istream( std::cin, csv );
-    flags_t outputs( polygons.size() );
+    flags_t outputs( polygons.size(), false );
     comma::csv::output_stream< flags_t > ostream( std::cout, csv.binary(), true, false, outputs );
     comma::csv::tied< T, flags_t > tied( istream, ostream );
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         const T* p = istream.read();
         if( !p ) { break; }
-        const auto& g = make_geometry( *p );
         bool all_passed = true;
+        bool all_failed = true;
         for( std::size_t i=0; i<polygons.size(); ++i ) 
         { 
-            outputs.flags[i] = polygons[i].allowed( g ); 
+            outputs.flags[i] = polygons[i].allowed( make_geometry( *p ) ); 
+            if( or_filters && outputs.flags[i] == true ) { all_failed=false; break; } 
             if( !output_all && outputs.flags[i] == false ) { all_passed = false; break; }
         }
         
         if( !output_all ) 
         { 
-            if( !all_passed ) { continue; } // filtered out
+            if( !or_filters && !all_passed ) { continue; } // filtered out
+            if( or_filters && all_failed ) { continue; } // filtered out
             //passthrough
             if( istream.is_binary()) { std::cout.write( istream.binary().last(), istream.binary().size() ); }
             else { std::cout << comma::join( istream.ascii().last(), istream.ascii().ascii().delimiter() )<< std::endl; }
@@ -660,6 +672,7 @@ int main( int argc, char** argv )
             if( options.exists( "--output-format" ) ) { std::cerr << "points-grep polygons: --output-format not implemented, since it is hard to define; see --help instead" << std::endl; return 1; }
             if( options.exists("--polygon-fields") ) { std::cout << comma::join( comma::csv::names< polygons::polygon_point >(), ',' ) << std::endl; return 0; }
             if( options.exists("--polygon-format") ) { std::cout << comma::csv::format::value< polygons::polygon_point >() << std::endl; return 0; }
+            options.assert_mutually_exclusive("--or,--output-all,--all");
 //             if( !options.exists( "--exclude-boundary" ) ) { std::cout << "points-grep polygons: please specify --exclude-boundary (the only mode currently implemented)" << std::endl; return 1; }
             const auto& polygons = snark::operations::polygons::read_polygons(options);
             if( polygons.empty() ) { std::cerr << "points-grep: please specify at least one polygon in --polygons=" << std::endl; return 1; }
@@ -667,8 +680,8 @@ int main( int argc, char** argv )
             csv.full_xpath = true;
             bool is_line_mode = csv.has_some_of_fields( "first,second,first/x,first/y,second/x,second/y" );
             return is_line_mode
-                 ? snark::operations::polygons::run< std::pair< Eigen::Vector2d, Eigen::Vector2d > >( csv, polygons, options.exists("--output-all,--all") )
-                 : snark::operations::polygons::run< Eigen::Vector2d >( csv, polygons, options.exists("--output-all,--all") );
+                 ? snark::operations::polygons::run< std::pair< Eigen::Vector2d, Eigen::Vector2d > >( csv, polygons, options.exists("--output-all,--all"), options.exists("--or") )
+                 : snark::operations::polygons::run< Eigen::Vector2d >( csv, polygons, options.exists("--output-all,--all"), options.exists("--or") );
         }
         else if( what == "prism" )
         {
