@@ -840,6 +840,14 @@ int main( int ac, char** av )
         }
         if( operation == "unstride-positions" ) // TODO move to another utility since it doesn't operate on an image ?
         {
+            stride_positions_t input( options );
+            positions_t output( options );
+
+            if( options.exists("--input-fields") ) { std::cout << comma::join( comma::csv::names< stride_positions_t >( true, input ), ',' ) << std::endl; return 0; }
+            if( options.exists("--input-format") ) { std::cout << comma::csv::format::value< stride_positions_t >( "", true, input ) << std::endl; return 0; }
+            if( options.exists("--output-fields") ) { std::cout << comma::join( comma::csv::names< positions_t >( true, output ), ',' ) << std::endl; return 0; }
+            if( options.exists("--output-format") ) { std::cout << comma::csv::format::value< positions_t >( "", true, output ) << std::endl; return 0; }
+
             const std::vector< std::string >& unstrided_vector = comma::split( options.value< std::string >( "--unstrided-size,--unstrided" ), ',' );
             if( unstrided_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected --unstrided-size as <width>,<height>, got: \"" << options.value< std::string >( "--unstrided-size,--unstrided" ) << std::endl; return 1; }
             cv::Point2i unstrided( boost::lexical_cast< unsigned int >( unstrided_vector[0] ), boost::lexical_cast< unsigned int >( unstrided_vector[1] ) );
@@ -855,14 +863,6 @@ int main( int ac, char** av )
             unsigned int stride_cols = ( unstrided.x - shape.x ) / strides.x + 1;
             unsigned int num_strides = stride_rows * stride_cols;
             if( verbose ) { std::cerr << name << "stride rows: " << stride_rows << ", stride cols: " << stride_cols << std::endl; }
-
-            stride_positions_t input( options );
-            positions_t output( options );
-
-            if( options.exists("--input-fields") ) { std::cout << comma::join( comma::csv::names< stride_positions_t >( true, input ), ',' ) << std::endl; return 0; }
-            if( options.exists("--input-format") ) { std::cout << comma::csv::format::value< stride_positions_t >( "", true, input ) << std::endl; return 0; }
-            if( options.exists("--output-fields") ) { std::cout << comma::join( comma::csv::names< positions_t >( true, output ), ',' ) << std::endl; return 0; }
-            if( options.exists("--output-format") ) { std::cout << comma::csv::format::value< positions_t >( "", true, output ) << std::endl; return 0; }
 
             comma::csv::options icsv( options );
             icsv.full_xpath = true;
