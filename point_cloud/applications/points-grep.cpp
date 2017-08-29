@@ -558,7 +558,7 @@ static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >
     return std::move(line);
 }
 
-template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons, bool output_all, bool or_filters )
+template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons, bool output_all, bool or_mode )
 {
     comma::csv::input_stream< T > istream( std::cin, csv );
     flags_t outputs( polygons.size(), false );
@@ -568,19 +568,20 @@ template < typename T > static int run( const comma::csv::options& csv, const st
     {
         const T* p = istream.read();
         if( !p ) { break; }
+        const auto& g = make_geometry( *p );
         bool all_passed = true;
         bool all_failed = true;
         for( std::size_t i=0; i<polygons.size(); ++i ) 
         { 
-            outputs.flags[i] = polygons[i].allowed( make_geometry( *p ) ); 
-            if( or_filters && outputs.flags[i] == true ) { all_failed=false; break; } 
-            if( !output_all && outputs.flags[i] == false ) { all_passed = false; break; }
+            outputs.flags[i] = polygons[i].allowed( g ); 
+            if( or_mode ) { if ( outputs.flags[i] == true ) { all_failed=false; break; }  }
+            else { if( !output_all && outputs.flags[i] == false ) { all_passed = false; break; } }
         }
         
         if( !output_all ) 
         { 
-            if( !or_filters && !all_passed ) { continue; } // filtered out
-            if( or_filters && all_failed ) { continue; } // filtered out
+            if( !or_mode && !all_passed ) { continue; } // filtered out
+            if( or_mode && all_failed ) { continue; } // filtered out
             //passthrough
             if( istream.is_binary()) { std::cout.write( istream.binary().last(), istream.binary().size() ); }
             else { std::cout << comma::join( istream.ascii().last(), istream.ascii().ascii().delimiter() )<< std::endl; }
@@ -602,7 +603,7 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv, usage );
         verbose = options.exists( "--verbose,-v" );
         bool output_all = options.exists( "--output-all,--all" );
-        const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--verbose,-v,--flush","-.*");
+        const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--or,--verbose,-v,--flush","-.*");
         if(!unnamed.size()) { std::cerr << "points-grep: expected filter name, got nothing"<< std::endl; return 1; }
         std::string what = unnamed[0];
         if( what == "polytope" || what == "planes" || what == "prism" || what == "box" ) 
