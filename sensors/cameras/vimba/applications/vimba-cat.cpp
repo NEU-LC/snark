@@ -43,7 +43,7 @@ static const char* possible_fields = "t,rows,cols,type,size";
 static const char* default_fields = "t,rows,cols,type";
 static int default_retries_on_no_frames = 3;
 
-static void bash_completion( unsigned const ac, char const * const * av )
+static void bash_completion( unsigned const ac, char const* const* av )
 {
     static const char* completion_options =
         " --help -h"
