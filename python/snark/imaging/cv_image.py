@@ -71,10 +71,10 @@ def iterator(file):
         header = np.fromfile(file, image.header_dtype, 1)
         data = np.fromfile(file, data_dtype, 1)
 
-def write( image, flush=False ):
-    image.header.tofile( sys.stdout )
-    image.data.tofile( sys.stdout )
-    if flush: sys.stdout.flush()
+def write( image, flush=False, out_file=sys.stdout ):
+    image.header.tofile( out_file )
+    image.data.tofile( out_file )
+    if flush: out_file.flush()
 
 if __name__ == '__main__':
     for i in iterator(sys.stdin):
