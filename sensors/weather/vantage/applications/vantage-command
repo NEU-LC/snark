@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# This file is part of snark, a generic and flexible library for robotics research
+# Copyright (c) 2017 The University of Sydney
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the University of Sydney nor the
+#    names of its contributors may be used to endorse or promote products
+#    derived from this software without specific prior written permission.
+#
+# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+# GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+# HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
+
+default_port=22222
+
+function description()
+{
+    cat <<EOF
+--help,-h;         output help
+--verbose,-v;      more output to stderr
+--timeout=<secs>;  default=3; time to wait for a response
+--size=<bytes>;    default=1; response packet size
+EOF
+}
+
+function usage()
+{
+cat <<EOF >&2
+
+send a command string to a Davis Vantage weather station
+
+usage: $scriptname <host[:port]> <command> [<options>]
+
+port defaults to $default_port
+
+options
+EOF
+    description | sed 's/^/    /g' >&2
+    cat <<EOF >&2
+
+potentially useful commands include:
+    TEST
+    VER
+    NVER
+    RXCHECK
+    RECEIVERS
+
+note that the application doesn't exit until --timeout has elapsed,
+as it can't tell when output from the device is complete
+
+example
+    $scriptname 172.21.64.153 TEST
+
+EOF
+    exit
+}
+
+function say() { echo "$scriptname: $@" >&2; }
+function verbose() { (( options_verbose )) && say "$@"; }
+function die() { say "$@"; exit 1; }
+
+(( $( comma_options_has "--bash-completion" $@ ) )) && { description | comma_options_to_bash_completion; exit 0; }
+
+if (( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )); then
+    usage
+fi
+
+options="$( description | comma-options-to-name-value "$@" )"
+comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
+
+unnamed_options=( $( echo "$options" | grep -v '=' | sed 's/^"//g; s/"$//g' | tr '\n' ' ' ) )
+(( ${#unnamed_options[@]} < 2 )) && die "require host and command"
+host=${unnamed_options[0]}
+if [[ $host =~ : ]]; then
+    IFS=: read host port <<< $host
+fi
+cmd=${unnamed_options[1]}
+
+port=${port:-$default_port}
+[[ $options_size ]] && dd_options="obs=$options_size"
+
+echo "$cmd" | socat -T$options_timeout tcp:$host:$port -,ignoreeof \
+    | dd ibs=1 skip=1 $dd_options 2>/dev/null
