@@ -40,20 +40,21 @@ namespace snark { namespace navigation { namespace advanced_navigation {
 
 namespace messages {
 
+/// header packet
 struct header : public comma::packed::packed_struct<header,5>
 {
     comma::packed::uint8 LRC;
     comma::packed::uint8 id;
     comma::packed::uint8 length;
-    comma::packed::little_endian_uint16 crc;
+    comma::packed::little_endian_uint16 msg_crc;
     bool is_valid() const;
     //The CRC is a CRC16-CCITT. The starting value is 0xFFFF. The CRC covers only the packet data.
     bool check_crc(const char* data) const;   //length is from header
 };
 
-struct system_state_packet : public comma::packed::packed_struct<system_state_packet,100>
+struct system_state : public comma::packed::packed_struct<system_state,100>
 {
-    enum { packet_id = 20 };
+    enum { id = 20 };
     boost::posix_time::ptime t() const;
     
     comma::packed::little_endian_uint16 system_status;
@@ -70,6 +71,35 @@ struct system_state_packet : public comma::packed::packed_struct<system_state_pa
     boost::array<comma::packed::little_endian_float32,3> angular_velocity;  //x,y,z rad/s
     boost::array<comma::packed::little_endian_float32,3> standard_deviation;    //latitude,longitude,height m
 };
+
+struct raw_sensors
+{
+    enum { id = 28 };
+    boost::array<comma::packed::little_endian_float32,3> accelerometer; //x,y,z m/s/s
+    boost::array<comma::packed::little_endian_float32,3> gyroscope; //x,y,z rad/s
+    boost::array<comma::packed::little_endian_float32,3> magnetometer;  //x,y,z mG
+    comma::packed::little_endian_float32 imu_temperature;   //deg C
+    comma::packed::little_endian_float32 pressure;  //Pascals
+    comma::packed::little_endian_float32 pressure_temperature;  //deg C
+};
+
+struct satellites
+{
+    enum { id = 30 };
+    comma::packed::little_endian_float32 hdop;
+    comma::packed::little_endian_float32 vdop;
+    comma::packed::uint8 gps_satellites;
+    comma::packed::uint8 glonass_satellites;
+    comma::packed::uint8 beidou_satellites;
+    comma::packed::uint8 galileo_satellites;
+    comma::packed::uint8 sbas_satellites;
+};
+
+// struct rtcm_corrections
+// {
+//     enum { id = 55 };
+//     messages::header header;
+// };
     
 } //namespace messages {
     

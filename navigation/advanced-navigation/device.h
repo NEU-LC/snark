@@ -31,6 +31,7 @@
 
 #pragma once
 #include <boost/asio.hpp>
+#include "messages.h"
 
 namespace snark { namespace navigation { namespace advanced_navigation {
 
@@ -39,13 +40,16 @@ class device
 {
     boost::asio::io_service service;
     boost::asio::serial_port port;
-    std::size_t last_read;
+    std::vector<char> buf;
+    unsigned index;
+    unsigned head;
+    messages::header* msg_header;
 public:
     device(const std::string& name,int baud_rate);
     void process();
-    void read(char* data, std::size_t size);
-    void write(const char* data, std::size_t size);
-    int native();
+    virtual void handle(const messages::system_state* msg) { }
+    virtual void handle(const messages::raw_sensors* msg) { }
+    virtual void handle(const messages::satellites* msg) { }
 };
     
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {

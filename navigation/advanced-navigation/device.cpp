@@ -30,43 +30,107 @@
 /// @author Navid Pirmarzdashti
 
 #include "device.h"
+#include <iostream>
+#include <comma/application/verbose.h>
 
 namespace snark { namespace navigation { namespace advanced_navigation {
 
-device::device(const std::string& name,int baud_rate) : port(service,name)
+device::device(const std::string& name,int baud_rate) : port(service,name),buf(2600),index(0),head(0),msg_header(NULL)
 {
     port.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
+    port.set_option(boost::asio::serial_port_base::character_size(8));
+    port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+    port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
 }
 void device::process()
 {
-    //port.read_some<>();
-//     read (some) into buf
-//     len>5
-//         is valid head
-//             calculate length
-//             read to length if not already read
-//             check crc
-//             discard if crc fails
-//             copy to message packet
-//             debug log if active
-//             call handler/or return if any
-//         else advance buf ptr 1 byte //discarding 1 byte debug?
-}
-void device::read(char* data, std::size_t size)
-{
-    last_read = boost::asio::read( port, boost::asio::buffer( data, size ) );
-//         if(debug_verbose)
-//             std::cerr<<"<-["<<(int)size<<"]"<<dump(data,size)<<std::endl;
-}
-void device::write(const char* data, std::size_t size)
-{
-//         if(debug_verbose)
-//             std::cerr<<"->"<<dump(data,size)<<std::endl;
-    boost::asio::write(port,boost::asio::buffer(data,size));
-}
-int device::native()
-{
-    return port.native();
+    static messages::header* skipper=NULL;
+    static unsigned debug_count=0;
+    if(head>0 && index > buf.size()/2)
+    {
+        if(index-head>0)
+        {
+            //relocate
+            memmove(&buf[0],&buf[head],index-head);
+            index-=head;
+            head=0;
+        }
+        else
+        {
+            index=head=0;
+        }
+    }
+    int to_read=buf.size()-index;
+    if(to_read>0)
+    {
+        boost::system::error_code ec;
+        unsigned read_size=port.read_some(boost::asio::buffer(&buf[index],to_read),ec);
+//         unsigned read_size=boost::asio::read(port, boost::asio::buffer(&buf[index],to_read));
+        if(read_size==0)
+            return;
+        if(read_size>(unsigned)to_read)
+            comma::verbose<<"read long "<<read_size<<" vs "<<to_read<<std::endl;
+        index+=read_size;
+    }
+    while(index-head>=5)
+    {
+        if(!msg_header)
+        {
+            //find the header
+            for(; index-head>=5; head++)
+            {
+                msg_header=reinterpret_cast<messages::header*>(&buf[head]);
+                if(msg_header->is_valid())
+                {
+                    break;
+                }
+                if(!skipper)
+                    skipper=msg_header;
+                debug_count++;
+                msg_header=NULL;
+            }
+        }
+        if(msg_header)
+        {
+            if( (index-head-5) < unsigned(msg_header->length()))
+            {
+                return;
+            }
+            if(msg_header->check_crc(&buf[head+5]))
+            {
+                switch(msg_header->id())
+                {
+                case messages::system_state::id:
+                    handle(reinterpret_cast<messages::system_state*>(&buf[head+5]));
+                    break;
+                case messages::raw_sensors::id:
+                    handle(reinterpret_cast<messages::raw_sensors*>(&buf[head+5]));
+                    break;
+                case messages::satellites::id:
+                    handle(reinterpret_cast<messages::satellites*>(&buf[head+5]));
+                    break;
+                default:
+                    comma::verbose<<"unhandled msg id: "<<int(msg_header->id())<<" len "<<int(msg_header->length())<<" "<<head<<" "<<index<<std::endl;
+                    break;
+                }
+                if(debug_count)
+                {
+                    if(!skipper)
+                        comma::verbose<<" skipped "<<debug_count<<std::endl;
+                    else
+                        comma::verbose<<" skipped "<<debug_count<<"; "<<unsigned(skipper->LRC())<<" "<<unsigned(skipper->id())<<" "<<unsigned(skipper->length())<<std::endl;
+                    debug_count=0;
+                    skipper=NULL;
+                }
+            }
+            else
+            {
+                comma::verbose<<"crc failed "<<unsigned(msg_header->LRC())<<" "<<unsigned(msg_header->id())<<" "<<unsigned(msg_header->length())<<std::endl;
+            }
+            head+=unsigned(msg_header->length())+5;
+            msg_header=NULL;
+        }
+    }
 }
 
     
