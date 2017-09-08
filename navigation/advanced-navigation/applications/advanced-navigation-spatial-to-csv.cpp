@@ -56,12 +56,12 @@ void usage(bool detail)
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " <port> [<what>] [<options>]" << std::endl;
     std::cerr<< "    <port>: serial port" << std::endl;
-    std::cerr<< "    <what>: select data packet to output, default: nav"<< std::endl;
+    std::cerr<< "    <what>: select data packet to output, default: navigation"<< std::endl;
     std::cerr << std::endl;
     std::cerr<< "what: " << std::endl;
-    std::cerr<< "    nav: navigation data from system state packet" << std::endl;
-    std::cerr<< "    system_state: full system state packet"<< std::endl;
-    std::cerr<< "    raw_sensors" << std::endl;
+    std::cerr<< "    navigation: navigation data from system state packet" << std::endl;
+    std::cerr<< "    system-state: full system state packet"<< std::endl;
+    std::cerr<< "    raw-sensors" << std::endl;
     std::cerr<< "    satellites" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
@@ -216,25 +216,35 @@ struct factory_t : public factory_i
     }
 };
 
+static void bash_completion( int argc, char** argv )
+{
+    std::cout << "--help --verbose" <<
+        " navigation raw-sensors system-state satellites" <<
+        " --output-fields --output-format"<< 
+        std::endl;
+}
+
 int main( int argc, char** argv )
 {
     try
     {
         comma::command_line_options options( argc, argv, usage );
         
+        if(options.exists("--bash-completion")) { bash_completion( argc, argv ); return 0; }
+        
         std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format", "-.*" );
-        if(unnamed.size()<1) { COMMA_THROW( comma::exception, "expected at least one unnamed option for port name, got "<<unnamed.size()); }
         
         std::unique_ptr<factory_i> factory;
-        if(unnamed.size()<2 || unnamed[1]=="nav") { factory.reset(new factory_t<app_nav>()); }
+        if(unnamed.size()<2 || unnamed[1]=="navigation") { factory.reset(new factory_t<app_nav>()); }
         else if(unnamed[1]=="raw-sensors") { factory.reset(new factory_t<app_packet<messages::raw_sensors>>()); }
         else if(unnamed[1]=="system-state") { factory.reset(new factory_t<app_packet<messages::system_state>>()); }
         else if(unnamed[1]=="satellites") { factory.reset(new factory_t<app_packet<messages::satellites>>()); }
-        else { COMMA_THROW( comma::exception,"expected <what>: nav | raw-sensors | system-state; got "<<unnamed[1]);}
+        else { COMMA_THROW( comma::exception,"expected <what>: navigation | raw-sensors | system-state; got "<<unnamed[1]);}
         
         if(options.exists("--output-fields")) { factory->output_fields(); return 0; }
         if(options.exists("--output-format")) { factory->output_format(); return 0; }
 
+        if(unnamed.size()<1) { COMMA_THROW( comma::exception, "expected at least one unnamed option for port name, got "<<unnamed.size()); }
         factory->run(unnamed,options);
         
         return 0;
