@@ -34,12 +34,15 @@ scriptname=$( basename $0 )
 source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
 
 default_port=22222
+default_config_path=/
 
 function description()
 {
     cat <<EOF
 --help,-h;                  output help
 --verbose,-v;               more output to stderr
+--config,-c=[<file>];       config file with optional path
+--config-sample;            show config sample and exit
 --packet=<name>;            default=loop2; packet to request
 --interval=<secs>;          default=60; interval between readings
 --available-fields;         output available fields for packet
@@ -53,7 +56,7 @@ EOF
 
 function usage()
 {
-cat <<EOF >&2
+cat <<EOF
 
 read data from a Davis Vantage weather station
 
@@ -64,8 +67,8 @@ port defaults to $default_port
 
 options
 EOF
-    description | sed 's/^/    /g' >&2
-    cat <<EOF >&2
+    description | sed 's/^/    /g'
+    cat <<EOF
 
 Each packet type has it's own set of fields, shown by --available-fields, and
 default output fields, shown by --output-fields. The fields that are output can
@@ -101,18 +104,47 @@ EOF
     exit
 }
 
+function config_sample()
+{
+    cat <<EOF
+{
+    "vantage-pro2":
+    {
+        "host": "172.21.64.153",
+        "port": 22222,
+        "packet": "loop2",
+        "interval": 60,
+        "fields": "barometer/reading,temperature/inside,humidity/inside"
+    }
+}
+EOF
+    exit
+}
+
+
+
 function say() { echo "$scriptname: $@" >&2; }
 function verbose() { (( options_verbose )) && say "$@"; }
 function die() { say "$@"; exit 1; }
 
 (( $( comma_options_has "--bash-completion" $@ ) )) && { description | comma_options_to_bash_completion; exit 0; }
 
-if (( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )); then
-    usage
-fi
+(( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )) && usage
+(( $( comma_options_has "--config-sample" $@ ) )) && config_sample
 
 options="$( description | comma-options-to-name-value "$@" )"
 comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
+
+if [[ $options_config ]]; then
+    IFS=: read config_file config_path <<< "$options_config"
+    config_path=${config_path:-$default_config_path}
+    comma_path_value_to_var --prefix=config < <( name-value-get $config_path < $config_file )
+    options_host="$config_host"
+    options_port="$config_port"
+    (( ! $( comma_options_has "--packet" $@ ) )) && [[ $config_packet ]] && options_packet=$config_packet
+    (( ! $( comma_options_has "--interval" $@ ) )) && [[ $config_interval ]] && options_interval=$config_interval
+    (( ! $( comma_options_has "--select-fields" $@ ) )) && [[ $config_fields ]] && options_select_fields=$config_fields
+fi
 
 packet_spec_fields="field,packet_format,output_format,conversion_function,is_default"
 
@@ -342,7 +374,6 @@ if [[ -z $options_convert ]]; then
     if [[ $options_host =~ : ]]; then
         IFS=: read options_host options_port <<< $options_host
     fi
-
     options_port=${options_port:-$default_port}
 fi
 
