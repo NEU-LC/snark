@@ -33,7 +33,6 @@ scriptname=$( basename $0 )
 
 source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
 
-default_port=22222
 default_config_path=/
 
 function description()
@@ -43,6 +42,8 @@ function description()
 --verbose,-v;               more output to stderr
 --config,-c=[<file>];       config file with optional path
 --config-sample;            show config sample and exit
+--host=[<address>];         host address for weather station
+--port=[<port>];            default=22222; port to read
 --packet=<name>;            default=loop2; packet to request
 --interval=<secs>;          default=60; interval between readings
 --available-fields;         output available fields for packet
@@ -60,10 +61,9 @@ cat <<EOF
 
 read data from a Davis Vantage weather station
 
-usage: $scriptname <host[:port]> [<options>]
+usage: $scriptname --host=<address> [<options>]
+       $scriptname --config=<config.json> [<options>]
        cat raw.csv | $scriptname --convert [<options>]
-
-port defaults to $default_port
 
 options
 EOF
@@ -94,11 +94,13 @@ references
     Vantage Serial Communication Reference Manual - contains protocol spec
 
 examples
-    $scriptname 172.21.64.153
-    $scriptname 172.21.64.153 --select-fields="wind/gust/10_minute"
+    $scriptname
+    $scriptname --config config.json:vantage-pro2
+    $scriptname --host 172.21.64.153
+    $scriptname --select-fields="wind/gust/10_minute"
     $scriptname --packet=loop --available-fields
     $scriptname --packet=loop --output-fields
-    $scriptname 172.21.64.153 | name-value-from-csv -f \$( $scriptname --output-fields )
+    $scriptname | name-value-from-csv -f \$( $scriptname --output-fields )
 
 EOF
     exit
@@ -139,11 +141,11 @@ if [[ $options_config ]]; then
     IFS=: read config_file config_path <<< "$options_config"
     config_path=${config_path:-$default_config_path}
     comma_path_value_to_var --prefix=config < <( name-value-get $config_path < $config_file )
-    options_host="$config_host"
-    options_port="$config_port"
+    options_host=${options_host:-$config_host}
+    (( ! $( comma_options_has "--port" $@ ) )) && [[ $config_port ]] && options_port=$config_port
     (( ! $( comma_options_has "--packet" $@ ) )) && [[ $config_packet ]] && options_packet=$config_packet
     (( ! $( comma_options_has "--interval" $@ ) )) && [[ $config_interval ]] && options_interval=$config_interval
-    (( ! $( comma_options_has "--select-fields" $@ ) )) && [[ $config_fields ]] && options_select_fields=$config_fields
+    options_select_fields=${options_select_fields:-$config_fields}
 fi
 
 packet_spec_fields="field,packet_format,output_format,conversion_function,is_default"
@@ -366,16 +368,6 @@ output_packet_format=t,$( get_output_format packet_format )
 [[ $options_available_fields ]] && { echo $packet_fields | tr , '\n' | sort; exit 0; }
 [[ $options_output_fields ]] && { echo $output_fields; exit; }
 [[ $options_output_format ]] && { [[ $options_raw ]] && echo $output_packet_format || echo $output_format; exit; }
-
-if [[ -z $options_convert ]]; then
-    unnamed_options=( $( echo "$options" | grep -v '=' | sed 's/^"//g; s/"$//g' | tr '\n' ' ' ) )
-    (( ${#unnamed_options[@]} == 0 )) && [[ ! $options_host ]] && die "require host"
-    (( ${#unnamed_options[@]} )) && options_host=${unnamed_options[0]}
-    if [[ $options_host =~ : ]]; then
-        IFS=: read options_host options_port <<< $options_host
-    fi
-    options_port=${options_port:-$default_port}
-fi
 
 packet_size=$( csv-size $packet_format )
 
