@@ -110,14 +110,11 @@ function config_sample()
 {
     cat <<EOF
 {
-    "vantage-pro2":
-    {
-        "host": "172.21.64.153",
-        "port": 22222,
-        "packet": "loop2",
-        "interval": 60,
-        "fields": "barometer/reading,temperature/inside,humidity/inside"
-    }
+    "host": "172.21.64.153",
+    "port": 22222,
+    "packet": "loop2",
+    "interval": 60,
+    "fields": "barometer/reading,temperature/inside,humidity/inside"
 }
 EOF
     exit
