@@ -22,6 +22,8 @@ complete -F _snark_bash_completion csv-from-mat
 complete -F _snark_bash_completion geo-sun-position
 complete -F _snark_bash_completion points-align
 complete -F _snark_bash_completion test-pattern
+complete -F _snark_bash_completion vantage-command
+complete -F _snark_bash_completion vantage-to-csv
 complete -F _snark_bash_completion view-points
 complete -F _snark_bash_completion vimba-cat
 complete -F _snark_bash_completion advanced-navigation-spatial-to-csv
