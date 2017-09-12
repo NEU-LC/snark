@@ -181,6 +181,18 @@ static const boost::unordered_map< std::string, int > types_ = impl::fill_types_
 std::string type_as_string( int t ) { return impl::type_as_string(t); }
 
 template < typename H >
+struct canny_impl_ {
+    typedef typename impl::filters< H >::value_type value_type;
+    value_type operator()( value_type m, double threshold1, double threshold2, int kernel_size )
+    {
+        value_type n;
+        n.first = m.first;
+        cv::Canny( m.second, n.second, threshold1, threshold2, kernel_size );
+        return n;
+    }
+};
+
+template < typename H >
 struct cvt_color_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
 
@@ -2082,6 +2094,16 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             else { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
         } catch( boost::bad_lexical_cast bc ) { COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what()); }
     }
+    if( e[0] == "canny" )
+    {
+        if( e.size() == 1 ) { COMMA_THROW( comma::exception, "canny: please specify <threshold1>,<threshold2>[,<kernel_size>]" ); }
+        const std::vector< std::string >& s = comma::split( e[1], ',' );
+        if( s.size() < 2 ) { COMMA_THROW( comma::exception, "canny: expected canny=<threshold1>,<threshold2>[,<kernel_size>]; got: \"" << comma::join( e, '=' ) << "\"" ); }
+        double threshold1 = boost::lexical_cast< double >( s[0] );
+        double threshold2 = boost::lexical_cast< double >( s[1] );
+        int kernel_size = s.size() > 2 ? boost::lexical_cast< int >( s[2] ) : 3;
+        return std::make_pair( boost::bind< value_type_t >( canny_impl_< H >(), _1, threshold1, threshold2, kernel_size ), true );
+    }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "convert-color: please specify conversion" ); }
@@ -2996,6 +3018,10 @@ static std::string usage_impl_()
     oss << "            blur=bilateral,<neighbourhood_size>,<sigma_space>,<sigma_colour>; preserves edges" << std::endl;
     oss << "            blur=adaptive-bilateral: <kernel_size>,<sigma_space>,<sigma_colour_max>; preserve edges, automatically calculate sigma_colour (and cap to sigma_colour_max)" << std::endl;
     oss << "        brightness,scale=<scale>[,<offset>]: output=(scale*input)+offset; default offset=0" << std::endl;
+    oss << "        canny=<threshold1>,<threshold2>[,<kernel_size>]: finds edges using the Canny86 algorithm (see cv::Canny)" << std::endl;
+    oss << "                                                         generates a mask with bright lines representing the edges on a black background, requires single-channel 8-bit input image" << std::endl;
+    oss << "                threshold1, threshold2: the smaller value is used for edge linking, the larger value is used to find initial segments of strong edges" << std::endl;
+    oss << "                kernel_size: size of the extended Sobel kernel; it must be 1, 3, 5 or 7" << std::endl;
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details; values will not overflow" << std::endl;
