@@ -258,6 +258,8 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "            options:" << std::endl;
     std::cerr << "                --rate: rate of thinning, between 0.0 and 1.0" << std::endl;
+    std::cerr << "                --points-per-voxel: number of points to retain in each voxel" << std::endl;
+    std::cerr << "                                    takes the first <n> points" << std::endl;
     std::cerr << "                --resolution=<distance>: size of voxels" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        linear:" << std::endl;
@@ -554,10 +556,10 @@ struct record
     record( const thin_operation::point& p, const std::string& line ) : point( p ), line( line ) {}
 };
 
-class thinner
+class proportional_thinner
 {
     public:
-        thinner( double rate ) : increment( 1.0 / rate )
+        proportional_thinner( double rate ) : increment( 1.0 / rate )
         {
             count = ( std::isinf( increment ) ? 0.0 : increment / 2.0 );
         }
@@ -573,6 +575,62 @@ class thinner
         double increment;
         double count;
 };
+
+class fixed_number_thinner
+{
+    public:
+        fixed_number_thinner( unsigned int points_per_voxel_ )
+            : points_per_voxel( points_per_voxel_ )
+            , count( 0 )
+        {}
+
+        bool keep() { return( ++count <= points_per_voxel ); }
+
+    private:
+        unsigned int points_per_voxel;
+        unsigned int count;
+};
+
+template < typename T >
+int process( double resolution, const T& empty_thinner, const comma::csv::options& csv )
+{
+    Eigen::Vector3d resolution_vector( resolution, resolution, resolution );
+    snark::voxel_map< T, 3 > grid( resolution_vector );
+
+    comma::uint32 block = 0;
+    comma::csv::input_stream< thin_operation::point > istream( std::cin, csv );
+    while( istream.ready() || std::cin.good() )
+    {
+        const thin_operation::point* p = istream.read();
+        if( !p ) { break; }
+
+        std::string line;
+        if( csv.binary() ) // quick and dirty
+        {
+            line.resize( csv.format().size() );
+            ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
+        }
+        else
+        {
+            line = comma::join( istream.ascii().last(), csv.delimiter );
+        }
+
+        if( block != p->block ) { grid.clear(); }
+        block = p->block;
+
+        thin_operation::record record( *p, line );
+        // return the thinner for this voxel if it exists, or create a new one
+        T* thinner = &grid.insert( p->coordinates, empty_thinner ).first->second;
+
+        if( thinner->keep() )
+        {
+            std::cout.write( &line[0], line.size() );
+            if( !csv.binary() ) { std::cout << "\n"; }
+            if( csv.flush ) { std::cout.flush(); }
+        }
+    }
+    return 0;
+}
 
 } // namespace thin_operation {
 
@@ -925,48 +983,29 @@ int main( int ac, char** av )
             }
             else
             {
-                typedef snark::voxel_map< thin_operation::thinner, 3 > voxel_map_t;
-
                 if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
                 csv.full_xpath = false;
-                double rate = options.value< double >( "--rate" );
-                if( comma::math::less( rate, 0 ) || comma::math::less( 1, rate )) { std::cerr << "points-calc: expected rate between 0 and 1, got " << rate << std::endl; return 1; }
-
-                Eigen::Vector3d resolution_vector( resolution, resolution, resolution );
-                voxel_map_t grid( resolution_vector );
-                thin_operation::thinner empty_thinner( rate );
-
-                comma::uint32 block = 0;
-                comma::csv::input_stream< thin_operation::point > istream( std::cin, csv );
-                while( istream.ready() || std::cin.good() )
+                if( options.exists( "--rate" ))
                 {
-                    const thin_operation::point* p = istream.read();
-                    if( !p ) { break; }
+                    typedef thin_operation::proportional_thinner thinner_t;
 
-                    std::string line;
-                    if( csv.binary() ) // quick and dirty
-                    {
-                        line.resize( csv.format().size() );
-                        ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
-                    }
-                    else
-                    {
-                        line = comma::join( istream.ascii().last(), csv.delimiter );
-                    }
+                    double rate = options.value< double >( "--rate" );
+                    if( comma::math::less( rate, 0 ) || comma::math::less( 1, rate )) { std::cerr << "points-calc: expected rate between 0 and 1, got " << rate << std::endl; return 1; }
 
-                    if( block != p->block ) { grid.clear(); }
-                    block = p->block;
-
-                    thin_operation::record record( *p, line );
-                    // return the thinner for this voxel if it exists, or create a new one
-                    thin_operation::thinner* thinner = &grid.insert( p->coordinates, empty_thinner ).first->second;
-
-                    if( thinner->keep() )
-                    {
-                        std::cout.write( &line[0], line.size() );
-                        if( !csv.binary() ) { std::cout << "\n"; }
-                        if( csv.flush ) { std::cout.flush(); }
-                    }
+                    thinner_t empty_thinner( rate );
+                    return thin_operation::process< thinner_t >( resolution, empty_thinner, csv );
+                }
+                else if( options.exists( "--points-per-voxel" ))
+                {
+                    typedef thin_operation::fixed_number_thinner thinner_t;
+                    unsigned int points_per_voxel = options.value< unsigned int >( "--points-per-voxel" );
+                    thinner_t empty_thinner( points_per_voxel );
+                    return thin_operation::process< thinner_t >( resolution, empty_thinner, csv );
+                }
+                else
+                {
+                    std::cerr << "points-calc: spatial thinning requires one of --rate or --points-per-voxel" << std::endl;
+                    return 1;
                 }
             }
             return 0;
