@@ -2943,25 +2943,15 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "rotate90" )
         {
-            int n = ( e.size() > 1 ? boost::lexical_cast< int >( e[1] ) : 1 ) % 4;
+            int n = e.size() > 1 ? boost::lexical_cast< int >( e[1] ) % 4 : 1;
             if( n < 0 ) { n += 4; }
             std::vector< std::string > filters;
             switch( n )
             {
-                case 1:
-                    filters.push_back( "transpose" );
-                    filters.push_back( "flop" );
-                    break;
-                case 2:
-                    filters.push_back( "flip" );
-                    filters.push_back( "flop" );
-                    break;
-                case 3:
-                    filters.push_back( "transpose" );
-                    filters.push_back( "flip" );
-                    break;
-                default:
-                    break;
+                case 1: filters = { "transpose", "flop" };  break;
+                case 2: filters = { "flip",      "flop" };  break;
+                case 3: filters = { "transpose", "flip" };  break;
+                default: break;
             }
             // They are all parallel=true
             for( std::string s : filters ) { f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( { s }, get_timestamp ) ) ); }
