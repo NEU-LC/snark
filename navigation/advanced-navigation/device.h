@@ -32,6 +32,7 @@
 #pragma once
 #include <boost/asio.hpp>
 #include "messages.h"
+#include <vector>
 
 namespace snark { namespace navigation { namespace advanced_navigation {
 
@@ -50,7 +51,8 @@ public:
     virtual void handle(const messages::system_state* msg) { }
     virtual void handle(const messages::raw_sensors* msg) { }
     virtual void handle(const messages::satellites* msg) { }
+    void send_ntrip(std::vector<char> buf);
 };
-    
+
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {
     

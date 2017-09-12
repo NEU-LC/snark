@@ -50,6 +50,8 @@ struct header : public comma::packed::packed_struct<header,5>
     bool is_valid() const;
     //The CRC is a CRC16-CCITT. The starting value is 0xFFFF. The CRC covers only the packet data.
     bool check_crc(const char* data) const;   //length is from header
+    header();
+    header(unsigned char id, unsigned char length,const char* data);
 };
 
 struct system_state : public comma::packed::packed_struct<system_state,100>
@@ -72,7 +74,7 @@ struct system_state : public comma::packed::packed_struct<system_state,100>
     boost::array<comma::packed::little_endian_float32,3> standard_deviation;    //latitude,longitude,height m
 };
 
-struct raw_sensors
+struct raw_sensors : public comma::packed::packed_struct<raw_sensors,48>
 {
     enum { id = 28 };
     boost::array<comma::packed::little_endian_float32,3> accelerometer; //x,y,z m/s/s
@@ -83,7 +85,7 @@ struct raw_sensors
     comma::packed::little_endian_float32 pressure_temperature;  //deg C
 };
 
-struct satellites
+struct satellites : public comma::packed::packed_struct<satellites,13>
 {
     enum { id = 30 };
     comma::packed::little_endian_float32 hdop;
@@ -95,12 +97,15 @@ struct satellites
     comma::packed::uint8 sbas_satellites;
 };
 
-// struct rtcm_corrections
-// {
-//     enum { id = 55 };
-//     messages::header header;
-// };
-    
+struct rtcm_corrections : public comma::packed::packed_struct<rtcm_corrections,260>
+{
+    enum { id = 55 };
+    messages::header header;
+    boost::array<comma::packed::uint8,255> msg_data;
+    rtcm_corrections() { }
+    rtcm_corrections(const char* buf, unsigned size);
+};
+
 } //namespace messages {
     
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {

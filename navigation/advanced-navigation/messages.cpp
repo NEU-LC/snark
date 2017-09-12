@@ -37,6 +37,7 @@ namespace snark { namespace navigation { namespace advanced_navigation {
 
 namespace messages {
 
+namespace detail {
 static const uint16_t crc16_table[256] =
 {
         0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7, 0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef, 0x1231, 0x0210, 0x3273,
@@ -52,12 +53,29 @@ static const uint16_t crc16_table[256] =
         0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1, 0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8, 0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0
 };
 
+uint16_t calculate_crc(const uint8_t *bytes,unsigned length)
+{
+    uint16_t crc = 0xFFFF, i;
+    for (i = 0; i < length; i++)
+    {
+        crc = (uint16_t)((crc << 8) ^ crc16_table[ uint8_t( (crc >> 8) ^ bytes[i] ) ] );
+    }
+    return crc;
+}
+
+uint8_t calculate_LRC(const uint8_t* buf)
+{
+//     comma::verbose<<unsigned(buf[1] + buf[2] + buf[3] + buf[4])<<" "<<unsigned((buf[1] + buf[2] + buf[3] + buf[4]) ^ 0xFF)<<" "<<unsigned(buf[0])<<std::endl;
+    return uint8_t( ((buf[1] + buf[2] + buf[3] + buf[4]) ^ 0xFF) + 1);
+}
+
+} //namespace detail {
+
 
 bool header::is_valid() const
 {
     uint8_t* buf=(uint8_t*)data();
-//     comma::verbose<<unsigned(buf[1] + buf[2] + buf[3] + buf[4])<<" "<<unsigned((buf[1] + buf[2] + buf[3] + buf[4]) ^ 0xFF)<<" "<<unsigned(buf[0])<<std::endl;
-    bool res=buf[0] == uint8_t( ((buf[1] + buf[2] + buf[3] + buf[4]) ^ 0xFF) + 1);
+    bool res= (buf[0] == detail::calculate_LRC(buf));
     if(res&&length()==0)
     {
 //         std::cerr<<"message length "<<unsigned(length())<<std::endl;
@@ -69,13 +87,15 @@ bool header::is_valid() const
 }
 bool header::check_crc(const char* data) const
 {
-    uint8_t *bytes = (uint8_t *) data;
-    uint16_t crc = 0xFFFF, i;
-    for (i = 0; i < unsigned(length()); i++)
-    {
-        crc = (uint16_t)((crc << 8) ^ crc16_table[ uint8_t( (crc >> 8) ^ bytes[i] ) ] );
-    }
-    return crc == msg_crc() ;
+    return detail::calculate_crc((const uint8_t *) data,unsigned(length())) == msg_crc() ;
+}
+header::header() { LRC=1; id=255; length=0; msg_crc=0; }   //invalid header
+header::header(unsigned char i, unsigned char l,const char* buf)
+{
+    id=i;
+    length=l;
+    msg_crc=detail::calculate_crc((const uint8_t*)buf,length());
+    LRC=detail::calculate_LRC((uint8_t*)data());
 }
 
 boost::posix_time::ptime system_state::t() const
@@ -83,7 +103,13 @@ boost::posix_time::ptime system_state::t() const
     return boost::posix_time::ptime(boost::gregorian::date(1970,1,1), 
         boost::posix_time::seconds(unix_time_seconds())+boost::posix_time::microseconds(microseconds()));
 }
-    
+
+rtcm_corrections::rtcm_corrections(const char* buf, unsigned size) : header(id,size,buf)
+{
+    std::memcpy(&msg_data[0],buf,size);
+}
+   
+
 } //namespace messages {
     
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {

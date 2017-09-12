@@ -133,6 +133,20 @@ void device::process()
     }
 }
 
+void device::send_ntrip(std::vector<char> buf)
+{
+//     comma::verbose<<"send_ntrip "<<buf.size()<<std::endl;
+    unsigned index=0;
+    while(index<buf.size())
+    {
+        unsigned size=std::min<unsigned>(buf.size()-index,255);
+        messages::rtcm_corrections msg(&buf[index],size);
+        index+=size;
+//         comma::verbose<<"rtcm_corrections "<<size<<std::endl;
+        boost::asio::write(port, boost::asio::buffer(msg.data(),size+messages::header::size));
+    }
+}
+
     
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {
     

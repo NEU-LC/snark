@@ -43,6 +43,10 @@
 #include "../../../math/spherical_geometry/coordinates.h"
 #include "../../../math/spherical_geometry/traits.h"
 #include "../traits.h"
+#include <comma/io/stream.h>
+#include <tbb/concurrent_queue.h>
+#include <thread>
+#include <chrono>
 
 using namespace snark::navigation::advanced_navigation;
 
@@ -95,6 +99,8 @@ struct output
     snark::spherical::coordinates coordinates;
     double height;
     snark::roll_pitch_yaw orientation;
+    uint16_t system_status;
+    uint16_t filter_status;
 };
 
 namespace comma { namespace visiting {
@@ -108,6 +114,8 @@ struct traits< output >
         v.apply( "coordinates", p.coordinates );
         v.apply( "height", p.height );
         v.apply( "orientation", p.orientation );
+        v.apply( "system_status", p.system_status );
+        v.apply( "filter_status", p.filter_status );
     }
 
     template < typename Key, class Visitor > static void visit( const Key&, output& p, Visitor& v )
@@ -116,10 +124,57 @@ struct traits< output >
         v.apply( "coordinates", p.coordinates );
         v.apply( "height", p.height );
         v.apply( "orientation", p.orientation );
+        v.apply( "system_status", p.system_status );
+        v.apply( "filter_status", p.filter_status );
     }
 };
     
 } } // namespace comma { namespace visiting {
+
+struct ntrip
+{
+    typedef std::shared_ptr<std::vector<char>> item_t;
+    //create stream from name
+    comma::io::istream is;
+    //have queue<std::vecotr<char>> (or double buffer) to put data in
+    static tbb::concurrent_bounded_queue<item_t> queue;
+    //make a thread for reading
+    bool shutdown;
+    std::thread thread;
+    //app_t can check the queue and write to gps, instead of sleep
+    ntrip(const std::string& name,const comma::command_line_options& options) : 
+        is(name,comma::io::mode::binary,comma::io::mode::non_blocking),
+        shutdown(false),
+        thread(&ntrip::run,this)
+    {
+        
+    }
+    ~ntrip()
+    {
+        shutdown=true;
+        thread.join();
+    }
+    void run()
+    {
+        std::vector<char> buf(4096);
+        while(is->good()&&!shutdown)
+        {
+            unsigned size=is.available_on_file_descriptor();
+            if(size)
+            {
+                //or use size=readsome...
+                is->read(&buf[0],size);
+                size=is->gcount();
+                if(size)
+                {
+                    //put it in queue
+                    queue.push(item_t(new std::vector<char>(buf.begin(),buf.begin()+size)));
+                }
+            }
+            usleep(100000);
+        }
+    }
+};
 
 struct app_i
 {
@@ -146,14 +201,15 @@ struct app_t : protected device
         while( !signaled && std::cout.good() )
         {
             device::process();
+            if(!ntrip::queue.empty())
+            {
+                ntrip::item_t item;
+                ntrip::queue.pop(item);
+                if(item)
+                    send_ntrip(*item);
+            }
+            //process ntrip
             usleep(us);
-        }
-    }
-    void handle(const messages::raw_sensors* msg)
-    {
-        if(output_sensors)
-        {
-            
         }
     }
     static void output_fields()
@@ -181,6 +237,8 @@ struct app_nav : public app_t<output>
         o.coordinates.longitude=msg->longitude();
         o.height=msg->height();
         o.orientation=snark::roll_pitch_yaw(msg->orientation[0](),msg->orientation[1](),msg->orientation[2]());
+        o.system_status=msg->system_status();
+        o.filter_status=msg->filter_status();
         os.write(o);
     }
 };
@@ -224,6 +282,8 @@ static void bash_completion( int argc, char** argv )
         std::endl;
 }
 
+tbb::concurrent_bounded_queue<ntrip::item_t> ntrip::queue;
+
 int main( int argc, char** argv )
 {
     try
@@ -243,6 +303,11 @@ int main( int argc, char** argv )
         
         if(options.exists("--output-fields")) { factory->output_fields(); return 0; }
         if(options.exists("--output-format")) { factory->output_format(); return 0; }
+
+        std::unique_ptr<ntrip> ntrip;
+        auto opt_ntrip=options.optional<std::string>("--ntrip");
+        if(opt_ntrip)
+            ntrip.reset(new ::ntrip(*opt_ntrip,options));
 
         if(unnamed.size()<1) { COMMA_THROW( comma::exception, "expected at least one unnamed option for port name, got "<<unnamed.size()); }
         factory->run(unnamed,options);
