@@ -36,20 +36,25 @@ import numpy
 import scipy.io
 
 description="""
-convert from json to matlab .mat file
+convert from json to matlab .mat format
 """
 
 epilog="""
 examples:
-  cat data.json | {script_name} file.mat
+  cat data.json | {script_name} > data.mat
   
 """.format( script_name=sys.argv[0].split('/')[-1] )
 
 parser=argparse.ArgumentParser(description=description,epilog=epilog)
-parser.add_argument("file",help="Matlab file name")
 parser.add_argument( "--force-to-float", action="store_true", help="save integer values as float" )
 
 args=parser.parse_args()
+
+
+def message( msg, data=() ):
+    msg = "json-to-mat: %s" % msg
+    print >> sys.stderr, msg % data
+
 
 def convert(input):
     if isinstance(input, dict):
@@ -75,4 +80,7 @@ def convert(input):
 
 mat_data=json.load(sys.stdin)
 mat_data=convert(mat_data)
-scipy.io.savemat(args.file,mat_data)
+try:
+    scipy.io.savemat( sys.stdout, mat_data )
+except( IOError ):
+    message( "output must be redirected to a file" )
