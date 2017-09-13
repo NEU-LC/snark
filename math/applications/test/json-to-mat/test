@@ -1,0 +1,17 @@
+#!/bin/bash
+
+source $( type -p comma-name-value-util )
+
+# Strip leading and trailing white-space, comments and blank lines
+test_input=$( sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sed -n '/^[[:alnum:]]/p' )
+comma_path_value_to_var < <( grep "=" <<< "$test_input" )
+
+input=$( readlink -e $input )
+
+output_dir=output
+
+[[ -d $output_dir ]] || mkdir $output_dir
+cd $output_dir
+
+cat $input | json-to-mat data.mat
+mat-convert data.mat | name-value-convert --no-brackets
