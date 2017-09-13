@@ -226,6 +226,9 @@ def main():
     except NotImplementedError as e:
         message( "support for Matlab file format v7.3 is not yet implemented (see help)" )
         return
+    except IndexError as e:
+        message( "invalid or unsupported matlab file format" )
+        return
 
     if args.variable:
         for v in args.variable.split( args.path_separator ):
