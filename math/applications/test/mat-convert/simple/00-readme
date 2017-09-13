@@ -1,0 +1,3 @@
+to see what's in data.mat, run
+$ mat-convert data.mat
+$ mat-convert data.mat --list
