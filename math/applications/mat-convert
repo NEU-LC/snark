@@ -89,12 +89,12 @@ file format:
 
 examples:
   {script_name} < data.mat
-  {script_name} foo.bar < data.mat
+  {script_name} --variable foo.bar < data.mat
   {script_name} --list < data.mat
   {script_name} --list --path-separator / < data.mat
-  {script_name} foo --list < data.mat
-  {script_name} foo.bar --output-format < data.mat
-  {script_name} foo.bar --to csv --binary < data.mat
+  {script_name} --variable foo --list < data.mat
+  {script_name} --variable foo.bar --output-format < data.mat
+  {script_name} --variable foo.bar --to csv --binary < data.mat
   {script_name} < data.mat | name-value-convert --no-brackets
 """.format( script_name=sys.argv[0].split('/')[-1] )
 
@@ -104,8 +104,6 @@ examples:
                                       epilog=epilog,
                                       formatter_class=fmt )
 
-    parser.add_argument( "variable", nargs="?", help="variable to extract from save file" )
-
     parser.add_argument( "--bash-completion", action="store_true", help=argparse.SUPPRESS )
     parser.add_argument( "--binary", action="store_true", help="output in binary - only supported for csv output" )
     parser.add_argument( "--list", action="store_true", help="list variables in given file" )
@@ -113,6 +111,7 @@ examples:
     parser.add_argument( "--path-separator", metavar="<char>", default=".", help="separator for input and output of variable paths (default=.)" )
     parser.add_argument( "--pretty-printing", action="store_true", help="pretty print json (adds indentation)" )
     parser.add_argument( "--to", metavar="<format>", default="json", help="convert to - one of csv,json (default=json)" )
+    parser.add_argument( "--variable", metavar="<var>", help="variable to extract from save file (default: all)" )
 
     args = parser.parse_args()
 

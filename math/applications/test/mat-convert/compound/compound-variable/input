@@ -1,3 +1,2 @@
 input=../data.mat
-args=top.nested
-options=
+options="--variable top.nested"

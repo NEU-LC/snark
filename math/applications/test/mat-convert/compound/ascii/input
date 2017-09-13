@@ -1,3 +1,2 @@
 input=../data.mat
-args=top.nested.eye
-options="--to csv"
+options="--variable top.nested.eye --to csv"
