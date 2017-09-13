@@ -75,6 +75,10 @@ void usage(bool detail)
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << "    --baud-rate=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
     std::cerr << "    --sleep=<n>: microsecond sleep between reading, default "<< default_sleep << std::endl;
+    std::cerr << "    --ntrip=<stream>: read ntrip data from stream and send it to device" << std::endl;
+    std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
+    std::cerr << "    --description=<field>; print out one line description text for input values of <field>; csv options apply to input" << std::endl;
+    std::cerr << "        <field>: system_status | filter_status" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -90,6 +94,7 @@ void usage(bool detail)
     std::cerr << "    sudo mknod /dev/usb/ttyUSB0 c 188 0" << std::endl;
     std::cerr << "    "<<comma::verbose.app_name()<<" \"/dev/usb/ttyUSB0\" " << std::endl;
     std::cerr << "    "<<comma::verbose.app_name()<<" \"/dev/usb/ttyUSB0\" --raw-sensors" << std::endl;
+    std::cerr << "    echo 4096 | "<<comma::verbose.app_name()<<" --description filter_status" << std::endl;
     std::cerr << std::endl;
 }
 
@@ -101,6 +106,11 @@ struct output
     snark::roll_pitch_yaw orientation;
     uint16_t system_status;
     uint16_t filter_status;
+};
+
+struct status_data
+{
+    uint16_t status;
 };
 
 namespace comma { namespace visiting {
@@ -128,7 +138,20 @@ struct traits< output >
         v.apply( "filter_status", p.filter_status );
     }
 };
-    
+
+template <>
+struct traits< status_data >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const status_data& p, Visitor& v )
+    {
+        v.apply( "status", p.status );
+    }
+    template < typename Key, class Visitor > static void visit( const Key&, status_data& p, Visitor& v )
+    {
+        v.apply( "status", p.status );
+    }
+};
+
 } } // namespace comma { namespace visiting {
 
 struct ntrip
@@ -160,6 +183,7 @@ struct ntrip
         while(is->good()&&!shutdown)
         {
             unsigned size=is.available_on_file_descriptor();
+
             if(size)
             {
                 //or use size=readsome...
@@ -178,6 +202,7 @@ struct ntrip
 
 struct app_i
 {
+    virtual ~app_i() { }
     virtual void run()=0;
     virtual void output_fields()=0;
 };
@@ -255,6 +280,7 @@ struct app_packet : public app_t<T>
 
 struct factory_i
 {
+    virtual ~factory_i() { }
     virtual void output_fields()=0;
     virtual void output_format()=0;
     virtual void run(const std::vector<std::string>& unnamed,const comma::command_line_options& options)=0;
@@ -273,6 +299,112 @@ struct factory_t : public factory_i
         app.process();
     }
 };
+
+template<typename T>
+struct description
+{
+    comma::csv::input_stream<T> is;
+    description(const comma::command_line_options& options) : is(std::cin,comma::csv::options(options)) { }
+    void process()
+    {
+        while(std::cin.good())
+        {
+            const T* p=is.read();
+            if(!p) { break; }
+            describe(p);
+        }
+    }
+    virtual void describe(const T* p)=0;
+};
+
+struct system_status_description : public description<status_data>
+{
+    std::vector<std::string> text=
+    {
+        {"System Failure"},
+        {"Accelerometer Sensor Failure"},
+        {"Gyroscope Sensor Failure"},
+        {"Magnetometer Sensor Failure"},
+        {"Pressure Sensor Failure"},
+        {"GNSS Failure"},
+        {"Accelerometer Over Range"},
+        {"Gyroscope Over Range"},
+        {"Magnetometer Over Range"},
+        {"Pressure Over Range"},
+        {"Minimum Temperature Alarm"},
+        {"Maximum Temperature Alarm"},
+        {"Low Voltage Alarm"},
+        {"High Voltage Alarm"},
+        {"GNSS Antenna Short Circuit"},
+        {"Data Output Overflow Alarm"}
+    };
+    system_status_description(const comma::command_line_options& options) : description(options) { }
+    void describe(const status_data* p)
+    {
+        if(!p->status)
+        {
+            std::cout<<"null"<<std::endl;
+            return;
+        }
+        unsigned bit=1;
+        for(unsigned i=0;i<text.size();i++)
+        {
+            if(p->status & bit)
+                std::cout<<i<<": "<<text[i]<<"; ";
+            bit<<=1;
+        }
+        std::cout<<std::endl;
+    }
+};
+
+struct filter_status_description : public description<status_data>
+{
+    std::vector<std::string> text=
+    {
+        {"Orientation Filter Initialised"},
+        {"Navigation Filter Initialised"},
+        {"Heading Initialised"},
+        {"UTC Time Initialised"},
+        {""},
+        {""},
+        {""},
+        {"Event 1 Occurred"},
+        {"Event 2 Occurred"},
+        {"Internal GNSS Enabled"},
+        {"Dual Antenna Heading Active"},
+        {"Velocity Heading Enabled"},
+        {"Atmospheric Altitude Enabled"},
+        {"External Position Active"},
+        {"External Velocity Active"},
+        {"External Heading Active"}
+    };
+    std::vector<std::string> gnss_fix_text=
+    {
+        {"No GNSS fix"},
+        {"2D GNSS fix"},
+        {"3D GNSS fix"},
+        {"SBAS GNSS fix"},
+        {"Differential GNSS fix"},
+        {"Omnistar/Starfire GNSS fix"},
+        {"RTK Float GNSS fix"},
+        {"RTK Fixed GNSS fix"}
+    };
+    filter_status_description(const comma::command_line_options& options) : description(options) { }
+    void describe(const status_data* p)
+    {
+        unsigned index=(p->status >> 4) & 7;
+        std::cout<<"GNSS fix "<<index<<": "<<gnss_fix_text[index]<<"; ";
+        unsigned bit=1;
+        for(unsigned i=0;i<text.size();i++)
+        {
+            if(p->status & bit)
+                if(!text[i].empty())
+                    std::cout<<i<<": "<<text[i]<<"; ";
+            bit<<=1;
+        }
+        std::cout<<std::endl;
+    }
+};  
 
 static void bash_completion( int argc, char** argv )
 {
@@ -300,6 +432,24 @@ int main( int argc, char** argv )
         else if(unnamed[1]=="system-state") { factory.reset(new factory_t<app_packet<messages::system_state>>()); }
         else if(unnamed[1]=="satellites") { factory.reset(new factory_t<app_packet<messages::satellites>>()); }
         else { COMMA_THROW( comma::exception,"expected <what>: navigation | raw-sensors | system-state; got "<<unnamed[1]);}
+        
+        auto opt_description=options.optional<std::string>("--description");
+        if(opt_description)
+        {
+            if(*opt_description=="system_status")
+            {
+                system_status_description(options).process();
+            }
+            else if(*opt_description=="filter_status")
+            {
+                filter_status_description(options).process();
+            }
+            else
+            {
+                COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got "<<*opt_description);
+            }
+            return 0;
+        }
         
         if(options.exists("--output-fields")) { factory->output_fields(); return 0; }
         if(options.exists("--output-format")) { factory->output_format(); return 0; }

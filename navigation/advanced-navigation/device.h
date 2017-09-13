@@ -47,6 +47,7 @@ class device
     messages::header* msg_header;
 public:
     device(const std::string& name,int baud_rate);
+    virtual ~device() { }
     void process();
     virtual void handle(const messages::system_state* msg) { }
     virtual void handle(const messages::raw_sensors* msg) { }
