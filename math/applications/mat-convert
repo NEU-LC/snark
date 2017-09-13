@@ -113,7 +113,7 @@ examples:
     parser.add_argument( '--list', action='store_true', help="list variables in given file" )
     parser.add_argument( '--output-format', action='store_true', help="show format of data" )
     parser.add_argument( '--path-separator', metavar="<char>", default=".", help="separator for input and output of variable paths (default=.)" )
-    parser.add_argument('--pretty-printing',action='store_true',help='pretty print json (adds indentation..)')
+    parser.add_argument( '--pretty-printing', action='store_true', help="pretty print json (adds indentation)" )
 
     args = parser.parse_args()
 
@@ -139,7 +139,7 @@ def is_compound( variable ):
     try:
         comma.csv.format.from_numpy( variable.dtype )
         return False
-    except ( AttributeError, ValueError ):
+    except( AttributeError, ValueError ):
         return True
 
 
