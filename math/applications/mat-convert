@@ -29,9 +29,11 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
 import sys
 import signal
 import argparse
+import tempfile
 import json
 import comma.csv.format
 
@@ -88,14 +90,14 @@ file format:
   Matlab, delete myvar, and save again.
 
 examples:
-  {script_name} < data.mat
-  {script_name} --variable foo.bar < data.mat
-  {script_name} --list < data.mat
-  {script_name} --list --path-separator / < data.mat
-  {script_name} --variable foo --list < data.mat
-  {script_name} --variable foo.bar --output-format < data.mat
-  {script_name} --variable foo.bar --to csv --binary < data.mat
-  {script_name} < data.mat | name-value-convert --no-brackets
+  cat data.mat | {script_name}
+  cat data.mat | {script_name} --variable foo.bar
+  cat data.mat | {script_name} --list
+  cat data.mat | {script_name} --list --path-separator /
+  cat data.mat | {script_name} --variable foo --list
+  cat data.mat | {script_name} --variable foo.bar --output-format
+  cat data.mat | {script_name} --variable foo.bar --to csv --binary
+  cat data.mat | {script_name} | name-value-convert --no-brackets
 """.format( script_name=sys.argv[0].split('/')[-1] )
 
     fmt=lambda prog: argparse.RawDescriptionHelpFormatter( prog, max_help_position=50 )
@@ -218,8 +220,19 @@ def main():
     reset_signals
     args = parse_args()
 
+    fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
     try:
-        mat = scipy.io.loadmat( sys.stdin )
+        tmp_file = open( tmp_path, "w" )
+        tmp_file.write( sys.stdin.read() )
+        tmp_file.close()
+    except IOError as e:
+        message( "failed to write to temporary file %s - %s", ( tmp_filename, e ))
+        return
+
+    try:
+        mat = scipy.io.loadmat( tmp_path )
+        os.close( fd )
+        os.remove( tmp_path )
     except IOError as e:
         message( "input must be redirected from a file" )
         return
