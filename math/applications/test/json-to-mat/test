@@ -14,4 +14,4 @@ output_dir=output
 cd $output_dir
 
 cat $input | json-to-mat $options > data.mat
-mat-convert data.mat | name-value-convert --no-brackets
+cat data.mat | mat-convert | name-value-convert --no-brackets
