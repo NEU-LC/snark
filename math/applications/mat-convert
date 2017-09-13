@@ -57,7 +57,7 @@ except ImportError as e:
 
 
 def message( msg, data=() ):
-    msg = "csv-from-mat: %s" % msg
+    msg = "mat-convert: %s" % msg
     print >> sys.stderr, msg % data
 
 
