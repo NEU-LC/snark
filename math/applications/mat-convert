@@ -106,13 +106,13 @@ examples:
 
     parser.add_argument( "variable", nargs="?", help="variable to extract from save file" )
 
-    parser.add_argument( '--bash-completion', action='store_true', help=argparse.SUPPRESS )
-    parser.add_argument( '--binary', action='store_true', help="output in binary - only supported for csv output" )
-    parser.add_argument( '--list', action='store_true', help="list variables in given file" )
-    parser.add_argument( '--output-format', action='store_true', help="show format of data" )
-    parser.add_argument( '--path-separator', metavar="<char>", default=".", help="separator for input and output of variable paths (default=.)" )
-    parser.add_argument( '--pretty-printing', action='store_true', help="pretty print json (adds indentation)" )
-    parser.add_argument( '--to', metavar="<format>", default="json", help="convert to - one of csv,json (default=json)" )
+    parser.add_argument( "--bash-completion", action="store_true", help=argparse.SUPPRESS )
+    parser.add_argument( "--binary", action="store_true", help="output in binary - only supported for csv output" )
+    parser.add_argument( "--list", action="store_true", help="list variables in given file" )
+    parser.add_argument( "--output-format", action="store_true", help="show format of data" )
+    parser.add_argument( "--path-separator", metavar="<char>", default=".", help="separator for input and output of variable paths (default=.)" )
+    parser.add_argument( "--pretty-printing", action="store_true", help="pretty print json (adds indentation)" )
+    parser.add_argument( "--to", metavar="<format>", default="json", help="convert to - one of csv,json (default=json)" )
 
     args = parser.parse_args()
 
@@ -161,7 +161,7 @@ def traverse( mat, path="", sep="" ):
                 ix=0
                 ls=list()
                 while ix < mat.size:
-                    ls.append( traverse(mat.flat[ix], '%s[%d]' % (path,ix), sep) )
+                    ls.append( traverse(mat.flat[ix], "%s[%d]" % (path,ix), sep) )
                     ix+=1
                 return ls
         if isinstance(mat,unicode):
@@ -173,7 +173,7 @@ def traverse( mat, path="", sep="" ):
         # at the top level, mat is a dictionary, but as we drill down
         # it turns into nested numpy.ndarray objects
         try:
-            keys = ( [ i for i in mat.keys() if i[0] != '_' ]
+            keys = ( [ i for i in mat.keys() if i[0] != "_" ]
                      if isinstance( mat, dict )
                      else mat.dtype.fields.keys() )
         except AttributeError:
@@ -185,7 +185,7 @@ def traverse( mat, path="", sep="" ):
             next_item = mat[k]
 
             handled = False
-            if next_item.dtype == numpy.dtype('O'):    # sometimes there's extra nesting
+            if next_item.dtype == numpy.dtype("O"):    # sometimes there's extra nesting
                 if next_item.size == 1 or listing:
                     next_item = next_item.flat[0]
                 else:
@@ -273,10 +273,10 @@ def main():
             d[ leaf_var_name ] = mat
             dump_var = d
         if args.pretty_printing:
-            print json.dumps( traverse( dump_var ), indent=4, separators=(',', ': '))
+            print json.dumps( traverse( dump_var ), indent=4, separators=(",", ": "))
         else:
             print json.dumps( traverse( dump_var ))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
