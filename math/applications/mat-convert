@@ -88,14 +88,14 @@ file format:
   Matlab, delete myvar, and save again.
 
 examples:
-  {script_name} data.mat
-  {script_name} data.mat foo.bar
-  {script_name} data.mat --list
-  {script_name} data.mat --list --path-separator /
-  {script_name} data.mat foo --list
-  {script_name} data.mat foo.bar --output-format
-  {script_name} data.mat foo.bar --to csv --binary
-  {script_name} data.mat | name-value-convert --no-brackets
+  {script_name} < data.mat
+  {script_name} foo.bar < data.mat
+  {script_name} --list < data.mat
+  {script_name} --list --path-separator / < data.mat
+  {script_name} foo --list < data.mat
+  {script_name} foo.bar --output-format < data.mat
+  {script_name} foo.bar --to csv --binary < data.mat
+  {script_name} < data.mat | name-value-convert --no-brackets
 """.format( script_name=sys.argv[0].split('/')[-1] )
 
     fmt=lambda prog: argparse.RawDescriptionHelpFormatter( prog, max_help_position=50 )
@@ -104,7 +104,6 @@ examples:
                                       epilog=epilog,
                                       formatter_class=fmt )
 
-    parser.add_argument( "input_file", nargs="?", help="path to Matlab save file" )
     parser.add_argument( "variable", nargs="?", help="variable to extract from save file" )
 
     parser.add_argument( '--bash-completion', action='store_true', help=argparse.SUPPRESS )
@@ -221,9 +220,9 @@ def main():
     args = parse_args()
 
     try:
-        mat = scipy.io.loadmat( args.input_file )
+        mat = scipy.io.loadmat( sys.stdin )
     except IOError as e:
-        message( "%s \"%s\"", ( e.strerror, args.input_file ))
+        message( "input must be redirected from a file" )
         return
     except NotImplementedError as e:
         message( "support for Matlab file format v7.3 is not yet implemented (see help)" )

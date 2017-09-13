@@ -1,1 +1,2 @@
-../data.mat --list
+input=../data.mat
+options="--list"

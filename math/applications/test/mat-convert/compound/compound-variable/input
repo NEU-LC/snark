@@ -1,1 +1,3 @@
-../data.mat top.nested
+input=../data.mat
+args=top.nested
+options=

@@ -1,1 +1,2 @@
-../data.mat --list --path-separator /
+input=../data.mat
+options="--list --path-separator /"

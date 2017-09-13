@@ -1,1 +1,3 @@
-../data.mat A --to csv
+input=../data.mat
+args=A
+options="--to csv"

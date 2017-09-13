@@ -1,1 +1,3 @@
-../data.mat A --output-format
+input=../data.mat
+args=A
+options="--output-format"
