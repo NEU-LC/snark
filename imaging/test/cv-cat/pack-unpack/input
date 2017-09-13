@@ -1,0 +1,2 @@
+test[0]="cat output/input0.bin | cv-cat 'pack=12,ab,fd,he;unpack=12,0dab,0efc' > output/output0.bin && cmp -s output/input0.bin output/output0.bin"
+test[1]="cat output/input1.bin | cv-cat 'pack=12,cd,ae,gh;unpack=12,abc0,efd0' > output/output1.bin && cmp -s output/input1.bin output/output1.bin"

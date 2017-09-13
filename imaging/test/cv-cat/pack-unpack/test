@@ -1,0 +1,11 @@
+#!/bin/bash
+
+source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
+
+function image { echo 400,600,2 | csv-time-stamp | csv-to-bin t,3ui; shuf -n 240000 -i 0-4095 -r | csv-to-bin uw; }
+
+mkdir -p output
+image > output/input0.bin
+image | cv-cat 'scale=16' > output/input1.bin
+
+comma_test_commands
