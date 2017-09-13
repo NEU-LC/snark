@@ -47,6 +47,7 @@ examples:
 
 parser=argparse.ArgumentParser(description=description,epilog=epilog)
 parser.add_argument("file",help="Matlab file name")
+parser.add_argument( "--force-to-float", action="store_true", help="save integer values as float" )
 
 args=parser.parse_args()
 
@@ -68,7 +69,7 @@ def convert(input):
     elif isinstance(input, unicode):
         return input.encode('utf-8')
     elif isinstance(input,int):
-        return float(input)
+        return ( float( input ) if args.force_to_float else input )
     else:
         return input
 

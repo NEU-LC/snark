@@ -13,5 +13,5 @@ output_dir=output
 [[ -d $output_dir ]] || mkdir $output_dir
 cd $output_dir
 
-cat $input | json-to-mat data.mat
+cat $input | json-to-mat data.mat $options
 mat-convert data.mat | name-value-convert --no-brackets
