@@ -178,7 +178,7 @@ def traverse( mat, path="", sep="" ):
                      if isinstance( mat, dict )
                      else mat.dtype.fields.keys() )
         except AttributeError:
-            print >> sys.stderr, "warning: didn't understand %s" % path
+            message( "warning: didn't understand %s", path )
             return None
 
         d = dict()
@@ -202,7 +202,7 @@ def traverse( mat, path="", sep="" ):
 
             if not handled:
                 if isinstance( next_item, scipy.io.matlab.mio5_params.MatlabOpaque ):
-                    print >> sys.stderr, "warning: didn't understand %s%s%s" % (path, sep, k )
+                    message( "warning: didn't understand %s%s%s", (path, sep, k ))
                     continue
                 if listing:
                     traverse( next_item, k if path is None else "%s%s%s" % ( path, sep, k ), sep )
