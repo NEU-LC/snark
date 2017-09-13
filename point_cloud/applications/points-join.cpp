@@ -220,7 +220,7 @@ template <> struct traits< Eigen::Vector3d >
         #ifdef SNARK_USE_CUDA
             snark::cuda::buffer buffer;
             void calculate_squared_norms( const Eigen::Vector3d& rhs ) { snark::cuda::squared_norms( rhs, buffer ); }
-            boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const point_input& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, use_cuda ? buffer.out[k] : (records[k]->value - rhs ).squaredNorm() ); }
+            boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const point_input& rhs, unsigned int k ) const { return std::make_pair( records[k]->value, use_cuda ? buffer.out[k] : (records[k]->value - rhs.value ).squaredNorm() ); }
         #else // SNARK_USE_CUDA
             boost::optional< std::pair< Eigen::Vector3d, double > > nearest_to( const point_input& rhs, unsigned int k ) const
             {

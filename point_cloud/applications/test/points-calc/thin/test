@@ -42,8 +42,11 @@ function input()
     fi
 }
 
+[[ $rate ]] && options+=" --rate $rate"
+[[ $points_per_voxel ]] && options+=" --points-per-voxel $points_per_voxel"
+
 result=$( input | $binary_in \
-                | points-calc thin --resolution $resolution --rate $rate $options \
+                | points-calc thin --resolution $resolution $options \
                 | $binary_out | tee output.csv \
                 | points-to-voxel-indices --resolution $resolution \
                 | csv-shuffle --fields $fields,vx,vy,vz --output vx \
