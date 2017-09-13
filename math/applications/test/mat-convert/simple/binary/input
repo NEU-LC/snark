@@ -1,1 +1,1 @@
-../data.mat A --binary
+../data.mat A --to csv --binary

@@ -1,1 +1,1 @@
-../data.mat top.nested.eye --csv
+../data.mat top.nested.eye --to csv

@@ -69,7 +69,7 @@ def bash_completion (parser):
 
 def parse_args():
     description="""
-extract variable from Matlab save file and return as csv or json
+convert to and from Matlab save files
 """
 
     epilog="""
@@ -93,8 +93,8 @@ examples:
   {script_name} data.mat --list
   {script_name} data.mat --list --path-separator /
   {script_name} data.mat foo --list
-  {script_name} data.mat foo.bar --binary
   {script_name} data.mat foo.bar --output-format
+  {script_name} data.mat foo.bar --to csv --binary
   {script_name} data.mat | name-value-convert --no-brackets
 """.format( script_name=sys.argv[0].split('/')[-1] )
 
@@ -108,12 +108,12 @@ examples:
     parser.add_argument( "variable", nargs="?", help="variable to extract from save file" )
 
     parser.add_argument( '--bash-completion', action='store_true', help=argparse.SUPPRESS )
-    parser.add_argument( '--binary', action='store_true', help="output in binary (default is ascii)" )
-    parser.add_argument( '--csv', action='store_true', help="output as csv (only for non-compound variables)" )
+    parser.add_argument( '--binary', action='store_true', help="output in binary - only supported for csv output" )
     parser.add_argument( '--list', action='store_true', help="list variables in given file" )
     parser.add_argument( '--output-format', action='store_true', help="show format of data" )
     parser.add_argument( '--path-separator', metavar="<char>", default=".", help="separator for input and output of variable paths (default=.)" )
     parser.add_argument( '--pretty-printing', action='store_true', help="pretty print json (adds indentation)" )
+    parser.add_argument( '--to', metavar="<format>", default="json", help="convert to - one of csv,json (default=json)" )
 
     args = parser.parse_args()
 
@@ -253,34 +253,30 @@ def main():
             print "%s%s" % ( mat.shape[1], comma.csv.format.from_numpy( mat.dtype ))
         return
 
-    if args.binary:
+    if args.to == "csv":
         if compound_variable:
-            message( "only non-compound variables can be output in binary" )
+            message( "only non-compound variables can be output in csv format" )
+        elif len( mat.shape ) > 2:
+            message( '"--to csv" only supported for 2d matrices, %s is %sd' % ( args.variable, len( mat.shape )))
         else:
-            mat.tofile( sys.stdout )
+            if args.binary:
+                mat.tofile( sys.stdout )
+            else:
+                for t in mat:
+                    t.tofile( sys.stdout, ",", "%s" )
+                    print
     else:
-        if args.csv:
-            if compound_variable:
-                message( "only non-compound variables can be output in csv format" )
-            else:
-                if len( mat.shape ) > 2:
-                    message( "--csv only supported for 2d matrices, %s is %sd" % ( args.variable, len( mat.shape )))
-                else:
-                    for t in mat:
-                        t.tofile( sys.stdout, ",", "%s" )
-                        print
+        if compound_variable:
+            dump_var = mat
         else:
-            if compound_variable:
-                dump_var = mat
-            else:
-                d = dict()
-                leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
-                d[ leaf_var_name ] = mat
-                dump_var = d
-            if args.pretty_printing:
-                print json.dumps( traverse( dump_var ), indent=4, separators=(',', ': '))
-            else:
-                print json.dumps( traverse( dump_var ))
+            d = dict()
+            leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
+            d[ leaf_var_name ] = mat
+            dump_var = d
+        if args.pretty_printing:
+            print json.dumps( traverse( dump_var ), indent=4, separators=(',', ': '))
+        else:
+            print json.dumps( traverse( dump_var ))
 
 
 if __name__ == '__main__':
