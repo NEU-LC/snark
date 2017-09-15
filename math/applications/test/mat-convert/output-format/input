@@ -1,2 +1,2 @@
-input=../../data/simple.mat
+input=../data/simple.mat
 options="--variable A --output-format"
