@@ -1,2 +1,2 @@
-input=../data.mat
+input=../../data/compound.mat
 options="--list --path-separator /"

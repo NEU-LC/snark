@@ -1,2 +1,2 @@
-input=../data.mat
+input=../../data/compound.mat
 options="--variable top.nested --list"
