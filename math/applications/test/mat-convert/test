@@ -13,10 +13,20 @@ output_dir=output
 [[ -d $output_dir ]] || mkdir $output_dir
 cd $output_dir
 
-cat $input | mat-convert $args $options \
-    | if [[ $options =~ --binary ]]; then csv-from-bin $( mat-convert $args $options --output-format < $input ); else cat; fi \
-    | if [[ $options =~ (--to csv|--list|--output-format) ]]; then
-          name-value-from-csv -f line -d : -n -p output
-      else
-          name-value-convert --no-brackets
-      fi
+function format_output()
+{
+    if [[ $options =~ (--to csv|--list|--output-format) ]]; then
+        name-value-from-csv -f line -d : -n -p output
+    elif [[ $options =~ "--to json" ]]; then
+        name-value-convert --no-brackets
+    elif [[ $options =~ "--from json" ]]; then
+        mat-convert --to json | name-value-convert --no-brackets
+    else
+        echo "test: don't know how to format the output" >&2
+    fi
+}
+
+handle_binary=cat
+[[ $options =~ --binary ]] && handle_binary="csv-from-bin $( mat-convert $options --output-format < $input )"
+
+cat $input | mat-convert $options | $handle_binary | format_output

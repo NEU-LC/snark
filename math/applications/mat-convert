@@ -113,11 +113,13 @@ examples:
 
     parser.add_argument( "--bash-completion", action="store_true", help=argparse.SUPPRESS )
     parser.add_argument( "--binary", action="store_true", help="output in binary - only supported for csv output" )
+    parser.add_argument( "--force-to-float", action="store_true", help="save integer values as float" )
+    parser.add_argument( "--from", metavar="<format>", dest='from_arg', help="convert from <format> - only json supported" )
     parser.add_argument( "--list", action="store_true", help="list variables in given file" )
     parser.add_argument( "--output-format", action="store_true", help="show format of data" )
     parser.add_argument( "--path-separator", metavar="<char>", default=".", help="separator for input and output of variable paths (default=.)" )
     parser.add_argument( "--pretty-printing", action="store_true", help="pretty print json (adds indentation)" )
-    parser.add_argument( "--to", metavar="<format>", default="json", help="convert to - one of csv,json (default=json)" )
+    parser.add_argument( "--to", metavar="<format>", help="convert to <format> - one of csv,json" )
     parser.add_argument( "--variable", metavar="<var>", help="variable to extract from save file (default: all)" )
 
     args = parser.parse_args()
@@ -221,21 +223,61 @@ def traverse( mat, path="", sep="" ):
             return mat.tolist()
 
 
-def main():
-    reset_signals
-    args = parse_args()
+def to_numpy( input, force_to_float ):
+    if isinstance( input, dict ):
+        return { to_numpy( key, force_to_float ): to_numpy( value, force_to_float ) for key, value in input.iteritems() }
+    elif isinstance( input, list ):
+        ls=[ to_numpy( element, force_to_float ) for element in input ]
+        if len( input ) > 1 and isinstance( input[0], dict ):
+            dt = numpy.dtype([ ( k.encode( 'utf-8' ), 'O' ) for k in input[0].keys() ])
+            # build ndarray with type input[0] keys
+            nar = numpy.ndarray( shape=( 1, len( input )), dtype=dt )
+            ix = 0
+            while ix < len( input ):
+                nar[ 0, ix ] = tuple( to_numpy( input[ix].values(), force_to_float ))
+                ix += 1
+            return nar
+        return ls
+    elif isinstance( input, unicode ):
+        return input.encode( 'utf-8' )
+    elif isinstance( input, int ):
+        return ( float( input ) if force_to_float else input )
+    else:
+        return input
 
+
+def to_mat( args ):
+    mat_data = json.load( sys.stdin )
+    mat_data = to_numpy( mat_data, args.force_to_float )
+
+    try:
+        fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
+        tmp_file = os.fdopen( fd, "w" )
+    except OSError as e:
+        fatal( "failed to open temporary file - %s", e )
+
+    try:
+        scipy.io.savemat( tmp_file, mat_data, appendmat=False )
+    except IOError as e:
+        fatal( "failed to write to temporary file %s - %s", ( tmp_path, e ))
+
+    tmp_file = open( tmp_path, "r" )
+    sys.stdout.write( tmp_file.read() )
+    tmp_file.close()
+    os.remove( tmp_path )
+
+
+def from_mat( args ):
     fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
     try:
-        tmp_file = open( tmp_path, "w" )
+        tmp_file = os.fdopen( fd, "w" )
         tmp_file.write( sys.stdin.read() )
         tmp_file.close()
     except IOError as e:
-        fatal( "failed to write to temporary file %s - %s", ( tmp_filename, e ))
+        fatal( "failed to write to temporary file %s - %s", ( tmp_path, e ))
 
     try:
         mat = scipy.io.loadmat( tmp_path )
-        os.close( fd )
         os.remove( tmp_path )
     except IOError as e:
         fatal( "input must be redirected from a file" )
@@ -267,30 +309,45 @@ def main():
             print "%s%s" % ( mat.shape[1], comma.csv.format.from_numpy( mat.dtype ))
         return
 
-    if args.to == "csv":
-        if compound_variable:
-            message( "only non-compound variables can be output in csv format" )
-        elif len( mat.shape ) > 2:
-            message( '"--to csv" only supported for 2d matrices, %s is %sd' % ( args.variable, len( mat.shape )))
-        else:
-            if args.binary:
-                mat.tofile( sys.stdout )
+    if not args.to is None:
+        if args.to == "csv":
+            if compound_variable:
+                message( "only non-compound variables can be output in csv format" )
+            elif len( mat.shape ) > 2:
+                message( '"--to csv" only supported for 2d matrices, %s is %sd' % ( args.variable, len( mat.shape )))
             else:
-                for t in mat:
-                    t.tofile( sys.stdout, ",", "%s" )
-                    print
+                if args.binary:
+                    mat.tofile( sys.stdout )
+                else:
+                    for t in mat:
+                        t.tofile( sys.stdout, ",", "%s" )
+                        print
+        elif args.to == "json":
+            if compound_variable:
+                dump_var = mat
+            else:
+                d = dict()
+                leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
+                d[ leaf_var_name ] = mat
+                dump_var = d
+            if args.pretty_printing:
+                print json.dumps( traverse( dump_var ), indent=4, separators=(",", ": "))
+            else:
+                print json.dumps( traverse( dump_var ))
+        else:
+            fatal( "--to <format> must be one of csv or json" )
     else:
-        if compound_variable:
-            dump_var = mat
-        else:
-            d = dict()
-            leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
-            d[ leaf_var_name ] = mat
-            dump_var = d
-        if args.pretty_printing:
-            print json.dumps( traverse( dump_var ), indent=4, separators=(",", ": "))
-        else:
-            print json.dumps( traverse( dump_var ))
+        fatal( "must have one of --to, --from, --list or --output-format" )
+
+
+def main():
+    reset_signals()
+    args = parse_args()
+
+    if not args.from_arg is None:
+        to_mat( args )
+    else:
+        from_mat( args )
 
 
 if __name__ == "__main__":

@@ -1,2 +1,2 @@
 input=../../data/compound.mat
-options="--variable top.nested"
+options="--variable top.nested --to json"

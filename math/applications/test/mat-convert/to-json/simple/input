@@ -1,1 +1,2 @@
 input=../../data/simple.mat
+options="--to json"

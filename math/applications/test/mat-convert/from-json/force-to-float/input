@@ -1,0 +1,2 @@
+input=../../data/compound.json
+options="--from json --force-to-float"
