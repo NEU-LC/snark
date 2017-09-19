@@ -63,6 +63,11 @@ def message( msg, data=() ):
     print >> sys.stderr, msg % data
 
 
+def fatal( msg, data=() ):
+    message( msg, data )
+    sys.exit( 1 )
+
+
 def bash_completion (parser):
     print " ".join(
         [ o for o in parser._option_string_actions.keys()
@@ -226,30 +231,25 @@ def main():
         tmp_file.write( sys.stdin.read() )
         tmp_file.close()
     except IOError as e:
-        message( "failed to write to temporary file %s - %s", ( tmp_filename, e ))
-        return
+        fatal( "failed to write to temporary file %s - %s", ( tmp_filename, e ))
 
     try:
         mat = scipy.io.loadmat( tmp_path )
         os.close( fd )
         os.remove( tmp_path )
     except IOError as e:
-        message( "input must be redirected from a file" )
-        return
+        fatal( "input must be redirected from a file" )
     except NotImplementedError as e:
-        message( "support for Matlab file format v7.3 is not yet implemented (see help)" )
-        return
+        fatal( "support for Matlab file format v7.3 is not yet implemented (see help)" )
     except IndexError as e:
-        message( "invalid or unsupported matlab file format" )
-        return
+        fatal( "invalid or unsupported matlab file format" )
 
     if args.variable:
         for v in args.variable.split( args.path_separator ):
             try:
                 mat = step_down( mat[ v ] )
             except ( KeyError, ValueError ):
-                message( "variable \"%s\" does not exist", args.variable )
-                return
+                fatal( "variable \"%s\" does not exist", args.variable )
 
     if args.list:
         traverse( mat, args.variable, args.path_separator )
