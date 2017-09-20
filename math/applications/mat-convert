@@ -113,7 +113,6 @@ examples:
 
     parser.add_argument( "--bash-completion", action="store_true", help=argparse.SUPPRESS )
     parser.add_argument( "--binary", action="store_true", help="output in binary - only supported for csv output" )
-    parser.add_argument( "--force-to-float", action="store_true", help="save integer values as float" )
     parser.add_argument( "--from", metavar="<format>", dest='from_arg', help="convert from <format> - only json supported" )
     parser.add_argument( "--list", action="store_true", help="list variables in given file" )
     parser.add_argument( "--output-format", action="store_true", help="show format of data" )
@@ -223,32 +222,32 @@ def traverse( mat, path="", sep="" ):
             return mat.tolist()
 
 
-def to_numpy( input, force_to_float ):
+def to_numpy( input ):
     if isinstance( input, dict ):
-        return { to_numpy( key, force_to_float ): to_numpy( value, force_to_float ) for key, value in input.iteritems() }
+        return { to_numpy( key ): to_numpy( value ) for key, value in input.iteritems() }
     elif isinstance( input, list ):
-        ls=[ to_numpy( element, force_to_float ) for element in input ]
+        ls=[ to_numpy( element ) for element in input ]
         if len( input ) > 1 and isinstance( input[0], dict ):
             dt = numpy.dtype([ ( k.encode( 'utf-8' ), 'O' ) for k in input[0].keys() ])
             # build ndarray with type input[0] keys
             nar = numpy.ndarray( shape=( 1, len( input )), dtype=dt )
             ix = 0
             while ix < len( input ):
-                nar[ 0, ix ] = tuple( to_numpy( input[ix].values(), force_to_float ))
+                nar[ 0, ix ] = tuple( to_numpy( input[ix].values() ))
                 ix += 1
             return nar
         return ls
     elif isinstance( input, unicode ):
         return input.encode( 'utf-8' )
     elif isinstance( input, int ):
-        return ( float( input ) if force_to_float else input )
+        return ( float( input ))
     else:
         return input
 
 
 def to_mat( args ):
     mat_data = json.load( sys.stdin )
-    mat_data = to_numpy( mat_data, args.force_to_float )
+    mat_data = to_numpy( mat_data )
 
     try:
         fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
