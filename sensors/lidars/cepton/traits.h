@@ -40,17 +40,44 @@ template <> struct traits< snark::cepton::point_t >
     template< typename K, typename V > static void visit( const K& k, snark::cepton::point_t& p, V& v )
     {
         v.apply( "t", p.t );
+        v.apply( "block", p.block );
         v.apply( "point", p.point );
         v.apply( "intensity", p.intensity );
     }
     template< typename K, typename V > static void visit( const K& k, const snark::cepton::point_t& p, V& v )
     {
         v.apply( "t", p.t );
+        v.apply( "block", p.block );
         v.apply( "point", p.point );
         v.apply( "intensity", p.intensity );
     }
 };
 
+template <> struct traits< CeptonSensorInformation >
+{
+    template< typename K, typename V > static void visit( const K& k, const CeptonSensorInformation& p, V& v )
+    {
+        v.apply( "serial_number", p.serial_number );
+        //or use std::vector<char>
+        v.apply( "model_name", std::string(p.model_name) );
+        v.apply( "model", p.model );
+        v.apply( "firmware_version", std::string(p.firmware_version) );
+        v.apply( "last_reported_temperature", p.last_reported_temperature );
+        v.apply( "last_reported_humidity", p.last_reported_humidity );
+        v.apply( "last_reported_age", p.last_reported_age );
+        v.apply( "gps_ts_year", p.gps_ts_year );
+        v.apply( "gps_ts_month", p.gps_ts_month );
+        v.apply( "gps_ts_day", p.gps_ts_day );
+        v.apply( "gps_ts_hour", p.gps_ts_hour );
+        v.apply( "gps_ts_min", p.gps_ts_min );
+        v.apply( "gps_ts_sec", p.gps_ts_sec );
+        v.apply( "sensor_index", p.sensor_index );
+        v.apply( "is_mocked", p.is_mocked );
+        v.apply( "is_pps_connected", p.is_pps_connected );
+        v.apply( "is_nmea_connected", p.is_nmea_connected );
+        v.apply( "is_calibrated", p.is_calibrated );
+    }
+};
     
 } } // namespace comma { namespace visiting {
     

@@ -36,8 +36,7 @@
 #include <comma/csv/options.h>
 #include <comma/csv/ascii.h>
 #include <iostream>
-
-using namespace snark::cepton;
+#include <comma/csv/stream.h>
 
 void usage(bool detail)
 {
@@ -52,6 +51,9 @@ void usage(bool detail)
     std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
     std::cerr << "    --output-format: print output format and exit"<<std::endl;
     std::cerr << "    --output-fields: print output fields and exit"<<std::endl;
+    std::cerr << "    --list: get list of cepton devices and sensor information"<<std::endl;
+    std::cerr << "    --disable-image-clip: disable clipping image field of view"<<std::endl;
+    std::cerr << "    --disable-distance-clip: disable clipping distance"<<std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -65,41 +67,113 @@ void usage(bool detail)
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << std::endl;
+    std::cerr << comma::verbose.app_name()<<" --binary t,ui,4f | view-points --fields ,block,x,y,z,scalar --binary t,ui,4f"<< std::endl;
+    std::cerr << std::endl;
+    std::cerr << comma::verbose.app_name()<<" --list | name-value-from-csv $("<< comma::verbose.app_name()<<" --list --output-fields) --line-number --prefix cepton" << std::endl;
+    std::cerr << std::endl;
 }
+
+template<typename T>
+struct app_t
+{
+    static void output_fields()
+    {
+        std::cout<<comma::join( comma::csv::names<T>(true), ',' ) << std::endl; 
+    }
+    static void output_format()    //const std::string& fields
+    {
+        //std::cout<<comma::csv::format::value<output_t>(fields, true) << std::endl;
+        std::cout<<comma::csv::format::value<T>() << std::endl;
+    }
+};
+
+struct list_app : public app_t<CeptonSensorInformation>
+{
+    comma::csv::output_stream<CeptonSensorInformation> os;
+    snark::cepton::device device;
+    list_app(const comma::command_line_options& options):os(std::cout,comma::csv::options(options))
+    {
+        
+    }
+    void process()
+    {
+        for(int i=0;i<10&&!device.end().index;i++)
+            usleep(200000);
+        for(auto it=device.begin();it<device.end();it++)
+        {
+            os.write(*(*it));
+        }
+    }
+};
+
+struct app : public app_t<snark::cepton::point_t>
+{
+    bool all_good;
+    comma::csv::output_stream<snark::cepton::point_t> os;
+    snark::cepton::device device;
+    app(const comma::command_line_options& options) : 
+        all_good(true), os(std::cout,comma::csv::options(options)),
+        device(options.exists("--disable-image-clip"),options.exists("--disable-distance-clip"))
+    {
+    }
+    void process()
+    {
+        listener go(os);
+        while(std::cout.good())
+            usleep(100000);
+    }
+    struct listener : public snark::cepton::device::listener
+    {
+        comma::csv::output_stream<snark::cepton::point_t>& os;
+        listener(comma::csv::output_stream<snark::cepton::point_t>& os):os(os) { } 
+        void on_frame(const std::vector<snark::cepton::point_t>& points)
+        {
+            for(auto i=points.begin();i!=points.end()&&std::cout.good();i++)
+            {
+                os.write(*i);
+            }
+        }
+    };
+};
+
+struct factory_i
+{
+    virtual ~factory_i() { }
+    virtual void output_fields()=0;
+    virtual void output_format()=0;
+    virtual void run(const comma::command_line_options& options)=0;
+};
+
+template<typename T>
+struct factory_t : public factory_i
+{
+    typedef T type;
+    void output_fields() { T::output_fields(); }
+    void output_format() { T::output_format(); }
+    void run(const comma::command_line_options& options)
+    {
+
+        T app(options);
+        app.process();
+    }
+};
 
 int main( int argc, char** argv )
 {
     comma::command_line_options options( argc, argv, usage );
     try
     {
+        std::unique_ptr<factory_i> factory;
+        if(options.exists("--list"))
+            factory.reset(new factory_t<list_app>());
+        else
+            factory.reset(new factory_t<app>());
         comma::csv::options csv(options);
-        if(options.exists("--output-format"))
-        {
-            std::cout<<comma::csv::format::value<point_t>() << std::endl;
-            return 0;
-        }
-        if(options.exists("--output-fields"))
-        {
-            std::cout<<comma::join( comma::csv::names<point_t>(false), ',' ) << std::endl;
-            return 0;
-        }
-        //--mock
-        /*
-        //cepton_sdk_mock_network_receive(uint64_t ipv4_address, uint8_t const *mac, uint8_t const *buffer, size_t size);
-        int n=cepton_sdk_get_number_of_sensors();
-        for(int i=0;i<n;i++)
-        {
-            CeptonSensorInformation* info=cepton_sdk_get_sensor_information_by_index(i);
-        }
-        int result;
-        result=cepton_sdk_initialize(version,flag,callback);
-        result=cepton_sdk_listen_frames(callback);  //same callback or different
-        //cepton_sdk_listen_scanlines
-        //...
-        //cepton_sdk_unlisten_scanlines
-        result=cepton_sdk_unlisten_frames(callback);
-        result=cepton_sdk_deinitialize();
-        */
+        if(options.exists("--output-format")) { factory->output_format(); return 0; }
+        if(options.exists("--output-fields")) { factory->output_fields(); return 0; }
+        
+        factory->run(options);
+
         return 0;
     }
     catch( std::exception& ex )

@@ -27,20 +27,64 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author Navid Pirmarzdashti
+
 #pragma once
+
 #include "cepton_sdk.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <Eigen/Core>
 
 namespace snark { namespace cepton {
 
+/// lidar point for cepton
 struct point_t
 {
     boost::posix_time::ptime t;
+    uint32_t block;
     Eigen::Vector3f point;
     float intensity;
     point_t( ) : intensity(0) { }
-    point_t(const CeptonSensorPoint& cp) : t(boost::gregorian::date( 1970, 1, 1 ), boost::posix_time::microseconds(cp.timestamp)), point(cp.x,cp.y,cp.z), intensity(cp.intensity) { } 
+    point_t(const CeptonSensorPoint& cp,uint32_t block=0);
+};
+
+
+
+/// only one instance of this class can be constructed at any time
+class device
+{
+public:
+    device(bool disable_image_clip=false, bool disable_distance_clip=false);
+    ~device();
+    
+    // cepton device information as iterator
+    struct iterator
+    {
+        iterator(int x=0);
+        int index;
+        CeptonSensorInformation const * operator*() const;
+        void operator++(int);
+        bool operator<(const iterator& rhs) const;
+    };
+    iterator begin();
+    iterator end();
+    
+    //frame listener
+    struct listener
+    {
+        listener();
+        ~listener();
+        virtual void on_frame(const std::vector<point_t>& points) = 0;
+        uint32_t block;
+    private:
+        static void on_frame(int error_code, CeptonSensorHandle sensor, size_t n_points, struct CeptonSensorPoint const *p_points);
+        static listener* instance_;
+    };
+    
+private:
+    static void on_event(int error_code, CeptonSensorHandle sensor, struct CeptonSensorInformation const *p_info, int event);
+    static device* instance_;
+    bool attached_;
 };
     
 } } //namespace snark { namespace cepton {
