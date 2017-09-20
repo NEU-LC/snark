@@ -1,0 +1,32 @@
+#!/bin/bash
+
+source $( type -p comma-name-value-util )
+
+# Strip leading and trailing white-space, comments and blank lines
+test_input=$( sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sed -n '/^[[:alnum:]]/p' )
+comma_path_value_to_var < <( grep "=" <<< "$test_input" )
+
+input=$( readlink -e $input )
+
+output_dir=output
+
+[[ -d $output_dir ]] || mkdir $output_dir
+cd $output_dir
+
+function format_output()
+{
+    if [[ $options =~ (--to csv|--list|--output-format) ]]; then
+        name-value-from-csv -f line -d : -n -p output
+    elif [[ $options =~ "--to json" ]]; then
+        name-value-convert --no-brackets
+    elif [[ $options =~ "--from json" ]]; then
+        mat-convert --to json | name-value-convert --no-brackets
+    else
+        echo "test: don't know how to format the output" >&2
+    fi
+}
+
+handle_binary=cat
+[[ $options =~ --binary ]] && handle_binary="csv-from-bin $( mat-convert $options --output-format < $input )"
+
+cat $input | mat-convert $options | $handle_binary | format_output

@@ -29,9 +29,11 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
 import sys
 import signal
 import argparse
+import tempfile
 import json
 import comma.csv.format
 
@@ -57,8 +59,13 @@ except ImportError as e:
 
 
 def message( msg, data=() ):
-    msg = "csv-from-mat: %s" % msg
+    msg = "mat-convert: %s" % msg
     print >> sys.stderr, msg % data
+
+
+def fatal( msg, data=() ):
+    message( msg, data )
+    sys.exit( 1 )
 
 
 def bash_completion (parser):
@@ -69,7 +76,7 @@ def bash_completion (parser):
 
 def parse_args():
     description="""
-extract variable from Matlab save file and return as csv or json
+convert to and from Matlab save files
 """
 
     epilog="""
@@ -88,14 +95,14 @@ file format:
   Matlab, delete myvar, and save again.
 
 examples:
-  {script_name} data.mat
-  {script_name} data.mat foo.bar
-  {script_name} data.mat --list
-  {script_name} data.mat --list --path-separator /
-  {script_name} data.mat foo --list
-  {script_name} data.mat foo.bar --binary
-  {script_name} data.mat foo.bar --output-format
-  {script_name} data.mat | name-value-convert --no-brackets
+  cat data.mat | {script_name}
+  cat data.mat | {script_name} --variable foo.bar
+  cat data.mat | {script_name} --list
+  cat data.mat | {script_name} --list --path-separator /
+  cat data.mat | {script_name} --variable foo --list
+  cat data.mat | {script_name} --variable foo.bar --output-format
+  cat data.mat | {script_name} --variable foo.bar --to csv --binary
+  cat data.mat | {script_name} | name-value-convert --no-brackets
 """.format( script_name=sys.argv[0].split('/')[-1] )
 
     fmt=lambda prog: argparse.RawDescriptionHelpFormatter( prog, max_help_position=50 )
@@ -104,16 +111,15 @@ examples:
                                       epilog=epilog,
                                       formatter_class=fmt )
 
-    parser.add_argument( "input_file", nargs="?", help="path to Matlab save file" )
-    parser.add_argument( "variable", nargs="?", help="variable to extract from save file" )
-
-    parser.add_argument( '--bash-completion', action='store_true', help=argparse.SUPPRESS )
-    parser.add_argument( '--binary', action='store_true', help="output in binary (default is ascii)" )
-    parser.add_argument( '--csv', action='store_true', help="output as csv (only for non-compound variables)" )
-    parser.add_argument( '--list', action='store_true', help="list variables in given file" )
-    parser.add_argument( '--output-format', action='store_true', help="show format of data" )
-    parser.add_argument( '--path-separator', metavar="<char>", default=".", help="separator for input and output of variable paths (default=.)" )
-    parser.add_argument('--pretty-printing',action='store_true',help='pretty print json (adds indentation..)')
+    parser.add_argument( "--bash-completion", action="store_true", help=argparse.SUPPRESS )
+    parser.add_argument( "--binary", action="store_true", help="output in binary - only supported for csv output" )
+    parser.add_argument( "--from", metavar="<format>", dest='from_arg', help="convert from <format> - only json supported" )
+    parser.add_argument( "--list", action="store_true", help="list variables in given file" )
+    parser.add_argument( "--output-format", action="store_true", help="show format of data" )
+    parser.add_argument( "--path-separator", metavar="<char>", default=".", help="separator for input and output of variable paths (default=.)" )
+    parser.add_argument( "--pretty-printing", action="store_true", help="pretty print json (adds indentation)" )
+    parser.add_argument( "--to", metavar="<format>", help="convert to <format> - one of csv,json" )
+    parser.add_argument( "--variable", metavar="<var>", help="variable to extract from save file (default: all)" )
 
     args = parser.parse_args()
 
@@ -139,7 +145,7 @@ def is_compound( variable ):
     try:
         comma.csv.format.from_numpy( variable.dtype )
         return False
-    except ( AttributeError, ValueError ):
+    except( AttributeError, ValueError ):
         return True
 
 
@@ -162,7 +168,7 @@ def traverse( mat, path="", sep="" ):
                 ix=0
                 ls=list()
                 while ix < mat.size:
-                    ls.append( traverse(mat.flat[ix], '%s[%d]' % (path,ix), sep) )
+                    ls.append( traverse(mat.flat[ix], "%s[%d]" % (path,ix), sep) )
                     ix+=1
                 return ls
         if isinstance(mat,unicode):
@@ -174,11 +180,11 @@ def traverse( mat, path="", sep="" ):
         # at the top level, mat is a dictionary, but as we drill down
         # it turns into nested numpy.ndarray objects
         try:
-            keys = ( [ i for i in mat.keys() if i[0] != '_' ]
+            keys = ( [ i for i in mat.keys() if i[0] != "_" ]
                      if isinstance( mat, dict )
                      else mat.dtype.fields.keys() )
         except AttributeError:
-            print >> sys.stderr, "warning: didn't understand %s" % path
+            message( "warning: didn't understand %s", path )
             return None
 
         d = dict()
@@ -186,7 +192,7 @@ def traverse( mat, path="", sep="" ):
             next_item = mat[k]
 
             handled = False
-            if next_item.dtype == numpy.dtype('O'):    # sometimes there's extra nesting
+            if next_item.dtype == numpy.dtype("O"):    # sometimes there's extra nesting
                 if next_item.size == 1 or listing:
                     next_item = next_item.flat[0]
                 else:
@@ -202,7 +208,7 @@ def traverse( mat, path="", sep="" ):
 
             if not handled:
                 if isinstance( next_item, scipy.io.matlab.mio5_params.MatlabOpaque ):
-                    print >> sys.stderr, "warning: didn't understand %s%s%s" % (path, sep, k )
+                    message( "warning: didn't understand %s%s%s", (path, sep, k ))
                     continue
                 if listing:
                     traverse( next_item, k if path is None else "%s%s%s" % ( path, sep, k ), sep )
@@ -216,26 +222,75 @@ def traverse( mat, path="", sep="" ):
             return mat.tolist()
 
 
-def main():
-    reset_signals
-    args = parse_args()
+def to_numpy( input ):
+    if isinstance( input, dict ):
+        return { to_numpy( key ): to_numpy( value ) for key, value in input.iteritems() }
+    elif isinstance( input, list ):
+        ls=[ to_numpy( element ) for element in input ]
+        if len( input ) > 1 and isinstance( input[0], dict ):
+            dt = numpy.dtype([ ( k.encode( 'utf-8' ), 'O' ) for k in input[0].keys() ])
+            # build ndarray with type input[0] keys
+            nar = numpy.ndarray( shape=( 1, len( input )), dtype=dt )
+            ix = 0
+            while ix < len( input ):
+                nar[ 0, ix ] = tuple( to_numpy( input[ix].values() ))
+                ix += 1
+            return nar
+        return ls
+    elif isinstance( input, unicode ):
+        return input.encode( 'utf-8' )
+    elif isinstance( input, int ):
+        return ( float( input ))
+    else:
+        return input
+
+
+def to_mat( args ):
+    mat_data = json.load( sys.stdin )
+    mat_data = to_numpy( mat_data )
 
     try:
-        mat = scipy.io.loadmat( args.input_file )
+        fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
+        tmp_file = os.fdopen( fd, "w" )
+    except OSError as e:
+        fatal( "failed to open temporary file - %s", e )
+
+    try:
+        scipy.io.savemat( tmp_file, mat_data, appendmat=False )
     except IOError as e:
-        message( "%s \"%s\"", ( e.strerror, args.input_file ))
-        return
+        fatal( "failed to write to temporary file %s - %s", ( tmp_path, e ))
+
+    tmp_file = open( tmp_path, "r" )
+    sys.stdout.write( tmp_file.read() )
+    tmp_file.close()
+    os.remove( tmp_path )
+
+
+def from_mat( args ):
+    fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
+    try:
+        tmp_file = os.fdopen( fd, "w" )
+        tmp_file.write( sys.stdin.read() )
+        tmp_file.close()
+    except IOError as e:
+        fatal( "failed to write to temporary file %s - %s", ( tmp_path, e ))
+
+    try:
+        mat = scipy.io.loadmat( tmp_path )
+        os.remove( tmp_path )
+    except IOError as e:
+        fatal( "input must be redirected from a file" )
     except NotImplementedError as e:
-        message( "support for Matlab file format v7.3 is not yet implemented (see help)" )
-        return
+        fatal( "support for Matlab file format v7.3 is not yet implemented (see help)" )
+    except IndexError as e:
+        fatal( "invalid or unsupported matlab file format" )
 
     if args.variable:
         for v in args.variable.split( args.path_separator ):
             try:
                 mat = step_down( mat[ v ] )
             except ( KeyError, ValueError ):
-                message( "variable \"%s\" does not exist", args.variable )
-                return
+                fatal( "variable \"%s\" does not exist", args.variable )
 
     if args.list:
         traverse( mat, args.variable, args.path_separator )
@@ -253,23 +308,20 @@ def main():
             print "%s%s" % ( mat.shape[1], comma.csv.format.from_numpy( mat.dtype ))
         return
 
-    if args.binary:
-        if compound_variable:
-            message( "only non-compound variables can be output in binary" )
-        else:
-            mat.tofile( sys.stdout )
-    else:
-        if args.csv:
+    if not args.to is None:
+        if args.to == "csv":
             if compound_variable:
                 message( "only non-compound variables can be output in csv format" )
+            elif len( mat.shape ) > 2:
+                message( '"--to csv" only supported for 2d matrices, %s is %sd' % ( args.variable, len( mat.shape )))
             else:
-                if len( mat.shape ) > 2:
-                    message( "--csv only supported for 2d matrices, %s is %sd" % ( args.variable, len( mat.shape )))
+                if args.binary:
+                    mat.tofile( sys.stdout )
                 else:
                     for t in mat:
                         t.tofile( sys.stdout, ",", "%s" )
                         print
-        else:
+        elif args.to == "json":
             if compound_variable:
                 dump_var = mat
             else:
@@ -278,10 +330,24 @@ def main():
                 d[ leaf_var_name ] = mat
                 dump_var = d
             if args.pretty_printing:
-                print json.dumps( traverse( dump_var ), indent=4, separators=(',', ': '))
+                print json.dumps( traverse( dump_var ), indent=4, separators=(",", ": "))
             else:
                 print json.dumps( traverse( dump_var ))
+        else:
+            fatal( "--to <format> must be one of csv or json" )
+    else:
+        fatal( "must have one of --to, --from, --list or --output-format" )
 
 
-if __name__ == '__main__':
+def main():
+    reset_signals()
+    args = parse_args()
+
+    if not args.from_arg is None:
+        to_mat( args )
+    else:
+        from_mat( args )
+
+
+if __name__ == "__main__":
     main()

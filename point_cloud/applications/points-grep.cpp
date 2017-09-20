@@ -106,13 +106,17 @@ static void usage( bool verbose = false )
     std::cerr << "             --corners-size,--number-of-corners: if corners fields given on stdin, specify the number of corners" << std::endl;
     std::cerr << "             --inflate-box-by=<radius>: expand prism by the given value, a convenience option" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "     spheres: take points, filter ones contained in spheres" << std::endl;
+    std::cerr << "     points: take points, output those within radius of filter points" << std::endl;
     std::cerr << "         options" << std::endl;
-    std::cerr << "             --spheres=<filename>[;<csv_options>]: spheres" << std::endl;
-    std::cerr << "             --spheres-fields: show --spheres fields" << std::endl;
-    std::cerr << "             --spheres-format: show --spheres format" << std::endl;
-    std::cerr << "             --output-all,--all: output all input with matching flag(s) appended for each sphere rather than filtering input" << std::endl;
-    std::cerr << "             --or: match spheres with 'or' operation, default: 'and'" << std::endl;
+    std::cerr << "             --radius=[<n>]: filtering radius if not provided in fields (default: 1e-12)" << std::endl;
+    std::cerr << "             --filter=<filename>[;<csv_options>]: filter points" << std::endl;
+    std::cerr << "                                                  default fields: x,y,z" << std::endl;
+    std::cerr << "                                                  optional fields: radius" << std::endl;
+    std::cerr << "             --filter-fields: show --filter fields" << std::endl;
+    std::cerr << "             --filter-format: show --filter format" << std::endl;
+    std::cerr << "             --output-all,--all: output all input with matching flag(s) appended for each filter point rather than filtering input" << std::endl;
+    std::cerr << "             --or: match with 'or' operation, default: 'and'" << std::endl;
+    std::cerr << "             --negate: negate matching" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --input-fields: print input fields and exit; default input fields: x,y,z" << std::endl;
@@ -163,13 +167,15 @@ static void usage( bool verbose = false )
     std::cerr << "        visualisation:" << std::endl;
     std::cerr << "           view-points 'results.csv;fields=first/x,first/y,second/x,second/y,label,id;shape=line' 'polygons.csv;colour=grey;weight=10;fields=x,y;shape=loop'" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    spheres" << std::endl;
-    std::cerr << "        filter points inside either of the 2 spheres" << std::endl;
-    std::cerr << "            cat cube.csv | points-grep spheres --spheres <( echo 0,0,0,1; echo 1.73,1.73,1.73,2; ) --or | view-points 'cube.csv;colour=grey;hide' '-;colour=-1:3.7,cyan:magenta;weight=5'" << std::endl;
-    std::cerr << "        filter points inside both of the 2 spheres" << std::endl;
-    std::cerr << "            cat cube.csv | points-grep spheres --spheres <( echo 0,0,0,1; echo 0.5,0.5,0.5,1; ) | view-points 'cube.csv;colour=grey;hide' '-;colour=-0.5:1,cyan:magenta;weight=5'" << std::endl;
-    std::cerr << "        filter 2d points inside a circle" << std::endl;
-    std::cerr << "            cat cube.csv | grep ',0.0$' | points-grep spheres --spheres <( echo 5,5,0 )';fields=radius,x,y' | view-points 'cube.csv;colour=grey;hide' '-;weight=5'" << std::endl;
+    std::cerr << "    points" << std::endl;
+    std::cerr << "        output points within radius of any filter points" << std::endl;
+    std::cerr << "            cat cube.csv | points-grep points --filter <( echo 0,0,0,1; echo 1.73,1.73,1.73,2; )';fields=x,y,z,radius' --or | view-points 'cube.csv;colour=grey;hide' '-;colour=-1:3.7,cyan:magenta;weight=5'" << std::endl;
+    std::cerr << "        output points within radius of all filter points" << std::endl;
+    std::cerr << "            cat cube.csv | points-grep points --filter <( echo 0,0,0; echo 0.5,0.5,0.5; ) --radius 1 | view-points 'cube.csv;colour=grey;hide' '-;colour=-0.5:1,cyan:magenta;weight=5'" << std::endl;
+    std::cerr << "        output points not within radius of any filter points" << std::endl;
+    std::cerr << "            cat cube.csv | points-grep points --filter <( echo -3,3,-3,5; echo -3,-2,-3,3 )';fields=x,y,z,radius' --or --negate | view-points 'cube.csv;colour=grey;hide' '-;colour=-5:5,cyan:magenta;weight=2'" << std::endl;
+    std::cerr << "        filter 2d points inside a circle of radius 5" << std::endl;
+    std::cerr << "            cat cube.csv | grep ',0.0$' | points-grep points --filter <( echo 5,0 )';fields=x,y' --radius 5 | view-points 'cube.csv;colour=grey;hide' '-;weight=5'" << std::endl;
     std::cerr << std::endl;
     }
     exit( 0 );
@@ -263,16 +269,16 @@ struct output_t
 
 } } } // namespace snark { namespace operations { namespace polytopes {
 
-namespace snark { namespace operations { namespace spheres {
+namespace snark { namespace operations { namespace points {
     
 struct sphere
 {
     Eigen::Vector3d center;
-    double radius;
-    sphere() : center( Eigen::Vector3d::Zero() ), radius( 1 ) {}
+    boost::optional< double > radius;
+    sphere() : center( Eigen::Vector3d::Zero() ) {}
 };
 
-} } } // namespace snark { namespace operations { namespace spheres {
+} } } // namespace snark { namespace operations { namespace points {
 
 namespace comma { namespace visiting {
     
@@ -384,17 +390,17 @@ template <> struct traits< snark::operations::polytopes::output_t >
     }
 };
 
-template <> struct traits< snark::operations::spheres::sphere >
+template <> struct traits< snark::operations::points::sphere >
 {
-    template < typename K, typename V > static void visit( const K& k, snark::operations::spheres::sphere& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::operations::points::sphere& t, V& v )
     {
-        v.apply( "center", t.center );
+        v.apply( "", t.center );
         v.apply( "radius", t.radius );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const snark::operations::spheres::sphere& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::operations::points::sphere& t, V& v )
     {
-        v.apply( "center", t.center );
+        v.apply( "", t.center );
         v.apply( "radius", t.radius );
     }
 };
@@ -644,42 +650,39 @@ template < typename T > static int run( const comma::csv::options& csv, const st
 
 } } } // namespace snark { namespace operations { namespace polygons {
 
-namespace snark { namespace operations { namespace spheres {
+namespace snark { namespace operations { namespace points {
 
-static std::vector< snark::geometry::n_sphere > read_spheres( const comma::command_line_options& options )
+static std::vector< snark::geometry::n_sphere > read_filter( const comma::command_line_options& options )
 {
-    const std::string& file = options.value< std::string >( "--spheres", "" );
+    const std::string& file = options.value< std::string >( "--filter", "" );
+    const double radius = options.value< double >( "--radius", 1e-12 );
     comma::csv::options csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( file );
     csv.full_xpath = true;
-    if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::operations::spheres::sphere >( true ), ',' ); }
-    else
-    {
-        std::vector< std::string > fields = comma::split( csv.fields, ',' );
-        for( unsigned int i = 0; i < fields.size(); ++i ) { if( fields[i] == "x" || fields[i] == "y" || fields[i] == "z" ) { fields[i] = "center/" + fields[i]; } }
-        csv.fields = comma::join( fields, ',' );
-    }
+    if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
     comma::io::istream is( csv.filename, csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< sphere > input( *is, csv );
-    std::vector< snark::geometry::n_sphere > spheres;
+    std::vector< snark::geometry::n_sphere > filter;
     while( input.ready() || ( is->good() && !is->eof() ) )
     {
         const sphere* s = input.read();
         if( !s ) { break; }
-        if( s->radius == 0 && verbose ) { std::cerr << "points-grep: warning sphere radius is zero: " << s->center.x() << ',' << s->center.y() << ',' << s->center.z() << std::endl; }
-        spheres.push_back( snark::geometry::n_sphere( s->center, s->radius ) );
+        if( s->radius && *s->radius <= 0 && verbose ) { std::cerr << "points-grep points: warning: filter point: " << s->center.x() << ',' << s->center.y() << ',' << s->center.z() << ": has non-positve radius: " << *s->radius << std::endl; }
+        filter.push_back( snark::geometry::n_sphere( s->center, s->radius ? *s->radius : radius ) );
     }
-    if( verbose ) { std::cerr << "points-grep: spheres: " << spheres.size() << std::endl; }
-    return std::move( spheres );
+    if( verbose ) { std::cerr << "points-grep points: filter size: " << filter.size() << std::endl; }
+    return std::move( filter );
 }
 
 static int run( const comma::command_line_options& options )
 {
-    bool output_all = options.exists( "--output-all,--all" );
-    bool or_mode = options.exists( "--or" );
-    const auto& spheres = snark::operations::spheres::read_spheres( options );
-    if( spheres.empty() ) { std::cerr << "points-grep spheres: warning: empty --spheres" << std::endl; }
-    flags_t output( spheres.size(), false );
-    if( ( options.exists( "--output-fields" ) || options.exists( "--output-format" ) ) && !output_all ) { std::cerr <<  "points-grep spheres: warning: without --output-all output is filtered input" << std::endl; return 1; }
+    const bool output_all = options.exists( "--output-all,--all" );
+    const bool or_mode = options.exists( "--or" );
+    const bool negate = options.exists( "--negate" );
+    const bool require_all_matches = or_mode == negate;
+    const auto& filter = snark::operations::points::read_filter( options );
+    if( filter.empty() ) { std::cerr << "points-grep points: warning: empty --filter" << std::endl; }
+    flags_t output( filter.size(), false );
+    if( ( options.exists( "--output-fields" ) || options.exists( "--output-format" ) ) && !output_all ) { std::cerr <<  "points-grep points: warning: without --output-all output is filtered input" << std::endl; return 1; }
     if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::operations::flags_t >( true, output ), ',' ) << std::endl; return 0; }
     if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< snark::operations::flags_t >( output ) << std::endl; return 0; }
     comma::csv::options csv( options );
@@ -687,32 +690,25 @@ static int run( const comma::command_line_options& options )
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
     comma::csv::output_stream< flags_t > ostream( std::cout, csv.binary(), true, false, output );
     comma::csv::tied< Eigen::Vector3d, flags_t > tied( istream, ostream );
-    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    while( istream.ready() || std::cin.good() )
     {
         const Eigen::Vector3d* p = istream.read();
         if( !p ) { break; }
         unsigned int matches = 0;
-        for( std::size_t i = 0; i < spheres.size(); ++i )
+        for( std::size_t i = 0; i < filter.size(); ++i )
         {
-            output.flags[i] = spheres[i].contains( *p );
-            if( output.flags[i] )
-            {
-                ++matches;
-                if( !output_all && or_mode ) { break; }
-            }
+            output.flags[i] = filter[i].contains( *p ) != negate;
+            if( output.flags[i] ) { ++matches; if( !output_all && !require_all_matches ) { break; } }
         }
-        if( output_all ) { tied.append( output ); }
-        else
-        { 
-            if( ( or_mode && !matches ) || ( !or_mode && matches != spheres.size() ) ) { continue; }
-            if( istream.is_binary() ) { std::cout.write( istream.binary().last(), istream.binary().size() ); }
-            else { std::cout << comma::join( istream.ascii().last(), istream.ascii().ascii().delimiter() )<< std::endl; }
-        }
+        if( output_all ) { tied.append( output ); continue; }
+        if( !matches || ( require_all_matches && matches != filter.size() ) ) { continue; }
+        if( istream.is_binary() ) { std::cout.write( istream.binary().last(), istream.binary().size() ); }
+        else { std::cout << comma::join( istream.ascii().last(), istream.ascii().ascii().delimiter() )<< std::endl; }
     }
     return 0;
 }
 
-} } } // namespace snark { namespace operations { namespace spheres {
+} } } // namespace snark { namespace operations { namespace points {
 
 int main( int argc, char** argv )
 {
@@ -860,14 +856,14 @@ int main( int argc, char** argv )
             distances << radius.x(), radius.x(), radius.y(), radius.y(), radius.z(), radius.z();
             return snark::operations::polytopes::run< species::box >( snark::geometry::convex_polytope( normals, distances ), options );
         }
-        else if( what == "spheres" )
+        else if( what == "points" )
         {
             if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< Eigen::Vector3d >(), ',' ) << std::endl; return 0; }
             if( options.exists( "--input-format" ) ) { std::cerr << comma::csv::format::value< Eigen::Vector3d >() << std::endl; return 0; }
-            if( options.exists( "--spheres-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::operations::spheres::sphere >(), ',' ) << std::endl; return 0; }
-            if( options.exists( "--spheres-format" ) ) { std::cout << comma::csv::format::value< snark::operations::spheres::sphere >() << std::endl; return 0; }
+            if( options.exists( "--filter-fields" ) ) { std::cout << "x,y,z" << std::endl; return 0; }
+            if( options.exists( "--filter-format" ) ) { std::cout << "d,d,d" << std::endl; return 0; }
             options.assert_mutually_exclusive("--or,--output-all,--all");
-            return snark::operations::spheres::run( options );
+            return snark::operations::points::run( options );
         }
         std::cerr << "points-grep: expected filter name, got: \"" << what << "\"" << std::endl;
         return 1;

@@ -97,6 +97,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
     ( "maxHeight" )
     ( "offsetHStepSize" )
     ( "offsetVStepSize" )
+    ( "imageHStepSize" )
+    ( "imageVStepSize" )
     ( "offsetX" )
     ( "offsetY" )
     ( "width" )
@@ -120,13 +122,15 @@ namespace snark{ namespace cameras{ namespace flycapture{
             assert_ok(camera->GetGigEImageSettingsInfo(&image_settings_info), "couldn't get GigE image settings info");
             if( key == "maxWidth" ) { return std::to_string( image_settings_info.maxWidth ); }
             else if( key == "maxHeight" ) { return std::to_string( image_settings_info.maxHeight ); }
-            else if( key == "offsetHStepSize" ) {  std::to_string( image_settings_info.offsetHStepSize ); }
-            else if( key == "offsetVStepSize" ) {  std::to_string( image_settings_info.offsetVStepSize ); }
+            else if( key == "offsetHStepSize" ) { std::to_string( image_settings_info.offsetHStepSize ); }
+            else if( key == "offsetVStepSize" ) { std::to_string( image_settings_info.offsetVStepSize ); }
+            else if( key == "imageHStepSize" ) { std::to_string( image_settings_info.imageHStepSize ); }
+            else if( key == "imageVStepSize" ) { std::to_string( image_settings_info.imageVStepSize ); }
             else if( key == "offsetX" ) { return std::to_string( image_settings.offsetX ); }
             else if( key == "offsetY" ) { return std::to_string( image_settings.offsetY ); }
             else if( key == "width" ) { return std::to_string( image_settings.width ); }
             else if( key == "height" ) { return std::to_string( image_settings.height ); }
-            else if( key == "PixelFormat" ) {  pixel_format_map.left.at( image_settings.pixelFormat ); }
+            else if( key == "PixelFormat" ) { pixel_format_map.left.at( image_settings.pixelFormat ); }
         }
         else if(FlyCapture2::Camera* camera = dynamic_cast<FlyCapture2::Camera*>(handle)) // Serial or USB Camera
         {
@@ -152,6 +156,8 @@ namespace snark{ namespace cameras{ namespace flycapture{
             else if( key == "maxHeight" ) { return std::to_string( format_info.maxHeight ); }
             else if( key == "offsetHStepSize" ) { return std::to_string( format_info.offsetHStepSize ); }
             else if( key == "offsetVStepSize" ) { return std::to_string( format_info.offsetVStepSize ); }
+            else if( key == "imageHStepSize" ) { return std::to_string( format_info.imageHStepSize ); }
+            else if( key == "imageVStepSize" ) { return std::to_string( format_info.imageVStepSize ); }
             else if( key == "offsetX" ) { return std::to_string( pImageSettings.offsetX ); }
             else if( key == "offsetY" ) { return std::to_string( pImageSettings.offsetY ); }
             else if( key == "width" ) { return std::to_string( pImageSettings.width ); }
@@ -245,9 +251,10 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 } else {
                     cam_prop.absControl = true; //TODO: If needed, implement non-absolute control of camera
                     cam_prop.absValue = boost::lexical_cast<float>( value );             
-                }                
-                assert_ok(handle->SetProperty( &cam_prop ), "Error setting attributes");
+                }
             }
+            assert_ok(handle->SetProperty( &cam_prop ), "Error setting attributes");
+            return;
         } else if (FlyCapture2::GigECamera* camera = dynamic_cast<FlyCapture2::GigECamera*>(handle)){
             set_attribute(camera, key, value);
             return;
@@ -257,7 +264,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
             set_attribute(camera, key, value);
             return;
         } else {
-            COMMA_THROW( comma::exception,  "Error: property '" << key << "' not found!" );
+            COMMA_THROW( comma::exception, "Error: property '" << key << "' not found!" );
         }
         assert_ok(handle->SetTriggerMode( &trigger_mode ), "Error setting attributes." );
     }
@@ -277,43 +284,57 @@ namespace snark{ namespace cameras{ namespace flycapture{
             "couldn't get format7 info"
         );
         assert_ok(
-            handle->GetFormat7Configuration(  &image_settings, &packetSize, &percentage ),
+            handle->GetFormat7Configuration( &image_settings, &packetSize, &percentage ),
             "Error getting format7 config"
         );
 
         // if( key == "offsetHStepSize" ) { image_settings_info.offsetHStepSize = boost::lexical_cast<int>(value); }
         // else if( key == "offsetVStepSize" ) { image_settings_info.offsetVStepSize = boost::lexical_cast<int>(value); }
-        /*else*/ if( key == "offsetX" ) { image_settings.offsetX = boost::lexical_cast<uint>(value); }
-        else if( key == "offsetY" ) { image_settings.offsetY = boost::lexical_cast<uint>(value); }
-        else if( key == "width" )       
+        /*else*/ if( key == "offsetX" )
         {
-            if( value == "max")
-                { image_settings.width = image_settings_info.maxWidth - image_settings.offsetX; }
-            else {
+            image_settings.offsetX = boost::lexical_cast<uint>(value);
+            if( image_settings.offsetX % image_settings_info.offsetHStepSize )
+            {
+                COMMA_THROW( comma::exception, "Error: offsetX=" << value << " is not a multiple of offset horizontal step size: " << image_settings_info.offsetHStepSize );
+            }
+        }
+        else if( key == "offsetY" )
+        {
+            image_settings.offsetY = boost::lexical_cast<uint>(value);
+            if( image_settings.offsetY % image_settings_info.offsetVStepSize )
+            {
+                COMMA_THROW( comma::exception, "Error: offsetY=" << value << " is not a multiple of offset vertical step size: " << image_settings_info.offsetVStepSize );
+            }
+        }
+        else if( key == "width" )
+        {
+            if( value == "max") { image_settings.width = image_settings_info.maxWidth - image_settings.offsetX; }
+            else
+            {
                 uint val_uint = boost::lexical_cast<uint>( value );
-                if( val_uint > image_settings_info.maxWidth  ||  val_uint < 0 )
-                    { COMMA_THROW( comma::exception, "Error: width out of bounds" ); }
-                else { image_settings.width = val_uint; }
+                if( val_uint > image_settings_info.maxWidth || val_uint < 0 ) { COMMA_THROW( comma::exception, "Error: width out of bounds" ); }
+                if( val_uint % image_settings_info.imageHStepSize ) { COMMA_THROW( comma::exception, "Error: width=" << value << " is not a multiple of image horizontal step size: " << image_settings_info.imageHStepSize ); }
+                image_settings.width = val_uint;
             }
         }
         else if( key == "height" )
         {
-            if( value == "max")
-                { image_settings.height = image_settings_info.maxHeight - image_settings.offsetY; }
-            else {
+            if( value == "max") { image_settings.height = image_settings_info.maxHeight - image_settings.offsetY; }
+            else
+            {
                 uint val_uint = boost::lexical_cast<uint>( value );
-                if( val_uint > image_settings_info.maxHeight ||  val_uint < 0 )
-                    { COMMA_THROW( comma::exception, "Error: height out of bounds" ); }
-                else { image_settings.height = val_uint; }
+                if( val_uint > image_settings_info.maxHeight || val_uint < 0 ) { COMMA_THROW( comma::exception, "Error: height out of bounds" ); }
+                if( val_uint % image_settings_info.imageVStepSize ) { COMMA_THROW( comma::exception, "Error: height=" << value << " is not a multiple of image vertical step size: " << image_settings_info.imageVStepSize ); }
+                image_settings.height = val_uint;
             }
-        }    
+        }
         else if( key == "PixelFormat" ) 
         {
             if( pixel_format_map.right.find(value) != pixel_format_map.right.end() )
                 { image_settings.pixelFormat = pixel_format_map.right.at( value ); }
             else { COMMA_THROW( comma::exception, "Error: invalid pixel format."); }
         } else {
-            COMMA_THROW( comma::exception,  "Error: property '" << key << "' not found!" );
+            COMMA_THROW( comma::exception, "Error: property '" << key << "' not found!" );
         }
 
         bool is_valid_settings;
@@ -325,7 +346,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
         if (is_valid_settings)
         {
             assert_ok(
-                handle->SetFormat7Configuration(  &image_settings, fmt7PacketInfo.recommendedBytesPerPacket), 
+                handle->SetFormat7Configuration( &image_settings, fmt7PacketInfo.recommendedBytesPerPacket), 
                 "Error setting format7 config");
         }
     }
@@ -342,29 +363,43 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
         if( key == "offsetHStepSize" ) { image_settings_info.offsetHStepSize = boost::lexical_cast<int>(value); }
         else if( key == "offsetVStepSize" ) { image_settings_info.offsetVStepSize = boost::lexical_cast<int>(value); }
-        else if( key == "offsetX" ) { image_settings.offsetX = boost::lexical_cast<int>(value); }
-        else if( key == "offsetY" ) { image_settings.offsetY = boost::lexical_cast<int>(value); }
-        else if( key == "width" )       
+        else if( key == "offsetX" )
+        {
+            image_settings.offsetX = boost::lexical_cast<int>(value);
+            if( image_settings.offsetX % image_settings_info.offsetHStepSize )
+            {
+                COMMA_THROW( comma::exception, "Error: offsetX=" << value << " is not a multiple of offset horizontal step size: " << image_settings_info.offsetHStepSize );
+            }
+        }
+        else if( key == "offsetY" )
+        {
+            image_settings.offsetY = boost::lexical_cast<int>(value);
+            if( image_settings.offsetY % image_settings_info.offsetVStepSize )
+            {
+                COMMA_THROW( comma::exception, "Error: offsetY=" << value << " is not a multiple of offset vertical step size: " << image_settings_info.offsetVStepSize );
+            }
+        }
+        else if( key == "width" )
         {
             uint val_uint = boost::lexical_cast<uint>( value );
-            if( val_uint > image_settings_info.maxWidth  ||  val_uint < 0 )
-                { COMMA_THROW( comma::exception, "Error: width out of bounds" ); }
-            else { image_settings.width = val_uint; }
+            if( val_uint > image_settings_info.maxWidth || val_uint < 0 ) { COMMA_THROW( comma::exception, "Error: width out of bounds" ); }
+            if( val_uint % image_settings_info.imageHStepSize ) { COMMA_THROW( comma::exception, "Error: width=" << value << " is not a multiple of image horizontal step size: " << image_settings_info.imageHStepSize ); }
+            image_settings.width = val_uint;
         }
         else if( key == "height" )
         {
             uint val_uint = boost::lexical_cast<uint>( value );
-            if( val_uint > image_settings_info.maxHeight ||  val_uint < 0 )
-                { COMMA_THROW( comma::exception, "Error: height out of bounds" ); }
-            else { image_settings.height = val_uint; }
-        }    
+            if( val_uint > image_settings_info.maxHeight || val_uint < 0 ) { COMMA_THROW( comma::exception, "Error: height out of bounds" ); }
+            if( val_uint % image_settings_info.imageVStepSize ) { COMMA_THROW( comma::exception, "Error: height=" << value << " is not a multiple of image vertical step size: " << image_settings_info.imageVStepSize ); }
+            image_settings.height = val_uint;
+        }
         else if( key == "PixelFormat" ) 
         {
             if( pixel_format_map.right.find(value) != pixel_format_map.right.end() )
                 { image_settings.pixelFormat = pixel_format_map.right.at( value ); }
             else { COMMA_THROW( comma::exception, "Error: invalid pixel format."); }
         } else {
-            COMMA_THROW( comma::exception,  "Error: property '" << key << "' not found!" );
+            COMMA_THROW( comma::exception, "Error: property '" << key << "' not found!" );
         }
         //Handle errors here, the SDK should do out of bounds checking 
 

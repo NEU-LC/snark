@@ -1,51 +1,69 @@
 #!/bin/bash
 
-scriptname=$( basename $0 )
+source $( type -p comma-application-util )
 
-function bye()
+declare -rx scriptname=$( basename $0 )
+declare -rx default_config=/usr/local/etc/websocketd/$scriptname.json
+
+function usage
 {
-    pkill -P $$
-    exit 1
+    cat >&2 <<EOF
+
+websocketd endpoint: runs $scriptname
+
+usage:
+    this is a CGI script run by websocketd upon access of http://<websocketd-host>:<websocketd-port>/$scriptname
+
+required environment variables:
+    CONFIG; default=$default_config; $scriptname config, see $scriptname --config-sample
+    QUERY_STRING; the part of URL after the ? character
+
+example:
+    CONFIG=$default_config QUERY_STRING="xpath=camera-name&data_uri=true&count=1" $scriptname
+
+EOF
+    exit
 }
 
-DEFAULT_CONFIG=/usr/local/etc/websocketd/$scriptname.json
+function config_paths
+{
+    cat <<EOF
+snark-image-frames/config/backend
+snark-image-frames/config/robot
+snark-image-frames/config/publish
+EOF
+}
 
-CONFIG=${WEBSOCKETD_CONFIG:-$DEFAULT_CONFIG}
+function config_sample { config_paths | sed 's/$/=""/' |  name-value-convert --to json; }
 
-if [[ ! -e "$CONFIG" ]]; then
-    echo "error: $scriptname config file not found (CONFIG=$CONFIG)"
-    exit 1
-fi
+function say() { echo "$scriptname: $@" >&2; }
+function bye() { say "$@"; exit 0; }
+function die() { say "$@"; exit 1; }
 
-BACKEND_CONFIG=$( name-value-get --from json snark-image-frames/config/backend < "$CONFIG" )
-ROBOT_CONFIG=$( name-value-get --from json snark-image-frames/config/robot < "$CONFIG" )
-PUBLISH_CONFIG=$( name-value-get --from json snark-image-frames/config/publish < "$CONFIG" )
+(( $( comma_options_has --help $@ ) || $( comma_options_has -h $@ ) )) && usage
+(( $( comma_options_has --config-sample $@ ) )) && { config_sample; exit; }
 
-if [[ -z "$BACKEND_CONFIG" || -z "$ROBOT_CONFIG" || -z "$PUBLISH_CONFIG" ]]; then
-    echo "error: $scriptname configuration missing"
-    exit 1
-fi
+config=${CONFIG:-$default_config}
 
-exec 2>/dev/null
+[[ -e "$config" ]] || die "error: config file not found: '$config'"
 
-trap bye INT TERM
+comma_path_value_to_var --prefix=config --export < <( name-value-get snark-image-frames/config < "$config" )
+
+[[ -n "$config_backend" ]] || die "error: snark-image-frames/config/backend missing in config '$config'"
+[[ -n "$config_robot" ]] || die "error: snark-image-frames/config/robot missing in config '$config'"
+[[ -n "$config_publish" ]] || die "error: snark-image-frames/config/publish missing in config '$config'"
 
 # parse query string
 declare -A query_string
-for pair in ${QUERY_STRING//&/ }; do
-    IFS='=' read key value <<< "$pair"
+for keyvalue in ${QUERY_STRING//&/ }; do
+    IFS='=' read key value <<< "$keyvalue"
     query_string[$key]=$value
 done
 
-if [[ -z ${query_string[xpath]} ]]; then
-    echo "error: expected xpath in query string"
-    exit 1
-fi
+[[ -n "${query_string[xpath]}" ]] || die "error: expected 'xpath' in query string"
 
-args="--backend-config=$BACKEND_CONFIG --robot-config=$ROBOT_CONFIG --publish-config=$PUBLISH_CONFIG --xpath=${query_string[xpath]}"
+args="--backend-config=$config_backend --robot-config=$config_robot --publish-config=$config_publish --xpath=${query_string[xpath]}"
 [[ "${query_string[data_uri]}" == true ]] && args+=" --data-uri"
 [[ -n "${query_string[count]}" ]] && args+=" --count=${query_string[count]}"
 
-snark-image-frames $args &
-
-wait $!
+exec snark-image-frames $args 2>/dev/null

@@ -1,0 +1,2 @@
+input=../../data/simple.mat
+options="--variable A --to csv --binary"
