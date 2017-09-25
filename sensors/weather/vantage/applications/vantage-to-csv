@@ -319,7 +319,7 @@ function invalid_data_designators()
         | csv-select --fields=$packet_spec_fields "output_format;regex=(f|d)" \
         | csv-shuffle --fields=$packet_spec_fields --output field,packet_format \
         | sed -r '/^(dew_point|heat_index|wind\/chill|thsw_index)/s/,w$/,ub/' \
-        | csv-replace b 127 ub 255 w 32767 uw 65536
+        | sed -r 's/,b$/,127/;s/,ub$/,255/;s/,w$/,32767/;s/,uw$/,65536/'
 }
 
 cmd=${commands[$options_packet]}
