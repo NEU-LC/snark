@@ -34,6 +34,7 @@
 #include <comma/packed/packed.h>
 #include <boost/array.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
+#include "../../math/spherical_geometry/coordinates.h"
 
 
 namespace snark { namespace navigation { namespace advanced_navigation {
@@ -72,6 +73,7 @@ struct system_state : public comma::packed::packed_struct<system_state,100>
     boost::array<comma::packed::little_endian_float32,3> orientation;   //roll,pitch,heading radians
     boost::array<comma::packed::little_endian_float32,3> angular_velocity;  //x,y,z rad/s
     boost::array<comma::packed::little_endian_float32,3> standard_deviation;    //latitude,longitude,height m
+    snark::spherical::coordinates coordinates() const;
 };
 
 struct raw_sensors : public comma::packed::packed_struct<raw_sensors,48>

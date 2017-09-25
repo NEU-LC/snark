@@ -35,6 +35,7 @@
 #include <comma/visiting/traits.h>
 #include <comma/packed/traits.h>
 #include <string>
+#include "../../math/spherical_geometry/traits.h"
 
 using namespace snark::navigation::advanced_navigation;
 
@@ -58,8 +59,7 @@ struct traits<messages::system_state>
         v.apply( "filter_status", p.filter_status() );
         v.apply( "unix_time_seconds", p.unix_time_seconds() );
         v.apply( "microseconds", p.microseconds() );
-        v.apply( "latitude", p.latitude() );
-        v.apply( "longitude", p.longitude() );
+        v.apply( "coordinates", p.coordinates() );
         v.apply( "height", p.height() );
         v.apply( "velocity", p.velocity );
         v.apply( "body_acceleration", p.body_acceleration );

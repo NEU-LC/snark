@@ -108,7 +108,11 @@ rtcm_corrections::rtcm_corrections(const char* buf, unsigned size) : header(id,s
 {
     std::memcpy(&msg_data[0],buf,size);
 }
-   
+
+snark::spherical::coordinates system_state::coordinates() const
+{
+    return snark::spherical::coordinates(latitude(),longitude());
+}
 
 } //namespace messages {
     
