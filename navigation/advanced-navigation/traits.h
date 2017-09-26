@@ -57,8 +57,7 @@ struct traits<messages::system_state>
     {
         v.apply( "system_status", p.system_status() );
         v.apply( "filter_status", p.filter_status() );
-        v.apply( "unix_time_seconds", p.unix_time_seconds() );
-        v.apply( "microseconds", p.microseconds() );
+        v.apply( "t", p.t() );
         v.apply( "coordinates", p.coordinates() );
         v.apply( "height", p.height() );
         v.apply( "velocity", p.velocity );
