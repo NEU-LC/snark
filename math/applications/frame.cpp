@@ -86,9 +86,25 @@ const frame::point_type* frame::converted( const point_type& rhs )
                 else
                 {
                     double factor = double( ( rhs.t - m_pair.first.t ).total_microseconds() ) / ( m_pair.second.t - m_pair.first.t ).total_microseconds();
-                    position p( m_pair.first.value.coordinates * ( 1 - factor ) + m_pair.second.value.coordinates * factor,
-                                m_pair.first.value.orientation * ( 1 - factor ) + m_pair.second.value.orientation * factor );
-                    set_position( p ); // TODO do interpolation with eigen ?
+
+                    Eigen::Vector3d coordinates = m_pair.first.value.coordinates * ( 1 - factor ) + m_pair.second.value.coordinates * factor;
+
+                    Eigen::Vector3d orientation;
+                    if( m_pair.first.value.orientation == m_pair.second.value.orientation )
+                    {
+                        orientation = m_pair.first.value.orientation;
+                    }
+                    else
+                    {
+                        rotation_matrix r1( m_pair.first.value.orientation );
+                        Eigen::Quaterniond q1 = r1.quaternion();
+                        rotation_matrix r2( m_pair.second.value.orientation );
+                        Eigen::Quaterniond q2 = r2.quaternion();
+                        Eigen::Quaterniond slerped( q1.slerp( factor, q2 ));
+                        orientation = rotation_matrix( slerped ).roll_pitch_yaw();
+                    }
+                    position p( coordinates, orientation );
+                    set_position( p );
                 }
             }
             else
