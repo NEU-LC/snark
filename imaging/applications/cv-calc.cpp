@@ -655,7 +655,7 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial,--permissive,--deterministic", "-.*");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--header-fields,--header-format,--output-fields,--output-format,--crop,--no-discard,--show-partial,--permissive,--deterministic", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
