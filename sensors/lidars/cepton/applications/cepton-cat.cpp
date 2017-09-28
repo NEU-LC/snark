@@ -54,6 +54,7 @@ void usage(bool detail)
     std::cerr << "    --list: get list of cepton devices and sensor information"<<std::endl;
     std::cerr << "    --disable-image-clip: disable clipping image field of view"<<std::endl;
     std::cerr << "    --disable-distance-clip: disable clipping distance"<<std::endl;
+    std::cerr << "    --frames-per-block=<n>: accumulate <n> frames per block, default 1"<<std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -111,21 +112,24 @@ struct app : public app_t<snark::cepton::point_t>
     bool all_good;
     comma::csv::output_stream<snark::cepton::point_t> os;
     snark::cepton::device device;
+    unsigned frames_per_block;
     app(const comma::command_line_options& options) : 
         all_good(true), os(std::cout,comma::csv::options(options)),
-        device(options.exists("--disable-image-clip"),options.exists("--disable-distance-clip"))
+        device(options.exists("--disable-image-clip"),options.exists("--disable-distance-clip")),
+        frames_per_block(options.value<unsigned>("--frames-per-block",1))
     {
     }
     void process()
     {
-        listener go(os);
+        listener go(os,frames_per_block);
         while(std::cout.good())
             usleep(100000);
     }
     struct listener : public snark::cepton::device::listener
     {
         comma::csv::output_stream<snark::cepton::point_t>& os;
-        listener(comma::csv::output_stream<snark::cepton::point_t>& os):os(os) { } 
+        listener(comma::csv::output_stream<snark::cepton::point_t>& os,unsigned fpb) :
+            snark::cepton::device::listener(fpb), os(os) { } 
         void on_frame(const std::vector<snark::cepton::point_t>& points)
         {
             for(auto i=points.begin();i!=points.end()&&std::cout.good();i++)

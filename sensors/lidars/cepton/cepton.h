@@ -72,10 +72,11 @@ public:
     //frame listener
     struct listener
     {
-        listener();
+        listener(unsigned frames_per_block=1);
         ~listener();
         virtual void on_frame(const std::vector<point_t>& points) = 0;
         uint32_t block;
+        unsigned frames_per_block;
     private:
         static void on_frame(int error_code, CeptonSensorHandle sensor, size_t n_points, struct CeptonSensorPoint const *p_points);
         static listener* instance_;
