@@ -112,6 +112,8 @@ void model::debug()
                                 if(!j) std::cerr<<"int ";
                                 std::cerr<<((int*)prop->mData)[j]<<" ";
                                 break;
+                            default:
+                                break;
                         }
                     }
                 }
