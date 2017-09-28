@@ -1,0 +1,9 @@
+#!/bin/bash
+
+input=$( cat )
+
+for i in $( seq 0 0.1 1 ); do
+    echo 20170102T000000,0,0,0,0,0,0 | csv-time-delay $i \
+        | points-frame --from=<( echo "$input" ) --fields=t,x,y,z,roll,pitch,yaw
+done | name-value-from-csv --fields=t,x,y,z,roll,pitch,yaw --prefix output --line-number \
+     | csv-quote -d = --unquote | csv-quote -d = --fields=,x
