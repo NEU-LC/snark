@@ -61,6 +61,7 @@ struct reader_parameters
 {
     comma::csv::options options;
     std::string title;
+    std::string groups;
     std::size_t size;
     unsigned int point_size;
     bool pass_through;
@@ -71,15 +72,17 @@ struct reader_parameters
 
     reader_parameters( const comma::csv::options& options
                      , const std::string& title
+                     , const std::string& groups
                      , std::size_t size
                      , unsigned int point_size
                      , bool pass_through
                      , bool fill 
-                     ,std::string labels
+                     , std::string labels
                      ,double length
                      ,bool has_color)
         : options( options )
         , title( title )
+        , groups( groups )
         , size( size )
         , point_size( point_size )
         , pass_through( pass_through )
