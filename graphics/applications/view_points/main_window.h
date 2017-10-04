@@ -67,14 +67,15 @@ private slots:
         QGridLayout* m_fileLayout;
         bool m_fileFrameVisible;
         typedef std::map< std::string, std::vector< CheckBox* > > FileGroupMap;
-        FileGroupMap m_fileGroups; // quick and dirty
+        FileGroupMap m_userGroups; // quick and dirty
+        FileGroupMap m_fieldsGroups; // quick and dirty
     
         void closeEvent( QCloseEvent* event );
         void keyPressEvent( QKeyEvent *e );
         void updateFileFrame();
         void toggleFileFrame( bool shown );
         void makeFileGroups();
-        void showFileGroup( std::string name, bool shown );
+        void showFileGroup( std::string const& name, bool shown );
         void load_camera_config();
         void save_camera_config();
 };

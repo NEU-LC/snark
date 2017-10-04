@@ -371,8 +371,8 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     QColor background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
     std::string shape = options.value< std::string >( "--shape", "point" );
     snark::graphics::view::Reader::reader_parameters param( csv_options
-                                                          , options.value( "--groups", std::string() )
                                                           , options.value( "--title", csv_options.filename )
+                                                          , options.value( "--groups", std::string() )
                                                           , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )

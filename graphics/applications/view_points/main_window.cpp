@@ -111,10 +111,16 @@ CheckBox::CheckBox( boost::function< void( bool ) > f ) : m_f( f )
 
 void CheckBox::action( bool checked ) {    m_f( checked ); }
 
-void MainWindow::showFileGroup( std::string name, bool shown )
+void MainWindow::showFileGroup( std::string const& name, bool shown )
 {
-    FileGroupMap::iterator it = m_fileGroups.find( name );
-    if( it == m_fileGroups.end() ) { std::cerr << "view-points: warning: file group \"" << name << "\" not found" << std::endl; }
+    FileGroupMap::iterator it = m_userGroups.find( name );
+    FileGroupMap::iterator end = m_userGroups.end();
+    if( it == m_userGroups.end() )
+    {
+        it = m_fieldsGroups.find( name );
+        end = m_fieldsGroups.end();
+    }
+    if( it == end ) { std::cerr << "view-points: warning: file group \"" << name << "\" not found" << std::endl; }
     for( std::size_t i = 0; i < it->second.size(); ++i ) { it->second[i]->setCheckState( shown ? Qt::Checked : Qt::Unchecked ); }
 }
 
@@ -137,7 +143,8 @@ void MainWindow::updateFileFrame() // quick and dirty
         if( i == 0 ) { fields = controller->readers[0]->options.fields; } // quick and dirty
         else { sameFields = controller->readers[i]->options.fields == fields; }
     }
-    m_fileGroups.clear();
+    m_userGroups.clear();
+    m_fieldsGroups.clear();
     for( std::size_t i = 0; i < controller->readers.size(); ++i )
     {
         static const std::size_t maxLength = 30; // arbitrary
@@ -160,25 +167,36 @@ void MainWindow::updateFileFrame() // quick and dirty
         viewBox->setToolTip( ( std::string( "check to make " ) + title + " visible" ).c_str() );
         m_fileLayout->addWidget( viewBox, i + 1, 1, Qt::AlignRight | Qt::AlignTop );
         m_fileLayout->setRowStretch( i + 1, i + 1 == controller->readers.size() ? 1 : 0 );
-        m_fileGroups[ controller->readers[i]->options.fields ].push_back( viewBox );
+        m_fieldsGroups[ controller->readers[i]->options.fields ].push_back( viewBox );
         if ( !controller->readers[i]->groups.empty() )
         {
             auto group_list = comma::split( controller->readers[i]->groups, ',' );
-            for( auto& gi : group_list ) { m_fileGroups[ gi ].push_back( viewBox ); }
+            for( auto& gi : group_list ) { m_userGroups[ gi ].push_back( viewBox ); }
         }
     }
     std::size_t i = 1 + controller->readers.size();
-    QLabel* titleLabel = new QLabel( "<b>groups</b>" );
-    m_fileLayout->addWidget( titleLabel, i++, 0, Qt::AlignLeft | Qt::AlignTop );
-    for( FileGroupMap::const_iterator it = m_fileGroups.begin(); it != m_fileGroups.end(); ++it, ++i )
+    m_fileLayout->addWidget( new QLabel( "<b>groups</b>" ), i++, 0, Qt::AlignLeft | Qt::AlignTop );
+    for( FileGroupMap::const_iterator it = m_userGroups.begin(); it != m_userGroups.end(); ++it, ++i )
     {
         m_fileLayout->addWidget( new QLabel( ( "\"" + it->first + "\"" ).c_str() ), i, 0, Qt::AlignLeft | Qt::AlignTop );
         CheckBox* viewBox = new CheckBox( boost::bind( &MainWindow::showFileGroup, this, it->first, _1 ) );
+        viewBox->setCheckState( Qt::Checked );
+        viewBox->setToolTip( ( std::string( "check to make files within group \"" ) + it->first + "\" visible" ).c_str() );
+        m_fileLayout->addWidget( viewBox, i, 1, Qt::AlignRight | Qt::AlignTop );
+        m_fileLayout->setRowStretch( i, i + 1 == controller->readers.size() ? 1 : 0 );
+    }
+    m_fileLayout->addWidget( new QLabel( "<b>groups by fields</b>" ), i++, 0, Qt::AlignLeft | Qt::AlignTop );
+    for( FileGroupMap::const_iterator it = m_fieldsGroups.begin(); it != m_fieldsGroups.end(); ++it, ++i )
+    {
+        m_fileLayout->addWidget( new QLabel( ( "\"" + it->first + "\"" ).c_str() ), i, 0, Qt::AlignLeft | Qt::AlignTop );
+        CheckBox* viewBox = new CheckBox( boost::bind( &MainWindow::showFileGroup, this, it->first, _1 ) );
+        viewBox->setCheckState( Qt::Checked );
         viewBox->setToolTip( ( std::string( "check to make files with fields \"" ) + it->first + "\" visible" ).c_str() );
         m_fileLayout->addWidget( viewBox, i, 1, Qt::AlignRight | Qt::AlignTop );
         m_fileLayout->setRowStretch( i, i + 1 == controller->readers.size() + fields.size() ? 1 : 0 );
     }
 }
+
 void MainWindow::update_view()
 {
     controller->update_view();
