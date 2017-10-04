@@ -65,7 +65,7 @@ struct traits<messages::system_state>
         v.apply( "g_force", p.g_force() );
         v.apply( "orientation", p.orientation );
         v.apply( "angular_velocity", p.angular_velocity );
-        v.apply( "standard_deviation", p.standard_deviation );
+        v.apply( "position_stddev", p.position_stddev );
     }
     
 };

@@ -110,6 +110,12 @@ void device::process()
                 case messages::satellites::id:
                     handle(reinterpret_cast<messages::satellites*>(&buf[head+5]));
                     break;
+                case messages::velocity_standard_deviation::id:
+                    handle(reinterpret_cast<messages::velocity_standard_deviation*>(&buf[head+5]));
+                    break;
+                case messages::orientation_standard_deviation::id:
+                    handle(reinterpret_cast<messages::orientation_standard_deviation*>(&buf[head+5]));
+                    break;
                 default:
                     comma::verbose<<"unhandled msg id: "<<int(msg_header->id())<<" len "<<int(msg_header->length())<<" "<<head<<" "<<index<<std::endl;
                     break;

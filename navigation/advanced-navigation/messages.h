@@ -72,7 +72,7 @@ struct system_state : public comma::packed::packed_struct<system_state,100>
     comma::packed::little_endian_float32 g_force;   //g
     boost::array<comma::packed::little_endian_float32,3> orientation;   //roll,pitch,heading radians
     boost::array<comma::packed::little_endian_float32,3> angular_velocity;  //x,y,z rad/s
-    boost::array<comma::packed::little_endian_float32,3> standard_deviation;    //latitude,longitude,height m
+    boost::array<comma::packed::little_endian_float32,3> position_stddev;    //latitude,longitude,height m
     snark::spherical::coordinates coordinates() const;
 };
 
@@ -110,13 +110,15 @@ struct rtcm_corrections : public comma::packed::packed_struct<rtcm_corrections,2
 
 struct velocity_standard_deviation : public comma::packed::packed_struct<velocity_standard_deviation,12>
 {
-    boost::array<comma::packed::little_endian_float32,3> standard_deviation;
+    enum { id = 25 };
+    boost::array<comma::packed::little_endian_float32,3> stddev;
 };
 
 //euler_orientation_standard_deviation_packet_t
 struct orientation_standard_deviation : public comma::packed::packed_struct<velocity_standard_deviation,12>
 {
-    boost::array<comma::packed::little_endian_float32,3> standard_deviation;
+    enum { id = 26 };
+    boost::array<comma::packed::little_endian_float32,3> stddev;
 };
 
 } //namespace messages {

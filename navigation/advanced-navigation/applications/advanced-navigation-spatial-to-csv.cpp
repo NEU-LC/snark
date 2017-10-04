@@ -156,6 +156,19 @@ struct traits< output >
 };
 
 template <>
+struct traits< output_all >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const output_all& p, Visitor& v )
+    {
+        v.apply( "", p.system_state );
+        v.apply( "", p.raw_sensors );
+        v.apply( "velocity_stddev", p.velocity_stddev );
+        v.apply( "orientation_stddev", p.orientation_stddev );
+    }
+
+};
+
+template <>
 struct traits< status_data >
 {
     template < typename Key, class Visitor > static void visit( const Key&, const status_data& p, Visitor& v )
@@ -310,25 +323,31 @@ protected:
 };
 
 /// accumulate several packets into one big output record
-// struct app_all : public app_t<output_all>
-// {
-//     app_all(const std::string& port,const comma::command_line_options& options) : app_t(port,options) { }
-//     output_all output;
-//     void handle(const messages::system_state* msg)
-//     {
-//         //make copy
-//         //memcpy(output.system_state(), msg(),100);
+struct app_all : public app_t<output_all>
+{
+    app_all(const std::string& port,const comma::command_line_options& options) : app_t(port,options) { }
+    output_all output;
+    void handle(const messages::system_state* msg)
+    {
+        //make copy
+        memcpy(output.system_state.data(), msg->data(),messages::system_state::size);
 //         output.system_state=msg;
-// //         output.t=msg->t();
-// //         output.coordinates.latitude=msg->latitude();
-// //         output.coordinates.longitude=msg->longitude();
-// //         output.height=msg->height();
-// //         output.orientation=snark::roll_pitch_yaw(msg->orientation[0](),msg->orientation[1](),msg->orientation[2]());
-// //         output.system_status=msg->system_status();
-// //         output.filter_status=msg->filter_status();
-//         os.write(output);
-//     }
-// };
+
+        os.write(output);
+    }
+    void handle(const messages::raw_sensors* msg)
+    {
+        std::memcpy(output.raw_sensors.data(),msg->data(),messages::raw_sensors::size);
+    }
+    void handle(const messages::velocity_standard_deviation* msg)
+    {
+        output.velocity_stddev=Eigen::Vector3f(msg->stddev[0](),msg->stddev[1](),msg->stddev[2]());
+    }
+    void handle(const messages::orientation_standard_deviation* msg)
+    {
+        output.orientation_stddev=Eigen::Vector3f(msg->stddev[0](),msg->stddev[1](),msg->stddev[2]());
+    }
+};
 
 template<typename T>
 struct app_packet : public app_t<T>
@@ -497,7 +516,7 @@ int main( int argc, char** argv )
         {
             if(unnamed.size()!=1) { COMMA_THROW( comma::exception, "expected one unnamed arguement, got: "<<unnamed.size()); }
             if(unnamed[0]=="navigation") { factory.reset(new factory_t<app_nav>()); }
-    //         else if(unnamed[0]=="all") { factory.reset(new factory_t<app_all>()); }
+            else if(unnamed[0]=="all") { factory.reset(new factory_t<app_all>()); }
             else if(unnamed[0]=="raw-sensors") { factory.reset(new factory_t<app_packet<messages::raw_sensors>>()); }
             else if(unnamed[0]=="system-state") { factory.reset(new factory_t<app_packet<messages::system_state>>()); }
             else if(unnamed[0]=="satellites") { factory.reset(new factory_t<app_packet<messages::satellites>>()); }
