@@ -49,10 +49,12 @@ public:
     device(const std::string& name,int baud_rate);
     virtual ~device() { }
     void process();
+    void send_ntrip(std::vector<char> buf);
+protected:
     virtual void handle(const messages::system_state* msg) { }
     virtual void handle(const messages::raw_sensors* msg) { }
     virtual void handle(const messages::satellites* msg) { }
-    void send_ntrip(std::vector<char> buf);
+    virtual void handle_raw(messages::header* msg_header, const char* msg_data,std::size_t msg_data_length) { }
 };
 
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {

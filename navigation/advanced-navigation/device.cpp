@@ -98,6 +98,7 @@ void device::process()
             }
             if(msg_header->check_crc(&buf[head+5]))
             {
+                handle_raw(msg_header,&buf[head+5],msg_header->length());
                 switch(msg_header->id())
                 {
                 case messages::system_state::id:

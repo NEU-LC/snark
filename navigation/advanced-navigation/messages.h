@@ -108,6 +108,17 @@ struct rtcm_corrections : public comma::packed::packed_struct<rtcm_corrections,2
     rtcm_corrections(const char* buf, unsigned size);
 };
 
+struct velocity_standard_deviation : public comma::packed::packed_struct<velocity_standard_deviation,12>
+{
+    boost::array<comma::packed::little_endian_float32,3> standard_deviation;
+};
+
+//euler_orientation_standard_deviation_packet_t
+struct orientation_standard_deviation : public comma::packed::packed_struct<velocity_standard_deviation,12>
+{
+    boost::array<comma::packed::little_endian_float32,3> standard_deviation;
+};
+
 } //namespace messages {
     
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {

@@ -58,7 +58,7 @@ void usage(bool detail)
 {
     std::cerr<<"    connect to Advanced Navigation Spatial device and output GPS data" << std::endl;
     std::cerr << std::endl;
-    std::cerr<< "usage: " << comma::verbose.app_name() << " <port> [<what>] [<options>]" << std::endl;
+    std::cerr<< "usage: " << comma::verbose.app_name() << " <what> [<options>]" << std::endl;
     std::cerr<< "    <port>: serial port" << std::endl;
     std::cerr<< "    <what>: select data packet to output, default: navigation"<< std::endl;
     std::cerr << std::endl;
@@ -66,6 +66,7 @@ void usage(bool detail)
     std::cerr<< "    navigation: navigation data from system state packet" << std::endl;
     std::cerr<< "    system-state: full system state packet"<< std::endl;
     std::cerr<< "    raw-sensors" << std::endl;
+    std::cerr<< "    all: combines system-state, raw-sensors and standard deviations into one record" << std::endl;
     std::cerr<< "    satellites" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
@@ -73,6 +74,13 @@ void usage(bool detail)
     std::cerr << "    --verbose,-v:    show detailed messages" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
     std::cerr << "    --output-format: print output format and exit" << std::endl;
+    
+    std::cerr << "    --raw: output raw packets to stdout, " << std::endl;
+    /* TODO read raw packets from stdin 
+    std::cerr << "    --stdin; read packets from stdin, can't be used with options that need to write to device (e.g. --ntrip)" << std::endl;
+    */
+    
+    std::cerr << "    --device=<filename>; filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
     std::cerr << "    --baud-rate=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
     std::cerr << "    --sleep=<n>: microsecond sleep between reading, default "<< default_sleep << std::endl;
     std::cerr << "    --ntrip=<stream>: read ntrip data from stream and send it to device" << std::endl;
@@ -106,6 +114,14 @@ struct output
     snark::roll_pitch_yaw orientation;
     uint16_t system_status;
     uint16_t filter_status;
+};
+
+struct output_all
+{
+    messages::system_state system_state;
+    messages::raw_sensors raw_sensors;
+    Eigen::Vector3f velocity_stddev;
+    Eigen::Vector3f orientation_stddev;
 };
 
 struct status_data
@@ -207,17 +223,13 @@ struct app_i
     virtual void output_fields()=0;
 };
 
-template<typename T>
-struct app_t : protected device
+struct app_base : protected device
 {
-    comma::csv::output_stream<T> os;
     unsigned us;
-    bool output_sensors;
-    app_t(const std::string& port,const comma::command_line_options& options) : 
+public:
+    app_base(const std::string& port,const comma::command_line_options& options) : 
         device(port,options.value<unsigned>("--baud-rate",default_baud_rate)),
-        os(std::cout,comma::csv::options(options,"",true)),
-        us(options.value<unsigned>("--sleep",default_sleep)),
-        output_sensors()
+        us(options.value<unsigned>("--sleep",default_sleep))
     {
         
     }
@@ -237,6 +249,18 @@ struct app_t : protected device
             usleep(us);
         }
     }
+};
+
+template<typename T>
+struct app_t : public app_base
+{
+    comma::csv::output_stream<T> os;
+    app_t(const std::string& port,const comma::command_line_options& options) : 
+        app_base(port,options),
+        os(std::cout,comma::csv::options(options,"",true))
+    {
+        
+    }
     static void output_fields()
     {
         std::cout<<comma::join( comma::csv::names<T>(true), ',' ) << std::endl; 
@@ -254,8 +278,6 @@ struct app_nav : public app_t<output>
     //message handlers
     void handle(const messages::system_state* msg)
     {
-        if(output_sensors)
-            return;
         output o;
         o.t=msg->t();
         o.coordinates.latitude=msg->latitude();
@@ -267,6 +289,46 @@ struct app_nav : public app_t<output>
         os.write(o);
     }
 };
+
+struct app_raw : public app_base
+{
+    std::vector<char> obuf;
+    app_raw(const std::string& port,const comma::command_line_options& options) : app_base(port,options), obuf(260)
+    {
+        
+    }
+    static void output_fields() { std::cout<<std::endl; }
+    static void output_format() { std::cout<<std::endl;  }
+protected:
+    void handle_raw(messages::header* msg_header, const char* msg_data,std::size_t msg_data_length)
+    {
+        obuf.resize(messages::header::size+msg_data_length);
+        std::memcpy(&obuf[0],msg_header->data(),messages::header::size);
+        std::memcpy(&obuf[messages::header::size],msg_data,msg_data_length);
+        std::cout.write(&obuf[0],obuf.size());
+    }
+};
+
+/// accumulate several packets into one big output record
+// struct app_all : public app_t<output_all>
+// {
+//     app_all(const std::string& port,const comma::command_line_options& options) : app_t(port,options) { }
+//     output_all output;
+//     void handle(const messages::system_state* msg)
+//     {
+//         //make copy
+//         //memcpy(output.system_state(), msg(),100);
+//         output.system_state=msg;
+// //         output.t=msg->t();
+// //         output.coordinates.latitude=msg->latitude();
+// //         output.coordinates.longitude=msg->longitude();
+// //         output.height=msg->height();
+// //         output.orientation=snark::roll_pitch_yaw(msg->orientation[0](),msg->orientation[1](),msg->orientation[2]());
+// //         output.system_status=msg->system_status();
+// //         output.filter_status=msg->filter_status();
+//         os.write(output);
+//     }
+// };
 
 template<typename T>
 struct app_packet : public app_t<T>
@@ -283,7 +345,7 @@ struct factory_i
     virtual ~factory_i() { }
     virtual void output_fields()=0;
     virtual void output_format()=0;
-    virtual void run(const std::vector<std::string>& unnamed,const comma::command_line_options& options)=0;
+    virtual void run(const std::string& input,const comma::command_line_options& options)=0;
 };
 
 template<typename T>
@@ -292,10 +354,10 @@ struct factory_t : public factory_i
     typedef T type;
     void output_fields() { T::output_fields(); }
     void output_format() { T::output_format(); }
-    void run(const std::vector<std::string>& unnamed,const comma::command_line_options& options)
+    void run(const std::string& input,const comma::command_line_options& options)
     {
 
-        T app(unnamed[0],options);
+        T app(input,options);
         app.process();
     }
 };
@@ -427,11 +489,20 @@ int main( int argc, char** argv )
         std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format", "-.*" );
         
         std::unique_ptr<factory_i> factory;
-        if(unnamed.size()<2 || unnamed[1]=="navigation") { factory.reset(new factory_t<app_nav>()); }
-        else if(unnamed[1]=="raw-sensors") { factory.reset(new factory_t<app_packet<messages::raw_sensors>>()); }
-        else if(unnamed[1]=="system-state") { factory.reset(new factory_t<app_packet<messages::system_state>>()); }
-        else if(unnamed[1]=="satellites") { factory.reset(new factory_t<app_packet<messages::satellites>>()); }
-        else { COMMA_THROW( comma::exception,"expected <what>: navigation | raw-sensors | system-state; got "<<unnamed[1]);}
+        if(options.exists("--raw"))
+        {
+            factory.reset(new factory_t<app_raw>());
+        }
+        else
+        {
+            if(unnamed.size()!=1) { COMMA_THROW( comma::exception, "expected one unnamed arguement, got: "<<unnamed.size()); }
+            if(unnamed[0]=="navigation") { factory.reset(new factory_t<app_nav>()); }
+    //         else if(unnamed[0]=="all") { factory.reset(new factory_t<app_all>()); }
+            else if(unnamed[0]=="raw-sensors") { factory.reset(new factory_t<app_packet<messages::raw_sensors>>()); }
+            else if(unnamed[0]=="system-state") { factory.reset(new factory_t<app_packet<messages::system_state>>()); }
+            else if(unnamed[0]=="satellites") { factory.reset(new factory_t<app_packet<messages::satellites>>()); }
+            else { COMMA_THROW( comma::exception,"expected <what>: navigation | raw-sensors | system-state | all; got "<<unnamed[1]);}
+        }
         
         auto opt_description=options.optional<std::string>("--description");
         if(opt_description)
@@ -459,8 +530,11 @@ int main( int argc, char** argv )
         if(opt_ntrip)
             ntrip.reset(new ::ntrip(*opt_ntrip,options));
 
-        if(unnamed.size()<1) { COMMA_THROW( comma::exception, "expected at least one unnamed option for port name, got "<<unnamed.size()); }
-        factory->run(unnamed,options);
+        std::string input=options.value<std::string>("--device");
+//         if(!options.exists("--device")) { COMMA_THROW( comma::exception, "Please specify either --device=<serial_port> or --stdin"); }
+
+//         if(unnamed.size()<1) { COMMA_THROW( comma::exception, "expected at least one unnamed option for port name, got "<<unnamed.size()); }
+        factory->run(input,options);
         
         return 0;
     }
