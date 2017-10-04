@@ -105,7 +105,7 @@ CeptonSensorInformation const * device::iterator::operator*() const
 void device::iterator::operator++(int) { index++; }
 bool device::iterator::operator<(const iterator& rhs) const { return index<rhs.index; }
 
-device::listener::listener() : block(0)
+device::listener::listener(unsigned frames_per_block) : block(0),frames_per_block(frames_per_block)
 {
     if(instance_) { COMMA_THROW( comma::exception,"only one listener allowed at a time"); }
     instance_=this;
@@ -123,9 +123,10 @@ void device::listener::on_frame(int error_code, CeptonSensorHandle sensor, size_
     if(!instance_)
         return;
     std::vector<point_t> points(n_points);
+    uint32_t block=instance_->block/instance_->frames_per_block;
     for(unsigned i=0;i<n_points;i++)
     {
-        points[i]=point_t(p_points[i],instance_->block);
+        points[i]=point_t(p_points[i],block);
     }
     instance_->on_frame(points);
     instance_->block++;

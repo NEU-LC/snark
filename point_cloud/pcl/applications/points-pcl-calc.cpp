@@ -301,7 +301,7 @@ public:
     }
     void print_output_fields()
     {
-        std::cout<<comma::join( comma::csv::names<output_t>(false), ',' ) << std::endl;
+        std::cout<<comma::join( comma::csv::names<output_t>(true), ',' ) << std::endl;
     }
     void print_output_format()
     {

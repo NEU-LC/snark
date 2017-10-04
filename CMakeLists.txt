@@ -312,6 +312,9 @@ if( snark_build_math_geometry )
 endif( snark_build_math_geometry )
 
 if( snark_build_point_cloud )
+    if( NOT snark_build_math_geometry )
+        message( FATAL_ERROR  "please turn on snark_build_math_geometry, since snark_build_point_cloud depends on it" )
+    endif( NOT snark_build_math_geometry )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_point_cloud-d
                              optimized snark_point_cloud )
 endif( snark_build_point_cloud )
