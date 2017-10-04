@@ -204,6 +204,7 @@ static void usage()
         "\n                            note 2: specify id in fields to switch between multiple images, see examples below"
         "\n    --size <size>: render last <size> points (or other shapes)"
         "\n                   default 2000000 for points, for 200000 for other shapes"
+        "\n    --groups <csv>: include in group/s named in csv"
         "\n    --title <title>: title for source, defaults to filename"
         "\n                     if set to \"none\" don't show source in selection box"
         "\n                     (but still display data and checkbox)"
@@ -370,6 +371,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     QColor background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
     std::string shape = options.value< std::string >( "--shape", "point" );
     snark::graphics::view::Reader::reader_parameters param( csv_options
+                                                          , options.value( "--groups", std::string() )
                                                           , options.value( "--title", csv_options.filename )
                                                           , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
                                                           , options.value( "--point-size,--weight", 1u )
@@ -392,6 +394,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         param.point_size = m.value( "point-size", param.point_size );
         param.point_size = m.value( "weight", param.point_size );
         param.title = m.value( "title", param.title.empty() ? param.options.filename : param.title );
+        param.groups = m.value( "groups", param.groups );
         shape = m.value( "shape", shape );
         if( m.exists( "colour" ) ) { color = m.value( "colour", color ); param.has_color=true; }
         else if( m.exists( "color" ) ) { color = m.value( "color", color ); param.has_color=true; }

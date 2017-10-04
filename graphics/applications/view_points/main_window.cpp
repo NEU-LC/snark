@@ -161,6 +161,11 @@ void MainWindow::updateFileFrame() // quick and dirty
         m_fileLayout->addWidget( viewBox, i + 1, 1, Qt::AlignRight | Qt::AlignTop );
         m_fileLayout->setRowStretch( i + 1, i + 1 == controller->readers.size() ? 1 : 0 );
         m_fileGroups[ controller->readers[i]->options.fields ].push_back( viewBox );
+        if ( !controller->readers[i]->groups.empty() )
+        {
+            auto group_list = comma::split( controller->readers[i]->groups, ',' );
+            for( auto& gi : group_list ) { m_fileGroups[ gi ].push_back( viewBox ); }
+        }
     }
     std::size_t i = 1 + controller->readers.size();
     QLabel* titleLabel = new QLabel( "<b>groups</b>" );
