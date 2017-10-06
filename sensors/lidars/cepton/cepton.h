@@ -45,7 +45,7 @@ struct point_t
     Eigen::Vector3f point;
     float intensity;
     point_t( ) : intensity(0) { }
-    point_t(const CeptonSensorPoint& cp,uint32_t block=0);
+    point_t(boost::posix_time::ptime t,const CeptonSensorPoint& cp,uint32_t block=0);
 };
 
 
@@ -72,11 +72,12 @@ public:
     //frame listener
     struct listener
     {
-        listener(unsigned frames_per_block=1);
+        listener(unsigned frames_per_block=1,bool system_time=true);
         ~listener();
         virtual void on_frame(const std::vector<point_t>& points) = 0;
         uint32_t block;
         unsigned frames_per_block;
+        bool system_time;
     private:
         static void on_frame(int error_code, CeptonSensorHandle sensor, size_t n_points, struct CeptonSensorPoint const *p_points);
         static listener* instance_;

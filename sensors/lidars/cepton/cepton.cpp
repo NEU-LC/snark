@@ -35,8 +35,8 @@
 
 namespace snark { namespace cepton {
 
-point_t::point_t(const CeptonSensorPoint& cp,uint32_t block) : 
-    t(boost::gregorian::date( 1970, 1, 1 ), boost::posix_time::microseconds(cp.timestamp)), 
+point_t::point_t(boost::posix_time::ptime t,const CeptonSensorPoint& cp,uint32_t block) : 
+    t(t), 
     block(block),
     point(cp.x,cp.y,cp.z), 
     intensity(cp.intensity)
@@ -105,7 +105,7 @@ CeptonSensorInformation const * device::iterator::operator*() const
 void device::iterator::operator++(int) { index++; }
 bool device::iterator::operator<(const iterator& rhs) const { return index<rhs.index; }
 
-device::listener::listener(unsigned frames_per_block) : block(0),frames_per_block(frames_per_block)
+device::listener::listener(unsigned frames_per_block,bool system_time) : block(0),frames_per_block(frames_per_block),system_time(system_time)
 {
     if(instance_) { COMMA_THROW( comma::exception,"only one listener allowed at a time"); }
     instance_=this;
@@ -120,13 +120,22 @@ device::listener::~listener()
 }
 void device::listener::on_frame(int error_code, CeptonSensorHandle sensor, size_t n_points, struct CeptonSensorPoint const *p_points)
 {
+    boost::posix_time::ptime t0=boost::posix_time::microsec_clock::universal_time();
     if(!instance_)
+        return;
+    if(!n_points)
         return;
     std::vector<point_t> points(n_points);
     uint32_t block=instance_->block/instance_->frames_per_block;
+    uint64_t timestamp0=p_points[0].timestamp;
+    if(!instance_->system_time)
+    {
+        t0=boost::posix_time::ptime(boost::gregorian::date( 1970, 1, 1 ),boost::posix_time::microseconds(0));
+        timestamp0=0;
+    }
     for(unsigned i=0;i<n_points;i++)
     {
-        points[i]=point_t(p_points[i],block);
+        points[i]=point_t(t0+boost::posix_time::microseconds(p_points[i].timestamp-timestamp0),p_points[i],block);
     }
     instance_->on_frame(points);
     instance_->block++;
