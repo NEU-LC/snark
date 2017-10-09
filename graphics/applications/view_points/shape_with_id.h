@@ -87,7 +87,7 @@ struct ShapeWithId // quick and dirty
     bool fill; // todo: just a placeholder for now, plug in if possible or tear down
 };
 
-struct how_t { struct points; struct connected; struct loop; }; // quick and dirty; for points only
+struct how_t { struct points; struct lines; struct loop; }; // quick and dirty; for points only
 
 template < class S, typename How = how_t::points >
 struct Shapetraits {}; // quick and dirty
@@ -425,7 +425,7 @@ template <> struct draw_traits_< how_t::loop >
     }
 };
 
-template <> struct draw_traits_< how_t::connected >
+template <> struct draw_traits_< how_t::lines >
 {
     static const QGL::DrawingMode drawing_mode = QGL::DrawingMode();
 
@@ -455,7 +455,7 @@ template<> struct how_traits<how_t::loop>
         return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop(gl.point_size));
     }
 };
-template<> struct how_traits<how_t::connected>
+template <> struct how_traits< how_t::lines >
 {
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
