@@ -284,8 +284,7 @@ public:
             {
                 ntrip::item_t item;
                 ntrip::queue.pop(item);
-                if(item)
-                    send_ntrip(*item);
+                if(item) { send_ntrip(*item); }
             }
             //process ntrip
             usleep(us);
