@@ -76,7 +76,7 @@ void usage(bool detail)
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     
     std::cerr << "    --raw: output raw packets to stdout, " << std::endl;
-    /* TODO read raw packets from stdin 
+    /* (?) read raw packets from stdin 
     std::cerr << "    --stdin; read packets from stdin, can't be used with options that need to write to device (e.g. --ntrip)" << std::endl;
     */
     
@@ -190,41 +190,70 @@ struct ntrip
     comma::io::istream is;
     //have queue<std::vecotr<char>> (or double buffer) to put data in
     static tbb::concurrent_bounded_queue<item_t> queue;
-    //make a thread for reading
-    bool shutdown;
-    std::thread thread;
     //app_t can check the queue and write to gps, instead of sleep
-    ntrip(const std::string& name,const comma::command_line_options& options) : 
-        is(name,comma::io::mode::binary,comma::io::mode::non_blocking),
-        shutdown(false),
-        thread(&ntrip::run,this)
+    ntrip(const std::string& name) : is(name,comma::io::mode::binary,comma::io::mode::non_blocking), buf(4096)
     {
         
     }
-    ~ntrip()
+    std::vector<char> buf;
+    bool process()
+    {
+        if(!is->good())
+            return false;
+        unsigned size=is.available_on_file_descriptor();
+
+        if(size)
+        {
+            //or use size=readsome...
+            is->read(&buf[0],size);
+            size=is->gcount();
+            if(size)
+            {
+                //put it in queue
+                queue.push(item_t(new std::vector<char>(buf.begin(),buf.begin()+size)));
+            }
+        }
+        return true;
+    }
+};
+
+struct ntrip_thread
+{
+    //make a thread for reading
+    bool shutdown;
+    std::thread thread;
+    std::string filename;
+    ntrip_thread(const std::string& filename,const comma::command_line_options& options) :
+        shutdown(false),
+        thread(&ntrip_thread::run,this),
+        filename(filename)
+    {
+        
+    }
+    ~ntrip_thread()
     {
         shutdown=true;
         thread.join();
     }
     void run()
     {
-        std::vector<char> buf(4096);
-        while(is->good()&&!shutdown)
+        while(!shutdown)
         {
-            unsigned size=is.available_on_file_descriptor();
-
-            if(size)
+            try
             {
-                //or use size=readsome...
-                is->read(&buf[0],size);
-                size=is->gcount();
-                if(size)
+                ntrip nt(filename);
+                while(!shutdown&&nt.process())
                 {
-                    //put it in queue
-                    queue.push(item_t(new std::vector<char>(buf.begin(),buf.begin()+size)));
+                    usleep(20000);
                 }
             }
-            usleep(100000);
+            catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
+            catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; }
+            //try to connect again in 3 seconds
+            for(unsigned i=0;i<100&&!shutdown;i++)
+            {
+                std::this_thread::sleep_for(std::chrono::microseconds(30));
+            }
         }
     }
 };
@@ -544,10 +573,9 @@ int main( int argc, char** argv )
         if(options.exists("--output-fields")) { factory->output_fields(); return 0; }
         if(options.exists("--output-format")) { factory->output_format(); return 0; }
 
-        std::unique_ptr<ntrip> ntrip;
+        std::unique_ptr<ntrip_thread> ntt;
         auto opt_ntrip=options.optional<std::string>("--ntrip");
-        if(opt_ntrip)
-            ntrip.reset(new ::ntrip(*opt_ntrip,options));
+        if(opt_ntrip) { ntt.reset(new ntrip_thread(*opt_ntrip,options)); }
 
         std::string input=options.value<std::string>("--device");
 //         if(!options.exists("--device")) { COMMA_THROW( comma::exception, "Please specify either --device=<serial_port> or --stdin"); }
