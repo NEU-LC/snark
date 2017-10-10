@@ -2608,18 +2608,22 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         typedef std::string::const_iterator iterator_type;
         ratios::rules< iterator_type > rules;
         ratios::parser< iterator_type, ratios::ratio > parser( rules.ratio_ );
-        ratios::ratio r;
-        iterator_type begin = e[1].begin();
-        iterator_type end = e[1].end();
-        bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
-        if ( !status || ( begin != end ) ) { COMMA_THROW( comma::exception, e[0] << ": expected a " << e[0] << " expression, got: \"" << comma::join( e, '=' ) << "\"" ); }
-        if ( e[0] == "linear-combination" && !r.denominator.unity() ) { COMMA_THROW( comma::exception, e[0] << ": expected a linear combination expression, got a ratio" ); }
-        if( r.numerator.terms.size() != r.denominator.terms.size() )
-            { COMMA_THROW( comma::exception, e[0] << ": the number of numerator " << r.numerator.terms.size() << " and denominator " << r.denominator.terms.size() << " coefficients differs" ); }
-        ratios::coefficients coefficients;
-        coefficients.reserve( ratios::channel::NUM_CHANNELS );
-        for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { coefficients.push_back( std::make_pair( r.numerator.terms[j].value, r.denominator.terms[j].value ) ); }
-        return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, coefficients, e[0] ), true );
+        std::vector< ratios::coefficients > coefficients;
+        const std::vector< std::string > & s = comma::split( e[1], ',' );
+        if ( s.empty() ) { COMMA_THROW( comma::exception, e[0] << ": empty right-hand side" ); }
+        for ( const auto & t : s ) {
+            ratios::ratio r;
+            iterator_type begin = t.begin();
+            iterator_type end = t.end();
+            bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
+            if ( !status || ( begin != end ) ) { COMMA_THROW( comma::exception, e[0] << ": expected a " << e[0] << " expression, got: \"" << t << "\"" ); }
+            if ( e[0] == "linear-combination" && !r.denominator.unity() ) { COMMA_THROW( comma::exception, e[0] << ": expected a linear combination expression, got a ratio" ); }
+            if( r.numerator.terms.size() != r.denominator.terms.size() ) { COMMA_THROW( comma::exception, e[0] << ": the number of numerator " << r.numerator.terms.size() << " and denominator " << r.denominator.terms.size() << " coefficients differs" ); }
+            coefficients.push_back( ratios::coefficients() );
+            coefficients.back().reserve( ratios::channel::NUM_CHANNELS );
+            for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { coefficients.back().push_back( std::make_pair( r.numerator.terms[j].value, r.denominator.terms[j].value ) ); }
+        }
+        return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, coefficients.front(), e[0] ), true );
     }
     if( snark::cv_mat::morphology::operations().find( e[0] ) != snark::cv_mat::morphology::operations().end() )
     {
