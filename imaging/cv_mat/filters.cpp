@@ -155,6 +155,7 @@ namespace {
             return m;
         }
     };
+
 } // anonymous
 
 namespace snark{ namespace cv_mat {
@@ -1788,7 +1789,7 @@ typename impl::filters< H >::value_type fft_impl_( typename impl::filters< H >::
 }
 
 template< int DepthIn, int DepthOut >
-static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& numerator, const std::vector< double >& denominator, cv::Mat& result )
+static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const ratios::coefficients & coefficients, cv::Mat& result )
 {
     typedef typename depth_traits< DepthIn >::value_t value_in_t;
     typedef typename depth_traits< DepthOut >::value_t value_out_t;
@@ -1802,11 +1803,11 @@ static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m,
         value_out_t* out = result.ptr< value_out_t >(i);
         for( unsigned int j = 0; j < cols; j += channels )
         {
-            double n = numerator[0];
-            double d = denominator[0];
+            double n = coefficients[0].first;
+            double d = coefficients[0].second;
             for( unsigned int k = 0; k < channels; ++k ) {
-                n += *in * numerator[k + 1];
-                d += *in++ * denominator[k + 1];
+                n += *in * coefficients[k + 1].first;
+                d += *in++ * coefficients[k + 1].second;
             }
             double value = ( d == 0 ? ( n == 0 ? 0 : highest ) : n / d );
             *out++ = value > highest ? highest : value < lowest ? lowest : value;
@@ -1815,38 +1816,36 @@ static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m,
 }
 
 template< typename H, int DepthIn, int DepthOut >
-static typename impl::filters< H >::value_type per_element_ratio( const typename impl::filters< H >::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator )
+static typename impl::filters< H >::value_type per_element_ratio( const typename impl::filters< H >::value_type m, const ratios::coefficients & coefficients )
 {
     cv::Mat result( m.second.size(), DepthOut );
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< DepthIn, DepthOut >, _1, m.second, numerator, denominator, boost::ref( result ) ) );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< DepthIn, DepthOut >, _1, m.second, coefficients, boost::ref( result ) ) );
     return typename impl::filters< H >::value_type( m.first, result );
 }
 
 template< typename H, int DepthIn >
-static typename impl::filters< H >::value_type per_element_ratio_selector( const typename impl::filters< H >::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator, int otype, const std::string & opname )
+static typename impl::filters< H >::value_type per_element_ratio_selector( const typename impl::filters< H >::value_type m, const ratios::coefficients & coefficients, int otype, const std::string & opname )
 {
     switch( otype )
     {
-        case CV_8U : return per_element_ratio< H, DepthIn, CV_8U  >( m, numerator, denominator );
-        case CV_8S : return per_element_ratio< H, DepthIn, CV_8S  >( m, numerator, denominator );
-        case CV_16U: return per_element_ratio< H, DepthIn, CV_16U >( m, numerator, denominator );
-        case CV_16S: return per_element_ratio< H, DepthIn, CV_16S >( m, numerator, denominator );
-        case CV_32S: return per_element_ratio< H, DepthIn, CV_32S >( m, numerator, denominator );
-        case CV_32F: return per_element_ratio< H, DepthIn, CV_32F >( m, numerator, denominator );
-        case CV_64F: return per_element_ratio< H, DepthIn, CV_64F >( m, numerator, denominator );
+        case CV_8U : return per_element_ratio< H, DepthIn, CV_8U  >( m, coefficients );
+        case CV_8S : return per_element_ratio< H, DepthIn, CV_8S  >( m, coefficients );
+        case CV_16U: return per_element_ratio< H, DepthIn, CV_16U >( m, coefficients );
+        case CV_16S: return per_element_ratio< H, DepthIn, CV_16S >( m, coefficients );
+        case CV_32S: return per_element_ratio< H, DepthIn, CV_32S >( m, coefficients );
+        case CV_32F: return per_element_ratio< H, DepthIn, CV_32F >( m, coefficients );
+        case CV_64F: return per_element_ratio< H, DepthIn, CV_64F >( m, coefficients );
     }
     COMMA_THROW( comma::exception, opname << ": unrecognised output image type " << otype );
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type ratio_impl_( const typename impl::filters< H >::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, const std::string & opname )
+static typename impl::filters< H >::value_type ratio_impl_( const typename impl::filters< H >::value_type m, const ratios::coefficients & coefficients, const std::string & opname )
 {
-    if( numerator.size() != denominator.size() )
-        { COMMA_THROW( comma::exception, opname << ": the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
     // the coefficients are always constant,r,g,b,a (some of the values can be zero); it is ok to have fewer channels than coefficients as long as all the unused coefficients are zero
-    for ( size_t n = static_cast< size_t >( m.second.channels() ) + 1 ; n < numerator.size(); ++n ) {
-        if ( numerator[n] != 0.0 || denominator[n] != 0.0 ) {
-            const std::string & what = numerator[n] != 0.0 ? "numerator" : "denominator";
+    for ( size_t n = static_cast< size_t >( m.second.channels() ) + 1 ; n < coefficients.size(); ++n ) {
+        if ( coefficients[n].first != 0.0 || coefficients[n].second != 0.0 ) {
+            const std::string & what = coefficients[n].first != 0.0 ? "numerator" : "denominator";
             COMMA_THROW( comma::exception, opname << ": have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
         }
     }
@@ -1854,13 +1853,13 @@ static typename impl::filters< H >::value_type ratio_impl_( const typename impl:
     if ( otype != CV_64FC1 ) { otype = CV_32FC1; }
     switch( m.second.depth() )
     {
-        case CV_8U : return per_element_ratio_selector< H, CV_8U  >( m, numerator, denominator, otype, opname );
-        case CV_8S : return per_element_ratio_selector< H, CV_8S  >( m, numerator, denominator, otype, opname );
-        case CV_16U: return per_element_ratio_selector< H, CV_16U >( m, numerator, denominator, otype, opname );
-        case CV_16S: return per_element_ratio_selector< H, CV_16S >( m, numerator, denominator, otype, opname );
-        case CV_32S: return per_element_ratio_selector< H, CV_32S >( m, numerator, denominator, otype, opname );
-        case CV_32F: return per_element_ratio_selector< H, CV_32F >( m, numerator, denominator, otype, opname );
-        case CV_64F: return per_element_ratio_selector< H, CV_64F >( m, numerator, denominator, otype, opname );
+        case CV_8U : return per_element_ratio_selector< H, CV_8U  >( m, coefficients, otype, opname );
+        case CV_8S : return per_element_ratio_selector< H, CV_8S  >( m, coefficients, otype, opname );
+        case CV_16U: return per_element_ratio_selector< H, CV_16U >( m, coefficients, otype, opname );
+        case CV_16S: return per_element_ratio_selector< H, CV_16S >( m, coefficients, otype, opname );
+        case CV_32S: return per_element_ratio_selector< H, CV_32S >( m, coefficients, otype, opname );
+        case CV_32F: return per_element_ratio_selector< H, CV_32F >( m, coefficients, otype, opname );
+        case CV_64F: return per_element_ratio_selector< H, CV_64F >( m, coefficients, otype, opname );
     }
     COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
@@ -2615,11 +2614,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
         if ( !status || ( begin != end ) ) { COMMA_THROW( comma::exception, e[0] << ": expected a " << e[0] << " expression, got: \"" << comma::join( e, '=' ) << "\"" ); }
         if ( e[0] == "linear-combination" && !r.denominator.unity() ) { COMMA_THROW( comma::exception, e[0] << ": expected a linear combination expression, got a ratio" ); }
-        std::vector< double > numerator( r.numerator.terms.size() );
-        for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
-        std::vector< double > denominator( r.denominator.terms.size() );
-        for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
-        return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] ), true );
+        if( r.numerator.terms.size() != r.denominator.terms.size() )
+            { COMMA_THROW( comma::exception, e[0] << ": the number of numerator " << r.numerator.terms.size() << " and denominator " << r.denominator.terms.size() << " coefficients differs" ); }
+        ratios::coefficients coefficients;
+        coefficients.reserve( ratios::channel::NUM_CHANNELS );
+        for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { coefficients.push_back( std::make_pair( r.numerator.terms[j].value, r.denominator.terms[j].value ) ); }
+        return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, coefficients, e[0] ), true );
     }
     if( snark::cv_mat::morphology::operations().find( e[0] ) != snark::cv_mat::morphology::operations().end() )
     {
