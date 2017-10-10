@@ -108,6 +108,12 @@ struct rtcm_corrections : public comma::packed::packed_struct<rtcm_corrections,2
     rtcm_corrections(const char* buf, unsigned size);
 };
 
+struct position_standard_deviation : public comma::packed::packed_struct<position_standard_deviation,12>
+{
+    enum { id = 24 };
+    boost::array<comma::packed::little_endian_float32,3> stddev;
+};
+
 struct velocity_standard_deviation : public comma::packed::packed_struct<velocity_standard_deviation,12>
 {
     enum { id = 25 };

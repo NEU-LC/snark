@@ -110,6 +110,9 @@ void device::process()
                 case messages::satellites::id:
                     handle(reinterpret_cast<messages::satellites*>(&buf[head+5]));
                     break;
+                case messages::position_standard_deviation::id:
+                    handle(reinterpret_cast<messages::position_standard_deviation*>(&buf[head+5]));
+                    break;
                 case messages::velocity_standard_deviation::id:
                     handle(reinterpret_cast<messages::velocity_standard_deviation*>(&buf[head+5]));
                     break;
@@ -150,8 +153,9 @@ void device::send_ntrip(std::vector<char> buf)
         messages::rtcm_corrections msg(&buf[index],size);
         index+=size;
 //         comma::verbose<<"rtcm_corrections "<<size<<std::endl;
-        std::size_t written=boost::asio::write(port, boost::asio::buffer(msg.data(),size+messages::header::size));
-        comma::verbose<<"device::send_ntrip "<<written<<std::endl;
+        std::size_t to_write=size+messages::header::size;
+        std::size_t written=boost::asio::write(port, boost::asio::buffer(msg.data(),to_write));
+        if(written!=to_write) { std::cerr<<"writing ntrip msg failed (expected "<<to_write<<" actual "<<written<<" )"<<std::endl; }
     }
 }
 
