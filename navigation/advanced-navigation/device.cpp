@@ -150,7 +150,8 @@ void device::send_ntrip(std::vector<char> buf)
         messages::rtcm_corrections msg(&buf[index],size);
         index+=size;
 //         comma::verbose<<"rtcm_corrections "<<size<<std::endl;
-        boost::asio::write(port, boost::asio::buffer(msg.data(),size+messages::header::size));
+        std::size_t written=boost::asio::write(port, boost::asio::buffer(msg.data(),size+messages::header::size));
+        comma::verbose<<"device::send_ntrip "<<written<<std::endl;
     }
 }
 
