@@ -535,22 +535,6 @@ int main( int argc, char** argv )
         
         std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format", "-.*" );
         
-        std::unique_ptr<factory_i> factory;
-        if(options.exists("--raw"))
-        {
-            factory.reset(new factory_t<app_raw>());
-        }
-        else
-        {
-            if(unnamed.size()!=1) { COMMA_THROW( comma::exception, "expected one unnamed arguement, got: "<<unnamed.size()); }
-            if(unnamed[0]=="navigation") { factory.reset(new factory_t<app_nav>()); }
-            else if(unnamed[0]=="all") { factory.reset(new factory_t<app_all>()); }
-            else if(unnamed[0]=="raw-sensors") { factory.reset(new factory_t<app_packet<messages::raw_sensors>>()); }
-            else if(unnamed[0]=="system-state") { factory.reset(new factory_t<app_packet<messages::system_state>>()); }
-            else if(unnamed[0]=="satellites") { factory.reset(new factory_t<app_packet<messages::satellites>>()); }
-            else { COMMA_THROW( comma::exception,"expected <what>: navigation | raw-sensors | system-state | all; got "<<unnamed[1]);}
-        }
-        
         auto opt_description=options.optional<std::string>("--description");
         if(opt_description)
         {
@@ -567,6 +551,22 @@ int main( int argc, char** argv )
                 COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got "<<*opt_description);
             }
             return 0;
+        }
+        
+        std::unique_ptr<factory_i> factory;
+        if(options.exists("--raw"))
+        {
+            factory.reset(new factory_t<app_raw>());
+        }
+        else
+        {
+            if(unnamed.size()!=1) { COMMA_THROW( comma::exception, "expected one unnamed arguement, got: "<<unnamed.size()); }
+            if(unnamed[0]=="navigation") { factory.reset(new factory_t<app_nav>()); }
+            else if(unnamed[0]=="all") { factory.reset(new factory_t<app_all>()); }
+            else if(unnamed[0]=="raw-sensors") { factory.reset(new factory_t<app_packet<messages::raw_sensors>>()); }
+            else if(unnamed[0]=="system-state") { factory.reset(new factory_t<app_packet<messages::system_state>>()); }
+            else if(unnamed[0]=="satellites") { factory.reset(new factory_t<app_packet<messages::satellites>>()); }
+            else { COMMA_THROW( comma::exception,"expected <what>: navigation | raw-sensors | system-state | all; got "<<unnamed[1]);}
         }
         
         if(options.exists("--output-fields")) { factory->output_fields(); return 0; }
