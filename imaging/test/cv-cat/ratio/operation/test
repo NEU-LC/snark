@@ -15,7 +15,8 @@ while true ; do
     (( ++i ))
 done
 for n in ${!formulae[@]} ; do
-    echo "formula[$n]/expr=\"${formulae[$n]}\""
+    m=0
+    echo "${formulae[$n]}" | tr ',' '\n' | while true ; do read v; if [[ -z "$v" ]] ; then break; fi; echo "formula[$n]/expr[$m]=\"$v\""; ((++m)); done
 done
 
 output_dir="output"
