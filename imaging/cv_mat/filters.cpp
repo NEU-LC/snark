@@ -2624,6 +2624,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if ( s.empty() ) { COMMA_THROW( comma::exception, e[0] << ": empty right-hand side" ); }
         if ( s.size() >= 4 ) { COMMA_THROW( comma::exception, e[0] << ": cannot support more then 4 output channels" ); }
         for ( const auto & t : s ) {
+            if ( t.empty() ) { // pass-through this channel
+                coefficients.push_back( ratios::coefficients( ratios::channel::NUM_CHANNELS, std::make_pair( 0.0, 0.0 ) ) );
+                coefficients.back()[ coefficients.size() ].first = 1.0;
+                coefficients.back()[ 0 ].second = 1.0;
+                continue;
+            }
             ratios::ratio r;
             iterator_type begin = t.begin();
             iterator_type end = t.end();
