@@ -220,6 +220,14 @@ namespace ratios
         o << w << "ratios and linear combinations are cumulative, i.e., repeated terms for the same channels\n";
         o << w << "are accumulated:\n";
         o << w << "    -r +2r - r                       -->  0,0,0,0,0\n";
+        o << w << "\n";
+        o << w << "multiple ratio or linear combination expressions may be specified separated by commas;\n";
+        o << w << "each of the expressions is applied to calculate one of the output image channels, the order\n";
+        o << w << "of expressions corresponding to the order of channels; expressions are parsed as explained above;\n";
+        o << w << "it is possible to use either ratio or linear combination syntax for different expressions;\n";
+        o << w << "if an expression is left undefined (empty), such as in '-r+g,,r+g', the empty string is interpreted\n";
+        o << w << "as a channel pass-through; e.g., in case of the string above, the output channel 1 (g) is copied\n";
+        o << w << "verbatim from the input image.\n";
         return o.str();
     }
 
