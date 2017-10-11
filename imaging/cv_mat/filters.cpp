@@ -1789,42 +1789,51 @@ typename impl::filters< H >::value_type fft_impl_( typename impl::filters< H >::
 }
 
 template< int DepthIn, int DepthOut >
-static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const ratios::coefficients & coefficients, cv::Mat& result )
+static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< ratios::coefficients > & coefficients, cv::Mat& result )
 {
     typedef typename depth_traits< DepthIn >::value_t value_in_t;
     typedef typename depth_traits< DepthOut >::value_t value_out_t;
-    const unsigned int channels = m.channels();
-    const unsigned int cols = m.cols * channels;
+    const unsigned int ichannels = m.channels();
+    const unsigned int ochannels = result.channels();
+    if ( ochannels != coefficients.size() ) { COMMA_THROW( comma::exception, "the number of output channels " << ochannels << " differs from the number of ratios " << coefficients.size() ); }
+    const unsigned int icols = m.cols * ichannels;
     static const value_out_t highest = std::numeric_limits< value_out_t >::max();
     static const value_out_t lowest = std::numeric_limits< value_out_t >::is_integer ? std::numeric_limits< value_out_t >::min() : -highest;
     for( unsigned int i = r.begin(); i < r.end(); ++i )
     {
         const value_in_t* in = m.ptr< value_in_t >(i);
+        const value_in_t* inc = in;
         value_out_t* out = result.ptr< value_out_t >(i);
-        for( unsigned int j = 0; j < cols; j += channels )
+        for( unsigned int j = 0; j < icols; j += ichannels )
         {
-            double n = coefficients[0].first;
-            double d = coefficients[0].second;
-            for( unsigned int k = 0; k < channels; ++k ) {
-                n += *in * coefficients[k + 1].first;
-                d += *in++ * coefficients[k + 1].second;
+            for ( const auto & coeffs : coefficients )
+            {
+                in = inc;
+                double n = coeffs[0].first;
+                double d = coeffs[0].second;
+                for( unsigned int k = 0; k < ichannels; ++k ) {
+                    n += *in * coeffs[k + 1].first;
+                    d += *in++ * coeffs[k + 1].second;
+                }
+                double value = ( d == 0 ? ( n == 0 ? 0 : highest ) : n / d );
+                *out++ = value > highest ? highest : value < lowest ? lowest : value;
             }
-            double value = ( d == 0 ? ( n == 0 ? 0 : highest ) : n / d );
-            *out++ = value > highest ? highest : value < lowest ? lowest : value;
+            inc = in;
         }
     }
 }
 
 template< typename H, int DepthIn, int DepthOut >
-static typename impl::filters< H >::value_type per_element_ratio( const typename impl::filters< H >::value_type m, const ratios::coefficients & coefficients )
+static typename impl::filters< H >::value_type per_element_ratio( const typename impl::filters< H >::value_type m, const std::vector< ratios::coefficients > & coefficients )
 {
-    cv::Mat result( m.second.size(), DepthOut );
+    int otype = CV_MAKETYPE( DepthOut, coefficients.size() );
+    cv::Mat result( m.second.size(), otype );
     tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< DepthIn, DepthOut >, _1, m.second, coefficients, boost::ref( result ) ) );
     return typename impl::filters< H >::value_type( m.first, result );
 }
 
 template< typename H, int DepthIn >
-static typename impl::filters< H >::value_type per_element_ratio_selector( const typename impl::filters< H >::value_type m, const ratios::coefficients & coefficients, int otype, const std::string & opname )
+static typename impl::filters< H >::value_type per_element_ratio_selector( const typename impl::filters< H >::value_type m, const std::vector< ratios::coefficients > & coefficients, int otype, const std::string & opname )
 {
     switch( otype )
     {
@@ -1840,13 +1849,15 @@ static typename impl::filters< H >::value_type per_element_ratio_selector( const
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type ratio_impl_( const typename impl::filters< H >::value_type m, const ratios::coefficients & coefficients, const std::string & opname )
+static typename impl::filters< H >::value_type ratio_impl_( const typename impl::filters< H >::value_type m, const std::vector< ratios::coefficients > & coefficients, const std::string & opname )
 {
     // the coefficients are always constant,r,g,b,a (some of the values can be zero); it is ok to have fewer channels than coefficients as long as all the unused coefficients are zero
     for ( size_t n = static_cast< size_t >( m.second.channels() ) + 1 ; n < coefficients.size(); ++n ) {
-        if ( coefficients[n].first != 0.0 || coefficients[n].second != 0.0 ) {
-            const std::string & what = coefficients[n].first != 0.0 ? "numerator" : "denominator";
-            COMMA_THROW( comma::exception, opname << ": have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
+        for ( size_t l = 0; l < coefficients[n].size(); ++l ) {
+            if ( coefficients[n][l].first != 0.0 || coefficients[n][l].second != 0.0 ) {
+                const std::string & what = coefficients[n][l].first != 0.0 ? "numerator" : "denominator";
+                COMMA_THROW( comma::exception, opname << ": have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
+            }
         }
     }
     int otype = single_channel_type( m.second.type() );
@@ -2611,6 +2622,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         std::vector< ratios::coefficients > coefficients;
         const std::vector< std::string > & s = comma::split( e[1], ',' );
         if ( s.empty() ) { COMMA_THROW( comma::exception, e[0] << ": empty right-hand side" ); }
+        if ( s.size() >= 4 ) { COMMA_THROW( comma::exception, e[0] << ": cannot support more then 4 output channels" ); }
         for ( const auto & t : s ) {
             ratios::ratio r;
             iterator_type begin = t.begin();
@@ -2623,7 +2635,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             coefficients.back().reserve( ratios::channel::NUM_CHANNELS );
             for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { coefficients.back().push_back( std::make_pair( r.numerator.terms[j].value, r.denominator.terms[j].value ) ); }
         }
-        return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, coefficients.front(), e[0] ), true );
+        return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, coefficients, e[0] ), true );
     }
     if( snark::cv_mat::morphology::operations().find( e[0] ) != snark::cv_mat::morphology::operations().end() )
     {
