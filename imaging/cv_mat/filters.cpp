@@ -2614,7 +2614,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
         return std::make_pair( boost::bind< value_type_t >( threshold_impl_< H >, _1, threshold, maxval, type, otsu ), true );
     }
-    if( e[0] == "linear-combination" || e[0] == "ratio" )
+    if( e[0] == "linear-combination" || e[0] == "ratio" || e[0] == "shuffle" )
     {
         typedef std::string::const_iterator iterator_type;
         ratios::rules< iterator_type > rules;
@@ -2623,6 +2623,14 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         const std::vector< std::string > & s = comma::split( e[1], ',' );
         if ( s.empty() ) { COMMA_THROW( comma::exception, e[0] << ": empty right-hand side" ); }
         if ( s.size() >= 4 ) { COMMA_THROW( comma::exception, e[0] << ": cannot support more then 4 output channels" ); }
+        if ( e[0] == "shuffle" ) {
+            std::set< std::string > permitted = { "r", "g", "b", "a" };
+            for ( const auto & t : s ) {
+                if ( t.empty() ) continue;
+                if ( permitted.find( t ) != permitted.end() ) continue;
+                COMMA_THROW( comma::exception, "shuffle operation allows only symbolic channel names (rgba) or empty fields, not '" << t << "'" );
+            }
+        }
         for ( const auto & t : s ) {
             if ( t.empty() ) { // pass-through this channel
                 coefficients.push_back( ratios::coefficients( ratios::channel::NUM_CHANNELS, std::make_pair( 0.0, 0.0 ) ) );
@@ -3153,6 +3161,9 @@ static std::string usage_impl_()
     oss << "        clone-channels=<n>: take 1-channel image, output n-channel image, with each channel a copy of the input" << std::endl;
     oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
+    oss << "        shuffle=<list>; re-shuffle input channels, e.g., shuffle=r,b,g - swap channels 1 and 2; channels are described by symbolic names 'r', 'g', 'b', and 'a'," << std::endl;
+    oss << "            where 'r' is always channel[0], 'b' is channel[1], etc.; if a field is left empty, the corresponding channel is copied verbatim from the input" << std::endl;
+    oss << "            more examples: shuffle=,b - drop channel b, leave 2 channels; shuffle=, - drop channel b; shuffle=r,g,r,g - duplicate r and g, drop b" << std::endl;
     oss << std::endl;
     oss << "    operations on \"forked\" image stream:" << std::endl;
     oss << "        semantics: take input image, apply some filters to it, then apply the operation between the input and resulting image" << std::endl;

@@ -1,0 +1,8 @@
+output[0]="0,0,100,75,50"
+status[0]=0
+output[1]="0,0,100,75,50"
+status[1]=0
+output[2]="0,0,75,100"
+status[2]=0
+status[3]=1
+status[4]=1

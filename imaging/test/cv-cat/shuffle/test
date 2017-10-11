@@ -1,0 +1,30 @@
+#!/bin/bash
+
+scriptname=$( basename "$0" )
+
+source $( which comma-application-util ) || { echo "$scriptname: cannot source 'comma-application-util'" >&2; exit 1; }
+comma_path_value_to_var --prefix=input
+
+[[ -r "$input_file" ]] || { echo "$scriptname: cannot read input file '$input_file'" >&2; exit 1; }
+
+formulae=()
+i=0
+while true ; do
+    vname="input_formulae_$i"
+    eval input_formulae=\$$vname
+    [[ -n "$input_formulae" ]] || break
+    formulae+=( "$input_formulae" )
+    (( ++i ))
+done
+
+for k in "${!formulae[@]}" ; do
+    formula=${formulae[$k]}
+    echo "formula[$k]=\"$formula\""
+    cv-cat --file "$input_file" \
+        | cv-cat "shuffle=$formula" \
+        | image-to-csv \
+        | head -n 1 \
+        | sed 's/[^,]*,//' \
+        | sed "s/^/output[$k]=\"/;s/$/\"/"
+    comma_status_ok && echo "status[$k]=0" || echo "status[$k]=1"
+done
