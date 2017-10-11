@@ -2622,7 +2622,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         std::vector< ratios::coefficients > coefficients;
         const std::vector< std::string > & s = comma::split( e[1], ',' );
         if ( s.empty() ) { COMMA_THROW( comma::exception, e[0] << ": empty right-hand side" ); }
-        if ( s.size() >= 4 ) { COMMA_THROW( comma::exception, e[0] << ": cannot support more then 4 output channels" ); }
+        if ( s.size() > 4 ) { COMMA_THROW( comma::exception, e[0] << ": cannot support more then 4 output channels" ); }
         if ( e[0] == "shuffle" ) {
             std::set< std::string > permitted = { "r", "g", "b", "a" };
             for ( const auto & t : s ) {

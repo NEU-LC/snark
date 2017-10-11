@@ -6,3 +6,5 @@ output[2]="0,0,75,100"
 status[2]=0
 status[3]=1
 status[4]=1
+output[5]="0,0,100,75,100,75"
+status[5]=0
