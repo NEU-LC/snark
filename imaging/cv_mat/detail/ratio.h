@@ -141,6 +141,8 @@ namespace ratios
         parser( const qi::rule< Iterator, What(), ascii::space_type > & start ) : parser::base_type( start ) {}
     };
 
+    typedef std::vector< std::pair< double, double > > coefficients;
+
 } // namespace ratios
 
 } }  // namespace snark { namespace cv_mat {

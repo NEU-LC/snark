@@ -138,7 +138,7 @@ args=
 [[ $options_verbose ]] && args+=" --verbose"
 args=${args# }
 
-command="basler-cat log=.,period:$options_period;null $args"
+command="basler-cat log=.,period:$options_period,index;null $args"
 
 verbose "executing \"$command\""
 

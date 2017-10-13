@@ -14,8 +14,22 @@ while true ; do
     formulae+=( "$input_formulae" )
     (( ++i ))
 done
+
+function output() {
+    local m=0
+    local default_formulae=( "r" "g" "b" "a" )
+    local v
+    while true ; do
+        read v
+        if [[ -z "$v" ]] ; then break; fi
+        if [[ "$v" == "@" ]]; then v="${default_formulae[$m]}" ; fi
+        echo "formula[$n]/expr[$m]=\"$v\"";
+        ((++m));
+    done
+}
+
 for n in ${!formulae[@]} ; do
-    echo "formula[$n]/expr=\"${formulae[$n]}\""
+    echo "${formulae[$n]}" | sed 's/^,/@,/;s/,,/,@,/g;s/,$/,@/' | tr ',' '\n' | output
 done
 
 output_dir="output"

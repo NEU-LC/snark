@@ -1,0 +1,7 @@
+file="data/image.png"
+formulae_0="r,g,b"
+formulae_1="r,g,"
+formulae_2="g,r"
+formulae_3="2g,r"
+formulae_4="r+g"
+formulae_5="r,g,r,g"

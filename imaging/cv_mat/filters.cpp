@@ -155,6 +155,7 @@ namespace {
             return m;
         }
     };
+
 } // anonymous
 
 namespace snark{ namespace cv_mat {
@@ -1788,79 +1789,88 @@ typename impl::filters< H >::value_type fft_impl_( typename impl::filters< H >::
 }
 
 template< int DepthIn, int DepthOut >
-static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< double >& numerator, const std::vector< double >& denominator, cv::Mat& result )
+static void ratio( const tbb::blocked_range< std::size_t >& r, const cv::Mat& m, const std::vector< ratios::coefficients > & coefficients, cv::Mat& result )
 {
     typedef typename depth_traits< DepthIn >::value_t value_in_t;
     typedef typename depth_traits< DepthOut >::value_t value_out_t;
-    const unsigned int channels = m.channels();
-    const unsigned int cols = m.cols * channels;
+    const unsigned int ichannels = m.channels();
+    const unsigned int ochannels = result.channels();
+    if ( ochannels != coefficients.size() ) { COMMA_THROW( comma::exception, "the number of output channels " << ochannels << " differs from the number of ratios " << coefficients.size() ); }
+    const unsigned int icols = m.cols * ichannels;
     static const value_out_t highest = std::numeric_limits< value_out_t >::max();
     static const value_out_t lowest = std::numeric_limits< value_out_t >::is_integer ? std::numeric_limits< value_out_t >::min() : -highest;
     for( unsigned int i = r.begin(); i < r.end(); ++i )
     {
         const value_in_t* in = m.ptr< value_in_t >(i);
+        const value_in_t* inc = in;
         value_out_t* out = result.ptr< value_out_t >(i);
-        for( unsigned int j = 0; j < cols; j += channels )
+        for( unsigned int j = 0; j < icols; j += ichannels )
         {
-            double n = numerator[0];
-            double d = denominator[0];
-            for( unsigned int k = 0; k < channels; ++k ) {
-                n += *in * numerator[k + 1];
-                d += *in++ * denominator[k + 1];
+            for ( const auto & coeffs : coefficients )
+            {
+                in = inc;
+                double n = coeffs[0].first;
+                double d = coeffs[0].second;
+                for( unsigned int k = 0; k < ichannels; ++k ) {
+                    n += *in * coeffs[k + 1].first;
+                    d += *in++ * coeffs[k + 1].second;
+                }
+                double value = ( d == 0 ? ( n == 0 ? 0 : highest ) : n / d );
+                *out++ = value > highest ? highest : value < lowest ? lowest : value;
             }
-            double value = ( d == 0 ? ( n == 0 ? 0 : highest ) : n / d );
-            *out++ = value > highest ? highest : value < lowest ? lowest : value;
+            inc = in;
         }
     }
 }
 
 template< typename H, int DepthIn, int DepthOut >
-static typename impl::filters< H >::value_type per_element_ratio( const typename impl::filters< H >::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator )
+static typename impl::filters< H >::value_type per_element_ratio( const typename impl::filters< H >::value_type m, const std::vector< ratios::coefficients > & coefficients )
 {
-    cv::Mat result( m.second.size(), DepthOut );
-    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< DepthIn, DepthOut >, _1, m.second, numerator, denominator, boost::ref( result ) ) );
+    int otype = CV_MAKETYPE( DepthOut, coefficients.size() );
+    cv::Mat result( m.second.size(), otype );
+    tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows ), boost::bind( &ratio< DepthIn, DepthOut >, _1, m.second, coefficients, boost::ref( result ) ) );
     return typename impl::filters< H >::value_type( m.first, result );
 }
 
 template< typename H, int DepthIn >
-static typename impl::filters< H >::value_type per_element_ratio_selector( const typename impl::filters< H >::value_type m, const std::vector< double >& numerator, const std::vector< double > & denominator, int otype, const std::string & opname )
+static typename impl::filters< H >::value_type per_element_ratio_selector( const typename impl::filters< H >::value_type m, const std::vector< ratios::coefficients > & coefficients, int otype, const std::string & opname )
 {
     switch( otype )
     {
-        case CV_8U : return per_element_ratio< H, DepthIn, CV_8U  >( m, numerator, denominator );
-        case CV_8S : return per_element_ratio< H, DepthIn, CV_8S  >( m, numerator, denominator );
-        case CV_16U: return per_element_ratio< H, DepthIn, CV_16U >( m, numerator, denominator );
-        case CV_16S: return per_element_ratio< H, DepthIn, CV_16S >( m, numerator, denominator );
-        case CV_32S: return per_element_ratio< H, DepthIn, CV_32S >( m, numerator, denominator );
-        case CV_32F: return per_element_ratio< H, DepthIn, CV_32F >( m, numerator, denominator );
-        case CV_64F: return per_element_ratio< H, DepthIn, CV_64F >( m, numerator, denominator );
+        case CV_8U : return per_element_ratio< H, DepthIn, CV_8U  >( m, coefficients );
+        case CV_8S : return per_element_ratio< H, DepthIn, CV_8S  >( m, coefficients );
+        case CV_16U: return per_element_ratio< H, DepthIn, CV_16U >( m, coefficients );
+        case CV_16S: return per_element_ratio< H, DepthIn, CV_16S >( m, coefficients );
+        case CV_32S: return per_element_ratio< H, DepthIn, CV_32S >( m, coefficients );
+        case CV_32F: return per_element_ratio< H, DepthIn, CV_32F >( m, coefficients );
+        case CV_64F: return per_element_ratio< H, DepthIn, CV_64F >( m, coefficients );
     }
     COMMA_THROW( comma::exception, opname << ": unrecognised output image type " << otype );
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type ratio_impl_( const typename impl::filters< H >::value_type m, const std::vector< double >& numerator, const std::vector< double >& denominator, const std::string & opname )
+static typename impl::filters< H >::value_type ratio_impl_( const typename impl::filters< H >::value_type m, const std::vector< ratios::coefficients > & coefficients, const std::string & opname )
 {
-    if( numerator.size() != denominator.size() )
-        { COMMA_THROW( comma::exception, opname << ": the number of numerator " << numerator.size() << " and denominator " << denominator.size() << " coefficients differs" ); }
     // the coefficients are always constant,r,g,b,a (some of the values can be zero); it is ok to have fewer channels than coefficients as long as all the unused coefficients are zero
-    for ( size_t n = static_cast< size_t >( m.second.channels() ) + 1 ; n < numerator.size(); ++n ) {
-        if ( numerator[n] != 0.0 || denominator[n] != 0.0 ) {
-            const std::string & what = numerator[n] != 0.0 ? "numerator" : "denominator";
-            COMMA_THROW( comma::exception, opname << ": have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
+    for ( size_t n = static_cast< size_t >( m.second.channels() ) + 1 ; n < coefficients.size(); ++n ) {
+        for ( size_t l = 0; l < coefficients[n].size(); ++l ) {
+            if ( coefficients[n][l].first != 0.0 || coefficients[n][l].second != 0.0 ) {
+                const std::string & what = coefficients[n][l].first != 0.0 ? "numerator" : "denominator";
+                COMMA_THROW( comma::exception, opname << ": have " << m.second.channels() << " channel(s) only, requested non-zero " << what << " coefficient for channel " << n - 1 );
+            }
         }
     }
     int otype = single_channel_type( m.second.type() );
     if ( otype != CV_64FC1 ) { otype = CV_32FC1; }
     switch( m.second.depth() )
     {
-        case CV_8U : return per_element_ratio_selector< H, CV_8U  >( m, numerator, denominator, otype, opname );
-        case CV_8S : return per_element_ratio_selector< H, CV_8S  >( m, numerator, denominator, otype, opname );
-        case CV_16U: return per_element_ratio_selector< H, CV_16U >( m, numerator, denominator, otype, opname );
-        case CV_16S: return per_element_ratio_selector< H, CV_16S >( m, numerator, denominator, otype, opname );
-        case CV_32S: return per_element_ratio_selector< H, CV_32S >( m, numerator, denominator, otype, opname );
-        case CV_32F: return per_element_ratio_selector< H, CV_32F >( m, numerator, denominator, otype, opname );
-        case CV_64F: return per_element_ratio_selector< H, CV_64F >( m, numerator, denominator, otype, opname );
+        case CV_8U : return per_element_ratio_selector< H, CV_8U  >( m, coefficients, otype, opname );
+        case CV_8S : return per_element_ratio_selector< H, CV_8S  >( m, coefficients, otype, opname );
+        case CV_16U: return per_element_ratio_selector< H, CV_16U >( m, coefficients, otype, opname );
+        case CV_16S: return per_element_ratio_selector< H, CV_16S >( m, coefficients, otype, opname );
+        case CV_32S: return per_element_ratio_selector< H, CV_32S >( m, coefficients, otype, opname );
+        case CV_32F: return per_element_ratio_selector< H, CV_32F >( m, coefficients, otype, opname );
+        case CV_64F: return per_element_ratio_selector< H, CV_64F >( m, coefficients, otype, opname );
     }
     COMMA_THROW( comma::exception, opname << ": unrecognised input image type " << m.second.type() );
 }
@@ -2604,22 +2614,42 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
         return std::make_pair( boost::bind< value_type_t >( threshold_impl_< H >, _1, threshold, maxval, type, otsu ), true );
     }
-    if( e[0] == "linear-combination" || e[0] == "ratio" )
+    if( e[0] == "linear-combination" || e[0] == "ratio" || e[0] == "shuffle" )
     {
         typedef std::string::const_iterator iterator_type;
         ratios::rules< iterator_type > rules;
         ratios::parser< iterator_type, ratios::ratio > parser( rules.ratio_ );
-        ratios::ratio r;
-        iterator_type begin = e[1].begin();
-        iterator_type end = e[1].end();
-        bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
-        if ( !status || ( begin != end ) ) { COMMA_THROW( comma::exception, e[0] << ": expected a " << e[0] << " expression, got: \"" << comma::join( e, '=' ) << "\"" ); }
-        if ( e[0] == "linear-combination" && !r.denominator.unity() ) { COMMA_THROW( comma::exception, e[0] << ": expected a linear combination expression, got a ratio" ); }
-        std::vector< double > numerator( r.numerator.terms.size() );
-        for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { numerator[j] = r.numerator.terms[j].value; }
-        std::vector< double > denominator( r.denominator.terms.size() );
-        for( size_t j = 0; j < r.denominator.terms.size(); ++j ) { denominator[j] = r.denominator.terms[j].value; }
-        return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, numerator, denominator, e[0] ), true );
+        std::vector< ratios::coefficients > coefficients;
+        const std::vector< std::string > & s = comma::split( e[1], ',' );
+        if ( s.empty() ) { COMMA_THROW( comma::exception, e[0] << ": empty right-hand side" ); }
+        if ( s.size() > 4 ) { COMMA_THROW( comma::exception, e[0] << ": cannot support more then 4 output channels" ); }
+        if ( e[0] == "shuffle" ) {
+            std::set< std::string > permitted = { "r", "g", "b", "a" };
+            for ( const auto & t : s ) {
+                if ( t.empty() ) continue;
+                if ( permitted.find( t ) != permitted.end() ) continue;
+                COMMA_THROW( comma::exception, "shuffle operation allows only symbolic channel names (rgba) or empty fields, not '" << t << "'" );
+            }
+        }
+        for ( const auto & t : s ) {
+            if ( t.empty() ) { // pass-through this channel
+                coefficients.push_back( ratios::coefficients( ratios::channel::NUM_CHANNELS, std::make_pair( 0.0, 0.0 ) ) );
+                coefficients.back()[ coefficients.size() ].first = 1.0;
+                coefficients.back()[ 0 ].second = 1.0;
+                continue;
+            }
+            ratios::ratio r;
+            iterator_type begin = t.begin();
+            iterator_type end = t.end();
+            bool status = phrase_parse( begin, end, parser, boost::spirit::ascii::space, r );
+            if ( !status || ( begin != end ) ) { COMMA_THROW( comma::exception, e[0] << ": expected a " << e[0] << " expression, got: \"" << t << "\"" ); }
+            if ( e[0] == "linear-combination" && !r.denominator.unity() ) { COMMA_THROW( comma::exception, e[0] << ": expected a linear combination expression, got a ratio" ); }
+            if( r.numerator.terms.size() != r.denominator.terms.size() ) { COMMA_THROW( comma::exception, e[0] << ": the number of numerator " << r.numerator.terms.size() << " and denominator " << r.denominator.terms.size() << " coefficients differs" ); }
+            coefficients.push_back( ratios::coefficients() );
+            coefficients.back().reserve( ratios::channel::NUM_CHANNELS );
+            for( size_t j = 0; j < r.numerator.terms.size(); ++j ) { coefficients.back().push_back( std::make_pair( r.numerator.terms[j].value, r.denominator.terms[j].value ) ); }
+        }
+        return std::make_pair( boost::bind< value_type_t >( ratio_impl_< H >, _1, coefficients, e[0] ), true );
     }
     if( snark::cv_mat::morphology::operations().find( e[0] ) != snark::cv_mat::morphology::operations().end() )
     {
@@ -3131,6 +3161,9 @@ static std::string usage_impl_()
     oss << "        clone-channels=<n>: take 1-channel image, output n-channel image, with each channel a copy of the input" << std::endl;
     oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
+    oss << "        shuffle=<list>; re-shuffle input channels, e.g., shuffle=r,b,g - swap channels 1 and 2; channels are described by symbolic names 'r', 'g', 'b', and 'a'," << std::endl;
+    oss << "            where 'r' is always channel[0], 'b' is channel[1], etc.; if a field is left empty, the corresponding channel is copied verbatim from the input" << std::endl;
+    oss << "            more examples: shuffle=,b - drop channel b, leave 2 channels; shuffle=, - drop channel b; shuffle=r,g,r,g - duplicate r and g, drop b" << std::endl;
     oss << std::endl;
     oss << "    operations on \"forked\" image stream:" << std::endl;
     oss << "        semantics: take input image, apply some filters to it, then apply the operation between the input and resulting image" << std::endl;
@@ -3253,16 +3286,26 @@ static std::string usage_impl_()
     oss << "                      \"open=rectangle,7,3\"; apply opening with a 7x3 rectangle anchored at the center (note only two parameters)" << std::endl;
     oss << std::endl;
     oss << "    multiple-channel operations" << std::endl;
-    oss << "        linear-combination=<a1>r + <a2>g + ... + <ac>: output grey-scale image that is linear combination of input channels with given coefficients and optional offset" << std::endl;
+    oss << "        linear-combination=<a1>r + <a2>g + ... + <ac>: output a grey-scale image that is a linear combination of input channels with given coefficients and optional offset" << std::endl;
     oss << "            example: \"linear-combination=-r+2g-b\", highlights the green channel" << std::endl;
     oss << "            naming conventions are the same as for the ratio operation; use '--help filters::linear-combination' for more examples and a detailed syntax explanation" << std::endl;
-    oss << "        ratio=(<a1>r + <a2>g + ... + <ac>)/(<b1>r + <b2>g + ... + <bc>): output grey-scale image that is a ratio of linear combinations of input channels" << std::endl;
+    oss << "        linear-combination=expr0,expr1...: output multi-channel image where each output channel is calculated as a linear combination of input channels" << std::endl;
+    oss << "            according to the provided comma-separated expressions (expr0 goes to channel 0, expr1 to channel 1, etc.); if any of the expressions is omitted" << std::endl;
+    oss << "            (empty), it is interpreted as a pass-through of the respective channel" << std::endl;
+    oss << "        ratio=(<a1>r + <a2>g + ... + <ac>)/(<b1>r + <b2>g + ... + <bc>): output a grey-scale image that is a ratio of linear combinations of input channels" << std::endl;
     oss << "            with given coefficients and offsets; see below for examples, use '--help filters::ratio' for the detailed explanation of the syntax and examples" << std::endl;
     oss << "            the naming convention does not depend on the actual image channels: 'r' in the ratio expression is always interpreted as channel[0]," << std::endl;
     oss << "            'g' as channel[1], etc.; in particular, grey-scaled images have a single channel that shall be referred to as 'r', e.g., ratio=r / ( r + 1 )" << std::endl;
+    oss << "        ratio=expr0,expr1...: output a multi-channel image where each output channel is calculated as a ratio of linear combinations of input channels" << std::endl;
+    oss << "            given by the provided comma-separated expressions (expr0 goes to channel 0, expr1 to channel 1, etc.; if any of the expressions is empty" << std::endl;
+    oss << "            (omitted), it is interpreted as a pass-through (see examples)" << std::endl;
+    oss << std::endl;
     oss << "            examples: \"ratio=( r + g + b ) / ( 1 + a )\"; output a grey-scale image equal to the sum of the first 3 channels" << std::endl;
     oss << "                          divided by the offset 4th channel" << std::endl;
     oss << "                      \"ratio=( r - b ) / ( r + b )\"; output normalized difference of channels 'r' and 'g'" << std::endl;
+    oss << "                      \"ratio=,( r - b ) / ( r + b )\"; output a 2-channel image, output channel 0 (r) is copied from the input as is, while output channel 1 (g)" << std::endl;
+    oss << "                          contains normalized difference of channels 'r' and 'g'" << std::endl;
+    oss << std::endl;
     oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations" << std::endl;
