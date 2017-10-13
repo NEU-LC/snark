@@ -146,6 +146,7 @@ if [[ $options_config ]]; then
 fi
 
 packet_spec_fields="field,packet_format,output_format,conversion_function,is_default"
+packet_spec_format="s[128],s[10],s[10],s[128],b"
 
 declare -A commands packet_spec
 
@@ -316,7 +317,7 @@ EOF
 function invalid_data_designators()
 {
     echo "${packet_spec[loop2]}" \
-        | csv-select --fields=$packet_spec_fields "output_format;regex=(f|d)" \
+        | csv-select --fields=$packet_spec_fields --format=$packet_spec_format "output_format;regex=(f|d)" \
         | csv-shuffle --fields=$packet_spec_fields --output field,packet_format \
         | sed -r '/^(dew_point|heat_index|wind\/chill|thsw_index)/s/,w$/,ub/' \
         | sed -r 's/,b$/,127/;s/,ub$/,255/;s/,w$/,32767/;s/,uw$/,65536/'
@@ -333,7 +334,7 @@ function get_packet_spec()
     if [[ $2 ]]; then
         local select_field select_value
         IFS='=' read select_field select_value <<< $2
-        select_fn="csv-select --fields $packet_spec_fields $select_field;equals=$select_value"
+        select_fn="csv-select --fields $packet_spec_fields --format=$packet_spec_format $select_field;equals=$select_value"
         sort_fn=sort
     fi
 
@@ -386,7 +387,7 @@ function relevant_conversions()
 {
     echo "$output_fields" | tr , '\n' \
         | csv-join --fields=field <( echo "${packet_spec[$options_packet]}" )";fields=$packet_spec_fields" --string \
-        | csv-select --fields field1,$packet_spec_fields "conversion_function;not-equal=none" \
+        | csv-select --fields field1,$packet_spec_fields --format=s[128],$packet_spec_format "conversion_function;not-equal=none" \
         | csv-shuffle --fields field1,$packet_spec_fields --output field1,conversion_function \
         | csv-join --fields=field,conversion_function <( echo "$conversion_functions" )";fields=conversion_function,formula" --string \
         | csv-shuffle --fields field,,,formula --output field,formula \
