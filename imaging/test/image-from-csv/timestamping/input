@@ -1,0 +1,6 @@
+first="run-image-from-csv --timestamp=first"
+last="run-image-from-csv --timestamp=last"
+mean="run-image-from-csv --timestamp=mean"
+middle="run-image-from-csv --timestamp=middle"
+min="run-image-from-csv --timestamp=min"
+max="run-image-from-csv --timestamp=max"
