@@ -87,8 +87,10 @@ static void usage( bool verbose )
               << "          <how>" << std::endl
               << "              first: timestamp of the first point of a block" << std::endl
               << "              last: timestamp of the last point of a block" << std::endl
+              << "              max: maximum timestamp of a block" << std::endl
               << "              mean,average: average timestamp across all points of a block" << std::endl
               << "              middle: average of the first and last timestamp of a block" << std::endl
+              << "              min: minimum timestamp of a block" << std::endl
               << "              default: first" << std::endl
               << "    --verbose,-v: more output" << std::endl
               << std::endl
@@ -166,8 +168,13 @@ public:
             case last:
                 if( commit ) { t_ = t; }
                 return;
+            case max:
+                if( !t_ ) { t_ = t; }
+                if( t_->is_not_a_date_time() ) { return; }
+                if( t.is_not_a_date_time() ) { t_ = boost::posix_time::not_a_date_time; } else if( *t_ < t ) { t_ = t; }
+                return;
             case mean:
-                if( t.is_special() || t.is_not_a_date_time() ) { t_ = boost::posix_time::not_a_date_time; }
+                if( t.is_special() || t.is_not_a_date_time() ) { return; }
                 if( t_ && t_->is_not_a_date_time() ) { return; }
                 if( t_ ) { ++count_; t_ = *t_ + ( t - *t_ ) / count_; }
                 else { count_ = 1; t_ = t; }
@@ -178,17 +185,24 @@ public:
                 if( t.is_special() || t.is_not_a_date_time() ) { t_ = boost::posix_time::not_a_date_time; }
                 if( !t_->is_not_a_date_time() ) { t_ = *t_ + ( t - *t_ ) / 2; }
                 return;
+            case min:
+                if( !t_ ) { t_ = t; }
+                if( t_->is_not_a_date_time() ) { return; }
+                if( t.is_not_a_date_time() ) { t_ = boost::posix_time::not_a_date_time; } else if( *t_ > t ) { t_ = t; }
+                return;
         }
     }
     
 private:
-    enum values_ { first, last, mean, middle };
+    enum values_ { first, last, max, mean, middle, min };
     values_ from_string_( const std::string& s )
     {
         if( s == "first" ) { return first; }
         if( s == "last" ) { return last; }
-        if( s == "average" || s == "mean" ) { return mean; }
+        if( s == "max" ) { return max; }
+        if( s == "mean" || s == "average" ) { return mean; }
         if( s == "middle" ) { return middle; }
+        if( s == "min" ) { return min; }
         std::cerr << "image-from-csv: expected timestamping method, got: \"" << s << "\"" << std::endl;
         exit( 1 );
     }
@@ -244,6 +258,7 @@ int main( int ac, char** av )
                 if( block_done )
                 {
                     pair.first = t.value();
+                    t.reset();
                     output.write( std::cout, pair );
                     std::cout.flush();
                     break;
