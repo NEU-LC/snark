@@ -29,36 +29,53 @@
 
 /// @author Navid Pirmarzdashti
 
-#pragma once
-#include "messages.h"
 #include "stream.h"
-#include <vector>
+#include <comma/base/exception.h>
 
 namespace snark { namespace navigation { namespace advanced_navigation {
 
-/// spatial dual device class
-class device
+serial_stream::serial_stream(const std::string& name,const advanced_navigation::options& options) : 
+    port(service)
 {
-    std::unique_ptr<advanced_navigation::stream> stream;
-    std::vector<char> buf;
-    unsigned index;
-    unsigned head;
-    messages::header* msg_header;
-public:
-    /// name is serial port or - for stdin
-    device(const std::string& name,const advanced_navigation::options& options);
-    virtual ~device() { }
-    void process();
-    void send_ntrip(std::vector<char> buf);
-protected:
-    virtual void handle(const messages::system_state* msg) { }
-    virtual void handle(const messages::raw_sensors* msg) { }
-    virtual void handle(const messages::satellites* msg) { }
-    virtual void handle(const messages::position_standard_deviation* msg) { }
-    virtual void handle(const messages::velocity_standard_deviation* msg) { }
-    virtual void handle(const messages::orientation_standard_deviation* msg) { }
-    virtual void handle_raw(messages::header* msg_header, const char* msg_data,std::size_t msg_data_length) { }
-};
+    port.set_option(boost::asio::serial_port_base::baud_rate(options.baud_rate));
+    port.set_option(boost::asio::serial_port_base::character_size(8));
+    port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+    port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
+}
+
+std::size_t serial_stream::read_some(char* buf,std::size_t to_read)
+{
+    boost::system::error_code ec;
+//         unsigned read_size=boost::asio::read(port, boost::asio::buffer(&buf[index],to_read));
+    return port.read_some(boost::asio::buffer(buf,to_read),ec);
+}
+std::size_t serial_stream::write(const char* buf,std::size_t to_write)
+{
+    return boost::asio::write(port, boost::asio::buffer(buf,to_write));
+}
+
+io_stream::io_stream(const std::string& name,const advanced_navigation::options& options) : 
+    is(name,comma::io::mode::binary,comma::io::mode::non_blocking)
+{
+//     std::cerr<<"io_stream::io_stream "<<name<<" "<<(bool)ios<<std::endl;
+}
+std::size_t io_stream::read_some(char* buf,std::size_t to_read)
+{
+//     std::cerr<<"io_stream::read_some "<<to_read<<" "<<(void*)buf<<std::endl;
+    if(!is->good()) { throw std::ios_base::failure(std::string("end of file on istream ")+is.name()); }
+//     return is->readsome(buf,to_read);
+    is->read(buf,to_read);
+    return is->gcount();
+//     unsigned read=ios->gcount();
+//     std::cerr<<"io_stream::read_some / "<<read<<std::endl;
+//     return read;
+}
+std::size_t io_stream::write(const char* buf,std::size_t to_write)
+{
+    COMMA_THROW( comma::exception, "cannot write to istream");
+//     ios->write(buf,to_write);
+//     return ios->good()?to_write:0;
+}
 
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {
     
