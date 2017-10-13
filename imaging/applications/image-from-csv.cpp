@@ -83,6 +83,13 @@ static void usage( bool verbose )
               << "    --help,-h: show help; --help --verbose: more help" << std::endl
               << "    --from,--begin,--origin=[<x>,<y>]: offset pixel coordinates by a given offset; default: 0,0" << std::endl
               << "    --output: output options, same as --input for image-from-csv or cv-cat (see --help --verbose)" << std::endl
+              << "    --timestamp=<how>: which image timestamp to output" << std::endl
+              << "          <how>" << std::endl
+              << "              first: timestamp of the first point of a block" << std::endl
+              << "              last: timestamp of the last point of a block" << std::endl
+              << "              mean,average: average timestamp across all points of a block" << std::endl
+              << "              middle: average of the first and last timestamp of a block" << std::endl
+              << "              default: first" << std::endl
               << "    --verbose,-v: more output" << std::endl
               << std::endl
               << "fields: t,x,y,r,g,b,block or t,x,y,grey,block" << std::endl
@@ -140,6 +147,57 @@ static void set_pixel( cv::Mat& m, const input_t& v, const std::pair< double, do
     }   
 }
 
+class timestamping
+{
+public:
+    timestamping( const std::string& s ) : how_( from_string_( s ) ), count_( 0 ) {}
+    
+    void reset() { t_.reset(); count_ = 0; }
+    
+    boost::posix_time::ptime value() const { return t_ ? *t_ : boost::posix_time::not_a_date_time; }
+    
+    void update( const boost::posix_time::ptime& t, bool commit = false )
+    {
+        switch( how_ )
+        {
+            case first:
+                if( !t_ ) { t_ = t; }
+                return;
+            case last:
+                if( commit ) { t_ = t; }
+                return;
+            case mean:
+                if( t.is_special() || t.is_not_a_date_time() ) { t_ = boost::posix_time::not_a_date_time; }
+                if( t_ && t_->is_not_a_date_time() ) { return; }
+                if( t_ ) { ++count_; t_ = *t_ + ( t - *t_ ) / count_; }
+                else { count_ = 1; t_ = t; }
+                return;
+            case middle:
+                if( !t_ ) { t_ = t; }
+                if( !commit ) { return; }
+                if( t.is_special() || t.is_not_a_date_time() ) { t_ = boost::posix_time::not_a_date_time; }
+                if( !t_->is_not_a_date_time() ) { t_ = *t_ + ( t - *t_ ) / 2; }
+                return;
+        }
+    }
+    
+private:
+    enum values_ { first, last, mean, middle };
+    values_ from_string_( const std::string& s )
+    {
+        if( s == "first" ) { return first; }
+        if( s == "last" ) { return last; }
+        if( s == "average" || s == "mean" ) { return mean; }
+        if( s == "middle" ) { return middle; }
+        std::cerr << "image-from-csv: expected timestamping method, got: \"" << s << "\"" << std::endl;
+        exit( 1 );
+    }
+    values_ how_;
+    boost::optional< boost::posix_time::ptime > t_;
+    unsigned int count_;
+};
+
+
 int main( int ac, char** av )
 {
     try
@@ -168,11 +226,11 @@ int main( int ac, char** av )
         if( is_greyscale && has_alpha ) { std::cerr << "image-from-csv: warning: found alpha channel for a greyscale image; not implemented; ignored" << std::endl; }
         sample.channels.resize( is_greyscale ? 1 : has_alpha ? 4 : 3 );
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value<std::string>("--output" ) );
-        // todo: check whether output type matches fields
-        snark::cv_mat::serialization output( output_options );
+        snark::cv_mat::serialization output( output_options ); // todo: check whether output type matches fields
         comma::csv::input_stream< input_t > is( std::cin, csv, sample );
         boost::optional< input_t > last;
         int type = output_options.get_header().type;
+        timestamping t( options.value< std::string >( "--timestamp", "first" ) );
         while( is.ready() || std::cin.good() )
         {
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
@@ -182,10 +240,10 @@ int main( int ac, char** av )
             {
                 const input_t* p = is.read();
                 bool block_done = last && ( !p || p->block != last->block );
-                if( p ) { last = *p; }
+                if( p ) { last = *p; t.update( p->t, block_done ); }
                 if( block_done )
                 {
-                    pair.first = last->t;
+                    pair.first = t.value();
                     output.write( std::cout, pair );
                     std::cout.flush();
                     break;
