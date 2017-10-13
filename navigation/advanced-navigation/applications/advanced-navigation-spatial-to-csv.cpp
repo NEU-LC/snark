@@ -74,12 +74,8 @@ void usage(bool detail)
     std::cerr << "    --verbose,-v:    show detailed messages" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
     std::cerr << "    --output-format: print output format and exit" << std::endl;
-    
     std::cerr << "    --raw: output raw packets to stdout, " << std::endl;
-    /* (?) read raw packets from stdin 
     std::cerr << "    --stdin; read packets from stdin, can't be used with options that need to write to device (e.g. --ntrip)" << std::endl;
-    */
-    
     std::cerr << "    --device=<filename>; filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
     std::cerr << "    --baud-rate=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
     std::cerr << "    --sleep=<n>: microsecond sleep between reading, default "<< default_sleep << std::endl;
@@ -273,7 +269,6 @@ public:
         device(port,options.value<unsigned>("--baud-rate",default_baud_rate)),
         us(options.value<unsigned>("--sleep",default_sleep))
     {
-        
     }
     void process()
     {
@@ -518,8 +513,8 @@ struct filter_status_description : public description<status_data>
 static void bash_completion( int argc, char** argv )
 {
     std::cout << "--help --verbose" <<
-        " navigation raw-sensors system-state satellites" <<
-        " --output-fields --output-format"<< 
+        " all navigation raw-sensors system-state satellites" <<
+        " --output-fields --output-format --raw --stdin --description"<< 
         std::endl;
 }
 
@@ -533,7 +528,7 @@ int main( int argc, char** argv )
         
         if(options.exists("--bash-completion")) { bash_completion( argc, argv ); return 0; }
         
-        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format", "-.*" );
+        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin", "-.*" );
         
         auto opt_description=options.optional<std::string>("--description");
         if(opt_description)
@@ -566,9 +561,9 @@ int main( int argc, char** argv )
             else if(unnamed[0]=="raw-sensors") { factory.reset(new factory_t<app_packet<messages::raw_sensors>>()); }
             else if(unnamed[0]=="system-state") { factory.reset(new factory_t<app_packet<messages::system_state>>()); }
             else if(unnamed[0]=="satellites") { factory.reset(new factory_t<app_packet<messages::satellites>>()); }
-            else { COMMA_THROW( comma::exception,"expected <what>: navigation | raw-sensors | system-state | all; got "<<unnamed[1]);}
+            else { COMMA_THROW( comma::exception,"expected <what>: navigation | raw-sensors | system-state | all; got "<<unnamed[0]);}
         }
-        
+
         if(options.exists("--output-fields")) { factory->output_fields(); return 0; }
         if(options.exists("--output-format")) { factory->output_format(); return 0; }
 
@@ -576,10 +571,19 @@ int main( int argc, char** argv )
         auto opt_ntrip=options.optional<std::string>("--ntrip");
         if(opt_ntrip) { ntt.reset(new ntrip_thread(*opt_ntrip,options)); }
 
-        std::string input=options.value<std::string>("--device");
-//         if(!options.exists("--device")) { COMMA_THROW( comma::exception, "Please specify either --device=<serial_port> or --stdin"); }
+        
+        std::string input;
+        if(options.exists("--stdin"))
+        {
+            input="-";
+            if(options.exists("--device")) { COMMA_THROW( comma::exception, "--stdin conflicts with --device"); }
+            if(opt_ntrip) { COMMA_THROW( comma::exception, "--stdin conflicts with --ntrip"); }
+        }
+        else
+        {
+            input=options.value<std::string>("--device");
+        }
 
-//         if(unnamed.size()<1) { COMMA_THROW( comma::exception, "expected at least one unnamed option for port name, got "<<unnamed.size()); }
         factory->run(input,options);
         
         return 0;

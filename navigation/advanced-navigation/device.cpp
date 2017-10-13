@@ -35,12 +35,10 @@
 
 namespace snark { namespace navigation { namespace advanced_navigation {
 
-device::device(const std::string& name,int baud_rate) : port(service,name),buf(2600),index(0),head(0),msg_header(NULL)
+device::device(const std::string& name,const advanced_navigation::options& options) : buf(2600),index(0),head(0),msg_header(NULL)
 {
-    port.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
-    port.set_option(boost::asio::serial_port_base::character_size(8));
-    port.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
-    port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
+    if(name=="-") { stream.reset(new io_stream(name,options)); }
+    else { stream.reset(new serial_stream(name,options)); }
 }
 void device::process()
 {
@@ -63,9 +61,8 @@ void device::process()
     int to_read=buf.size()-index;
     if(to_read>0)
     {
-        boost::system::error_code ec;
-        unsigned read_size=port.read_some(boost::asio::buffer(&buf[index],to_read),ec);
-//         unsigned read_size=boost::asio::read(port, boost::asio::buffer(&buf[index],to_read));
+        unsigned read_size=stream->read_some(&buf[index],to_read);
+//         comma::verbose<<"device::process read "<<read_size<<std::endl;
         if(read_size==0)
             return;
         if(read_size>(unsigned)to_read)
@@ -154,7 +151,7 @@ void device::send_ntrip(std::vector<char> buf)
         index+=size;
 //         comma::verbose<<"rtcm_corrections "<<size<<std::endl;
         std::size_t to_write=size+messages::header::size;
-        std::size_t written=boost::asio::write(port, boost::asio::buffer(msg.data(),to_write));
+        std::size_t written=stream->write(msg.data(),to_write);
         if(written!=to_write) { std::cerr<<"writing ntrip msg failed (expected "<<to_write<<" actual "<<written<<" )"<<std::endl; }
     }
 }
