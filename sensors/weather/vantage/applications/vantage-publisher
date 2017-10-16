@@ -1,0 +1,10 @@
+#!/bin/bash
+
+script_name=$( basename $0 )
+
+(( $# == 1 )) || { echo "Usage: $scriptname <robot-config>" >&2; exit 1; }
+config=$1
+
+port=$( name-value-get port < "$config" )
+
+vantage-to-csv --config $config/station | io-publish tcp:$port
