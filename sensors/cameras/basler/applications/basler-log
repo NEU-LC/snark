@@ -62,6 +62,8 @@ EOF
 This command uses the log filter to directly log to a file.
 For high throughput data this is more efficient than using stdout.
 
+If "port" is defined in the config file the data is also published when logging.
+
 example:
     $scriptname --config=config.json --period=60
 
@@ -138,15 +140,24 @@ args=
 [[ $options_verbose ]] && args+=" --verbose"
 args=${args# }
 
-command="basler-cat log=.,period:$options_period,index;null $args"
+[[ $config_port ]] && publish_command="io-publish tcp:$config_port --size $( csv-size $config_binary )"
 
-verbose "executing \"$command\""
+log_options=".,period:$options_period,index"
+[[ $publish_command ]] || log_options+=";null"
+log_command="basler-cat log=$log_options $args"
+
+verbose "logging with \"$log_command\""
+[[ $publish_command ]] && verbose "publishing with \"$publish_command\" (whilst logging)"
 
 shutdown=0
 
 trap "shutdown=1" INT TERM HUP PIPE
 
 while (( ! shutdown )); do
-    $command
-    (( shutdown )) || say "restarting ${command%% *}"
+    if [[ $publish_command ]]; then
+        $log_command | $publish_command
+    else
+        $log_command
+    fi
+    (( shutdown )) || say "restarting ${log_command%% *}"
 done
