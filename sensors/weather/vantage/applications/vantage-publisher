@@ -1,6 +1,6 @@
 #!/bin/bash
 
-script_name=$( basename $0 )
+scriptname=$( basename $0 )
 
 (( $# == 1 )) || { echo "Usage: $scriptname <robot-config>" >&2; exit 1; }
 config=$1
