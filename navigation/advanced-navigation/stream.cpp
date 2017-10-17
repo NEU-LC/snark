@@ -35,7 +35,7 @@
 namespace snark { namespace navigation { namespace advanced_navigation {
 
 serial_stream::serial_stream(const std::string& name,const advanced_navigation::options& options) : 
-    port(service)
+    port(service,name)
 {
     port.set_option(boost::asio::serial_port_base::baud_rate(options.baud_rate));
     port.set_option(boost::asio::serial_port_base::character_size(8));
