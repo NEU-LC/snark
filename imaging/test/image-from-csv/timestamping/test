@@ -1,0 +1,21 @@
+#!/bin/bash
+
+source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
+
+function run-image-from-csv()
+{
+    cat <<eof | image-from-csv --fields=t,x,y,grey,block --output="rows=2;cols=2;type-ub" $@ | cv-cat --output=header-only | csv-from-bin t,3ui | tr '\n' ';'
+19700101T000003,0,0,1,0
+19700101T000002,0,1,0,0
+19700101T000001,1,1,1,0
+19700101T000000,1,0,0,0
+
+19700101T000005,0,0,1,1
+19700101T000004,0,1,0,1
+19700101T000007,1,1,1,1
+19700101T000006,1,0,0,1
+eof
+}
+
+export -f run-image-from-csv
+comma_test_commands

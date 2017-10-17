@@ -160,37 +160,39 @@ public:
     
     void update( const boost::posix_time::ptime& t, bool commit = false )
     {
+        //std::cerr << "--> a: t_: " << ( t_ ? boost::posix_time::to_iso_string( *t_ ) : "none" ) << " t: " << boost::posix_time::to_iso_string( t ) << " commit: " << commit << std::endl;
         switch( how_ )
         {
             case first:
                 if( !t_ ) { t_ = t; }
-                return;
+                break;
             case last:
                 if( commit ) { t_ = t; }
-                return;
+                break;
             case max:
                 if( !t_ ) { t_ = t; }
-                if( t_->is_not_a_date_time() ) { return; }
+                if( t_->is_not_a_date_time() ) { break; }
                 if( t.is_not_a_date_time() ) { t_ = boost::posix_time::not_a_date_time; } else if( *t_ < t ) { t_ = t; }
-                return;
+                break;
             case mean:
-                if( t.is_special() || t.is_not_a_date_time() ) { return; }
-                if( t_ && t_->is_not_a_date_time() ) { return; }
+                if( t.is_special() || t.is_not_a_date_time() ) { break; }
+                if( t_ && t_->is_not_a_date_time() ) { break; }
                 if( t_ ) { ++count_; t_ = *t_ + ( t - *t_ ) / count_; }
                 else { count_ = 1; t_ = t; }
-                return;
+                break;
             case middle:
                 if( !t_ ) { t_ = t; }
-                if( !commit ) { return; }
+                if( !commit ) { break; }
                 if( t.is_special() || t.is_not_a_date_time() ) { t_ = boost::posix_time::not_a_date_time; }
                 if( !t_->is_not_a_date_time() ) { t_ = *t_ + ( t - *t_ ) / 2; }
-                return;
+                break;
             case min:
                 if( !t_ ) { t_ = t; }
-                if( t_->is_not_a_date_time() ) { return; }
+                if( t_->is_not_a_date_time() ) { break; }
                 if( t.is_not_a_date_time() ) { t_ = boost::posix_time::not_a_date_time; } else if( *t_ > t ) { t_ = t; }
-                return;
+                break;
         }
+        //std::cerr << "--> b: t_: " << ( t_ ? boost::posix_time::to_iso_string( *t_ ) : "none" ) << std::endl << std::endl;
     }
     
 private:
@@ -254,7 +256,8 @@ int main( int ac, char** av )
             {
                 const input_t* p = is.read();
                 bool block_done = last && ( !p || p->block != last->block );
-                if( p ) { last = *p; t.update( p->t, block_done ); }
+                if( last ) { t.update( last->t, block_done || !p ); }
+                if( p ) { last = *p; }
                 if( block_done )
                 {
                     pair.first = t.value();

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
+
+(( $# == 1 )) || { echo "Usage: $scriptname <robot-config>" >&2; exit 1; }
+config_file_path=$1
+
+function load_config()
+{
+    local file path
+    IFS=: read file path <<< "$1"
+    cat "$file" | name-value-get "$path"
+}
+
+comma_path_value_to_var --prefix=config < <( load_config $config_file_path )
+
+vantage-to-csv --config $config_file_path/station | io-publish tcp:$config_port
