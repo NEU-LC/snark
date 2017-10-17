@@ -54,13 +54,12 @@ bool velodyne_stream::read()
     if( r == NULL ) { return false; }
     m_point.timestamp = r->timestamp;
     m_point.id = r->id;
-    // multiply by 255 to keep with the old format
-    m_point.intensity = m_raw_intensity ? r->intensity : ( point_calculator_->intensity( m_point.id, r->intensity, r->range ) * 255 );
+    m_point.intensity = m_raw_intensity ? r->intensity : ( point_calculator_->intensity( m_point.id, r->intensity, r->range ) * 255 ); // multiply by 255 to keep backward compatible with the old format
     m_point.valid = !comma::math::equal( r->range, 0 ); // quick and dirty
     m_point.ray = point_calculator_->ray( m_point.id, r->range, r->azimuth );
     m_point.range = point_calculator_->range( m_point.id, r->range );
-    m_point.scan = m_stream->scan();
     m_point.azimuth = point_calculator_->azimuth( m_point.id, r->azimuth );
+    m_point.scan = m_stream->scan();
     return true;
 }
 

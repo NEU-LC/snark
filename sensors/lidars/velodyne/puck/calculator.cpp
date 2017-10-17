@@ -75,12 +75,20 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int 
 
 ::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
 {
+    // todo: once puck/packet.cpp is fixed, use the commented line below
+    // return ::Eigen::Vector3d( range * lasers[laser].cos * std::cos( angle ), range * lasers[laser].cos * std::sin( angle ), range * lasers[laser].sin );
     return ::Eigen::Vector3d( range * lasers[laser].cos * std::sin( angle ), range * lasers[laser].cos * std::cos( angle ), range * lasers[laser].sin );
 }
 
 double calculator::range( unsigned int, double range ) const { return range; }
 
-double calculator::azimuth( unsigned int, double azimuth ) const { return azimuth; }
+// todo! super quick and dirty; by right the places to fix:
+//       - puck/packet.cpp: fiddly part: fix azimuth and make sure step works correctly
+//       - puck/calculator.cpp: easy part: simply swap sin and cos in calculator::point()
+//       - scan_tick.cpp: packet_angle_( puck::packet ): hardcoded offset
+//       - if time permits, see why there is such a 90-degree discrepancy in puck spec
+// double calculator::azimuth( unsigned int, double azimuth ) const { return azimuth; }
+double calculator::azimuth( unsigned int, double azimuth ) const { return M_PI / 2 - azimuth; }
 
 double calculator::intensity( unsigned int, unsigned char intensity, double ) const { return intensity; }
 

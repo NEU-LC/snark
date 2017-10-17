@@ -35,16 +35,16 @@ namespace snark {  namespace velodyne {
 
 namespace detail {
     
-static unsigned int packet_angle_( const velodyne::packet& p ) { return p.blocks[0].rotation() + 9000; }
+static unsigned int packet_angle_( const velodyne::packet& p ) { return p.blocks[0].rotation() + 9000; } // 0 = behind the vehicle
 
-static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth(); }
+static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ); } // quick and dirty: see todo comments in puck/calculator.cpp
 
 } // namespace detail {
     
 template < typename P >
 bool scan_tick::is_new_scan( const P& packet, unsigned int last_angle )
 {
-    unsigned int angle = detail::packet_angle_( packet ); // 0 = behind the vehicle
+    unsigned int angle = detail::packet_angle_( packet );
     if( angle > 36000 ) { angle -= 36000; }
     return angle < last_angle;
 }
@@ -53,7 +53,7 @@ template < typename P >
 bool scan_tick::is_new_scan( const P& packet )
 {
     bool tick = false;
-    unsigned int angle = detail::packet_angle_( packet ); // seriously quick and dirty: 0 = behind the vehicle
+    unsigned int angle = detail::packet_angle_( packet );
     if( angle > 36000 ) { angle -= 36000; }
     if( !last_angle_ || angle < *last_angle_ ) { tick = true; }
     last_angle_ = angle;
