@@ -73,7 +73,8 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     };
 
     boost::array< block, number_of_blocks > blocks;
-    comma::packed::little_endian_uint64 timestamp; // time of first shot of the first block (firing sequence), microseconds since past the hour
+    comma::packed::uint32 timestamp; // time of first shot of the first block (firing sequence), microseconds since past the hour
+    comma::packed::uint32 something;
     factory_t factory;
     
     class const_iterator;
