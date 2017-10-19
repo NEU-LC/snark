@@ -41,8 +41,7 @@
 #include "calculator.h"
 
 namespace snark {
-
-/// processed velodyne point    
+ 
 struct velodyne_point
 {
     boost::posix_time::ptime timestamp;
@@ -53,6 +52,8 @@ struct velodyne_point
     double range;
     bool valid;
     comma::uint32 scan;
+    
+    velodyne_point(): id( 0 ), intensity( 0 ), ray( std::make_pair( ::Eigen::Vector3d::Zero(), ::Eigen::Vector3d::Zero() ) ), azimuth( 0 ), range( 0 ), valid( false ), scan( 0 ) {}
 };
 
 namespace velodyne {
@@ -71,7 +72,6 @@ struct db_calculator : public calculator
 
 } // namespace velodyne {
 
-/// convert stream of raw velodyne data into velodyne points
 class velodyne_stream
 {   
     public:    

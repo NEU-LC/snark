@@ -108,9 +108,14 @@ static void usage( bool )
     std::cerr << "input format options" << std::endl;
     std::cerr << "    --db <db.xml file> ; default /usr/local/etc/db.xml" << std::endl;
     std::cerr << "              if the file is a version 0 then the legacy option is used for timing and azimuth calculation" << std::endl;
+    std::cerr << "    --model=<model>: velodyne model" << std::endl;
+    std::cerr << "        <model>" << std::endl;
+    std::cerr << "            hdl64,hdl-64,64: hdl-64" << std::endl;
+    std::cerr << "            vlp16,vlp-16,puck: puck vlp-16" << std::endl;
     std::cerr << "    --proprietary,-q : read velodyne data directly from stdin using the proprietary protocol" << std::endl;
     std::cerr << "        <header, 16 bytes><timestamp, 12 bytes><packet, 1206 bytes><footer, 4 bytes>" << std::endl;
-    std::cerr << "    --puck : velodyne puck data" << std::endl;
+    std::cerr << "    --puck : same as --model=puck" << std::endl;
+    std::cerr << "    --64,--hdl64 : same as --model=hdl64" << std::endl;
     std::cerr << "    default input format: <timestamp, 8 bytes><packet, 1206 bytes>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "output options:" << std::endl;
@@ -118,6 +123,7 @@ static void usage( bool )
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
     std::cerr << "    --min-range=<value>: do not output points closer than <value>; default 0" << std::endl;
     std::cerr << "    --max-range=<value>: do not output points farther away than <value>; default output all points" << std::endl;
+    std::cerr << "    --ntp: get data timestamps from ntp data in packets (default: system time from input stream)" << std::endl;
     std::cerr << "    --output-invalid-points: output also invalid laser returns" << std::endl;
     std::cerr << "    --scans [<from>]:[<to>] : output only scans in given range" << std::endl;
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
@@ -272,26 +278,36 @@ int main( int ac, char** av )
         snark::velodyne::calculator* calculator = NULL;
         snark::velodyne::stream* s = NULL;
         boost::scoped_ptr< snark::velodyne::db > db;
-        if( options.exists( "--puck" ) )
+        struct models { enum values { hdl64, puck }; };
+        options.assert_mutually_exclusive( "--model,--puck,--hdl64,--64" );
+        bool ntp = options.exists("--ntp");
+        models::values model;
+        std::string model_string = options.value< std::string >( "--model", "" );
+        if( options.exists( "--puck" ) || model_string == "puck" || model_string == "vlp16" || model_string == "vlp-16" ) { model = models::puck; }
+        else if( options.exists( "--hdl64,--64" ) || model_string == "hdl64" || model_string == "hdl-64" || model_string == "64" ) { model = models::hdl64; }
+        else if( model_string.empty() ) { std::cerr << "velodyne-to-csv: please specify --model" << std::endl; return 1; }
+        else { std::cerr << "velodyne-to-csv: expected model, got: \"" << model_string << "\"" << std::endl; return 1; }
+        switch( model )
         {
-            calculator= new snark::velodyne::puck::calculator;
-            if( options.exists( "--pcap" ) ) { s = new snark::velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points ); }
-            else if( options.exists( "--thin" ) ) { s = new snark::velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points ); }
-            else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points ); }
-            else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points ); }
-            else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points ); }
-        }
-        else
-        {
-            db.reset( new snark::velodyne::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) ) );
-            if( !legacy && db->version == 0 ) { legacy=true; std::cerr << "velodyne-to-csv: using legacy option for old database" << std::endl; }
-            if( legacy && db->version > 0 ) { std::cerr << "velodyne-to-csv: using new calibration with legacy option" << std::endl;}
-            calculator = new snark::velodyne::db_calculator( *db );
-            if( options.exists( "--pcap" ) ) { s = new snark::velodyne::hdl64::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points, legacy ); }
-            else if( options.exists( "--thin" ) ) { s = new snark::velodyne::hdl64::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points, legacy ); }
-            else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::hdl64::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points, legacy ); }
-            else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::hdl64::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points, legacy ); }
-            else { s = new snark::velodyne::hdl64::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, legacy ); }
+            case models::puck:
+                calculator= new snark::velodyne::puck::calculator;
+                if( options.exists( "--pcap" ) ) { s = new snark::velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points, ntp ); }
+                else if( options.exists( "--thin" ) ) { s = new snark::velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points, ntp ); }
+                else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points, ntp ); }
+                else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points, ntp ); }
+                else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, ntp ); }
+                break;
+            case models::hdl64:
+                db.reset( new snark::velodyne::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) ) );
+                if( !legacy && db->version == 0 ) { legacy=true; std::cerr << "velodyne-to-csv: using legacy option for old database" << std::endl; }
+                if( legacy && db->version > 0 ) { std::cerr << "velodyne-to-csv: using new calibration with legacy option" << std::endl;}
+                calculator = new snark::velodyne::db_calculator( *db );
+                if( options.exists( "--pcap" ) ) { s = new snark::velodyne::hdl64::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points, legacy ); }
+                else if( options.exists( "--thin" ) ) { s = new snark::velodyne::hdl64::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points, legacy ); }
+                else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::hdl64::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points, legacy ); }
+                else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::hdl64::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points, legacy ); }
+                else { s = new snark::velodyne::hdl64::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, legacy ); }
+                break;
         }
         snark::velodyne_stream v( s, calculator, from, to, raw_intensity );
         comma::signal_flag is_shutdown;
