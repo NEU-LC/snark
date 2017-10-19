@@ -67,7 +67,7 @@ scanner::~scanner()
     grabber->Stop();
 }
 //***************************************************
-listener::listener(device& dev,bool highspeed_mode) : grabber(dev.grabber)
+listener::listener(device& dev,bool highspeed_mode) : grabber(dev.grabber), block(0)
 {
     unsigned short freq;
     unsigned short averaging;
@@ -93,6 +93,14 @@ listener::~listener()
 }
 void listener::LaserDataCallback(std::vector<::ocular::ocular_rbe_obs_t> observations, unsigned int timestamp)
 {
+    boost::posix_time::ptime t=boost::posix_time::microsec_clock::universal_time();
+    std::vector<snark::ocular::point_t> points(observations.size());
+    for(auto& p : observations)
+    {
+        points.push_back(point_t(t,block,p));
+    }
+    on_frame(points);
+    block++;
 }
     
 } } //namespace snark { namespace ocular {

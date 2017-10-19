@@ -89,6 +89,7 @@ public:
     virtual ~listener();
 protected:
     std::shared_ptr<::ocular::RobotEyeGrabber> grabber;
+    uint32_t block;
     void on_frame(const std::vector<snark::ocular::point_t>& points) { }
     void LaserDataCallback(std::vector<::ocular::ocular_rbe_obs_t> observations, unsigned int timestamp);
 };
