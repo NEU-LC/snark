@@ -118,6 +118,7 @@ struct output_all
     messages::raw_sensors raw_sensors;
     Eigen::Vector3f velocity_stddev;
     Eigen::Vector3f orientation_stddev;
+    messages::satellites satellites;
 };
 
 struct status_data
@@ -160,6 +161,7 @@ struct traits< output_all >
         v.apply( "", p.raw_sensors );
         v.apply( "velocity_stddev", p.velocity_stddev );
         v.apply( "orientation_stddev", p.orientation_stddev );
+        v.apply( "", p.satellites );
     }
 
 };
@@ -369,6 +371,10 @@ struct app_all : public app_t<output_all>
     void handle(const messages::orientation_standard_deviation* msg)
     {
         output.orientation_stddev=Eigen::Vector3f(msg->stddev[0](),msg->stddev[1](),msg->stddev[2]());
+    }
+    void handle(const messages::satellites* msg)
+    {
+        std::memcpy(output.satellites.data(),msg->data(),messages::satellites::size);
     }
 };
 
