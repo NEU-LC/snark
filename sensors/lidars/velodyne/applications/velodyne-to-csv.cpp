@@ -123,6 +123,7 @@ static void usage( bool )
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
     std::cerr << "    --min-range=<value>: do not output points closer than <value>; default 0" << std::endl;
     std::cerr << "    --max-range=<value>: do not output points farther away than <value>; default output all points" << std::endl;
+    std::cerr << "    --ntp: get data timestamps from ntp data in packets (default: system time from input stream)" << std::endl;
     std::cerr << "    --output-invalid-points: output also invalid laser returns" << std::endl;
     std::cerr << "    --scans [<from>]:[<to>] : output only scans in given range" << std::endl;
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
@@ -282,6 +283,7 @@ int main( int ac, char** av )
         boost::scoped_ptr< snark::velodyne::db > db;
         struct models { enum values { hdl64, puck }; };
         options.assert_mutually_exclusive( "--model,--puck,--hdl64,--64" );
+        bool ntp = options.exists("--ntp");
         models::values model;
         std::string model_string = options.value< std::string >( "--model", "" );
         if( options.exists( "--puck" ) || model_string == "puck" || model_string == "vlp16" || model_string == "vlp-16" ) { model = models::puck; }
@@ -292,11 +294,11 @@ int main( int ac, char** av )
         {
             case models::puck:
                 calculator= new snark::velodyne::puck::calculator;
-                if( options.exists( "--pcap" ) ) { s = new snark::velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points ); }
-                else if( options.exists( "--thin" ) ) { s = new snark::velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points ); }
-                else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points ); }
-                else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points ); }
-                else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points ); }
+                if( options.exists( "--pcap" ) ) { s = new snark::velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points, ntp ); }
+                else if( options.exists( "--thin" ) ) { s = new snark::velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points, ntp ); }
+                else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points, ntp ); }
+                else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points, ntp ); }
+                else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, ntp ); }
                 break;
             case models::hdl64:
                 db.reset( new snark::velodyne::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) ) );

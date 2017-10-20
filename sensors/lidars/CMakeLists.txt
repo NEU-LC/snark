@@ -15,3 +15,7 @@ ENDIF( snark_build_sensors_hokuyo )
 if(snark_build_sensors_cepton)
     add_subdirectory(cepton)
 endif()
+
+if(snark_build_sensors_ocular)
+    add_subdirectory(ocular)
+endif()
