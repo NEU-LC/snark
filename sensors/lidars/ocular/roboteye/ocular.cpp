@@ -27,13 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @author Navid Pirmarzdashti
-
 #include "ocular.h"
 #include <comma/base/exception.h>
 #include <comma/application/verbose.h>
 
-namespace snark { namespace ocular {
+namespace snark { namespace ocular { namespace roboteye { 
     
 void check_ocular_error(::ocular::ocular_error_t status, const std::string& msg="")
 {
@@ -43,31 +41,31 @@ void check_ocular_error(::ocular::ocular_error_t status, const std::string& msg=
     }
 }
 
-device::device(std::string ip,bool home) : grabber(new ::ocular::RobotEyeGrabber(ip))
+device::device(std::string ip,bool home) : ::ocular::RobotEyeGrabber(ip)
 {
-    if(grabber->GetSerial(serial)) { check_ocular_error(grabber->GetLastBlockingError(), "cannot connect to ocular (GetSerial)"); }
+    if(GetSerial(serial)) { check_ocular_error(GetLastBlockingError(), "cannot connect to ocular (GetSerial)"); }
     comma::verbose<< "connected to ocular ( serial number: " << serial <<")"<< std::endl;
     if(home)
     {
-        check_ocular_error(grabber->Home(),"Home()");
+        check_ocular_error(Home(),"Home()");
     }
 }
 device::~device()
 {
-    grabber->StopLaser();
-    grabber->Stop();
+    StopLaser();
+    Stop();
 }
 //***************************************************
-scanner::scanner(device& dev,const region_scan& rs) : grabber(dev.grabber)
+scanner::scanner(device& dev,const region_scan& rs) : dev(dev)
 {
-    check_ocular_error(grabber->StartRegionScan(rs.azimuth_rate,rs.azimuth_min,rs.azimuth_max,rs.elevation_min,rs.elevation_max,rs.scan_lines),"StartRegionScan");
+    check_ocular_error(dev.StartRegionScan(rs.azimuth_rate,rs.azimuth_min,rs.azimuth_max,rs.elevation_min,rs.elevation_max,rs.scan_lines),"StartRegionScan");
 }
 scanner::~scanner()
 {
-    grabber->Stop();
+    dev.Stop();
 }
 //***************************************************
-listener::listener(device& dev,bool highspeed_mode) : grabber(dev.grabber), block(0)
+listener::listener(device& dev,bool highspeed_mode) : dev(dev), block(0)
 {
     unsigned short freq;
     unsigned short averaging;
@@ -85,16 +83,16 @@ listener::listener(device& dev,bool highspeed_mode) : grabber(dev.grabber), bloc
         averaging = 1;      // Up to 10-shot averaging available in standard mode.
         intensity = true;   // Intensity data available in standard mode.
     }
-    check_ocular_error(grabber->StartLaser(freq,averaging,intensity,this));
+    check_ocular_error(dev.StartLaser(freq,averaging,intensity,this));
 }
 listener::~listener()
 {
-    grabber->StopLaser();
+    dev.StopLaser();
 }
 void listener::LaserDataCallback(std::vector<::ocular::ocular_rbe_obs_t> observations, unsigned int timestamp)
 {
     boost::posix_time::ptime t=boost::posix_time::microsec_clock::universal_time();
-    std::vector<snark::ocular::point_t> points(observations.size());
+    std::vector<point_t> points(observations.size());
     for(auto& p : observations)
     {
         points.push_back(point_t(t,block,p));
@@ -103,5 +101,5 @@ void listener::LaserDataCallback(std::vector<::ocular::ocular_rbe_obs_t> observa
     block++;
 }
     
-} } //namespace snark { namespace ocular {
+} } } //namespace snark { namespace ocular { namespace roboteye { 
     

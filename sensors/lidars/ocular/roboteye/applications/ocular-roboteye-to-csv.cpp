@@ -39,6 +39,8 @@
 #include <comma/csv/stream.h>
 #include <comma/csv/ascii.h>
 
+using namespace snark::ocular::roboteye;
+
 void usage(bool detail)
 {
     std::cerr<<"    ocular lidar csv stream" << std::endl;
@@ -90,38 +92,38 @@ struct app_t
     }
 };
 
-struct app : public app_t<snark::ocular::point_t>
+struct app : public app_t<point_t>
 {
-    comma::csv::output_stream<snark::ocular::point_t> os;
-    snark::ocular::device device;
-    snark::ocular::region_scan region_scan;
+    comma::csv::output_stream<point_t> os;
+    device dev;
+    region_scan scan;
     bool highspeed_mode;
     app(const std::string& address, const comma::command_line_options& options) : 
         os(std::cout,comma::csv::options(options)),
-        device(address,options.exists("--home")),
-        region_scan(comma::csv::ascii<snark::ocular::region_scan>().get(options.value<std::string>("--region-scan"))),
+        dev(address,options.exists("--home")),
+        scan(comma::csv::ascii<region_scan>().get(options.value<std::string>("--region-scan"))),
         highspeed_mode(options.exists("--highspeed-mode"))
     {
         
     }
     void process()
     {
-        snark::ocular::scanner scanner(device,region_scan);
+        scanner scanner(dev,scan);
         comma::verbose<<"region scan started"<<std::endl;
-        listener go(*this);
+        writer go(*this);
         while(std::cout.good())
             usleep(100000);
     }
-    struct listener : public snark::ocular::listener
+    struct writer : public listener
     {
-        comma::csv::output_stream<snark::ocular::point_t>& os;
-        listener(app& app) :
-            snark::ocular::listener(app.device,app.highspeed_mode),
+        comma::csv::output_stream<point_t>& os;
+        writer(app& app) :
+            listener(app.dev,app.highspeed_mode),
             os(app.os)
         {
             
         } 
-        void on_frame(const std::vector<snark::ocular::point_t>& points)
+        void on_frame(const std::vector<point_t>& points)
         {
             for(auto i=points.begin();i!=points.end()&&std::cout.good();i++)
             {

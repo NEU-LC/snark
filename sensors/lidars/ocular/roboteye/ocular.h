@@ -27,8 +27,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @author Navid Pirmarzdashti
-
 #pragma once
 
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -37,7 +35,8 @@
 #include <RobotEyeGrabber.h>
 #include <memory>
 
-namespace snark { namespace ocular {
+
+namespace snark { namespace ocular { namespace roboteye { 
     
 /// lidar point for ocular
 struct point_t
@@ -59,18 +58,17 @@ struct region_scan
     unsigned short scan_lines;  //number of lines
 };
 
-class device
+class device : protected ::ocular::RobotEyeGrabber
 {
-    friend class scanner;
-    friend class listener;
-protected:
-    std::shared_ptr<::ocular::RobotEyeGrabber> grabber;
 public:
     std::string serial;
     
     device(std::string ip,bool home=true);
     virtual ~device();
     
+protected:
+    friend class scanner;
+    friend class listener;
 };
 
 class scanner
@@ -79,7 +77,7 @@ public:
     scanner(device& dev,const region_scan& rs);
     virtual ~scanner();
 protected:
-    std::shared_ptr<::ocular::RobotEyeGrabber> grabber;
+    device& dev;
 };
 
 class listener : protected ::ocular::RobotEyeLaserDataCallbackClass
@@ -88,10 +86,10 @@ public:
     listener(device& dev,bool highspeed_mode=false);
     virtual ~listener();
 protected:
-    std::shared_ptr<::ocular::RobotEyeGrabber> grabber;
+    device& dev;
     uint32_t block;
-    void on_frame(const std::vector<snark::ocular::point_t>& points) { }
+    void on_frame(const std::vector<point_t>& points) { }
     void LaserDataCallback(std::vector<::ocular::ocular_rbe_obs_t> observations, unsigned int timestamp);
 };
 
-} } //namespace snark { namespace ocular {
+} } } //namespace snark { namespace ocular { namespace roboteye { 

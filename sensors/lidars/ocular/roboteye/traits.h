@@ -33,7 +33,7 @@
 
 #include "ocular.h"
 #include <comma/csv/traits.h>
-#include "../../../visiting/eigen.h"
+#include "../../../../visiting/eigen.h"
 
 namespace comma { namespace visiting {
    
@@ -55,24 +55,24 @@ template <> struct traits< ocular::ocular_rbe_obs_t >
     }
 };
 
-template <> struct traits< snark::ocular::point_t >
+template <> struct traits< snark::ocular::roboteye::point_t >
 {
-    template< typename K, typename V > static void visit( const K& k, snark::ocular::point_t& p, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ocular::roboteye::point_t& p, V& v )
     {
         v.apply( "t", p.t );
         v.apply( "block", p.block );
         v.apply( "point", p.point );
     }
-    template< typename K, typename V > static void visit( const K& k, const snark::ocular::point_t& p, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ocular::roboteye::point_t& p, V& v )
     {
         v.apply( "t", p.t );
         v.apply( "block", p.block );
         v.apply( "point", p.point );
     }
 };
-template <> struct traits< snark::ocular::region_scan >
+template <> struct traits< snark::ocular::roboteye::region_scan >
 {
-    template< typename K, typename V > static void visit( const K& k, snark::ocular::region_scan& p, V& v )
+    template< typename K, typename V > static void visit( const K& k, snark::ocular::roboteye::region_scan& p, V& v )
     {
         v.apply( "azimuth_rate", p.azimuth_rate );
         v.apply( "azimuth_min", p.azimuth_min );
@@ -81,7 +81,7 @@ template <> struct traits< snark::ocular::region_scan >
         v.apply( "elevation_max", p.elevation_max );
         v.apply( "scan_lines", p.scan_lines );
     }
-    template< typename K, typename V > static void visit( const K& k, const snark::ocular::region_scan& p, V& v )
+    template< typename K, typename V > static void visit( const K& k, const snark::ocular::roboteye::region_scan& p, V& v )
     {
         v.apply( "azimuth_rate", p.azimuth_rate );
         v.apply( "azimuth_min", p.azimuth_min );
