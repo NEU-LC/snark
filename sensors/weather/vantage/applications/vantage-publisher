@@ -4,7 +4,21 @@ scriptname=$( basename $0 )
 
 source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
 
-(( $# == 1 )) || { echo "Usage: $scriptname <robot-config>" >&2; exit 1; }
+function usage()
+{
+cat <<EOF
+
+publish data from vantage weather station
+
+usage: $scriptname <robot-config>
+
+EOF
+    exit
+}
+
+(( $# == 1 )) || usage
+[[ $1 == "-h" || $1 == "--help" ]] && usage
+
 config_file_path=$1
 
 function load_config()
