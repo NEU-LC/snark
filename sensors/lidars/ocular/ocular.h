@@ -37,7 +37,8 @@
 #include <RobotEyeGrabber.h>
 #include <memory>
 
-namespace snark { namespace ocular {
+
+namespace snark { namespace ocular { //namespace roboteye { 
     
 /// lidar point for ocular
 struct point_t
@@ -59,18 +60,20 @@ struct region_scan
     unsigned short scan_lines;  //number of lines
 };
 
-class device
+class device //: protected ::ocular::RobotEyeGrabber
 {
-    friend class scanner;
-    friend class listener;
-protected:
-    std::shared_ptr<::ocular::RobotEyeGrabber> grabber;
 public:
     std::string serial;
     
     device(std::string ip,bool home=true);
     virtual ~device();
     
+protected:
+    friend class scanner;
+    friend class listener;
+     std::shared_ptr<::ocular::RobotEyeGrabber> grabber;
+    // std::unique_ptr<::ocular::RobotEyeGrabber> grabber_;
+
 };
 
 class scanner
@@ -94,4 +97,4 @@ protected:
     void LaserDataCallback(std::vector<::ocular::ocular_rbe_obs_t> observations, unsigned int timestamp);
 };
 
-} } //namespace snark { namespace ocular {
+} } //namespace snark { namespace ocular { namespace roboteye { 

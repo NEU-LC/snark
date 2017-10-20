@@ -3,6 +3,9 @@ set( TARGET_NAME snark_${PROJECT} )
 file( GLOB includes *.h)
 file( GLOB sources *.cpp )
 
+# doesn't work: can't link with comma or boost
+# set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0" )
+
 ## from ocular example
 # Here you can point to a specific RobotEye library location if needed
 # This directory must contain the RobotEyeConfig.cmake file
