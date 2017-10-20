@@ -37,7 +37,7 @@ namespace detail {
     
 static unsigned int packet_angle_( const velodyne::packet& p ) { return p.blocks[0].rotation() + 9000; } // 0 = behind the vehicle
 
-static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ); } // quick and dirty: see todo comments in puck/calculator.cpp
+static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; } // quick and dirty: -90 degrees for now; see todo comments in puck/calculator.cpp
 
 } // namespace detail {
     

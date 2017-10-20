@@ -128,6 +128,9 @@ static void usage( bool )
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
     std::cerr << "                                    5: for scans 5, 6, ..." << std::endl;
     std::cerr << "                                    :3 for scans 0, 1, 2, 3" << std::endl;
+    std::cerr << "           attention! by default scans will start at 90 degrees so that the data in front and at the back" << std::endl;
+    std::cerr << "                      of the lidar are not split by the scan boundary" << std::endl;
+    std::cerr << "                      --scan-begin-angle: todo" << std::endl;
     std::cerr << "    --raw-intensity: output intensity data without any correction" << std::endl;
     std::cerr << "    --legacy: use old timetable and old algorithm for azimuth calculation" << std::endl;
     std::cerr << "    --adjusted-time=<mode>: adjust input time to match velodyne period; " << std::endl;
