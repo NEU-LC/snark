@@ -88,12 +88,14 @@ function config_sample()
         "device":
         {
             "address": "169.254.166.97",
-            "serial-number": "21991077"     // alternative to "address"
+            "serial-number": "21991077"    // alternative to "address"
         },
 
         "gige":
         {
-            "packet-size": "8192"
+            "packet-size": 8192,
+            "inter-packet-delay": 15000,   // transmission delay in ticks
+            "num-cameras": 2               // auto-calculate inter-packet-delay
         }
     }
 }
@@ -135,8 +137,8 @@ args=
 [[ $offset_y ]] && args+=" --offset-y=$offset_y"
 [[ $config_pixel_format ]] && args+=" --pixel-format=$config_pixel_format"
 [[ $config_gige_packet_size ]] && args+=" --packet-size=$config_gige_packet_size"
-[[ $config_num_cameras ]] && args+=" --num-cameras=$config_num_cameras"
-[[ $config_inter_packet_delay ]] && args+=" --inter-packet-delay=$config_inter_packet_delay"
+[[ $config_gige_inter_packet_delay ]] && args+=" --inter-packet-delay=$config_gige_inter_packet_delay"
+[[ $config_gige_num_cameras ]] && args+=" --num-cameras=$config_gige_num_cameras"
 [[ $options_verbose ]] && args+=" --verbose"
 args=${args# }
 
