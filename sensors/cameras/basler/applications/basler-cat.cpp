@@ -127,8 +127,7 @@ static void usage( bool verbose = false )
     std::cerr << "\ncamera options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
     std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto\" to automatically set";
-    std::cerr << "\n    --gain=[<num>]               gain; \"auto\" to automatically set;";
-    std::cerr << "\n                                 for USB cameras units are dB";
+    std::cerr << "\n    --gain=[<dB>]                gain; \"auto\" to automatically set;";
     std::cerr << "\n";
     std::cerr << "\nacquisition options";
     std::cerr << "\n    --discard                    discard frames, if cannot keep up;";
@@ -759,7 +758,7 @@ static void set_gain( Pylon::CBaslerGigECamera& camera, const comma::command_lin
         else
         {
             camera.GainAuto = Basler_GigECameraParams::GainAuto_Off;
-            camera.GainRaw = boost::lexical_cast< unsigned int >( gain );
+            camera.GainAbs = boost::lexical_cast< unsigned int >( gain );
         }
     }
 }
@@ -830,7 +829,7 @@ static void set_acquisition_mode( T& camera, P acquisition_mode )
 static void set_continuous_acquisition_mode( Pylon::CBaslerGigECamera& camera ) { set_acquisition_mode( camera, Basler_GigECameraParams::AcquisitionMode_Continuous ); }
 static void set_continuous_acquisition_mode( Pylon::CBaslerUsbCamera& camera ) { set_acquisition_mode( camera, Basler_UsbCameraParams::AcquisitionMode_Continuous ); }
 static double get_exposure_time( const Pylon::CBaslerGigECamera& camera ) { return camera.ExposureTimeAbs(); }
-static double get_gain( const Pylon::CBaslerGigECamera& camera ) { return camera.GainRaw(); }
+static double get_gain( const Pylon::CBaslerGigECamera& camera ) { return camera.GainAbs(); }
 static double get_frame_rate( const Pylon::CBaslerGigECamera& camera ) { return camera.ResultingFrameRateAbs(); }
 static double get_exposure_time( const Pylon::CBaslerUsbCamera& camera ) { return camera.ExposureTime(); }
 static double get_gain( const Pylon::CBaslerUsbCamera& camera ) { return camera.Gain(); }
