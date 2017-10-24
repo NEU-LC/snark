@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# TODO: rename this script appropriately
 import rosbag
 import sys
 import datetime
@@ -61,6 +62,7 @@ def flatten_dict(d):
                 yield key, value
     return dict(items())
 
+# TODO: do not need two functions (message->dictionary, dictionary->type and ctor). Join into one, save both space and time.
 def _structure_of_ros_message( message ):
     """
     Takes in a ROS message and returns a nested ordered dictionary representing the structure
@@ -134,6 +136,7 @@ def main():
     # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
     remove_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
     parser.add_argument( '-b', '--binary', help='use binary output', action='store_true' )
+# TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
     args = parser.parse_args()
 
     if args.file is None:
