@@ -43,7 +43,7 @@ namespace snark { namespace graphics { namespace qopengl {
 
 // TODO: might be good (necessary) to make these shaders work with an older GLSL version. Perhaps 1.20.
 static const char *vertex_shader_source = R"(
-    #version 150
+    #version 130
     in vec4 vertex;
     in vec4 color;
     in float point_size;
@@ -58,7 +58,7 @@ static const char *vertex_shader_source = R"(
 )";
 
 static const char *fragment_shader_source = R"(
-    #version 150
+    #version 130
     in highp vec4 vert_color;
     out highp vec4 frag_color;
     void main() {

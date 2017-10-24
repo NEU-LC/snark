@@ -39,7 +39,7 @@ namespace snark { namespace graphics { namespace qopengl {
 
 /// draw model
 // static const char *mesh_shader_source = R"(
-//     #version 150
+//     #version 130
 //     in vec3 vertex;
 //     in vec2 offset;
 //     out vec2 textCoord;
@@ -53,7 +53,7 @@ namespace snark { namespace graphics { namespace qopengl {
 // 
 // 
 // static const char *mesh_fragment_source = R"(
-//     #version 150
+//     #version 130
 //     in vec2 textCoord;
 //     uniform sampler2D sampler;
 //     out highp vec4 frag_color;
@@ -63,7 +63,7 @@ namespace snark { namespace graphics { namespace qopengl {
 // )";
 
 static const char *vertex_shader_source = R"(
-    #version 150
+    #version 130
     in vec4 vertex;
     uniform mat4 view_transform;
     uniform mat4 model_transform;
@@ -73,7 +73,7 @@ static const char *vertex_shader_source = R"(
 )";
 
 static const char *fragment_shader_source = R"(
-    #version 150
+    #version 130
     out highp vec4 frag_color;
     void main() {
        frag_color = vec4(1,1,1,1);

@@ -38,7 +38,7 @@ namespace snark { namespace graphics { namespace qopengl {
 
 /// draw image from texture in 3d projection
 static const char *texture_shader_source = R"(
-    #version 150
+    #version 130
     in vec3 vertex;
     in vec2 offset;
     out vec2 textCoord;
@@ -53,7 +53,7 @@ static const char *texture_shader_source = R"(
 //frag_color = clamp( sampler, 0.0, 1.0 );
     //uniform highp vec4 sampler;
 static const char *texture_fragment_source = R"(
-    #version 150
+    #version 130
     in vec2 textCoord;
     uniform sampler2D sampler;
     out highp vec4 frag_color;
