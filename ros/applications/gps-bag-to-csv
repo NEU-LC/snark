@@ -1,0 +1,172 @@
+#!/usr/bin/python
+import rosbag
+import sys
+import datetime
+import argparse
+import exceptions
+import struct
+import comma
+import numpy
+from signal import signal, SIGPIPE, SIG_DFL
+import StringIO
+import collections
+try:
+    import rospy_message_converter
+except ImportError:
+    msg = """
+cannot import rospy_message_converter module; usually you can install it as
+    sudo apt-get install ros-kinetic-rospy-message-converter
+(use your ROS distro name in place of kinetic). If the module is not available
+in your package manager, build and install the module manually.
+"""
+    raise ImportError(msg)
+
+help_description='extract global position data from ROS bag files'
+help_examples="""
+examples
+    gps-bag-to-csv --file "input.bag"
+    gps-bag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin t,3d | head
+
+hints
+    get list of topic inside a bag:
+        rostopic list -b <bag> 
+    get info about a topic:
+        rostopic echo <topic> -b <file> | less -S
+        rostopic echo /mavros/global_position/global -b input.bag | head -n 32
+"""
+
+def remove_options( parser, options ):
+    """argparse does not provide a standard way to remove or override options
+this function handles it manually
+"""
+    for option in options:
+        for action in parser._actions:
+            for option_string in vars(action)['option_strings']:
+                if option_string == option:
+                    parser._handle_conflict_resolve( None, [(option, action)] )
+                    break
+
+def flatten_dict(d):
+    def items():
+        for key, value in d.items():
+            if isinstance(value, dict):
+                for subkey, subvalue in flatten_dict(value).items():
+                    yield key + "/" + subkey, subvalue
+            elif isinstance(value, list):
+                n = 0
+                for subvalue in flatten_dict(value).items():
+                    yield key + "[%d]" % n, subvalue
+                    n = n + 1
+            else:
+                yield key, value
+    return dict(items())
+
+def _structure_of_ros_message( message ):
+    """
+    Takes in a ROS message and returns a nested ordered dictionary representing the structure
+    of the messages. Keys are field names and values are tuples of field types and a lambda
+    that would extract the corresponding value from the message (getattr and conversion).
+"""
+    from rospy_message_converter import message_converter as mc
+    dictionary = collections.OrderedDict()
+
+    message_fields = mc._get_message_fields(message)
+    for field_name, field_type in message_fields:
+        if field_type in mc.ros_binary_types:
+            fcn = lambda msg, field_name=field_name, field_type=field_type: mc._convert_to_ros_binary( field_type, getattr( msg, field_name ) )
+            dictionary[field_name] = ( "S%d" % len( fcn( message ) ), fcn )
+        elif field_type in mc.ros_primitive_types:
+            fcn = lambda msg, field_name=field_name: getattr( msg, field_name )
+            if field_type == 'string':
+                dictionary[field_name] = ( "S%d" % len( fcn( message ) ), fcn )
+            else:
+                dictionary[field_name] = ( field_type, fcn )
+        elif mc._is_field_type_an_array(field_type):
+            fcn = lambda msg, field_name=field_name: getattr( msg, field_name )
+            m = mc.list_brackets.search( field_type )
+            dictionary[field_name] = ( ( field_type[:m.start()], ( int(m.group()[1:-1]), ) ), fcn )
+        else:
+            fcn = lambda msg, field_name=field_name: getattr( msg, field_name )
+            dictionary[field_name] = ( _structure_of_ros_message( fcn( message ) ), fcn )
+
+    return dictionary
+
+def convert_ros_message_to_csv_record( structure ):
+    """
+    Takes in a ROS message and returns a comma.csv.struct (Python type) representing this message
+    and a lambda function converting the message into an instance of the new comma.csv.struct
+"""
+    fields = []
+    types = []
+    ctors = []
+    for field_name, field_value in structure.items():
+        field_type, field_ctor = field_value
+        fields.append( field_name )
+        if type(field_type) is collections.OrderedDict:
+            element_t, element_ctor = convert_ros_message_to_csv_record( field_type )
+            types.append( element_t )
+            ctors.append( lambda msg, field_ctor=field_ctor, element_ctor=element_ctor: element_ctor( field_ctor( msg ) ) )
+        else:
+            types.append( field_type )
+            ctors.append( field_ctor )
+    new_t = comma.csv.struct( ','.join( fields ), *types )
+    return ( new_t, lambda msg, new_t=new_t: numpy.array( [ tuple( [ c(msg) for c in ctors ] ) ], dtype = new_t ) )
+
+def main():
+    parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
+    parser.add_argument( '--file', help='input bag file' )
+    parser.add_argument( '--topic', help='topic in the bag file to be extracted', default='/mavros/global_position/global' )
+    parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
+    parser.add_argument( '--output-format', help='print output format for binary and exit', action='store_true' )
+    comma.csv.add_options( parser )
+    # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
+    remove_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
+    parser.add_argument( '-b', '--binary', help='use binary output', action='store_true' )
+    args = parser.parse_args()
+
+    from rospy_message_converter import message_converter
+
+    record_t = comma.csv.struct( 't,latitude,longitude,altitude', 'datetime64[us]', 'float64', 'float64', 'float64' )
+    if args.output_fields:
+        print ','.join( list( record_t.fields ) )
+        sys.exit(0)
+    if args.output_format:
+        print comma.csv.format.from_numpy(record_t.format)
+        sys.exit(0)
+
+    if args.file is None:
+        raise exceptions.RuntimeError( "Input bag not specified" )
+    try:
+        with open( args.file ) as f:
+            pass
+    except IOError as e:
+        raise exceptions.RuntimeError( "Unable to open file '%s' for reading" % args.file )
+
+    signal(SIGPIPE, SIG_DFL) # do no want the IOError message trace
+
+    ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary )
+    r = record_t()
+    first = True
+    with rosbag.Bag( args.file ) as bag:
+        for topic, msg, t in bag.read_messages( topics=[ args.topic ] ):
+            if first:
+                print >>sys.stderr, msg
+                di = _structure_of_ros_message( msg )
+                #print >>sys.stderr, di
+                new_t, ctor = convert_ros_message_to_csv_record( di )
+                print >>sys.stderr, ','.join( new_t.fields )
+                print >>sys.stderr, comma.csv.format.from_numpy( new_t.format )
+                print >>sys.stderr, ctor( msg )
+                # need to do custom handling of time
+                r = new_t(); r = ctor( msg )
+                print >>sys.stderr, r
+                sys.exit(1)
+            r['t'] = numpy.datetime64( datetime.datetime.fromtimestamp( t.secs + 1.0e-9 * t.nsecs ) )
+            r['latitude'] = msg.latitude
+            r['longitude'] = msg.longitude
+            r['altitude'] = msg.altitude
+            ostream.write( r )
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
