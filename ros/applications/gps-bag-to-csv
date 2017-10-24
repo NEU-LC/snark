@@ -9,8 +9,6 @@ import struct
 import comma
 import numpy
 from signal import signal, SIGPIPE, SIG_DFL
-import StringIO
-import collections
 try:
     import rospy_message_converter
 except ImportError:
@@ -46,21 +44,6 @@ this function handles it manually
                 if option_string == option:
                     parser._handle_conflict_resolve( None, [(option, action)] )
                     break
-
-def flatten_dict(d):
-    def items():
-        for key, value in d.items():
-            if isinstance(value, dict):
-                for subkey, subvalue in flatten_dict(value).items():
-                    yield key + "/" + subkey, subvalue
-            elif isinstance(value, list):
-                n = 0
-                for subvalue in flatten_dict(value).items():
-                    yield key + "[%d]" % n, subvalue
-                    n = n + 1
-            else:
-                yield key, value
-    return dict(items())
 
 def convert_ros_message_to_csv_record( message ):
     """
@@ -132,7 +115,6 @@ def main():
     with rosbag.Bag( args.file ) as bag:
         generator = bag.read_messages( topics=[ args.topic ] )
         topic, msg, t = generator.next()
-        #print >>sys.stderr, msg
         record_t, record_ctor = convert_ros_message_to_csv_record( msg )
         if args.output_fields:
             print ','.join( record_t.fields )
