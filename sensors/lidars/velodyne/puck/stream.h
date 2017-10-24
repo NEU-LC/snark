@@ -40,6 +40,7 @@
 #include "../impl/stream_traits.h"
 #include "../stream.h"
 #include "packet.h"
+#include "ntp.h"
 
 namespace snark {  namespace velodyne { namespace puck {
 
@@ -49,7 +50,7 @@ class stream : public boost::noncopyable, public velodyne::stream
 {
     public:
         /// constructor
-        stream( S* stream, bool output_invalid = false, bool ntp = false );
+        stream( S* stream, bool output_invalid = false, const boost::optional< ntp_t >& ntp = boost::none );
 
         /// read point, return NULL, if end of stream
         laser_return* read();
@@ -65,24 +66,6 @@ class stream : public boost::noncopyable, public velodyne::stream
         void close();
 
     private:
-        boost::posix_time::ptime timestamp_from_ntp_(const boost::posix_time::ptime& t, comma::uint32 ntp)
-        {
-            if (!ntp_) return t;
-            const boost::posix_time::ptime base( comma::csv::impl::epoch );
-            const boost::posix_time::time_duration d = t - base;
-            // get system time: number of microseconds since start of the hour
-            comma::uint64 ms = d.total_microseconds() % ( 3600000000 );
-            // if system time has rolled over to 0 and ntp has not, add an hour
-            // ( system time is ahead of ntp )
-            if ( ms < ntp ) { ms += 3600000000; }
-            comma::int64 diff = ms - ntp;
-            if ( diff > 1000000 )
-            {
-                // the values are more than one second apart - time in packet wasn't set correctly.
-                std::cerr << "cannot match packet time to system time" << ntp << std::endl;
-            }
-            return t - boost::posix_time::microseconds(ms) + boost::posix_time::microseconds(ntp);
-        }
         boost::scoped_ptr< S > stream_;
         boost::posix_time::ptime timestamp_;
         const char* buffer_;
@@ -92,12 +75,12 @@ class stream : public boost::noncopyable, public velodyne::stream
         bool closed_;
         laser_return laser_return_;
         bool output_invalid_;
-        bool ntp_;
+        boost::optional<ntp_t> ntp_;
 };
 
 
 template < typename S >
-inline stream< S >::stream( S* stream, bool output_invalid, bool ntp ) : stream_( stream ), buffer_( NULL ), scan_( 0 ), closed_( false ), output_invalid_( output_invalid ), ntp_(ntp) {}
+inline stream< S >::stream( S* stream, bool output_invalid, const boost::optional< ntp_t >& ntp ) : stream_( stream ), buffer_( NULL ), scan_( 0 ), closed_( false ), output_invalid_( output_invalid ), ntp_(ntp) {}
 
 template < typename S >
 inline laser_return* stream< S >::read()
@@ -111,7 +94,7 @@ inline laser_return* stream< S >::read()
             const packet* p = reinterpret_cast< const packet* >( buffer_ );
             if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *p ) ) { ++scan_; }
             puck_packet_iterator_ = packet::const_iterator( p );
-            timestamp_ = timestamp_from_ntp_( impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() );
+            timestamp_ = ntp_ ? ntp_->update_timestamp( impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() ) : impl::stream_traits< S >::timestamp( *stream_ );
         }
         if( timestamp_.is_not_a_date_time() ) { timestamp_ = impl::stream_traits< S >::timestamp( *stream_ ); }
         const packet::const_iterator::value_type& v = *puck_packet_iterator_;

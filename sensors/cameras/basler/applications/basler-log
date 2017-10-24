@@ -140,7 +140,7 @@ args=
 [[ $offset_y ]] && args+=" --offset-y=$offset_y"
 [[ $config_pixel_format ]] && args+=" --pixel-format=$config_pixel_format"
 [[ $config_device_exposure ]] && args+=" --exposure=$config_device_exposure"
-[[ $config_device_gain ]] && arg+=" --gain=$config_device_gain"
+[[ $config_device_gain ]] && args+=" --gain=$config_device_gain"
 [[ $config_device_frame_rate ]] && args+=" --frame-rate=$config_device_frame_rate"
 [[ $config_gige_packet_size ]] && args+=" --packet-size=$config_gige_packet_size"
 [[ $config_gige_inter_packet_delay ]] && args+=" --inter-packet-delay=$config_gige_inter_packet_delay"
