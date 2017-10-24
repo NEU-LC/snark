@@ -83,6 +83,16 @@ def _structure_of_ros_message( message ):
                 dictionary[field_name] = ( "S%d" % len( fcn( message ) ), fcn )
             else:
                 dictionary[field_name] = ( field_type, fcn )
+        elif field_type == 'time':
+            def fcn( msg, field_name=field_name ):
+                ts = getattr( msg, field_name )
+                return numpy.datetime64( datetime.datetime.fromtimestamp( ts.secs + 1.0e-9 * ts.nsecs ) )
+            dictionary[field_name] = ( 'datetime64[us]', fcn )
+        elif field_type == 'duration':
+            def fcn( msg, field_name=field_name ):
+                ts = getattr( msg, field_name )
+                return numpy.timedelta64( ts.secs, 's' ) + numpy.timedelta64( ts.nsecs, 'ns' )
+            dictionary[field_name] = ( 'timedelta64[us]', fcn )
         elif mc._is_field_type_an_array(field_type):
             fcn = lambda msg, field_name=field_name: getattr( msg, field_name )
             m = mc.list_brackets.search( field_type )
