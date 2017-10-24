@@ -1,6 +1,5 @@
 #!/usr/bin/python
-# TODO: rename this script appropriately
-import rosbag, sys, datetime, argparse, exceptions, comma, numpy
+import rosbag, sys, datetime, argparse, comma, numpy
 from signal import signal, SIGPIPE, SIG_DFL
 try:
     import rospy_message_converter
@@ -20,7 +19,7 @@ examples
     rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
     rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub | head
 
-general rosbag hints
+general ROS bag hints
     get list of topics inside a bag:
         rostopic list -b <bag> 
     get info about a topic:
@@ -98,12 +97,12 @@ def main():
     args = parser.parse_args()
 
     if args.file is None:
-        raise exceptions.RuntimeError( "Input bag not specified" )
+        raise RuntimeError( "Input bag not specified" )
     try:
         with open( args.file ) as f:
             pass
     except IOError as e:
-        raise exceptions.RuntimeError( "Unable to open file '%s' for reading" % args.file )
+        raise RuntimeError( "Unable to open file '%s' for reading" % args.file )
 
     signal(SIGPIPE, SIG_DFL) # do no want the IOError message trace
 
