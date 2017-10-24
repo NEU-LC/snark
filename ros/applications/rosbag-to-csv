@@ -16,8 +16,9 @@ help_description="output ROS bag files of arbitrary content as csv streams"
 help_examples="""
 examples
     rosbag-to-csv --file "input.bag"
+    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix"
     rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
-    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub | head
+    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
 
 general ROS bag hints
     get list of topics inside a bag:
