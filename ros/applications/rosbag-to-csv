@@ -95,6 +95,7 @@ def main():
     remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
     parser.add_argument( '-b', '--binary', help='produce binary output', action='store_true' )
 # TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
+    parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', default='' )
     args = parser.parse_args()
 
     if args.file is None:
@@ -117,7 +118,7 @@ def main():
         if args.output_format:
             print comma.csv.format.from_numpy( record_t.format )
             sys.exit(0)
-        ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary )
+        ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary, fields=args.fields )
         record = record_ctor( msg )
         ostream.write( record )
         for topic, msg, t in generator:
