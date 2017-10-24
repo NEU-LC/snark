@@ -136,16 +136,6 @@ def main():
     parser.add_argument( '-b', '--binary', help='use binary output', action='store_true' )
     args = parser.parse_args()
 
-    from rospy_message_converter import message_converter
-
-    record_t = comma.csv.struct( 't,latitude,longitude,altitude', 'datetime64[us]', 'float64', 'float64', 'float64' )
-    if args.output_fields:
-        print ','.join( list( record_t.fields ) )
-        sys.exit(0)
-    if args.output_format:
-        print comma.csv.format.from_numpy(record_t.format)
-        sys.exit(0)
-
     if args.file is None:
         raise exceptions.RuntimeError( "Input bag not specified" )
     try:
@@ -156,28 +146,24 @@ def main():
 
     signal(SIGPIPE, SIG_DFL) # do no want the IOError message trace
 
-    ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary )
-    r = record_t()
-    first = True
     with rosbag.Bag( args.file ) as bag:
-        for topic, msg, t in bag.read_messages( topics=[ args.topic ] ):
-            if first:
-                print >>sys.stderr, msg
-                di = _structure_of_ros_message( msg )
-                #print >>sys.stderr, di
-                new_t, ctor = convert_ros_message_to_csv_record( di )
-                print >>sys.stderr, ','.join( new_t.fields )
-                print >>sys.stderr, comma.csv.format.from_numpy( new_t.format )
-                print >>sys.stderr, ctor( msg )
-                # need to do custom handling of time
-                r = new_t(); r = ctor( msg )
-                print >>sys.stderr, r
-                sys.exit(1)
-            r['t'] = numpy.datetime64( datetime.datetime.fromtimestamp( t.secs + 1.0e-9 * t.nsecs ) )
-            r['latitude'] = msg.latitude
-            r['longitude'] = msg.longitude
-            r['altitude'] = msg.altitude
-            ostream.write( r )
+        generator = bag.read_messages( topics=[ args.topic ] )
+        topic, msg, t = generator.next()
+        #print >>sys.stderr, msg
+        di = _structure_of_ros_message( msg )
+        record_t, record_ctor = convert_ros_message_to_csv_record( di )
+        if args.output_fields:
+            print ','.join( record_t.fields )
+            sys.exit(0)
+        if args.output_format:
+            print comma.csv.format.from_numpy( record_t.format )
+            sys.exit(0)
+        ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary )
+        record = record_ctor( msg )
+        ostream.write( record )
+        for topic, msg, t in generator:
+            record = record_ctor( msg )
+            ostream.write( record )
     sys.exit(0)
 
 if __name__ == '__main__':
