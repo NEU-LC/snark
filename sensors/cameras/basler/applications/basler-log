@@ -88,12 +88,17 @@ function config_sample()
         "device":
         {
             "address": "169.254.166.97",
-            "serial-number": "21991077"     // alternative to "address"
+            "serial-number": "21991077",   // alternative to "address"
+            "exposure": 5000,              // in µs or "auto"
+            "gain": 136,                   // raw units or dB
+            "frame-rate": 50               // fps
         },
 
         "gige":
         {
-            "packet-size": "8192"
+            "packet-size": 8192,
+            "inter-packet-delay": 15000,   // transmission delay in ticks
+            "num-cameras": 2               // auto-calculate inter-packet-delay
         }
     }
 }
@@ -134,9 +139,12 @@ args=
 [[ $offset_x ]] && args+=" --offset-x=$offset_x"
 [[ $offset_y ]] && args+=" --offset-y=$offset_y"
 [[ $config_pixel_format ]] && args+=" --pixel-format=$config_pixel_format"
+[[ $config_device_exposure ]] && args+=" --exposure=$config_device_exposure"
+[[ $config_device_gain ]] && args+=" --gain=$config_device_gain"
+[[ $config_device_frame_rate ]] && args+=" --frame-rate=$config_device_frame_rate"
 [[ $config_gige_packet_size ]] && args+=" --packet-size=$config_gige_packet_size"
-[[ $config_num_cameras ]] && args+=" --num-cameras=$config_num_cameras"
-[[ $config_inter_packet_delay ]] && args+=" --inter-packet-delay=$config_inter_packet_delay"
+[[ $config_gige_inter_packet_delay ]] && args+=" --inter-packet-delay=$config_gige_inter_packet_delay"
+[[ $config_gige_num_cameras ]] && args+=" --num-cameras=$config_gige_num_cameras"
 [[ $options_verbose ]] && args+=" --verbose"
 args=${args# }
 

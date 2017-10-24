@@ -291,6 +291,7 @@ IF( snark_system_manager STREQUAL "auto" )
 ENDIF( snark_system_manager STREQUAL "auto" )
 
 IF( snark_build_imaging )
+    OPTION( CUDA_USE_STATIC_CUDA_RUNTIME "use static cuda runtime, enabling seems to cause lots of linking grief with some installations" OFF )
     IF( WIN32 )
         SET( OpenCV_STATIC OFF )
     ENDIF( WIN32 )

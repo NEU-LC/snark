@@ -123,7 +123,8 @@ static void usage( bool )
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
     std::cerr << "    --min-range=<value>: do not output points closer than <value>; default 0" << std::endl;
     std::cerr << "    --max-range=<value>: do not output points farther away than <value>; default output all points" << std::endl;
-    std::cerr << "    --ntp: get data timestamps from ntp data in packets (default: system time from input stream)" << std::endl;
+    std::cerr << "    --ntp=[<threshold>],[<\"permissive\">]: get data timestamps from ntp data in packets (default: system time from input stream)" << std::endl;
+    std::cerr << "                                            if times differ by more than <threshold>, use system time if permissive" << std::endl;
     std::cerr << "    --output-invalid-points: output also invalid laser returns" << std::endl;
     std::cerr << "    --scans [<from>]:[<to>] : output only scans in given range" << std::endl;
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
@@ -283,16 +284,36 @@ int main( int ac, char** av )
         boost::scoped_ptr< snark::velodyne::db > db;
         struct models { enum values { hdl64, puck }; };
         options.assert_mutually_exclusive( "--model,--puck,--hdl64,--64" );
-        bool ntp = options.exists("--ntp");
         models::values model;
         std::string model_string = options.value< std::string >( "--model", "" );
         if( options.exists( "--puck" ) || model_string == "puck" || model_string == "vlp16" || model_string == "vlp-16" ) { model = models::puck; }
         else if( options.exists( "--hdl64,--64" ) || model_string == "hdl64" || model_string == "hdl-64" || model_string == "64" ) { model = models::hdl64; }
         else if( model_string.empty() ) { std::cerr << "velodyne-to-csv: please specify --model" << std::endl; return 1; }
         else { std::cerr << "velodyne-to-csv: expected model, got: \"" << model_string << "\"" << std::endl; return 1; }
+        boost::optional<snark::velodyne::puck::ntp_t> ntp;
         switch( model )
         {
             case models::puck:
+                if (options.exists("--ntp"))
+                {
+                    std::vector<std::string> v = comma::split(options.value<std::string>("--ntp"), ',');
+                    switch (v.size())
+                    {
+                        case 0:
+                            ntp = snark::velodyne::puck::ntp_t();
+                            break;
+                        case 1:
+                            ntp = snark::velodyne::puck::ntp_t(boost::lexical_cast<double>(v[0]));
+                            break;
+                        case 2:
+                            ntp = snark::velodyne::puck::ntp_t(boost::lexical_cast<double>(v[0]), v[1] == "permissive");
+                            break;
+                        default:
+                            std::cerr << "velodyne-to-csv: expected --ntp=[<threshold>],[permissive]; got --ntp=" << options.value<std::string>("--ntp") << std::endl;
+                            return 1;
+                            break;
+                    }
+                }
                 calculator= new snark::velodyne::puck::calculator;
                 if( options.exists( "--pcap" ) ) { s = new snark::velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points, ntp ); }
                 else if( options.exists( "--thin" ) ) { s = new snark::velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points, ntp ); }

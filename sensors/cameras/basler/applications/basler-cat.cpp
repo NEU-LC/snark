@@ -879,6 +879,9 @@ static void set_transport_options( Pylon::CBaslerUsbCamera&, const comma::comman
     }
 }
 
+static std::string gain_units( const Pylon::CBaslerGigECamera& ) { return ""; }
+static std::string gain_units( const Pylon::CBaslerUsbCamera& ) { return "dB"; }
+
 template< typename T >
 static void show_config( const T& camera, const comma::command_line_options& options )
 {
@@ -894,7 +897,7 @@ static void show_config( const T& camera, const comma::command_line_options& opt
 
         std::cerr << "basler-cat:         gain: ";
         if( gain_is_auto ) { std::cerr << "auto"; }
-        else { std::cerr << get_gain( camera ) << "dB"; }
+        else { std::cerr << get_gain( camera ) << gain_units( camera ); }
         std::cerr << std::endl;
 
         // If frame rate is not explicitly set and exposure is set to auto
