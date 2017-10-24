@@ -1,13 +1,6 @@
 #!/usr/bin/python
 # TODO: rename this script appropriately
-import rosbag
-import sys
-import datetime
-import argparse
-import exceptions
-import struct
-import comma
-import numpy
+import rosbag, sys, datetime, argparse, exceptions, comma, numpy
 from signal import signal, SIGPIPE, SIG_DFL
 try:
     import rospy_message_converter
@@ -20,23 +13,25 @@ in your package manager, build and install the module manually.
 """
     raise ImportError(msg)
 
-help_description='extract global position data from ROS bag files'
+help_description="output ROS bag files of arbitrary content as csv streams"
 help_examples="""
 examples
-    gps-bag-to-csv --file "input.bag"
-    gps-bag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin t,3d | head
+    rosbag-to-csv --file "input.bag"
+    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
+    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub | head
 
-hints
-    get list of topic inside a bag:
+general rosbag hints
+    get list of topics inside a bag:
         rostopic list -b <bag> 
     get info about a topic:
         rostopic echo <topic> -b <file> | less -S
         rostopic echo /mavros/global_position/global -b input.bag | head -n 32
 """
 
-def remove_options( parser, options ):
-    """argparse does not provide a standard way to remove or override options
-this function handles it manually
+def remove_argparse_options( parser, options ):
+    """
+    argparse does not provide a standard way to remove or override options
+    this function handles it manually
 """
     for option in options:
         for action in parser._actions:
@@ -91,14 +86,14 @@ def convert_ros_message_to_csv_record( message ):
 
 def main():
     parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
-    parser.add_argument( '--file', help='input bag file' )
+    parser.add_argument( '--file', '--bag', help='input bag file' )
     parser.add_argument( '--topic', help='topic in the bag file to be extracted', default='/mavros/global_position/global' )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
     parser.add_argument( '--output-format', help='print output format for binary and exit', action='store_true' )
     comma.csv.add_options( parser )
     # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
-    remove_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
-    parser.add_argument( '-b', '--binary', help='use binary output', action='store_true' )
+    remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
+    parser.add_argument( '-b', '--binary', help='produce binary output', action='store_true' )
 # TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
     args = parser.parse_args()
 
