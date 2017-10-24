@@ -19,6 +19,7 @@ examples
     rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix"
     rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
     rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
+    rosbag-to-csv --file="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 general ROS bag hints
     get list of topics inside a bag:
@@ -84,12 +85,30 @@ def convert_ros_message_to_csv_record( message ):
     new_t = comma.csv.struct( ','.join( fields ), *types )
     return ( new_t, lambda msg, new_t=new_t: numpy.array( [ tuple( [ c(msg) for c in ctors ] ) ], dtype = new_t ) )
 
+class set_length_action( argparse.Action ):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super( set_length_action, self ).__init__( option_strings, dest, **kwargs )
+    def __call__( self, parser, namespace, values, option_string=None ):
+        di = {}
+        for c in values.split( ';' ):
+            av = c.split( '=' )
+            if len(av) != 2:
+                raise RuntimeError( "arguments to --set-length shall take the form <path>=<length>" )
+            try:
+                di[ av[0] ] = int( av[1] )
+            except:
+                raise ValueError( "length of '%s' shall be an integer, not '%s'" % ( av[0], av[1] ) )
+        setattr( namespace, self.dest, di )
+
 def main():
     parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
     parser.add_argument( '--file', '--bag', help='input bag file' )
     parser.add_argument( '--topic', help='topic in the bag file to be extracted', default='/mavros/global_position/global' )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
     parser.add_argument( '--output-format', help='print output format for binary and exit', action='store_true' )
+    parser.add_argument( '--set-length', help='set length of listed string fields; by default, take from first input', type=str, action=set_length_action, default={} )
     comma.csv.add_options( parser )
     # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
     remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
