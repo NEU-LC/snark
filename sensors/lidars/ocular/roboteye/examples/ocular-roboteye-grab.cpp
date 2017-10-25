@@ -51,8 +51,9 @@ void usage()
     std::cerr<< "args:"<<std::endl;
     std::cerr<< "    <ip>: ip address of ocular roboteye device"<<std::endl;
     std::cerr<< "    <mode>: 1 for highspeed 30000 points per second without intensity, 0 for normal mode"<<std::endl;
-    std::cerr<< "    <azimuth_rate>: floating point number (Hz)"<<std::endl;
-    std::cerr<< "    <azimuth_min> <azimuth_max> <elevation_min> <elevation_max>: floating point number (degrees)"<<std::endl;
+    std::cerr<< "    <azimuth_rate>: floating point number (Hz), max 15Hz"<<std::endl;
+    std::cerr<< "    <azimuth_min> <azimuth_max>: floating point number (degrees), range 0 to 360"<<std::endl;
+    std::cerr<< "    <elevation_min> <elevation_max>: floating point number (degrees), range -35 to 35"<<std::endl;
     std::cerr<< "    <scan_lines>: integer number of scan lines"<<std::endl;
     std::cerr<<std::endl;
     std::cerr<< "example"<<std::endl;
