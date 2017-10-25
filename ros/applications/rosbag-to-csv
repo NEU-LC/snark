@@ -1,0 +1,202 @@
+#!/usr/bin/python
+import rosbag, sys, datetime, argparse, comma, numpy
+from signal import signal, SIGPIPE, SIG_DFL
+try:
+    import rospy_message_converter
+except ImportError:
+    msg = """
+cannot import rospy_message_converter module; usually you can install it as
+    sudo apt-get install ros-kinetic-rospy-message-converter
+(use your ROS distro name in place of kinetic). If the module is not available
+in your package manager, build and install the module manually.
+"""
+    raise ImportError(msg)
+
+help_description="output ROS bag files of arbitrary content as csv streams"
+help_examples="""
+examples
+    rosbag-to-csv --file "input.bag"
+    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix"
+    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
+    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
+    rosbag-to-csv --file="input.bag" --set-length "header/frame_id=15;data/string=10"
+
+general ROS bag hints
+    get list of topics inside a bag:
+        rostopic list -b <bag> 
+    get info about a topic:
+        rostopic echo <topic> -b <file> | less -S
+        rostopic echo /mavros/global_position/global -b input.bag | head -n 32
+"""
+
+def remove_argparse_options( parser, options ):
+    """
+    argparse does not provide a standard way to remove or override options
+    this function handles it manually
+"""
+    for option in options:
+        for action in parser._actions:
+            for option_string in vars(action)['option_strings']:
+                if option_string == option:
+                    parser._handle_conflict_resolve( None, [(option, action)] )
+                    break
+
+def convert_ros_message_to_csv_record( message, lengths={} ):
+    """
+    Takes a ROS message and returns a comma.csv.struct (Python type) representing this message
+    and a lambda function converting the message into an instance of the new comma.csv.struct
+    Optional second argument allows to specify explicitly the length of variable-length values,
+    such as strings. By default, take the lengths from the message itself.
+"""
+    record_t, record_ctor = _convert_ros_message_to_csv_record( message, lengths=lengths, prefix='' )
+    for k, v in lengths.items():
+        try:
+            pos = record_t.fields.index( k )
+            if record_t.types[ pos ][0] != 'S':
+                raise RuntimeError( "length %d specified for field '%s' that is not a string" % ( v, k ) )
+        except ValueError:
+            raise RuntimeError( "length %d specified for unknown field '%s'" % ( v, k ) )
+    return ( record_t, record_ctor )
+
+def _convert_ros_message_to_csv_record( message, lengths={}, prefix='' ):
+    """
+    Private implementation of convert_ros_message_to_csv_record. Called recursively.
+"""
+    from rospy_message_converter import message_converter as mc
+
+    full_path = lambda name: prefix and prefix + "/" + name or name
+
+    message_fields = mc._get_message_fields(message)
+    fields = []
+    types = []
+    ctors = []
+    # see Python programming FAQ why-do-lambdas-defined-in-a-loop-with-different-values-all-return-the-same-result
+    # for the explanation of all the lambda signatures (and some function signatures in case of time)
+    for field_name, field_type in message_fields:
+        fields.append( field_name )
+        if field_type in mc.ros_binary_types:
+            ctor = lambda msg, field_name=field_name, field_type=field_type: mc._convert_to_ros_binary( field_type, getattr( msg, field_name ) )
+            current_path = full_path( field_name )
+            try:
+                l = lengths[ current_path ]
+            except KeyError:
+                l = len( ctor( message ) )
+            element_t = "S%d" % l
+        elif field_type in mc.ros_primitive_types:
+            ctor = lambda msg, field_name=field_name: getattr( msg, field_name )
+            if field_type == 'string':
+                current_path = full_path( field_name )
+                try:
+                    l = lengths[ current_path ]
+                except KeyError:
+                    l = len( ctor( message ) )
+                element_t = "S%d" % l
+            else:
+                element_t = field_type
+        elif field_type == 'time':
+            def ctor( msg, field_name=field_name ):
+                ts = getattr( msg, field_name )
+                return numpy.datetime64( datetime.datetime.fromtimestamp( ts.secs + 1.0e-9 * ts.nsecs ) )
+            element_t = 'datetime64[us]'
+        elif field_type == 'duration':
+            def ctor( msg, field_name=field_name ):
+                ts = getattr( msg, field_name )
+                return numpy.timedelta64( ts.secs, 's' ) + numpy.timedelta64( ts.nsecs, 'ns' )
+            element_t = 'timedelta64[us]'
+        elif mc._is_field_type_an_array(field_type):
+            ctor = lambda msg, field_name=field_name: getattr( msg, field_name )
+            m = mc.list_brackets.search( field_type )
+            element_t = ( field_type[:m.start()], ( int(m.group()[1:-1]), ) )
+        else:
+            element_t, element_ctor = _convert_ros_message_to_csv_record( getattr( message, field_name ), lengths=lengths, prefix=full_path( field_name ) )
+            ctor = lambda msg, field_name=field_name, element_ctor=element_ctor: element_ctor( getattr( msg, field_name ) )
+        ctors.append( ctor )
+        types.append( element_t )
+
+    new_t = comma.csv.struct( ','.join( fields ), *types )
+    return ( new_t, lambda msg, new_t=new_t: numpy.array( [ tuple( [ c(msg) for c in ctors ] ) ], dtype = new_t ) )
+
+class set_length_action( argparse.Action ):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super( set_length_action, self ).__init__( option_strings, dest, **kwargs )
+    def __call__( self, parser, namespace, values, option_string=None ):
+        di = {}
+        for c in values.split( ';' ):
+            av = c.split( '=' )
+            if len(av) != 2:
+                raise RuntimeError( "arguments to --set-length shall take the form <path>=<length>" )
+            try:
+                di[ av[0] ] = int( av[1] )
+            except:
+                raise ValueError( "length of '%s' shall be an integer, not '%s'" % ( av[0], av[1] ) )
+        setattr( namespace, self.dest, di )
+
+def main():
+    parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
+    parser.add_argument( '--file', '--bag', help='input bag file', type=str )
+    parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
+    parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
+    parser.add_argument( '--output-format', help='print output format for binary and exit', action='store_true' )
+    parser.add_argument( '--set-length', help='set length of listed string fields; by default, take from first input', type=str, action=set_length_action, default={} )
+    parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
+    parser.add_argument( '--allow-empty', help='skip checks that the topic exists in the bag and contains at least one message', action='store_true' )
+    comma.csv.add_options( parser )
+    # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
+    remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
+    parser.add_argument( '-b', '--binary', help='produce binary output', action='store_true' )
+# TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
+    parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', default='' )
+    args = parser.parse_args()
+
+    if args.file is None:
+        raise RuntimeError( "Input bag not specified" )
+    try:
+        with open( args.file ) as f:
+            pass
+    except IOError as e:
+        raise RuntimeError( "Unable to open file '%s' for reading" % args.file )
+
+    signal(SIGPIPE, SIG_DFL) # do no want the IOError message trace
+
+    with rosbag.Bag( args.file ) as bag:
+        # safety checks
+        topics = bag.get_type_and_topic_info()[1].keys()
+        if not args.topic:
+            if len( topics ) == 1:
+                if args.verbose:
+                    print >>sys.stderr, "%s: warning: topic not specified, use '%s' as the only topic in the bag" % ( sys.argv[0], topics[0] )
+                args.topic = topics[0]
+        if not args.allow_empty:
+            if not args.topic:
+                raise RuntimeError( "topic name not given, choose one of the multiple topics in the bag '%s'" % args.file )
+            if not args.topic in topics:
+                raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.file ) )
+
+        generator = bag.read_messages( topics=[ args.topic ] )
+        try:
+            topic, msg, t = generator.next()
+        except StopIteration:
+            print >>sys.stderr, "%s: warning: no messages found on topic '%s' in the bag '%s'" % ( sys.argv[0], args.topic, args.file )
+            sys.exit( int( not args.allow_empty ) )
+
+        record_t, record_ctor = convert_ros_message_to_csv_record( msg, args.set_length )
+        if args.output_fields:
+            print ','.join( record_t.fields )
+            sys.exit(0)
+        if args.output_format:
+            print comma.csv.format.from_numpy( record_t.format )
+            sys.exit(0)
+
+        # real job done here
+        ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary, fields=args.fields )
+        record = record_ctor( msg )
+        ostream.write( record )
+        for topic, msg, t in generator:
+            record = record_ctor( msg )
+            ostream.write( record )
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
