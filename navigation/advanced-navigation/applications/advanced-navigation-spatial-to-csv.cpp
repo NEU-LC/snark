@@ -594,6 +594,12 @@ int main( int argc, char** argv )
         
         return 0;
     }
+    catch(snark::navigation::advanced_navigation::eois_exception& e)
+    {
+        // normal exit on end of input stream
+        comma::verbose<<comma::verbose.app_name() << ": " << e.what() << std::endl;
+        return 0;
+    }
     catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; }
     return 1;

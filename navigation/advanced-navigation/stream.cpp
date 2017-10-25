@@ -62,7 +62,7 @@ io_stream::io_stream(const std::string& name,const advanced_navigation::options&
 std::size_t io_stream::read_some(char* buf,std::size_t to_read)
 {
 //     std::cerr<<"io_stream::read_some "<<to_read<<" "<<(void*)buf<<std::endl;
-    if(!is->good()) { throw std::ios_base::failure(std::string("end of file on istream ")+is.name()); }
+    if(!is->good()) { throw eois_exception(std::string("end of file on istream ")+is.name()); }
 //     return is->readsome(buf,to_read);
     is->read(buf,to_read);
     return is->gcount();

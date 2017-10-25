@@ -35,6 +35,12 @@
 
 namespace snark { namespace navigation { namespace advanced_navigation {
 
+class eois_exception : public std::runtime_error
+{
+public:
+    eois_exception(const std::string& msg) : std::runtime_error(msg) { }
+};
+    
 /// stream/device options for advanced navigation
 struct options
 {
