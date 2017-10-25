@@ -34,7 +34,8 @@
 #include <unistd.h>
 #include <RobotEyeCallbacks.h>
 #include <RobotEyeGrabber.h>
-
+#include <csignal>
+#include <cmath>
 
 std::string app_name="ocular-roboteye-grab";
 
@@ -42,6 +43,10 @@ void usage()
 {
     std::cerr<< "usage: "<<app_name<<" <ip> <mode> <azimuth_rate> <azimuth_min> <azimuth_max> <elevation_min> <elevation_max> <scan_lines> " <<std::endl;
     std::cerr<< "    grab ocular roboteye data in region scan mode and write to stdout as raw binary" <<std::endl;
+    std::cerr<<std::endl;
+    std::cerr<< "output is binary size 32"<<std::endl;
+    std::cerr<< "    fields: range,bearing,elevation,timestamp,intensity,frame"<<std::endl;
+    std::cerr<< "    format: 3d,ui,2uw"<<std::endl;
     std::cerr<<std::endl;
     std::cerr<< "args:"<<std::endl;
     std::cerr<< "    <ip>: ip address of ocular roboteye device"<<std::endl;
@@ -52,6 +57,7 @@ void usage()
     std::cerr<<std::endl;
     std::cerr<< "example"<<std::endl;
     std::cerr<< "    "<<app_name<<" 169.254.111.102 0 10 15 345 0 20  100"<<std::endl;
+    std::cerr<< "    "<<app_name<<" 172.21.64.155 0 10 15 345 0 20  100 | points-to-cartesian --binary 3d,ui,2uw --fields r,b,e | view-points --binary 3d,ui,2uw --fields x,y,z,,scalar --color 0:15,jet"<<std::endl;
     std::cerr<<std::endl;
 }
 
@@ -98,17 +104,42 @@ struct scanner
     scanner(ocular::RobotEyeGrabber& grabber,const region_scan& rs) : grabber(grabber)
     {
         check_ocular_error(grabber.StartRegionScan(rs.azimuth_rate,rs.azimuth_min,rs.azimuth_max,rs.elevation_min,rs.elevation_max,rs.scan_lines),"StartRegionScan");
+        std::cerr<<"started region scan"<<std::endl;
     }
     ~scanner()
     {
-        grabber.Stop();
+        ocular::ocular_error_t err=grabber.Stop();
+        std::cerr<<"stop ("<<err<<")"<<std::endl;
+    }
+};
+
+inline double deg2rad(double d) { return d*(M_PI/double(180)); }
+
+struct output
+{
+    double range;
+    double bearing;
+    double elevation;
+    unsigned int timestamp;
+    unsigned short int intensity;
+    unsigned short frame;
+    output() { }
+    output(unsigned int timestamp,const ocular::ocular_rbe_obs_t& p,unsigned short frame=0) : 
+        range(p.range),
+        bearing(deg2rad(p.azimuth)),
+        elevation(deg2rad(p.elevation)),
+        timestamp(timestamp),
+        intensity(p.intensity),
+        frame(frame)
+    {
     }
 };
 
 struct writer : public ocular::RobotEyeLaserDataCallbackClass
 {
     ocular::RobotEyeGrabber& grabber;
-    writer(ocular::RobotEyeGrabber& grabber,bool highspeed_mode) : grabber(grabber)
+    unsigned short frame;
+    writer(ocular::RobotEyeGrabber& grabber,bool highspeed_mode) : grabber(grabber), frame(0)
     {
         unsigned short freq;
         unsigned short averaging;
@@ -127,21 +158,59 @@ struct writer : public ocular::RobotEyeLaserDataCallbackClass
             intensity = true;   // Intensity data available in standard mode.
         }
         check_ocular_error(grabber.StartLaser(freq,averaging,intensity,this));
+        std::cerr<<"started laser "<<freq<<" "<<averaging<<" "<<intensity<<std::endl;
     }
     ~writer()
     {
-        grabber.StopLaser();
+        ocular::ocular_error_t err=grabber.StopLaser();
+        std::cerr<<"stopped laser  ("<<err<<")"<<std::endl;
     }
     void LaserDataCallback(std::vector<ocular::ocular_rbe_obs_t> observations, unsigned int timestamp)
     {
-        static int debug=0;
-        if(debug==0)
-            std::cerr<<"sizeof(ocular::ocular_rbe_obs_t): "<<sizeof(ocular::ocular_rbe_obs_t)<<std::endl;
-        if(debug++<10)
-            std::cerr<<"timestamp: "<<timestamp<<std::endl;
-        std::cout.write(reinterpret_cast<const char*>(observations.data()),observations.size()*sizeof(ocular::ocular_rbe_obs_t));
+//         static int debug=0;
+//         if(debug==0)
+//         {
+//             std::cerr<<"sizeof(ocular::ocular_rbe_obs_t): "<<sizeof(ocular::ocular_rbe_obs_t)<<std::endl;
+//             std::cerr<<"sizeof(output): "<<sizeof(output)<<std::endl;
+//         }
+//         if(debug++<10)
+//             std::cerr<<"timestamp: "<<timestamp<<" size: "<<observations.size()<<std::endl;
+        std::vector<output> outputs(observations.size());
+        for(unsigned i=0;i<observations.size();i++)
+        {
+            outputs[i]=output(timestamp,observations[i],frame);
+        }
+        std::cout.write(reinterpret_cast<const char*>(outputs.data()),outputs.size()*sizeof(output));
+        frame++;
     }
 };
+
+/// soft signal handler for linux
+struct signaled
+{
+    static bool is_set;
+    signaled()
+    {
+        register_handle(SIGINT);
+        register_handle(SIGTERM);
+        register_handle(SIGPIPE);
+        register_handle(SIGHUP);
+    }
+    void register_handle(int signal)
+    {
+        struct sigaction sa;
+        sa.sa_handler = handle;
+        sigemptyset( &sa.sa_mask );
+        sa.sa_flags = 0;
+        if( ::sigaction( signal, &sa, NULL ) != 0 ) { throw std::runtime_error("failed to set handler for signal"); }
+    }
+    static void handle( int sig)
+    {
+        is_set=true;
+    }
+    operator bool() const { return is_set; }
+};
+bool signaled::is_set=false;
 
 int main( int argc, char** argv )
 {
@@ -162,6 +231,8 @@ int main( int argc, char** argv )
         parse(argv[6],rs.elevation_min);
         parse(argv[7],rs.elevation_max);
         parse(argv[8],rs.scan_lines);
+        
+        signaled sig;
 
         ocular::RobotEyeGrabber grabber(ip);
         std::string serial;
@@ -169,12 +240,13 @@ int main( int argc, char** argv )
         std::cerr<< "connected to ocular, serial number: " << serial <<std::endl;
         check_ocular_error(grabber.Home(),"Home()");
 
+
         ::scanner scanner(grabber,rs);
         ::writer writer(grabber,highspeed);
         
-        while(std::cout.good())
+        while(!sig && std::cout.good())
             usleep(10000);
-        
+
         return 0;
     }
     catch( std::exception& ex )
