@@ -70,8 +70,8 @@ function csv_to_path_value()
 export -f csv_to_path_value
 declare -r csv_to_path_value
 
-nx=64
-ny=48
+nx=16
+ny=12
 timestamp="20161206T160000.000000"
 echo "nx=$nx"
 echo "ny=$ny"
