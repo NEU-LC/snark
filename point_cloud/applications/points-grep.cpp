@@ -29,6 +29,7 @@
 
 /// @authors abdallah kassir, vsevolod vlaskine
 
+#include <iostream>
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <boost/geometry/algorithms/within.hpp>
