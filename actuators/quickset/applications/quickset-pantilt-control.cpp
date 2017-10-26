@@ -84,11 +84,11 @@ static void usage( bool verbose = false )
         std::cerr << std::endl;
     }
     std::cerr << "examples" << std::endl;
-    std::cerr << "    echo 0.1,0.2 | " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\"" << std::endl;
-    std::cerr << "    echo 45,45 | csv-units --from degrees --fields a,b | " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\"" << std::endl;
-    std::cerr << "    io-console | quickset-pantilt-from-console | " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\"" << std::endl;
+    std::cerr << "    echo 0.1,0.2 | " << comma::verbose.app_name() << " tcp:192.168.1.1:10001" << std::endl;
+    std::cerr << "    echo 45,45 | csv-units --from degrees --fields a,b | " << comma::verbose.app_name() << " tcp:192.168.1.1:10001" << std::endl;
+    std::cerr << "    io-console | quickset-pantilt-from-console | " << comma::verbose.app_name() << " tcp:192.168.1.1:10001" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    " << comma::verbose.app_name() << " \"tcp:192.168.1.1:10001\" \\" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " tcp:192.168.1.1:10001 \\" << std::endl;
     std::cerr << "        --pan-limits $( echo -180:180 | csv-units --from degrees --fields a,b -d=: ) \\" << std::endl;
     std::cerr << "        --tilt-limits $( echo -90:90 | csv-units --from degrees --fields a,b -d=: )" << std::endl;
     std::cerr << std::endl;
