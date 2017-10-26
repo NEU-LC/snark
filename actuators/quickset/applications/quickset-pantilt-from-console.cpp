@@ -52,7 +52,7 @@ static void usage()
     std::cerr << "    --verbose,-v: more output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "example" << std::endl;
-    std::cerr << "    io-console | quickset-pantilt-from-console | quickset-pantilt-control <address>" << std::endl;
+    std::cerr << "    io-console | quickset-pantilt-from-console | quickset-pantilt-control --diff <address>" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -114,6 +114,7 @@ int main( int ac, char** av )
             if( select.wait( boost::posix_time::seconds( 1 ) ) == 0 ) { continue; }
             char c;
             if( ::read( 0, &c, 1 ) != 1 ) { break; }
+            if( verbose ) { std::cerr << "quickset-pantilt-from-console: got " << c << std::endl; }
             switch( c )
             {
                 case 0x41: ++vertical; break;
