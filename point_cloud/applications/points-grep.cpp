@@ -46,11 +46,11 @@
 #include "../../math/rotation_matrix.h"
 #include "../../math/geometry/polygon.h"
 #include "../../math/geometry/polytope.h"
-#include "../../math/geometry/n_sphere.h"
 #include "../../math/geometry/traits.h"
 #include "../../math/applications/frame.h"
 #include "../../visiting/eigen.h"
 #include "../../visiting/traits.h"
+#include "points-grep/n_sphere.h"
 
 static void usage( bool verbose = false )
 {
