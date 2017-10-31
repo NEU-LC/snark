@@ -138,7 +138,7 @@ def main():
     parser.add_argument( '--file', '--bag', help='input bag file', type=str )
     parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
-    parser.add_argument( '--output-format', help='print output format for binary and exit', action='store_true' )
+    parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
     parser.add_argument( '--set-length', help='set length of listed string fields; by default, take from first input', type=str, action=set_length_action, default={} )
     parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     parser.add_argument( '--allow-empty', help='skip checks that the topic exists in the bag and contains at least one message', action='store_true' )
