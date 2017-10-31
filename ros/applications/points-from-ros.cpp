@@ -44,6 +44,8 @@
 #include "sensor_msgs/PointCloud2.h"
 
 #include <sensor_msgs/point_cloud2_iterator.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <comma/csv/traits.h>
 
 void usage(bool detail)
 {
@@ -56,6 +58,7 @@ void usage(bool detail)
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --flush; call flush on stdout after each write (otherwise may buffer with small size messages)" << std::endl;
+    std::cerr << "    --header; prepend t,block header to output with t,ui format"<< std::endl;
     std::cerr << "    --help,-h: show help; --help --verbose: show more help" << std::endl;
     std::cerr << "    --max-datagram-size: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)" << std::endl;
     std::cerr << "    --node-name: node name for this process, when not specified uses ros::init_options::AnonymousName flag" << std::endl;
@@ -90,6 +93,7 @@ void usage(bool detail)
 
 namespace snark { namespace ros {
 
+/// utility functions for ros sensor_msgs::PointCloud2
 struct point_cloud
 {
 private:
@@ -147,8 +151,21 @@ public:
         }
         return s;
     }
+    struct bin_base
+    {
+        virtual ~bin_base() { }
+        virtual const char* get(const char* data)=0;
+        virtual std::size_t size() const=0;
+    };
+    struct bin_cat : public bin_base
+    {
+        uint32_t size_;
+        bin_cat(uint32_t s=0) : size_(s) { }
+        const char* get(const char* data){ return data; }
+        std::size_t size() const { return size_; }
+    };
     /// copy specified fields from a point record, given msg point field info and a list of field names
-    struct bin_shuffle
+    struct bin_shuffle : public bin_base
     {
         /// prepare 
         bin_shuffle(const std::string& field_names,const sensor_msgs::PointCloud2::_fields_type& msg_fields)
@@ -173,7 +190,8 @@ public:
             }
             buf.resize(size);
         }
-        const char* shuffle(const char* data)
+        /// shuffle
+        const char* get(const char* data)
         {
             std::size_t offset=0;
             for(const auto& i : ranges)
@@ -197,6 +215,30 @@ std::vector<comma::csv::format::types_enum> point_cloud::rmap_data_type;
 
 } } // namespace snark { namespace ros {
 
+
+struct header
+{
+    boost::posix_time::ptime t;
+    uint32_t block;
+    header() : block(0) { }
+    header(const ros::Time& time,uint32_t seq) : t(time.toBoost()), block(seq) { }
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< header >
+{
+    template< typename K, typename V > static void visit( const K& k, const header& p, V& v )
+    {
+        v.apply( "t", p.t );
+        v.apply( "block", p.block );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
+
+/// process ros sensor_msgs::PointCloud2 message
 struct points
 {
     comma::csv::format format;
@@ -205,88 +247,98 @@ struct points
     bool output_fields;
     bool output_format;
     bool flush;
-    points(const comma::command_line_options& options) : ascii(false), csv(options)
+    bool write_header;
+    points(const comma::command_line_options& options) : ascii(false), csv(options) , 
+        output_fields(options.exists("--output-fields")),
+        output_format(options.exists("--output-format")),
+        flush(options.exists("--flush")),
+        write_header(options.exists("--header"))
     {
-        output_fields=options.exists("--output-fields");
-        output_format=options.exists("--output-format");
         if(!output_fields && !output_format && !csv.binary())
         {
             if(!options.exists("--format")) { COMMA_THROW( comma::exception, "please specify either --format for ascii or --binary"); }
             ascii=true;
             format=comma::csv::format(comma::csv::format(options.value<std::string>("--format")).expanded_string());
         }
-        flush=options.exists("--flush");
     }
-    void process(const sensor_msgs::PointCloud2ConstPtr input)
+    void process(const sensor_msgs::PointCloud2ConstPtr input);
+private:
+    struct writer_base
     {
-        try
+        virtual ~writer_base() { }
+        virtual void write_header(const header& h)=0;
+        virtual void write(const char* buf,uint32_t size)=0;
+    };
+    struct csv_writer : public writer_base
+    {
+        const comma::csv::options& csv;
+        const comma::csv::format& format;
+        comma::csv::ascii<header> header_csv_ascii;
+        csv_writer(const comma::csv::options& csv,const comma::csv::format& format) : csv(csv), format(format), header_csv_ascii("t,block",csv.delimiter) { }
+        void write_header(const header& h)
         {
-            if(output_fields)
-            { 
-                std::cout<<snark::ros::point_cloud::msg_fields_names(input->fields)<<std::endl;
-                ros::shutdown();
-                return;
-            }
-            if(output_format)
-            { 
-                std::cout<<snark::ros::point_cloud::msg_fields_format(input->fields)<<std::endl;
-                ros::shutdown();
-                return;
-            }
-            unsigned count=input->width*input->height;
-            unsigned record_size=input->point_step;
-            comma::verbose<<record_size<<"; "<<input->width<<"x"<<input->height<<";//"<<input->header.seq<<std::endl;
-            if(csv.fields.empty())
-            {
-                for(unsigned i=0;i<count;i++)
-                {
-                    comma::verbose<<"i: "<<i<<" ;"<<input->data.size()<<" ascii "<<ascii<<std::endl;
-                    const char* buf=reinterpret_cast<const char*>(&input->data[i*record_size]);
-                    if(ascii)
-                    {
-                        std::string bin_data=format.bin_to_csv(buf,csv.delimiter,csv.precision);
-                        std::cout.write(bin_data.data(),bin_data.size())<<std::endl;
-                        if(flush) { std::cout.flush(); }
-                    }
-                    else
-                    {
-                        comma::verbose<<"writing "<<(unsigned int)(buf[0])<<" "<<(unsigned int)(buf[1])<<" "<<(unsigned int)(buf[2])<<" "<<(unsigned int)(buf[0])<<std::endl;
-                        std::cout.write(buf,record_size);
-                        if(flush) { std::cout.flush(); }
-                    }
-                    if(!std::cout.good())
-                    {
-                        ros::shutdown();
-                        break;
-                    }
-                }
-            }
-            else    //shuffle to select field names
-            {
-                //get field names and build shuffle
-                snark::ros::point_cloud::bin_shuffle bin_shuffle(csv.fields,input->fields);
-                for(unsigned i=0;i<count;i++)
-                {
-                    const char* buf=bin_shuffle.shuffle(reinterpret_cast<const char*>(&input->data[i*record_size]));
-                    if(ascii)
-                    {
-                        std::string bin_data=format.bin_to_csv(buf,csv.delimiter,csv.precision);
-                        std::cout.write(bin_data.data(),bin_data.size())<<std::endl;
-                        if(flush) { std::cout.flush(); }
-                    }
-                    else
-                    {
-                        std::cout.write(buf,bin_shuffle.size());
-                        if(flush) { std::cout.flush(); }
-                    }
-                    if( !std::cout.good() ) { ros::shutdown(); break; }
-                }
-            }
+            std::cout<<header_csv_ascii.put(h)<<",";
         }
-        catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; ros::shutdown(); }
-        catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; ros::shutdown(); }
-    }
+        void write(const char* buf,uint32_t size)
+        {
+            std::string bin_data=format.bin_to_csv(buf,csv.delimiter,csv.precision);
+            std::cout.write(bin_data.data(),bin_data.size())<<std::endl;
+        }
+    };
+    struct bin_writer : public writer_base
+    {
+        comma::csv::binary<header> header_csv_bin;
+        std::vector<char> header_buf;
+        bin_writer() : header_buf(header_csv_bin.format().size()) { }
+        void write_header(const header& h)
+        {
+            std::cout.write(header_csv_bin.put(h,&header_buf[0]),header_buf.size());
+        }
+        void write(const char* buf,uint32_t size)
+        {
+            std::cout.write(buf,size);
+        }
+    };
 };
+
+void points::process(const sensor_msgs::PointCloud2ConstPtr input)
+{
+    try
+    {
+        if(output_fields)
+        { 
+            std::cout<<snark::ros::point_cloud::msg_fields_names(input->fields)<<std::endl;
+            ros::shutdown();
+            return;
+        }
+        if(output_format)
+        { 
+            std::cout<<snark::ros::point_cloud::msg_fields_format(input->fields)<<std::endl;
+            ros::shutdown();
+            return;
+        }
+        unsigned count=input->width*input->height;
+        unsigned record_size=input->point_step;
+        ::header header(input->header.stamp,input->header.seq);
+        std::unique_ptr<snark::ros::point_cloud::bin_base> bin;
+        if(csv.fields.empty()) { bin.reset(new snark::ros::point_cloud::bin_cat(record_size)); }
+        else { bin.reset(new snark::ros::point_cloud::bin_shuffle(csv.fields,input->fields)); }
+        std::unique_ptr<writer_base> writer;
+        if(ascii) { writer.reset(new csv_writer(csv,format)); }
+        else { writer.reset(new bin_writer()); }
+        for(unsigned i=0;i<count;i++)
+        {
+            const char* buf=bin->get(reinterpret_cast<const char*>(&input->data[i*record_size]));
+            if(write_header) { writer->write_header(header); }
+            writer->write(buf,bin->size());
+            if(flush) { std::cout.flush(); }
+            if( !std::cout.good() ) { ros::shutdown(); break; }
+        }
+        return;
+    }
+    catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; ros::shutdown(); }
+    catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; ros::shutdown(); }
+}
 
 int main( int argc, char** argv )
 {
