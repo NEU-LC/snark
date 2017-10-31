@@ -383,7 +383,7 @@ int main( int ac, char** av )
         //else { if( csv.fields != "" && !comma::csv::namesValid( comma::split( csv.fields, ',' ), comma::split( "x,y,z", ',' ) ) ) { COMMA_THROW( comma::exception, "expected mandatory fields x,y,z; got " << csv.fields ); } }
         if( timestamp_required ) { if( csv.fields != "" && !comma::csv::fields_exist( csv.fields, "t" ) ) { COMMA_THROW( comma::exception, "expected mandatory field t; got " << csv.fields ); } }
         run( frames, csv );
-        if(discarded_counter) { std::cerr<<"discarded "<<discarded_counter<<" points; max time diff: "<< discarded_time_diff_max.total_microseconds()<<" microseconds"<<std::endl; }
+        if( discarded_counter ) { std::cerr << "points-frame: discarded " << discarded_counter << " points; max time diff: " << discarded_time_diff_max.total_microseconds() <<" microseconds" << std::endl; }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "points-frame: " << ex.what() << std::endl; }

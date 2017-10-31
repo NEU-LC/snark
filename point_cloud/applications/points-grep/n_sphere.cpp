@@ -29,7 +29,7 @@
 
 #include <Eigen/Eigen>
 #include <comma/base/exception.h>
-#include "../rotation_matrix.h"
+#include <comma/math/compare.h>
 #include "n_sphere.h"
 
 namespace snark { namespace geometry {

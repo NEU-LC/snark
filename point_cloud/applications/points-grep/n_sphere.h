@@ -31,7 +31,6 @@
 #define SNARK_MATH_GEOMETRY_N_SPHERE_
 
 #include <Eigen/Core>
-#include "../roll_pitch_yaw.h"
 
 namespace snark { namespace geometry {
 
