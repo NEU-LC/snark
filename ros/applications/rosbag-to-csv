@@ -138,6 +138,7 @@ def main():
     parser.add_argument( '--file', '--bag', help='input bag file', type=str )
     parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
+    parser.add_argument( '--no-index-output-fields', help='output array fields without indices, e.g., output "array", not "array[0],array[1],array[2]"', action='store_true' )
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
     parser.add_argument( '--set-length', help='set length of listed string fields; by default, take from first input', type=str, action=set_length_action, default={} )
     parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
@@ -183,18 +184,21 @@ def main():
 
         record_t, record_ctor = convert_ros_message_to_csv_record( msg, args.set_length )
         if args.output_fields:
-            output_fields = []
-            for n in record_t.flat_dtype.names:
-                shape = record_t.flat_dtype[n].shape
-                if shape:
-                    tmp = numpy.zeros( shape )
-                    it = numpy.nditer( tmp, flags=['multi_index'] )
-                    while not it.finished:
-                        output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
-                        it.iternext()
-                else:
-                    output_fields.append( n )
-            print ','.join( output_fields )
+            if args.no_index_output_fields:
+                print ','.join( record_t.fields )
+            else:
+                output_fields = []
+                for n in record_t.flat_dtype.names:
+                    shape = record_t.flat_dtype[n].shape
+                    if shape:
+                        tmp = numpy.zeros( shape )
+                        it = numpy.nditer( tmp, flags=['multi_index'] )
+                        while not it.finished:
+                            output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
+                            it.iternext()
+                    else:
+                        output_fields.append( n )
+                print ','.join( output_fields )
             sys.exit(0)
         if args.output_format:
             print ','.join( [ comma.csv.format.from_numpy( f ) for f in record_t.format.split(',') ] )
