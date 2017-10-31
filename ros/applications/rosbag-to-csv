@@ -183,7 +183,18 @@ def main():
 
         record_t, record_ctor = convert_ros_message_to_csv_record( msg, args.set_length )
         if args.output_fields:
-            print ','.join( record_t.fields )
+            output_fields = []
+            for n in record_t.flat_dtype.names:
+                shape = record_t.flat_dtype[n].shape
+                if shape:
+                    tmp = numpy.zeros( shape )
+                    it = numpy.nditer( tmp, flags=['multi_index'] )
+                    while not it.finished:
+                        output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
+                        it.iternext()
+                else:
+                    output_fields.append( n )
+            print ','.join( output_fields )
             sys.exit(0)
         if args.output_format:
             print ','.join( [ comma.csv.format.from_numpy( f ) for f in record_t.format.split(',') ] )
