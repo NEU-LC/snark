@@ -53,17 +53,18 @@ void usage( bool verbose )
     std::cerr << "    all: combines system-state and raw-sensors" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options:" << std::endl;
+    std::cerr << "    --baud-rate=<n>       baud rate for connection, default " << default_baud_rate << std::endl;
+    std::cerr << "    --binary-output       output in binary" << std::endl;
+    std::cerr << "    --description=<field> print out one line description text for input values of <field>; csv options apply to input" << std::endl;
+    std::cerr << "                          <field>: system_status | filter_status" << std::endl;
+    std::cerr << "    --device=<filename>   filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
     std::cerr << "    --help,-h             show help" << std::endl;
-    std::cerr << "    --verbose,-v          verbose output" << std::endl;
     std::cerr << "    --output-fields       print output fields and exit" << std::endl;
     std::cerr << "    --output-format       print output format and exit" << std::endl;
     std::cerr << "    --raw                 output raw packets to stdout, " << std::endl;
-    std::cerr << "    --stdin               read packets from stdin, can't be used with options that need to write to device" << std::endl;
-    std::cerr << "    --device=<filename>   filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
-    std::cerr << "    --baud-rate=<n>       baud rate for connection, default " << default_baud_rate << std::endl;
     std::cerr << "    --sleep=<n>           microsecond sleep between reading, default " << default_sleep << std::endl;
-    std::cerr << "    --description=<field> print out one line description text for input values of <field>; csv options apply to input" << std::endl;
-    std::cerr << "                          <field>: system_status | filter_status" << std::endl;
+    std::cerr << "    --stdin               read packets from stdin, can't be used with options that need to write to device" << std::endl;
+    std::cerr << "    --verbose,-v          verbose output" << std::endl;
     std::cerr << std::endl;
     if( verbose )
     {
@@ -172,7 +173,7 @@ struct app_header : public app_base
     static void output_format() { std::cout << comma::csv::format::value< messages::header >() << std::endl; }
     app_header( const std::string& port, const comma::command_line_options& options )
         : app_base( port, options )
-        , os( std::cout, comma::csv::options( options, "", true ) )
+        , os( std::cout, options.exists( "--binary-output" ), true, options.exists( "--flush" ) )
     {
     }
     void handle_raw( messages::header* msg_header, const char* msg_data, std::size_t msg_data_length )
@@ -187,7 +188,7 @@ struct app_t : public app_base
     comma::csv::output_stream< T > os;
     app_t( const std::string& port, const comma::command_line_options& options )
         : app_base( port, options )
-        , os( std::cout, comma::csv::options( options, "", true ) )
+        , os( std::cout, options.exists( "--binary-output" ), true, options.exists( "--flush" ) )
     {
     }
     static void output_fields() { std::cout << comma::join( comma::csv::names< T >( true ), ',' ) << std::endl; }
