@@ -186,7 +186,7 @@ def main():
             print ','.join( record_t.fields )
             sys.exit(0)
         if args.output_format:
-            print comma.csv.format.from_numpy( record_t.format )
+            print ','.join( [ comma.csv.format.from_numpy( f ) for f in record_t.format.split(',') ] )
             sys.exit(0)
 
         # real job done here
