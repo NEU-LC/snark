@@ -15,11 +15,11 @@ in your package manager, build and install the module manually.
 help_description="output ROS bag files of arbitrary content as csv streams"
 help_examples="""
 examples
-    rosbag-to-csv --file "input.bag"
-    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix"
-    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
-    rosbag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
-    rosbag-to-csv --file="input.bag" --set-length "header/frame_id=15;data/string=10"
+    ros-bag-to-csv --file "input.bag"
+    ros-bag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix"
+    ros-bag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
+    ros-bag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
+    ros-bag-to-csv --file="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 general ROS bag hints
     get list of topics inside a bag:
@@ -138,7 +138,8 @@ def main():
     parser.add_argument( '--file', '--bag', help='input bag file', type=str )
     parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
-    parser.add_argument( '--output-format', help='print output format for binary and exit', action='store_true' )
+    parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
+    parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
     parser.add_argument( '--set-length', help='set length of listed string fields; by default, take from first input', type=str, action=set_length_action, default={} )
     parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     parser.add_argument( '--allow-empty', help='skip checks that the topic exists in the bag and contains at least one message', action='store_true' )
@@ -183,10 +184,24 @@ def main():
 
         record_t, record_ctor = convert_ros_message_to_csv_record( msg, args.set_length )
         if args.output_fields:
-            print ','.join( record_t.fields )
+            if args.index_output_fields:
+                output_fields = []
+                for n in record_t.flat_dtype.names:
+                    shape = record_t.flat_dtype[n].shape
+                    if shape:
+                        tmp = numpy.zeros( shape )
+                        it = numpy.nditer( tmp, flags=['multi_index'] )
+                        while not it.finished:
+                            output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
+                            it.iternext()
+                    else:
+                        output_fields.append( n )
+                print ','.join( output_fields )
+            else:
+                print ','.join( record_t.fields )
             sys.exit(0)
         if args.output_format:
-            print comma.csv.format.from_numpy( record_t.format )
+            print ','.join( [ comma.csv.format.from_numpy( f ) for f in record_t.format.split(',') ] )
             sys.exit(0)
 
         # real job done here
