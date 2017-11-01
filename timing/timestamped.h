@@ -43,6 +43,8 @@ struct timestamped
 
     timestamped() {}
 
+    timestamped( const T& data ) : t( boost::posix_time::microsec_clock::universal_time() ), data( data ) {}
+
     timestamped( const boost::posix_time::ptime& t, const T& data ) : t( t ), data( data ) {}
 };
 

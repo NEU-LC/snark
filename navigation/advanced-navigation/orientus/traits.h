@@ -33,6 +33,7 @@
 #include <comma/visiting/traits.h>
 #include <comma/packed/traits.h>
 #include "../../../math/spherical_geometry/traits.h"
+#include "../../../timing/timestamped.h"
 #include "../messages.h"
 
 using namespace snark::navigation::advanced_navigation;
@@ -45,6 +46,21 @@ struct traits< boost::array< comma::packed::detail::little_endian< Size, Signed,
     template< typename K, typename V > static void visit( const K& k, const boost::array< comma::packed::detail::little_endian< Size, Signed, Floating >, N >& t, V& v )
     {
         for( std::size_t i = 0; i < t.size(); ++i ) { v.apply( std::string( 1, 'x' + i ).c_str(), t[i]() ); } // x, y, z
+    }
+};
+
+template < typename T > struct traits< snark::timestamped< T > >
+{
+    template< typename K, typename V > static void visit( const K&, snark::timestamped< T >& p, V& v )
+    {
+        v.apply( "t", p.t );
+        v.apply( "", p.data );
+    }
+
+    template< typename K, typename V > static void visit( const K&, const snark::timestamped< T >& p, V& v )
+    {
+        v.apply( "t", p.t );
+        v.apply( "", p.data );
     }
 };
 
