@@ -46,8 +46,9 @@ serial_stream::serial_stream(const std::string& name,const advanced_navigation::
 std::size_t serial_stream::read_some(char* buf,std::size_t to_read)
 {
     boost::system::error_code ec;
-//         unsigned read_size=boost::asio::read(port, boost::asio::buffer(&buf[index],to_read));
-    return port.read_some(boost::asio::buffer(buf,to_read),ec);
+    std::size_t count = port.read_some( boost::asio::buffer( buf, to_read ), ec );
+    if( ec ) { COMMA_THROW( comma::exception, ec.message() ); }
+    return count;
 }
 std::size_t serial_stream::write(const char* buf,std::size_t to_write)
 {
