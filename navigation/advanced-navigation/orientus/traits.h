@@ -71,8 +71,6 @@ struct traits< messages::system_state >
         // orientus outputs running time starting from 20150101T000000 UTC
         double running_time = ( p.unix_time_seconds() - 1420070400 ) + ( p.microseconds() * 1e-6 );
         v.apply( "running_time", running_time );
-        v.apply( "coordinates", p.coordinates() );
-        v.apply( "height", p.height() );
         v.apply( "orientation", p.orientation );
         v.apply( "angular_velocity", p.angular_velocity );
     }
