@@ -176,7 +176,7 @@ struct app_header : public app_base
     static void output_format() { std::cout << comma::csv::format::value< messages::header >() << std::endl; }
     app_header( const std::string& port, const comma::command_line_options& options )
         : app_base( port, options )
-        , os( std::cout, options.exists( "--binary-output" ), true, options.exists( "--flush" ) )
+        , os( std::cout, options.exists( "--binary-output" ), true, true ) // options.exists( "--flush" )
     {
     }
     void handle_raw( messages::header* msg_header, const char* msg_data, std::size_t msg_data_length )
@@ -191,7 +191,7 @@ struct app_t : public app_base
     comma::csv::output_stream< T > os;
     app_t( const std::string& port, const comma::command_line_options& options )
         : app_base( port, options )
-        , os( std::cout, options.exists( "--binary-output" ), true, options.exists( "--flush" ) )
+        , os( std::cout, options.exists( "--binary-output" ), true, true ) // options.exists( "--flush" )
     {
     }
     static void output_fields() { std::cout << comma::join( comma::csv::names< T >( true ), ',' ) << std::endl; }
@@ -262,7 +262,7 @@ static void bash_completion( int argc, char** argv )
 {
     std::cout << "--help --verbose"
         << " all raw-sensors system-state header"
-        << " --device --baud-rate --sleep --output-fields --output-format --raw --stdin --description"
+        << " --device --baud-rate --sleep --output-fields --output-format --raw --stdin --description --binary-output"
         << std::endl;
 }
 
@@ -272,7 +272,7 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" ) ) { bash_completion( argc, argv ); return 0; }
-        std::vector< std::string > unnamed = options.unnamed( comma::csv::options::valueless_options() + ", --verbose, -v, --output-fields, --output-format, --raw, --stdin", "-.*" );
+        std::vector< std::string > unnamed = options.unnamed( comma::csv::options::valueless_options() + ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--binary-output", "-.*" );
         auto opt_description = options.optional< std::string >( "--description" );
         if( opt_description )
         {
