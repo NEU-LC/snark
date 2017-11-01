@@ -40,6 +40,7 @@ device::device(const std::string& name,const advanced_navigation::options& optio
     if(name=="-") { stream.reset(new io_stream(name,options)); }
     else { stream.reset(new serial_stream(name,options)); }
 }
+comma::io::file_descriptor device::fd() { return stream->fd(); }
 void device::process()
 {
     static messages::header* skipper=NULL;

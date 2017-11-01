@@ -54,6 +54,11 @@ std::size_t serial_stream::write(const char* buf,std::size_t to_write)
     return boost::asio::write(port, boost::asio::buffer(buf,to_write));
 }
 
+comma::io::file_descriptor serial_stream::fd()
+{
+    return port.native_handle();
+}
+
 io_stream::io_stream(const std::string& name,const advanced_navigation::options& options) : 
     is(name,comma::io::mode::binary,comma::io::mode::non_blocking)
 {
@@ -75,6 +80,11 @@ std::size_t io_stream::write(const char* buf,std::size_t to_write)
     COMMA_THROW( comma::exception, "cannot write to istream");
 //     ios->write(buf,to_write);
 //     return ios->good()?to_write:0;
+}
+
+comma::io::file_descriptor io_stream::fd()
+{
+    return is.fd();
 }
 
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {

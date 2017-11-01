@@ -43,6 +43,7 @@
 #include "../../../math/spherical_geometry/coordinates.h"
 #include "../../../math/spherical_geometry/traits.h"
 #include "../traits.h"
+#include <comma/io/select.h>
 #include <comma/io/stream.h>
 #include <tbb/concurrent_queue.h>
 #include <thread>
@@ -186,12 +187,13 @@ struct ntrip
     typedef std::shared_ptr<std::vector<char>> item_t;
     //create stream from name
     comma::io::istream is;
+    comma::io::select select;
     //have queue<std::vecotr<char>> (or double buffer) to put data in
     static tbb::concurrent_bounded_queue<item_t> queue;
     //app_t can check the queue and write to gps, instead of sleep
     ntrip(const std::string& name) : is(name,comma::io::mode::binary,comma::io::mode::non_blocking), buf(4096)
     {
-        
+        select.read().add( is.fd() );
     }
     std::vector<char> buf;
     bool process()
@@ -199,8 +201,8 @@ struct ntrip
         if(!is->good())
             return false;
         unsigned size=is.available_on_file_descriptor();
-
-        if(size)
+        if( !size ) { select.wait( boost::posix_time::microseconds( 20000 ) ); }
+        if( size || select.read().ready( is.fd() ) )
         {
             //or use size=readsome...
             is->read(&buf[0],size);
@@ -242,7 +244,6 @@ struct ntrip_thread
                 ntrip nt(filename);
                 while(!shutdown&&nt.process())
                 {
-                    usleep(20000);
                 }
             }
             catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
@@ -266,25 +267,26 @@ struct app_i
 struct app_base : protected device
 {
     unsigned us;
+    comma::io::select select;
 public:
     app_base(const std::string& port,const comma::command_line_options& options) : 
         device(port,options.value<unsigned>("--baud-rate",default_baud_rate)),
         us(options.value<unsigned>("--sleep",default_sleep))
     {
+        select.read().add( fd() );
     }
     void process()
     {
         while( !signaled && std::cout.good() )
         {
-            device::process();
+            select.wait( boost::posix_time::microseconds( us ) );
+            if( select.read().ready( fd() ) ) { device::process(); }
             if(!ntrip::queue.empty())
             {
                 ntrip::item_t item;
                 ntrip::queue.pop(item);
                 if(item) { send_ntrip(*item); }
             }
-            //process ntrip
-            usleep(us);
         }
     }
 };

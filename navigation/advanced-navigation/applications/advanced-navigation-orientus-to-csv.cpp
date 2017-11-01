@@ -31,6 +31,7 @@
 #include <comma/application/verbose.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
+#include <comma/io/select.h>
 #include "../device.h"
 #include "../orientus/traits.h"
 
@@ -134,18 +135,20 @@ struct app_i
 struct app_base : protected device
 {
     unsigned us;
+    comma::io::select select;
 public:
     app_base( const std::string& port, const comma::command_line_options& options )
         : device( port, options.value< unsigned >( "--baud-rate", default_baud_rate ) )
         , us( options.value< unsigned >( "--sleep", default_sleep ) )
     {
+        select.read().add( fd() );
     }
     void process()
     {
         while( std::cout.good() )
         {
-            device::process();
-            usleep( us );
+            select.wait( boost::posix_time::microseconds( us ) );
+            if( select.read().ready( fd() ) ) { device::process(); }
         }
     }
 };
