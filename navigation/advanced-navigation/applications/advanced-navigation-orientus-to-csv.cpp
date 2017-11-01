@@ -52,7 +52,7 @@ void usage( bool verbose )
     std::cerr << "what: " << std::endl;
     std::cerr << "    system-state          system state packet (omits reserved fields)" << std::endl;
     std::cerr << "    raw-sensors           output accelerometer, gryoscope, magnetometer, imu temperature" << std::endl;
-    std::cerr << "    header                output packet headers only, includes crc valid flag" << std::endl;
+    std::cerr << "    header                output packet headers only" << std::endl;
     std::cerr << "    all                   combines system-state and raw-sensors, outputs on raw-sensors packet" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options:" << std::endl;

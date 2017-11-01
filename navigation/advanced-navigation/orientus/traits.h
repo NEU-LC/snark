@@ -73,7 +73,6 @@ struct traits< messages::header >
         v.apply( "id", p.id() );
         v.apply( "length", p.length() );
         v.apply( "crc", p.msg_crc() );
-        v.apply( "valid", p.is_valid() );
     }
 };
 
