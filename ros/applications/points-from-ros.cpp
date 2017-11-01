@@ -58,7 +58,9 @@ void usage(bool detail)
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --flush; call flush on stdout after each write (otherwise may buffer with small size messages)" << std::endl;
-    std::cerr << "    --header; prepend t,block header to output with t,ui format"<< std::endl;
+    std::cerr << "    --header,--output-header; prepend t,block header to output with t,ui format"<< std::endl;
+    std::cerr << "    --header-fields; write csv field names of header to std out and exit"<< std::endl;
+    std::cerr << "    --header-format; write csv format of header to std out and exit"<< std::endl;
     std::cerr << "    --help,-h: show help; --help --verbose: show more help" << std::endl;
     std::cerr << "    --max-datagram-size: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)" << std::endl;
     std::cerr << "    --node-name: node name for this process, when not specified uses ros::init_options::AnonymousName flag" << std::endl;
@@ -252,7 +254,7 @@ struct points
         output_fields(options.exists("--output-fields")),
         output_format(options.exists("--output-format")),
         flush(options.exists("--flush")),
-        write_header(options.exists("--header"))
+        write_header(options.exists("--header,--output-header"))
     {
         if(!output_fields && !output_format && !csv.binary())
         {
@@ -345,6 +347,8 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv, usage );
+        if(options.exists("--header-fields")) { std::cout<<comma::join( comma::csv::names<header>(),',')<<std::endl; return 0; }
+        if(options.exists("--header-format")) { std::cout<< comma::csv::format::value<header>()<<std::endl; return 0; }
         std::string topic=options.value<std::string>("--topic");
         unsigned queue_size=options.value<unsigned>("--queue-size",1);
         boost::optional<int> max_datagram_size=options.optional<int>("--max-datagram-size");
