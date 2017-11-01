@@ -410,111 +410,21 @@ struct factory_t : public factory_i
     }
 };
 
-template<typename T>
+template< typename T >
 struct description
 {
-    comma::csv::input_stream<T> is;
-    description(const comma::command_line_options& options) : is(std::cin,comma::csv::options(options)) { }
+    comma::csv::input_stream< status_data > is;
+    description( const comma::command_line_options& options ) : is( std::cin, comma::csv::options( options ) ) { }
     void process()
     {
-        while(std::cin.good())
+        while( std::cin.good() )
         {
-            const T* p=is.read();
-            if(!p) { break; }
-            describe(p);
+            const status_data* p = is.read();
+            if( !p ) { break; }
+            std::cout << T::string( p->status ) << std::endl;
         }
-    }
-    virtual void describe(const T* p)=0;
-};
-
-struct system_status_description : public description<status_data>
-{
-    std::vector<std::string> text=
-    {
-        {"System Failure"},
-        {"Accelerometer Sensor Failure"},
-        {"Gyroscope Sensor Failure"},
-        {"Magnetometer Sensor Failure"},
-        {"Pressure Sensor Failure"},
-        {"GNSS Failure"},
-        {"Accelerometer Over Range"},
-        {"Gyroscope Over Range"},
-        {"Magnetometer Over Range"},
-        {"Pressure Over Range"},
-        {"Minimum Temperature Alarm"},
-        {"Maximum Temperature Alarm"},
-        {"Low Voltage Alarm"},
-        {"High Voltage Alarm"},
-        {"GNSS Antenna Short Circuit"},
-        {"Data Output Overflow Alarm"}
-    };
-    system_status_description(const comma::command_line_options& options) : description(options) { }
-    void describe(const status_data* p)
-    {
-        if(!p->status)
-        {
-            std::cout<<"null"<<std::endl;
-            return;
-        }
-        unsigned bit=1;
-        for(unsigned i=0;i<text.size();i++)
-        {
-            if(p->status & bit)
-                std::cout<<i<<": "<<text[i]<<"; ";
-            bit<<=1;
-        }
-        std::cout<<std::endl;
     }
 };
-
-struct filter_status_description : public description<status_data>
-{
-    std::vector<std::string> text=
-    {
-        {"Orientation Filter Initialised"},
-        {"Navigation Filter Initialised"},
-        {"Heading Initialised"},
-        {"UTC Time Initialised"},
-        {""},
-        {""},
-        {""},
-        {"Event 1 Occurred"},
-        {"Event 2 Occurred"},
-        {"Internal GNSS Enabled"},
-        {"Dual Antenna Heading Active"},
-        {"Velocity Heading Enabled"},
-        {"Atmospheric Altitude Enabled"},
-        {"External Position Active"},
-        {"External Velocity Active"},
-        {"External Heading Active"}
-    };
-    std::vector<std::string> gnss_fix_text=
-    {
-        {"No GNSS fix"},
-        {"2D GNSS fix"},
-        {"3D GNSS fix"},
-        {"SBAS GNSS fix"},
-        {"Differential GNSS fix"},
-        {"Omnistar/Starfire GNSS fix"},
-        {"RTK Float GNSS fix"},
-        {"RTK Fixed GNSS fix"}
-    };
-    filter_status_description(const comma::command_line_options& options) : description(options) { }
-    void describe(const status_data* p)
-    {
-        unsigned index=(p->status >> 4) & 7;
-        std::cout<<"GNSS fix "<<index<<": "<<gnss_fix_text[index]<<"; ";
-        unsigned bit=1;
-        for(unsigned i=0;i<text.size();i++)
-        {
-            if(p->status & bit)
-                if(!text[i].empty())
-                    std::cout<<i<<": "<<text[i]<<"; ";
-            bit<<=1;
-        }
-        std::cout<<std::endl;
-    }
-};  
 
 static void bash_completion( int argc, char** argv )
 {
@@ -539,18 +449,9 @@ int main( int argc, char** argv )
         auto opt_description=options.optional<std::string>("--description");
         if(opt_description)
         {
-            if(*opt_description=="system_status")
-            {
-                system_status_description(options).process();
-            }
-            else if(*opt_description=="filter_status")
-            {
-                filter_status_description(options).process();
-            }
-            else
-            {
-                COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got "<<*opt_description);
-            }
+            if( *opt_description == "system_status" ) { description< messages::system_status_description >( options ).process(); }
+            else if( *opt_description == "filter_status" ) { description< messages::filter_status_description >( options ).process(); }
+            else { COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got " << *opt_description ); }
             return 0;
         }
         

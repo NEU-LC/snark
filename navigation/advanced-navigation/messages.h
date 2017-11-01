@@ -59,7 +59,7 @@ struct system_state : public comma::packed::packed_struct<system_state,100>
 {
     enum { id = 20 };
     boost::posix_time::ptime t() const;
-    
+
     comma::packed::little_endian_uint16 system_status;
     comma::packed::little_endian_uint16 filter_status;
     comma::packed::little_endian_uint32 unix_time_seconds;
@@ -74,6 +74,41 @@ struct system_state : public comma::packed::packed_struct<system_state,100>
     boost::array<comma::packed::little_endian_float32,3> angular_velocity;  //x,y,z rad/s
     boost::array<comma::packed::little_endian_float32,3> position_stddev;    //latitude,longitude,height m
     snark::spherical::coordinates coordinates() const;
+};
+
+struct system_status_description
+{
+    static const std::vector< std::string > text;
+    static std::string string( const comma::uint16 status )
+    {
+        std::stringstream ss;
+        unsigned bit = 1;
+        for( unsigned i = 0; i < text.size(); ++i )
+        {
+            if( status & bit ) { ss << i << ": " << text[i] << "; "; }
+            bit <<= 1;
+        }
+        return ss.str();
+    }
+};
+
+struct filter_status_description
+{
+    static const std::vector< std::string > text;
+    static const std::vector< std::string > gnss_fix_text;
+    static std::string string( const comma::uint16 status )
+    {
+        std::stringstream ss;
+        unsigned index = ( status >> 4 ) & 7;
+        ss << "GNSS fix " << index << ": " << gnss_fix_text[index] << "; ";
+        unsigned bit = 1;
+        for( unsigned i = 0; i < text.size(); ++i )
+        {
+            if( ( status & bit ) && !text[i].empty() ) { ss << i << ": " << text[i] << "; "; }
+            bit <<= 1;
+        }
+        return ss.str();
+    }
 };
 
 struct raw_sensors : public comma::packed::packed_struct<raw_sensors,48>
@@ -128,5 +163,5 @@ struct orientation_standard_deviation : public comma::packed::packed_struct<velo
 };
 
 } //namespace messages {
-    
+
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {

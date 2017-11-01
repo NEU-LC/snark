@@ -114,6 +114,55 @@ snark::spherical::coordinates system_state::coordinates() const
     return snark::spherical::coordinates(latitude(),longitude());
 }
 
+const std::vector< std::string > system_status_description::text({
+    "System Failure",
+    "Accelerometer Sensor Failure",
+    "Gyroscope Sensor Failure",
+    "Magnetometer Sensor Failure",
+    "Pressure Sensor Failure",
+    "GNSS Failure",
+    "Accelerometer Over Range",
+    "Gyroscope Over Range",
+    "Magnetometer Over Range",
+    "Pressure Over Range",
+    "Minimum Temperature Alarm",
+    "Maximum Temperature Alarm",
+    "Low Voltage Alarm",
+    "High Voltage Alarm",
+    "GNSS Antenna Short Circuit",
+    "Data Output Overflow Alarm"
+});
+
+const std::vector< std::string > filter_status_description::text({
+    "Orientation Filter Initialised",
+    "Navigation Filter Initialised",
+    "Heading Initialised",
+    "UTC Time Initialised",
+    "",
+    "",
+    "",
+    "Event 1 Occurred",
+    "Event 2 Occurred",
+    "Internal GNSS Enabled",
+    "Dual Antenna Heading Active",
+    "Velocity Heading Enabled",
+    "Atmospheric Altitude Enabled",
+    "External Position Active",
+    "External Velocity Active",
+    "External Heading Active"
+});
+
+const std::vector< std::string > filter_status_description::gnss_fix_text({
+    "No GNSS fix",
+    "2D GNSS fix",
+    "3D GNSS fix",
+    "SBAS GNSS fix",
+    "Differential GNSS fix",
+    "Omnistar/Starfire GNSS fix",
+    "RTK Float GNSS fix",
+    "RTK Fixed GNSS fix"
+});
+
 } //namespace messages {
     
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {
