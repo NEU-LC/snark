@@ -30,7 +30,7 @@
 #ifndef SNARK_TIMING_TIMESTAMPED_H_
 #define SNARK_TIMING_TIMESTAMPED_H_
 
-#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark {
 
