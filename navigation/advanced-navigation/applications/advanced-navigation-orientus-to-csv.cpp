@@ -286,12 +286,12 @@ int main( int argc, char** argv )
         }
         std::unique_ptr<factory_i> factory;
         if( options.exists( "--raw" ) ) { factory.reset( new factory_t< app_raw >() ); }
-        else if( unnamed.size() != 1 ) { COMMA_THROW( comma::exception, "expected one unnamed arguement, got: " << unnamed.size() ); }
+        else if( unnamed.size() != 1 ) { COMMA_THROW( comma::exception, "expected one unnamed arguement; got: " << unnamed.size() ); }
         else if( unnamed[0] == "system-state" ) { factory.reset( new factory_t< app_packet< messages::system_state > >() ); }
         else if( unnamed[0] == "raw-sensors" ) { factory.reset( new factory_t< app_packet< messages::raw_sensors > >() ); }
         else if( unnamed[0] == "header" ) { factory.reset( new factory_t< app_header >() ); }
         else if( unnamed[0] == "all" ) { factory.reset( new factory_t< app_all >() ); }
-        else { COMMA_THROW( comma::exception, "expected <what>: raw-sensors | system-state | all; got " << unnamed[0] );}
+        else { COMMA_THROW( comma::exception, "expected <what>: header | raw-sensors | system-state | all; got: " << unnamed[0] );}
         if( options.exists( "--output-fields" ) ) { factory->output_fields(); return 0; }
         if( options.exists( "--output-format" ) ) { factory->output_format(); return 0; }
         options.assert_mutually_exclusive( "--stdin,--device" );
