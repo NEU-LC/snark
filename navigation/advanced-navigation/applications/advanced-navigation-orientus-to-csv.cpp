@@ -80,17 +80,17 @@ void usage( bool verbose )
     }
     std::cerr << std::endl;
     std::cerr << "examples:" << std::endl;
-    std::cerr << "    sudo mknod /dev/usb/ttyUSB0 c 188 0" << std::endl;
+    std::cerr << "    sudo mknod /dev/ttyUSB0 c 188 0" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " raw-sensors --device /dev/ttyUSB0" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " all --device /dev/ttyUSB0" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  see description of system_status values" << std::endl;
-    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,system_status --description system_status" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,status --description system_status" << std::endl;
     std::cerr << "    echo 128 | " << comma::verbose.app_name() << " --description system_status" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  see description of filter_status values" << std::endl;
-    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,,filter_status --description filter_status" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,,status --description filter_status" << std::endl;
     std::cerr << "    echo 1029 | " << comma::verbose.app_name() << " --description filter_status" << std::endl;
     std::cerr << std::endl;
 }
@@ -286,12 +286,12 @@ int main( int argc, char** argv )
         }
         std::unique_ptr<factory_i> factory;
         if( options.exists( "--raw" ) ) { factory.reset( new factory_t< app_raw >() ); }
-        else if( unnamed.size() != 1 ) { COMMA_THROW( comma::exception, "expected one unnamed arguement, got: " << unnamed.size() ); }
+        else if( unnamed.size() != 1 ) { COMMA_THROW( comma::exception, "expected one unnamed arguement; got: " << unnamed.size() ); }
         else if( unnamed[0] == "system-state" ) { factory.reset( new factory_t< app_packet< messages::system_state > >() ); }
         else if( unnamed[0] == "raw-sensors" ) { factory.reset( new factory_t< app_packet< messages::raw_sensors > >() ); }
         else if( unnamed[0] == "header" ) { factory.reset( new factory_t< app_header >() ); }
         else if( unnamed[0] == "all" ) { factory.reset( new factory_t< app_all >() ); }
-        else { COMMA_THROW( comma::exception, "expected <what>: raw-sensors | system-state | all; got " << unnamed[0] );}
+        else { COMMA_THROW( comma::exception, "expected <what>: header | raw-sensors | system-state | all; got: " << unnamed[0] );}
         if( options.exists( "--output-fields" ) ) { factory->output_fields(); return 0; }
         if( options.exists( "--output-format" ) ) { factory->output_format(); return 0; }
         options.assert_mutually_exclusive( "--stdin,--device" );
