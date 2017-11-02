@@ -6,7 +6,7 @@ Conflicts=shutdown.target
 
 [Service]
 Type=simple
-Environment="DAEMON_ARGS=--port 8888 --dir /usr/local/lib/websocketd --devconsole --loglevel error"
+Environment="DAEMON_ARGS=--port 8888 --dir /usr/local/lib/websocketd --devconsole --loglevel error --passenv WEBSOCKETD_CONFIG"
 EnvironmentFile=-/etc/sysconfig/websocketd
 EnvironmentFile=-/etc/default/websocketd
 ExecStart=/usr/local/bin/websocketd $DAEMON_ARGS
