@@ -80,17 +80,17 @@ void usage( bool verbose )
     }
     std::cerr << std::endl;
     std::cerr << "examples:" << std::endl;
-    std::cerr << "    sudo mknod /dev/usb/ttyUSB0 c 188 0" << std::endl;
+    std::cerr << "    sudo mknod /dev/ttyUSB0 c 188 0" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " raw-sensors --device /dev/ttyUSB0" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " all --device /dev/ttyUSB0" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  see description of system_status values" << std::endl;
-    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,system_status --description system_status" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,status --description system_status" << std::endl;
     std::cerr << "    echo 128 | " << comma::verbose.app_name() << " --description system_status" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  see description of filter_status values" << std::endl;
-    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,,filter_status --description filter_status" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,,status --description filter_status" << std::endl;
     std::cerr << "    echo 1029 | " << comma::verbose.app_name() << " --description filter_status" << std::endl;
     std::cerr << std::endl;
 }
