@@ -135,6 +135,7 @@ class set_length_action( argparse.Action ):
         setattr( namespace, self.dest, di )
 
 def read_messages( generator, args ):
+    signal(SIGPIPE, SIG_DFL) # do no want the IOError message trace
     try:
         topic, msg, t = generator.next()
     except StopIteration:
@@ -163,18 +164,18 @@ def read_messages( generator, args ):
         print ','.join( [ comma.csv.format.from_numpy( f ) for f in record_t.format.split(',') ] )
         sys.exit(0)
 
-    # real job done here
-    ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary, fields=args.fields )
-    record = record_ctor( msg )
-    ostream.write( record )
+    ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary, fields=args.fields ) # real job done here
+    ostream.write( record_ctor( msg ) )
+    if args.flush: sys.stdout.flush()
     for topic, msg, t in generator:
-        record = record_ctor( msg )
-        ostream.write( record )
+        ostream.write( record_ctor( msg ) )
+        if args.flush: sys.stdout.flush()
 
 def main():
     parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
     parser.add_argument( '--allow-empty', help='skip checks that the topic exists in the bag and contains at least one message', action='store_true' )
     parser.add_argument( '--bag', '--file', help='input bag file', type=str )
+    parser.add_argument( '--flush', help='flush stdout after each message' )
     parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
@@ -185,35 +186,29 @@ def main():
     # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
     remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
     parser.add_argument( '-b', '--binary', help='produce binary output', action='store_true' )
-# TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
+    # TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
     parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', default='' )
     args = parser.parse_args()
-
     if args.bag is None:
-        raise RuntimeError( "Input bag not specified" )
-    try:
-        with open( args.bag ) as f:
-            pass
-    except IOError as e:
-        raise RuntimeError( "Unable to open file '%s' for reading" % args.bag )
-
-    signal(SIGPIPE, SIG_DFL) # do no want the IOError message trace
-
-    with rosbag.Bag( args.bag ) as bag:
-        # safety checks
-        topics = bag.get_type_and_topic_info()[1].keys()
-        if not args.topic:
-            if len( topics ) == 1:
-                if args.verbose:
-                    print >>sys.stderr, "%s: warning: topic not specified, use '%s' as the only topic in the bag" % ( sys.argv[0], topics[0] )
-                args.topic = topics[0]
-        if not args.allow_empty:
+        raise RuntimeError( "reading messages online: coming soon..." )
+    else:
+        try:
+            with open( args.bag ) as f: pass
+        except IOError as e:
+            raise RuntimeError( "failed to open bag file '%s' for reading" % args.bag )
+        with rosbag.Bag( args.bag ) as bag:
+            topics = bag.get_type_and_topic_info()[1].keys()
             if not args.topic:
-                raise RuntimeError( "topic name not given, choose one of the multiple topics in the bag '%s'" % args.bag )
-            if not args.topic in topics:
-                raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.bag ) )
-        read_messages( bag.read_messages( topics=[ args.topic ] ), args )
+                if len( topics ) == 1:
+                    if args.verbose:
+                        print >>sys.stderr, "%s: warning: topic not specified, use '%s' as the only topic in the bag" % ( sys.argv[0], topics[0] )
+                    args.topic = topics[0]
+            if not args.allow_empty:
+                if not args.topic:
+                    raise RuntimeError( "topic name not given, choose one of the multiple topics in the bag '%s'" % args.bag )
+                if not args.topic in topics:
+                    raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.bag ) )
+            read_messages( bag.read_messages( topics=[ args.topic ] ), args )
     sys.exit(0)
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__': main()
