@@ -12,14 +12,15 @@ in your package manager, build and install the module manually.
 """
     raise ImportError(msg)
 
-help_description="output ROS bag files of arbitrary content as csv streams"
+help_description="output ROS messages on a given topic (todo) or ROS bag files of arbitrary content as csv streams"
 help_examples="""
 examples
-    ros-to-csv --bag "input.bag"
-    ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix"
-    ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
-    ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
-    ros-to-csv --bag="input.bag" --set-length "header/frame_id=15;data/string=10"
+    rosbag to csv
+        ros-to-csv --bag "input.bag"
+        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix"
+        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
+        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
+        ros-to-csv --bag="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 general ROS bag hints
     get list of topics inside a bag:
@@ -133,6 +134,43 @@ class set_length_action( argparse.Action ):
                 raise ValueError( "length of '%s' shall be an integer, not '%s'" % ( av[0], av[1] ) )
         setattr( namespace, self.dest, di )
 
+def read_messages( generator )
+    try:
+        topic, msg, t = generator.next()
+    except StopIteration:
+        print >>sys.stderr, "%s: warning: no messages found on topic '%s' in the bag '%s'" % ( sys.argv[0], args.topic, args.bag )
+        sys.exit( int( not args.allow_empty ) )
+
+    record_t, record_ctor = convert_ros_message_to_csv_record( msg, args.set_length )
+    if args.output_fields:
+        if args.index_output_fields:
+            output_fields = []
+            for n in record_t.flat_dtype.names:
+                shape = record_t.flat_dtype[n].shape
+                if shape:
+                    tmp = numpy.zeros( shape )
+                    it = numpy.nditer( tmp, flags=['multi_index'] )
+                    while not it.finished:
+                        output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
+                        it.iternext()
+                else:
+                    output_fields.append( n )
+            print ','.join( output_fields )
+        else:
+            print ','.join( record_t.fields )
+        sys.exit(0)
+    if args.output_format:
+        print ','.join( [ comma.csv.format.from_numpy( f ) for f in record_t.format.split(',') ] )
+        sys.exit(0)
+
+    # real job done here
+    ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary, fields=args.fields )
+    record = record_ctor( msg )
+    ostream.write( record )
+    for topic, msg, t in generator:
+        record = record_ctor( msg )
+        ostream.write( record )
+
 def main():
     parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
     parser.add_argument( '--allow-empty', help='skip checks that the topic exists in the bag and contains at least one message', action='store_true' )
@@ -175,42 +213,7 @@ def main():
             if not args.topic in topics:
                 raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.bag ) )
 
-        generator = bag.read_messages( topics=[ args.topic ] )
-        try:
-            topic, msg, t = generator.next()
-        except StopIteration:
-            print >>sys.stderr, "%s: warning: no messages found on topic '%s' in the bag '%s'" % ( sys.argv[0], args.topic, args.bag )
-            sys.exit( int( not args.allow_empty ) )
-
-        record_t, record_ctor = convert_ros_message_to_csv_record( msg, args.set_length )
-        if args.output_fields:
-            if args.index_output_fields:
-                output_fields = []
-                for n in record_t.flat_dtype.names:
-                    shape = record_t.flat_dtype[n].shape
-                    if shape:
-                        tmp = numpy.zeros( shape )
-                        it = numpy.nditer( tmp, flags=['multi_index'] )
-                        while not it.finished:
-                            output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
-                            it.iternext()
-                    else:
-                        output_fields.append( n )
-                print ','.join( output_fields )
-            else:
-                print ','.join( record_t.fields )
-            sys.exit(0)
-        if args.output_format:
-            print ','.join( [ comma.csv.format.from_numpy( f ) for f in record_t.format.split(',') ] )
-            sys.exit(0)
-
-        # real job done here
-        ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary, fields=args.fields )
-        record = record_ctor( msg )
-        ostream.write( record )
-        for topic, msg, t in generator:
-            record = record_ctor( msg )
-            ostream.write( record )
+         read_messages( bag.read_messages( topics=[ args.topic ] ) )
     sys.exit(0)
 
 if __name__ == '__main__':
