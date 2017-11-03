@@ -46,6 +46,7 @@
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/csv/traits.h>
+#include <cmath>
 
 void usage(bool detail)
 {
@@ -57,6 +58,7 @@ void usage(bool detail)
     std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
+    std::cerr << "    --no-discard; don't discard points with nan or inf in their values"<< std::endl;
     std::cerr << "    --flush; call flush on stdout after each write (otherwise may buffer with small size messages)" << std::endl;
     std::cerr << "    --header,--output-header; prepend t,block header to output with t,ui format"<< std::endl;
     std::cerr << "    --header-fields; write csv field names of header to std out and exit"<< std::endl;
@@ -250,17 +252,19 @@ struct points
     bool output_format;
     bool flush;
     bool write_header;
+    bool discard;
     points(const comma::command_line_options& options) : ascii(false), csv(options) , 
         output_fields(options.exists("--output-fields")),
         output_format(options.exists("--output-format")),
         flush(options.exists("--flush")),
-        write_header(options.exists("--header,--output-header"))
+        write_header(options.exists("--header,--output-header")),
+        discard(!options.exists("--no-discard"))
     {
-        if(!output_fields && !output_format && !csv.binary())
+        if( !output_fields && !output_format)
         {
-            if(!options.exists("--format")) { COMMA_THROW( comma::exception, "please specify either --format for ascii or --binary"); }
-            ascii=true;
-            format=comma::csv::format(comma::csv::format(options.value<std::string>("--format")).expanded_string());
+            ascii= !csv.binary();
+            if(ascii && !options.exists("--format")) { COMMA_THROW( comma::exception, "please specify either --format for ascii or --binary"); }
+            format=comma::csv::format(comma::csv::format(options.value<std::string>(ascii?"--format":"--binary,-b")).expanded_string());
         }
     }
     void process(const sensor_msgs::PointCloud2ConstPtr input);
@@ -301,6 +305,40 @@ private:
             std::cout.write(buf,size);
         }
     };
+    struct filter_base
+    {
+        virtual ~filter_base() { }
+        virtual bool valid(const char* buf,uint32_t size)=0;
+    };
+    struct float_filter : public filter_base
+    {
+        const comma::csv::format& format;
+        std::vector<std::size_t> offsets;
+        float_filter(const comma::csv::format& format) : format(format)
+        {
+            offsets.reserve(format.elements().size());
+            for(const auto& i : format.elements() )
+            {
+                if(i.type==comma::csv::format::float_t)
+                {
+                    if(i.count!=1) { COMMA_THROW(comma::exception, "expected format count 1, got "<<i.count); }
+                    if(i.size!=sizeof(float)) { COMMA_THROW(comma::exception, "expected format size "<<sizeof(float)<<"; got"<<i.size); }
+                    offsets.push_back(i.offset);
+                }
+            }
+        }
+        bool valid(const char* buf,uint32_t size)
+        {
+            for(const std::size_t offset : offsets)
+            {
+                if(offset+sizeof(float)>size) { COMMA_THROW(comma::exception,"offset out of range. offset: "<<offset<<" size: "<<size); }
+                float value=*reinterpret_cast<const float*>(buf+offset);
+                if(std::isnan(value)||std::isinf(value))
+                    return false;
+            }
+            return true;
+        }
+    };
 };
 
 void points::process(const sensor_msgs::PointCloud2ConstPtr input)
@@ -322,18 +360,27 @@ void points::process(const sensor_msgs::PointCloud2ConstPtr input)
         unsigned count=input->width*input->height;
         unsigned record_size=input->point_step;
         ::header header(input->header.stamp,input->header.seq);
+        
         std::unique_ptr<snark::ros::point_cloud::bin_base> bin;
         if(csv.fields.empty()) { bin.reset(new snark::ros::point_cloud::bin_cat(record_size)); }
         else { bin.reset(new snark::ros::point_cloud::bin_shuffle(csv.fields,input->fields)); }
+        
         std::unique_ptr<writer_base> writer;
         if(ascii) { writer.reset(new csv_writer(csv,format)); }
         else { writer.reset(new bin_writer()); }
+        
+        std::unique_ptr<filter_base> filter;
+        if(discard) { filter.reset(new float_filter(format)); }
+        
         for(unsigned i=0;i<count;i++)
         {
             const char* buf=bin->get(reinterpret_cast<const char*>(&input->data[i*record_size]));
-            if(write_header) { writer->write_header(header); }
-            writer->write(buf,bin->size());
-            if(flush) { std::cout.flush(); }
+            if(!filter || filter->valid(buf,bin->size()))
+            {
+                if(write_header) { writer->write_header(header); }
+                writer->write(buf,bin->size());
+                if(flush) { std::cout.flush(); }
+            }
             if( !std::cout.good() ) { ros::shutdown(); break; }
         }
         return;
