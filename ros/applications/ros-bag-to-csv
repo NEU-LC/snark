@@ -135,14 +135,14 @@ class set_length_action( argparse.Action ):
 
 def main():
     parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
-    parser.add_argument( '--file', '--bag', help='input bag file', type=str )
-    parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
-    parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
+    parser.add_argument( '--allow-empty', help='skip checks that the topic exists in the bag and contains at least one message', action='store_true' )
+    parser.add_argument( '--bag', '--file', help='input bag file', type=str )
     parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
+    parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
     parser.add_argument( '--set-length', help='set length of listed string fields; by default, take from first input', type=str, action=set_length_action, default={} )
-    parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
-    parser.add_argument( '--allow-empty', help='skip checks that the topic exists in the bag and contains at least one message', action='store_true' )
+    parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
+    parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )    
     comma.csv.add_options( parser )
     # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
     remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
@@ -151,17 +151,17 @@ def main():
     parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', default='' )
     args = parser.parse_args()
 
-    if args.file is None:
+    if args.bag is None:
         raise RuntimeError( "Input bag not specified" )
     try:
-        with open( args.file ) as f:
+        with open( args.bag ) as f:
             pass
     except IOError as e:
-        raise RuntimeError( "Unable to open file '%s' for reading" % args.file )
+        raise RuntimeError( "Unable to open file '%s' for reading" % args.bag )
 
     signal(SIGPIPE, SIG_DFL) # do no want the IOError message trace
 
-    with rosbag.Bag( args.file ) as bag:
+    with rosbag.Bag( args.bag ) as bag:
         # safety checks
         topics = bag.get_type_and_topic_info()[1].keys()
         if not args.topic:
@@ -171,15 +171,15 @@ def main():
                 args.topic = topics[0]
         if not args.allow_empty:
             if not args.topic:
-                raise RuntimeError( "topic name not given, choose one of the multiple topics in the bag '%s'" % args.file )
+                raise RuntimeError( "topic name not given, choose one of the multiple topics in the bag '%s'" % args.bag )
             if not args.topic in topics:
-                raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.file ) )
+                raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.bag ) )
 
         generator = bag.read_messages( topics=[ args.topic ] )
         try:
             topic, msg, t = generator.next()
         except StopIteration:
-            print >>sys.stderr, "%s: warning: no messages found on topic '%s' in the bag '%s'" % ( sys.argv[0], args.topic, args.file )
+            print >>sys.stderr, "%s: warning: no messages found on topic '%s' in the bag '%s'" % ( sys.argv[0], args.topic, args.bag )
             sys.exit( int( not args.allow_empty ) )
 
         record_t, record_ctor = convert_ros_message_to_csv_record( msg, args.set_length )
