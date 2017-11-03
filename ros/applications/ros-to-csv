@@ -134,7 +134,7 @@ class set_length_action( argparse.Action ):
                 raise ValueError( "length of '%s' shall be an integer, not '%s'" % ( av[0], av[1] ) )
         setattr( namespace, self.dest, di )
 
-def read_messages( generator )
+def read_messages( generator ):
     try:
         topic, msg, t = generator.next()
     except StopIteration:
@@ -212,8 +212,7 @@ def main():
                 raise RuntimeError( "topic name not given, choose one of the multiple topics in the bag '%s'" % args.bag )
             if not args.topic in topics:
                 raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.bag ) )
-
-         read_messages( bag.read_messages( topics=[ args.topic ] ) )
+        read_messages( bag.read_messages( topics=[ args.topic ] ) )
     sys.exit(0)
 
 if __name__ == '__main__':
