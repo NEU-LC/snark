@@ -15,11 +15,11 @@ in your package manager, build and install the module manually.
 help_description="output ROS bag files of arbitrary content as csv streams"
 help_examples="""
 examples
-    ros-bag-to-csv --file "input.bag"
-    ros-bag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix"
-    ros-bag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
-    ros-bag-to-csv --file="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
-    ros-bag-to-csv --file="input.bag" --set-length "header/frame_id=15;data/string=10"
+    ros-to-csv --bag "input.bag"
+    ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix"
+    ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
+    ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
+    ros-to-csv --bag="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 general ROS bag hints
     get list of topics inside a bag:
