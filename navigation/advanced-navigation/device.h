@@ -50,6 +50,7 @@ public:
     virtual ~device() { }
     void process();
     void send_ntrip(std::vector<char> buf);
+    comma::io::file_descriptor fd();
 protected:
     virtual void handle(const messages::system_state* msg) { }
     virtual void handle(const messages::raw_sensors* msg) { }

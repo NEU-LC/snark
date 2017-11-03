@@ -15,11 +15,11 @@ usage:
     this is a CGI script run by websocketd upon access of http://<websocketd-host>:<websocketd-port>/$scriptname
 
 required environment variables:
-    CONFIG; default=$default_config; $scriptname config, see $scriptname --config-sample
+    WEBSOCKETD_CONFIG; default=$default_config; $scriptname config, see $scriptname --config-sample
     QUERY_STRING; the part of URL after the ? character
 
 example:
-    CONFIG=$default_config QUERY_STRING="xpath=camera-name&data_uri=true&count=1" $scriptname
+    WEBSOCKETD_CONFIG=$default_config QUERY_STRING="xpath=camera-name&data_uri=true&count=1" $scriptname
 
 EOF
     exit
@@ -43,7 +43,7 @@ function die() { say "$@"; exit 1; }
 (( $( comma_options_has --help $@ ) || $( comma_options_has -h $@ ) )) && usage
 (( $( comma_options_has --config-sample $@ ) )) && { config_sample; exit; }
 
-config=${CONFIG:-$default_config}
+config=${WEBSOCKETD_CONFIG:-$default_config}
 
 [[ -e "$config" ]] || die "error: config file not found: '$config'"
 

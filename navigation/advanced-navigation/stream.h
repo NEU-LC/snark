@@ -52,6 +52,7 @@ struct stream
 {
     virtual std::size_t read_some(char* buf,std::size_t size)=0;
     virtual std::size_t write(const char* buf,std::size_t size)=0;
+    virtual comma::io::file_descriptor fd() = 0;
 };
 
 struct serial_stream : public stream
@@ -61,6 +62,7 @@ struct serial_stream : public stream
     serial_stream(const std::string& name,const advanced_navigation::options& options);
     std::size_t read_some(char* buf,std::size_t to_read);
     std::size_t write(const char* buf,std::size_t to_write);
+    comma::io::file_descriptor fd();
 };
 
 struct io_stream : public stream
@@ -69,6 +71,7 @@ struct io_stream : public stream
     io_stream(const std::string& name,const advanced_navigation::options& options);
     std::size_t read_some(char* buf,std::size_t to_read);
     std::size_t write(const char* buf,std::size_t to_write);
+    comma::io::file_descriptor fd();
 };
 
 

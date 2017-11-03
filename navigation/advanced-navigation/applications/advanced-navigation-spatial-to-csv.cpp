@@ -43,6 +43,7 @@
 #include "../../../math/spherical_geometry/coordinates.h"
 #include "../../../math/spherical_geometry/traits.h"
 #include "../traits.h"
+#include <comma/io/select.h>
 #include <comma/io/stream.h>
 #include <tbb/concurrent_queue.h>
 #include <thread>
@@ -83,6 +84,7 @@ void usage(bool detail)
     std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --description=<field>; print out one line description text for input values of <field>; csv options apply to input" << std::endl;
     std::cerr << "        <field>: system_status | filter_status" << std::endl;
+    std::cerr << "    --binary-output  output in binary" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -98,7 +100,14 @@ void usage(bool detail)
     std::cerr << "    sudo mknod /dev/usb/ttyUSB0 c 188 0" << std::endl;
     std::cerr << "    "<<comma::verbose.app_name()<<" \"/dev/usb/ttyUSB0\" " << std::endl;
     std::cerr << "    "<<comma::verbose.app_name()<<" \"/dev/usb/ttyUSB0\" --raw-sensors" << std::endl;
-    std::cerr << "    echo 4096 | "<<comma::verbose.app_name()<<" --description filter_status" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "  see description of system_status values" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/usb/ttyUSB0 | " << comma::verbose.app_name() << " --fields system_status --description system_status" << std::endl;
+    std::cerr << "    echo 128 | " << comma::verbose.app_name() << " --description system_status" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "  see description of filter_status values" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/usb/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,filter_status --description filter_status" << std::endl;
+    std::cerr << "    echo 1029 | " << comma::verbose.app_name() << " --description filter_status" << std::endl;
     std::cerr << std::endl;
 }
 
@@ -186,12 +195,13 @@ struct ntrip
     typedef std::shared_ptr<std::vector<char>> item_t;
     //create stream from name
     comma::io::istream is;
+    comma::io::select select;
     //have queue<std::vecotr<char>> (or double buffer) to put data in
     static tbb::concurrent_bounded_queue<item_t> queue;
     //app_t can check the queue and write to gps, instead of sleep
     ntrip(const std::string& name) : is(name,comma::io::mode::binary,comma::io::mode::non_blocking), buf(4096)
     {
-        
+        select.read().add( is.fd() );
     }
     std::vector<char> buf;
     bool process()
@@ -199,8 +209,8 @@ struct ntrip
         if(!is->good())
             return false;
         unsigned size=is.available_on_file_descriptor();
-
-        if(size)
+        if( !size ) { select.wait( boost::posix_time::microseconds( 20000 ) ); }
+        if( size || select.read().ready( is.fd() ) )
         {
             //or use size=readsome...
             is->read(&buf[0],size);
@@ -242,7 +252,6 @@ struct ntrip_thread
                 ntrip nt(filename);
                 while(!shutdown&&nt.process())
                 {
-                    usleep(20000);
                 }
             }
             catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
@@ -266,25 +275,26 @@ struct app_i
 struct app_base : protected device
 {
     unsigned us;
+    comma::io::select select;
 public:
     app_base(const std::string& port,const comma::command_line_options& options) : 
         device(port,options.value<unsigned>("--baud-rate",default_baud_rate)),
         us(options.value<unsigned>("--sleep",default_sleep))
     {
+        select.read().add( fd() );
     }
     void process()
     {
         while( !signaled && std::cout.good() )
         {
-            device::process();
+            select.wait( boost::posix_time::microseconds( us ) );
+            if( select.read().ready( fd() ) ) { device::process(); }
             if(!ntrip::queue.empty())
             {
                 ntrip::item_t item;
                 ntrip::queue.pop(item);
                 if(item) { send_ntrip(*item); }
             }
-            //process ntrip
-            usleep(us);
         }
     }
 };
@@ -295,7 +305,7 @@ struct app_t : public app_base
     comma::csv::output_stream<T> os;
     app_t(const std::string& port,const comma::command_line_options& options) : 
         app_base(port,options),
-        os(std::cout,comma::csv::options(options,"",true))
+        os( std::cout, options.exists( "--binary-output" ), true, true ) // options.exists( "--flush" )
     {
         
     }
@@ -430,7 +440,7 @@ static void bash_completion( int argc, char** argv )
 {
     std::cout << "--help --verbose" <<
         " all navigation raw-sensors system-state satellites" <<
-        " --output-fields --output-format --raw --stdin --description"<< 
+        " --output-fields --output-format --raw --stdin --description --binary-output"<< 
         std::endl;
 }
 
@@ -444,7 +454,7 @@ int main( int argc, char** argv )
         
         if(options.exists("--bash-completion")) { bash_completion( argc, argv ); return 0; }
         
-        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin", "-.*" );
+        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--binary-output", "-.*" );
         
         auto opt_description=options.optional<std::string>("--description");
         if(opt_description)

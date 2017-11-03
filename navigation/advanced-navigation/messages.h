@@ -81,6 +81,7 @@ struct system_status_description
     static const std::vector< std::string > text;
     static std::string string( const comma::uint16 status )
     {
+        if( !status ) { return "null"; }
         std::stringstream ss;
         unsigned bit = 1;
         for( unsigned i = 0; i < text.size(); ++i )

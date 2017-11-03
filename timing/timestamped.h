@@ -30,7 +30,7 @@
 #ifndef SNARK_TIMING_TIMESTAMPED_H_
 #define SNARK_TIMING_TIMESTAMPED_H_
 
-#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark {
 
@@ -42,6 +42,8 @@ struct timestamped
     T data;
 
     timestamped() {}
+
+    timestamped( const T& data ) : t( boost::posix_time::microsec_clock::universal_time() ), data( data ) {}
 
     timestamped( const boost::posix_time::ptime& t, const T& data ) : t( t ), data( data ) {}
 };

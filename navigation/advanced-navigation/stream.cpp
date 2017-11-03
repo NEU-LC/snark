@@ -46,12 +46,18 @@ serial_stream::serial_stream(const std::string& name,const advanced_navigation::
 std::size_t serial_stream::read_some(char* buf,std::size_t to_read)
 {
     boost::system::error_code ec;
-//         unsigned read_size=boost::asio::read(port, boost::asio::buffer(&buf[index],to_read));
-    return port.read_some(boost::asio::buffer(buf,to_read),ec);
+    std::size_t count = port.read_some( boost::asio::buffer( buf, to_read ), ec );
+    if( ec ) { COMMA_THROW( comma::exception, ec.message() ); }
+    return count;
 }
 std::size_t serial_stream::write(const char* buf,std::size_t to_write)
 {
     return boost::asio::write(port, boost::asio::buffer(buf,to_write));
+}
+
+comma::io::file_descriptor serial_stream::fd()
+{
+    return port.native_handle();
 }
 
 io_stream::io_stream(const std::string& name,const advanced_navigation::options& options) : 
@@ -75,6 +81,11 @@ std::size_t io_stream::write(const char* buf,std::size_t to_write)
     COMMA_THROW( comma::exception, "cannot write to istream");
 //     ios->write(buf,to_write);
 //     return ios->good()?to_write:0;
+}
+
+comma::io::file_descriptor io_stream::fd()
+{
+    return is.fd();
 }
 
 } } } //namespace snark { namespace navigation { namespace advanced_navigation {
