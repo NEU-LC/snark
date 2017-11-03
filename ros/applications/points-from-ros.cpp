@@ -119,6 +119,27 @@ public:
         }
         return rmap_data_type;
     }
+    static std::size_t size_of_type(comma::csv::format::types_enum t)
+    {
+        switch(t)
+        {
+            case comma::csv::format::char_t: return sizeof( char );
+            case comma::csv::format::int8: return sizeof( char );
+            case comma::csv::format::uint8: return sizeof( unsigned char );
+            case comma::csv::format::int16: return sizeof( int16_t );
+            case comma::csv::format::uint16: return sizeof( uint16_t );
+            case comma::csv::format::int32: return sizeof( int32_t );
+            case comma::csv::format::uint32: return sizeof( uint32_t );
+            case comma::csv::format::int64: return sizeof( int64_t );
+            case comma::csv::format::uint64: return sizeof( uint64_t );
+            case comma::csv::format::float_t: return sizeof( float );
+            case comma::csv::format::double_t: return sizeof( double );
+            case comma::csv::format::time: return sizeof( int64_t );
+            case comma::csv::format::long_time: return sizeof( int64_t ) + sizeof( int32_t );
+            case comma::csv::format::fixed_string: return 0; // will it blast somewhere?
+            default: { COMMA_THROW(comma::exception,"invalid type "<<unsigned(t)); }
+        }
+    }
     /// returns list of field names from the message
     static std::string msg_fields_names(const sensor_msgs::PointCloud2::_fields_type& msg_fields)
     {
@@ -182,8 +203,11 @@ public:
             for(std::size_t i=0;i<msg_fields.size();i++)
             {
                 msg_field_name_map[msg_fields[i].name]=i;
+                if(msg_fields[i].datatype<1 || msg_fields[i].datatype>=rmap.size()) { COMMA_THROW(comma::exception,"datatype out of range (1 to 8) "<<unsigned(msg_fields[i].datatype)); }
                 comma::csv::format::types_enum type=rmap.at(msg_fields[i].datatype);
-                elements.push_back(range_t(msg_fields[i].offset,msg_fields[i].count*comma::csv::format::size_of(type)));
+                //using comma::csv::format::size_of(type) corrupts stack
+//                 elements.push_back(range_t(msg_fields[i].offset,msg_fields[i].count*comma::csv::format::size_of(type)));
+                elements.push_back(range_t(msg_fields[i].offset,msg_fields[i].count*point_cloud::size_of_type(type)));
             }
             for(const auto& f : fields)
             {
