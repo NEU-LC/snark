@@ -30,4 +30,5 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import imaging
+import ros
 from snark.version import __version__

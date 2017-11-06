@@ -8,5 +8,5 @@ setup(
         description         = 'snark python utilties',
         url                 = 'https://github.com/acfr/snark',
         license             = 'BSD 3-Clause',
-        packages            = [ 'snark', 'snark.imaging' ],
+        packages            = [ 'snark', 'snark.imaging', 'snark.ros' ],
      )
