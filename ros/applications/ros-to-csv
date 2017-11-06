@@ -186,6 +186,7 @@ class rostopic_subscriber:
 
 def main():
     parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
+    parser.add_argument( 'topic', nargs = '?', help = 'topic', type = str )
     parser.add_argument( '--allow-empty', help='skip checks that the topic exists in the bag and contains at least one message', action='store_true' )
     parser.add_argument( '--bag', '--file', help='input bag file', type=str )
     parser.add_argument( '--flush', help='flush stdout after each message' )
