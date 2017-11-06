@@ -187,7 +187,6 @@ class rostopic_subscriber:
 def main():
     parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
     parser.add_argument( 'topic', nargs = '?', help = 'topic', type = str )
-    parser.add_argument( '--allow-empty', help='skip checks that the topic exists in the bag and contains at least one message', action='store_true' )
     parser.add_argument( '--bag', '--file', help='input bag file', type=str )
     parser.add_argument( '--flush', help='flush stdout after each message' )
     parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
@@ -209,28 +208,24 @@ def main():
         if args.verbose: print >> sys.stderr, "ros-to-csv: listening to topic '%s'..." % args.topic
         subscriber = rostopic_subscriber( args )
         subscriber.spin()
-        sys.exit( 0 )
-    try:
-        with open( args.bag ) as f: pass
-    except IOError as e:
-        raise RuntimeError( "failed to open bag file '%s' for reading" % args.bag )
-    with rosbag.Bag( args.bag ) as bag:
-        topics = bag.get_type_and_topic_info()[1].keys()
-        if not args.topic:
-            if len( topics ) == 1:
-                if args.verbose: print >>sys.stderr, "%s: warning: topic not specified, use '%s' as the only topic in the bag" % ( sys.argv[0], topics[0] )
-                args.topic = topics[0]
-        if not args.allow_empty:
-            if not args.topic: raise RuntimeError( "topic name not given, choose one of the multiple topics in the bag '%s'" % args.bag )
-            if not args.topic in topics: raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.bag ) )
-            generator = bag.read_messages( topics=[ args.topic ] )
-            try: topic, msg, t = generator.next()
-            except StopIteration:
-                print >>sys.stderr, "%s: warning: no messages found on topic '%s' in the bag '%s'" % ( sys.argv[0], args.topic, args.bag )
-                sys.exit( int( not args.allow_empty ) )
-            handler = message_handler( msg, args )
-            handler.write( msg )
-            for topic, msg, t in generator: handler.write( msg )
+    else:
+        try:
+            with rosbag.Bag( args.bag ) as bag:
+                topics = bag.get_type_and_topic_info()[1].keys()
+                if not args.topic:
+                    if len( topics ) != 1: print >> sys.stderr, "ros-to-csv: bag '%s' contains '%d' topics; please specify --topic explicitly" % ( args.bag, len( topics ) ); sys.exit( 1 )
+                    if args.verbose: print >>sys.stderr, "%s: warning: topic not specified, use '%s' as the only topic in the bag" % ( sys.argv[0], topics[0] )
+                    args.topic = topics[0]
+                else:
+                    if not args.topic in topics: print >> sys.stderr, "ros-to-csv: topic '%s' not found in the bag '%s'" % ( args.topic, args.bag ); sys.exit( 1 )
+                generator = bag.read_messages( topics=[ args.topic ] )
+                for topic, msg, t in generator:
+                    try: handler
+                    except NameError: handler = message_handler( msg, args )
+                    handler.write( msg )
+        except IOError as e:
+            print >> sys.stderr, "ros-to-csv: failed to open bag file '%s' for reading" % args.bag
+            sys.exit( 1 )
     sys.exit(0)
 
 if __name__ == '__main__': main()
