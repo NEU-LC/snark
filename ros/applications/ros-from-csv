@@ -1,0 +1,38 @@
+#!/usr/bin/python
+
+import argparse, sys
+from signal import signal, SIGPIPE, SIG_DFL
+import rospy, rostopic
+import comma.csv
+import snark.ros.convert
+
+help_description = """take csv records on stdin, publish on given ros topic"""
+
+help_examples = """
+
+examples
+    todo
+
+"""
+
+def main():
+    parser = argparse.ArgumentParser( description = help_description, epilog = help_examples, formatter_class = argparse.RawDescriptionHelpFormatter, conflict_handler = 'resolve' )
+    parser.add_argument( 'topic', help = 'topic', type = str )
+    parser.add_argument( '--queue-size', '--queue', default = 1, help = 'chat more', type = int )
+    parser.add_argument( '-v', '--verbose', help = 'chat more', action = 'store_true' )
+    comma.csv.add_options( parser )
+    args = parser.parse_args()
+    signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
+    if args.topic is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )
+    record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( rostopic.get_topic_class( args.topic )[0]() )
+    # todo? default_values
+    istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = args.binary, fields = args.fields, default_values = None )
+    publisher = rospy.Publisher( args.topic, rostopic.get_topic_class( args.topic )[0], queue_size = args.queue_size )
+    rospy.init_node( 'ros_to_csv', anonymous = True )
+    if args.verbose: print >> sys.stderr, "ros-to-csv: publishing to topic '%s'..." % args.topic
+    for record in istream:
+        # todo 
+        print >> sys.stderr, "ros-from-csv: coming soon..."; sys.exit( 1 )
+        publisher.publish( msg )
+
+if __name__ == '__main__': main()
