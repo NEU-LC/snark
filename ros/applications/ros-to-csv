@@ -1,6 +1,10 @@
 #!/usr/bin/python
-import rosbag, sys, datetime, argparse, comma, numpy
+
+import argparse, datetime, numpy, sys
 from signal import signal, SIGPIPE, SIG_DFL
+import rosbag, rospy, rostopic
+import comma
+
 try:
     import rospy_message_converter
 except ImportError:
@@ -119,57 +123,66 @@ def _convert_ros_message_to_csv_record( message, lengths={}, prefix='' ):
 
 class set_length_action( argparse.Action ):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
-        if nargs is not None:
-            raise ValueError("nargs not allowed")
+        if nargs is not None: raise ValueError("nargs not allowed")
         super( set_length_action, self ).__init__( option_strings, dest, **kwargs )
     def __call__( self, parser, namespace, values, option_string=None ):
         di = {}
         for c in values.split( ';' ):
             av = c.split( '=' )
-            if len(av) != 2:
-                raise RuntimeError( "arguments to --set-length shall take the form <path>=<length>" )
-            try:
-                di[ av[0] ] = int( av[1] )
-            except:
-                raise ValueError( "length of '%s' shall be an integer, not '%s'" % ( av[0], av[1] ) )
+            if len(av) != 2: raise RuntimeError( "arguments to --set-length shall take the form <path>=<length>" )
+            try: di[ av[0] ] = int( av[1] )
+            except: raise ValueError( "length of '%s' shall be an integer, not '%s'" % ( av[0], av[1] ) )
         setattr( namespace, self.dest, di )
 
-def read_messages( generator, args ):
-    signal(SIGPIPE, SIG_DFL) # do no want the IOError message trace
-    try:
-        topic, msg, t = generator.next()
-    except StopIteration:
-        print >>sys.stderr, "%s: warning: no messages found on topic '%s' in the bag '%s'" % ( sys.argv[0], args.topic, args.bag )
-        sys.exit( int( not args.allow_empty ) )
+class message_handler:
+    """create a csv output stream from a sample message, write messages to it"""
+    
+    def __init__( self, msg, args ):
+        self.record_type, self.record_ctor = convert_ros_message_to_csv_record( msg, args.set_length )
+        if args.output_fields:
+            if args.index_output_fields:
+                output_fields = []
+                for n in self.record_type.flat_dtype.names:
+                    shape = self.record_type.flat_dtype[n].shape
+                    if shape:
+                        tmp = numpy.zeros( shape )
+                        it = numpy.nditer( tmp, flags=['multi_index'] )
+                        while not it.finished:
+                            output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
+                            it.iternext()
+                    else:
+                        output_fields.append( n )
+                print ','.join( output_fields )
+            else:
+                print ','.join( self.record_type.fields )
+            rospy.signal_shutdown( 'shutdown' ) # todo: watch: is it the right way? can rospy.spin() hang somehow?
+            sys.exit(0)
+        if args.output_format:
+            print ','.join( [ comma.csv.format.from_numpy( f ) for f in self.record_type.format.split(',') ] )
+            rospy.signal_shutdown( 'shutdown' ) # todo: watch: is it the right way? can rospy.spin() hang somehow?
+            sys.exit( 0 )
+        self.flush = args.flush
+        self.ostream = comma.csv.stream( self.record_type, flush = args.flush, delimiter = args.delimiter, binary = args.binary, fields = args.fields )
+        
+    def write( self, msg ):
+        self.ostream.write( self.record_ctor( msg ) )
+        if self.flush: sys.stdout.flush()
 
-    record_t, record_ctor = convert_ros_message_to_csv_record( msg, args.set_length )
-    if args.output_fields:
-        if args.index_output_fields:
-            output_fields = []
-            for n in record_t.flat_dtype.names:
-                shape = record_t.flat_dtype[n].shape
-                if shape:
-                    tmp = numpy.zeros( shape )
-                    it = numpy.nditer( tmp, flags=['multi_index'] )
-                    while not it.finished:
-                        output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
-                        it.iternext()
-                else:
-                    output_fields.append( n )
-            print ','.join( output_fields )
-        else:
-            print ','.join( record_t.fields )
-        sys.exit(0)
-    if args.output_format:
-        print ','.join( [ comma.csv.format.from_numpy( f ) for f in record_t.format.split(',') ] )
-        sys.exit(0)
-
-    ostream = comma.csv.stream( record_t, flush=args.flush, delimiter=args.delimiter, binary=args.binary, fields=args.fields ) # real job done here
-    ostream.write( record_ctor( msg ) )
-    if args.flush: sys.stdout.flush()
-    for topic, msg, t in generator:
-        ostream.write( record_ctor( msg ) )
-        if args.flush: sys.stdout.flush()
+class rostopic_subscriber:
+    """subscribe to a topic, output messages as csv in callback"""
+    
+    def __init__( self, args ):
+        self.args = args
+        self.handler = None
+        rospy.init_node( 'listener', anonymous = True )
+        rospy.Subscriber( args.topic, rostopic.get_topic_class( args.topic )[0], self.callback )
+        rospy.spin()
+    
+    def callback( self, msg ):
+        if self.handler is None: self.handler = message_handler( msg, self.args )
+        self.handler.write( msg )
+        
+    def spin( self ): rospy.spin()
 
 def main():
     parser = argparse.ArgumentParser( description=help_description, epilog=help_examples, formatter_class=argparse.RawDescriptionHelpFormatter, conflict_handler='resolve' )
@@ -189,26 +202,34 @@ def main():
     # TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
     parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', default='' )
     args = parser.parse_args()
+    signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
     if args.bag is None:
-        raise RuntimeError( "reading messages online: coming soon..." )
-    else:
-        try:
-            with open( args.bag ) as f: pass
-        except IOError as e:
-            raise RuntimeError( "failed to open bag file '%s' for reading" % args.bag )
-        with rosbag.Bag( args.bag ) as bag:
-            topics = bag.get_type_and_topic_info()[1].keys()
-            if not args.topic:
-                if len( topics ) == 1:
-                    if args.verbose:
-                        print >>sys.stderr, "%s: warning: topic not specified, use '%s' as the only topic in the bag" % ( sys.argv[0], topics[0] )
-                    args.topic = topics[0]
-            if not args.allow_empty:
-                if not args.topic:
-                    raise RuntimeError( "topic name not given, choose one of the multiple topics in the bag '%s'" % args.bag )
-                if not args.topic in topics:
-                    raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.bag ) )
-            read_messages( bag.read_messages( topics=[ args.topic ] ), args )
+        if args.topic is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )
+        if args.verbose: print >> sys.stderr, "ros-to-csv: listening to topic '%s'..." % args.topic
+        subscriber = rostopic_subscriber( args )
+        subscriber.spin()
+        sys.exit( 0 )
+    try:
+        with open( args.bag ) as f: pass
+    except IOError as e:
+        raise RuntimeError( "failed to open bag file '%s' for reading" % args.bag )
+    with rosbag.Bag( args.bag ) as bag:
+        topics = bag.get_type_and_topic_info()[1].keys()
+        if not args.topic:
+            if len( topics ) == 1:
+                if args.verbose: print >>sys.stderr, "%s: warning: topic not specified, use '%s' as the only topic in the bag" % ( sys.argv[0], topics[0] )
+                args.topic = topics[0]
+        if not args.allow_empty:
+            if not args.topic: raise RuntimeError( "topic name not given, choose one of the multiple topics in the bag '%s'" % args.bag )
+            if not args.topic in topics: raise RuntimeError( "topic '%s' not found in the bag '%s'" % ( args.topic, args.bag ) )
+            generator = bag.read_messages( topics=[ args.topic ] )
+            try: topic, msg, t = generator.next()
+            except StopIteration:
+                print >>sys.stderr, "%s: warning: no messages found on topic '%s' in the bag '%s'" % ( sys.argv[0], args.topic, args.bag )
+                sys.exit( int( not args.allow_empty ) )
+            handler = message_handler( msg, args )
+            handler.write( msg )
+            for topic, msg, t in generator: handler.write( msg )
     sys.exit(0)
 
 if __name__ == '__main__': main()
