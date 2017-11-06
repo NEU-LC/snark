@@ -173,14 +173,11 @@ class rostopic_subscriber:
     
     def __init__( self, args ):
         self.args = args
-        self.handler = None
         rospy.init_node( 'listener', anonymous = True )
         rospy.Subscriber( args.topic, rostopic.get_topic_class( args.topic )[0], self.callback )
-        rospy.spin()
+        self.handler = message_handler( rostopic.get_topic_class( args.topic )[0](), self.args )
     
-    def callback( self, msg ):
-        if self.handler is None: self.handler = message_handler( msg, self.args )
-        self.handler.write( msg )
+    def callback( self, msg ): self.handler.write( msg )
         
     def spin( self ): rospy.spin()
 
