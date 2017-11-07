@@ -58,6 +58,13 @@ ENDIF( NOT PYTHON )
 check_python_module( comma )
 check_python_module( numpy )
 check_python_module( cv2 )
+if( snark_build_ros )
+    check_python_module( rosbag )
+    check_python_module( rospy )
+    check_python_module( rostopic )
+    # check_python_module( ros-kinetic-rospy-message-converter ) # todo: uncomment? or it is too exotic to stipulate?
+endif( snark_build_ros )
+
 enable_python_testing()
 
 SET( PYTHON_PACKAGE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE STRING "install prefix for python packages, leave empty for python default prefix" )

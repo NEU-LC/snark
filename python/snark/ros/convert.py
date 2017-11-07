@@ -26,8 +26,7 @@ def ros_message_to_csv_record( message, lengths={} ):
     for k, v in lengths.items():
         try:
             pos = record_t.fields.index( k )
-            if record_t.types[ pos ][0] != 'S':
-                raise RuntimeError( "length %d specified for field '%s' that is not a string" % ( v, k ) )
+            if record_t.types[ pos ][0] != 'S': raise RuntimeError( "length %d specified for field '%s' that is not a string" % ( v, k ) )
         except ValueError:
             raise RuntimeError( "length %d specified for unknown field '%s'" % ( v, k ) )
     return ( record_t, record_ctor )
