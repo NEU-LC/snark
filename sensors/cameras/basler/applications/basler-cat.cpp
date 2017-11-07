@@ -604,15 +604,15 @@ static bool configure_trigger( Pylon::CBaslerUsbCamera& camera, const comma::com
 
 static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
 {
-    GenApi::IEnumEntry* acquisitionStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_AcquisitionStart );
+    GenApi::IEnumEntry* acquisition_start = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_AcquisitionStart );
     std::string frame_trigger = options.value< std::string >( "--frame-trigger", "" );
-    if( acquisitionStart && GenApi::IsAvailable( acquisitionStart ) )
+    if( acquisition_start && GenApi::IsAvailable( acquisition_start ) )
     {
         camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_AcquisitionStart;
         camera.TriggerMode = ( frame_trigger.empty() ? Basler_GigECameraParams::TriggerMode_Off : Basler_GigECameraParams::TriggerMode_On );
     }
-    GenApi::IEnumEntry* frameStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_FrameStart );
-    if( frameStart && GenApi::IsAvailable( frameStart ) )
+    GenApi::IEnumEntry* frame_start = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_FrameStart );
+    if( frame_start && GenApi::IsAvailable( frame_start ) )
     {
         //if( frame_trigger.empty() ) { frame_trigger = line_trigger; }
         if( frame_trigger.empty() )
@@ -651,8 +651,8 @@ static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::co
             }
         }
     }
-    GenApi::IEnumEntry* lineStart = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_LineStart );
-    if( lineStart && GenApi::IsAvailable( lineStart ) )
+    GenApi::IEnumEntry* line_start = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_LineStart );
+    if( line_start && GenApi::IsAvailable( line_start ) )
     {
         std::string line_trigger = options.value< std::string >( "--line-trigger", "" );
         if( line_trigger.empty() )
