@@ -925,10 +925,15 @@ static void show_transport_config( Pylon::CBaslerUsbCamera& camera )
 static void show_config( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber )
 {
     comma::verbose << " socket buffer size: " << grabber.SocketBufferSize() << " kB" << std::endl;
+    comma::verbose << "        max buffers: " << grabber.MaxNumBuffer() << std::endl;
     comma::verbose << "    max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
 }
 
-static void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber ) { comma::verbose << "max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl; }
+static void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber )
+{
+    comma::verbose << "     max buffers: " << grabber.MaxNumBuffer() << std::endl;
+    comma::verbose << " max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
+}
 
 template < typename T, typename P >
 static P capture( T& camera, typename T::StreamGrabber_t& grabber )
@@ -1176,9 +1181,9 @@ static int run( T& camera, const comma::command_line_options& options )
     std::vector< std::vector< char > > buffers( 2 ); // todo? make number of buffers configurable
     for( std::size_t i = 0; i < buffers.size(); ++i ) { buffers[i].resize( camera.PayloadSize() ); }
     grabber.MaxBufferSize = buffers[0].size();
+    grabber.MaxNumBuffer = buffers.size(); // todo: use --buffer value for number of buffered images
     set_socket_buffer_size( grabber, 127 );
     show_config( grabber );
-    grabber.MaxNumBuffer = buffers.size(); // todo: use --buffer value for number of buffered images
     grabber.PrepareGrab(); // image size now must not be changed until FinishGrab() is called.
     std::vector< Pylon::StreamBufferHandle > buffer_handles( buffers.size() );
     for( std::size_t i = 0; i < buffers.size(); ++i )
