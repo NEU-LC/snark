@@ -924,7 +924,7 @@ static void show_transport_config( Pylon::CBaslerUsbCamera& camera )
 
 static void show_config( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber )
 {
-    comma::verbose << " socket buffer size: " << grabber.SocketBufferSize() << " bytes" << std::endl;
+    comma::verbose << " socket buffer size: " << grabber.SocketBufferSize() << " kB" << std::endl;
     comma::verbose << "    max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
 }
 
