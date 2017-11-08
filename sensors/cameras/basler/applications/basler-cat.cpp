@@ -1061,6 +1061,11 @@ static void set_transport_options( Pylon::CBaslerGigECamera& camera, const comma
     // An explicit --inter-packet-delay overrides the calculated value
     inter_packet_delay = options.value< unsigned int >( "--inter-packet-delay", inter_packet_delay );
     if( inter_packet_delay != initial_inter_packet_delay ) { camera.GevSCPD = inter_packet_delay;  }
+
+    // Note that the Pylon Viewer app sets:
+    //   camera.GevSCBWR = 17; camera.GevSCBWRA = 1;
+    // but it doesn't seem to change performance from the default values of:
+    //   camera.GevSCBWR = 10; camera.GevSCBWRA = 10;
 }
 
 static void set_transport_options( Pylon::CBaslerUsbCamera&, const comma::command_line_options& options )
