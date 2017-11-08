@@ -9,7 +9,7 @@ MACRO( disable_python_testing )
 ENDMACRO( disable_python_testing )
 
 MACRO( check_python_module module )
-    EXECUTE_PROCESS( COMMAND ${PYTHON} -c "import ${module}; print( ${module}.__version__ );"
+    EXECUTE_PROCESS( COMMAND ${PYTHON} -c "import ${module}; print( hasattr( ${module}, '__version__' ) and ${module}.__version__ or 'unknown' );"
         RESULT_VARIABLE MODULE_EXIT_CODE
         OUTPUT_VARIABLE MODULE_VERSION_STRING
         ERROR_VARIABLE MODULE_ERROR
