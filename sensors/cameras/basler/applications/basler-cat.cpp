@@ -931,6 +931,29 @@ static void show_config( const T& camera, const comma::command_line_options& opt
     }
 }
 
+static std::string trigger_config( Pylon::CBaslerGigECamera& camera, Basler_GigECamera::TriggerSelectorEnums trigger_selector )
+{
+    GenApi::IEnumEntry* entry = camera.TriggerSelector.GetEntry( trigger_selector );
+    if( entry && GenApi::IsAvailable( entry ) )
+    {
+        camera.TriggerSelector = trigger_selector;
+        if( camera.TriggerMode() == Basler_GigECameraParams::TriggerMode_Off ) { return "off"; }
+        else { return trigger_source::to_string( camera.TriggerSource() ); }
+    }
+    else { return "unavailable"; }
+}
+
+static void show_trigger_config( Pylon::CBaslerGigECamera& camera )
+{
+    comma::verbose << " acquisition start trigger mode: " << trigger_config( camera, Basler_GigECameraParams::TriggerSelector_AcquisitionStart ) << std::endl;
+    comma::verbose << "       frame start trigger mode: " << trigger_config( camera, Basler_GigECameraParams::TriggerSelector_FrameStart ) << std::endl;
+    comma::verbose << "        line start trigger mode: " << trigger_config( camera, Basler_GigECameraParams::TriggerSelector_LineStart ) << std::endl;
+}
+
+static void show_trigger_config( Pylon::CBaslerUsbCamera& camera )
+{
+}
+
 static void show_transport_config( Pylon::CBaslerGigECamera& camera )
 {
     comma::verbose << "        packet size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
@@ -1196,6 +1219,7 @@ static int run( T& camera, const comma::command_line_options& options )
     if( GenApi::IsAvailable( camera.TestImageSelector ) ) { set_test_image( camera, options.value< unsigned int >( "--test-image", 0 )); }
     else { if( options.exists( "--test-image" )) { COMMA_THROW( comma::exception, "test image is not supported by this camera" ); } }
     show_config( camera, options );
+    show_trigger_config( camera );
     show_transport_config( camera );
     std::vector< std::vector< char > > buffers( 2 ); // todo? make number of buffers configurable
     for( std::size_t i = 0; i < buffers.size(); ++i ) { buffers[i].resize( camera.PayloadSize() ); }
