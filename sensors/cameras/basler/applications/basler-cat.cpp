@@ -1044,6 +1044,8 @@ static void set_binning_vertical_mode_average( Pylon::CBaslerUsbCamera& camera )
 
 static void set_transport_options( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
 {
+    camera.GevStreamChannelSelector = Basler_GigECameraParams::GevStreamChannelSelector_StreamChannel0;
+
     unsigned int initial_packet_size = camera.GevSCPSPacketSize();
     unsigned int packet_size = options.value< unsigned int >( "--packet-size", initial_packet_size );
     if( packet_size != initial_packet_size ) { camera.GevSCPSPacketSize = packet_size;  }
