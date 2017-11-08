@@ -329,6 +329,32 @@ static void output_result_status( const Pylon::GrabResult& result )
                                              result.Status() == Pylon::Failed ? "failed" : "unknown" ) << std::endl;
 }
 
+struct trigger_source
+{
+    typedef Basler_GigECameraParams::TriggerSourceEnums type_t;
+
+    static type_t from_string( const std::string& source )
+    {
+        if( boost::algorithm::to_lower_copy( source ) == "line1" ) { return Basler_GigECameraParams::TriggerSource_Line1; }
+        if( boost::algorithm::to_lower_copy( source ) == "line2" ) { return Basler_GigECameraParams::TriggerSource_Line2; }
+        if( boost::algorithm::to_lower_copy( source ) == "line3" ) { return Basler_GigECameraParams::TriggerSource_Line3; }
+        if( boost::algorithm::to_lower_copy( source ) == "encoder" ) { return Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut; }
+        COMMA_THROW( comma::exception, "trigger source \"" << source << "\" not implemented" );
+    }
+
+    static const char* to_string( type_t source )
+    {
+        switch( source )
+        {
+            case Basler_GigECameraParams::TriggerSource_Line1: return "line1";
+            case Basler_GigECameraParams::TriggerSource_Line2: return "line2";
+            case Basler_GigECameraParams::TriggerSource_Line3: return "line3";
+            case Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut: return "encoder";
+            default: return "unknown";
+        }
+    }
+};
+
 template < typename T > struct pixel_format;
 
 template <> struct pixel_format< Pylon::CBaslerUsbCamera > // todo: support more formats
@@ -624,16 +650,13 @@ static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::co
         {
             camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_FrameStart;
             camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
-            if( frame_trigger == "line1" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line1; }
-            if( frame_trigger == "line2" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line2; }
-            if( frame_trigger == "line3" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line3; }
-            else if( frame_trigger == "encoder" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut; }
-            else { std::cerr << "basler-cat: frame trigger '" << frame_trigger << "' not implemented or invalid" << std::endl; return false; }
+            camera.TriggerSource = trigger_source::from_string( frame_trigger );
             camera.TriggerActivation = Basler_GigECameraParams::TriggerActivation_RisingEdge;
             camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_LineStart;
             camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
             camera.TriggerActivation = Basler_GigECameraParams::TriggerActivation_RisingEdge;
-            if( frame_trigger == "encoder" )
+
+            if( camera.TriggerSource() == Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut )
             {
                 // todo: make configurable
                 camera.ShaftEncoderModuleLineSelector = Basler_GigECameraParams::ShaftEncoderModuleLineSelector_PhaseA;
@@ -664,11 +687,7 @@ static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::co
         {
             camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_LineStart;
             camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
-            if( line_trigger == "line1" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line1; }
-            else if( line_trigger == "line2" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line2; }
-            else if( line_trigger == "line3" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Line3; }
-            else if( line_trigger == "encoder" ) { camera.TriggerSource = Basler_GigECameraParams::TriggerSource_ShaftEncoderModuleOut; }
-            else { std::cerr << "basler-cat: line trigger '" << line_trigger << "' not implemented or invalid" << std::endl; return false; }
+            camera.TriggerSource = trigger_source::from_string( line_trigger );
             camera.TriggerActivation = Basler_GigECameraParams::TriggerActivation_RisingEdge;
             camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_LineStart;
             camera.TriggerMode = Basler_GigECameraParams::TriggerMode_On;
