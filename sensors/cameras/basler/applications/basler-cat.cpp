@@ -1064,7 +1064,8 @@ static void set_transport_options( Pylon::CBaslerGigECamera& camera, const comma
 
     // Note that the Pylon Viewer app sets:
     //   camera.GevSCBWR = 17; camera.GevSCBWRA = 1;
-    // but it doesn't seem to change performance from the default values of:
+    // but I was getting a lot of "The buffer was incompletely grabbed"
+    // compared to the default values of:
     //   camera.GevSCBWR = 10; camera.GevSCBWRA = 10;
 }
 
