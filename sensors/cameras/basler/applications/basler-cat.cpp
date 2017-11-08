@@ -904,31 +904,28 @@ static std::string gain_units( const Pylon::CBaslerUsbCamera& ) { return "dB"; }
 template< typename T >
 static void show_config( const T& camera, const comma::command_line_options& options )
 {
-    if( comma::verbose )
-    {
-        bool exposure_is_auto = ( options.value< std::string >( "--exposure", "" ) == "auto" );
-        bool gain_is_auto = ( options.value< std::string >( "--gain", "" ) == "auto" );
+    bool exposure_is_auto = ( options.value< std::string >( "--exposure", "" ) == "auto" );
+    bool gain_is_auto = ( options.value< std::string >( "--gain", "" ) == "auto" );
 
-        std::cerr << "basler-cat:     exposure: ";
-        if( exposure_is_auto ) { std::cerr << "auto"; }
-        else { std::cerr << get_exposure_time( camera ) << "µs"; }
-        std::cerr << std::endl;
+    std::cerr << "basler-cat:     exposure: ";
+    if( exposure_is_auto ) { std::cerr << "auto"; }
+    else { std::cerr << get_exposure_time( camera ) << "µs"; }
+    std::cerr << std::endl;
 
-        std::cerr << "basler-cat:         gain: ";
-        if( gain_is_auto ) { std::cerr << "auto"; }
-        else { std::cerr << get_gain( camera ) << gain_units( camera ); }
-        std::cerr << std::endl;
+    std::cerr << "basler-cat:         gain: ";
+    if( gain_is_auto ) { std::cerr << "auto"; }
+    else { std::cerr << get_gain( camera ) << gain_units( camera ); }
+    std::cerr << std::endl;
 
-        // If frame rate is not explicitly set and exposure is set to auto
-        // then we won't know the correct frame rate yet
-        std::cerr << "basler-cat:   frame rate: ";
-        if( !options.exists( "--frame-rate" ) && exposure_is_auto ) { std::cerr << "calculating..."; }
-        else { std::cerr << get_frame_rate( camera ) << " fps"; }
-        std::cerr << std::endl;
+    // If frame rate is not explicitly set and exposure is set to auto
+    // then we won't know the correct frame rate yet
+    std::cerr << "basler-cat:   frame rate: ";
+    if( !options.exists( "--frame-rate" ) && exposure_is_auto ) { std::cerr << "calculating..."; }
+    else { std::cerr << get_frame_rate( camera ) << " fps"; }
+    std::cerr << std::endl;
 
-        std::cerr << "basler-cat: payload size: " << camera.PayloadSize() << " bytes" << std::endl;
-        std::cerr << "basler-cat: pixel format: " << pixel_format< T >::to_string( camera.PixelFormat() ) << std::endl;
-    }
+    std::cerr << "basler-cat: payload size: " << camera.PayloadSize() << " bytes" << std::endl;
+    std::cerr << "basler-cat: pixel format: " << pixel_format< T >::to_string( camera.PixelFormat() ) << std::endl;
 }
 
 static std::string trigger_config( Pylon::CBaslerGigECamera& camera, Basler_GigECamera::TriggerSelectorEnums trigger_selector )
@@ -945,9 +942,9 @@ static std::string trigger_config( Pylon::CBaslerGigECamera& camera, Basler_GigE
 
 static void show_trigger_config( Pylon::CBaslerGigECamera& camera )
 {
-    comma::verbose << " acquisition start trigger mode: " << trigger_config( camera, Basler_GigECameraParams::TriggerSelector_AcquisitionStart ) << std::endl;
-    comma::verbose << "       frame start trigger mode: " << trigger_config( camera, Basler_GigECameraParams::TriggerSelector_FrameStart ) << std::endl;
-    comma::verbose << "        line start trigger mode: " << trigger_config( camera, Basler_GigECameraParams::TriggerSelector_LineStart ) << std::endl;
+    std::cerr << "basler-cat: acquisition start trigger mode: " << trigger_config( camera, Basler_GigECameraParams::TriggerSelector_AcquisitionStart ) << std::endl;
+    std::cerr << "basler-cat:       frame start trigger mode: " << trigger_config( camera, Basler_GigECameraParams::TriggerSelector_FrameStart ) << std::endl;
+    std::cerr << "basler-cat:        line start trigger mode: " << trigger_config( camera, Basler_GigECameraParams::TriggerSelector_LineStart ) << std::endl;
 }
 
 static void show_trigger_config( Pylon::CBaslerUsbCamera& camera )
@@ -956,8 +953,8 @@ static void show_trigger_config( Pylon::CBaslerUsbCamera& camera )
 
 static void show_transport_config( Pylon::CBaslerGigECamera& camera )
 {
-    comma::verbose << "        packet size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
-    comma::verbose << " inter-packet delay: " << camera.GevSCPD() << " ticks" << std::endl;
+    std::cerr << "basler-cat:        packet size: " << camera.GevSCPSPacketSize() << " bytes" << std::endl;
+    std::cerr << "basler-cat: inter-packet delay: " << camera.GevSCPD() << " ticks" << std::endl;
 }
 
 static void show_transport_config( Pylon::CBaslerUsbCamera& camera )
@@ -966,15 +963,15 @@ static void show_transport_config( Pylon::CBaslerUsbCamera& camera )
 
 static void show_config( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber )
 {
-    comma::verbose << " socket buffer size: " << grabber.SocketBufferSize() << " kB" << std::endl;
-    comma::verbose << "        max buffers: " << grabber.MaxNumBuffer() << std::endl;
-    comma::verbose << "    max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
+    std::cerr << "basler-cat: socket buffer size: " << grabber.SocketBufferSize() << " kB" << std::endl;
+    std::cerr << "basler-cat:        max buffers: " << grabber.MaxNumBuffer() << std::endl;
+    std::cerr << "basler-cat:    max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
 }
 
 static void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber )
 {
-    comma::verbose << "     max buffers: " << grabber.MaxNumBuffer() << std::endl;
-    comma::verbose << " max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
+    std::cerr << "basler-cat:     max buffers: " << grabber.MaxNumBuffer() << std::endl;
+    std::cerr << "basler-cat: max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
 }
 
 template < typename T, typename P >
@@ -1218,15 +1215,18 @@ static int run( T& camera, const comma::command_line_options& options )
     if( options.exists( "--line-rate" )) { set_line_rate( camera, options.value< unsigned int >( "--line-rate" )); }
     if( GenApi::IsAvailable( camera.TestImageSelector ) ) { set_test_image( camera, options.value< unsigned int >( "--test-image", 0 )); }
     else { if( options.exists( "--test-image" )) { COMMA_THROW( comma::exception, "test image is not supported by this camera" ); } }
-    show_config( camera, options );
-    show_trigger_config( camera );
-    show_transport_config( camera );
     std::vector< std::vector< char > > buffers( 2 ); // todo? make number of buffers configurable
     for( std::size_t i = 0; i < buffers.size(); ++i ) { buffers[i].resize( camera.PayloadSize() ); }
     grabber.MaxBufferSize = buffers[0].size();
     grabber.MaxNumBuffer = buffers.size(); // todo: use --buffer value for number of buffered images
     set_socket_buffer_size( grabber, 127 );
-    show_config( grabber );
+    if( comma::verbose )
+    {
+        show_config( camera, options );
+        show_trigger_config( camera );
+        show_transport_config( camera );
+        show_config( grabber );
+    }
     grabber.PrepareGrab(); // image size now must not be changed until FinishGrab() is called.
     std::vector< Pylon::StreamBufferHandle > buffer_handles( buffers.size() );
     for( std::size_t i = 0; i < buffers.size(); ++i )
