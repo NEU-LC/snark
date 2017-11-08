@@ -126,7 +126,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\ncamera options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
-    std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto\" to automatically set";
+    std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto_once\" or \"auto_continuous\" to automatically set";
     std::cerr << "\n    --gain=[<num>]               gain; \"auto\" to automatically set;";
     std::cerr << "\n                                 for USB cameras units are dB";
     std::cerr << "\n";
@@ -395,6 +395,15 @@ template <> struct exposure_auto< Pylon::CBaslerGigECamera >
 {
     typedef Basler_GigECameraParams::ExposureAutoEnums type_t;
 
+    static type_t from_string( const std::string& auto_enum )
+    {
+        if( boost::algorithm::to_lower_copy( auto_enum ) == "auto_once" ) { return Basler_GigECameraParams::ExposureAuto_Once; }
+        if( boost::algorithm::to_lower_copy( auto_enum ) == "auto_continuous" ) { return Basler_GigECameraParams::ExposureAuto_Continuous; }
+        unsigned int exposure_time;
+        if( boost::conversion::try_lexical_convert< unsigned int >( auto_enum, exposure_time )) { return Basler_GigECameraParams::ExposureAuto_Off; }
+        COMMA_THROW( comma::exception, "exposure \"" << auto_enum << "\" not implemented" );
+    }
+
     static const char* to_string( type_t auto_enum )
     {
         switch( auto_enum )
@@ -410,6 +419,15 @@ template <> struct exposure_auto< Pylon::CBaslerGigECamera >
 template <> struct exposure_auto< Pylon::CBaslerUsbCamera >
 {
     typedef Basler_UsbCameraParams::ExposureAutoEnums type_t;
+
+    static type_t from_string( const std::string& auto_enum )
+    {
+        if( boost::algorithm::to_lower_copy( auto_enum ) == "auto_once" ) { return Basler_UsbCameraParams::ExposureAuto_Once; }
+        if( boost::algorithm::to_lower_copy( auto_enum ) == "auto_continuous" ) { return Basler_UsbCameraParams::ExposureAuto_Continuous; }
+        unsigned int exposure_time;
+        if( boost::conversion::try_lexical_convert< unsigned int >( auto_enum, exposure_time )) { return Basler_UsbCameraParams::ExposureAuto_Off; }
+        COMMA_THROW( comma::exception, "exposure \"" << auto_enum << "\" not implemented" );
+    }
 
     static const char* to_string( type_t auto_enum )
     {
@@ -819,6 +837,22 @@ static void configure_chunk_mode( Pylon::CBaslerGigECamera& camera )
     camera.ChunkEnable = true;
 }
 
+static bool exposure_is_auto( const Pylon::CBaslerGigECamera& camera ) { return( camera.ExposureAuto() != Basler_GigECameraParams::ExposureAuto_Off ); }
+static double get_exposure_time( const Pylon::CBaslerGigECamera& camera ) { return camera.ExposureTimeAbs(); }
+static bool gain_is_auto( const Pylon::CBaslerGigECamera& camera ) { return( camera.GainAuto() != Basler_GigECameraParams::GainAuto_Off ); }
+static double get_gain( const Pylon::CBaslerGigECamera& camera ) { return camera.GainRaw(); }
+static std::string gain_units( const Pylon::CBaslerGigECamera& ) { return ""; }
+static double get_frame_rate_set( const Pylon::CBaslerGigECamera& camera ) { return camera.AcquisitionFrameRateAbs(); }
+static double get_frame_rate_max( const Pylon::CBaslerGigECamera& camera ) { return camera.ResultingFrameRateAbs(); }
+
+static bool exposure_is_auto( const Pylon::CBaslerUsbCamera& camera ) { return( camera.ExposureAuto() != Basler_UsbCameraParams::ExposureAuto_Off ); }
+static double get_exposure_time( const Pylon::CBaslerUsbCamera& camera ) { return camera.ExposureTime(); }
+static bool gain_is_auto( const Pylon::CBaslerUsbCamera& camera ) { return( camera.GainAuto() != Basler_UsbCameraParams::GainAuto_Off ); }
+static double get_gain( const Pylon::CBaslerUsbCamera& camera ) { return camera.Gain(); }
+static std::string gain_units( const Pylon::CBaslerUsbCamera& ) { return "dB"; }
+static double get_frame_rate_set( const Pylon::CBaslerUsbCamera& camera ) { return camera.AcquisitionFrameRate(); }
+static double get_frame_rate_max( const Pylon::CBaslerUsbCamera& camera ) { return camera.ResultingFrameRate(); }
+
 static void set_frame_rate( Pylon::CBaslerGigECamera& camera, double frame_rate )
 {
     camera.AcquisitionFrameRateEnable = true;
@@ -831,38 +865,38 @@ static void set_frame_rate( Pylon::CBaslerUsbCamera& camera, double frame_rate )
     camera.AcquisitionFrameRate = frame_rate;
 }
 
-static void set_exposure( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
+static void set_exposure_mode_timed( Pylon::CBaslerGigECamera& camera )
 {
     camera.ExposureMode = Basler_GigECameraParams::ExposureMode_Timed;
-    if( options.exists( "--exposure" ))
-    {
-        std::string exposure = options.value< std::string >( "--exposure" );
-        if ( exposure == "auto" )
-        {
-            camera.ExposureAuto = Basler_GigECameraParams::ExposureAuto_Once;
-        }
-        else
-        {
-            camera.ExposureAuto = Basler_GigECameraParams::ExposureAuto_Off;
-            camera.ExposureTimeAbs = boost::lexical_cast< unsigned int >( exposure );
-        }
-    }
 }
 
-static void set_exposure( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
+static void set_exposure_mode_timed( Pylon::CBaslerUsbCamera& camera )
 {
     camera.ExposureMode = Basler_UsbCameraParams::ExposureMode_Timed;
+}
+
+static void set_exposure_time( Pylon::CBaslerGigECamera& camera, unsigned int exposure_time )
+{
+    camera.ExposureTimeAbs = exposure_time;
+}
+
+static void set_exposure_time( Pylon::CBaslerUsbCamera& camera, unsigned int exposure_time )
+{
+    camera.ExposureTime = exposure_time;
+}
+
+template< typename T >
+static void set_exposure( T& camera, const comma::command_line_options& options )
+{
+    set_exposure_mode_timed( camera );
     if( options.exists( "--exposure" ))
     {
         std::string exposure = options.value< std::string >( "--exposure" );
-        if ( exposure == "auto" )
+        camera.ExposureAuto = exposure_auto< T >::from_string( exposure );
+
+        if( !exposure_is_auto( camera ))
         {
-            camera.ExposureAuto = Basler_UsbCameraParams::ExposureAuto_Once;
-        }
-        else
-        {
-            camera.ExposureAuto = Basler_UsbCameraParams::ExposureAuto_Off;
-            camera.ExposureTime = boost::lexical_cast< unsigned int >( exposure );
+            set_exposure_time( camera, boost::lexical_cast< unsigned int >( exposure ));
         }
     }
 }
@@ -950,22 +984,6 @@ static void set_acquisition_mode( T& camera, P acquisition_mode )
 
 static void set_continuous_acquisition_mode( Pylon::CBaslerGigECamera& camera ) { set_acquisition_mode( camera, Basler_GigECameraParams::AcquisitionMode_Continuous ); }
 static void set_continuous_acquisition_mode( Pylon::CBaslerUsbCamera& camera ) { set_acquisition_mode( camera, Basler_UsbCameraParams::AcquisitionMode_Continuous ); }
-
-static bool exposure_is_auto( const Pylon::CBaslerGigECamera& camera ) { return( camera.ExposureAuto() != Basler_GigECameraParams::ExposureAuto_Off ); }
-static double get_exposure_time( const Pylon::CBaslerGigECamera& camera ) { return camera.ExposureTimeAbs(); }
-static bool gain_is_auto( const Pylon::CBaslerGigECamera& camera ) { return( camera.GainAuto() != Basler_GigECameraParams::GainAuto_Off ); }
-static double get_gain( const Pylon::CBaslerGigECamera& camera ) { return camera.GainRaw(); }
-static std::string gain_units( const Pylon::CBaslerGigECamera& ) { return ""; }
-static double get_frame_rate_set( const Pylon::CBaslerGigECamera& camera ) { return camera.AcquisitionFrameRateAbs(); }
-static double get_frame_rate_max( const Pylon::CBaslerGigECamera& camera ) { return camera.ResultingFrameRateAbs(); }
-
-static bool exposure_is_auto( const Pylon::CBaslerUsbCamera& camera ) { return( camera.ExposureAuto() != Basler_UsbCameraParams::ExposureAuto_Off ); }
-static double get_exposure_time( const Pylon::CBaslerUsbCamera& camera ) { return camera.ExposureTime(); }
-static bool gain_is_auto( const Pylon::CBaslerUsbCamera& camera ) { return( camera.GainAuto() != Basler_UsbCameraParams::GainAuto_Off ); }
-static double get_gain( const Pylon::CBaslerUsbCamera& camera ) { return camera.Gain(); }
-static std::string gain_units( const Pylon::CBaslerUsbCamera& ) { return "dB"; }
-static double get_frame_rate_set( const Pylon::CBaslerUsbCamera& camera ) { return camera.AcquisitionFrameRate(); }
-static double get_frame_rate_max( const Pylon::CBaslerUsbCamera& camera ) { return camera.ResultingFrameRate(); }
 
 template< typename T, typename P > static void set_binning_horizontal_mode( T& camera, P mode ) { camera.BinningHorizontalMode = mode; }
 static void set_binning_horizontal_mode_sum( Pylon::CBaslerGigECamera& camera ) { set_binning_horizontal_mode( camera, Basler_GigECameraParams::BinningHorizontalMode_Sum ); }
