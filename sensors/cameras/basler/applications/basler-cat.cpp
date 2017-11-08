@@ -774,6 +774,7 @@ static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::co
     {
         camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_AcquisitionStart;
         camera.TriggerMode = ( frame_trigger.empty() ? Basler_GigECameraParams::TriggerMode_Off : Basler_GigECameraParams::TriggerMode_On );
+        camera.TriggerSource = Basler_GigECameraParams::TriggerSource_Software;
     }
     GenApi::IEnumEntry* frame_start = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_FrameStart );
     if( frame_start && GenApi::IsAvailable( frame_start ) )
