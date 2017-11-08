@@ -127,7 +127,7 @@ static void usage( bool verbose = false )
     std::cerr << "\ncamera options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
     std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto_once\" or \"auto_continuous\" to automatically set";
-    std::cerr << "\n    --gain=[<num>]               gain; \"auto\" to automatically set;";
+    std::cerr << "\n    --gain=[<num>]               gain; \"auto_once\" or \"auto_continuous\" to automatically set;";
     std::cerr << "\n                                 for USB cameras units are dB";
     std::cerr << "\n";
     std::cerr << "\nacquisition options";
@@ -447,6 +447,15 @@ template <> struct gain_auto< Pylon::CBaslerGigECamera >
 {
     typedef Basler_GigECameraParams::GainAutoEnums type_t;
 
+    static type_t from_string( const std::string& auto_enum )
+    {
+        if( boost::algorithm::to_lower_copy( auto_enum ) == "auto_once" ) { return Basler_GigECameraParams::GainAuto_Once; }
+        if( boost::algorithm::to_lower_copy( auto_enum ) == "auto_continuous" ) { return Basler_GigECameraParams::GainAuto_Continuous; }
+        unsigned int gain;
+        if( boost::conversion::try_lexical_convert< unsigned int >( auto_enum, gain )) { return Basler_GigECameraParams::GainAuto_Off; }
+        COMMA_THROW( comma::exception, "gain \"" << auto_enum << "\" not implemented" );
+    }
+
     static const char* to_string( type_t auto_enum )
     {
         switch( auto_enum )
@@ -462,6 +471,15 @@ template <> struct gain_auto< Pylon::CBaslerGigECamera >
 template <> struct gain_auto< Pylon::CBaslerUsbCamera >
 {
     typedef Basler_UsbCameraParams::GainAutoEnums type_t;
+
+    static type_t from_string( const std::string& auto_enum )
+    {
+        if( boost::algorithm::to_lower_copy( auto_enum ) == "auto_once" ) { return Basler_UsbCameraParams::GainAuto_Once; }
+        if( boost::algorithm::to_lower_copy( auto_enum ) == "auto_continuous" ) { return Basler_UsbCameraParams::GainAuto_Continuous; }
+        unsigned int gain;
+        if( boost::conversion::try_lexical_convert< unsigned int >( auto_enum, gain )) { return Basler_UsbCameraParams::GainAuto_Off; }
+        COMMA_THROW( comma::exception, "gain \"" << auto_enum << "\" not implemented" );
+    }
 
     static const char* to_string( type_t auto_enum )
     {
@@ -901,38 +919,39 @@ static void set_exposure( T& camera, const comma::command_line_options& options 
     }
 }
 
-static void set_gain( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
+static void set_gain_selector( Pylon::CBaslerGigECamera& camera )
 {
     camera.GainSelector = Basler_GigECameraParams::GainSelector_All;
-    if( options.exists( "--gain" ))
-    {
-        std::string gain = options.value< std::string >( "--gain" );
-        if ( gain == "auto" )
-        {
-            camera.GainAuto = Basler_GigECameraParams::GainAuto_Once;
-        }
-        else
-        {
-            camera.GainAuto = Basler_GigECameraParams::GainAuto_Off;
-            camera.GainRaw = boost::lexical_cast< unsigned int >( gain );
-        }
-    }
 }
 
-static void set_gain( Pylon::CBaslerUsbCamera& camera, const comma::command_line_options& options )
+static void set_gain_selector( Pylon::CBaslerUsbCamera& camera )
 {
     camera.GainSelector = Basler_UsbCameraParams::GainSelector_All;
+}
+
+static void set_gain_value( Pylon::CBaslerGigECamera& camera, unsigned int gain )
+{
+    // the docs say that GainAbs (in dB) is available, but the camera disagrees
+    camera.GainRaw = gain;
+}
+
+static void set_gain_value( Pylon::CBaslerUsbCamera& camera, unsigned int gain )
+{
+    camera.Gain = gain;
+}
+
+template< typename T >
+static void set_gain( T& camera, const comma::command_line_options& options )
+{
+    set_gain_selector( camera );
     if( options.exists( "--gain" ))
     {
         std::string gain = options.value< std::string >( "--gain" );
-        if ( gain == "auto" )
+        camera.GainAuto = gain_auto< T >::from_string( gain );
+
+        if( !gain_is_auto( camera ))
         {
-            camera.GainAuto = Basler_UsbCameraParams::GainAuto_Once;
-        }
-        else
-        {
-            camera.GainAuto = Basler_UsbCameraParams::GainAuto_Off;
-            camera.Gain = boost::lexical_cast< unsigned int >( gain );
+            set_gain_value( camera, boost::lexical_cast< unsigned int >( gain ));
         }
     }
 }
