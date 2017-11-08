@@ -42,6 +42,12 @@
 #include <pylon/usb/BaslerUsbCamera.h>
 
 static double default_timeout = 3.0;
+
+// These default values are determined by dumping the config from the
+// Pylon Viewer app after connecting to freshly booted basler-aca1300-75gm
+static float default_exposure_auto_lower_limit = 80.0;
+static float default_exposure_auto_upper_limit = 10000.0;
+
 static const char* possible_header_fields = "t,rows,cols,type,size,counters";
 static const char* default_header_fields = "t,rows,cols,type";
 
@@ -127,6 +133,8 @@ static void usage( bool verbose = false )
     std::cerr << "\ncamera options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
     std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto_once\" or \"auto_continuous\" to automatically set";
+    std::cerr << "\n    --exposure-auto-lower-limit=[<µs>]  lower limit for auto exposure; default " << default_exposure_auto_lower_limit;
+    std::cerr << "\n    --exposure-auto-upper-limit=[<µs>]  upper limit for auto exposure; default " << default_exposure_auto_upper_limit;
     std::cerr << "\n    --gain=[<num>]               gain; \"auto_once\" or \"auto_continuous\" to automatically set;";
     std::cerr << "\n                                 for USB cameras units are dB";
     std::cerr << "\n";
@@ -858,6 +866,8 @@ static void configure_chunk_mode( Pylon::CBaslerGigECamera& camera )
 
 static bool exposure_is_auto( const Pylon::CBaslerGigECamera& camera ) { return( camera.ExposureAuto() != Basler_GigECameraParams::ExposureAuto_Off ); }
 static double get_exposure_time( const Pylon::CBaslerGigECamera& camera ) { return camera.ExposureTimeAbs(); }
+static double get_auto_exposure_lower_limit( const Pylon::CBaslerGigECamera& camera ) { return camera.AutoExposureTimeAbsLowerLimit(); }
+static double get_auto_exposure_upper_limit( const Pylon::CBaslerGigECamera& camera ) { return camera.AutoExposureTimeAbsUpperLimit(); }
 static bool gain_is_auto( const Pylon::CBaslerGigECamera& camera ) { return( camera.GainAuto() != Basler_GigECameraParams::GainAuto_Off ); }
 static double get_gain( const Pylon::CBaslerGigECamera& camera ) { return camera.GainRaw(); }
 static std::string gain_units( const Pylon::CBaslerGigECamera& ) { return ""; }
@@ -866,6 +876,8 @@ static double get_frame_rate_max( const Pylon::CBaslerGigECamera& camera ) { ret
 
 static bool exposure_is_auto( const Pylon::CBaslerUsbCamera& camera ) { return( camera.ExposureAuto() != Basler_UsbCameraParams::ExposureAuto_Off ); }
 static double get_exposure_time( const Pylon::CBaslerUsbCamera& camera ) { return camera.ExposureTime(); }
+static double get_auto_exposure_lower_limit( const Pylon::CBaslerUsbCamera& camera ) { return camera.AutoExposureTimeLowerLimit(); }
+static double get_auto_exposure_upper_limit( const Pylon::CBaslerUsbCamera& camera ) { return camera.AutoExposureTimeUpperLimit(); }
 static bool gain_is_auto( const Pylon::CBaslerUsbCamera& camera ) { return( camera.GainAuto() != Basler_UsbCameraParams::GainAuto_Off ); }
 static double get_gain( const Pylon::CBaslerUsbCamera& camera ) { return camera.Gain(); }
 static std::string gain_units( const Pylon::CBaslerUsbCamera& ) { return "dB"; }
@@ -904,6 +916,18 @@ static void set_exposure_time( Pylon::CBaslerUsbCamera& camera, unsigned int exp
     camera.ExposureTime = exposure_time;
 }
 
+static void set_auto_exposure_limits( Pylon::CBaslerGigECamera& camera, float lower_limit, float upper_limit )
+{
+    camera.AutoExposureTimeAbsLowerLimit = lower_limit;
+    camera.AutoExposureTimeAbsUpperLimit = upper_limit;
+}
+
+static void set_auto_exposure_limits( Pylon::CBaslerUsbCamera& camera, float lower_limit, float upper_limit )
+{
+    camera.AutoExposureTimeLowerLimit = lower_limit;
+    camera.AutoExposureTimeUpperLimit = upper_limit;
+}
+
 template< typename T >
 static void set_exposure( T& camera, const comma::command_line_options& options )
 {
@@ -913,10 +937,13 @@ static void set_exposure( T& camera, const comma::command_line_options& options 
         std::string exposure = options.value< std::string >( "--exposure" );
         camera.ExposureAuto = exposure_auto< T >::from_string( exposure );
 
-        if( !exposure_is_auto( camera ))
+        if( exposure_is_auto( camera ))
         {
-            set_exposure_time( camera, boost::lexical_cast< unsigned int >( exposure ));
+            set_auto_exposure_limits( camera
+                                    , options.value< float >( "--exposure-auto-lower-limit", default_exposure_auto_lower_limit )
+                                    , options.value< float >( "--exposure-auto-upper-limit", default_exposure_auto_upper_limit ));
         }
+        else { set_exposure_time( camera, boost::lexical_cast< unsigned int >( exposure )); }
     }
 }
 
@@ -1050,7 +1077,11 @@ template< typename T >
 static void show_config( const T& camera )
 {
     std::cerr << "basler-cat:       exposure: ";
-    if( exposure_is_auto( camera )) { std::cerr << "auto " << exposure_auto< T >::to_string( camera.ExposureAuto() ); }
+    if( exposure_is_auto( camera ))
+    {
+        std::cerr << "auto " << exposure_auto< T >::to_string( camera.ExposureAuto() );
+        std::cerr << " (min: " << get_auto_exposure_lower_limit( camera ) << "µs, max: " << get_auto_exposure_upper_limit( camera ) << "µs)";
+    }
     else { std::cerr << get_exposure_time( camera ) << "µs"; }
     std::cerr << std::endl;
 
