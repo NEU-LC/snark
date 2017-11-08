@@ -959,8 +959,6 @@ static void set_gain( T& camera, const comma::command_line_options& options )
 
 static void set_line_rate( Pylon::CBaslerGigECamera& camera, unsigned int line_rate ) { camera.AcquisitionLineRateAbs = line_rate; }
 static void set_line_rate( Pylon::CBaslerUsbCamera& camera, unsigned int ) { COMMA_THROW( comma::exception, "--line-rate not supported for USB cameras" ); }
-static void set_packet_size( Pylon::CBaslerGigECamera& camera, unsigned int packet_size ) { camera.GevSCPSPacketSize = packet_size; }
-static void set_inter_packet_delay( Pylon::CBaslerGigECamera& camera, unsigned int inter_packet_delay ) { camera.GevSCPD = inter_packet_delay; }
 static void set_socket_buffer_size( Pylon::CBaslerGigECamera::StreamGrabber_t& grabber, unsigned int socket_buffer_size ) { grabber.SocketBufferSize = socket_buffer_size; }
 static void set_socket_buffer_size( Pylon::CBaslerUsbCamera::StreamGrabber_t&, unsigned int ) {}
 
@@ -1021,7 +1019,7 @@ static void set_transport_options( Pylon::CBaslerGigECamera& camera, const comma
 {
     unsigned int initial_packet_size = camera.GevSCPSPacketSize();
     unsigned int packet_size = options.value< unsigned int >( "--packet-size", initial_packet_size );
-    if( packet_size != initial_packet_size ) { set_packet_size( camera, packet_size ); }
+    if( packet_size != initial_packet_size ) { camera.GevSCPSPacketSize = packet_size;  }
 
     unsigned int initial_inter_packet_delay = camera.GevSCPD();
     unsigned int num_cameras = options.value< unsigned int >( "--num-cameras", 1 );
@@ -1033,7 +1031,7 @@ static void set_transport_options( Pylon::CBaslerGigECamera& camera, const comma
     unsigned int inter_packet_delay = ( num_cameras - 1 ) * ( packet_size + 18 );
     // An explicit --inter-packet-delay overrides the calculated value
     inter_packet_delay = options.value< unsigned int >( "--inter-packet-delay", inter_packet_delay );
-    if( inter_packet_delay != initial_inter_packet_delay ) { set_inter_packet_delay( camera, inter_packet_delay ); }
+    if( inter_packet_delay != initial_inter_packet_delay ) { camera.GevSCPD = inter_packet_delay;  }
 }
 
 static void set_transport_options( Pylon::CBaslerUsbCamera&, const comma::command_line_options& options )
