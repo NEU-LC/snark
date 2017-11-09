@@ -43,6 +43,9 @@
 
 static double default_timeout = 3.0;
 
+static std::string default_exposure = "auto_continuous";
+static std::string default_gain = "auto_continuous";
+
 // These default values are determined by dumping the config from the
 // Pylon Viewer app after connecting to freshly booted basler-aca1300-75gm
 static float default_exposure_lower_limit = 80.0;
@@ -132,10 +135,10 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\ncamera options";
     std::cerr << "\n    --frame-rate=[<fps>]         set frame rate; limited by exposure";
-    std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto_once\" or \"auto_continuous\" to automatically set";
-    std::cerr << "\n    --exposure-lower-limit=[<µs>]  lower limit for auto exposure; default " << default_exposure_lower_limit;
-    std::cerr << "\n    --exposure-upper-limit=[<µs>]  upper limit for auto exposure; default " << default_exposure_upper_limit;
-    std::cerr << "\n    --gain=[<num>]               gain; \"auto_once\" or \"auto_continuous\" to automatically set;";
+    std::cerr << "\n    --exposure=[<µs>]            exposure time; \"auto_once\" or \"auto_continuous\" to automatically set; default: " << default_exposure;
+    std::cerr << "\n    --exposure-lower-limit=[<µs>]  lower limit for auto exposure; default: " << default_exposure_lower_limit;
+    std::cerr << "\n    --exposure-upper-limit=[<µs>]  upper limit for auto exposure; default: " << default_exposure_upper_limit;
+    std::cerr << "\n    --gain=[<num>]               gain; \"auto_once\" or \"auto_continuous\" to automatically set; default: " << default_gain;
     std::cerr << "\n                                 for USB cameras units are dB";
     std::cerr << "\n";
     std::cerr << "\nacquisition options";
@@ -932,19 +935,17 @@ template< typename T >
 static void set_exposure( T& camera, const comma::command_line_options& options )
 {
     set_exposure_mode_timed( camera );
-    if( options.exists( "--exposure" ))
-    {
-        std::string exposure = options.value< std::string >( "--exposure" );
-        camera.ExposureAuto = exposure_auto< T >::from_string( exposure );
 
-        if( exposure_is_auto( camera ))
-        {
-            set_exposure_limits( camera
-                               , options.value< float >( "--exposure-lower-limit", default_exposure_lower_limit )
-                               , options.value< float >( "--exposure-upper-limit", default_exposure_upper_limit ));
-        }
-        else { set_exposure_time( camera, boost::lexical_cast< unsigned int >( exposure )); }
+    std::string exposure = options.value( "--exposure", default_exposure );
+    camera.ExposureAuto = exposure_auto< T >::from_string( exposure );
+
+    if( exposure_is_auto( camera ))
+    {
+        set_exposure_limits( camera
+                           , options.value< float >( "--exposure-lower-limit", default_exposure_lower_limit )
+                           , options.value< float >( "--exposure-upper-limit", default_exposure_upper_limit ));
     }
+    else { set_exposure_time( camera, boost::lexical_cast< unsigned int >( exposure )); }
 }
 
 static void set_gain_selector( Pylon::CBaslerGigECamera& camera )
@@ -972,16 +973,10 @@ template< typename T >
 static void set_gain( T& camera, const comma::command_line_options& options )
 {
     set_gain_selector( camera );
-    if( options.exists( "--gain" ))
-    {
-        std::string gain = options.value< std::string >( "--gain" );
-        camera.GainAuto = gain_auto< T >::from_string( gain );
+    std::string gain = options.value( "--gain", default_gain );
+    camera.GainAuto = gain_auto< T >::from_string( gain );
 
-        if( !gain_is_auto( camera ))
-        {
-            set_gain_value( camera, boost::lexical_cast< unsigned int >( gain ));
-        }
-    }
+    if( !gain_is_auto( camera )) { set_gain_value( camera, boost::lexical_cast< unsigned int >( gain )); }
 }
 
 static void set_line_rate( Pylon::CBaslerGigECamera& camera, unsigned int line_rate ) { camera.AcquisitionLineRateAbs = line_rate; }
