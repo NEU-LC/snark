@@ -3,6 +3,7 @@
 import numpy
 import rosbag, rospy, rostopic
 import comma
+import datetime
 
 try:
     import rospy_message_converter
