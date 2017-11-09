@@ -9,7 +9,7 @@ MACRO( disable_python_testing )
 ENDMACRO( disable_python_testing )
 
 MACRO( check_python_module module )
-    EXECUTE_PROCESS( COMMAND ${PYTHON} -c "import ${module}; print( ${module}.__version__ );"
+    EXECUTE_PROCESS( COMMAND ${PYTHON} -c "import ${module}; print( hasattr( ${module}, '__version__' ) and ${module}.__version__ or 'unknown' );"
         RESULT_VARIABLE MODULE_EXIT_CODE
         OUTPUT_VARIABLE MODULE_VERSION_STRING
         ERROR_VARIABLE MODULE_ERROR
@@ -58,6 +58,13 @@ ENDIF( NOT PYTHON )
 check_python_module( comma )
 check_python_module( numpy )
 check_python_module( cv2 )
+if( snark_build_ros )
+    check_python_module( rosbag )
+    check_python_module( rospy )
+    check_python_module( rostopic )
+    # check_python_module( ros-kinetic-rospy-message-converter ) # todo: uncomment? or it is too exotic to stipulate?
+endif( snark_build_ros )
+
 enable_python_testing()
 
 SET( PYTHON_PACKAGE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE STRING "install prefix for python packages, leave empty for python default prefix" )
