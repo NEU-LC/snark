@@ -84,7 +84,6 @@ void usage(bool detail)
     std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --description=<field>; print out one line description text for input values of <field>; csv options apply to input" << std::endl;
     std::cerr << "        <field>: system_status | filter_status" << std::endl;
-    std::cerr << "    --binary-output  output in binary" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -305,7 +304,7 @@ struct app_t : public app_base
     comma::csv::output_stream<T> os;
     app_t(const std::string& port,const comma::command_line_options& options) : 
         app_base(port,options),
-        os( std::cout, options.exists( "--binary-output" ), true, true ) // options.exists( "--flush" )
+        os(std::cout,comma::csv::options(options,"",true))
     {
         
     }
@@ -440,7 +439,7 @@ static void bash_completion( int argc, char** argv )
 {
     std::cout << "--help --verbose" <<
         " all navigation raw-sensors system-state satellites" <<
-        " --output-fields --output-format --raw --stdin --description --binary-output"<< 
+        " --output-fields --output-format --raw --stdin --description"<< 
         std::endl;
 }
 
@@ -454,7 +453,7 @@ int main( int argc, char** argv )
         
         if(options.exists("--bash-completion")) { bash_completion( argc, argv ); return 0; }
         
-        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--binary-output", "-.*" );
+        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin", "-.*" );
         
         auto opt_description=options.optional<std::string>("--description");
         if(opt_description)

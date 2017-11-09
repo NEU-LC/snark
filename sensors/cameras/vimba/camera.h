@@ -41,6 +41,14 @@
 
 namespace snark { namespace vimba {
 
+struct ptp_status
+{
+    boost::posix_time::ptime t;
+    bool use_ptp;
+    std::string value;
+};
+
+
 class attribute;
 
 class camera
@@ -70,7 +78,7 @@ class camera
         void start_acquisition( frame_observer::callback_fn callback ) const;
         void stop_acquisition() const;
 
-        timestamped_frame frame_to_timestamped_frame( const snark::vimba::frame& frame ) const;
+        timestamped_frame frame_to_timestamped_frame( const snark::vimba::frame& frame, snark::vimba::ptp_status& ptp_status_out ) const;
 
     private:
         typedef const boost::function< VmbErrorType( std::string& ) > getter_fn;
