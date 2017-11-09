@@ -89,8 +89,9 @@ function config_sample()
         {
             "address": "169.254.166.97",
             "serial-number": "21991077",   // alternative to "address"
-            "exposure": 5000,              // in µs or "auto"
-            "gain": 136,                   // raw units or dB
+            "exposure": 5000,              // in µs or an auto option
+            "exposure-limit": { "lower": 80, "upper": 10000 },
+            "gain": 136,                   // raw units or dB or auto option
             "frame-rate": 50               // fps
         },
 
@@ -140,6 +141,8 @@ args=
 [[ $offset_y ]] && args+=" --offset-y=$offset_y"
 [[ $config_pixel_format ]] && args+=" --pixel-format=$config_pixel_format"
 [[ $config_device_exposure ]] && args+=" --exposure=$config_device_exposure"
+[[ $config_device_exposure_limit_lower ]] && args+=" --exposure-lower-limit=$config_device_exposure_limit_lower"
+[[ $config_device_exposure_limit_upper ]] && args+=" --exposure-upper-limit=$config_device_exposure_limit_upper"
 [[ $config_device_gain ]] && args+=" --gain=$config_device_gain"
 [[ $config_device_frame_rate ]] && args+=" --frame-rate=$config_device_frame_rate"
 [[ $config_gige_packet_size ]] && args+=" --packet-size=$config_gige_packet_size"
