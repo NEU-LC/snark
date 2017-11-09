@@ -32,6 +32,29 @@ def ros_message_to_csv_record( message, lengths={} ):
             raise RuntimeError( "length %d specified for unknown field '%s'" % ( v, k ) )
     return ( record_t, record_ctor )
 
+def csv_record_to_ros_message( message, csv_fields ): # todo: quick and dirty, almost certainly too slow; redesign using lambda functions or in c++
+    """
+    take comma.csv.struct, return assignment functor to convert csv structures to ros messages
+"""
+    fields_map = dict()
+    def _make_fields_map( m, fields ):
+        if not fields[0] in m: m[fields[0]] = dict()
+        if len( fields ) > 1: _make_fields_map( m[fields[0]], fields[1:] )
+    for p in csv_fields: _make_fields_map( fields_map, p.split( '/' ) )
+    return _csv_field_to_ros_message( message, fields_map )
+
+def _csv_field_to_ros_message( message, fields_map ): # todo: too slow? does lambda stuff even help at all?
+    functors = {}
+    for k, v in fields_map.iteritems():
+        if len( v ) > 0:
+            functors[k] = _csv_field_to_ros_message( getattr( message, k ), v )
+        else:
+            def functor( value, key = k ): setattr( message, key, value ) # todo: handle time
+            functors[k] = functor
+    def apply_functors( record ):
+        for k, f in functors.iteritems(): f( record[k] )
+    return apply_functors
+
 def _ros_message_to_csv_record( message, lengths={}, prefix='' ):
     """
     Private implementation of ros_message_to_csv_record. Called recursively.

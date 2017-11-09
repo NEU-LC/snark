@@ -20,3 +20,5 @@ install( PROGRAMS ros-bag-to-bin ros-to-image DESTINATION ${CMAKE_INSTALL_PREFIX
 
 install( PROGRAMS ros-to-csv DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
+install( PROGRAMS ros-from-csv DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+

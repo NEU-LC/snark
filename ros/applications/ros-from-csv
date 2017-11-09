@@ -18,21 +18,28 @@ examples
 def main():
     parser = argparse.ArgumentParser( description = help_description, epilog = help_examples, formatter_class = argparse.RawDescriptionHelpFormatter, conflict_handler = 'resolve' )
     parser.add_argument( 'topic', help = 'topic', type = str )
+    parser.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
     parser.add_argument( '--queue-size', '--queue', default = 1, help = 'chat more', type = int )
     parser.add_argument( '-v', '--verbose', help = 'chat more', action = 'store_true' )
     comma.csv.add_options( parser )
     args = parser.parse_args()
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
     if args.topic is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )
-    record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( rostopic.get_topic_class( args.topic )[0]() )
-    # todo? default_values
+    message_type = rostopic.get_topic_class( args.topic )[0]
+    record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type() )
     istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = args.binary, fields = args.fields, default_values = None )
-    publisher = rospy.Publisher( args.topic, rostopic.get_topic_class( args.topic )[0], queue_size = args.queue_size )
+    publisher = rospy.Publisher( args.topic, message_type, queue_size = args.queue_size )
+    message = message_type()
+    convert = snark.ros.convert.csv_record_to_ros_message( message, record_type.fields )
     rospy.init_node( 'ros_to_csv', anonymous = True )
     if args.verbose: print >> sys.stderr, "ros-to-csv: publishing to topic '%s'..." % args.topic
-    for record in istream:
-        # todo 
-        print >> sys.stderr, "ros-from-csv: coming soon..."; sys.exit( 1 )
-        publisher.publish( msg )
+    
+    # todo: optionally, don't buffer (stream size)
+    
+    for records in istream:
+        for record in records:
+            convert( record )
+            if args.dry_run: print message
+            else: publisher.publish( message )
 
 if __name__ == '__main__': main()
