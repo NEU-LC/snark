@@ -1099,7 +1099,7 @@ static void show_config( const T& camera )
     std::cerr << std::endl;
 
     std::cerr << "basler-cat: max frame rate: " << get_frame_rate_max( camera ) << " fps"
-              << " (based on AoI and exposure)" << std::endl;
+              << " (based on AoI, exposure et al.)" << std::endl;
 
     std::cerr << "basler-cat:   payload size: " << camera.PayloadSize() << " bytes" << std::endl;
     std::cerr << "basler-cat:   pixel format: " << pixel_format< T >::to_string( camera.PixelFormat() ) << std::endl;
