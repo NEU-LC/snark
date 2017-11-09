@@ -30,15 +30,20 @@ def main():
     istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = args.binary, fields = args.fields, default_values = None )
     publisher = rospy.Publisher( args.topic, message_type, queue_size = args.queue_size )
     message = message_type()
-    convert = snark.ros.convert.csv_record_to_ros_message( message, record_type.fields )
-    rospy.init_node( 'ros_to_csv', anonymous = True )
-    if args.verbose: print >> sys.stderr, "ros-to-csv: publishing to topic '%s'..." % args.topic
+    assign = record_type.assign( message ) # todo? convert functor for numpy.datetime64 to rospy time?
+    if args.dry_run:
+        if args.verbose: print >> sys.stderr, "ros-to-csv: dry run, printing messages to stdout"
+    else:
+        rospy.init_node( 'ros_to_csv', anonymous = True )
+        if args.verbose: print >> sys.stderr, "ros-to-csv: publishing to topic '%s'..." % args.topic
+    
     
     # todo: optionally, don't buffer (stream size)
     
+    
     for records in istream:
         for record in records:
-            convert( record )
+            assign( record )
             if args.dry_run: print message
             else: publisher.publish( message )
 
