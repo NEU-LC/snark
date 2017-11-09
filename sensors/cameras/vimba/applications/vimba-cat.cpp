@@ -58,7 +58,7 @@ static void bash_completion( unsigned const ac, char const* const* av )
         " --id --fields"
         " --header --no-header"
         " --dont-check-frames --retries-on-no-frames"
-        " --ptp-status --ptp-status-fields"
+        " --ptp-status --ptp-status-fields --ptp-status-format"
         ;
 
     std::cout << completion_options << std::endl;
@@ -79,11 +79,12 @@ static void usage( bool verbose = false )
     std::cerr << "    --version:           output the library version" << std::endl;
     std::cerr << "    --list-cameras:      list all cameras and exit" << std::endl;
     std::cerr << "    --list-attributes [<names>]: list camera attributes; default: list all" << std::endl;
-    std::cerr << "    --ptp-status=<stream>; comma stream name to publish ptp status to; ascii only"<< std::endl;
+    std::cerr << "    --ptp-status=<stream>; publish ptp status data to <stream> in binary"<< std::endl;
     std::cerr << "        <stream>: tcp:<port> | udp:<port> | <filename>"<< std::endl;
     std::cerr << "        fields: t,use_ptp,value"<< std::endl;
-    std::cerr << "        format: ascii; t,bool,string"<< std::endl;
+    std::cerr << "        format: ascii; t,ub,s[20]"<< std::endl;
     std::cerr << "    --ptp-status-fields; print ptp status fields and exit"<< std::endl;
+    std::cerr << "    --ptp-status-format; print ptp status format and exit"<< std::endl;
     std::cerr << "    --set <attributes>:  set camera attributes" << std::endl;
     std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
     std::cerr << "    --id=<camera id>:    default: first available camera" << std::endl;
@@ -178,7 +179,7 @@ struct ptp_status_writer
     comma::io::publisher publisher;
     std::stringstream ssbuf;
     comma::csv::output_stream<snark::vimba::ptp_status> os;
-    ptp_status_writer(const std::string& name) : publisher(name,comma::io::mode::ascii), os(ssbuf)
+    ptp_status_writer(const std::string& name) : publisher(name,comma::io::mode::ascii), os(ssbuf,true)
     {
     }
     static void init(boost::optional<std::string> stream_name)
@@ -199,6 +200,10 @@ struct ptp_status_writer
     static void output_fields()
     {
         std::cout<<comma::join( comma::csv::names<snark::vimba::ptp_status>(true), ',' )<<std::endl;
+    }
+    static void output_format()
+    {
+        std::cout<<comma::csv::format::value<snark::vimba::ptp_status>() << std::endl;
     }
 };
 std::unique_ptr<ptp_status_writer> ptp_status_writer::instance;
@@ -275,6 +280,7 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
         if( options.exists("--ptp-status-fields")) { ptp_status_writer::output_fields(); return 0; }
+        if( options.exists("--ptp-status-format")) { ptp_status_writer::output_format(); return 0; }
         ptp_status_writer::init(options.optional<std::string>("--ptp-status"));
         
 
