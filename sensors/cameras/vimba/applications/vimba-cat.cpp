@@ -38,7 +38,7 @@
 #include "../error.h"
 #include "../frame.h"
 #include "../system.h"
-#include <comma/io/stream.h>
+#include <comma/io/publisher.h>
 #include <comma/csv/stream.h>
 #include "../traits.h"
 
@@ -79,9 +79,11 @@ static void usage( bool verbose = false )
     std::cerr << "    --version:           output the library version" << std::endl;
     std::cerr << "    --list-cameras:      list all cameras and exit" << std::endl;
     std::cerr << "    --list-attributes [<names>]: list camera attributes; default: list all" << std::endl;
-    std::cerr << "    --ptp-status=<stream>; comma stream name to output ptp status to"<< std::endl;
+    std::cerr << "    --ptp-status=<stream>; comma stream name to publish ptp status to; ascii only"<< std::endl;
+    std::cerr << "        <stream>: tcp:<port> | udp:<port> | <filename>"<< std::endl;
+    std::cerr << "        fields: t,use_ptp,value"<< std::endl;
+    std::cerr << "        format: ascii; t,bool,string"<< std::endl;
     std::cerr << "    --ptp-status-fields; print ptp status fields and exit"<< std::endl;
-    std::cerr << "        fields: t,status; format ascii t,string"<< std::endl;
     std::cerr << "    --set <attributes>:  set camera attributes" << std::endl;
     std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
     std::cerr << "    --id=<camera id>:    default: first available camera" << std::endl;
@@ -173,18 +175,26 @@ static std::string wrap( const std::string& text, size_t width = 80, const std::
 struct ptp_status_writer
 {
     static std::unique_ptr<ptp_status_writer> instance;
-    comma::io::ostream ostream;
+    comma::io::publisher publisher;
+    std::stringstream ssbuf;
     comma::csv::output_stream<snark::vimba::ptp_status> os;
-    ptp_status_writer(const std::string& name) : ostream(name), os(*ostream)
+    ptp_status_writer(const std::string& name) : publisher(name,comma::io::mode::ascii), os(ssbuf)
     {
     }
     static void init(boost::optional<std::string> stream_name)
     {
         if(stream_name) { instance.reset(new ptp_status_writer(*stream_name)); }
     }
+    inline void pwrite(const snark::vimba::ptp_status& ptp_status)
+    {
+        ssbuf.str("");
+        os.write(ptp_status);
+        std::string s=ssbuf.str();
+        publisher.write(s.data(),s.size());
+    }
     static inline void write(const snark::vimba::ptp_status& ptp_status)
     {
-        if(instance) { instance->os.write(ptp_status); }
+        if(instance) { instance->pwrite(ptp_status); }
     }
     static void output_fields()
     {
