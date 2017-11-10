@@ -17,23 +17,29 @@ examples
 
 def main():
     parser = argparse.ArgumentParser( description = help_description, epilog = help_examples, formatter_class = argparse.RawDescriptionHelpFormatter, conflict_handler = 'resolve' )
-    parser.add_argument( 'topic', help = 'topic', type = str )    
+    parser.add_argument( 'topic', nargs = '?', help = 'topic', type = str )
     parser.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
+    parser.add_argument( '--message-type', '--type', help = 'message type, useful for debugging', type = str )
+    parser.add_argument( '--output-fields', help = 'output input csv fields and exit', action = 'store_true' )
+    parser.add_argument( '--package', '--import', help = 'if --type specified, package to import', type = str )
     parser.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', default = 1, help = 'chat more', type = int )
-    parser.add_argument( '-v', '--verbose', help = 'chat more', action = 'store_true' )
+    parser.add_argument( '--verbose', '-v', help = 'chat more', action = 'store_true' )
     comma.csv.add_options( parser )
     args = parser.parse_args()
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
-    if args.topic is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )
-    message_type = rostopic.get_topic_class( args.topic )[0]
-    record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type() )
-    istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = args.binary, fields = args.fields, default_values = None )
-    publisher = rospy.Publisher( args.topic, message_type, queue_size = args.ros_queue_size )
+    if not args.package is None: exec( 'import ' + args.package )
+    if args.topic is None and not args.dry_run and args.type is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )
+    if args.message_type is None: message_type = rostopic.get_topic_class( args.topic )[0]
+    else: exec( 'message_type = ' + args.message_type )
     message = message_type()
-    assign = record_type.assign( message ) # todo? convert functor for numpy.datetime64 to rospy time?
+    record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type() )
+    if args.output_fields: print ','.join( record_type.fields ); sys.exit( 0 )
+    istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = args.binary, fields = args.fields, default_values = None )
+    assign = record_type.assign( message, snark.ros.convert.from_csv_supported_types )
     if args.dry_run:
         if args.verbose: print >> sys.stderr, "ros-to-csv: dry run, printing messages to stdout"
     else:
+        publisher = rospy.Publisher( args.topic, message_type, queue_size = args.ros_queue_size )
         rospy.init_node( 'ros_to_csv', anonymous = True )
         if args.verbose: print >> sys.stderr, "ros-to-csv: publishing to topic '%s'..." % args.topic
     for records in istream:

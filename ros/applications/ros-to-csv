@@ -119,8 +119,9 @@ def main():
     remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
     parser.add_argument( '-b', '--binary', help='produce binary output', action='store_true' )
     # TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
-    parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', default='' )
+    parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', type = str, default = '' )
     args = parser.parse_args()
+    if not args.fields is None and args.fields != '': print >> sys.stderr, "ros-to-csv: customized --fields support not implemented yet; todo"; sys.exit( 1 )
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
     if args.bag is None:
         if args.topic is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )

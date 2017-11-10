@@ -32,6 +32,12 @@ def ros_message_to_csv_record( message, lengths={} ):
             raise RuntimeError( "length %d specified for unknown field '%s'" % ( v, k ) )
     return ( record_t, record_ctor )
 
+def from_csv_supported_types( v ):
+    if type( v ) != numpy.datetime64: return v
+    microseconds = numpy.int64( v )
+    seconds = microseconds / 1000000
+    return rospy.Time( microseconds / 1000000, ( microseconds - seconds * 1000000 ) * 1000 )
+
 def _ros_message_to_csv_record( message, lengths={}, prefix='' ):
     """
     Private implementation of ros_message_to_csv_record. Called recursively.
