@@ -17,9 +17,9 @@ examples
 
 def main():
     parser = argparse.ArgumentParser( description = help_description, epilog = help_examples, formatter_class = argparse.RawDescriptionHelpFormatter, conflict_handler = 'resolve' )
-    parser.add_argument( 'topic', help = 'topic', type = str )
+    parser.add_argument( 'topic', help = 'topic', type = str )    
     parser.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
-    parser.add_argument( '--queue-size', '--queue', default = 1, help = 'chat more', type = int )
+    parser.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', default = 1, help = 'chat more', type = int )
     parser.add_argument( '-v', '--verbose', help = 'chat more', action = 'store_true' )
     comma.csv.add_options( parser )
     args = parser.parse_args()
@@ -28,7 +28,7 @@ def main():
     message_type = rostopic.get_topic_class( args.topic )[0]
     record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type() )
     istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = args.binary, fields = args.fields, default_values = None )
-    publisher = rospy.Publisher( args.topic, message_type, queue_size = args.queue_size )
+    publisher = rospy.Publisher( args.topic, message_type, queue_size = args.ros_queue_size )
     message = message_type()
     assign = record_type.assign( message ) # todo? convert functor for numpy.datetime64 to rospy time?
     if args.dry_run:
@@ -36,13 +36,8 @@ def main():
     else:
         rospy.init_node( 'ros_to_csv', anonymous = True )
         if args.verbose: print >> sys.stderr, "ros-to-csv: publishing to topic '%s'..." % args.topic
-    
-    
-    # todo: optionally, don't buffer (stream size)
-    
-    
     for records in istream:
-        for record in records:
+        for record in records: # todo? try assigning the whole array at once? should be a better performance? but we may need to expand comma.csv.struct.assign() to make it working
             assign( record )
             if args.dry_run: print message
             else: publisher.publish( message )
