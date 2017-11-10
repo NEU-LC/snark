@@ -28,7 +28,7 @@ def main():
     args = parser.parse_args()
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
     if not args.package is None: exec( 'import ' + args.package )
-    if args.topic is None and not args.dry_run and args.type is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )
+    if args.topic is None and not args.dry_run and args.type is None: print >> sys.stderr, "ros-from-csv: please specify --topic"; sys.exit( 1 )
     if args.message_type is None: message_type = rostopic.get_topic_class( args.topic )[0]
     else: exec( 'message_type = ' + args.message_type )
     message = message_type()
@@ -37,11 +37,11 @@ def main():
     istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = args.binary, fields = args.fields, default_values = None )
     assign = record_type.assign( message, snark.ros.convert.from_csv_supported_types )
     if args.dry_run:
-        if args.verbose: print >> sys.stderr, "ros-to-csv: dry run, printing messages to stdout"
+        if args.verbose: print >> sys.stderr, "ros-from-csv: dry run, printing messages to stdout"
     else:
         publisher = rospy.Publisher( args.topic, message_type, queue_size = args.ros_queue_size )
-        rospy.init_node( 'ros_to_csv', anonymous = True )
-        if args.verbose: print >> sys.stderr, "ros-to-csv: publishing to topic '%s'..." % args.topic
+        rospy.init_node( 'ros_from_csv', anonymous = True )
+        if args.verbose: print >> sys.stderr, "ros-from-csv: publishing to topic '%s'..." % args.topic
     for records in istream:
         for record in records: # todo? try assigning the whole array at once? should be a better performance? but we may need to expand comma.csv.struct.assign() to make it working
             assign( record )
