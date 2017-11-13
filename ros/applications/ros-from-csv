@@ -6,7 +6,15 @@ import rospy, rostopic
 import comma.csv
 import snark.ros.convert
 
-help_description = """take csv records on stdin, publish on a given ros topic; todo: load message type from .msg file"""
+help_description = """
+
+take csv records on stdin, publish on a given ros topic
+
+todo: fix binary (currently only ascii mode works)
+
+todo: load message type from .msg file
+
+"""
 
 help_examples = """
 
@@ -48,7 +56,8 @@ def main():
     message = message_type()
     record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type() )
     if args.output_fields: print ','.join( record_type.fields ); sys.exit( 0 )
-    istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = args.binary, fields = args.fields, default_values = None, flush = args.flush )
+    #istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = True, fields = args.fields, default_values = None, flush = args.flush )
+    istream = comma.csv.stream( record_type, delimiter = args.delimiter, fields = args.fields, default_values = None, flush = args.flush )
     assign = record_type.assign( message, snark.ros.convert.from_csv_supported_types )
     if args.dry_run:
         if args.verbose: print >> sys.stderr, "ros-from-csv: dry run, printing messages to stdout"
