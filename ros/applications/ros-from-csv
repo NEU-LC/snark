@@ -6,7 +6,7 @@ import rospy, rostopic
 import comma.csv
 import snark.ros.convert
 
-help_description = """take csv records on stdin, publish on a given ros topic"""
+help_description = """take csv records on stdin, publish on a given ros topic; todo: load message type from .msg file"""
 
 help_examples = """
 
