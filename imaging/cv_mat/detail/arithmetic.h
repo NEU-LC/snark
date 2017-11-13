@@ -41,7 +41,7 @@ class arithmetic
 {
 public:
     typedef std::pair< H, cv::Mat > value_type;
-    enum class operation { multiply, subtract, divide, add };
+    enum class operation { multiply, subtract, divide, add, absdiff };
 
     static operation str_to_operation(const std::string& s); 
     static std::string operation_to_str( operation op );
