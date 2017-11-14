@@ -61,7 +61,7 @@ static void usage( bool verbose )
     std::cerr << "    --nodes,--vertices=[<filename>[,<csv options>]]: graph nodes" << std::endl;
     std::cerr << "        fields: x,y,z,id" << std::endl;
     std::cerr << "        default fields: id" << std::endl;
-    std::cerr << "    --permissive,--skip-non-existing-targets; if present and only --source given, skip non-existing targets on stdin" << std::endl;
+    std::cerr << "    --permissive; if present and only --source given, skip non-existing or unreachable targets" << std::endl;
     std::cerr << "    --source,--start-id,--from,--start,--origin: source node id" << std::endl;
     std::cerr << "        if --target specified, find the best way to target" << std::endl;
     std::cerr << "        else read target ids on stdin (i.e. search graph once, pull best path many times" << std::endl;
@@ -319,7 +319,7 @@ int main( int ac, char** av )
                     const auto& path = it->second == source->second ? std::vector< vertex_descriptor >( 1, p.first ) : snark::best_path( graph, source->second, it->second );
                     if( path.empty() )
                     { 
-                        if( permissive ) { if( verbose ) { std::cerr << "graph-search: failed to find path from " << *source_id << " to " << r->id << ";discarded" << std::endl; } }
+                        if( permissive ) { if( verbose ) { std::cerr << "graph-search: failed to find path from " << *source_id << " to " << r->id << "; discarded" << std::endl; } }
                         else { std::cerr << "graph-search: failed to find path from " << *source_id << " to " << r->id << std::endl; return 1; }
                     }
                     const auto& s = istream.last();
