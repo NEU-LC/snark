@@ -29,7 +29,7 @@ examples
 
 general ROS bag hints
     get list of topics inside a bag:
-        rostopic list -b <bag> 
+        rostopic list -b <bag>
     get info about a topic:
         rostopic echo <topic> -b <file> | less -S
         rostopic echo /mavros/global_position/global -b input.bag | head -n 32
@@ -62,7 +62,7 @@ class set_length_action( argparse.Action ):
 
 class message_handler:
     """create a csv output stream from a sample message, write messages to it"""
-    
+
     def __init__( self, msg, args ):
         self.record_type, self.record_ctor = snark.ros.convert.ros_message_to_csv_record( msg, args.set_length ) # convert_ros_message_to_csv_record( msg, args.set_length )
         if args.output_fields:
@@ -87,20 +87,20 @@ class message_handler:
             sys.exit( 0 )
         self.flush = args.flush
         self.ostream = comma.csv.stream( self.record_type, flush = args.flush, delimiter = args.delimiter, binary = args.binary, fields = args.fields )
-        
+
     def write( self, msg ):
         self.ostream.write( self.record_ctor( msg ) )
         if self.flush: sys.stdout.flush()
 
 class rostopic_subscriber:
     """subscribe to a topic, output messages as csv in callback"""
-    
+
     def __init__( self, args ):
         self.args = args
         rospy.init_node( 'listener', anonymous = True )
         rospy.Subscriber( args.topic, rostopic.get_topic_class( args.topic )[0], self.callback )
         self.handler = message_handler( rostopic.get_topic_class( args.topic )[0](), self.args )
-    
+
     def callback( self, msg ): self.handler.write( msg )
 
 def main():
@@ -113,7 +113,7 @@ def main():
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
     parser.add_argument( '--set-length', help='set length of listed string fields; by default, take from first input', type=str, action=set_length_action, default={} )
     parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
-    parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )    
+    parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     comma.csv.add_options( parser )
     # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
     remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
