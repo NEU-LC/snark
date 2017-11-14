@@ -64,7 +64,7 @@ class message_handler:
     """create a csv output stream from a sample message, write messages to it"""
 
     def __init__( self, msg, args ):
-        self.record_type, self.record_ctor = snark.ros.convert.ros_message_to_csv_record( msg, args.set_length ) # convert_ros_message_to_csv_record( msg, args.set_length )
+        self.record_type, self.record_ctor = snark.ros.convert.ros_message_to_csv_record( msg, args.set_length )
         if args.output_fields:
             if args.index_output_fields:
                 output_fields = []
@@ -121,6 +121,7 @@ def main():
     # TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
     parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', default='' )
     args = parser.parse_args()
+
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
     if args.bag is None:
         if args.topic is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )
