@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import argparse, datetime, numpy, sys
+import argparse, datetime, numpy, sys, re
 from signal import signal, SIGPIPE, SIG_DFL
 import rosbag, rospy, rostopic
 import comma.csv
@@ -24,7 +24,8 @@ examples
         ros-to-csv --bag "input.bag"
         ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix"
         ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
-        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
+        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --output-fields
+        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --guess-binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
         ros-to-csv --bag="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 general ROS bag hints
@@ -65,32 +66,63 @@ class message_handler:
 
     def __init__( self, msg, args ):
         self.record_type, self.record_ctor = snark.ros.convert.ros_message_to_csv_record( msg, args.set_length )
+        self.output_format = ''
         if args.output_fields:
-            if args.index_output_fields:
-                output_fields = []
-                for n in self.record_type.flat_dtype.names:
-                    shape = self.record_type.flat_dtype[n].shape
-                    if shape:
-                        tmp = numpy.zeros( shape )
-                        it = numpy.nditer( tmp, flags=['multi_index'] )
-                        while not it.finished:
-                            output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
-                            it.iternext()
-                    else:
-                        output_fields.append( n )
-                print ','.join( output_fields )
-            else:
-                print ','.join( self.record_type.fields )
+            print ','.join( self._output_fields( args.index_output_fields ) )
             sys.exit(0)
+        if args.guess_binary:
+            self.output_format = self._output_format()
+            if args.verbose:
+                print >>sys.stderr, "ros-to-csv: set the binary format to '%s'" % self.output_format
+        if args.binary:
+            user_binary = args.binary.split( ',' )
+            fields = args.fields and args.fields.split( ',' ) or self._output_fields() # future-proof; for now --fields do not work
+            if len( user_binary ) != len( fields ):
+                if args.fields:
+                    print >>sys.stderr, "ros-to-csv: --fields and --binary arguments must have the same length"; sys.exit( 1 )
+                else:
+                    print >>sys.stderr, "ros-to-csv: --binary argument must have the same number of fields as the message"; sys.exit( 1 )
+            set_length = {}
+            regex = r'^s\[(\d+)\]$'
+            for k, v in zip( fields, user_binary ):
+                m = re.match( regex, v )
+                if m:
+                    set_length[k] = int(m.group(1))
+            self.record_type, self.record_ctor = snark.ros.convert.ros_message_to_csv_record( msg, set_length )
+            self.output_format = self._output_format()
         if args.output_format:
-            print ','.join( [ comma.csv.format.from_numpy( f ) for f in self.record_type.format.split(',') ] )
+            if not self.output_format:
+                self.output_format = self._output_format()
+            print self.output_format
             sys.exit( 0 )
         self.flush = args.flush
-        self.ostream = comma.csv.stream( self.record_type, flush = args.flush, delimiter = args.delimiter, binary = args.binary, fields = args.fields )
+        self.binary = not not self.output_format
+        # TODO: do support custom format and fields in the output stream
+        self.ostream = comma.csv.stream( self.record_type, flush = args.flush, delimiter = args.delimiter, binary = self.binary, fields = args.fields )
 
     def write( self, msg ):
         self.ostream.write( self.record_ctor( msg ) )
         if self.flush: sys.stdout.flush()
+
+    def _output_format( self ):
+        return ','.join( [ comma.csv.format.from_numpy( f ) for f in self.record_type.format.split(',') ] )
+
+    def _output_fields( self, index_output_fields=False ):
+        if index_output_fields:
+            output_fields = []
+            for n in self.record_type.flat_dtype.names:
+                shape = self.record_type.flat_dtype[n].shape
+                if shape:
+                    tmp = numpy.zeros( shape )
+                    it = numpy.nditer( tmp, flags=['multi_index'] )
+                    while not it.finished:
+                        output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
+                        it.iternext()
+                else:
+                    output_fields.append( n )
+            return output_fields
+        else:
+            return self.record_type.fields
 
 class rostopic_subscriber:
     """subscribe to a topic, output messages as csv in callback"""
@@ -115,11 +147,11 @@ def main():
     parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
     parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     comma.csv.add_options( parser )
-    # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
-    remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
-    parser.add_argument( '-b', '--binary', help='produce binary output', action='store_true' )
-    # TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
-    parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', default='' )
+    # override to make mutually-exclusive
+    remove_argparse_options( parser, [ '-b', '--binary' ] )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument( '--guess-binary', '--default-binary', help='figure out binary output format from the message itself', action='store_true' )
+    group.add_argument( '-b', '--binary', help='produce binary output in the given format', type=str )
     args = parser.parse_args()
 
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
