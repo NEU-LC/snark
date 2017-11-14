@@ -43,6 +43,7 @@ typename arithmetic< H >::operation arithmetic< H >::str_to_operation(const std:
     else if( s == "divide" ) { return operation::divide; }
     else if( s == "subtract" ) { return operation::subtract; }
     else if( s == "add" ) { return operation::add; }
+    else if( s == "absdiff" ) { return operation::absdiff; }
     else { COMMA_THROW(comma::exception, "unknown arithmetic operation: \"" << s << "\", expected: multiply, add, subtract or divide" ); }
 }
 template < typename H >
@@ -54,6 +55,7 @@ typename std::string arithmetic< H >::operation_to_str(arithmetic< H >::operatio
         case operation::divide:   return "divide";
         case operation::subtract: return "subtract";
         case operation::add:      return "add";
+        case operation::absdiff:  return "absdiff";
     }
     
     COMMA_THROW(comma::exception, "arithmetic: unknown operation: " << int(op));
@@ -80,6 +82,7 @@ typename arithmetic< H >::value_type arithmetic< H >::apply_(const value_type& m
         case operation::divide:   cv::divide(m.second, operand, n.second, 1.0, m.second.type() ); break;
         case operation::subtract: cv::subtract(m.second, operand, n.second, cv::noArray(), m.second.type() ); break;
         case operation::add:      cv::add(m.second, operand, n.second, cv::noArray(), m.second.type() );    break;
+        case operation::absdiff:  cv::absdiff(m.second, operand, n.second); break;
     }
     
     return n;

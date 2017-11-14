@@ -2798,7 +2798,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
              f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, g.first ), g.second ) );
         }
-        else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" )
+        else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" || e[0] == "absdiff" )
         {
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, e[0] << ": please specify " << e[0] << " filters" ); }
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
@@ -3201,6 +3201,7 @@ static std::string usage_impl_()
     oss << "            divide=<filters>: forked image is pixelwise divided to the input image, see cv::divide()" << std::endl;
     oss << "            multiply=<filters>: forked image is pixelwise multiplied to the input image, see cv::multiply()" << std::endl;
     oss << "            subtract=<filters>: forked image is pixelwise subtract to the input image, see cv::subtract()" << std::endl;
+    oss << "            absdiff=<filters>: forked image is pixelwise absolute difference between images, see cv::absdiff()" << std::endl;
     oss << "                examples:" << std::endl;
     oss << "                    multiply operation with accumulated and threshold sub filters" << std::endl;
     oss << "                        cat images.bin | cv-cat \"multiply=accumulated:average,5|threshold:0.5,1.0\" >results.bin" << std::endl;
