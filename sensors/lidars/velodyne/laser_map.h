@@ -33,6 +33,13 @@
 
 namespace snark {  namespace velodyne {
 
+// todo
+// - move hdl64-related stuff from velodyne to velodyne/hdl64, if easy
+// - implement velodyne::puck::laser_map
+// - velodyne-to-mesh --puck: plug in puck::laser_map, test on visualized puck data
+// - velodyne-to-mesh-ground --puck: plug in puck::laser_map, test on visualized puck data
+// - points-match-and-align --puck: pass --puck to relevant utilities, test on puck data
+    
 /// orders lasers by elevation
 class laser_map
 {
