@@ -114,7 +114,7 @@ class message_handler:
         else:
             return self.record_type.fields
 
-    def _set_lengths_from_format( self, args )
+    def _set_lengths_from_format( self, args ):
         user_binary = args.binary.split( ',' )
         fields = args.fields and args.fields.split( ',' ) or self._output_fields() # future-proof; for now --fields do not work
         if len( user_binary ) != len( fields ):
