@@ -5,6 +5,7 @@ from signal import signal, SIGPIPE, SIG_DFL
 import rosbag, rospy, rostopic
 import comma.csv
 import snark.ros.convert
+from snark.ros.command_line import *
 
 try:
     import rospy_message_converter
@@ -36,31 +37,6 @@ general ROS bag hints
         rostopic echo <topic> -b <file> | less -S
         rostopic echo /mavros/global_position/global -b input.bag | head -n 32
 """
-
-def remove_argparse_options( parser, options ):
-    """
-    argparse does not provide a standard way to remove or override options
-    this function handles it manually
-"""
-    for option in options:
-        for action in parser._actions:
-            for option_string in vars(action)['option_strings']:
-                if option_string == option:
-                    parser._handle_conflict_resolve( None, [(option, action)] )
-                    break
-
-class set_length_action( argparse.Action ):
-    def __init__(self, option_strings, dest, nargs=None, **kwargs):
-        if nargs is not None: raise ValueError("nargs not allowed")
-        super( set_length_action, self ).__init__( option_strings, dest, **kwargs )
-    def __call__( self, parser, namespace, values, option_string=None ):
-        di = {}
-        for c in values.split( ';' ):
-            av = c.split( '=' )
-            if len(av) != 2: raise RuntimeError( "arguments to --set-length shall take the form <path>=<length>" )
-            try: di[ av[0] ] = int( av[1] )
-            except: raise ValueError( "length of '%s' shall be an integer, not '%s'" % ( av[0], av[1] ) )
-        setattr( namespace, self.dest, di )
 
 class message_handler:
     """create a csv output stream from a sample message, write messages to it"""
@@ -115,21 +91,8 @@ class message_handler:
             return self.record_type.fields
 
     def _set_lengths_from_format( self, args ):
-        user_binary = args.binary.split( ',' )
-        fields = args.fields and args.fields.split( ',' ) or self._output_fields() # future-proof; for now --fields do not work
-        if len( user_binary ) != len( fields ):
-            if args.fields:
-                print >>sys.stderr, "ros-to-csv: --fields and --binary arguments must have the same length"; sys.exit( 1 )
-            else:
-                print >>sys.stderr, "ros-to-csv: --binary argument must have the same number of fields as the message"; sys.exit( 1 )
-        lengths = {}
-        import re
-        regex = r'^s\[(\d+)\]$'
-        for k, v in zip( fields, user_binary ):
-            m = re.match( regex, v )
-            if m:
-                lengths[k] = int(m.group(1))
-        return lengths
+        fields = args.fields and args.fields or self.record_type.fields
+        return lengths_of_strings( fields, args.binary )
 
 class rostopic_subscriber:
     """subscribe to a topic, output messages as csv in callback"""
@@ -150,7 +113,7 @@ def main():
     parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
-    parser.add_argument( '--set-length', help='set length of listed string fields; by default, take from first input', type=str, action=set_length_action, default={} )
+    parser.add_argument( '--set-length', metavar='DICT', help='set length of listed string fields; by default, take from first input', type=str, action=set_dictionary_action, value_type=int, delimiter=';', default={} )
     parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
     parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     comma.csv.add_options( parser )

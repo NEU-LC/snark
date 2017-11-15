@@ -30,3 +30,4 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from . import convert
+from . import command_line
