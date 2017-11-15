@@ -39,7 +39,7 @@
 #include <comma/packed/string.h>
 #include <comma/packed/struct.h>
 
-namespace snark {  namespace velodyne {
+namespace snark {  namespace velodyne { namespace hdl64 {
 
 struct packet : public comma::packed::packed_struct< packet, 1206 >
 {
@@ -89,6 +89,6 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     status status;
 };
 
-} } // namespace snark {  namespace velodyne {
+} } } // namespace snark {  namespace velodyne { namespace hdl64 {
 
 #endif /*SNARK_SENSORS_VELODYNE_PACKET_H_*/

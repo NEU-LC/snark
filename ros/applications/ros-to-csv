@@ -153,6 +153,7 @@ def main():
     remove_argparse_options( parser, [ '-b', '--binary' ] )
     parser.add_argument( '-b', '--binary', help='produce binary output in the given format; if argument is "guess", figure out format from the message itself', type=str )
     args = parser.parse_args()
+    if not args.fields is None and args.fields != '': print >> sys.stderr, "ros-to-csv: warning: customized --fields support not implemented yet; todo"
 
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
     if args.bag is None:

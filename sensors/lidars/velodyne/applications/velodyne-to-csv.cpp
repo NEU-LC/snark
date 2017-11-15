@@ -281,7 +281,7 @@ int main( int ac, char** av )
                                                  , options.value<unsigned>("--adjusted-time-reset", adjust_timestamp::DEFAULT_RESET ) );
         snark::velodyne::calculator* calculator = NULL;
         snark::velodyne::stream* s = NULL;
-        boost::scoped_ptr< snark::velodyne::db > db;
+        boost::scoped_ptr< snark::velodyne::hdl64::db > db;
         struct models { enum values { hdl64, puck }; };
         options.assert_mutually_exclusive( "--model,--puck,--hdl64,--64" );
         models::values model;
@@ -322,7 +322,7 @@ int main( int ac, char** av )
                 else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, ntp ); }
                 break;
             case models::hdl64:
-                db.reset( new snark::velodyne::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) ) );
+                db.reset( new snark::velodyne::hdl64::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) ) );
                 if( !legacy && db->version == 0 ) { legacy=true; std::cerr << "velodyne-to-csv: using legacy option for old database" << std::endl; }
                 if( legacy && db->version > 0 ) { std::cerr << "velodyne-to-csv: using new calibration with legacy option" << std::endl;}
                 calculator = new snark::velodyne::db_calculator( *db );

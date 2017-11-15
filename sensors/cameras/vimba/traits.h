@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2016 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,20 +27,24 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#pragma once
 
-#ifndef SNARK_SENSORS_VELODYNE_TEST_DB_H_
-#define SNARK_SENSORS_VELODYNE_TEST_DB_H_
+#include "camera.h"
 
-#include "../hdl64/db.h"
+namespace comma { namespace visiting {
 
-namespace snark {  namespace velodyne { namespace test {
+template <>
+struct traits< snark::vimba::ptp_status >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::vimba::ptp_status& p, Visitor& v )
+    {
+        v.apply( "t", p.t );
+        v.apply( "use_ptp", p.use_ptp );
+        static std::vector<char> buf(20,' ');
+        std::memcpy(&buf[0],p.value.data(),std::min(p.value.size(),buf.size()));
+        v.apply( "value", buf );
+    }
+};
 
-extern const std::string db_string;
+} } // namespace comma { namespace visiting {
 
-hdl64::db zerodb();
-
-hdl64::db testdb();
-
-} } } // namespace snark {  namespace velodyne { namespace Test {
-
-#endif // SNARK_SENSORS_VELODYNE_TEST_DB_H_

@@ -29,16 +29,23 @@
 
 
 #include <boost/array.hpp>
-#include "db.h"
+#include "hdl64/db.h"
 
 namespace snark {  namespace velodyne {
 
+// todo
+// - move hdl64-related stuff from velodyne to velodyne/hdl64, if easy
+// - implement velodyne::puck::laser_map
+// - velodyne-to-mesh --puck: plug in puck::laser_map, test on visualized puck data
+// - velodyne-to-mesh-ground --puck: plug in puck::laser_map, test on visualized puck data
+// - points-match-and-align --puck: pass --puck to relevant utilities, test on puck data
+    
 /// orders lasers by elevation
 class laser_map
 {
     public:
         /// constructor
-        laser_map( const snark::velodyne::db& db );
+        laser_map( const snark::velodyne::hdl64::db& db );
 
         /// take laser id, return index by elevation
         unsigned int id_to_index( unsigned int i ) const;

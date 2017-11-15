@@ -38,6 +38,9 @@
 #include "../error.h"
 #include "../frame.h"
 #include "../system.h"
+#include <comma/io/publisher.h>
+#include <comma/csv/stream.h>
+#include "../traits.h"
 
 static const char* possible_fields = "t,rows,cols,type,size";
 static const char* default_fields = "t,rows,cols,type";
@@ -55,6 +58,7 @@ static void bash_completion( unsigned const ac, char const* const* av )
         " --id --fields"
         " --header --no-header"
         " --dont-check-frames --retries-on-no-frames"
+        " --ptp-status --ptp-status-fields --ptp-status-format"
         ;
 
     std::cout << completion_options << std::endl;
@@ -75,6 +79,12 @@ static void usage( bool verbose = false )
     std::cerr << "    --version:           output the library version" << std::endl;
     std::cerr << "    --list-cameras:      list all cameras and exit" << std::endl;
     std::cerr << "    --list-attributes [<names>]: list camera attributes; default: list all" << std::endl;
+    std::cerr << "    --ptp-status=<stream>; publish ptp status data to <stream> in binary"<< std::endl;
+    std::cerr << "        <stream>: tcp:<port> | udp:<port> | <filename>"<< std::endl;
+    std::cerr << "        fields: t,use_ptp,value"<< std::endl;
+    std::cerr << "        format: ascii; t,ub,s[20]"<< std::endl;
+    std::cerr << "    --ptp-status-fields; print ptp status fields and exit"<< std::endl;
+    std::cerr << "    --ptp-status-format; print ptp status format and exit"<< std::endl;
     std::cerr << "    --set <attributes>:  set camera attributes" << std::endl;
     std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
     std::cerr << "    --id=<camera id>:    default: first available camera" << std::endl;
@@ -163,14 +173,52 @@ static std::string wrap( const std::string& text, size_t width = 80, const std::
     return wrapped.str();
 }
 
+struct ptp_status_writer
+{
+    static std::unique_ptr<ptp_status_writer> instance;
+    comma::io::publisher publisher;
+    std::stringstream ssbuf;
+    comma::csv::output_stream<snark::vimba::ptp_status> os;
+    ptp_status_writer(const std::string& name) : publisher(name,comma::io::mode::ascii), os(ssbuf,true)
+    {
+    }
+    static void init(boost::optional<std::string> stream_name)
+    {
+        if(stream_name) { instance.reset(new ptp_status_writer(*stream_name)); }
+    }
+    inline void pwrite(const snark::vimba::ptp_status& ptp_status)
+    {
+        ssbuf.str("");
+        os.write(ptp_status);
+        std::string s=ssbuf.str();
+        publisher.write(s.data(),s.size());
+    }
+    static inline void write(const snark::vimba::ptp_status& ptp_status)
+    {
+        if(instance) { instance->pwrite(ptp_status); }
+    }
+    static void output_fields()
+    {
+        std::cout<<comma::join( comma::csv::names<snark::vimba::ptp_status>(true), ',' )<<std::endl;
+    }
+    static void output_format()
+    {
+        std::cout<<comma::csv::format::value<snark::vimba::ptp_status>() << std::endl;
+    }
+};
+std::unique_ptr<ptp_status_writer> ptp_status_writer::instance;
+
+
 static void output_frame( const snark::vimba::frame& frame
                         , snark::cv_mat::serialization& serialization
                         , snark::vimba::camera& camera )
 {
-    snark::vimba::camera::timestamped_frame timestamped_frame = camera.frame_to_timestamped_frame( frame );
+    snark::vimba::ptp_status ptp_status;
+    snark::vimba::camera::timestamped_frame timestamped_frame = camera.frame_to_timestamped_frame( frame, ptp_status );
     if( !timestamped_frame.first.is_not_a_date_time() )
     {
         serialization.write( std::cout, timestamped_frame );
+        ptp_status_writer::write(ptp_status);
     }
 }
 
@@ -216,6 +264,7 @@ static void print_stats( const snark::vimba::camera& camera )
     }
 }
 
+
 #define QUOTED( arg ) #arg
 #define STRINGIZED( arg ) QUOTED( arg )
 
@@ -230,6 +279,10 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
+        if( options.exists("--ptp-status-fields")) { ptp_status_writer::output_fields(); return 0; }
+        if( options.exists("--ptp-status-format")) { ptp_status_writer::output_format(); return 0; }
+        ptp_status_writer::init(options.optional<std::string>("--ptp-status"));
+        
 
         if( options.exists( "--version" ))
         {

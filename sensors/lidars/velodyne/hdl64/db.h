@@ -35,10 +35,10 @@
 #include <boost/array.hpp>
 #include <comma/base/types.h>
 #include <Eigen/Core>
-#include "impl/serializable_db.h"
+#include "../impl/serializable_db.h"
 #include <boost/optional.hpp>
 
-namespace snark {  namespace velodyne {
+namespace snark {  namespace velodyne { namespace hdl64 {
 
 struct db
 {
@@ -123,6 +123,6 @@ struct db
 
 template < class Istream > inline void operator>>( Istream& s, db& db ) { db << s; }
 
-} } // namespace snark {  namespace velodyne {
+} } } // namespace snark {  namespace velodyne { namespace hdl64 {
 
 #endif // SNARK_SENSORS_VELODYNE_DB_H_

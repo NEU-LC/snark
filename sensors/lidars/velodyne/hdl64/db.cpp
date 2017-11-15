@@ -37,7 +37,7 @@
 #include <comma/base/exception.h>
 #include "db.h"
 
-namespace snark {  namespace velodyne {
+namespace snark {  namespace velodyne { namespace hdl64 {
 
 db::db() {}
 
@@ -210,4 +210,4 @@ void db::operator<<( std::istream& s )
     for( std::size_t i = 0; i < lasers.size(); ++i ) { lasers[i] = laserDataFromSerializable( serializable, i ); }
 }
 
-} } // namespace snark {  namespace velodyne {
+} } } // namespace snark {  namespace velodyne { namespace hdl64 {

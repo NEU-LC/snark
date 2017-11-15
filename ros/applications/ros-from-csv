@@ -6,33 +6,69 @@ import rospy, rostopic
 import comma.csv
 import snark.ros.convert
 
-help_description = """take csv records on stdin, publish on given ros topic"""
+help_description = """
+
+take csv records on stdin, publish on a given ros topic
+
+todo: fix binary (currently only ascii mode works)
+
+todo: load message type from .msg file
+
+"""
 
 help_examples = """
 
 examples
-    todo
+    forward ros messages (e.g. to illustrate the principle or debug), start with trying --dry-run
+        forward with buffering
+            ros-to-csv some-topic | ros-from-csv some-topic
+        forward without buffering
+            ros-to-csv some-topic | ros-from-csv some-topic --flush
+        print to stdout
+            ros-to-csv some-topic | ros-from-csv some-topic --flush --dry-run
+        
+    using message types offline, try it
+        imply package from message type
+            echo 1,2,3 | ros-from-csv --type geometry_msgs.msg.Point --dry
+        explicitly specify package with message type definition
+            echo 1,2,3 | ros-from-csv --import geometry_msgs.msg --type geometry_msgs.msg.Point --dry
 
 """
 
 def main():
     parser = argparse.ArgumentParser( description = help_description, epilog = help_examples, formatter_class = argparse.RawDescriptionHelpFormatter, conflict_handler = 'resolve' )
-    parser.add_argument( 'topic', help = 'topic', type = str )
-    parser.add_argument( '--queue-size', '--queue', default = 1, help = 'chat more', type = int )
-    parser.add_argument( '-v', '--verbose', help = 'chat more', action = 'store_true' )
+    parser.add_argument( 'topic', nargs = '?', help = 'topic', type = str )
+    parser.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
+    parser.add_argument( '--message-type', '--type', help = 'message type, useful for debugging', type = str )
+    parser.add_argument( '--output-fields', help = 'output input csv fields and exit', action = 'store_true' )
+    parser.add_argument( '--package', '--import', help = 'if --type specified, package to import', type = str )
+    parser.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', default = 1, help = 'chat more', type = int )
+    parser.add_argument( '--verbose', '-v', help = 'chat more', action = 'store_true' )
     comma.csv.add_options( parser )
     args = parser.parse_args()
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
-    if args.topic is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )
-    record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( rostopic.get_topic_class( args.topic )[0]() )
-    # todo? default_values
-    istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = args.binary, fields = args.fields, default_values = None )
-    publisher = rospy.Publisher( args.topic, rostopic.get_topic_class( args.topic )[0], queue_size = args.queue_size )
-    rospy.init_node( 'ros_to_csv', anonymous = True )
-    if args.verbose: print >> sys.stderr, "ros-to-csv: publishing to topic '%s'..." % args.topic
-    for record in istream:
-        # todo 
-        print >> sys.stderr, "ros-from-csv: coming soon..."; sys.exit( 1 )
-        publisher.publish( msg )
+    if not args.message_type is None:
+        package = '.'.join( args.message_type.split( '.' )[:-1] ) if args.package is None else args.package
+        if len( package ) > 0: exec( 'import ' + package )
+    if args.topic is None and not args.dry_run and args.type is None: print >> sys.stderr, "ros-from-csv: please specify --topic"; sys.exit( 1 )
+    if args.message_type is None: message_type = rostopic.get_topic_class( args.topic )[0]
+    else: exec( 'message_type = ' + args.message_type )
+    message = message_type()
+    record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type() )
+    if args.output_fields: print ','.join( record_type.fields ); sys.exit( 0 )
+    #istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = True, fields = args.fields, default_values = None, flush = args.flush )
+    istream = comma.csv.stream( record_type, delimiter = args.delimiter, fields = args.fields, default_values = None, flush = args.flush )
+    assign = record_type.assign( message, snark.ros.convert.from_csv_supported_types )
+    if args.dry_run:
+        if args.verbose: print >> sys.stderr, "ros-from-csv: dry run, printing messages to stdout"
+    else:
+        publisher = rospy.Publisher( args.topic, message_type, queue_size = args.ros_queue_size )
+        rospy.init_node( 'ros_from_csv', anonymous = True )
+        if args.verbose: print >> sys.stderr, "ros-from-csv: publishing to topic '%s'..." % args.topic
+    for records in istream:
+        for record in records: # todo? try assigning the whole array at once? should be a better performance? but we may need to expand comma.csv.struct.assign() to make it working
+            assign( record )
+            if args.dry_run: print message
+            else: publisher.publish( message )
 
 if __name__ == '__main__': main()

@@ -67,7 +67,7 @@ bool velodyne_stream::read()
 
 namespace snark { namespace velodyne {
 
-db_calculator::db_calculator( const velodyne::db& db ) : db( db ) {}
+db_calculator::db_calculator( const velodyne::hdl64::db& db ) : db( db ) {}
 
 std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > db_calculator::ray( unsigned int laser, double range, double angle ) const { return db.lasers[ laser ].ray( range, angle ); }
 

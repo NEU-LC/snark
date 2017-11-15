@@ -33,7 +33,7 @@
 #include <boost/random/variate_generator.hpp>
 #include <comma/base/types.h>
 #include <comma/base/exception.h>
-#include "../packet.h"
+#include "../hdl64/packet.h"
 #include "../scan_tick.h"
 #include "thin.h"
 
@@ -41,7 +41,7 @@ namespace snark {  namespace velodyne { namespace thin {
 
 static boost::mt19937 generator;
 
-void thin( velodyne::packet& packet, float rate )
+void thin( velodyne::hdl64::packet& packet, float rate )
 {
     boost::uniform_real< float > distribution( 0, 1 ); // watch performance
     boost::variate_generator< boost::mt19937&, boost::uniform_real< float > > random( generator, distribution );
@@ -61,7 +61,7 @@ static bool get( const char* ids, unsigned int i )
 
 const unsigned int idsSize = 64 / 8;
 
-static std::size_t serialize( const velodyne::packet::laser_block& upper, const velodyne::packet::laser_block& lower, char* buf )
+static std::size_t serialize( const velodyne::hdl64::packet::laser_block& upper, const velodyne::hdl64::packet::laser_block& lower, char* buf )
 {
     char* begin = buf;
     ::memcpy( buf, upper.rotation.data(), 2 );
@@ -90,7 +90,7 @@ static std::size_t serialize( const velodyne::packet::laser_block& upper, const 
 }
 
 // quick and dirty, dirties the buffer
-std::size_t serialize( const velodyne::packet& packet, char* buf, comma::uint32 scan )
+std::size_t serialize( const velodyne::hdl64::packet& packet, char* buf, comma::uint32 scan )
 {
     char* begin = buf;
     ::memcpy( buf, &scan, sizeof( comma::uint32 ) );
@@ -109,10 +109,10 @@ std::size_t serialize( const velodyne::packet& packet, char* buf, comma::uint32 
     return buf - begin;
 }
 
-static std::size_t deserialize( velodyne::packet::laser_block& upper, velodyne::packet::laser_block& lower, const char* buf )
+static std::size_t deserialize( velodyne::hdl64::packet::laser_block& upper, velodyne::hdl64::packet::laser_block& lower, const char* buf )
 {
-    upper.id = velodyne::packet::upper_block_id();
-    lower.id = velodyne::packet::lower_block_id();
+    upper.id = velodyne::hdl64::packet::upper_block_id();
+    lower.id = velodyne::hdl64::packet::lower_block_id();
     const char* begin = buf;
     ::memcpy( upper.rotation.data(), buf, 2 );
     ::memcpy( lower.rotation.data(), buf, 2 );
@@ -134,9 +134,9 @@ static std::size_t deserialize( velodyne::packet::laser_block& upper, velodyne::
     return buf - begin;
 }
 
-comma::uint32 deserialize( velodyne::packet& packet, const char* buf )
+comma::uint32 deserialize( velodyne::hdl64::packet& packet, const char* buf )
 {
-    ::memset( &packet, 0, velodyne::packet::size );
+    ::memset( &packet, 0, velodyne::hdl64::packet::size );
     comma::uint32 scan;
     memcpy( &scan, buf, sizeof( comma::uint32 ) );
     buf += sizeof( comma::uint32 );
@@ -149,9 +149,9 @@ comma::uint32 deserialize( velodyne::packet& packet, const char* buf )
     return scan;
 }
 
-std::pair< velodyne::packet, comma::uint32 > deserialize( const char* buf )
+std::pair< velodyne::hdl64::packet, comma::uint32 > deserialize( const char* buf )
 {
-    std::pair< velodyne::packet, comma::uint32 > p;
+    std::pair< velodyne::hdl64::packet, comma::uint32 > p;
     p.second = deserialize( p.first, buf );
     return p;
 }

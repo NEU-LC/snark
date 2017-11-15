@@ -37,7 +37,6 @@
 #include <boost/archive/xml_oarchive.hpp>
 #include <boost/tuple/tuple_io.hpp>
 #include <gtest/gtest.h>
-#include "../db.h"
 #include "../impl/angle.h"
 #include "../impl/serializable_db.h"
 #include "db.h"
@@ -61,7 +60,7 @@ TEST(db, db)
             ia >> BOOST_SERIALIZATION_NVP( DB );
         }
         {
-            db db;
+            hdl64::db db;
             std::istringstream iss( velodyne::test::db_string );
             assert( iss.good() );
             iss >> db;

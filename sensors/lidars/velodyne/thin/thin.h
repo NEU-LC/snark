@@ -31,34 +31,34 @@
 #define SNARK_SENSORS_VELODYNE_THIN_THIN_H_
 
 #include <stdlib.h>
-#include "../db.h"
-#include "../packet.h"
+#include "../hdl64/db.h"
+#include "../hdl64/packet.h"
 #include "../impl/get_laser_return.h"
 #include "focus.h"
 
 namespace snark {  namespace velodyne { namespace thin {
 
 /// thin packet by rate * 100%
-void thin( velodyne::packet& packet, float rate );
+void thin( velodyne::hdl64::packet& packet, float rate );
 
 /// thin packet, using given source of random numbers
 template < typename Random >
-void thin( velodyne::packet& packet, float rate, Random& random );
+void thin( velodyne::hdl64::packet& packet, float rate, Random& random );
 
 /// thin packet, using given source of random numbers
 template < typename Random >
-void thin( velodyne::packet& packet, const focus& focus, const db& db, Random& random );
+void thin( velodyne::hdl64::packet& packet, const focus& focus, const hdl64::db& db, Random& random );
 
 /// write packet to thin buffer
-std::size_t serialize( const velodyne::packet& packet, char* buf, comma::uint32 scan );
+std::size_t serialize( const velodyne::hdl64::packet& packet, char* buf, comma::uint32 scan );
 
 /// refill packet from thin buffer
 /// @return velodyne packet and scan id
-std::pair< velodyne::packet, comma::uint32 > deserialize( const char* buf );
+std::pair< velodyne::hdl64::packet, comma::uint32 > deserialize( const char* buf );
 
 /// refill given packet from thin buffer
 /// @return scan id
-comma::uint32 deserialize( velodyne::packet& packet, const char* buf );
+comma::uint32 deserialize( velodyne::hdl64::packet& packet, const char* buf );
 
 /// max block buffer size
 enum { maxBlockBufferSize = 64 * 2 + 2 + 64 / 8 + 1 };
@@ -67,7 +67,7 @@ enum { maxBlockBufferSize = 64 * 2 + 2 + 64 / 8 + 1 };
 enum { maxBufferSize = 12 / 2 * maxBlockBufferSize + 1 };
 
 template < typename Random >
-void thin( velodyne::packet& packet, float rate, Random& random )
+void thin( velodyne::hdl64::packet& packet, float rate, Random& random )
 {
     for( unsigned int block = 0; block < packet.blocks.size(); ++block )
     {
@@ -79,7 +79,7 @@ void thin( velodyne::packet& packet, float rate, Random& random )
 }
 
 template < typename Random >
-void thin( velodyne::packet& packet, const focus& focus, const velodyne::db& db, double angularSpeed, Random& random )
+void thin( velodyne::hdl64::packet& packet, const focus& focus, const velodyne::hdl64::db& db, double angularSpeed, Random& random )
 {
     bool upper = true;
     for( unsigned int block = 0; block < packet.blocks.size(); ++block, upper = !upper )

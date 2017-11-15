@@ -858,6 +858,21 @@ static typename impl::filters< H >::value_type split_impl_( typename impl::filte
 }
 
 template < typename H >
+static typename impl::filters< H >::value_type kmeans_impl_( typename impl::filters< H >::value_type m, int k )
+{
+    cv::Mat pixels = m.second.reshape(1, m.second.rows*m.second.cols);
+    cv::Mat classes;
+    cv::Mat centers;
+    int attempts = 5;
+    cv::kmeans(pixels, k, classes, cv::TermCriteria( CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 100, 0.01 ), attempts, cv::KMEANS_PP_CENTERS, centers);
+    cv::Mat out = cv::Mat::zeros(m.second.rows, m.second.cols, m.second.type());
+    out = out.reshape(1, m.second.rows*m.second.cols);
+    for (int p = 0; p < out.rows ; p++) { centers.row(classes.at<int>(p)).copyTo(out.row(p)); }
+    m.second = out.reshape(m.second.channels(), m.second.rows);
+    return m;
+}
+
+template < typename H >
 class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex is non-copyable
 {
     public:
@@ -2614,6 +2629,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         threshold_t::types type = threshold_t::from_string( s.size() < 3 ? "" : s[2] );
         return std::make_pair( boost::bind< value_type_t >( threshold_impl_< H >, _1, threshold, maxval, type, otsu ), true );
     }
+    if ( e[0] == "kmeans" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected kmeans=<k>" ); }
+        int k = boost::lexical_cast<int>(e[1]);
+        return std::make_pair( boost::bind< value_type_t >(kmeans_impl_< H >, _1, k), true );
+    }
     if( e[0] == "linear-combination" || e[0] == "ratio" || e[0] == "shuffle" )
     {
         typedef std::string::const_iterator iterator_type;
@@ -2777,7 +2798,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
              f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, g.first ), g.second ) );
         }
-        else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" )
+        else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" || e[0] == "absdiff" )
         {
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, e[0] << ": please specify " << e[0] << " filters" ); }
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, e[0] << ": expected 1 parameter; got: " << comma::join( e, '=' ) ); }
@@ -3086,6 +3107,7 @@ static std::string usage_impl_()
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
+    oss << "        kmeans=<k>[,<params>]: perform k-means clustering on image and replace each pixel with the mean of its cluster" << std::endl;
     oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
     oss << "                         supported file types by filename extension:" << std::endl;
     oss << "                             - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
@@ -3179,6 +3201,7 @@ static std::string usage_impl_()
     oss << "            divide=<filters>: forked image is pixelwise divided to the input image, see cv::divide()" << std::endl;
     oss << "            multiply=<filters>: forked image is pixelwise multiplied to the input image, see cv::multiply()" << std::endl;
     oss << "            subtract=<filters>: forked image is pixelwise subtract to the input image, see cv::subtract()" << std::endl;
+    oss << "            absdiff=<filters>: forked image is pixelwise absolute difference between images, see cv::absdiff()" << std::endl;
     oss << "                examples:" << std::endl;
     oss << "                    multiply operation with accumulated and threshold sub filters" << std::endl;
     oss << "                        cat images.bin | cv-cat \"multiply=accumulated:average,5|threshold:0.5,1.0\" >results.bin" << std::endl;

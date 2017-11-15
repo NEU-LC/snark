@@ -172,7 +172,7 @@ void camera::stop_acquisition() const
     comma::verbose << "stopped image acquisition" << std::endl;
 }
 
-camera::timestamped_frame camera::frame_to_timestamped_frame( const snark::vimba::frame& frame ) const
+camera::timestamped_frame camera::frame_to_timestamped_frame( const snark::vimba::frame& frame, snark::vimba::ptp_status& ptps_out ) const
 {
     // For the timestamp, if PTP is available use frame.timestamp(),
     // otherwise just use current time.
@@ -201,6 +201,10 @@ camera::timestamped_frame camera::frame_to_timestamped_frame( const snark::vimba
               + boost::posix_time::microseconds( frame.timestamp() / 1000 )
         : current_time );
 
+    ptps_out.t=timestamp;
+    ptps_out.use_ptp=use_ptp;
+    ptps_out.value=ptp_status;
+    
     if( frame.status() == VmbFrameStatusComplete )
     {
         if( acquisition_mode_ == ACQUISITION_MODE_CONTINUOUS )

@@ -103,7 +103,7 @@ static bool outputRaw = false;
 static boost::optional< float > rate;
 static boost::optional< double > scan_rate;
 static boost::optional< double > angularSpeed_;
-static boost::optional< velodyne::db > db;
+static boost::optional< velodyne::hdl64::db > db;
 static boost::scoped_ptr< velodyne::thin::focus > focus;
 static velodyne::thin::scan scan;
 static boost::scoped_ptr< comma::io::publisher > publisher;
@@ -114,7 +114,7 @@ static boost::scoped_ptr< boost::asio::ip::udp::socket > publisher_udp_socket;
 static unsigned int udp_port;
 boost::asio::ip::udp::endpoint udp_destination;
 
-static double angularSpeed( const snark::velodyne::packet& packet )
+static double angularSpeed( const snark::velodyne::hdl64::packet& packet )
 {
     if( angularSpeed_ ) { return *angularSpeed_; }
     double da = double( packet.blocks[0].rotation() - packet.blocks[11].rotation() ) / 100;
@@ -145,15 +145,15 @@ void run( S* stream )
     comma::uint64 count = 0;
     comma::uint64 dropped_count = 0;
     double compression = 0;
-    velodyne::packet packet;
+    velodyne::hdl64::packet packet;
     comma::signal_flag isShutdown;
     velodyne::scan_tick tick;
     comma::uint32 scan_id = 0;
     while( !isShutdown && std::cin.good() && !std::cin.eof() && std::cout.good() && !std::cout.eof() )
     {
-        const char* p = velodyne::impl::stream_traits< S >::read( *stream, sizeof( velodyne::packet ) );
+        const char* p = velodyne::impl::stream_traits< S >::read( *stream, sizeof( velodyne::hdl64::packet ) );
         if( p == NULL ) { break; }
-        ::memcpy( &packet, p, velodyne::packet::size );
+        ::memcpy( &packet, p, velodyne::hdl64::packet::size );
         if( tick.is_new_scan( packet ) ) { ++scan_id; } // quick and dirty
         boost::posix_time::ptime timestamp = stream->timestamp();
         if( scan_rate ) { scan.thin( packet, *scan_rate, angularSpeed( packet ) ); }
@@ -168,14 +168,14 @@ void run( S* stream )
         comma::int32 nanoseconds = static_cast< comma::int32 >( d.total_microseconds() % 1000000 ) * 1000;
         if( outputRaw ) // real quick and dirty
         {
-            static boost::array< char, 16 + timeSize + velodyne::packet::size + 4 > buf;
+            static boost::array< char, 16 + timeSize + velodyne::hdl64::packet::size + 4 > buf;
             static const boost::array< char, 2 > start = {{ -78, 85 }}; // see QLib::Bytestreams::GetDefaultStartDelimiter()
             static const boost::array< char, 2 > end = {{ 117, -97 }}; // see QLib::Bytestreams::GetDefaultStartDelimiter()
             ::memcpy( &buf[0], &start[0], 2 );
             ::memcpy( &buf[0] + buf.size() - 2, &end[0], 2 );
             ::memcpy( &buf[0] + 16, &seconds, 8 );
             ::memcpy( &buf[0] + 16 + 8, &nanoseconds, 4 );
-            ::memcpy( &buf[0] + 16 + 8 + 4, &packet, velodyne::packet::size );
+            ::memcpy( &buf[0] + 16 + 8 + 4, &packet, velodyne::hdl64::packet::size );
             if( publisher ) { publisher->write( &buf[0], buf.size() ); }
             else if( publisher_udp_socket ) { publisher_udp_socket->send_to( boost::asio::buffer( &buf[0], buf.size() ), udp_destination ); }
             else { std::cout.write( &buf[0], buf.size() ); }
@@ -204,7 +204,7 @@ void run( S* stream )
             if( verbose )
             {
                 ++count;
-                compression = 0.9 * compression + 0.1 * ( empty ? 0.0 : double( size + sizeof( comma::int16 ) ) / ( velodyne::packet::size + timeSize ) );
+                compression = 0.9 * compression + 0.1 * ( empty ? 0.0 : double( size + sizeof( comma::int16 ) ) / ( velodyne::hdl64::packet::size + timeSize ) );
                 if( count % 10000 == 0 ) { std::cerr << "velodyne-thin: processed " << count << " packets; dropped " << ( double( dropped_count ) * 100. / count ) << "% full packets; compression rate " << compression << std::endl; }
             }
         }
@@ -247,7 +247,7 @@ int main( int ac, char** av )
         options.assert_mutually_exclusive( "--focus,--region,--subtract-by-age,--subtract-max-range,--subtract" );
         if( options.exists( "--focus,--region,--subtract-by-age,--subtract-max-range,--subtract" ) )
         {
-            db = velodyne::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) );
+            db = velodyne::hdl64::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) );
         }
         if( options.exists( "--focus,--region" ) )
         {
