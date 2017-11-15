@@ -31,15 +31,15 @@
 #ifndef SNARK_SENSORS_VELODYNE_TEST_DB_H_
 #define SNARK_SENSORS_VELODYNE_TEST_DB_H_
 
-#include "../db.h"
+#include "../hdl64/db.h"
 
 namespace snark {  namespace velodyne { namespace test {
 
 extern const std::string db_string;
 
-db zerodb();
+hdl64::db zerodb();
 
-db testdb();
+hdl64::db testdb();
 
 } } } // namespace snark {  namespace velodyne { namespace Test {
 

@@ -29,7 +29,7 @@
 
 
 #include <boost/array.hpp>
-#include "db.h"
+#include "hdl64/db.h"
 
 namespace snark {  namespace velodyne {
 
@@ -45,7 +45,7 @@ class laser_map
 {
     public:
         /// constructor
-        laser_map( const snark::velodyne::db& db );
+        laser_map( const snark::velodyne::hdl64::db& db );
 
         /// take laser id, return index by elevation
         unsigned int id_to_index( unsigned int i ) const;

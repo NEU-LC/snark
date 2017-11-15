@@ -32,13 +32,13 @@
 #define SNARK_SENSORS_VELODYNE_IMPL_GETLASERRETURN_H_
 
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include "../db.h"
+#include "../hdl64/db.h"
 #include "../laser_return.h"
-#include "../packet.h"
+#include "../hdl64/packet.h"
 
 namespace snark {  namespace velodyne { namespace impl {
 
-laser_return get_laser_return( const packet& packet
+laser_return get_laser_return( const hdl64::packet& packet
                              , unsigned int block
                              , unsigned int laser
                              , const boost::posix_time::ptime& timestamp

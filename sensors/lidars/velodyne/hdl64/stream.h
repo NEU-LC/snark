@@ -35,7 +35,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/math/compare.h>
-#include "../db.h"
+#include "db.h"
 #include "../laser_return.h"
 #include "../scan_tick.h"
 #include "../stream.h"

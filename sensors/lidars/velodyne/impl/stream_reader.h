@@ -40,7 +40,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <comma/base/types.h>
-#include "../packet.h"
+#include "../hdl64/packet.h"
 
 namespace snark {
 
@@ -69,7 +69,7 @@ class stream_reader
     private:
         boost::scoped_ptr< std::ifstream > ifstream_;
         std::istream& istream_;
-        enum { payload_size = velodyne::packet::size };
+        enum { payload_size = velodyne::hdl64::packet::size };
         comma::uint64 m_microseconds;
         boost::array< char, payload_size > m_packet;
         boost::posix_time::ptime m_timestamp;

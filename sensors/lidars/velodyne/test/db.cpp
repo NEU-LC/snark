@@ -33,9 +33,9 @@
 
 namespace snark {  namespace velodyne { namespace test {
 
-db zerodb()
+hdl64::db zerodb()
 {
-    velodyne::db db;
+    velodyne::hdl64::db db;
     for( unsigned int i = 0; i < db.lasers.size(); ++i )
     {
         db.lasers[i].horizontal_offset = 0;
@@ -45,9 +45,9 @@ db zerodb()
     return db;
 }
 
-db testdb()
+hdl64::db testdb()
 {
-    velodyne::db db;
+    velodyne::hdl64::db db;
     std::istringstream iss( db_string );
     assert( iss.good() );
     iss >> db;

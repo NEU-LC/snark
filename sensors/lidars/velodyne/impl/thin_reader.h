@@ -58,7 +58,7 @@ class thin_reader : public boost::noncopyable
     private:
         enum { timeSize = 12 };
         char m_buf[ velodyne::thin::maxBufferSize + timeSize ];
-        velodyne::packet m_packet;
+        velodyne::hdl64::packet m_packet;
         boost::posix_time::ptime m_timestamp;
         boost::optional< comma::uint32 > last_scan_;
         bool is_new_scan_;

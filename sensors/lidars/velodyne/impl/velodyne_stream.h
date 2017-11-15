@@ -37,7 +37,7 @@
 #include <comma/math/compare.h>
 #include "../../../../visiting/eigen.h"
 #include "../stream.h"
-#include "../db.h"
+#include "../hdl64/db.h"
 #include "calculator.h"
 
 namespace snark {
@@ -60,9 +60,9 @@ namespace velodyne {
 
 struct db_calculator : public calculator
 {
-    const velodyne::db& db;
+    const velodyne::hdl64::db& db;
     
-    db_calculator( const velodyne::db& db );
+    db_calculator( const velodyne::hdl64::db& db );
     std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
     ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
     double range( unsigned int laser, double range ) const;

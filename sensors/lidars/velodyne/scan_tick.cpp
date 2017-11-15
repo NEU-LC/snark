@@ -28,14 +28,14 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "scan_tick.h"
-#include "packet.h"
+#include "hdl64/packet.h"
 #include "puck/packet.h"
 
 namespace snark {  namespace velodyne {
 
 namespace detail {
     
-static unsigned int packet_angle_( const velodyne::packet& p ) { return p.blocks[0].rotation() + 9000; } // 0 = behind the vehicle
+static unsigned int packet_angle_( const velodyne::hdl64::packet& p ) { return p.blocks[0].rotation() + 9000; } // 0 = behind the vehicle
 
 static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; } // quick and dirty: -90 degrees for now; see todo comments in puck/calculator.cpp
 
@@ -60,9 +60,9 @@ bool scan_tick::is_new_scan( const P& packet )
     return tick;
 }
 
-template bool scan_tick::is_new_scan< packet >( const packet& packet );
+template bool scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet );
 template bool scan_tick::is_new_scan< puck::packet >( const puck::packet& packet );
-template bool scan_tick::is_new_scan< packet >( const packet& packet, unsigned int last_angle );
+template bool scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet, unsigned int last_angle );
 template bool scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, unsigned int last_angle );
 
 } } // namespace snark {  namespace velodyne {

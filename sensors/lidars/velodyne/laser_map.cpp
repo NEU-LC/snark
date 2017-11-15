@@ -33,7 +33,7 @@
 
 namespace snark {  namespace velodyne {
 
-laser_map::laser_map( const snark::velodyne::db& db )
+laser_map::laser_map( const snark::velodyne::hdl64::db& db )
 {
     std::map< double, unsigned int > elevation;
     for( unsigned int i = 0; i < 64; ++i )

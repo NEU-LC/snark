@@ -41,7 +41,7 @@ scan::scan():
 {
 }
 
-void scan::thin ( velodyne::packet& packet, double rate, double angularSpeed )
+void scan::thin ( velodyne::hdl64::packet& packet, double rate, double angularSpeed )
 {
     m_empty = true;
     for( index i; i.idx < 12 * 32 ; ++i )

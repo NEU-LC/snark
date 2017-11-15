@@ -111,7 +111,7 @@ double azimuth( double rotation, unsigned int laser, double angularSpeed )
     return a;
 }
 
-double azimuth( const packet& packet, unsigned int block, unsigned int laser, double angularSpeed )
+double azimuth( const hdl64::packet& packet, unsigned int block, unsigned int laser, double angularSpeed )
 {
     return azimuth( double( packet.blocks[block].rotation() ) / 100, laser, angularSpeed );
 }
@@ -129,7 +129,7 @@ struct hdl64_s2_fw_v48
         double delay = (time_table[block][laser] ) + timestamps::ethernetOutputDuration * 1e6;
         return boost::posix_time::microseconds( delay);
     }
-    static double azimuth(const packet& packet, unsigned int block, unsigned int laser, double angularSpeed )
+    static double azimuth(const hdl64::packet& packet, unsigned int block, unsigned int laser, double angularSpeed )
     {
         // todo: angular speed correction with offset for angular velocity that calibration was measured on
         double rotation = double( packet.blocks[block].rotation() ) / 100;
@@ -163,7 +163,7 @@ hdl64_s2_fw_v48::block_time_table hdl64_s2_fw_v48::time_table[block_count]=
 
 static bool is_upper( unsigned int block ) { return ( block & 0x1 ) == 0; }
 
-laser_return get_laser_return( const packet& packet
+laser_return get_laser_return( const hdl64::packet& packet
                              , unsigned int block
                              , unsigned int laser
                              , const boost::posix_time::ptime& timestamp

@@ -104,7 +104,7 @@ int main( int ac, char** av )
         comma::csv::output_stream< point > ostream( std::cout, csv );
     
         // fill out velodyne db from db.xml file
-        velodyne::db db( options.value< std::string >( "--db", "/usr/local/etc/db.calibrated.xml" ) );
+        velodyne::hdl64::db db( options.value< std::string >( "--db", "/usr/local/etc/db.calibrated.xml" ) );
     
         // create velodyne point stream
         velodyne::hdl64::stream< snark::pcap_reader > stream( new snark::pcap_reader, outputInvalid );

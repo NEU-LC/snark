@@ -31,7 +31,7 @@
 #ifndef SNARK_SENSORS_VELODYNE_THIN_SCAN
 #define SNARK_SENSORS_VELODYNE_THIN_SCAN
 
-#include "../packet.h"
+#include "../hdl64/packet.h"
 #include "../scan_tick.h"
 
 namespace snark {  namespace velodyne { namespace thin {
@@ -40,7 +40,7 @@ class scan
 {
 public:
     scan();
-    void thin( velodyne::packet& packet, double rate, double angularSpeed );
+    void thin( velodyne::hdl64::packet& packet, double rate, double angularSpeed );
     bool empty() const { return m_empty; }
 private:
     enum { m_size = 12 * 32 };
