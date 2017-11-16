@@ -53,16 +53,12 @@ def main():
     group_format.add_argument( '-b', '--binary', help='in binary mode, format string containing the types of the input csv data', type=str )
     group_dry = parser.add_mutually_exclusive_group()
     group_dry.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
-    group_wet = group_dry.add_mutually_exclusive_group()
-    group_wet.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', metavar = 'NUM', default = 1, help = 'length of ROS publisher queue', type = int )
-    group_wet.add_argument( '--delay', '--wait', default = 0, help = 'sleep between publishing records, seconds', type = float )
+    group_dry.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', metavar = 'NUM', default = 1, help = 'length of ROS publisher queue', type = int )
     args = parser.parse_args()
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
     if args.dry_run:
         import numpy
         numpy.set_printoptions( linewidth=numpy.inf, threshold=numpy.inf, precision=args.precision and args.precision or numpy.get_printoptions()['precision'] )
-    if args.delay:
-        import time
     if not args.message_type is None:
         package = '.'.join( args.message_type.split( '.' )[:-1] ) if args.package is None else args.package
         if len( package ) > 0: exec( 'import ' + package )
@@ -93,9 +89,6 @@ def main():
         for record in records: # todo? try assigning the whole array at once? should be a better performance? but we may need to expand comma.csv.struct.assign() to make it working
             assign( record )
             if args.dry_run: print message
-            else:
-                publisher.publish( message )
-                if args.delay:
-                    time.sleep( args.delay )
+            else: publisher.publish( message )
 
 if __name__ == '__main__': main()
