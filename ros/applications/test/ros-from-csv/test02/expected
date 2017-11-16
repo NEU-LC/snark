@@ -1,0 +1,10 @@
+#python
+
+expect number_of(output) == 20
+
+for i in range(number_of(output)):
+    expect output[i]/altitude == line[i]/altitude +/- 1.0e-6
+    expect output[i]/header/frame_id == line[i]/header/frame_id
+    expect output[i]/header/seq == line[i]/header/seq 
+    expect output[i]/header/stamp/secs + 1.0e-9 * output[i]/header/stamp/nsecs == line[i]/time/seconds +/- 1.0e-6
+    expect output[i]/latitude == line[i]/latitude +/- 1.0e-6

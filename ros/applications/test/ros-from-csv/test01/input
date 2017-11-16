@@ -1,4 +1,4 @@
-csv="data/input.csv"
+csv="../data/input.csv"
 topic="/mavros/global_position/global"
 type="sensor_msgs.msg.NavSatFix"
 line/count=20
