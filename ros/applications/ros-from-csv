@@ -55,7 +55,7 @@ def main():
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
     if args.dry_run:
         import numpy
-        numpy.set_printoptions( linewidth=numpy.inf, threshold=numpy.inf )
+        numpy.set_printoptions( linewidth=numpy.inf, threshold=numpy.inf, precision=args.precision and args.precision or numpy.get_printoptions()['precision'] )
     if not args.message_type is None:
         package = '.'.join( args.message_type.split( '.' )[:-1] ) if args.package is None else args.package
         if len( package ) > 0: exec( 'import ' + package )
