@@ -48,9 +48,9 @@ def main():
     comma.csv.add_options( parser )
     # to override format and binary
     remove_argparse_options( parser, [ '-b', '--binary', '--format' ] )
-    group_format = parser.add_mutually_exclusive_group()
-    group_format.add_argument( '--format', help='in ascii mode, format hint string containing the types of the input csv data', type=str )
-    group_format.add_argument( '-b', '--binary', help='in binary mode, format string containing the types of the input csv data', type=str )
+    group_fmt = parser.add_mutually_exclusive_group()
+    group_fmt.add_argument( '--format', help='in ascii mode, format hint string containing the types of the input csv data', type=str )
+    group_fmt.add_argument( '-b', '--binary', help='in binary mode, format string containing the types of the input csv data', type=str )
     group_dry = parser.add_mutually_exclusive_group()
     group_dry.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
     group_dry.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', metavar = 'NUM', default = 1, help = 'length of ROS publisher queue', type = int )
