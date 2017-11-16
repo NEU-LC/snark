@@ -8,7 +8,7 @@
 //    notice, this list of conditions and the following disclaimer.
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
+//    documentation and/or other materials provided with the distribution.ll
 // 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
@@ -27,28 +27,41 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "laser_map.h"
 
-namespace snark { namespace velodyne {
+namespace snark { namespace velodyne { namespace puck {
 
-/// base class for laser id-index map
-class laser_map
+/*
+ * reference:
+ * 
+ * VLP-16 User's Manual
+ * Appendix F: Mechanical Drawing
+ * 63-9243 Rev B User Manual and Programming Guide,VLP-16.pdf
+ */
+    
+unsigned int laser_map::id_to_index( unsigned int id ) const
 {
-public:
-    virtual ~laser_map() { }
+    if(id%2)
+    {
+        return (id/2)+8;
+    }
+    else
+    {
+        return id/2;
+    }
+}
+
+unsigned int laser_map::index_to_id( unsigned int index ) const
+{
+    if(index>7)
+    {
+        return (index-8)*2+1;
+    }
+    else
+    {
+        return index*2;
+    }
+}
     
-    /// take laser id, return index by elevation
-    virtual unsigned int id_to_index( unsigned int i ) const=0;
-
-    /// take index by elevation, return laser id
-    virtual unsigned int index_to_id( unsigned int i ) const=0;
-
-    /// same as id_to_index
-    unsigned int operator[]( unsigned int i ) const { return id_to_index( i ); }
-    
-    /// max id + 1
-    virtual unsigned int size() const=0;
-};
-
-} } // namespace snark {  namespace velodyne {
+} } } // namespace snark { namespace velodyne { namespace puck {
     

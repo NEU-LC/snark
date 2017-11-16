@@ -27,28 +27,35 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
 
-namespace snark { namespace velodyne {
+#include <map>
+#include "laser_map.h"
 
-/// base class for laser id-index map
-class laser_map
+namespace snark {  namespace velodyne { namespace hdl64 {
+
+laser_map::laser_map( const snark::velodyne::hdl64::db& db )
 {
-public:
-    virtual ~laser_map() { }
-    
-    /// take laser id, return index by elevation
-    virtual unsigned int id_to_index( unsigned int i ) const=0;
+    std::map< double, unsigned int > elevation;
+    for( unsigned int i = 0; i < 64; ++i )
+    {
+        elevation[ -db.lasers[i].correction_angles.vertical.value ] = i;
+    }
+    unsigned int i = 0;
+    for( std::map< double, unsigned int >::const_iterator it = elevation.begin(); it != elevation.end() ; ++it, ++i )
+    {
+        indices_[ it->second ] = i;
+        ids_[i] = it->second;
+    }
+}
 
-    /// take index by elevation, return laser id
-    virtual unsigned int index_to_id( unsigned int i ) const=0;
+unsigned int laser_map::id_to_index( unsigned int i ) const
+{
+    return indices_[i];
+}
 
-    /// same as id_to_index
-    unsigned int operator[]( unsigned int i ) const { return id_to_index( i ); }
-    
-    /// max id + 1
-    virtual unsigned int size() const=0;
-};
+unsigned int laser_map::index_to_id( unsigned int i ) const
+{
+    return ids_[i];
+}
 
-} } // namespace snark {  namespace velodyne {
-    
+} } } // namespace snark {  namespace velodyne { namespace hdl64 {

@@ -8,7 +8,7 @@
 //    notice, this list of conditions and the following disclaimer.
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
+//    documentation and/or other materials provided with the distribution.ll
 // 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
@@ -27,28 +27,39 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
 
-namespace snark { namespace velodyne {
+#include <boost/array.hpp>
+#include "db.h"
+#include "../laser_map.h"
 
-/// base class for laser id-index map
-class laser_map
+namespace snark {  namespace velodyne { namespace hdl64 {
+
+// todo
+// - move hdl64-related stuff from velodyne to velodyne/hdl64, if easy
+// - implement velodyne::puck::laser_map
+// - velodyne-to-mesh --puck: plug in puck::laser_map, test on visualized puck data
+// - velodyne-to-mesh-ground --puck: plug in puck::laser_map, test on visualized puck data
+// - points-match-and-align --puck: pass --puck to relevant utilities, test on puck data
+    
+/// orders lasers by elevation
+class laser_map : public velodyne::laser_map
 {
-public:
-    virtual ~laser_map() { }
-    
-    /// take laser id, return index by elevation
-    virtual unsigned int id_to_index( unsigned int i ) const=0;
+    public:
+        /// constructor
+        laser_map( const snark::velodyne::hdl64::db& db );
 
-    /// take index by elevation, return laser id
-    virtual unsigned int index_to_id( unsigned int i ) const=0;
+        /// take laser id, return index by elevation
+        unsigned int id_to_index( unsigned int i ) const;
 
-    /// same as id_to_index
-    unsigned int operator[]( unsigned int i ) const { return id_to_index( i ); }
-    
-    /// max id + 1
-    virtual unsigned int size() const=0;
+        /// take index by elevation, return laser id
+        unsigned int index_to_id( unsigned int i ) const;
+        
+        unsigned int size() const { return 64; }
+        
+    private:
+        boost::array< unsigned int, 64 > indices_;
+        boost::array< unsigned int, 64 > ids_;
 };
-
-} } // namespace snark {  namespace velodyne {
+    
+} } } // namespace snark {  namespace velodyne { namespace hdl64 {
     

@@ -8,7 +8,7 @@
 //    notice, this list of conditions and the following disclaimer.
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
+//    documentation and/or other materials provided with the distribution.ll
 // 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
@@ -27,40 +27,24 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#pragma once
+#include "../laser_map.h"
 
-#include <map>
-#include "laser_map.h"
-
-namespace snark {  namespace velodyne {
-
-laser_map::laser_map( const snark::velodyne::hdl64::db& db )
+namespace snark { namespace velodyne { namespace puck {
+    
+class laser_map : public velodyne::laser_map
 {
-    std::map< double, unsigned int > elevation;
-    for( unsigned int i = 0; i < 64; ++i )
-    {
-        elevation[ -db.lasers[i].correction_angles.vertical.value ] = i;
-    }
-    unsigned int i = 0;
-    for( std::map< double, unsigned int >::const_iterator it = elevation.begin(); it != elevation.end() ; ++it, ++i )
-    {
-        indices_[ it->second ] = i;
-        ids_[i] = it->second;
-    }
-}
+public:
+//     laser_map();
+    
+    /// take laser id, return index by elevation
+    unsigned int id_to_index( unsigned int i ) const;
 
-unsigned int laser_map::id_to_index( unsigned int i ) const
-{
-    return indices_[i];
-}
+    /// take index by elevation, return laser id
+    unsigned int index_to_id( unsigned int i ) const;
+    
+    unsigned int size() const { return 16; }
+};
+    
+} } } // namespace snark { namespace velodyne { namespace puck {
 
-unsigned int laser_map::operator[]( unsigned int i ) const
-{
-    return id_to_index( i );
-}
-
-unsigned int laser_map::index_to_id( unsigned int i ) const
-{
-    return ids_[i];
-}
-
-} } // namespace snark {  namespace velodyne {
