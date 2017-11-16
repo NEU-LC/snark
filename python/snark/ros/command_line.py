@@ -66,3 +66,21 @@ returns:
         if m:
             lengths[k] = int(m.group(1))
     return lengths
+
+def fields_of_record( record_type, index_output_fields=False ):
+    if index_output_fields:
+        import numpy
+        output_fields = []
+        for n in record_type.flat_dtype.names:
+            shape = record_type.flat_dtype[n].shape
+            if shape:
+                tmp = numpy.zeros( shape )
+                it = numpy.nditer( tmp, flags=['multi_index'] )
+                while not it.finished:
+                    output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
+                    it.iternext()
+            else:
+                output_fields.append( n )
+        return output_fields
+    else:
+        return record_type.fields

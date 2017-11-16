@@ -12,6 +12,6 @@ comma_path_value_to_var --prefix=input --export
 cat "$input_csv" \
     | $input_head \
     | $input_converter \
-    | ros-from-csv "$input_topic" --type "$input_type" --output-fields \
+    | ros-from-csv "$input_topic" --type "$input_type" $input_args \
     | sed 's/^/fields="/;s/$/"/'
 comma_status_ok

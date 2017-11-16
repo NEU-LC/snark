@@ -1,3 +1,0 @@
-bag="../../data/input.bag"
-topic="/mavros/global_position/global"
-args="--output-fields"

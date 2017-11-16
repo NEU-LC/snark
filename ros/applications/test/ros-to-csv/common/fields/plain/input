@@ -1,4 +1,3 @@
-csv="../../data/input.csv"
+bag="../../../data/input.bag"
 topic="/mavros/global_position/global"
-type="sensor_msgs.msg.NavSatFix"
 args="--output-fields"
