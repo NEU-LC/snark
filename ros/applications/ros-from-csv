@@ -42,6 +42,7 @@ def main():
     parser.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
     parser.add_argument( '--message-type', '--type', help = 'message type, useful for debugging', type = str )
     parser.add_argument( '--output-fields', help = 'output input csv fields and exit', action = 'store_true' )
+    parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--package', '--import', help = 'if --type specified, package to import', type = str )
     parser.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', default = 1, help = 'chat more', type = int )
     parser.add_argument( '--verbose', '-v', help = 'chat more', action = 'store_true' )
@@ -69,7 +70,7 @@ def main():
         fields = args.fields and args.fields or record_type.fields
         lengths = lengths_of_strings( fields, formats )
         record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type(), lengths )
-    if args.output_fields: print ','.join( record_type.fields ); sys.exit( 0 )
+    if args.output_fields: print ','.join( fields_of_record( record_type, args.index_output_fields ) ); sys.exit( 0 )
     format = ','.join( comma.csv.format.to_numpy( args.binary and args.binary or args.format, compress=True ) )
     binary = not not args.binary
     istream = comma.csv.stream( record_type, delimiter = args.delimiter, fields = args.fields, format = format, binary = binary, default_values = None, flush = args.flush )

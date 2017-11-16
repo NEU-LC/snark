@@ -69,6 +69,7 @@ returns:
 
 def fields_of_record( record_type, index_output_fields=False ):
     if index_output_fields:
+        import numpy
         output_fields = []
         for n in record_type.flat_dtype.names:
             shape = record_type.flat_dtype[n].shape
