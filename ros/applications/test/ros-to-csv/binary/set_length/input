@@ -1,0 +1,5 @@
+bag="../../data/input.bag"
+topic="/mavros/global_position/global"
+args="--binary=guess --set-length=header/frame_id=5"
+output/lines=1
+output/format="ui,t,s[5],b,uw,d,d,d,9d,ub"

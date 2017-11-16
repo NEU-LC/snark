@@ -1,0 +1,3 @@
+bag="../../../../data/input.bag"
+topic="/mavros/global_position/global"
+args="--fields=header/seq,header/frame_id --binary=ui,s[5] --output-format"

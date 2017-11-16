@@ -24,12 +24,14 @@ examples
         ros-to-csv --bag "input.bag"
         ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix"
         ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
-        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --binary | csv-from-bin ui,t,s[3],b,uw,12d,ub
+        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --output-fields
+        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --binary=guess | csv-from-bin ui,t,s[3],b,uw,12d,ub
+        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --binary=ui,t,s[5],b,uw,12d,ub | csv-from-bin ui,t,s[5],b,uw,12d,ub
         ros-to-csv --bag="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 general ROS bag hints
     get list of topics inside a bag:
-        rostopic list -b <bag> 
+        rostopic list -b <bag>
     get info about a topic:
         rostopic echo <topic> -b <file> | less -S
         rostopic echo /mavros/global_position/global -b input.bag | head -n 32
@@ -62,45 +64,82 @@ class set_length_action( argparse.Action ):
 
 class message_handler:
     """create a csv output stream from a sample message, write messages to it"""
-    
+
     def __init__( self, msg, args ):
-        self.record_type, self.record_ctor = snark.ros.convert.ros_message_to_csv_record( msg, args.set_length ) # convert_ros_message_to_csv_record( msg, args.set_length )
+        self.record_type, self.record_ctor = snark.ros.convert.ros_message_to_csv_record( msg, args.set_length )
+        self.output_format = ''
         if args.output_fields:
-            if args.index_output_fields:
-                output_fields = []
-                for n in self.record_type.flat_dtype.names:
-                    shape = self.record_type.flat_dtype[n].shape
-                    if shape:
-                        tmp = numpy.zeros( shape )
-                        it = numpy.nditer( tmp, flags=['multi_index'] )
-                        while not it.finished:
-                            output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
-                            it.iternext()
-                    else:
-                        output_fields.append( n )
-                print ','.join( output_fields )
-            else:
-                print ','.join( self.record_type.fields )
+            print ','.join( self._output_fields( args.index_output_fields ) )
             sys.exit(0)
+        if args.binary:
+            if args.binary == "guess":
+                self.output_format = self._output_format()
+                if args.verbose:
+                    print >>sys.stderr, "ros-to-csv: set the binary format to '%s'" % self.output_format
+            else:
+                lengths = self._set_lengths_from_format( args )
+                self.record_type, self.record_ctor = snark.ros.convert.ros_message_to_csv_record( msg, lengths )
+                self.output_format = self._output_format()
         if args.output_format:
-            print ','.join( [ comma.csv.format.from_numpy( f ) for f in self.record_type.format.split(',') ] )
+            if not self.output_format:
+                self.output_format = self._output_format()
+            print self.output_format
             sys.exit( 0 )
         self.flush = args.flush
-        self.ostream = comma.csv.stream( self.record_type, flush = args.flush, delimiter = args.delimiter, binary = args.binary, fields = args.fields )
-        
+        self.binary = not not self.output_format
+        # TODO: do support custom format and fields in the output stream
+        self.ostream = comma.csv.stream( self.record_type, flush = args.flush, delimiter = args.delimiter, binary = self.binary, fields = args.fields )
+
     def write( self, msg ):
         self.ostream.write( self.record_ctor( msg ) )
         if self.flush: sys.stdout.flush()
 
+    def _output_format( self ):
+        return ','.join( [ comma.csv.format.from_numpy( f ) for f in self.record_type.format.split(',') ] )
+
+    def _output_fields( self, index_output_fields=False ):
+        if index_output_fields:
+            output_fields = []
+            for n in self.record_type.flat_dtype.names:
+                shape = self.record_type.flat_dtype[n].shape
+                if shape:
+                    tmp = numpy.zeros( shape )
+                    it = numpy.nditer( tmp, flags=['multi_index'] )
+                    while not it.finished:
+                        output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
+                        it.iternext()
+                else:
+                    output_fields.append( n )
+            return output_fields
+        else:
+            return self.record_type.fields
+
+    def _set_lengths_from_format( self, args ):
+        user_binary = args.binary.split( ',' )
+        fields = args.fields and args.fields.split( ',' ) or self._output_fields() # future-proof; for now --fields do not work
+        if len( user_binary ) != len( fields ):
+            if args.fields:
+                print >>sys.stderr, "ros-to-csv: --fields and --binary arguments must have the same length"; sys.exit( 1 )
+            else:
+                print >>sys.stderr, "ros-to-csv: --binary argument must have the same number of fields as the message"; sys.exit( 1 )
+        lengths = {}
+        import re
+        regex = r'^s\[(\d+)\]$'
+        for k, v in zip( fields, user_binary ):
+            m = re.match( regex, v )
+            if m:
+                lengths[k] = int(m.group(1))
+        return lengths
+
 class rostopic_subscriber:
     """subscribe to a topic, output messages as csv in callback"""
-    
+
     def __init__( self, args ):
         self.args = args
         rospy.init_node( 'listener', anonymous = True )
         rospy.Subscriber( args.topic, rostopic.get_topic_class( args.topic )[0], self.callback )
         self.handler = message_handler( rostopic.get_topic_class( args.topic )[0](), self.args )
-    
+
     def callback( self, msg ): self.handler.write( msg )
 
 def main():
@@ -113,15 +152,14 @@ def main():
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
     parser.add_argument( '--set-length', help='set length of listed string fields; by default, take from first input', type=str, action=set_length_action, default={} )
     parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
-    parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )    
+    parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     comma.csv.add_options( parser )
-    # override; normally --binary is used to describe input format and therefore, takes an argument; '--fields' makes sense only for input streams
-    remove_argparse_options( parser, [ '-b', '--binary', '-f', '--fields' ] )
-    parser.add_argument( '-b', '--binary', help='produce binary output', action='store_true' )
-    # TODO: support '--fields' to select a sub-set of the fields to parse (optional; good to have)
-    parser.add_argument( '-f', '--fields', help='output only a sub-set of fields', type = str, default = '' )
+    # override to fix the help
+    remove_argparse_options( parser, [ '-b', '--binary' ] )
+    parser.add_argument( '-b', '--binary', help='produce binary output in the given format; if argument is "guess", figure out format from the message itself', type=str )
     args = parser.parse_args()
-    if not args.fields is None and args.fields != '': print >> sys.stderr, "ros-to-csv: customized --fields support not implemented yet; todo"; sys.exit( 1 )
+    if not args.fields is None and args.fields != '': print >> sys.stderr, "ros-to-csv: warning: customized --fields support not implemented yet; todo"
+
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
     if args.bag is None:
         if args.topic is None: print >> sys.stderr, "ros-to-csv: please specify --topic"; sys.exit( 1 )
