@@ -45,7 +45,7 @@ class message_handler:
         self.record_type, self.record_ctor = snark.ros.convert.ros_message_to_csv_record( msg, args.set_length )
         self.output_format = ''
         if args.output_fields:
-            print ','.join( self._output_fields( args.index_output_fields ) )
+            print ','.join( fields_of_record( self.record_type, args.index_output_fields ) )
             sys.exit(0)
         if args.binary:
             if args.binary == "guess":
@@ -72,23 +72,6 @@ class message_handler:
 
     def _output_format( self ):
         return ','.join( [ comma.csv.format.from_numpy( f ) for f in self.record_type.format.split(',') ] )
-
-    def _output_fields( self, index_output_fields=False ):
-        if index_output_fields:
-            output_fields = []
-            for n in self.record_type.flat_dtype.names:
-                shape = self.record_type.flat_dtype[n].shape
-                if shape:
-                    tmp = numpy.zeros( shape )
-                    it = numpy.nditer( tmp, flags=['multi_index'] )
-                    while not it.finished:
-                        output_fields.append( n + ''.join( [ "[%s]" % i for i in it.multi_index ] ) )
-                        it.iternext()
-                else:
-                    output_fields.append( n )
-            return output_fields
-        else:
-            return self.record_type.fields
 
     def _set_lengths_from_format( self, args ):
         fields = args.fields and args.fields or self.record_type.fields
