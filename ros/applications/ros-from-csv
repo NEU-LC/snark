@@ -53,6 +53,9 @@ def main():
     group.add_argument( '-b', '--binary', help='in binary mode, format string containing the types of the input csv data', type=str )
     args = parser.parse_args()
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
+    if args.dry_run:
+        import numpy
+        numpy.set_printoptions( linewidth=numpy.inf, threshold=numpy.inf )
     if not args.message_type is None:
         package = '.'.join( args.message_type.split( '.' )[:-1] ) if args.package is None else args.package
         if len( package ) > 0: exec( 'import ' + package )
