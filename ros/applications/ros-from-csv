@@ -43,7 +43,6 @@ def main():
     parser.add_argument( '--message-type', '--type', help = 'message type, useful for debugging', type = str )
     parser.add_argument( '--output-fields', help = 'output input csv fields and exit', action = 'store_true' )
     parser.add_argument( '--package', '--import', help = 'if --type specified, package to import', type = str )
-    parser.add_argument( '--read-queue-size', metavar = 'NUM', default = 1, help = 'read NUM input records at once (no output until all read)', type = int )
     parser.add_argument( '--verbose', '-v', help = 'chat more', action = 'store_true' )
     comma.csv.add_options( parser )
     # to override format and binary
@@ -83,9 +82,7 @@ def main():
         publisher = rospy.Publisher( args.topic, message_type, queue_size = args.ros_queue_size )
         rospy.init_node( 'ros_from_csv', anonymous = True )
         if args.verbose: print >> sys.stderr, "ros-from-csv: publishing to topic '%s'..." % args.topic
-    while True:
-        records = istream.read( size = args.read_queue_size )
-        if records is None: break
+    for records in istream:
         for record in records: # todo? try assigning the whole array at once? should be a better performance? but we may need to expand comma.csv.struct.assign() to make it working
             assign( record )
             if args.dry_run: print message
