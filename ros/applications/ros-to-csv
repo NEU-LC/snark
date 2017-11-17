@@ -28,7 +28,6 @@ examples
         ros-to-csv --bag="input.bag" "/mavros/global_position/raw/fix" --output-fields
         ros-to-csv --bag="input.bag" "/mavros/global_position/raw/fix" --binary=guess | csv-from-bin ui,t,s[3],b,uw,12d,ub
         ros-to-csv --bag="input.bag" "/mavros/global_position/raw/fix" --binary=ui,t,s[5],b,uw,12d,ub | csv-from-bin ui,t,s[5],b,uw,12d,ub
-        ros-to-csv --bag="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 general ROS bag hints
     get list of topics inside a bag:
@@ -37,12 +36,13 @@ general ROS bag hints
         rostopic echo <topic> -b <file> | less -S
         rostopic echo /mavros/global_position/global -b input.bag | head -n 32
 """
+#        ros-to-csv --bag="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 class message_handler:
     """create a csv output stream from a sample message, write messages to it"""
 
     def __init__( self, msg, args ):
-        self.record_type, self.record_ctor = convert.ros_message_to_csv_record( msg, args.set_length )
+        self.record_type, self.record_ctor = convert.ros_message_to_csv_record( msg )
         self.output_format = ''
         if args.output_fields:
             print ','.join( detail.command_line.fields_of_record( self.record_type, args.index_output_fields ) )
@@ -96,7 +96,7 @@ def main():
     parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
-    parser.add_argument( '--set-length', metavar='DICT', help='set length of listed string fields; by default, take from first input', type=str, action=comma.application.set_dictionary_action, value_type=int, delimiter=';', default={} )
+    #parser.add_argument( '--set-length', metavar='DICT', help='set length of listed string fields; by default, take from first input', type=str, action=comma.application.set_dictionary_action, value_type=int, delimiter=';', default={} )
     parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     comma.csv.add_options( parser )
     # override to fix the help
