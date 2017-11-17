@@ -40,6 +40,7 @@ function description()
 --verbose,-v; show more information
 --config=<config>; sensor config
 --config-sample; show config sample and exit
+--log-directly; use a log filter to log directly to file
 --period=<sec>; logging period
 EOF
 }
@@ -59,7 +60,7 @@ EOF
 
 <config> is the file:path to the specific sensor config.
 
-This command uses the log filter to directly log to a file.
+This command optionally uses the log filter to directly log to a file.
 For high throughput data this is more efficient than using stdout.
 
 If "port" is defined in the config file the data is also published when logging.
@@ -153,12 +154,18 @@ args=${args# }
 
 [[ $config_port ]] && publish_command="io-publish tcp:$config_port --size $( csv-size $config_binary )"
 
-log_options=".,period:$options_period,index"
-[[ $publish_command ]] || log_options+=";null"
-log_command="basler-cat log=$log_options $args"
+filters=
+if [[ $options_log_directly ]]; then
+    log_options=".,period:$options_period,index"
+    [[ $publish_command ]] || log_options+=";null"
+    filters+=" log=$log_options"
+fi
+filters=${filters# }
 
-verbose "logging with \"$log_command\""
-[[ $publish_command ]] && verbose "publishing with \"$publish_command\" (whilst logging)"
+basler_command="basler-cat $filters $args"
+
+verbose "logging with \"$basler_command\""
+[[ $publish_command ]] && verbose "publishing with \"$publish_command\""
 
 shutdown=0
 
@@ -166,9 +173,9 @@ trap "shutdown=1" INT TERM HUP PIPE
 
 while (( ! shutdown )); do
     if [[ $publish_command ]]; then
-        $log_command | $publish_command
+        $basler_command | $publish_command
     else
-        $log_command
+        $basler_command
     fi
-    (( shutdown )) || say "restarting ${log_command%% *}"
+    (( shutdown )) || say "restarting ${basler_command%% *}"
 done
