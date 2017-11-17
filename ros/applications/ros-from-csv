@@ -6,6 +6,7 @@ import rospy, rostopic
 import comma.csv
 import snark.ros.convert
 from snark.ros.command_line import *
+import comma.application
 
 help_description = """
 
@@ -46,7 +47,7 @@ def main():
     parser.add_argument( '--verbose', '-v', help = 'chat more', action = 'store_true' )
     comma.csv.add_options( parser )
     # to override format and binary
-    remove_argparse_options( parser, [ '-b', '--binary', '--format' ] )
+    comma.application.remove_argparse_options( parser, [ '-b', '--binary', '--format' ] )
     group_fmt = parser.add_mutually_exclusive_group()
     group_fmt.add_argument( '--format', help='in ascii mode, format hint string containing the types of the input csv data', type=str )
     group_fmt.add_argument( '-b', '--binary', help='in binary mode, format string containing the types of the input csv data', type=str )
