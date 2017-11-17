@@ -39,9 +39,9 @@ examples
 def main():
     parser = argparse.ArgumentParser( description = help_description, epilog = help_examples, formatter_class = argparse.RawDescriptionHelpFormatter, conflict_handler = 'resolve' )
     parser.add_argument( 'topic', nargs = '?', help = 'topic', type = str )
+    parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--message-type', '--type', help = 'message type, useful for debugging', type = str )
     parser.add_argument( '--output-fields', help = 'output input csv fields and exit', action = 'store_true' )
-    parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--package', '--import', help = 'if --type specified, package to import', type = str )
     parser.add_argument( '--read-queue-size', metavar = 'NUM', default = 1, help = 'read NUM input records at once (no output until all read)', type = int )
     parser.add_argument( '--verbose', '-v', help = 'chat more', action = 'store_true' )
@@ -68,8 +68,8 @@ def main():
     message = message_type()
     record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type() )
     if args.format or args.binary:
-        formats = args.format and args.format or args.binary
-        fields = args.fields and args.fields or record_type.fields
+        formats = args.format if args.format else args.binary
+        fields = args.fields if args.fields else record_type.fields
         lengths = lengths_of_strings( fields, formats )
         record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type(), lengths )
     if args.output_fields: print ','.join( fields_of_record( record_type, args.index_output_fields ) ); sys.exit( 0 )

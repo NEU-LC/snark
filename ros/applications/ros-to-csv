@@ -23,11 +23,11 @@ help_examples="""
 examples
     rosbag to csv
         ros-to-csv --bag "input.bag"
-        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix"
-        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --output-format
-        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --output-fields
-        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --binary=guess | csv-from-bin ui,t,s[3],b,uw,12d,ub
-        ros-to-csv --bag="input.bag" --topic "/mavros/global_position/raw/fix" --binary=ui,t,s[5],b,uw,12d,ub | csv-from-bin ui,t,s[5],b,uw,12d,ub
+        ros-to-csv --bag="input.bag" "/mavros/global_position/raw/fix"
+        ros-to-csv --bag="input.bag" "/mavros/global_position/raw/fix" --output-format
+        ros-to-csv --bag="input.bag" "/mavros/global_position/raw/fix" --output-fields
+        ros-to-csv --bag="input.bag" "/mavros/global_position/raw/fix" --binary=guess | csv-from-bin ui,t,s[3],b,uw,12d,ub
+        ros-to-csv --bag="input.bag" "/mavros/global_position/raw/fix" --binary=ui,t,s[5],b,uw,12d,ub | csv-from-bin ui,t,s[5],b,uw,12d,ub
         ros-to-csv --bag="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 general ROS bag hints
@@ -97,7 +97,6 @@ def main():
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
     parser.add_argument( '--set-length', metavar='DICT', help='set length of listed string fields; by default, take from first input', type=str, action=set_dictionary_action, value_type=int, delimiter=';', default={} )
-    parser.add_argument( '--topic', help='topic in the bag file to be extracted; can be skipped for single-topic bags', type=str )
     parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     comma.csv.add_options( parser )
     # override to fix the help
