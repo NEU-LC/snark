@@ -4,9 +4,8 @@ import argparse, sys
 from signal import signal, SIGPIPE, SIG_DFL
 import rospy, rostopic
 import comma.csv
-import snark.ros.convert
-from snark.ros.command_line import *
 import comma.application
+from snark.ros import convert, detail
 
 help_description = """
 
@@ -66,17 +65,17 @@ def main():
     if args.message_type is None: message_type = rostopic.get_topic_class( args.topic )[0]
     else: exec( 'message_type = ' + args.message_type )
     message = message_type()
-    record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type() )
+    record_type, record_ctor = convert.ros_message_to_csv_record( message_type() )
     if args.format or args.binary:
         formats = args.format if args.format else args.binary
         fields = args.fields if args.fields else record_type.fields
-        lengths = lengths_of_strings( fields, formats )
-        record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type(), lengths )
-    if args.output_fields: print ','.join( fields_of_record( record_type, args.index_output_fields ) ); sys.exit( 0 )
+        lengths = detail.command_line.lengths_of_strings( fields, formats )
+        record_type, record_ctor = convert.ros_message_to_csv_record( message_type(), lengths )
+    if args.output_fields: print ','.join( detail.command_line.fields_of_record( record_type, args.index_output_fields ) ); sys.exit( 0 )
     format = ','.join( comma.csv.format.to_numpy( args.binary and args.binary or args.format, compress=True ) )
     binary = not not args.binary
     istream = comma.csv.stream( record_type, delimiter = args.delimiter, fields = args.fields, format = format, binary = binary, default_values = None, flush = args.flush )
-    assign = record_type.assign( message, snark.ros.convert.from_csv_supported_types )
+    assign = record_type.assign( message, convert.from_csv_supported_types )
     if args.dry_run:
         if args.verbose: print >> sys.stderr, "ros-from-csv: dry run, printing messages to stdout"
     else:
