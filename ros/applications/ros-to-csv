@@ -96,7 +96,7 @@ def main():
     parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
-    #parser.add_argument( '--set-length', metavar='DICT', help='set length of listed string fields; by default, take from first input', type=str, action=comma.application.set_dictionary_action, value_type=int, delimiter=';', default={} )
+    #parser.add_argument( '--set-length', metavar='DICT', help='set length of listed string fields; by default, take from first input', type=str, action=comma.application.set_dictionary_action, value_type=int, delimiter=',', default={} )
     parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     comma.csv.add_options( parser )
     # override to fix the help
