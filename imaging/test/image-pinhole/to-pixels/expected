@@ -1,4 +1,4 @@
-no_distortion[0]/output="0,1,-10,500,600"
-no_distortion[1]/output="0,1,10,500,400"
-no_distortion[2]/output="1,0,-10,600,500"
-no_distortion[3]/output="1,0,10,400,500"
+no_distortion[0]/output="0,1,10,500,600"
+no_distortion[1]/output="0,1,-10,500,400"
+no_distortion[2]/output="1,0,10,600,500"
+no_distortion[3]/output="1,0,-10,400,500"

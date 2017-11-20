@@ -157,7 +157,7 @@ int main( int ac, char** av )
             auto xy = [&]( const Eigen::Vector3d& v )->Eigen::Vector2d
             {
                 Eigen::Vector2d w( v.x(), v.y() );
-                return has_z && !comma::math::equal( v.z(), 0 ) ? w * ( pinhole.config().focal_length / v.z() ) : w;
+                return has_z && !comma::math::equal( v.z(), 0 ) ? w * ( -pinhole.config().focal_length / v.z() ) : w;
             };
             while( is.ready() || std::cin.good() )
             {
