@@ -38,17 +38,37 @@ namespace snark { namespace velodyne { namespace puck {
  * Appendix F: Mechanical Drawing
  * 63-9243 Rev B User Manual and Programming Guide,VLP-16.pdf
  */
-    
+laser_map::laser_map()
+{
+    map[0]=0;
+    map[2]=1;
+    map[4]=2;
+    map[6]=3;
+    map[8]=4;
+    map[10]=5;
+    map[12]=6;
+    map[14]=7;
+    map[1]=8;
+    map[3]=9;
+    map[5]=10;
+    map[7]=11;
+    map[9]=12;
+    map[11]=13;
+    map[13]=14;
+    map[15]=15;
+}
+ 
 unsigned int laser_map::id_to_index( unsigned int id ) const
 {
-    if(id%2)
-    {
-        return (id/2)+8;
-    }
-    else
-    {
-        return id/2;
-    }
+//     if(id%2)
+//     {
+//         return (id/2)+8;
+//     }
+//     else
+//     {
+//         return id/2;
+//     }
+    return map[id];
 }
 
 unsigned int laser_map::index_to_id( unsigned int index ) const

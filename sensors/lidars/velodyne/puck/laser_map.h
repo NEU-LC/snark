@@ -29,13 +29,15 @@
 
 #pragma once
 #include "../laser_map.h"
+#include <array>
 
 namespace snark { namespace velodyne { namespace puck {
     
 class laser_map : public velodyne::laser_map
 {
+    std::array<unsigned,16> map;
 public:
-//     laser_map();
+    laser_map();
     
     /// take laser id, return index by elevation
     unsigned int id_to_index( unsigned int i ) const;
