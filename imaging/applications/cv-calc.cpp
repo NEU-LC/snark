@@ -811,9 +811,9 @@ int main( int ac, char** av )
                         if( p.second.cols < int( shape.first ) || p.second.rows < int( shape.second ) ) { std::cerr << "cv-calc: stride: expected image greater than rows: " << shape.second << " cols: " << shape.first << "; got rows: " << p.second.rows << " cols: " << p.second.cols << std::endl; return 1; }
                         pair_t q;
                         q.first = p.first;
-                        for( unsigned int i = 0; i < ( p.second.cols + 1 - shape.first ); i += strides.first )
+                        for( unsigned int j = 0; j < ( p.second.rows + 1 - shape.second ); j += strides.second )
                         {
-                            for( unsigned int j = 0; j < ( p.second.rows + 1 - shape.second ); j += strides.second )
+                            for( unsigned int i = 0; i < ( p.second.cols + 1 - shape.first ); i += strides.first )
                             {
                                 if( !filtered.second.empty() )
                                 {
@@ -860,20 +860,20 @@ int main( int ac, char** av )
             if( options.exists("--output-format") ) { std::cout << comma::csv::format::value< positions_t >( "", true, output ) << std::endl; return 0; }
 
             const std::vector< std::string >& unstrided_vector = comma::split( options.value< std::string >( "--unstrided-size,--unstrided" ), ',' );
-            if( unstrided_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected --unstrided-size as <width>,<height>, got: \"" << options.value< std::string >( "--unstrided-size,--unstrided" ) << std::endl; return 1; }
+            if( unstrided_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected --unstrided-size as <width>,<height>, got: \"" << options.value< std::string >( "--unstrided-size,--unstrided" ) << std::endl; return 1; }
             cv::Point2i unstrided( boost::lexical_cast< unsigned int >( unstrided_vector[0] ), boost::lexical_cast< unsigned int >( unstrided_vector[1] ) );
             const std::vector< std::string >& strides_vector = comma::split( options.value< std::string >( "--strides", "1,1" ), ',' );
-            if( strides_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected strides as <x>,<y>, got: \"" << options.value< std::string >( "--strides" ) << std::endl; return 1; }
+            if( strides_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected strides as <x>,<y>, got: \"" << options.value< std::string >( "--strides" ) << std::endl; return 1; }
             cv::Point2i strides( boost::lexical_cast< unsigned int >( strides_vector[0] ), boost::lexical_cast< unsigned int >( strides_vector[1] ) );
             const std::vector< std::string >& shape_vector = comma::split( options.value< std::string >( "--shape,--size,--kernel" ), ',' );
-            if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
+            if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
             cv::Point2i shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
 
             // TODO --padding
             unsigned int stride_rows = ( unstrided.y - shape.y ) / strides.y + 1;
             unsigned int stride_cols = ( unstrided.x - shape.x ) / strides.x + 1;
             unsigned int num_strides = stride_rows * stride_cols;
-            if( verbose ) { std::cerr << name << "stride rows: " << stride_rows << ", stride cols: " << stride_cols << std::endl; }
+            if( verbose ) { std::cerr << name << "unstride-positions: stride rows: " << stride_rows << ", stride cols: " << stride_cols << std::endl; }
 
             comma::csv::options icsv( options );
             icsv.full_xpath = true;
@@ -891,8 +891,8 @@ int main( int ac, char** av )
                 const stride_positions_t* p = is.read();
                 if( !p ) { break; }
                 if( p->index >= num_strides ) { COMMA_THROW( comma::exception, "invalid stride index: " << p->index << "; expected index < " << num_strides ); }
-                unsigned int stride_col = p->index / stride_rows;
-                unsigned int stride_row = p->index % stride_rows;
+                unsigned int stride_col = p->index % stride_rows;
+                unsigned int stride_row = p->index / stride_rows;
                 cv::Point2d offset( stride_col * strides.x, stride_row * strides.y );
                 for( unsigned int i = 0; i < p->positions.size(); ++i ) { output.positions[i] = p->positions[i] + offset; }
                 tied.append( output );
