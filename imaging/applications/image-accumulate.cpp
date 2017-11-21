@@ -427,12 +427,13 @@ class channel
                     || ( !has_block && row_count_ >= block_size )
                     || ( p && block_ && *block_ != p->block ) )
                 {
-                    output_once_( p->t );
+                    output_once_( timestamp_ );
                     image.setTo( 0 );
                     row_count_ = 0;
                 }
             }
             if( !p ) { return false; }
+            timestamp_ = p->t;
             block_ = p->block;
             unsigned int new_row;
             if( has_angle )
@@ -470,6 +471,7 @@ class channel
         scaled< unsigned char > scaled_;
         color_map::values colourmap_;
         cv::Scalar dial_colour_;
+        boost::posix_time::ptime timestamp_;
         boost::optional< unsigned int > block_;
         comma::math::cyclic< unsigned int > row_;
         unsigned int row_count_;
