@@ -4,7 +4,8 @@ import argparse, sys
 from signal import signal, SIGPIPE, SIG_DFL
 import rospy, rostopic
 import comma.csv
-import snark.ros.convert
+import comma.application
+from snark.ros import convert, detail
 
 help_description = """
 
@@ -38,15 +39,25 @@ examples
 def main():
     parser = argparse.ArgumentParser( description = help_description, epilog = help_examples, formatter_class = argparse.RawDescriptionHelpFormatter, conflict_handler = 'resolve' )
     parser.add_argument( 'topic', nargs = '?', help = 'topic', type = str )
-    parser.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
+    parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--message-type', '--type', help = 'message type, useful for debugging', type = str )
     parser.add_argument( '--output-fields', help = 'output input csv fields and exit', action = 'store_true' )
     parser.add_argument( '--package', '--import', help = 'if --type specified, package to import', type = str )
-    parser.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', default = 1, help = 'chat more', type = int )
     parser.add_argument( '--verbose', '-v', help = 'chat more', action = 'store_true' )
     comma.csv.add_options( parser )
+    # to override format and binary
+    comma.application.remove_argparse_options( parser, [ '-b', '--binary', '--format' ] )
+    group_fmt = parser.add_mutually_exclusive_group()
+    group_fmt.add_argument( '--format', help='in ascii mode, format hint string containing the types of the input csv data', type=str )
+    group_fmt.add_argument( '-b', '--binary', help='in binary mode, format string containing the types of the input csv data', type=str )
+    group_dry = parser.add_mutually_exclusive_group()
+    group_dry.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
+    group_dry.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', metavar = 'NUM', default = 1, help = 'length of ROS publisher queue', type = int )
     args = parser.parse_args()
     signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
+    if args.dry_run:
+        import numpy
+        numpy.set_printoptions( linewidth=numpy.inf, threshold=numpy.inf, precision=args.precision and args.precision or numpy.get_printoptions()['precision'] )
     if not args.message_type is None:
         package = '.'.join( args.message_type.split( '.' )[:-1] ) if args.package is None else args.package
         if len( package ) > 0: exec( 'import ' + package )
@@ -54,11 +65,17 @@ def main():
     if args.message_type is None: message_type = rostopic.get_topic_class( args.topic )[0]
     else: exec( 'message_type = ' + args.message_type )
     message = message_type()
-    record_type, record_ctor = snark.ros.convert.ros_message_to_csv_record( message_type() )
-    if args.output_fields: print ','.join( record_type.fields ); sys.exit( 0 )
-    #istream = comma.csv.stream( record_type, delimiter = args.delimiter, binary = True, fields = args.fields, default_values = None, flush = args.flush )
-    istream = comma.csv.stream( record_type, delimiter = args.delimiter, fields = args.fields, default_values = None, flush = args.flush )
-    assign = record_type.assign( message, snark.ros.convert.from_csv_supported_types )
+    record_type, record_ctor = convert.ros_message_to_csv_record( message_type() )
+    if args.format or args.binary:
+        formats = args.format if args.format else args.binary
+        fields = args.fields if args.fields else record_type.fields
+        lengths = detail.command_line.lengths_of_strings( fields, formats )
+        record_type, record_ctor = convert.ros_message_to_csv_record( message_type(), lengths )
+    if args.output_fields: print ','.join( detail.command_line.fields_of_record( record_type, args.index_output_fields ) ); sys.exit( 0 )
+    format = ','.join( comma.csv.format.to_numpy( args.binary and args.binary or args.format, compress=True ) )
+    binary = not not args.binary
+    istream = comma.csv.stream( record_type, delimiter = args.delimiter, fields = args.fields, format = format, binary = binary, default_values = None, flush = args.flush )
+    assign = record_type.assign( message, convert.from_csv_supported_types )
     if args.dry_run:
         if args.verbose: print >> sys.stderr, "ros-from-csv: dry run, printing messages to stdout"
     else:

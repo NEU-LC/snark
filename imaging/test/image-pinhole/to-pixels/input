@@ -1,0 +1,4 @@
+no_distortion[0]="echo 0,1,10 | image-pinhole to-pixels --camera-config=config.json --fields=x,y,z"
+no_distortion[1]="echo 0,1,-10 | image-pinhole to-pixels --camera-config=config.json --fields=x,y,z"
+no_distortion[2]="echo 1,0,10 | image-pinhole to-pixels --camera-config=config.json --fields=x,y,z"
+no_distortion[3]="echo 1,0,-10 | image-pinhole to-pixels --camera-config=config.json --fields=x,y,z"

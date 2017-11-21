@@ -778,13 +778,24 @@ int main( int ac, char** av )
             else if( padding_string == "valid" || padding_string == "VALID" ) { padding = padding_types::valid; }
             else { std::cerr << "cv-calc: stride: expected padding type, got: \"" << padding_string << "\"" << std::endl; return 1; }
             snark::imaging::operations::grep::non_zero non_zero( options.value< std::string >( "--non-zero", "" ) );
-            const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( options.value< std::string >( "--filter,--filters", "" ) );
+            typedef snark::cv_mat::serialization::header::buffer_t first_t; // typedef boost::posix_time::ptime first_t;
+            typedef std::pair< first_t, cv::Mat > pair_t;
+            typedef snark::cv_mat::filter_with_header filter_t; // typedef snark::cv_mat::filter filter_t;
+            typedef snark::cv_mat::filters_with_header filters_t; // typedef snark::cv_mat::filters filters_t;
+            const comma::csv::binary< snark::cv_mat::serialization::header >* binary = input_serialization.header_binary();
+            auto get_timestamp_from_header = [&]( const snark::cv_mat::serialization::header::buffer_t& h )->boost::posix_time::ptime
+            {
+                if( h.empty() || !binary ) { return boost::posix_time::not_a_date_time; }
+                snark::cv_mat::serialization::header d;
+                return binary->get( d, &h[0] ).timestamp;
+            };
+            const std::vector< filter_t >& filters = filters_t::make( options.value< std::string >( "--filter,--filters", "" ), get_timestamp_from_header );
             if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: stride: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                pair_t p = input_serialization.read< first_t >( std::cin );
                 if( p.second.empty() ) { return 0; }
-                std::pair< boost::posix_time::ptime, cv::Mat > filtered;
+                pair_t filtered;
                 if( !filters.empty() )
                 {
                     p.second.copyTo( filtered.second );
@@ -798,7 +809,7 @@ int main( int ac, char** av )
                     case padding_types::valid:
                     {
                         if( p.second.cols < int( shape.first ) || p.second.rows < int( shape.second ) ) { std::cerr << "cv-calc: stride: expected image greater than rows: " << shape.second << " cols: " << shape.first << "; got rows: " << p.second.rows << " cols: " << p.second.cols << std::endl; return 1; }
-                        std::pair< boost::posix_time::ptime, cv::Mat > q;
+                        pair_t q;
                         q.first = p.first;
                         for( unsigned int i = 0; i < ( p.second.cols + 1 - shape.first ); i += strides.first )
                         {

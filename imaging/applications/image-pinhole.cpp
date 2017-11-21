@@ -49,9 +49,14 @@ void usage( bool verbose )
     std::cerr << "operations" << std::endl;
     std::cerr << "    to-cartesian: take on stdin pixels, undistort image, append pixel's cartesian coordinates in camera frame" << std::endl;
     std::cerr << "        --normalize: normalize cartesian coordinates in camera frame" << std::endl;
+    std::cerr << "        --fields: x,y,z" << std::endl;
+    std::cerr << "            x,y: pixel coordinates" << std::endl;
+    std::cerr << "            z: if present, the point in sensor plane will be projected to the plane parallel to sensor plane with a given z coordinate (it may be confusing, i know)" << std::endl;
+    std::cerr << "            default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to-pixels: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
     std::cerr << "        --clip: clip pixels outside of image" << std::endl;
+    std::cerr << "        --fields: x,y,z; if z is given, the input points will be projected to the sensor plane; default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
     std::cerr << std::endl;
@@ -128,34 +133,43 @@ int main( int ac, char** av )
         comma::csv::options csv( options );
         if( operation == "to-cartesian" )
         {
-            output_details< Eigen::Vector2d, Eigen::Vector3d >( options );
+            if( csv.fields.empty() ) { csv.fields = "x,y"; }
+            output_details< Eigen::Vector3d, Eigen::Vector3d >( options );
             snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
-            comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
-            comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary(), false, csv.flush );
-            comma::csv::tied< Eigen::Vector2d, Eigen::Vector3d > tied( is, os );
             bool normalize = options.exists( "--normalize" );
+            bool has_z = csv.has_field( "z" );
+            comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv, Eigen::Vector3d::Zero() );
+            comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary(), false, csv.flush );
+            comma::csv::tied< Eigen::Vector3d, Eigen::Vector3d > tied( is, os );
             while( is.ready() || std::cin.good() )
             {
-                const Eigen::Vector2d* p = is.read();
+                const Eigen::Vector3d* p = is.read();
                 if( !p ) { break; }
-                const Eigen::Vector3d& q = pinhole.to_cartesian( *p );
-                tied.append( normalize ? q.normalized() : q );
+                const Eigen::Vector3d& q = pinhole.to_cartesian( Eigen::Vector2d( p->x(), p->y() ) );
+                tied.append( normalize ? q.normalized() : has_z ? q * ( p->z() / -pinhole.config().focal_length ) : q );
             }
             return 0;
         }
         if( operation == "to-pixels" )
         {
-            output_details< Eigen::Vector2d, Eigen::Vector2d >( options );
+            output_details< Eigen::Vector3d, Eigen::Vector2d >( options );
             snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
-            comma::csv::input_stream< Eigen::Vector2d > is( std::cin, csv );
+            if( csv.fields.empty() ) { csv.fields = "x,y"; }
+            comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv, Eigen::Vector3d::Zero() );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
-            comma::csv::tied< Eigen::Vector2d, Eigen::Vector2d > tied( is, os );
+            comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
             bool clip = options.exists( "--clip" ) || ( options.exists( "--deprecated" ) && !options.exists( "--keep" ) );
+            bool has_z = csv.has_field( "z" );
+            auto xy = [&]( const Eigen::Vector3d& v )->Eigen::Vector2d
+            {
+                Eigen::Vector2d w( v.x(), v.y() );
+                return has_z && !comma::math::equal( v.z(), 0 ) ? w * ( -pinhole.config().focal_length / v.z() ) : w;
+            };
             while( is.ready() || std::cin.good() )
             {
-                const Eigen::Vector2d* p = is.read();
+                const Eigen::Vector3d* p = is.read();
                 if( !p ) { break; }
-                const Eigen::Vector2d& pixel = pinhole.to_pixel( *p );
+                const Eigen::Vector2d& pixel = pinhole.to_pixel( xy( *p ) );
                 if ( !clip || (    !comma::math::less( pixel.x(), 0 )
                                 && comma::math::less( pixel.x(), pinhole.config().image_size.x() )
                                 && !comma::math::less( pixel.y(), 0 )
