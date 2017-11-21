@@ -687,6 +687,13 @@ static typename impl::filters< H >::value_type colour_map_impl_( typename impl::
 }
 
 template < typename H >
+static typename impl::filters< H >::value_type tee_impl_( typename impl::filters< H >::value_type m, boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) > tee )
+{
+    tee( m );
+    return m;
+}
+
+template < typename H >
 struct mask_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     value_type operator()( value_type m, boost::function< value_type( value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
@@ -1014,19 +1021,36 @@ static typename impl::filters< H >::value_type merge_impl_( typename impl::filte
 }
 
 template < typename H >
-struct view_impl_ {
-    typedef typename impl::filters< H >::value_type value_type;
-    typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor get_timestamp_;
+class view_impl_
+{
+public:
+    typename impl::filters< H >::get_timestamp_functor get_timestamp;
+    std::string name;
+    unsigned int delay;
 
-    view_impl_< H >( const get_timestamp_functor& get_timestamp ) : get_timestamp_(get_timestamp) {}
-    value_type operator()( value_type m, std::string name, unsigned int delay )
+    view_impl_< H >( const typename impl::filters< H >::get_timestamp_functor& get_timestamp, const std::string& name, unsigned int delay )
+        : get_timestamp( get_timestamp )
+        , name( make_name_( name ) )
+        , delay( delay )
+    {
+    }
+    
+    typename impl::filters< H >::value_type operator()( typename impl::filters< H >::value_type m )
     {
         cv::imshow( &name[0], m.second );
         char c = cv::waitKey( delay );
-        if( c == 27 ) { return value_type(); } // HACK to notify application to exit
-        if( c == ' ' ) { cv::imwrite( make_filename( get_timestamp_(m.first), "ppm"), m.second ); }
+        if( c == 27 ) { return typename impl::filters< H >::value_type(); } // HACK to notify application to exit
+        if( c == ' ' ) { cv::imwrite( make_filename( get_timestamp( m.first ), "ppm" ), m.second ); }
         return m;
+    }
+    
+private:
+    static std::string make_name_( const std::string& name ) // quick and dirty
+    {
+        static unsigned int count = 0;
+        const std::string& n = name.empty() ? boost::lexical_cast< std::string >( count ) : name;
+        ++count;
+        return n;
     }
 };
 
@@ -2099,7 +2123,7 @@ struct make_filter {
     typedef boost::function< input_type( input_type ) > functor_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
     
-static std::pair< functor_type, bool > make_filter_functor( const std::vector< std::string >& e, const get_timestamp_functor& get_timestamp )
+static std::pair< functor_type, bool > make_filter_functor( const std::vector< std::string >& e, const get_timestamp_functor& get_timestamp, unsigned int default_delay )
 {
     if( e[0] == "accumulated" )
     {
@@ -2694,6 +2718,19 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         }
         return std::make_pair( overlay_impl_ < H >( s[0], x, y ), true );
     }
+    if( e[0] == "view" )
+    {
+        unsigned int default_delay = 1; // todo!
+        unsigned int delay = default_delay;
+        std::string n;
+        if( e.size() > 1 )
+        {
+            const std::vector< std::string >& w = comma::split( e[1], ',' );
+            if( w.size() > 0 && !w[0].empty() ) { delay = boost::lexical_cast< unsigned int >( w[0] ); }
+            if( w.size() > 1 ) { n = w[1]; }
+        }
+        return std::make_pair( boost::bind< value_type_t >( view_impl_< H >( get_timestamp, n, delay ), _1 ), false );
+    }
     boost::function< value_type_t( value_type_t ) > functor = imaging::vegetation::impl::filters< H >::make_functor( e );
     if( functor ) { return std::make_pair( functor, true ); }
     COMMA_THROW( comma::exception, "expected filter, got: \"" << comma::join( e, '=' ) << "\"" );
@@ -2706,12 +2743,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         std::pair< functor_type, bool > operator()( const std::string & s ) const
         {
             const std::vector< std::string > & w = comma::split( s, separator_ );
-            std::pair< functor_type, bool > g = make_filter< O, H >::make_filter_functor( comma::split( w[0], equal_sign_ ), get_timestamp_ );
+            std::pair< functor_type, bool > g = make_filter< O, H >::make_filter_functor( comma::split( w[0], equal_sign_ ), get_timestamp_, 1 );
             auto functor = g.first;
             bool parallel = g.second;
             for( unsigned int k = 1; k < w.size(); ++k ) 
             { 
-                auto b = make_filter< O, H >::make_filter_functor( comma::split( w[k], equal_sign_ ), get_timestamp_ );
+                auto b = make_filter< O, H >::make_filter_functor( comma::split( w[k], equal_sign_ ), get_timestamp_, 1 );
                 if( b.second == false ) { parallel = false; } // If any filter must be serial, then turn parallel off
                 functor = boost::bind( b.first , boost::bind( functor, _1 ) ); 
             }
@@ -2797,6 +2834,16 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              composer_t c( m );
              auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
              f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, g.first ), g.second ) );
+        }
+        else if( e[0] == "tee" )
+        {
+             if( e.size() == 1 ) { COMMA_THROW( comma::exception, "tee: please specify tee filters" ); }
+             if( e.size() > 2 ) { COMMA_THROW( comma::exception, "tee: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
+             snark::cv_mat::bitwise::expr result = snark::cv_mat::bitwise::parse( e[1] );
+             maker_t m( get_timestamp, '|', ':' );
+             composer_t c( m );
+             auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
+             f.push_back( filter_type( boost::bind< value_type_t >( &tee_impl_< H >, _1, g.first ), g.second ) );
         }
         else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" || e[0] == "absdiff" )
         {
@@ -2909,23 +2956,6 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         {
             f.push_back( filter_type( max_impl_< H >( boost::lexical_cast< unsigned int >( e[1] ), false ), false ) );
         }
-        else if( e[0] == "view" )
-        {
-            unsigned int delay = e.size() == 1 ? default_delay : boost::lexical_cast< unsigned int >( e[1] );
-            f.push_back( filter_type( boost::bind< value_type_t >( view_impl_< H >(get_timestamp), _1, name, delay ), false ) );
-        }
-        else if( e[0] == "thumb" )
-        {
-            unsigned int cols = 200;
-            unsigned int delay = default_delay;
-            if( e.size() > 1 )
-            {
-                std::vector< std::string > v = comma::split( e[1], ',' );
-                if( v.size() >= 1 ) { cols = boost::lexical_cast< unsigned int >( v[0] ); }
-                if( v.size() >= 2 ) { delay = boost::lexical_cast< unsigned int >( v[1] ); }
-            }
-            f.push_back( filter_type( boost::bind< value_type_t >( thumb_impl_< H >, _1, name, cols, delay ), false ) );
-        }
         else if( e[0] == "encode" )
         {
             if( i < v.size() - 1 )
@@ -3027,13 +3057,13 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                 default: break;
             }
             // They are all parallel=true
-            for( std::string s : filters ) { f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( { s }, get_timestamp ) ) ); }
+            for( std::string s : filters ) { f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( { s }, get_timestamp, default_delay ) ) ); }
         }
         else
         {
-            f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor(e, get_timestamp) ) );
+            f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( e, get_timestamp, default_delay ) ) );
         }
-        modified = e[0] != "view" && e[0] != "thumb" && e[0] != "split" && e[0] !="unpack12";
+        modified = e[0] != "view" && e[0] != "tee" && e[0] != "split" && e[0] !="unpack12"; // do we even need it?
     }
     return f;
 }
@@ -3154,9 +3184,6 @@ static std::string usage_impl_()
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
     oss << "            <maxval>: maximum value to use with the binary and binary_inv thresholding types (default:255)" << std::endl;
     oss << "            <type>: binary, binary_inv, trunc, tozero, tozero_inv (default:binary)" << std::endl;
-    oss << "        thumb[=<cols>[,<wait-interval>]]: view resized image; a convenience for debugging and filter pipeline monitoring" << std::endl;
-    oss << "                                          <cols>: image width in pixels; default: 100" << std::endl;
-    oss << "                                          <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default: 1" << std::endl;
     oss << "        timestamp: write timestamp on images" << std::endl;
     oss << "        transpose: transpose the image (swap rows and columns)" << std::endl;
     oss << "        undistort=<how>: undistort" << std::endl;
@@ -3176,8 +3203,13 @@ static std::string usage_impl_()
     oss << "                                                 > eog original.png" << std::endl;
     oss << "                                                 > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count' | cv-cat --input 'no-header;rows=1280;cols=64;type=ub' 'untile=5,4;encode=png' > untiled.png" << std::endl;
     oss << "                                                 > eog untiled.png" << std::endl;
-    oss << "        view[=<wait-interval>]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
+    oss << "        view[=<wait-interval>[,<name>]]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
     oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
+    oss << "                                <name>: view window name; default: the number of view occurence in the filter string" << std::endl;
+    oss << "            attention! it seems that lately using cv::imshow() in multithreaded context has been broken in opencv or in underlying x window stuff" << std::endl;
+    oss << "                       therefore, unfortunately:" << std::endl;
+    oss << "                           instead of: cv-cat 'view;do-something;view'" << std::endl;
+    oss << "                                  use: cv-cat 'view;do-something' | cv-cat 'view'" << std::endl;
     oss << std::endl;
     oss << "    operations on channels" << std::endl;
     oss << "        clone-channels=<n>: take 1-channel image, output n-channel image, with each channel a copy of the input" << std::endl;
@@ -3226,6 +3258,11 @@ static std::string usage_impl_()
     oss << "                    cat images.bin | cv-cat 'mask=convert-color:BGR,GRAY|threshold=otsu,100' > masked.bin" << std::endl;
     oss << "            masks can use bitwise operations, e.g." << std::endl;
     oss << "                cv-cat \"mask=ratio:(r + b - g)/( 1 + r + b )|convert-to:ub|threshold:4 xor ratio:2./(1.5e1 - g + r)|convert-to:ub|threshold:5\"" << std::endl;
+    oss << std::endl;
+    oss << "        tee=<filters>: run a forked pipeline; pass the image in the main pipeline unchanged" << std::endl;
+    oss << "            examples" << std::endl;
+    oss << "                view modified image" << std::endl;
+    oss << "                    cat images.bin | cv-cat 'tee=resize:0.25|timestamp|view;...'" << std::endl;
     oss << std::endl;
     oss << "        it is the user responsibility to convert data to integer format before applying bitwise combinations" << std::endl;
     oss << std::endl;
@@ -3350,26 +3387,11 @@ static std::string usage_impl_()
 template < typename H >
 const std::string& impl::filters< H >::usage( const std::string & operation )
 {
-    if ( operation.empty() )
-    {
-        static const std::string s = usage_impl_< H >();
-        return s;
-    }
-    else
-    {
-        if ( operation == "ratio" || operation == "linear-combination" )
-        {
-            static const std::string s = snark::cv_mat::ratios::ratio::describe_syntax();
-            return s;
-        }
-        else
-        {
-            static std::string s = "filters: no specific help is available for the '" + operation + "' operation";
-            return s;
-        }
-    }
+    if( operation.empty() ) { static const std::string s = usage_impl_< H >(); return s; }
+    if ( operation == "ratio" || operation == "linear-combination" ) { static const std::string s = snark::cv_mat::ratios::ratio::describe_syntax(); return s; }
+    static std::string s = "filters: no specific help is available for the '" + operation + "' operation";
+    return s;
 }
-
 
 } } // namespace snark{ namespace cv_mat {
 
