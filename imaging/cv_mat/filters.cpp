@@ -601,7 +601,7 @@ class accumulate_impl_
     public:
         typedef typename impl::filters< H >::value_type value_type;
         enum how_values { sliding = 0, fixed = 1 };
-        accumulate_impl_( unsigned int how_many, how_values how, bool reverse ) : how_many_ ( how_many ), how_( how ), count_( 0 ), reverse_( reverse ), initialised_ ( false ) {}
+        accumulate_impl_( unsigned int how_many, how_values how, bool reverse ) : how_many_ ( how_many ), how_( how ), count_( 0 ), reverse_( reverse ), index_( 0 ), initialised_ ( false ) {}
         value_type operator()( value_type input )
         {
             if( !initialised_ )
@@ -611,7 +611,8 @@ class accumulate_impl_
                 h_ = input.second.rows;
                 rows_ = h_ * how_many_;
                 type_ = input.second.type();
-                accumulated_image_ = cv::Mat::zeros( rows_, cols_, type_ );
+                accumulated_image_[0] = cv::Mat::zeros( rows_, cols_, type_ );
+                if( how_ == fixed ) { accumulated_image_[1] = cv::Mat::zeros( rows_, cols_, type_ ); }
                 rect_for_new_data_ = reverse_ ? cv::Rect( 0, rows_ - h_, cols_, h_ ) : cv::Rect( 0, 0, cols_, h_ );
                 rect_for_old_data_ = reverse_ ? cv::Rect( 0, 0, cols_, rows_ - h_ ) : cv::Rect( 0, h_, cols_, rows_ - h_ );
                 rect_to_keep_ = reverse_ ? cv::Rect( 0, h_, cols_, rows_ - h_ ) : cv::Rect( 0, 0, cols_, rows_ - h_ );
@@ -619,7 +620,7 @@ class accumulate_impl_
             if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
             if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
             if( input.second.type() != type_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image of type " << type_ << ", got type " << input.second.type() << " rows"); }
-            value_type output( input.first, cv::Mat( accumulated_image_.size(), accumulated_image_.type() ) );
+            value_type output( input.first, cv::Mat( accumulated_image_[0].size(), accumulated_image_[0].type() ) );
             switch( how_ )
             {
                 case sliding:
@@ -627,17 +628,17 @@ class accumulate_impl_
                     cv::Mat new_data( output.second, rect_for_new_data_ );
                     input.second.copyTo( new_data );
                     cv::Mat old_data( output.second, rect_for_old_data_ );
-                    cv::Mat( accumulated_image_, rect_to_keep_ ).copyTo( old_data );
-                    output.second.copyTo( accumulated_image_ );
+                    cv::Mat( accumulated_image_[0], rect_to_keep_ ).copyTo( old_data );
+                    output.second.copyTo( accumulated_image_[0] );
                     break;
                 }
                 case fixed:
                 {
-                    cv::Mat r( accumulated_image_, cv::Rect( 0, h_ * ( reverse_ ? how_many_ - count_ - 1 : count_ ), cols_, h_ ) );
+                    cv::Mat r( accumulated_image_[index_], cv::Rect( 0, h_ * ( reverse_ ? how_many_ - count_ - 1 : count_ ), cols_, h_ ) );
                     input.second.copyTo( r );
-                    accumulated_image_.copyTo( output.second );
+                    accumulated_image_[ 1 - index_ ].copyTo( output.second );
                     ++count_;
-                    if( count_ == how_many_ ) { count_ = 0; }
+                    if( count_ == how_many_ ) { count_ = 0; index_ = 1 - index_; }
                     break;
                 }
             }
@@ -648,10 +649,11 @@ class accumulate_impl_
         how_values how_;
         unsigned int count_;
         bool reverse_;
+        unsigned int index_;
         bool initialised_;
         int cols_, h_, rows_, type_;
         cv::Rect rect_for_new_data_, rect_for_old_data_, rect_to_keep_;
-        cv::Mat accumulated_image_;
+        std::array< cv::Mat, 2 > accumulated_image_;
 };
 
 template < typename H >
