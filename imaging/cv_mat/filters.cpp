@@ -711,9 +711,17 @@ static typename impl::filters< H >::value_type colour_map_impl_( typename impl::
 template < typename H >
 struct tee_impl_
 {
-    boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) > tee;
-    tee_impl_( const boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) >& tee ): tee( tee ) {}
-    typename impl::filters< H >::value_type operator()( typename impl::filters< H >::value_type m ) { tee( m ); return m; }
+    typedef typename impl::filters< H >::value_type value_type;
+    boost::function< value_type( value_type ) > tee;
+    tee_impl_( const boost::function< value_type( value_type ) >& tee ): tee( tee ) {}
+    value_type operator()( value_type m )
+    { 
+        value_type n;
+        n.first = m.first;
+        m.second.copyTo( n.second );
+        tee( m ).second;
+        return n;
+    }
 };
 
 template < typename H >
