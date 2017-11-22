@@ -601,7 +601,7 @@ class accumulate_impl_
     public:
         typedef typename impl::filters< H >::value_type value_type;
         enum how_values { sliding = 0, fixed = 1 };
-        accumulate_impl_( unsigned int how_many, how_values how ) : how_many_ ( how_many ), how_( how ), count_( 0 ), initialised_ ( false ) {}
+        accumulate_impl_( unsigned int how_many, how_values how, bool reverse ) : how_many_ ( how_many ), how_( how ), count_( 0 ), reverse_( reverse ), initialised_ ( false ) {}
         value_type operator()( value_type input )
         {
             if( !initialised_ )
@@ -612,9 +612,9 @@ class accumulate_impl_
                 rows_ = h_ * how_many_;
                 type_ = input.second.type();
                 accumulated_image_ = cv::Mat::zeros( rows_, cols_, type_ );
-                rect_for_new_data_ = cv::Rect( 0, 0, cols_, h_ );
-                rect_for_old_data_ = cv::Rect( 0, h_, cols_, rows_ - h_ );
-                rect_to_keep_ = cv::Rect( 0, 0, cols_, rows_ - h_ );
+                rect_for_new_data_ = reverse_ ? cv::Rect( 0, rows_ - h_, cols_, h_ ) : cv::Rect( 0, 0, cols_, h_ );
+                rect_for_old_data_ = reverse_ ? cv::Rect( 0, 0, cols_, rows_ - h_ ) : cv::Rect( 0, h_, cols_, rows_ - h_ );
+                rect_to_keep_ = reverse_ ? cv::Rect( 0, h_, cols_, rows_ - h_ ) : cv::Rect( 0, 0, cols_, rows_ - h_ );
             }
             if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
             if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
@@ -633,7 +633,7 @@ class accumulate_impl_
                 }
                 case fixed:
                 {
-                    cv::Mat r( accumulated_image_, cv::Rect( 0, h_ * count_, cols_, h_ ) );
+                    cv::Mat r( accumulated_image_, cv::Rect( 0, h_ * ( reverse_ ? how_many_ - count_ - 1 : count_ ), cols_, h_ ) );
                     input.second.copyTo( r );
                     accumulated_image_.copyTo( output.second );
                     ++count_;
@@ -647,6 +647,7 @@ class accumulate_impl_
         unsigned int how_many_;
         how_values how_;
         unsigned int count_;
+        bool reverse_;
         bool initialised_;
         int cols_, h_, rows_, type_;
         cv::Rect rect_for_new_data_, rect_for_old_data_, rect_to_keep_;
@@ -2152,13 +2153,19 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         unsigned int how_many = boost::lexical_cast< unsigned int >( w[0] );
         if( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
         typename accumulate_impl_< H >::how_values how = accumulate_impl_< H >::sliding;
+        bool reverse = false;
         if( w.size() > 1 )
         {
-            if( w[1] == "sliding" ) { how = accumulate_impl_< H >::sliding; }
+            if( w[1] == "sliding" || w[1].empty() ) { how = accumulate_impl_< H >::sliding; }
             else if( w[1] == "fixed" ) { how = accumulate_impl_< H >::fixed; }
             else { COMMA_THROW( comma::exception, "accumulate: expected <how>, got\"" << w[1] << "\"" ); }
         }
-        return std::make_pair( accumulate_impl_< H >( how_many, how ), false );
+        if( w.size() > 2 )
+        {
+            if( w[2] == "reverse" || w[1].empty() ) { reverse = true; }
+            else { COMMA_THROW( comma::exception, "accumulate: expected reverse, got\"" << w[1] << "\"" ); }
+        }
+        return std::make_pair( accumulate_impl_< H >( how_many, how, reverse ), false );
     }
     if( e[0] == "accumulated" )
     {
@@ -3111,7 +3118,13 @@ static std::string usage_impl_()
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>[,<how>]: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
-    oss << "            <how>: \"sliding\": sliding window; \"fixed\": input image location in the output image is defined by its number modulo <n>; default: \"sliding\"" << std::endl;
+    oss << "            <how>" << std::endl;
+    oss << "                sliding: sliding window" << std::endl;
+    oss << "                fixed: input image location in the output image is defined by its number modulo <n>" << std::endl;
+    oss << "                fixed-reverse: same as fixed, but in the opposite order" << std::endl;
+    oss << "                default: sliding" << std::endl;
+    oss << "                example: run the command line below; press white space key to see image accumulating; try it with fixed or fixed-inverse" << std::endl;
+    oss << "                    > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count;accumulate=20,sliding;view=0;null'" << std::endl;
     oss << "        accumulated=<operation>: apply a pixel-wise operation to the input images" << std::endl;
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
