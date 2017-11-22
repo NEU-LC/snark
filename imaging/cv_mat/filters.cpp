@@ -1077,33 +1077,6 @@ private:
     }
 };
 
-template < typename H >
-static typename impl::filters< H >::value_type thumb_impl_( typename impl::filters< H >::value_type m, std::string name, unsigned int cols = 100, unsigned int delay = 1 )
-{
-    cv::Mat n;
-    unsigned int rows = m.second.rows * ( double( cols ) / m.second.cols );
-    if( rows == 0 ) { rows = 1; }
-    cv::resize( m.second, n, cv::Size( cols, rows ) );
-    cv::imshow( &name[0], n );
-    char c = cv::waitKey( delay );
-    return c == 27 ? typename impl::filters< H >::value_type() : m; // HACK to notify application to exit
-}
-
-template < typename H >
-static typename impl::filters< H >::value_type cross_impl_( typename impl::filters< H >::value_type m, boost::optional< Eigen::Vector2i > xy ) // todo: move to draw
-{
-    if( !xy )
-    {
-        xy = Eigen::Vector2i();
-        xy->x() = m.second.size().width / 2;
-        xy->y() = m.second.size().height / 2;
-    }
-    cv::circle( m.second, cv::Point( xy->x(), xy->y() ), 4, cv::Scalar( 0, 255, 0 ), 1, CV_AA );
-    cv::line( m.second, cv::Point( xy->x(), 0 ), cv::Point( xy->x(), m.second.size().height ), cv::Scalar( 0, 255, 0 ) );
-    cv::line( m.second, cv::Point( 0, xy->y() ), cv::Point( m.second.size().width, xy->y() ), cv::Scalar( 0, 255, 0 ) );
-    return m;
-}
-
 namespace drawing {
 
 struct shape
@@ -1134,6 +1107,18 @@ struct rectangle : public shape
     void draw( cv::Mat m ) const { cv::rectangle( m, upper_left, lower_right, color, thickness, line_type, shift ); }
 };
 
+struct cross : public shape
+{
+    cv::Point centre;
+    cross(): centre( 0, 0 ) {};
+    cross( const cv::Point& centre, const cv::Scalar& color, int thickness = 1, int line_type = 8, int shift = 0 ) : shape( color, thickness, line_type, shift ), centre( centre ) {}
+    void draw( cv::Mat m ) const
+    {
+        cv::line( m, cv::Point( centre.x, 0 ), cv::Point( centre.x, m.size().height ), color, thickness, line_type, shift );
+        cv::line( m, cv::Point( 0, centre.y ), cv::Point( m.size().width, centre.y ), color, thickness, line_type, shift );
+    }
+};
+
 } // namespace drawing {
 
 template < typename H >
@@ -1141,6 +1126,9 @@ static typename impl::filters< H >::value_type circle_impl_( typename impl::filt
 
 template < typename H >
 static typename impl::filters< H >::value_type rectangle_impl_( typename impl::filters< H >::value_type m, const drawing::rectangle& rectangle ) { rectangle.draw( m.second ); return m; }
+
+template < typename H >
+static typename impl::filters< H >::value_type cross_impl_( typename impl::filters< H >::value_type m, const drawing::cross& cross ) { cross.draw( m.second ); return m; }
 
 template < typename H >
 static void encode_impl_check_type( const typename impl::filters< H >::value_type& m, const std::string& type )
@@ -2429,18 +2417,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         COMMA_THROW( comma::exception, "NYI" );
         // use cv::reshape or cv::mixChannels
     }
-    if( e[0] == "cross" )
+    if( e[0] == "cross" ) // todo: quick and dirty, implement using traits
     {
-        boost::optional< Eigen::Vector2i > center;
-        if( e.size() > 1 )
-        {
-            center = Eigen::Vector2i( 0, 0 );
-            std::vector< std::string > s = comma::split( e[1], ',' );
-            if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected cross-hair x,y; got \"" << e[1] << "\"" ); }
-            center->x() = boost::lexical_cast< unsigned int >( s[0] );
-            center->y() = boost::lexical_cast< unsigned int >( s[1] );
-        }
-        return std::make_pair(  boost::bind< value_type_t >( cross_impl_ < H >, _1, center ), true );
+        boost::array< int, 9 > p = {{ 0, 0, 0, 0, 0, 1, 8, 0 }};
+        const std::vector< std::string > v = comma::split( e[1], ',' );
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
+        return std::make_pair( boost::bind< value_type_t >( cross_impl_< H >, _1, drawing::cross( cv::Point( p[0], p[1] ), cv::Scalar( p[4], p[3], p[2] ), p[5], p[6], p[7] ) ), true );
     }
     if( e[0] == "circle" ) // todo: quick and dirty, implement using traits
     {
