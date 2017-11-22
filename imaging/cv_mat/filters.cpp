@@ -600,11 +600,12 @@ class accumulate_impl_
 {
     public:
         typedef typename impl::filters< H >::value_type value_type;
-        accumulate_impl_( unsigned int how_many ) : how_many_ ( how_many ), defined_ ( false ) {}
+        accumulate_impl_( unsigned int how_many ) : how_many_ ( how_many ), initialised_ ( false ) {}
         value_type operator()( value_type input )
         {
-            if( !defined_ )
+            if( !initialised_ )
             {
+                initialised_ = true;
                 cols_ = input.second.cols;
                 h_ = input.second.rows;
                 rows_ = h_ * how_many_;
@@ -613,7 +614,6 @@ class accumulate_impl_
                 rect_for_new_data_ = cv::Rect( 0, 0, cols_, h_ );
                 rect_for_old_data_ = cv::Rect( 0, h_, cols_, rows_ - h_ );
                 rect_to_keep_ = cv::Rect( 0, 0, cols_, rows_ - h_ );
-                defined_ = true;
             }
             if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
             if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
@@ -628,7 +628,7 @@ class accumulate_impl_
         }
     private:
         unsigned int how_many_;
-        bool defined_;
+        bool initialised_;
         int cols_, h_, rows_, type_;
         cv::Rect rect_for_new_data_, rect_for_old_data_, rect_to_keep_;
         cv::Mat accumulated_image_;
@@ -687,16 +687,20 @@ static typename impl::filters< H >::value_type colour_map_impl_( typename impl::
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type tee_impl_( typename impl::filters< H >::value_type m, boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) > tee )
+struct tee_impl_
 {
-    tee( m );
-    return m;
-}
+    boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) > tee;
+    tee_impl_( const boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) >& tee ): tee( tee ) {}
+    typename impl::filters< H >::value_type operator()( typename impl::filters< H >::value_type m ) { tee( m ); return m; }
+};
 
 template < typename H >
-struct mask_impl_ {
+struct mask_impl_
+{
     typedef typename impl::filters< H >::value_type value_type;
-    value_type operator()( value_type m, boost::function< value_type( value_type ) > mask ) // have to pass mask by value, since filter functors may change on call
+    boost::function< value_type( value_type ) > mask;
+    mask_impl_( const boost::function< value_type( value_type ) >& mask ): mask( mask ) {}
+    value_type operator()( value_type m )
     {
         value_type n;
         n.first = m.first;
@@ -708,15 +712,12 @@ struct mask_impl_ {
 };
 
 template < typename H >
-struct bitwise_impl_ {
+struct bitwise_impl_
+{
     typedef typename impl::filters< H >::value_type value_type;
-    value_type operator()( value_type m, boost::function< value_type( value_type ) > operation )
-    {
-        value_type n;
-        n.first = m.first;
-        n.second = operation( m ).second;
-        return n;
-    }
+    boost::function< value_type( value_type ) > operation;
+    bitwise_impl_( const boost::function< value_type( value_type ) >& operation ): operation( operation ) {}
+    value_type operator()( value_type m ) { return value_type( m.first, operation( m ).second ); }
 };
 
 struct blur_t
@@ -2125,6 +2126,12 @@ struct make_filter {
     
 static std::pair< functor_type, bool > make_filter_functor( const std::vector< std::string >& e, const get_timestamp_functor& get_timestamp, unsigned int default_delay )
 {
+    if( e[0] == "accumulate" )
+    {
+        unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
+        if( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
+        return std::make_pair( accumulate_impl_< H >( how_many ), false );
+    }
     if( e[0] == "accumulated" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
@@ -2819,13 +2826,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
     for( std::size_t i = 0; i < v.size(); name += ( i > 0 ? ";" : "" ) + v[i], ++i )
     {
         std::vector< std::string > e = comma::split( v[i], '=' );
-        if( e[0] == "accumulate" )
-        {
-            unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
-            if ( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
-            f.push_back( filter_type( accumulate_impl_< H >( how_many ), false ) );
-        }
-        else if( e[0] == "mask" )
+        if( e[0] == "mask" )
         {
              if( e.size() == 1 ) { COMMA_THROW( comma::exception, "mask: please specify mask filters" ); }
              if( e.size() > 2 ) { COMMA_THROW( comma::exception, "mask: expected 1 parameter; got: " << comma::join( e, '=' ) ); }
@@ -2833,7 +2834,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              maker_t m( get_timestamp, '|', ':' );
              composer_t c( m );
              auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
-             f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >(), _1, g.first ), g.second ) );
+             f.push_back( filter_type( boost::bind< value_type_t >( mask_impl_< H >( g.first ), _1 ), g.second ) );
         }
         else if( e[0] == "tee" )
         {
@@ -2843,7 +2844,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              maker_t m( get_timestamp, '|', ':' );
              composer_t c( m );
              auto g = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
-             f.push_back( filter_type( boost::bind< value_type_t >( &tee_impl_< H >, _1, g.first ), g.second ) );
+             f.push_back( filter_type( boost::bind< value_type_t >( tee_impl_< H >( g.first ), _1 ), g.second ) );
         }
         else if( e[0] == "multiply" || e[0] == "divide" || e[0] == "add" || e[0] == "subtract" || e[0] == "absdiff" )
         {
@@ -2864,7 +2865,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              maker_t m( get_timestamp, '|', ':' );
              composer_t c( m );
              auto operand_filters = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
-             f.push_back( filter_type( boost::bind< value_type_t >( bitwise_impl_< H >(), _1, operand_filters.first ), operand_filters.second ) );
+             f.push_back( filter_type( boost::bind< value_type_t >( bitwise_impl_< H >( operand_filters.first ), _1 ), operand_filters.second ) );
         }
         else if( e[0] == "bayer" ) // kept for backwards-compatibility, use convert-color=BayerBG,BGR etc..
         {
