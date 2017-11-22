@@ -40,8 +40,8 @@ struct traits< snark::vimba::ptp_status >
     {
         v.apply( "t", p.t );
         v.apply( "use_ptp", p.use_ptp );
-        static std::vector<char> buf(20,' ');
-        std::memcpy(&buf[0],p.value.data(),std::min(p.value.size(),buf.size()));
+        std::vector<char> buf(20,'\0');
+        std::memcpy(&buf[0],p.value.data(),std::min(p.value.size()+1,buf.size()));
         v.apply( "value", buf );
     }
 };

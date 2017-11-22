@@ -101,7 +101,7 @@ void usage()
     std::cerr << "    --polar: if present, convert to polar coordinates; default: output waterfall" << std::endl;
     std::cerr << "    --scale=<from>,<to>: min and max for black-to-white gradation; default: 0-255" << std::endl;
     std::cerr << "    --dial,--dial-size=<pixels>: highlight the current position (if --fps present); default: 1" << std::endl;
-    std::cerr << "    --dial,--dial-colour=<colour> | <r>,<g>,<b>: dial colour; default: white" << std::endl;
+    std::cerr << "    --dial-colour=<colour> | <r>,<g>,<b>: dial colour; default: white" << std::endl;
     std::cerr << "    --size=<rows>,<cols>: rows is the number of input rows to accumulate and cols is the width of each row" << std::endl;
     std::cerr << "    --output-options: print output image options and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
