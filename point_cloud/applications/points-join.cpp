@@ -532,7 +532,10 @@ bool find_in_fields( const std::vector<std::string>& fields, const std::vector<s
 {
     for (const auto& s : strings )
     {
-        if ( std::find(fields.begin(),fields.end(),s) != fields.end() ) { return true; }
+        for( const auto& f : fields )
+        {
+            if( f.substr( 0, s.length() ) == s ) { return true; }
+        }
     }
     return false;
 }
@@ -556,8 +559,8 @@ int main( int ac, char** av )
         if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
         const std::vector< std::string >& w = comma::split( stdin_csv.fields, ',' );
-        const std::vector<std::string> corner_strings = { "corners", "corners[0]", "corners[1]", "corners[2]"};
-        const std::vector<std::string> normal_strings = { "normal", "normal/x", "normal/y", "normal/z"};
+        const std::vector<std::string> corner_strings = { "corners" };
+        const std::vector<std::string> normal_strings = { "normal" };
         const std::vector<std::string> block_strings = { "block" };
         bool filter_triangulated = find_in_fields(v, corner_strings);
         use_normal = ( find_in_fields(w, normal_strings) && find_in_fields(v, normal_strings) );
