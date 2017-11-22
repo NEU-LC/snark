@@ -1,5 +1,6 @@
 valid_padding[0]="echo 20170101T000000,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-calc stride --shape=3,2 --padding valid | csv-from-bin t,3ui,6ub | tr \'\\\n\' \';\'"
 valid_padding[1]="echo 20170101T000000,2,3,0,0,1,2,3,4,5 | csv-to-bin t,3ui,6ub | cv-calc stride --shape=2,2 --padding valid | csv-from-bin t,3ui,4ub | tr \'\\\n\' \';\'"
+valid_padding[2]="echo 20170101T000000,3,3,0,0,1,2,3,4,5,6,7,8 | csv-to-bin t,3ui,9ub | cv-calc stride --shape=2,2 --padding valid | csv-from-bin t,3ui,4ub | tr \'\\\n\' \';\'"
 header[0]="echo 20170101T000000,2,3,0,x,y,z,0,1,2,3,4,5 | csv-to-bin t,3ui,3c,6ub | cv-calc stride --shape=2,2 --padding valid --input="binary=t,3ui,3c" | csv-from-bin t,3ui,3c,4ub | tr \'\\\n\' \';\'"
 
 # todo: more testing...
