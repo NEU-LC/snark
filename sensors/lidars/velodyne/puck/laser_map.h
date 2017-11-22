@@ -36,6 +36,7 @@ namespace snark { namespace velodyne { namespace puck {
 class laser_map : public velodyne::laser_map
 {
     std::array<unsigned,16> map;
+    std::array<unsigned,16> reverse_map;
 public:
     laser_map();
     

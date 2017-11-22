@@ -56,6 +56,23 @@ laser_map::laser_map()
     map[11]=13;
     map[13]=14;
     map[15]=15;
+    
+    reverse_map[0]=0;
+    reverse_map[1]=2;
+    reverse_map[2]=4;
+    reverse_map[3]=6;
+    reverse_map[4]=8;
+    reverse_map[5]=10;
+    reverse_map[6]=12;
+    reverse_map[7]=14;
+    reverse_map[8]=1;
+    reverse_map[9]=3;
+    reverse_map[10]=5;
+    reverse_map[11]=7;
+    reverse_map[12]=9;
+    reverse_map[13]=11;
+    reverse_map[14]=13;
+    reverse_map[15]=15;
 }
  
 unsigned int laser_map::id_to_index( unsigned int id ) const
@@ -73,14 +90,15 @@ unsigned int laser_map::id_to_index( unsigned int id ) const
 
 unsigned int laser_map::index_to_id( unsigned int index ) const
 {
-    if(index>7)
-    {
-        return (index-8)*2+1;
-    }
-    else
-    {
-        return index*2;
-    }
+//     if(index>7)
+//     {
+//         return (index-8)*2+1;
+//     }
+//     else
+//     {
+//         return index*2;
+//     }
+    return reverse_map[index];
 }
     
 } } } // namespace snark { namespace velodyne { namespace puck {
