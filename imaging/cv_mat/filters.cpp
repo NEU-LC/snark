@@ -600,7 +600,8 @@ class accumulate_impl_
 {
     public:
         typedef typename impl::filters< H >::value_type value_type;
-        accumulate_impl_( unsigned int how_many ) : how_many_ ( how_many ), initialised_ ( false ) {}
+        enum how_values { sliding = 0, fixed = 1 };
+        accumulate_impl_( unsigned int how_many, how_values how, bool reverse ) : how_many_ ( how_many ), how_( how ), count_( 0 ), reverse_( reverse ), index_( 0 ), initialised_ ( false ) {}
         value_type operator()( value_type input )
         {
             if( !initialised_ )
@@ -610,28 +611,49 @@ class accumulate_impl_
                 h_ = input.second.rows;
                 rows_ = h_ * how_many_;
                 type_ = input.second.type();
-                accumulated_image_ = cv::Mat::zeros( rows_, cols_, type_ );
-                rect_for_new_data_ = cv::Rect( 0, 0, cols_, h_ );
-                rect_for_old_data_ = cv::Rect( 0, h_, cols_, rows_ - h_ );
-                rect_to_keep_ = cv::Rect( 0, 0, cols_, rows_ - h_ );
+                accumulated_image_[0] = cv::Mat::zeros( rows_, cols_, type_ );
+                if( how_ == fixed ) { accumulated_image_[1] = cv::Mat::zeros( rows_, cols_, type_ ); }
+                rect_for_new_data_ = reverse_ ? cv::Rect( 0, rows_ - h_, cols_, h_ ) : cv::Rect( 0, 0, cols_, h_ );
+                rect_for_old_data_ = reverse_ ? cv::Rect( 0, 0, cols_, rows_ - h_ ) : cv::Rect( 0, h_, cols_, rows_ - h_ );
+                rect_to_keep_ = reverse_ ? cv::Rect( 0, h_, cols_, rows_ - h_ ) : cv::Rect( 0, 0, cols_, rows_ - h_ );
             }
             if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
             if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
             if( input.second.type() != type_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image of type " << type_ << ", got type " << input.second.type() << " rows"); }
-            value_type output( input.first, cv::Mat( accumulated_image_.size(), accumulated_image_.type() ) );
-            cv::Mat new_data( output.second, rect_for_new_data_ );
-            input.second.copyTo( new_data );
-            cv::Mat old_data( output.second, rect_for_old_data_ );
-            cv::Mat( accumulated_image_, rect_to_keep_ ).copyTo( old_data );
-            output.second.copyTo( accumulated_image_ );
+            value_type output( input.first, cv::Mat( accumulated_image_[0].size(), accumulated_image_[0].type() ) );
+            switch( how_ )
+            {
+                case sliding:
+                {
+                    cv::Mat new_data( output.second, rect_for_new_data_ );
+                    input.second.copyTo( new_data );
+                    cv::Mat old_data( output.second, rect_for_old_data_ );
+                    cv::Mat( accumulated_image_[0], rect_to_keep_ ).copyTo( old_data );
+                    output.second.copyTo( accumulated_image_[0] );
+                    break;
+                }
+                case fixed:
+                {
+                    cv::Mat r( accumulated_image_[index_], cv::Rect( 0, h_ * ( reverse_ ? how_many_ - count_ - 1 : count_ ), cols_, h_ ) );
+                    input.second.copyTo( r );
+                    accumulated_image_[ 1 - index_ ].copyTo( output.second );
+                    ++count_;
+                    if( count_ == how_many_ ) { count_ = 0; index_ = 1 - index_; }
+                    break;
+                }
+            }
             return output;
         }
     private:
         unsigned int how_many_;
+        how_values how_;
+        unsigned int count_;
+        bool reverse_;
+        unsigned int index_;
         bool initialised_;
         int cols_, h_, rows_, type_;
         cv::Rect rect_for_new_data_, rect_for_old_data_, rect_to_keep_;
-        cv::Mat accumulated_image_;
+        std::array< cv::Mat, 2 > accumulated_image_;
 };
 
 template < typename H >
@@ -689,9 +711,17 @@ static typename impl::filters< H >::value_type colour_map_impl_( typename impl::
 template < typename H >
 struct tee_impl_
 {
-    boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) > tee;
-    tee_impl_( const boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) >& tee ): tee( tee ) {}
-    typename impl::filters< H >::value_type operator()( typename impl::filters< H >::value_type m ) { tee( m ); return m; }
+    typedef typename impl::filters< H >::value_type value_type;
+    boost::function< value_type( value_type ) > tee;
+    tee_impl_( const boost::function< value_type( value_type ) >& tee ): tee( tee ) {}
+    value_type operator()( value_type m )
+    { 
+        value_type n;
+        n.first = m.first;
+        m.second.copyTo( n.second );
+        tee( m ).second;
+        return n;
+    }
 };
 
 template < typename H >
@@ -1055,33 +1085,6 @@ private:
     }
 };
 
-template < typename H >
-static typename impl::filters< H >::value_type thumb_impl_( typename impl::filters< H >::value_type m, std::string name, unsigned int cols = 100, unsigned int delay = 1 )
-{
-    cv::Mat n;
-    unsigned int rows = m.second.rows * ( double( cols ) / m.second.cols );
-    if( rows == 0 ) { rows = 1; }
-    cv::resize( m.second, n, cv::Size( cols, rows ) );
-    cv::imshow( &name[0], n );
-    char c = cv::waitKey( delay );
-    return c == 27 ? typename impl::filters< H >::value_type() : m; // HACK to notify application to exit
-}
-
-template < typename H >
-static typename impl::filters< H >::value_type cross_impl_( typename impl::filters< H >::value_type m, boost::optional< Eigen::Vector2i > xy ) // todo: move to draw
-{
-    if( !xy )
-    {
-        xy = Eigen::Vector2i();
-        xy->x() = m.second.size().width / 2;
-        xy->y() = m.second.size().height / 2;
-    }
-    cv::circle( m.second, cv::Point( xy->x(), xy->y() ), 4, cv::Scalar( 0, 255, 0 ), 1, CV_AA );
-    cv::line( m.second, cv::Point( xy->x(), 0 ), cv::Point( xy->x(), m.second.size().height ), cv::Scalar( 0, 255, 0 ) );
-    cv::line( m.second, cv::Point( 0, xy->y() ), cv::Point( m.second.size().width, xy->y() ), cv::Scalar( 0, 255, 0 ) );
-    return m;
-}
-
 namespace drawing {
 
 struct shape
@@ -1112,6 +1115,18 @@ struct rectangle : public shape
     void draw( cv::Mat m ) const { cv::rectangle( m, upper_left, lower_right, color, thickness, line_type, shift ); }
 };
 
+struct cross : public shape
+{
+    cv::Point centre;
+    cross(): centre( 0, 0 ) {};
+    cross( const cv::Point& centre, const cv::Scalar& color, int thickness = 1, int line_type = 8, int shift = 0 ) : shape( color, thickness, line_type, shift ), centre( centre ) {}
+    void draw( cv::Mat m ) const
+    {
+        cv::line( m, cv::Point( centre.x, 0 ), cv::Point( centre.x, m.size().height ), color, thickness, line_type, shift );
+        cv::line( m, cv::Point( 0, centre.y ), cv::Point( m.size().width, centre.y ), color, thickness, line_type, shift );
+    }
+};
+
 } // namespace drawing {
 
 template < typename H >
@@ -1119,6 +1134,9 @@ static typename impl::filters< H >::value_type circle_impl_( typename impl::filt
 
 template < typename H >
 static typename impl::filters< H >::value_type rectangle_impl_( typename impl::filters< H >::value_type m, const drawing::rectangle& rectangle ) { rectangle.draw( m.second ); return m; }
+
+template < typename H >
+static typename impl::filters< H >::value_type cross_impl_( typename impl::filters< H >::value_type m, const drawing::cross& cross ) { cross.draw( m.second ); return m; }
 
 template < typename H >
 static void encode_impl_check_type( const typename impl::filters< H >::value_type& m, const std::string& type )
@@ -2128,9 +2146,24 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
 {
     if( e[0] == "accumulate" )
     {
-        unsigned int how_many = boost::lexical_cast< unsigned int >( e[1] );
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulate: please specify at least <size>" ); }
+        const auto& w = comma::split( e[1], ',' );
+        unsigned int how_many = boost::lexical_cast< unsigned int >( w[0] );
         if( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
-        return std::make_pair( accumulate_impl_< H >( how_many ), false );
+        typename accumulate_impl_< H >::how_values how = accumulate_impl_< H >::sliding;
+        bool reverse = false;
+        if( w.size() > 1 )
+        {
+            if( w[1] == "sliding" || w[1].empty() ) { how = accumulate_impl_< H >::sliding; }
+            else if( w[1] == "fixed" ) { how = accumulate_impl_< H >::fixed; }
+            else { COMMA_THROW( comma::exception, "accumulate: expected <how>, got\"" << w[1] << "\"" ); }
+        }
+        if( w.size() > 2 )
+        {
+            if( w[2] == "reverse" || w[1].empty() ) { reverse = true; }
+            else { COMMA_THROW( comma::exception, "accumulate: expected reverse, got\"" << w[1] << "\"" ); }
+        }
+        return std::make_pair( accumulate_impl_< H >( how_many, how, reverse ), false );
     }
     if( e[0] == "accumulated" )
     {
@@ -2392,18 +2425,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         COMMA_THROW( comma::exception, "NYI" );
         // use cv::reshape or cv::mixChannels
     }
-    if( e[0] == "cross" )
+    if( e[0] == "cross" ) // todo: quick and dirty, implement using traits
     {
-        boost::optional< Eigen::Vector2i > center;
-        if( e.size() > 1 )
-        {
-            center = Eigen::Vector2i( 0, 0 );
-            std::vector< std::string > s = comma::split( e[1], ',' );
-            if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected cross-hair x,y; got \"" << e[1] << "\"" ); }
-            center->x() = boost::lexical_cast< unsigned int >( s[0] );
-            center->y() = boost::lexical_cast< unsigned int >( s[1] );
-        }
-        return std::make_pair(  boost::bind< value_type_t >( cross_impl_ < H >, _1, center ), true );
+        boost::array< int, 9 > p = {{ 0, 0, 0, 0, 0, 1, 8, 0 }};
+        const std::vector< std::string > v = comma::split( e[1], ',' );
+        for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
+        return std::make_pair( boost::bind< value_type_t >( cross_impl_< H >, _1, drawing::cross( cv::Point( p[0], p[1] ), cv::Scalar( p[4], p[3], p[2] ), p[5], p[6], p[7] ) ), true );
     }
     if( e[0] == "circle" ) // todo: quick and dirty, implement using traits
     {
@@ -3081,8 +3108,15 @@ static std::string usage_impl_()
 {
     std::ostringstream oss;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
-    oss << "        accumulate=<n>: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
+    oss << "        accumulate=<n>[,<how>]: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
+    oss << "            <how>" << std::endl;
+    oss << "                sliding: sliding window" << std::endl;
+    oss << "                fixed: input image location in the output image is defined by its number modulo <n>" << std::endl;
+    oss << "                fixed-reverse: same as fixed, but in the opposite order" << std::endl;
+    oss << "                default: sliding" << std::endl;
+    oss << "                example: run the command line below; press white space key to see image accumulating; try it with fixed or fixed-inverse" << std::endl;
+    oss << "                    > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count;accumulate=20,sliding;view=0;null'" << std::endl;
     oss << "        accumulated=<operation>: apply a pixel-wise operation to the input images" << std::endl;
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
