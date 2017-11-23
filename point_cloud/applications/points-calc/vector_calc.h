@@ -45,6 +45,11 @@ struct vector_calc
         std::cerr << "        common options:" << std::endl;
         std::cerr << "            --input-fields: print input field names and exit" << std::endl;
         std::cerr << std::endl;
+        std::cerr << "        add: add two vectors: v + u " << std::endl;
+        std::cerr << "            input fields: v, u" << std::endl;
+        std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
+        std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
+        std::cerr << std::endl;
         std::cerr << "        cross: calculate vector cross product; output: vector" << std::endl;
         std::cerr << "            input fields: v, u" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
@@ -61,6 +66,17 @@ struct vector_calc
         std::cerr << "            --invert: calculate invert of norm;" << std::endl;
         std::cerr << "                      use with --square for invert of norm square" << std::endl;
         std::cerr << std::endl;
+        std::cerr << "        normal: calculate normal vector given three points as: (w-v) x (u-v)" << std::endl;
+        std::cerr << "            input fields: v, u, w" << std::endl;
+        std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
+        std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
+        std::cerr << "            --w=<x>,<y>,<z>: default value for vector 3" << std::endl;
+        std::cerr << "            --unit,--normalize: normalize the output to unit length" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "        normalize: calculate normalized vector" << std::endl;
+        std::cerr << "            input fields:  x,y,z" << std::endl;
+        std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
+        std::cerr << std::endl;
         std::cerr << "        scale: calculate multiplication of scalar and vector;output vector" << std::endl;
         std::cerr << "            input fields:  v,a (scalar)" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
@@ -68,26 +84,10 @@ struct vector_calc
         std::cerr << "            --invert: invert the scalar first and then multiply it by vector" << std::endl;
         std::cerr << "                      i.e. (1/a)*v" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "        normalize: calculate normalized vector" << std::endl;
-        std::cerr << "            input fields:  x,y,z" << std::endl;
-        std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
-        std::cerr << std::endl;
-        std::cerr << "        add: add two vectors: v + u " << std::endl;
-        std::cerr << "            input fields: v, u" << std::endl;
-        std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
-        std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
-        std::cerr << std::endl;
         std::cerr << "        subtract: subtract two vectors: u - v " << std::endl;
         std::cerr << "            input fields: v, u" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
         std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
-        std::cerr << std::endl;
-        std::cerr << "        normal: calculate normal vector given three points as: (w-v) x (u-v)" << std::endl;
-        std::cerr << "            input fields: v, u, w" << std::endl;
-        std::cerr << "            --v=<x>,<y>,<z>: default value for vector 1" << std::endl;
-        std::cerr << "            --u=<x>,<y>,<z>: default value for vector 2" << std::endl;
-        std::cerr << "            --w=<x>,<y>,<z>: default value for vector 3" << std::endl;
-        std::cerr << "            --unit: normalize the output to unit length" << std::endl;
         std::cerr << std::endl;
     }
     static void usage_list_operations()
@@ -184,7 +184,7 @@ struct vector_calc
             Eigen::Vector3d v_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
             Eigen::Vector3d u_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--u",  "0,0,0"));
             Eigen::Vector3d w_default=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--w",  "0,0,0"));
-            vector_calc::normal(v_default,u_default,w_default,options.exists("--unit")).run(csv);
+            vector_calc::normal(v_default,u_default,w_default,options.exists("--unit,--normalize")).run(csv);
             return;
         }
         COMMA_THROW( comma::exception, "vector_calc operation not supported :" << operation );
