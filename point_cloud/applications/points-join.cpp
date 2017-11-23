@@ -534,7 +534,7 @@ bool find_in_fields( const std::vector<std::string>& fields, const std::vector<s
     {
         for( const auto& f : fields )
         {
-            if( f.substr( 0, s.length() ) == s ) { return true; }
+            if( comma::split( f, "[/" )[0] == s ) { return true; }
         }
     }
     return false;
