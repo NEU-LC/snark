@@ -9,6 +9,7 @@ set( build_snark_graphics_test_pattern "TRUE" )
 
 if( NOT Qt3D_VERSION EQUAL 1 )
     set( build_label_points "FALSE" )
+    message( WARNING "\nQt ${snark_qt_version} doesn't support Qt3D lib\nlabel-points build is disabled" )
 endif()
 
 # This gets rid of an annoying conflict between windows macros and std::numeric_limits::max and min
