@@ -9,15 +9,21 @@ import traceback
 from sensor_msgs.msg import Image
 from snark.imaging import cv_image
 import cv2
+import rosbag
 
 help_description='listen to a ros topic for raw image and write it in cv format to stdout'
 help_example="""
 example
+  read from published ros topic and output image
     ros-to-image /camera/rgb/image_color | cv-cat "timestamp;view;null"
+
+  read from rosbags and output image
+    ros-to-image /camera/rgb/image_color /log/*.bag | cv-cat "timestamp;view;null"
 
 """
 parser=argparse.ArgumentParser(description=help_description,epilog=help_example,formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument('topic',help='topic to listen to')
+parser.add_argument('bags', metavar='BAGFILE', nargs='*', help='read messages from bag files')
 parser.add_argument('--flush',help='flush stdout after each image frame write',action='store_true')
 args=parser.parse_args()
 
@@ -72,7 +78,7 @@ encoding_map={
 
 shutdown=False
 
-def callback(msg):
+def message_to_image(msg):
     global shutdown
     global args
     try:
@@ -100,9 +106,15 @@ def callback(msg):
         sys.stderr.write("exception!\n")
         traceback.print_exc()
         
-    
-rospy.init_node('listener',anonymous=True,disable_signals=True)
-subscription=rospy.Subscriber(args.topic,Image,callback)
-while not shutdown:
-    time.sleep(0.001)
-rospy.signal_shutdown('shutdown')
+if len(args.bags):
+    for bagfile in args.bags:
+        with rosbag.Bag(bagfile) as bag:
+            for topic, msg, t in bag.read_messages(topics=args.topic):
+                if shutdown: exit(0)
+                message_to_image(msg)
+else:
+    rospy.init_node('listener',anonymous=True,disable_signals=True)
+    subscription = rospy.Subscriber(args.topic, Image, message_to_image)
+    while not shutdown:
+        time.sleep(0.001)
+    rospy.signal_shutdown('shutdown')
