@@ -60,6 +60,7 @@ Viewer::Viewer( const std::vector< comma::csv::options >& options
     , m_labelDuplicated( labelDuplicated )
     , verbose_( verbose )
 {
+    scale_near_plane=true;
     // quick and dirty, since otherwise dataset construction throws on a separate thread on non-existing file and then segfaults on exit
     for( std::size_t i = 0; i < m_options.size(); ++i )
     {
@@ -198,7 +199,8 @@ boost::optional< point_and_id > Viewer::pointSelection( const QPoint& point, boo
         if( m_offset ) { p += *m_offset; }
         if( !output_with_id ) { m_output_stream.write( PointWithId( p ) ); }
         std::cerr << " clicked point " << std::setprecision( 12 ) << p.transpose() << std::endl;
-        snark::math::closed_interval< double, 3 > e( p - Eigen::Vector3d::Ones(), p + Eigen::Vector3d::Ones() );
+        double d1=std::max(1.0,scene_radius()/100);
+        snark::math::closed_interval< double, 3 > e( p - Eigen::Vector3d(d1,d1,d1), p + Eigen::Vector3d(d1,d1,d1) );
         double minDistanceSquare = std::numeric_limits< double >::max();
         for( std::size_t i = 0; i < m_datasets.size(); ++i )
         {
@@ -220,6 +222,12 @@ boost::optional< point_and_id > Viewer::pointSelection( const QPoint& point, boo
                 if( verbose_ ) { std::cerr << " found point: " << std::setprecision( 12 ) << result->first.transpose() << "; id: " << result->second << std::endl; }
                 return result;
             }
+        }
+        if( minDistanceSquare <= 0.01*scene_radius() )
+        {
+            if( output_with_id ) { m_output_stream.write( PointWithId( *result ) ); }
+            if( verbose_ ) { std::cerr << " found point: " << std::setprecision( 12 ) << result->first.transpose() << "; id: " << result->second << std::endl; }
+            return result;
         }
     }
     return boost::optional< point_and_id >();

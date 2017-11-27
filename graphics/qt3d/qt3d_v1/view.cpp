@@ -53,6 +53,7 @@ view::view( const QColor4ub& background_color
     , m_sceneCenter( scene_center ? *scene_center : QVector3D( 0, 0, 0 ) )
     , scene_center_fixed_( scene_center )
     , m_z_up( camera_options.z_is_up )
+    , scale_near_plane(false)
     , scene_radius_( scene_radius ? *scene_radius : default_scene_radius )
     , scene_radius_fixed_( scene_radius )
     , m_revolve( 0, 0, 0 )
@@ -72,6 +73,11 @@ void view::updateZFar()
 {
     double zFar = ( camera()->eye() - camera()->center() ).length() + 2 * scene_radius_;
     camera()->setFarPlane( zFar );
+    if(scale_near_plane)
+    {
+        double nearPlane=std::max(zFar-2.7*scene_radius_-10,0.01);
+        camera()->setNearPlane(nearPlane);
+    }
 }
 
 /// update the scene radius and center to display the region between @param min and @param max

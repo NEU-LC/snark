@@ -86,6 +86,7 @@ protected:
     bool scene_center_fixed_;
     bool m_z_up;
     boost::optional< Eigen::Vector3d > m_offset;
+    bool scale_near_plane;
 
 private:
     boost::optional< QPoint > m_startPan;
