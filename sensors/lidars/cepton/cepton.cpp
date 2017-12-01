@@ -69,9 +69,13 @@ device::device(bool disable_image_clip,bool disable_distance_clip) : attached_(f
     if(instance_) { COMMA_THROW( comma::exception, "only one instance of cepton::device can be constructed"); }
     instance_=this;
 
-    uint16_t publish_port = 8808;
-    cepton_sdk_set_ports( &publish_port, 1 );
-    comma::verbose << "publishing on port " << publish_port << std::endl;
+    // By default the sdk listens on ports 8808 and 2368, however the unit that
+    // we have only transmits on port 8808 and port 2368 is used by the Velodyne
+    // Puck. When this application opens port 2368 we can read the Puck, so we
+    // make sure it only opens 8808. TODO: make this configurable
+    uint16_t listen_port = 8808;
+    cepton_sdk_set_ports( &listen_port, 1 );
+    comma::verbose << "listening on port " << listen_port << std::endl;
     
     uint32_t control_flags= 
         (disable_image_clip ? CEPTON_SDK_CONTROL_DISABLE_IMAGE_CLIP : 0) | 
