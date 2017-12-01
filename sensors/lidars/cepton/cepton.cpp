@@ -66,6 +66,7 @@ void device::on_event(int error_code, CeptonSensorHandle sensor, struct CeptonSe
 
 device::device(bool disable_image_clip,bool disable_distance_clip) : attached_(false)
 {
+    int err;
     if(instance_) { COMMA_THROW( comma::exception, "only one instance of cepton::device can be constructed"); }
     instance_=this;
 
@@ -74,13 +75,14 @@ device::device(bool disable_image_clip,bool disable_distance_clip) : attached_(f
     // Puck. When this application opens port 2368 we can read the Puck, so we
     // make sure it only opens 8808. TODO: make this configurable
     uint16_t listen_port = 8808;
-    cepton_sdk_set_ports( &listen_port, 1 );
     comma::verbose << "listening on port " << listen_port << std::endl;
-    
+    err = cepton_sdk_set_ports( &listen_port, 1 );
+    if( err != CEPTON_SUCCESS ) { COMMA_THROW( comma::exception, "cepton_sdk_set_ports failed: " << cepton_get_error_code_name( err )); }
+
     uint32_t control_flags= 
         (disable_image_clip ? CEPTON_SDK_CONTROL_DISABLE_IMAGE_CLIP : 0) | 
         (disable_distance_clip ? CEPTON_SDK_CONTROL_DISABLE_DISTANCE_CLIP : 0);
-    int err=cepton_sdk_initialize(CEPTON_SDK_VERSION,control_flags,&device::on_event);
+    err=cepton_sdk_initialize(CEPTON_SDK_VERSION,control_flags,&device::on_event);
     if (err != CEPTON_SUCCESS) { COMMA_THROW(comma::exception,"cepton_sdk_initialize failed: "<<cepton_get_error_code_name(err)); }
     comma::verbose<<"cepton init "<<err<<std::endl;
     for(int i=0;i<40&&!attached_;i++)
