@@ -64,20 +64,23 @@ void device::on_event(int error_code, CeptonSensorHandle sensor, struct CeptonSe
     comma::verbose<<"cepton on_event "<<event<<" "<<error_code<<std::endl;
 }
 
-device::device(bool disable_image_clip,bool disable_distance_clip) : attached_(false)
+device::device( boost::optional< uint16_t > port, bool disable_image_clip, bool disable_distance_clip )
+    : attached_( false )
 {
     int err;
     if(instance_) { COMMA_THROW( comma::exception, "only one instance of cepton::device can be constructed"); }
     instance_=this;
 
-    // By default the sdk listens on ports 8808 and 2368, however the unit that
-    // we have only transmits on port 8808 and port 2368 is used by the Velodyne
-    // Puck. When this application opens port 2368 we can read the Puck, so we
-    // make sure it only opens 8808. TODO: make this configurable
-    uint16_t listen_port = 8808;
-    comma::verbose << "listening on port " << listen_port << std::endl;
-    err = cepton_sdk_set_ports( &listen_port, 1 );
-    if( err != CEPTON_SUCCESS ) { COMMA_THROW( comma::exception, "cepton_sdk_set_ports failed: " << cepton_get_error_code_name( err )); }
+    // By default the sdk listens on ports 8808 and 2368, however the device
+    // only transmits on a single port (typically 8808). To avoid clashes with
+    // other devices (e.g. the Velodyne Puck which transmits on port 2368) use
+    // the --port option to open only the required port.
+    if( port )
+    {
+        comma::verbose << "listening on port " << *port << std::endl;
+        err = cepton_sdk_set_ports( &*port, 1 );
+        if( err != CEPTON_SUCCESS ) { COMMA_THROW( comma::exception, "cepton_sdk_set_ports failed: " << cepton_get_error_code_name( err )); }
+    }
 
     uint32_t control_flags= 
         (disable_image_clip ? CEPTON_SDK_CONTROL_DISABLE_IMAGE_CLIP : 0) | 

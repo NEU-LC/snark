@@ -52,6 +52,7 @@ void usage(bool detail)
     std::cerr << "    --output-format: print output format and exit"<<std::endl;
     std::cerr << "    --output-fields: print output fields and exit"<<std::endl;
     std::cerr << "    --list: get list of cepton devices and sensor information"<<std::endl;
+    std::cerr << "    --port=[<device-port>]: override sdk default" << std::endl;
     std::cerr << "    --disable-image-clip: disable clipping image field of view"<<std::endl;
     std::cerr << "    --disable-distance-clip: disable clipping distance"<<std::endl;
     std::cerr << "    --frames-per-block=<n>: accumulate <n> frames per block, default 1"<<std::endl;
@@ -93,9 +94,10 @@ struct list_app : public app_t<CeptonSensorInformation>
 {
     comma::csv::output_stream<CeptonSensorInformation> os;
     snark::cepton::device device;
-    list_app(const comma::command_line_options& options):os(std::cout,comma::csv::options(options))
+    list_app( const comma::command_line_options& options ) :
+        os( std::cout, comma::csv::options( options )),
+        device( options.optional< uint16_t >( "--port" ))
     {
-        
     }
     void process()
     {
@@ -117,7 +119,9 @@ struct app : public app_t<snark::cepton::point_t>
     bool system_time;
     app(const comma::command_line_options& options) : 
         all_good(true), os(std::cout,comma::csv::options(options)),
-        device(options.exists("--disable-image-clip"),options.exists("--disable-distance-clip")),
+        device( options.optional< uint16_t >( "--port" )
+              , options.exists( "--disable-image-clip" )
+              , options.exists( "--disable-distance-clip" )),
         frames_per_block(options.value<unsigned>("--frames-per-block",1)),
         system_time(options.exists("--system-time"))
     {
