@@ -1151,6 +1151,21 @@ static void show_config( Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber )
     std::cerr << "basler-cat: max buffer size: " << grabber.MaxBufferSize() << " bytes" << std::endl;
 }
 
+boost::scoped_ptr< snark::tbb::bursty_reader< pair_t > > simple_reader;
+boost::scoped_ptr< snark::tbb::bursty_reader< chunk_pair_t > > chunky_reader;
+
+template< typename T >
+struct reader_type{ typedef snark::tbb::bursty_reader< T >* type; };
+
+template< typename T >
+typename reader_type< T >::type get_reader();
+
+template<>
+typename reader_type< pair_t >::type get_reader< pair_t >() { return simple_reader.get(); }
+
+template<>
+typename reader_type< chunk_pair_t >::type get_reader< chunk_pair_t >() { return chunky_reader.get(); }
+
 template < typename T, typename P >
 static P capture( T& camera, typename T::StreamGrabber_t& grabber )
 {
@@ -1172,7 +1187,14 @@ static P capture( T& camera, typename T::StreamGrabber_t& grabber )
     for( unsigned int i = 0; i < retries; ++i )
     {
         static comma::signal_flag is_shutdown;
-        if( is_shutdown ) { return P(); }
+        if( is_shutdown )
+        {
+            comma::verbose << "caught signal" << std::endl;
+            comma::verbose << "stopping reader" << std::endl;
+            get_reader< P >()->stop();
+            comma::verbose << "reader stopped" << std::endl;
+            return P();
+        }
         Pylon::GrabResult result;
         //camera.AcquisitionStart(); // acquire single image (since acquisition mode set so)
         if( !grabber.GetWaitObject().Wait( timeout ) ) // quick and dirty: arbitrary timeout
@@ -1238,31 +1260,48 @@ static void write( const chunk_pair_t& p )
     std::cout.flush();
 }
 
-static bool run_chunk_pipeline( Pylon::CBaslerGigECamera& camera, Pylon::CBaslerGigECamera::StreamGrabber_t& grabber, unsigned int max_queue_size, unsigned int max_queue_capacity )
+static bool run_chunk_pipeline( Pylon::CBaslerGigECamera& camera
+                              , Pylon::CBaslerGigECamera::StreamGrabber_t& grabber
+                              , unsigned int max_queue_size
+                              , unsigned int max_queue_capacity )
 {
-    snark::tbb::bursty_reader< chunk_pair_t > reader( boost::bind( &capture< Pylon::CBaslerGigECamera, chunk_pair_t >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
+    chunky_reader.reset( new snark::tbb::bursty_reader< chunk_pair_t >
+                           ( boost::bind( &capture< Pylon::CBaslerGigECamera, chunk_pair_t >
+                                        , boost::ref( camera )
+                                        , boost::ref( grabber ))
+                           , max_queue_size, max_queue_capacity ));
     tbb::filter_t< chunk_pair_t, void > writer( tbb::filter::serial_in_order, boost::bind( &write, _1 ));
     snark::tbb::bursty_pipeline< chunk_pair_t > pipeline;
     camera.AcquisitionStart();
     comma::verbose << "running in chunk mode..." << std::endl;
-    pipeline.run( reader, writer );
+    pipeline.run( *chunky_reader, writer );
     comma::verbose << "shutting down..." << std::endl;
     camera.AcquisitionStop();
     comma::verbose << "acquisition stopped" << std::endl;
-    reader.join();
+    chunky_reader->join();
     camera.DestroyChunkParser( parser );
     return true;
 }
 
-static bool run_chunk_pipeline( Pylon::CBaslerUsbCamera& camera, Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber, unsigned int max_queue_size, unsigned int max_queue_capacity ) { COMMA_THROW( comma::exception, "chunk mode not supported for USB cameras" ); }
+static bool run_chunk_pipeline( Pylon::CBaslerUsbCamera& camera
+                              , Pylon::CBaslerUsbCamera::StreamGrabber_t& grabber
+                              , unsigned int max_queue_size
+                              , unsigned int max_queue_capacity )
+{
+    COMMA_THROW( comma::exception, "chunk mode not supported for USB cameras" );
+}
 
 template< typename C, typename G >
 static bool run_simple_pipeline( C& camera, G& grabber, unsigned int max_queue_size, unsigned int max_queue_capacity )
 {
     bool error = false;
     snark::cv_mat::serialization serialization( cv_mat_options );
-    snark::tbb::bursty_reader< pair_t > reader( boost::bind( &capture< C, pair_t >, boost::ref( camera ), boost::ref( grabber ) ), max_queue_size, max_queue_capacity );
-    snark::imaging::applications::pipeline pipeline( serialization, filters, reader );
+    simple_reader.reset( new snark::tbb::bursty_reader< pair_t >
+                           ( boost::bind( &capture< C, pair_t >
+                                        , boost::ref( camera )
+                                        , boost::ref( grabber ))
+                           , max_queue_size, max_queue_capacity ));
+    snark::imaging::applications::pipeline pipeline( serialization, filters, *simple_reader );
     camera.AcquisitionStart();
     comma::verbose << "running..." << std::endl;
     pipeline.run();
@@ -1270,7 +1309,7 @@ static bool run_simple_pipeline( C& camera, G& grabber, unsigned int max_queue_s
     comma::verbose << "shutting down..." << std::endl;
     camera.AcquisitionStop();
     comma::verbose << "acquisition stopped" << std::endl;
-    reader.join();
+    simple_reader->join();
     return !error;
 }
 
