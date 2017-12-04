@@ -33,6 +33,7 @@
 
 #include "cepton_sdk.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/optional.hpp>
 #include <Eigen/Core>
 
 namespace snark { namespace cepton {
@@ -54,7 +55,9 @@ struct point_t
 class device
 {
 public:
-    device(bool disable_image_clip=false, bool disable_distance_clip=false);
+    device( boost::optional< uint16_t > port
+          , bool disable_image_clip=false
+          , bool disable_distance_clip=false);
     ~device();
     
     // cepton device information as iterator
