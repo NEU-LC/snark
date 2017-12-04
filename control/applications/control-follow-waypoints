@@ -157,7 +157,9 @@ fi
 if (( $( comma_options_has --sample-config "$@" ) )); then sample_config; exit; fi
 
 eval $( options_description | grep '^--config=' | comma-options-to-name-value "$@" | comma_path_value_mangle )
-eval $( name-value-convert --from=json < "$config" | comma_path_value_mangle; comma_status_ok ) || die "failed to import config '$config'"
+if [[ -n "$config" ]]; then
+    eval $( name-value-convert --from=json < "$config" | comma_path_value_mangle; comma_status_ok ) || die "failed to import config '$config'"
+fi
 eval $( options_description | comma-options-to-name-value "$@" | comma_path_value_mangle )
 if [[ -z "$waypoints_fields" ]]; then
     [[ "$steering" ]] || die "failed to set default waypoints/fields; steering type is required"
