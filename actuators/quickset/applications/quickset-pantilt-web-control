@@ -151,5 +151,5 @@ say "elevation is $( (( elevation_relative )) && echo relative || echo absolute 
     echo $input_azimuth,$input_elevation | csv-units --from degrees --fields=azimuth,elevation
     sleep $options_wait
 } | quickset-pantilt-control $control_options $address | tail -1 \
-    | csv-shuffle --fields t,a,e --output a,e | csv-units --to degrees --fields \
+    | csv-shuffle --fields t,a,e --output a,e | csv-units --to degrees --fields a,e \
     | name-value-from-csv --fields azimuth,elevation --prefix abs
