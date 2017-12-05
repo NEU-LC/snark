@@ -145,11 +145,7 @@ say "azimuth is $( (( azimuth_relative )) && echo relative || echo absolute )"
 say "elevation is $( (( elevation_relative )) && echo relative || echo absolute )"
 
 (( azimuth_relative ^ elevation_relative )) && die "azimuth and elevation should both be absolute or relative"
-
 (( azimuth_relative )) && control_options="--diff"
-say "control_options=$control_options"
-say "wait time=$options_wait"
-exit
 
 {
     echo $input_azimuth,$input_elevation | csv-units --from degrees --fields=azimuth,elevation
