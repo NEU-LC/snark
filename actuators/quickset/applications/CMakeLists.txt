@@ -9,3 +9,6 @@ target_link_libraries( quickset-pantilt-from-console ${snark_ALL_EXTERNAL_LIBRAR
 install( TARGETS quickset-pantilt-from-console quickset-pantilt-control
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
+
+install( PROGRAMS quickset-pantilt-web-control
+         DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
