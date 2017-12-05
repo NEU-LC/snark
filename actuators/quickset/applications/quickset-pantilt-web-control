@@ -59,11 +59,12 @@ EOF
 
 <address> is as for quickset-pantilt-control
 
-input values in the form can either be relative (with +- prefix) or absolute
-0 does not need a prefix. 0,0 is interpreted as relative (ie, no movement).
+Input values in the form default to being relative to the current position.
+If they are suffixed with "!" they are interpreted as absolute.
 
-example:
-    echo -e "azimuth=-5\nelevation=+2" | $scriptname tcp:quickset:10001
+examples:
+    echo -e "azimuth=-5\nelevation=2" | $scriptname tcp:quickset:10001
+    echo -e "azimuth=-15!\nelevation=20!" | $scriptname tcp:quickset:10001
 
 EOF
     if (( verbose )); then
@@ -74,7 +75,7 @@ EOF
         "type": "text",
         "form":
         {
-            "fields": { "azimuth": "[+-]<degrees>", "elevation": "[+-]<degrees>" },
+            "fields": { "azimuth": "<degrees>[!]", "elevation": "<degrees>[!]" },
             "buttons": { "show": "true" }
         }
     }
@@ -104,8 +105,8 @@ exit 0
 function input_help()
 {
     cat <<END
-azimuth=<degrees>; absolute or relative azimuth
-elevation=<degrees>; absolute or relative elevation
+azimuth=<degrees>; relative or absolute azimuth
+elevation=<degrees>; relative or absolute elevation
 END
 exit 0
 }
@@ -135,16 +136,20 @@ comma_path_value_to_var --prefix=input
 [[ $input_azimuth ]] || die "azimuth required"
 [[ $input_elevation ]] || die "elevation required"
 
-[[ ${input_azimuth:0:1} =~ [+-] ]] && azimuth_relative=1 || azimuth_relative=0
-[[ ${input_elevation:0:1} =~ [+-] ]] && elevation_relative=1 || elevation_relative=0
-[[ $input_azimuth == 0 && $elevation_relative == 1 ]] && azimuth_relative=1
-[[ $input_elevation == 0 && $azimuth_relative == 1 ]] && elevation_relative=1
-[[ $input_azimuth == 0 && $input_elevation == 0 ]] && { azimuth_relative=1; elevation_relative=1; }
+[[ ${input_azimuth: -1:1} == ! ]] && azimuth_absolute=1 || azimuth_absolute=0
+[[ ${input_elevation: -1:1} == ! ]] && elevation_absolute=1 || elevation_absolute=0
 
-(( azimuth_relative ^ elevation_relative )) && die "azimuth and elevation should both be absolute or both relative"
-(( azimuth_relative )) && control_options="--diff"
+(( azimuth_absolute )) && input_azimuth=${input_azimuth:0: -1}
+(( elevation_absolute )) && input_elevation=${input_elevation:0: -1}
 
-(( azimuth_relative )) && echo -n "relative move of " || echo -n "absolute move to "
+[[ $input_azimuth == 0 && $elevation_absolute == 1 ]] && azimuth_absolute=1
+[[ $input_elevation == 0 && $azimuth_absolute == 1 ]] && elevation_absolute=1
+[[ $input_azimuth == 0 && $input_elevation == 0 ]] && { azimuth_absolute=1; elevation_absolute=1; }
+
+(( azimuth_absolute ^ elevation_absolute )) && die "azimuth and elevation should both be absolute or both relative"
+(( azimuth_absolute )) || control_options="--diff"
+
+(( azimuth_absolute )) && echo -n "absolute move to " || echo -n "relative move of "
 echo $input_azimuth,$input_elevation
 
 {
