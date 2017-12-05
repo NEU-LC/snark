@@ -141,7 +141,7 @@ comma_path_value_to_var --prefix=input
 [[ $input_elevation == 0 && $azimuth_relative == 1 ]] && elevation_relative=1
 [[ $input_azimuth == 0 && $input_elevation == 0 ]] && { azimuth_relative=1; elevation_relative=1; }
 
-(( azimuth_relative ^ elevation_relative )) && die "azimuth and elevation should both be absolute or relative"
+(( azimuth_relative ^ elevation_relative )) && die "azimuth and elevation should both be absolute or both relative"
 (( azimuth_relative )) && control_options="--diff"
 
 (( azimuth_relative )) && echo -n "relative move of " || echo -n "absolute move to "
