@@ -225,6 +225,7 @@ static int run( const comma::command_line_options& options )
         const From* p = istream.read();
         if( !p ) { break; }
         comma::csv::append( istream, ostream, rotation::traits< To >::get( snark::rotation_matrix( *p ) ) );
+        if( csv.flush ) { ostream.flush(); }
     }
     return 0;
 }
@@ -349,6 +350,7 @@ int main( int ac, char** av )
                             ::memcpy( &output.values[0], &values[0], *size * sizeof( double ) );
                         }
                         single_line_ostream->write( output );
+                        if( csv.flush ) { single_line_ostream->flush(); }
                     }
                     else
                     {
@@ -359,6 +361,7 @@ int main( int ac, char** av )
                             ::memcpy( &output.vector[0], &vectors( indices[i], 0 ), *size * sizeof( double ) );
                             output.value = values[ indices[i] ];
                             ostream->write( output );
+                            if( csv.flush ) { ostream->flush(); }
                         }
                     }
                     buffer.clear();
