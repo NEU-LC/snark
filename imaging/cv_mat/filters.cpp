@@ -1072,6 +1072,7 @@ public:
         char c = cv::waitKey( delay );
         if( c == 27 ) { return typename impl::filters< H >::value_type(); } // HACK to notify application to exit
         if( c == ' ' ) { cv::imwrite( make_filename( get_timestamp( m.first ), "ppm" ), m.second ); }
+        if( c>='0' && c<='9') { cv::imwrite( make_filename( get_timestamp( m.first ), "ppm", unsigned(c-'0') ), m.second ); }
         return m;
     }
     
