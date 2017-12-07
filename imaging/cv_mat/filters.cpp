@@ -3239,8 +3239,12 @@ static std::string usage_impl_()
     oss << "                                                 > eog original.png" << std::endl;
     oss << "                                                 > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count' | cv-cat --input 'no-header;rows=1280;cols=64;type=ub' 'untile=5,4;encode=png' > untiled.png" << std::endl;
     oss << "                                                 > eog untiled.png" << std::endl;
-    oss << "        view[=<wait-interval>[,<name>]]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
-    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
+    oss << "        view[=<wait-interval>[,<name>]]: view image;" << std::endl; 
+    oss << "                                press <space> to save image (timestamp or system time as filename); " << std::endl;
+    oss << "                                press <esc>: to close" << std::endl;
+    oss << "                                press numerical '0' to '9' to add the id (0-9) to the file name: <timestamp>.<id>.ppm" << std::endl;
+    oss << "                                press any other key to show the next frame" << std::endl;
+    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press (0 waits indefinitely); default 1" << std::endl;
     oss << "                                <name>: view window name; default: the number of view occurence in the filter string" << std::endl;
     oss << "            attention! it seems that lately using cv::imshow() in multithreaded context has been broken in opencv or in underlying x window stuff" << std::endl;
     oss << "                       therefore, unfortunately:" << std::endl;
