@@ -1058,11 +1058,13 @@ public:
     typename impl::filters< H >::get_timestamp_functor get_timestamp;
     std::string name;
     unsigned int delay;
+    std::string suffix;
 
-    view_impl_< H >( const typename impl::filters< H >::get_timestamp_functor& get_timestamp, const std::string& name, unsigned int delay )
+    view_impl_< H >( const typename impl::filters< H >::get_timestamp_functor& get_timestamp, const std::string& name, unsigned int delay,const std::string& suffix )
         : get_timestamp( get_timestamp )
         , name( make_name_( name ) )
         , delay( delay )
+        ,suffix(suffix)
     {
     }
     
@@ -1071,7 +1073,8 @@ public:
         cv::imshow( &name[0], m.second );
         char c = cv::waitKey( delay );
         if( c == 27 ) { return typename impl::filters< H >::value_type(); } // HACK to notify application to exit
-        if( c == ' ' ) { cv::imwrite( make_filename( get_timestamp( m.first ), "ppm" ), m.second ); }
+        if( c == ' ' ) { cv::imwrite( make_filename( get_timestamp( m.first ), suffix ), m.second ); }
+        if( c>='0' && c<='9') { cv::imwrite( make_filename( get_timestamp( m.first ), suffix, unsigned(c-'0') ), m.second ); }
         return m;
     }
     
@@ -2757,13 +2760,15 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         unsigned int default_delay = 1; // todo!
         unsigned int delay = default_delay;
         std::string n;
+        std::string suffix="ppm";
         if( e.size() > 1 )
         {
             const std::vector< std::string >& w = comma::split( e[1], ',' );
             if( w.size() > 0 && !w[0].empty() ) { delay = boost::lexical_cast< unsigned int >( w[0] ); }
             if( w.size() > 1 ) { n = w[1]; }
+            if(w.size()>2) { suffix=w[2]; }
         }
-        return std::make_pair( boost::bind< value_type_t >( view_impl_< H >( get_timestamp, n, delay ), _1 ), false );
+        return std::make_pair( boost::bind< value_type_t >( view_impl_< H >( get_timestamp, n, delay, suffix ), _1 ), false );
     }
     boost::function< value_type_t( value_type_t ) > functor = imaging::vegetation::impl::filters< H >::make_functor( e );
     if( functor ) { return std::make_pair( functor, true ); }
@@ -3238,9 +3243,14 @@ static std::string usage_impl_()
     oss << "                                                 > eog original.png" << std::endl;
     oss << "                                                 > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count' | cv-cat --input 'no-header;rows=1280;cols=64;type=ub' 'untile=5,4;encode=png' > untiled.png" << std::endl;
     oss << "                                                 > eog untiled.png" << std::endl;
-    oss << "        view[=<wait-interval>[,<name>]]: view image; press <space> to save image (timestamp or system time as filename); <esc>: to close" << std::endl;
-    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press; default 1" << std::endl;
+    oss << "        view[=<wait-interval>[,<name>[,<suffix]]]: view image;" << std::endl; 
+    oss << "                                press <space> to save image (timestamp or system time as filename); " << std::endl;
+    oss << "                                press <esc>: to close" << std::endl;
+    oss << "                                press numerical '0' to '9' to add the id (0-9) to the file name: <timestamp>.<id>.<suffix>" << std::endl;
+    oss << "                                press any other key to show the next frame" << std::endl;
+    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press (0 waits indefinitely); default 1" << std::endl;
     oss << "                                <name>: view window name; default: the number of view occurence in the filter string" << std::endl;
+    oss << "                                <suffix>: image suffix type e.g. png, default ppm" << std::endl;
     oss << "            attention! it seems that lately using cv::imshow() in multithreaded context has been broken in opencv or in underlying x window stuff" << std::endl;
     oss << "                       therefore, unfortunately:" << std::endl;
     oss << "                           instead of: cv-cat 'view;do-something;view'" << std::endl;
