@@ -123,6 +123,9 @@ static void usage( bool verbose = false )
     std::cerr << "    cumulative-distance" << std::endl;
     std::cerr << "        cumulative distance between subsequent points" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --differential,--diff: if present, input point represents difference with the previous point, not the absolute coordinates" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "    cumulative-discretise, cumulative-discretize, sample" << std::endl;
@@ -273,18 +276,19 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-static void calculate_distance( bool cumulative, bool propagate = false )
+static void calculate_distance( bool cumulative, bool propagate = false, bool differential = false )
 {
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
     boost::optional< Eigen::Vector3d > last;
     double distance = 0;
     double previous_norm = 0;
-    if( cumulative && propagate ) { std::cerr << "points-calc: cumulative distance or propagate are mutually exclusive" << std::endl; exit( 1 ); }
+    if( cumulative && propagate ) { std::cerr << "points-calc: cumulative distance and propagate are mutually exclusive" << std::endl; exit( 1 ); }
+    if( !cumulative && differential ) { std::cerr << "points-calc: differential distance calculation is implemented only for cumulative-distance" << std::endl; exit( 1 ); }
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         const Eigen::Vector3d* p = istream.read();
         if( !p ) { break; }
-        double norm = last ? ( *p - *last ).norm() : 0;
+        double norm = differential ? p->norm() : last ? ( *p - *last ).norm() : 0;
         if( propagate ) { if( comma::math::equal( norm, 0 ) ) { norm = previous_norm; } else { previous_norm = norm; } }
         distance = cumulative ? distance + norm : norm;
         last = *p;
@@ -879,7 +883,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
@@ -908,7 +912,7 @@ int main( int ac, char** av )
         {
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
             if( options.exists("--output-format" )){ std::cout << "d" << std::endl; return 0; }
-            calculate_distance( true );
+            calculate_distance( true, false, options.exists( "--differential,--diff" ) );
             return 0;
         }
         if( operation == "angle-axis" )
