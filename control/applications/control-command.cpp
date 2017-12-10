@@ -186,18 +186,19 @@ int main( int ac, char** av )
             }
 
             //boost::posix_time::ptime time = feedback_has_time ? input->feedback.t : boost::posix_time::not_a_date_time;
+            double correction = limit_angle( cross_track_pid( input->error.cross_track, input->feedback.t ) );
             switch( steering )
             {
                 case omni:
                 {
-                    double correction = limit_angle( cross_track_pid( input->error.cross_track, input->feedback.t ) );
-                    command.local_heading = comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), input->wayline.heading + correction - input->feedback.yaw )();
+                    double error = input->wayline.heading - input->feedback.yaw;
+                    command.local_heading = comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), error + correction )();
                     command.turn_rate = compute_yaw_rate ? heading_pid( input->error.heading, input->feedback.t ) : heading_pid( input->error.heading, input->feedback.yaw_rate, input->feedback.t );
                     break;
                 }
                 case skid:
                 {
-                    double error = input->error.heading - limit_angle( cross_track_pid( input->error.cross_track, input->feedback.t ) );
+                    double error = input->error.heading + correction;
                     command.turn_rate = compute_yaw_rate ? heading_pid( error, input->feedback.t ) : heading_pid( error, input->feedback.yaw_rate, input->feedback.t );
                     break;
                 }
