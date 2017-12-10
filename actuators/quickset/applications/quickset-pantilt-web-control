@@ -1,0 +1,160 @@
+#!/bin/bash
+
+# This file is part of snark, a generic and flexible library for robotics research
+# Copyright (c) 2016 The University of Sydney
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the University of Sydney nor the
+#    names of its contributors may be used to endorse or promote products
+#    derived from this software without specific prior written permission.
+#
+# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+# GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+# HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
+
+function description()
+{
+    cat <<EOF
+--help,-h; show this help and exit
+--input-fields; output input fields and exit
+--input-help; output input fields help and exit
+--wait=<seconds>; default=2; time to wait for movement to complete
+EOF
+}
+
+function usage()
+{
+    local verbose=$1
+    cat <<EOF
+
+use a web form to control a quickset pan-tilt actuator
+
+usage: $scriptname [<options>] <address>
+
+options:
+EOF
+    description | sed 's/^/    /g' >&2
+    cat <<EOF >&2
+
+<address> is as for quickset-pantilt-control
+
+Input values in the form default to being relative to the current position.
+If they are suffixed with "!" they are interpreted as absolute.
+
+examples:
+    echo -e "azimuth=-5\nelevation=2" | $scriptname tcp:quickset:10001
+    echo -e "azimuth=-15!\nelevation=20!" | $scriptname tcp:quickset:10001
+
+EOF
+    if (( verbose )); then
+        cat <<EOF
+    --- frontend.json ---
+    "quickset-control":
+    {
+        "type": "text",
+        "form":
+        {
+            "fields": { "azimuth": "<degrees>[!]", "elevation": "<degrees>[!]" },
+            "buttons": { "show": "true" }
+        }
+    }
+
+    --- backend.json ---
+    "quickset-control":
+    {
+        "command": "$scriptname tcp:quickset:10001"
+    }
+EOF
+    else
+        echo "    use \"$scriptname -h -v\" for example web configs"
+    fi
+    echo
+    exit
+}
+
+function input_fields()
+{
+    cat <<END
+azimuth
+elevation
+END
+exit 0
+}
+
+function input_help()
+{
+    cat <<END
+azimuth=<degrees>; relative or absolute azimuth
+elevation=<degrees>; relative or absolute elevation
+END
+exit 0
+}
+
+function say() { echo "$scriptname: $@" >&2; }
+function die() { say "$@"; exit 1; }
+
+(( $( comma_options_has "--bash-completion" $@ ) )) && { description | comma_options_to_bash_completion; exit 0; }
+
+if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); then
+    (( $( comma_options_has --verbose "$@" ) || $( comma_options_has -v "$@" ) )) && verbose=1 || verbose=0
+    usage $verbose
+fi
+
+(( $( comma_options_has --input-fields $@ ) )) && input_fields
+(( $( comma_options_has --input-help $@ ) )) && input_help
+
+options="$( description | comma-options-to-name-value "$@" )"
+comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
+
+unnamed_options=( $( echo "$options" | grep -v '=' | sed 's/^"//g; s/"$//g' | tr '\n' ' ' ) )
+address=${unnamed_options[0]}
+
+[[ $address ]] || die "<address> required"
+
+comma_path_value_to_var --prefix=input
+[[ $input_azimuth ]] || die "azimuth required"
+[[ $input_elevation ]] || die "elevation required"
+
+[[ ${input_azimuth: -1:1} == ! ]] && azimuth_absolute=1 || azimuth_absolute=0
+[[ ${input_elevation: -1:1} == ! ]] && elevation_absolute=1 || elevation_absolute=0
+
+(( azimuth_absolute )) && input_azimuth=${input_azimuth:0: -1}
+(( elevation_absolute )) && input_elevation=${input_elevation:0: -1}
+
+[[ $input_azimuth == 0 && $elevation_absolute == 1 ]] && azimuth_absolute=1
+[[ $input_elevation == 0 && $azimuth_absolute == 1 ]] && elevation_absolute=1
+[[ $input_azimuth == 0 && $input_elevation == 0 ]] && { azimuth_absolute=1; elevation_absolute=1; }
+
+(( azimuth_absolute ^ elevation_absolute )) && die "azimuth and elevation should both be absolute or both relative"
+(( azimuth_absolute )) || control_options="--diff"
+
+(( azimuth_absolute )) && echo -n "absolute move to " || echo -n "relative move of "
+echo $input_azimuth,$input_elevation
+
+{
+    echo $input_azimuth,$input_elevation | csv-units --from degrees --fields=azimuth,elevation
+    sleep $options_wait
+} | quickset-pantilt-control $control_options $address | tail -1 \
+    | csv-shuffle --fields t,a,e --output a,e | csv-units --to degrees --fields a,e \
+    | name-value-from-csv --fields azimuth,elevation --prefix abs

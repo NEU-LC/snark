@@ -15,15 +15,16 @@ _snark_bash_completion()
     COMPREPLY=( $( compgen -f -d -W "${opts}" -- ${cur}) )
 }
 
+complete -F _snark_bash_completion advanced-navigation-spatial-to-csv
 complete -F _snark_bash_completion basler-cat
 complete -F _snark_bash_completion basler-log
 complete -F _snark_bash_completion basler-log-summary
 complete -F _snark_bash_completion geo-sun-position
 complete -F _snark_bash_completion mat-convert
 complete -F _snark_bash_completion points-align
+complete -F _snark_bash_completion quickset-pantilt-web-control
 complete -F _snark_bash_completion test-pattern
 complete -F _snark_bash_completion vantage-command
 complete -F _snark_bash_completion vantage-to-csv
 complete -F _snark_bash_completion view-points
 complete -F _snark_bash_completion vimba-cat
-complete -F _snark_bash_completion advanced-navigation-spatial-to-csv
