@@ -97,7 +97,7 @@ static void usage( bool verbose = false )
     std::cerr << "    echo 45,45 | csv-units --from degrees --fields a,b | " << comma::verbose.app_name() << " tcp:192.168.1.1:10001" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    --- move with arrow keys ---" << std::endl;
-    std::cerr << "    io-console | quickset-pantilt-from-console | " << comma::verbose.app_name() << " --diff tcp:192.168.1.1:10001 > /dev/null" << std::endl;
+    std::cerr << "    io-console | control-from-console | " << comma::verbose.app_name() << " --diff tcp:192.168.1.1:10001 > /dev/null" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    --- set limits ---" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " tcp:192.168.1.1:10001 \\" << std::endl;
