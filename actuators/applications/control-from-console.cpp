@@ -51,6 +51,8 @@ static void usage()
     std::cerr << "    --verbose,-v: more output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
+    std::cerr << "    note: currently, the only difference between operations is the default values for --step" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    cartesian: output velocity along x and y axis" << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --max=<velocity-x>,<velocity-y>: max value for velocity and turn rate; default: ... for both: todo" << std::endl;
