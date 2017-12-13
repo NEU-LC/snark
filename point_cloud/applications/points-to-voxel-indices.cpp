@@ -27,6 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <limits>
 #include <boost/array.hpp>
 #include <boost/optional.hpp>
 #include <boost/program_options.hpp>
@@ -44,11 +45,7 @@
 
 typedef Eigen::Vector3d input_point;
 typedef snark::voxel_map< input_point, 3 >::index_type index_type;
-
-static comma::int32 id_( const index_type& i, const index_type& size ) { return ( i[2] * size[1] + i[1] ) * size[0] + i[0]; }
-
-static bool permissive;
-
+static bool permissive = false;
 static comma::uint64 count = 0;
 
 static bool is_inside_( const index_type& i, const index_type& size )
@@ -57,13 +54,29 @@ static bool is_inside_( const index_type& i, const index_type& size )
     return true;
 }
 
-static void validate_id_( const index_type& i, const index_type& size, const input_point& p )
+struct enumeration_index
+{ 
+    comma::int64 value;
+    enumeration_index(): value( 0 ) {}
+    enumeration_index( const index_type& i, const index_type& size ) { value = ( i[2] * size[1] + i[1] ) * size[0] + i[0]; }
+    static void validate( const index_type& i, const index_type& size, const input_point& p )
+    {
+        if( permissive || is_inside_( i, size ) ) { return; }
+        std::cerr.precision( 16 );
+        std::cerr << "on record " << count << ": expected positive index less than " << size[0] << "," << size[1] << "," << size[2] << "; got: " << i[0] << "," << i[1] << "," << i[2] << std::endl;
+        exit( 1 );
+    }
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< ::enumeration_index >
 {
-    if( permissive || is_inside_( i, size ) ) { return; }
-    std::cerr.precision( 16 );
-    std::cerr << "on record " << count << ": expected positive index less than " << size[0] << "," << size[1] << "," << size[2] << "; got: " << i[0] << "," << i[1] << "," << i[2] << std::endl;
-    exit( 1 );
-}
+    template < typename Key, class Visitor > static void visit( Key, ::enumeration_index& t, Visitor& v ) { v.apply( "value", t.value ); }
+    template < typename Key, class Visitor > static void visit( Key, const ::enumeration_index& t, Visitor& v ) { v.apply( "value", t.value ); }
+};
+
+} } // namespace comma { namespace visiting {
 
 int main( int argc, char** argv )
 {
@@ -75,6 +88,7 @@ int main( int argc, char** argv )
         std::string end_string;
         std::string extents_string;
         std::string resolution_string;
+        std::string enumerate_binary_string;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
@@ -82,6 +96,7 @@ int main( int argc, char** argv )
             ( "discard", "discard points outside of the given voxel map extents" )
             ( "end", boost::program_options::value< std::string >( &end_string ), "can be used instead --extents, means origin + extents" )
             ( "enumerate", "append voxel id in a grid with given origin and extents; note that only voxels inside of the box defined by origin and extents are guaranteed to be enumerated correctly" )
+            ( "enumerate-binary", boost::program_options::value< std::string >( &enumerate_binary_string )->default_value( "i" ), "binary output format for enumerate" )
             ( "extents", boost::program_options::value< std::string >( &extents_string ), "voxel map extents, i.e. its bounding box counting from origin, e.g. 10,10,10; needed only if --enumerate is present" )
             ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
             ( "permissive", "if --enumerate given, allows points outside of the given voxel map extents" )
@@ -122,6 +137,7 @@ int main( int argc, char** argv )
         index_type size;
         if( resolution_string.find_first_of( ',' ) == std::string::npos ) { resolution_string = resolution_string + ',' + resolution_string + ',' + resolution_string; }
         comma::csv::ascii< Eigen::Vector3d >().get( resolution, resolution_string );
+        comma::csv::binary< ::enumeration_index > binary_enumeration( enumerate_binary_string );
         if( output_number )
         {
             if( end_string.empty() && extents_string.empty() ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
@@ -158,13 +174,14 @@ int main( int argc, char** argv )
                 if( !point ) { break; }
                 index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
                 if( discard && !is_inside_( index, size ) ) { ++count; continue; }
-                if( output_number ) { validate_id_( index, size, *point ); }
+                if( output_number ) { enumeration_index::validate( index, size, *point ); }
                 std::cout.write( istream.binary().last(), csv.format().size() );
                 std::cout.write( reinterpret_cast< const char* >( &index[0] ), 3 * sizeof( comma::int32 ) );
                 if( output_number )
                 {
-                    comma::int32 id = id_( index, size );
-                    std::cout.write( reinterpret_cast< const char* >( &id ), sizeof( comma::int32 ) );
+                    std::vector< char > buf( binary_enumeration.format().size() ); // quick and dirty, refactor to use comma::csv::tie
+                    binary_enumeration.put( enumeration_index( index, size ), &buf[0] );
+                    std::cout.write( &buf[0], buf.size() );
                 }
                 if( csv.flush ) { std::cout.flush(); }
                 ++count;
@@ -178,12 +195,12 @@ int main( int argc, char** argv )
                 if( !point ) { break; }
                 index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
                 if( discard && !is_inside_( index, size ) ) { ++count; continue; }
-                if( output_number ) { validate_id_( index, size, *point ); }
+                if( output_number ) { enumeration_index::validate( index, size, *point ); }
                 std::cout << comma::join( istream.ascii().last(), csv.delimiter )
                           << csv.delimiter << index[0]
                           << csv.delimiter << index[1]
                           << csv.delimiter << index[2];
-                if( output_number ) { std::cout << csv.delimiter << id_( index, size ); }
+                if( output_number ) { std::cout << csv.delimiter << enumeration_index( index, size ).value; }
                 std::cout << std::endl;
                 ++count;
             }
