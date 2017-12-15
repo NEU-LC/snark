@@ -331,7 +331,9 @@ int main( int argc, char** argv )
 
         if( options.exists( "--set" ))
         {
-            camera.set_features( options.value<std::string>( "--set" ));
+            std::string set_option = options.value<std::string>( "--set" );
+            if( set_option.front() == '"' ) { set_option.erase( 0, 1 ); set_option.erase( set_option.size() - 1 ); }
+            camera.set_features( set_option );
         }
 
         if( options.exists( "--list-attributes" ))
