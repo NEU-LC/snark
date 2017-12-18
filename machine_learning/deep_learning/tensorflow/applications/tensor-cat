@@ -1,0 +1,159 @@
+#!/usr/bin/python
+
+# This file is part of snark, a generic and flexible library
+# Copyright (c) 2011 The University of Sydney
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the University of Sydney nor the
+#    names of its contributors may be used to endorse or promote products
+#    derived from this software without specific prior written permission.
+#
+# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+# GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+# HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+__author__ = 'v.vlaskine'
+
+import argparse
+import numpy as np
+import signal
+import sys
+
+description = """
+
+read tensors as binary on stdin, load model from file, apply model, write output tensors to stdout
+
+for more on session export/import: see https://www.tensorflow.org/programmers_guide/meta_graph
+
+"""
+
+epilog = """
+examples
+    main use cases
+        each record contains only tensor
+            cat input-tensors.bin | tensor-cat --session model > output-tensors.bin
+            
+        each record in input data has header followed by tensor and then footer (e.g. containing timestamp, sequence number, or alike)
+            cat header.input-tensor.footer.bin | tensor-cat --header-size 24 --footer-size 16 ... > header.footer.output-tensor.bin
+            
+        running on mnist
+            # train and export mnist model
+            tensorflow/examples/tensorflow-mnist-train-and-export
+            
+            # output predictions for first 10 images
+            cat MNIST_data/t10k-images-idx3-ubyte.gz \\
+                | gunzip \\
+                | tail -c+17 \\
+                | cv-cat --input "rows=28;cols=28;type=ub;no-header" "convert-to=f,0.0039" \\
+                | tensor-cat --session session --dir mnist -i x -o argmax \\
+                | csv-from-bin l \\
+                | head
+                
+            # save first 10 images as png and view to compare with the max output among the predictions
+            cat MNIST_data/t10k-images-idx3-ubyte.gz | gunzip | tail -c+17 \\
+                | cv-cat --input "rows=28;cols=28;type=ub;no-header" "head=10" \\
+                | cv-cat --input "rows=28;cols=28;type=ub;no-header" "file=png;null"
+            eog *.png
+            
+            # visualise e.g. the first convolution activations
+            cat MNIST_data/t10k-images-idx3-ubyte.gz \\
+                | gunzip \\
+                | tail -c+17 \\
+                | cv-cat --input "rows=28;cols=28;type=ub;no-header" "convert-to=f,0.0039" \\
+                | tensor-cat --session session --dir mnist -i x -o h_pool1 \\
+                | math-array transpose --shape 14,14,32 --to 2,0,1 \\
+                | cv-cat --fps 1 --input "no-header;rows=$((32*14));cols=14;type=f" "untile=8,4;resize=4;view;null"
+
+"""
+
+def warn( m ): print >> sys.stderr, "tensor-cat: warning:", m
+
+def die( m ): print >> sys.stderr, "tensor-cat:", m; sys.exit( 1 )
+
+def iterator( file, input, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
+    shape = ( input[0].get_shape() if tf_version[0] < 1 else input[0].shape ).as_list()
+    shape = [ 1 if v is None else v for v in shape ] # quick and dirty
+    ntype = ( input[0]._dtype if tf_version[0] < 1 else input[0].dtype ).as_numpy_dtype()
+    size = np.prod( shape )
+    while True:
+        header = np.fromfile( file, np.uint8, header_size )
+        data = np.fromfile( file, ntype, size )
+        footer = np.fromfile( file, np.uint8, footer_size )
+        if data.shape[0] == size: yield header, data.reshape( shape ), footer
+        else: yield None, None, None
+
+def get_collection( name, permissive = False ): # todo? support multiple outputs?
+    entry = tf.get_collection( name )
+    if len( entry ) == 0:
+        if permissive: warn( "graph does not have entry named '" + name + "'; skipped" )
+        else: die( "tensor-cat: graph does not have entry named '" + name + "'" )
+    if len( entry ) > 1: die( "expected entry size 1 for entry named '" + name + "'; got: " + str( len( entry ) ) + "(todo?)" )
+    return entry
+
+def variables( v ):
+    if v is None : return {}
+    d = {}
+    for i in v: s = i.split( ':' ); d[ get_collection( s[0].strip() )[0] ] = eval( s[1] )
+    return d
+
+if __name__ == '__main__':
+    def handle_signal( s, f ): print >> sys.stderr, "tensor-cat: broken pipe, exit"; sys.exit( 0 )
+    signal.signal( signal.SIGPIPE, handle_signal ) 
+    parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
+    parser.add_argument( '--batch-size', type = int, default = 1, help = 'todo: process input in batches of given size; default: %(default)i' )
+    parser.add_argument( '--footer-size', type = int, default = 0, help = 'if a footer of given size in bytes is present, pass it to stdout with output tensor prepended' )
+    parser.add_argument( '--header-size', type = int, default = 0, help = 'if a header of given size in bytes is present, pass it to stdout with output tensor appended' )
+    parser.add_argument( '--keep-devices', action="store_true", help = 'do not clear devices on graph load, i.e. you plan to run inference in the same environment as training; has effect only in tensorflow 1.0 and higher')
+    parser.add_argument( '--keep-input', action="store_true", help = 'append output to input' )
+    parser.add_argument( '--input', '-i', type = str, default = 'input', help = 'input layer name; default: %(default)s' )
+    parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
+    parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename; default: %(default)s' )
+    parser.add_argument( '--session-dir', '--dir', default = '.', type = str, help = 'saved session directory; default: %(default)s' )
+    parser.add_argument( '--variable', '--var', nargs = '*', type = str, help = 'variables to pass to the model as name-value pairs, e.g: "y:5", "dim:[3,4,5]", etc' )
+    parser.add_argument( '--verbose', '-v', action="store_true", help = 'more output' )
+    # todo: device pinning
+    args = parser.parse_args()
+    outputs = args.output
+    if ( not args.output is None ) and len( args.output ) == 1: outputs = args.output[0].split( ',' )
+    import tensorflow as tf
+    tf_version = map( int, tf.__version__.split( '.' ) )
+    with tf.Session() as session:
+        session_file = args.session_dir + '/' + args.session
+        session_meta = session_file + '.meta'
+        if tf_version[0] < 1 and args.keep_devices : warn( "--keep-devices specified, but will have no effect: not implemented in tensorflow version " + tf.__version__ + " that you are running" )
+        saver = tf.train.import_meta_graph( session_meta ) if tf_version[0] < 1 else tf.train.import_meta_graph( session_meta, clear_devices = not args.keep_devices )
+        saver.restore( session, session_file )
+        input = get_collection( args.input )
+        keep_prob = get_collection( 'keep_prob', True ) # todo! quick and dirty
+        output = [ get_collection( name )[0] for name in outputs ]
+        feeds = variables( args.variable )
+        if args.verbose:
+            print >> sys.stderr, "tensor-cat: input '" + args.input + "':", input
+            print >> sys.stderr, "tensor-cat: output '" + args.output + "':", output
+        for header, data, footer in iterator( sys.stdin, input, args.header_size, args.footer_size ):
+            if data is None: break
+            feeds[input[0]] = data
+            if len( keep_prob ) > 0: feeds[keep_prob[0]] = 1.0
+            values = session.run( output, feed_dict = feeds )
+            header.tofile( sys.stdout )
+            if args.keep_input: data.tofile( sys.stdout )
+            footer.tofile( sys.stdout )
+            for value in values: value.tofile( sys.stdout )
+            sys.stdout.flush()

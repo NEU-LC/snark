@@ -1,0 +1,1 @@
+install( PROGRAMS caffe-cat DESTINATION ${snark_INSTALL_BIN_DIR} )

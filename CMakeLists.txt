@@ -466,11 +466,12 @@ IF( snark_build_graph )
 ENDIF( snark_build_graph )
 
 add_subdirectory( audio )
+add_subdirectory( control )
 add_subdirectory( geodesy )
+add_subdirectory( machine_learning )
 add_subdirectory( render )
 add_subdirectory( timing )
 add_subdirectory( visiting )
-add_subdirectory( control )
 
 IF( snark_build_terrain )
     add_subdirectory( terrain )
