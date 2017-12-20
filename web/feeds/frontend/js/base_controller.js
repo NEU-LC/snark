@@ -612,7 +612,16 @@ define('base_controller', ['jquery', "jquery_timeago",
             }
             if (!('url' in config)) {
                 var xpath = config.xpath || feed_path;
-                config.url = frontend_config.websocket + '?xpath=' + xpath + '&data_uri=true';
+                if (typeof frontend_config.websocket == 'object') {
+                    var host = frontend_config.websocket.host != undefined ? frontend_config.websocket.host : globals.host;
+                    var port = frontend_config.websocket.port;
+                    var endpoint = frontend_config.websocket.endpoint;
+                    config.url = 'ws://' + host + ':' + port + '/' + endpoint;
+                } else {
+                    config.url = frontend_config.websocket;
+                }
+                config.url = config.url.replace("${HOST}", globals.host);
+                config.url += '?xpath=' + xpath + '&data_uri=true';
             }
         } else {
             config.view = Feed.views[0];
