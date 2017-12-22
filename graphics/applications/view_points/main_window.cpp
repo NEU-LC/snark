@@ -101,15 +101,12 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::g
     m_viewMenu->addAction( action );
     updateFileFrame();
     toggleFileFrame( m_fileFrameVisible );
-    setWindowTitle( title.c_str() );
+    setWindowTitle( &title[0] );
 }
 
-CheckBox::CheckBox( boost::function< void( bool ) > f ) : m_f( f )
-{
-    connect( this, SIGNAL( toggled( bool ) ), this, SLOT( action( bool ) ) );
-}
+CheckBox::CheckBox( boost::function< void( bool ) > f ) : m_f( f ) { connect( this, SIGNAL( toggled( bool ) ), this, SLOT( action( bool ) ) ); }
 
-void CheckBox::action( bool checked ) {    m_f( checked ); }
+void CheckBox::action( bool checked ) { m_f( checked ); }
 
 void MainWindow::showFileGroup( std::string const& name, bool shown )
 {
@@ -180,7 +177,7 @@ void MainWindow::updateFileFrame() // quick and dirty
     {
         m_fileLayout->addWidget( new QLabel( ( "\"" + it->first + "\"" ).c_str() ), i, 0, Qt::AlignLeft | Qt::AlignTop );
         CheckBox* viewBox = new CheckBox( boost::bind( &MainWindow::showFileGroup, this, it->first, _1 ) );
-        viewBox->setCheckState( Qt::Checked );
+        //viewBox->setCheckState( Qt::Checked );
         viewBox->setToolTip( ( std::string( "check to make files within group \"" ) + it->first + "\" visible" ).c_str() );
         m_fileLayout->addWidget( viewBox, i, 1, Qt::AlignRight | Qt::AlignTop );
         m_fileLayout->setRowStretch( i, i + 1 == controller->readers.size() ? 1 : 0 );
@@ -190,7 +187,7 @@ void MainWindow::updateFileFrame() // quick and dirty
     {
         m_fileLayout->addWidget( new QLabel( ( "\"" + it->first + "\"" ).c_str() ), i, 0, Qt::AlignLeft | Qt::AlignTop );
         CheckBox* viewBox = new CheckBox( boost::bind( &MainWindow::showFileGroup, this, it->first, _1 ) );
-        viewBox->setCheckState( Qt::Checked );
+        //viewBox->setCheckState( Qt::Checked );
         viewBox->setToolTip( ( std::string( "check to make files with fields \"" ) + it->first + "\" visible" ).c_str() );
         m_fileLayout->addWidget( viewBox, i, 1, Qt::AlignRight | Qt::AlignTop );
         m_fileLayout->setRowStretch( i, i + 1 == controller->readers.size() + fields.size() ? 1 : 0 );
