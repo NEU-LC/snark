@@ -25,6 +25,7 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "options:" << std::endl;
     std::cerr << "    --help,-h: show this message" << std::endl;
+    std::cerr << "    --version=[<version>]; bmu version" << std::endl;
     std::cerr << "    --id: output csv data for the specified id (0C0, 0C1, 0C2, 0C4)" << std::endl;
     std::cerr << "    --type: output csv data for the specified channel type (status, info, charge, trace)" << std::endl;
     std::cerr << "    --list-ids: output available ids to stdout and exit" << std::endl;
@@ -99,6 +100,14 @@ struct packets
 
 } // namespace braille {
 
+enum bmu_version
+{
+    BMU_2,
+    BMU_3
+};
+
+static bmu_version version = BMU_2;
+
 struct output
 {
     struct status
@@ -106,9 +115,29 @@ struct output
         status() : state_of_charge( 0 ) {}
         status( const braille::packet< braille::packets::status::size >& p )
         {
-            state_of_charge = p.bytes[0].value();
+            switch (version)
+            {
+                case BMU_2:
+                    state_of_charge = p.bytes[0].value();
+                    break;
+                case BMU_3:
+                    comma::uint32 multiplex = p.bytes[0].value() & 0x07;
+                    if (multiplex == 0) { state_of_charge = p.bytes[1].value() * 100 / 255; }
+                    break;
+            }
         }
-        static std::string id() { return "0C0"; }
+        static std::string id() 
+        { 
+            switch (version)
+            {
+                case BMU_2:
+                    return "0C0"; 
+                    break;
+                case BMU_3:
+                    return "0C0"; 
+                    break;
+            }        
+        }
         double state_of_charge;
     };
 
@@ -117,13 +146,39 @@ struct output
         info() : voltage( 0 ), current( 0 ), max_discharge_current( 0 ), max_regenerative_current( 0 ) {}
         info( const braille::packet< braille::packets::info::size >& p )
         {
-            double volts_per_value = 2;
-            voltage = p.bytes[0].value() * volts_per_value;
-            current = p.bytes[1].value() + p.bytes[2].value() * 256 - 32768;
-            max_discharge_current = p.bytes[3].value() + p.bytes[4].value() * 256;
-            max_regenerative_current = p.bytes[5].value() + p.bytes[7].value() * 256;
+            double volts_per_value;
+            switch (version)
+            {
+                case BMU_2:
+                    volts_per_value = 2;
+                    voltage = p.bytes[0].value() * volts_per_value;
+                    current = p.bytes[1].value() + p.bytes[2].value() * 256 - 32768;
+                    max_discharge_current = p.bytes[3].value() + p.bytes[4].value() * 256;
+                    max_regenerative_current = p.bytes[5].value() + p.bytes[7].value() * 256;
+                    break;
+                case BMU_3:
+                    volts_per_value = 0.032;
+                    voltage = ( p.bytes[1].value() * 256 + p.bytes[0].value() ) * volts_per_value;
+                    comma::int32 c = ( p.bytes[3].value() * 256 + p.bytes[2].value() );
+                    if ( c > 32768 ) { c = 65536 - c; }
+                    current = c / 10.0;
+                    max_discharge_current = ( p.bytes[5].value() * 256 + p.bytes[4].value() ) / 10.0;
+                    max_regenerative_current = ( p.bytes[7].value() * 256 + p.bytes[6].value() ) / 10.0;
+                    break;
+            }       
         }
-        static std::string id() { return "0C1"; }
+        static std::string id() 
+        { 
+            switch (version)
+            {
+                case BMU_2:
+                    return "0C1"; 
+                    break;
+                case BMU_3:
+                    return "0E0"; 
+                    break;
+            }        
+        }
         double voltage;
         double current;
         double max_discharge_current;
@@ -135,10 +190,31 @@ struct output
         charge() : charge_current_set_point( 0 ), charge_voltage_set_point( 0 ) {}
         charge( const braille::packet< braille::packets::charge::size >& p )
         {
-            charge_current_set_point = p.bytes[0].value();
-            charge_voltage_set_point = p.bytes[1].value() + p.bytes[2].value() * 256;
+            switch (version)
+            {
+                case BMU_2:
+                    charge_current_set_point = p.bytes[0].value();
+                    charge_voltage_set_point = p.bytes[1].value() + p.bytes[2].value() * 256;
+                    break;
+                case BMU_3:
+                    charge_current_set_point = ( p.bytes[2].value() * 256 + p.bytes[1].value() ) / 10.0 ;
+                    charge_voltage_set_point = ( p.bytes[4].value() * 256 + p.bytes[3].value() ) / 10.0 ;
+                    break;
+            }       
+            
         }
-        static std::string id() { return "0C2"; }
+        static std::string id() 
+        { 
+            switch (version)
+            {
+                case BMU_2:
+                    return "0C2"; 
+                    break;
+                case BMU_3:
+                    return "0D0"; 
+                    break;
+            }        
+        }
         double charge_current_set_point;
         double charge_voltage_set_point;
     };
@@ -148,11 +224,33 @@ struct output
         trace() : max_temperature( 0 ), min_temperature( 0 ) {}
         trace( const braille::packet< braille::packets::trace::size >& p )
         {
-            double shift = 40;
-            max_temperature = p.bytes[0].value() - shift;
-            min_temperature = p.bytes[1].value() - shift;
+            double shift;
+            switch (version)
+            {
+                case BMU_2:
+                    shift = 40;
+                    max_temperature = p.bytes[0].value() - shift;
+                    min_temperature = p.bytes[1].value() - shift;
+                    break;
+                case BMU_3:
+                    shift = 60;
+                    max_temperature = p.bytes[0].value() - shift;
+                    min_temperature = p.bytes[3].value() - shift;
+                    break;
+            }        
         }
-        static std::string id() { return "0C4"; }
+        static std::string id() 
+        { 
+            switch (version)
+            {
+                case BMU_2:
+                    return "0C4"; 
+                    break;
+                case BMU_3:
+                    return "0F0"; 
+                    break;
+            }        
+        }
         double max_temperature;
         double min_temperature;
     };
@@ -291,6 +389,7 @@ int main( int ac, char** av )
         options.assert_mutually_exclusive( "--id,--type" );
         std::string output_id;
         std::string type = options.value< std::string >( "--type", "" );
+        if ( options.value< std::string > ("--version", "") == "3.0" ) { version = BMU_3; }
         if( !type.empty() )
         {
             if( type == "status" ) { output_id = output::status::id(); }
