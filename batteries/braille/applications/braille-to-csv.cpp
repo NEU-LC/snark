@@ -160,7 +160,7 @@ struct output
                     volts_per_value = 0.032;
                     voltage = ( p.bytes[1].value() * 256 + p.bytes[0].value() ) * volts_per_value;
                     comma::int32 c = ( p.bytes[3].value() * 256 + p.bytes[2].value() );
-                    if ( c > 32768 ) { c = 65536 - c; }
+                    if ( c > 32768 ) { c = c - 65536; }
                     current = c / 10.0;
                     max_discharge_current = ( p.bytes[5].value() * 256 + p.bytes[4].value() ) / 10.0;
                     max_regenerative_current = ( p.bytes[7].value() * 256 + p.bytes[6].value() ) / 10.0;
