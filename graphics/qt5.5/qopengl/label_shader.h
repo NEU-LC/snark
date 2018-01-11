@@ -101,7 +101,15 @@ public:
     
 public:
     std::vector<std::shared_ptr<label>> labels;
+    
+public:
+    // changing following properties won't take effect until next redraw (call update to force it)
+    
+    /// set to false to hide labels
     bool visible;
+    
+    /// set to resize labels with according to their depth (need to be set for orthographic projection)
+    bool scaled;
 
 protected:
     //GL context should be set and voa bound for these functions by caller (i.e. gl_widget)
@@ -114,6 +122,7 @@ protected:
     int projection_matrix_location;
     int sampler_location;
     int screen_size_location;
+    int scaled_location;
 };
     
 } } } // namespace snark { namespace graphics { namespace qopengl {

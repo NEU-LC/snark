@@ -118,6 +118,7 @@ void widget::add_shape(const std::shared_ptr<shape>& shape)
 }
 void widget::add_label_shader(const std::shared_ptr<label_shader>& label_shader)
 {
+    label_shader->scaled=camera.orthographic;
     label_shaders.push_back(label_shader);
 }
 void widget::add_texture_shader(const std::shared_ptr<texture_shader>& texture_shader)

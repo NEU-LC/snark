@@ -67,9 +67,18 @@ static const char *shader_source = R"(
     out vec2 textCoord;
     uniform mat4 projection_matrix;
     uniform vec2 screen_size;
-    void main() {
+    uniform bool scaled;
+    void main()
+    {
         vec4 target=projection_matrix* vec4(vertex,1);
-       gl_Position = vec4(target.x/target.z,target.y/target.z,0,1) + vec4(offset.x*texture_size.x/screen_size.x,offset.y*texture_size.y/screen_size.y,0,0);
+        if(scaled)
+        {
+            gl_Position = target + vec4(offset.x*texture_size.x/screen_size.x,offset.y*texture_size.y/screen_size.y,0,0);
+        }
+        else
+        {
+            gl_Position = vec4(target.x/target.z,target.y/target.z,0,1) + vec4(offset.x*texture_size.x/screen_size.x,offset.y*texture_size.y/screen_size.y,0,0);
+        }
        textCoord = offset;
     }
 )";
@@ -79,7 +88,8 @@ static const char *fragment_source = R"(
     in vec2 textCoord;
     uniform sampler2D sampler;
     out highp vec4 frag_color;
-    void main() {
+    void main()
+    {
        frag_color = texture2D(sampler,textCoord);
     }
 )";
@@ -88,7 +98,7 @@ label_vertex::label_vertex(float x,float y,float z,float ox, float oy,float w,fl
 {
 }
 
-label_shader::label_shader()
+label_shader::label_shader() : visible(true), scaled(false)
 {
 //     labels.push_back(std::shared_ptr<label>(new label()));
     
@@ -121,6 +131,7 @@ void label_shader::init()
     projection_matrix_location=program.uniformLocation("projection_matrix");
     sampler_location=program.uniformLocation("sampler");
     screen_size_location=program.uniformLocation("screen_size");
+    scaled_location=program.uniformLocation("scaled");
     
     program.release();
     
@@ -134,6 +145,8 @@ void label_shader::paint(const QMatrix4x4& projection_matrix, const QSize& size)
         program.setUniformValue(projection_matrix_location,projection_matrix);
         program.setUniformValue(sampler_location,0);
         program.setUniformValue(screen_size_location,QVector2D(size.width()/2,size.height()/2));
+        program.setUniformValue(scaled_location,scaled);
+        
     //     static int counter=0;
     //     if(counter++<10)
     //         std::cerr<<"label_shader::paint "<<size.width()/2<<", "<<size.height()/2<<std::endl;
