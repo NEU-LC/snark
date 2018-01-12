@@ -616,7 +616,7 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csv_options( argc, argv );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill"
-                , "--binary,--bin,-b,--fields,--size,--delimiter,-d,--colour,--color,-c,--point-size,--weight,--background-colour,--background-color,--scene-center,--center,--scene-radius,--radius,--shape,--label,--title,--camera,--camera-position,--camera-config,--fov,--model,--full-xpath,--labels,--length" );
+                , "-[^;].*" );
 
         snark::graphics::view::color_t  background_color( QColor( QString( options.value< std::string >( "--background-colour,--background-color", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
