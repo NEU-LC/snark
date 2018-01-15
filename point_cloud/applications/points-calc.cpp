@@ -80,7 +80,7 @@ static void usage( bool verbose = false )
     std::cerr << "    distance" << std::endl;
     std::cerr << "    discretise,discretize" << std::endl;
     std::cerr << "    find-outliers" << std::endl;
-    std::cerr << "    integrate-pose" << std::endl;
+    std::cerr << "    integrate-frame" << std::endl;
     std::cerr << "    local-min" << std::endl;
     std::cerr << "    local-max" << std::endl;
     std::cerr << "    nearest-min" << std::endl;
@@ -192,8 +192,10 @@ static void usage( bool verbose = false )
     std::cerr << "                    but may remove points in borderline voxels" << std::endl;
     std::cerr << "            --discard: discards records that are outliers; output: same as input" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    integrate-pose: read pose on stdin, append integrated pose" << std::endl;
-    std::cerr << "        --pose: initial pose" << std::endl;
+    std::cerr << "    integrate-frame: read reference frame on stdin, append integrated reference frame" << std::endl;
+    std::cerr << "        --frame=[<frame>]: default frame, used as initial frame and values for skipped input fields; default: 0,0,0,0,0,0" << std::endl;
+    std::cerr << "        --from; direction of transform, default; see points-frame --help for details" << std::endl;
+    std::cerr << "        --to; direction of transform; see points-frame --help for details" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    local-min, local-max: deprecated, use nearest-min, nearest-max;" << std::endl;
     std::cerr << "        output local minimums or maximums inside of given radius" << std::endl;
@@ -549,7 +551,7 @@ static int cumulative_discretise( const comma::command_line_options& options )
     return 0;
 }
 
-namespace snark { namespace points_calc { namespace integrate_pose {
+namespace snark { namespace points_calc { namespace integrate_frame {
 
 struct pose
 {
@@ -560,8 +562,8 @@ struct pose
     
 struct traits
 {
-    typedef snark::points_calc::integrate_pose::pose input;
-    typedef snark::points_calc::integrate_pose::pose output;
+    typedef snark::points_calc::integrate_frame::pose input;
+    typedef snark::points_calc::integrate_frame::pose output;
     static std::string input_fields() { return comma::join( comma::csv::names< input >( true ), ',' ); }
     static std::string input_format() { return comma::csv::format::value< input >(); }
     static std::string output_fields() { return comma::join( comma::csv::names< output >( true ), ',' ); }
@@ -569,7 +571,7 @@ struct traits
     static int run( const comma::command_line_options& options )
     {
         comma::csv::options csv( options );
-        input sample = comma::csv::ascii< input >().get( options.value< std::string >( "--pose", "0,0,0,0,0,0" ) );
+        input sample = comma::csv::ascii< input >().get( options.value< std::string >( "--frame", "0,0,0,0,0,0" ) );
         comma::csv::input_stream< input > istream( std::cin, csv, sample );
         comma::csv::options output_csv;
         output_csv.full_xpath = true;
@@ -577,24 +579,26 @@ struct traits
         if( csv.binary() ) { output_csv.format( output_format() ); }
         comma::csv::output_stream< output > ostream( std::cout, output_csv, sample );
         comma::csv::tied< input, output > tied( istream, ostream );
-        snark::points_calc::integrate_pose::pose pose;
+        bool from = !options.exists( "--to" );
+        snark::points_calc::integrate_frame::pose integrated = sample;
+        auto rotation = snark::rotation_matrix::rotation( integrated.orientation );
+        double sign = from ? 1 : -1;
+        if( !from ) { rotation = rotation.transpose(); }
         while( std::cin.good() || istream.ready() )
         {
             const input* p = istream.read();
             if( !p ) { break; }
-            
-            
-            
-            pose.coordinates += p->coordinates;
-            Eigen::Matrix3d m = snark::rotation_matrix::rotation( p->orientation ) * snark::rotation_matrix::rotation( pose.orientation );
-            pose.orientation = snark::rotation_matrix::roll_pitch_yaw( m );
-            tied.append( pose );
+            integrated.coordinates += p->coordinates * sign;
+            const auto& next_rotation = from ? snark::rotation_matrix::rotation( p->orientation ) : snark::rotation_matrix::rotation( p->orientation ).transpose();
+            integrated.orientation = snark::rotation_matrix::roll_pitch_yaw( next_rotation * rotation );
+            rotation = next_rotation;
+            tied.append( integrated );
         }
         return 0;
     }
 };
 
-} } } // namespace snark { namespace points_calc { integrate_pose
+} } } // namespace snark { namespace points_calc { integrate_frame
     
 namespace thin_operation {
 
@@ -872,15 +876,15 @@ static void output_nearest_extremum_block( const std::deque< local_operation::re
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::points_calc::integrate_pose::pose >
+template <> struct traits< snark::points_calc::integrate_frame::pose >
 {
-    template< typename K, typename V > static void visit( const K&, const snark::points_calc::integrate_pose::pose& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const snark::points_calc::integrate_frame::pose& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "orientation", t.orientation );
     }
 
-    template< typename K, typename V > static void visit( const K&, snark::points_calc::integrate_pose::pose& t, V& v )
+    template< typename K, typename V > static void visit( const K&, snark::points_calc::integrate_frame::pose& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "orientation", t.orientation );
@@ -955,7 +959,7 @@ int main( int ac, char** av )
         const std::vector< std::string >& operations = options.unnamed( "--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
-        if( operation == "integrate-pose" ) { return run< snark::points_calc::integrate_pose::traits >( options ); }
+        if( operation == "integrate-frame" ) { return run< snark::points_calc::integrate_frame::traits >( options ); }
         if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
         if( operation == "project-onto-plane" ) { return run< snark::points_calc::project::onto_plane::traits >( options ); }
         if( operation == "plane-intersection-with-trajectory" ) { return run< snark::points_calc::plane_intersection_with_trajectory::traits >( options ); }
