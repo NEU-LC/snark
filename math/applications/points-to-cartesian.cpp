@@ -36,19 +36,6 @@
 #include "../../math/range_bearing_elevation.h"
 #include "../../visiting/traits.h"
 
-template< typename IStream, typename OStream >
-int run( IStream& is, OStream& os )
-{
-    comma::signal_flag is_shutdown;
-    while( !is_shutdown )
-    {
-        const snark::range_bearing_elevation* p = is.read();
-        if( p == NULL ) { return 0; }
-        os.write( p->to_cartesian(), is.last() );
-    }
-    return 0;
-}
-
 static void usage()
 {
     std::cerr << std::endl;
@@ -57,6 +44,8 @@ static void usage()
     std::cerr << "usage: cat rbe.csv | points-to-cartesian [<options>] > xyz.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "<options>" << std::endl;
+    std::cerr << "    --append; append x,y,z to each input record" << std::endl;
+    std::cerr << "              (default behaviour is in place substitution: range with x, bearing with y, elevation with z)" << std::endl;
     std::cerr << comma::csv::options::usage() << std::endl;
     std::cerr << "    fields: r or range, b or bearing, e or elevation, default: r,b,e" << std::endl;
     std::cerr << std::endl;
@@ -75,34 +64,50 @@ int main( int ac, char** av )
         if( options.exists( "--help,-h" ) ) { usage(); }
         comma::csv::options input_options( ac, av );
         comma::csv::options output_options( input_options );
-        if( input_options.fields == "" ) { input_options.fields = "r,b,e"; }
+        
         std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
-        std::vector< std::string > output_fields = fields;
-        bool fields_set = false;
         for( std::size_t i = 0; i < fields.size(); ++i )
         {
+            // input fields use r,b,e as shorthand for range,bearing,elevation
             if( fields[i] == "r" ) { fields[i] = "range"; }
             else if( fields[i] == "b" ) { fields[i] = "bearing"; }
             else if( fields[i] == "e" ) { fields[i] = "elevation"; }
-            if( fields[i] == "range" ) { output_fields[i] = "x"; fields_set = true; }
-            else if( fields[i] == "bearing" ) { output_fields[i] = "y"; fields_set = true; }
-            else if( fields[i] == "elevation" ) { output_fields[i] = "z"; fields_set = true; }
         }
-        if( !fields_set ) { std::cerr << "points-to-cartesian: expected some of the fields: " << comma::join( comma::csv::names< snark::range_bearing_elevation >(), ',' ) << ", got none in: " << input_options.fields << std::endl; return 1; }
         input_options.fields = comma::join( fields, ',' );
-        output_options.fields = comma::join( output_fields, ',' );
-        if( input_options.binary() )
-        {
-            comma::csv::binary_input_stream< snark::range_bearing_elevation > is( std::cin, input_options );
-            comma::csv::binary_output_stream< Eigen::Vector3d > os( std::cout, output_options );
-            return run( is, os );
+        bool append = options.exists("--append");
+        if ( append ) 
+        {            
+            output_options.fields=comma::join( comma::csv::names< Eigen::Vector3d >(), ',');
+            if ( input_options.binary() ) { output_options.format(comma::csv::format::value< Eigen::Vector3d >());}
         }
         else
         {
-            comma::csv::ascii_input_stream< snark::range_bearing_elevation > is( std::cin, input_options );
-            comma::csv::ascii_output_stream< Eigen::Vector3d > os( std::cout, output_options );
-            return run( is, os );
+            std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
+            std::vector< std::string > output_fields = fields;
+            bool fields_set = false;
+            for( std::size_t i = 0; i < fields.size(); ++i )
+            {               
+                // in-place substitution of fields
+                if( fields[i] == "range" ) { output_fields[i] = "x"; fields_set = true; }
+                else if( fields[i] == "bearing" ) { output_fields[i] = "y"; fields_set = true; }
+                else if( fields[i] == "elevation" ) { output_fields[i] = "z"; fields_set = true; }
+            }
+            if( !fields_set ) { std::cerr << "points-to-cartesian: expected some of the fields: " << comma::join( comma::csv::names< snark::range_bearing_elevation >(), ',' ) << ", got none in: " << input_options.fields << std::endl; return 1; }
+            output_options.fields = comma::join( output_fields, ',' );
         }
+
+        comma::csv::input_stream< snark::range_bearing_elevation > istream(std::cin, input_options );
+        comma::csv::output_stream< Eigen::Vector3d > ostream(std::cout, output_options );
+        comma::csv::tied< snark::range_bearing_elevation, Eigen::Vector3d > tied( istream, ostream );
+        
+        while ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+        {
+            const snark::range_bearing_elevation* p = istream.read();
+            if (!p) { break; }
+            if ( append ) { tied.append(p->to_cartesian()); }
+            else { ostream.write(p->to_cartesian(), istream.last()); }
+        }
+        return 0;
     }
     catch( std::exception& ex ) { std::cerr << "points-to-cartesian: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-to-cartesian: unknown exception" << std::endl; }
