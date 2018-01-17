@@ -66,6 +66,7 @@ int main( int ac, char** av )
         comma::csv::options output_options( input_options );
         
         std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
+        if (input_options.fields.empty()) { input_options.fields = comma::join(comma::csv::names< snark::range_bearing_elevation >(), ','); }
         for( std::size_t i = 0; i < fields.size(); ++i )
         {
             // input fields use r,b,e as shorthand for range,bearing,elevation
@@ -77,7 +78,7 @@ int main( int ac, char** av )
         bool append = options.exists("--append");
         if ( append ) 
         {            
-            output_options.fields=comma::join( comma::csv::names< Eigen::Vector3d >(), ',');
+            output_options.fields = comma::join( comma::csv::names< Eigen::Vector3d >(), ',');
             if ( input_options.binary() ) { output_options.format(comma::csv::format::value< Eigen::Vector3d >());}
         }
         else

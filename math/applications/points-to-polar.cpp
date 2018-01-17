@@ -64,7 +64,7 @@ int main( int ac, char** av )
         if( options.exists( "--help,-h" ) ) { usage(); }
         comma::csv::options input_options( ac, av );
         comma::csv::options output_options( input_options );
-        if( input_options.fields == "" ) { input_options.fields = "x,y,z"; }
+        if( input_options.fields == "" ) { input_options.fields = comma::join( comma::csv::names< Eigen::Vector3d >(), ',' ); }
         bool append = options.exists("--append");
         if ( append )
         {
