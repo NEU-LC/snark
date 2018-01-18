@@ -578,27 +578,25 @@ struct traits
     static int run( const comma::command_line_options& options )
     {
         comma::csv::options csv( options );
-        input sample = comma::csv::ascii< input >().get( options.value< std::string >( "--frame", "0,0,0,0,0,0" ) );
-        comma::csv::input_stream< input > istream( std::cin, csv, sample );
         comma::csv::options output_csv;
         output_csv.full_xpath = true;
         output_csv.delimiter = csv.delimiter;
         if( csv.binary() ) { output_csv.format( output_format() ); }
-        comma::csv::output_stream< output > ostream( std::cout, output_csv, sample );
+        snark::points_calc::integrate_frame::pose integrated = comma::csv::ascii< input >().get( options.value< std::string >( "--frame", "0,0,0,0,0,0" ) );
+        comma::csv::input_stream< input > istream( std::cin, csv, integrated );
+        comma::csv::output_stream< output > ostream( std::cout, output_csv, integrated );
         comma::csv::tied< input, output > tied( istream, ostream );
         bool from = !options.exists( "--to" );
-        snark::points_calc::integrate_frame::pose integrated = sample;
-        auto rotation = from ? snark::rotation_matrix::rotation( integrated.orientation ) : snark::rotation_matrix::rotation( integrated.orientation ).transpose();
-        double sign = from ? 1 : -1;
         while( std::cin.good() || istream.ready() )
         {
             const input* p = istream.read();
             if( !p ) { break; }
-            auto next_rotation = ( from ? snark::rotation_matrix::rotation( p->orientation ) : snark::rotation_matrix::rotation( p->orientation ).transpose() ) * rotation;
-            integrated.orientation = snark::rotation_matrix::roll_pitch_yaw( next_rotation );
-            integrated.coordinates += p->coordinates * sign;
+            Eigen::Translation3d translation( integrated.coordinates );
+            Eigen::Matrix3d rotation = from ? snark::rotation_matrix::rotation( integrated.orientation ) : snark::rotation_matrix::rotation( integrated.orientation ).transpose();
+            Eigen::Affine3d transform = from ? ( translation * rotation ) : ( rotation.transpose() * translation.inverse() );
+            integrated.coordinates = transform * p->coordinates;
+            integrated.orientation = snark::rotation_matrix::roll_pitch_yaw( rotation * snark::rotation_matrix::rotation( p->orientation ) );
             tied.append( integrated );
-            rotation = next_rotation;
         }
         return 0;
     }
