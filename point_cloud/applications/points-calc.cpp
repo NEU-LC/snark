@@ -588,18 +588,17 @@ struct traits
         comma::csv::tied< input, output > tied( istream, ostream );
         bool from = !options.exists( "--to" );
         snark::points_calc::integrate_frame::pose integrated = sample;
-        auto rotation = snark::rotation_matrix::rotation( integrated.orientation );
+        auto rotation = from ? snark::rotation_matrix::rotation( integrated.orientation ) : snark::rotation_matrix::rotation( integrated.orientation ).transpose();
         double sign = from ? 1 : -1;
-        if( !from ) { rotation = rotation.transpose(); }
         while( std::cin.good() || istream.ready() )
         {
             const input* p = istream.read();
             if( !p ) { break; }
+            auto next_rotation = ( from ? snark::rotation_matrix::rotation( p->orientation ) : snark::rotation_matrix::rotation( p->orientation ).transpose() ) * rotation;
+            integrated.orientation = snark::rotation_matrix::roll_pitch_yaw( next_rotation );
             integrated.coordinates += p->coordinates * sign;
-            const auto& next_rotation = from ? snark::rotation_matrix::rotation( p->orientation ) : snark::rotation_matrix::rotation( p->orientation ).transpose();
-            integrated.orientation = snark::rotation_matrix::roll_pitch_yaw( next_rotation * rotation );
-            rotation = next_rotation;
             tied.append( integrated );
+            rotation = next_rotation;
         }
         return 0;
     }
