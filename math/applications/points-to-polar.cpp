@@ -43,9 +43,11 @@ static void usage()
     std::cerr << std::endl;
     std::cerr << "usage: cat xyz.csv | points-to-polar [<options>] > rbe.csv" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "<options>ark::csv" << std::endl;
+    std::cerr << "<options>" << std::endl;
+    std::cerr << "    --append; append range,bearing,elevation to each input record" << std::endl;
+    std::cerr << "              (default behaviour is in place substitution: x with range, y with bearing, z with elevation)" << std::endl;
     std::cerr << comma::csv::options::usage() << std::endl;
-    std::cerr << "    fields: r or range, b or bearing, e or elevation, default: r,b,e" << std::endl;
+    std::cerr << "    fields: x,y,z" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "    cat xyz.csv | points-to-polar --fields=x,y,z > rbe.csv" << std::endl;
@@ -62,21 +64,31 @@ int main( int ac, char** av )
         if( options.exists( "--help,-h" ) ) { usage(); }
         comma::csv::options input_options( ac, av );
         comma::csv::options output_options( input_options );
-        if( input_options.fields == "" ) { input_options.fields = "x,y,z"; }
-        std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
-        std::vector< std::string > output_fields = fields;
-        bool fields_set = false;
-        for( std::size_t i = 0; i < fields.size(); ++i )
+        if( input_options.fields == "" ) { input_options.fields = comma::join( comma::csv::names< Eigen::Vector3d >(), ',' ); }
+        bool append = options.exists("--append");
+        if ( append )
         {
-            if( fields[i] == "x" ) { output_fields[i] = "range"; fields_set = true; }
-            else if( fields[i] == "y" ) { output_fields[i] = "bearing"; fields_set = true; }
-            else if( fields[i] == "z" ) { output_fields[i] = "elevation"; fields_set = true; }
+            output_options.fields=comma::join( comma::csv::names< snark::range_bearing_elevation >(), ',');
+            if ( input_options.binary() ) { output_options.format(comma::csv::format::value<snark::range_bearing_elevation>());}
+        } 
+        else
+        {
+            std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
+            std::vector< std::string > output_fields = fields;
+            bool fields_set = false;
+            for( std::size_t i = 0; i < fields.size(); ++i )
+            {
+                if( fields[i] == "x" ) { output_fields[i] = "range"; fields_set = true; }
+                else if( fields[i] == "y" ) { output_fields[i] = "bearing"; fields_set = true; }
+                else if( fields[i] == "z" ) { output_fields[i] = "elevation"; fields_set = true; }
+            }
+            if( !fields_set ) { std::cerr << "points-to-polar: expected some of the fields: " << comma::join( comma::csv::names< Eigen::Vector3d >(), ',' ) << ", got none in: " << input_options.fields << std::endl; return 1; }
+            input_options.fields = comma::join( fields, ',' );
+            output_options.fields = comma::join( output_fields, ',' );
         }
-        if( !fields_set ) { std::cerr << "points-to-polar: expected some of the fields: " << comma::join( comma::csv::names< Eigen::Vector3d >(), ',' ) << ", got none in: " << input_options.fields << std::endl; return 1; }
-        input_options.fields = comma::join( fields, ',' );
-        output_options.fields = comma::join( output_fields, ',' );
         comma::csv::input_stream< Eigen::Vector3d > is( std::cin, input_options );
         comma::csv::output_stream< snark::range_bearing_elevation > os( std::cout, output_options );
+        comma::csv::tied < Eigen::Vector3d, snark::range_bearing_elevation > tied(is, os);
         comma::signal_flag is_shutdown;
         while( !is_shutdown && std::cin.good() && !std::cin.eof() )
         {
@@ -84,8 +96,8 @@ int main( int ac, char** av )
             if( p == NULL ) { return 0; }
             snark::range_bearing_elevation rbe;
             rbe.from_cartesian( *p );
-            if( input_options.binary() ) { os.write( rbe, is.binary().last() ); }
-            else { os.write( rbe, is.ascii().last() ); }
+            if( append ) { tied.append(rbe); }
+            else { os.write( rbe, is.last() ); }
         }
         return 0;
     }
