@@ -40,7 +40,7 @@ simulated_time::simulated_time(const boost::posix_time::ptime& t): simulated(t),
 boost::posix_time::ptime simulated_time::operator()() const
 {
     boost::posix_time::ptime t = boost::posix_time::microsec_clock::universal_time();
-    return is_set() ? t : ( simulated + ( t - start ) );
+    return is_set() ? ( simulated + ( t - start ) ) : t;
 }
 
 void simulated_time::reset(const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time )
