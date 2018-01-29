@@ -60,6 +60,7 @@ bool velodyne_stream::read()
     m_point.range = point_calculator_->range( m_point.id, r->range );
     m_point.azimuth = point_calculator_->azimuth( m_point.id, r->azimuth );
     m_point.scan = m_stream->scan();
+    m_point.valid_scan=m_stream->is_scan_valid();
     return true;
 }
 

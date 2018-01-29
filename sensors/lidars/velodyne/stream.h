@@ -40,6 +40,7 @@ struct stream
     virtual void skip_scan() = 0;
     virtual unsigned int scan() const = 0;
     virtual void close() = 0;
+    virtual bool is_scan_valid() { return true; }
 };
 
 } } // namespace snark {  namespace velodyne {

@@ -48,7 +48,7 @@ void scan::thin ( velodyne::hdl64::packet& packet, double rate, double angularSp
     {
         bool valid = packet.blocks[i.block].lasers[i.laser].range() > 0;
         if( !valid ) { continue; }
-        if( m_tick.is_new_scan( packet ) )
+        if( m_tick.is_new_scan( packet, boost::posix_time::not_a_date_time ) )
         {
             ++m_scan;
             m_outputCurrentscan = ( m_output == 0 ) || ( m_output < rate * m_scan );

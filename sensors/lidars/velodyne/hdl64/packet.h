@@ -38,6 +38,7 @@
 #include <comma/packed/little_endian.h>
 #include <comma/packed/string.h>
 #include <comma/packed/struct.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark {  namespace velodyne { namespace hdl64 {
 
@@ -87,6 +88,9 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
 
     boost::array< laser_block, number_of_blocks > blocks;
     status status;
+    
+    // each packet takes 1.33 milliseconds + 20% margin
+    static boost::posix_time::time_duration timestamp_threshold() { return boost::posix_time::microseconds( 288 * 2); }
 };
 
 } } } // namespace snark {  namespace velodyne { namespace hdl64 {

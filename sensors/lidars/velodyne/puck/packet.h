@@ -37,6 +37,7 @@
 #include <comma/packed/little_endian.h>
 #include <comma/packed/string.h>
 #include <comma/packed/struct.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark { namespace velodyne { namespace puck {
 
@@ -78,6 +79,9 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     factory_t factory;
     
     class const_iterator;
+    
+    // each packet takes 1.33 milliseconds + 20% margin
+    static boost::posix_time::time_duration timestamp_threshold() { return boost::posix_time::microseconds(1330 * 1.2); }
 };
 
 class packet::const_iterator

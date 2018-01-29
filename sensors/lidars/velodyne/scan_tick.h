@@ -30,6 +30,7 @@
 #pragma once
 
 #include <boost/optional.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark {  namespace velodyne {
 
@@ -37,14 +38,17 @@ class scan_tick
 {
     public:
         template < typename P >
-        bool is_new_scan( const P& packet );
-
+        bool is_new_scan( const P& packet, boost::posix_time::ptime  timestamp );
         template < typename P >
-        static bool is_new_scan( const P& packet, unsigned int last_angle );
+        bool is_new_scan( const P& packet, boost::posix_time::ptime  timestamp, bool& valid_scan );
+
+//         template < typename P >
+//         static bool is_new_scan( const P& packet, unsigned int last_angle );
 
     private:
         unsigned int angle_;
         boost::optional< unsigned int > last_angle_;
+        boost::optional<boost::posix_time::ptime > last_timestamp;
 };
 
 } } // namespace snark {  namespace velodyne {

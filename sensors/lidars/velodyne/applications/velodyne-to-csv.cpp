@@ -126,6 +126,7 @@ static void usage( bool )
     std::cerr << "    --ntp=[<threshold>],[<\"permissive\">]: get data timestamps from ntp data in packets (default: system time from input stream)" << std::endl;
     std::cerr << "                                            if times differ by more than <threshold>, use system time if permissive" << std::endl;
     std::cerr << "    --output-invalid-points: output also invalid laser returns" << std::endl;
+    std::cerr << "    --discard-invalid-scans: don't output scans with missing packets" << std::endl;
     std::cerr << "    --scans [<from>]:[<to>] : output only scans in given range" << std::endl;
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
     std::cerr << "                                    5: for scans 5, 6, ..." << std::endl;
@@ -255,6 +256,7 @@ int main( int ac, char** av )
         comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
         if( options.exists( "--output-format,--format" ) ) { std::cout << format.string() << std::endl; return 0; }
         bool output_invalid_points = options.exists( "--output-invalid-points" );
+        bool discard_invalid_scans=options.exists("--discard-invalid-scans");
         boost::optional< std::size_t > from;
         boost::optional< std::size_t > to;
         if( options.exists( "--scans" ) )
@@ -336,6 +338,12 @@ int main( int ac, char** av )
         snark::velodyne_stream v( s, calculator, from, to, raw_intensity );
         comma::signal_flag is_shutdown;
         comma::csv::output_stream< snark::velodyne_point > ostream( std::cout, csv );
+        static std::vector<snark::velodyne_point> points;
+        uint32_t scan=0;
+        if(discard_invalid_scans)
+        {
+            points.reserve(130000);
+        }
         //Profilerstart( "velodyne-to-csv.prof" );{
         while( !is_shutdown && v.read() )
         { 
@@ -343,7 +351,27 @@ int main( int ac, char** av )
             if( max_range && v.point().range > *max_range ) { continue; }
             snark::velodyne_point p = v.point();
             p.timestamp = adjust_timestamp_functor( p.timestamp );
-            ostream.write( p );
+            if(discard_invalid_scans)
+            {
+                //new scan
+                if(scan!=p.scan && points.size())
+                {
+                    if(points.back().valid_scan && p.valid_scan)
+                    {
+                        for(const auto& i : points)
+                        {
+                            ostream.write(i);
+                        }
+                    }
+                    points.clear();
+                }
+                scan=p.scan;
+                points.push_back(p);
+            }
+            else
+            {
+                ostream.write( p );
+            }
         }
         //Profilerstop(); }
         if( verbose ) { if( is_shutdown ) { std::cerr << "velodyne-to-csv: interrupted by signal" << std::endl; } else { std::cerr << "velodyne-to-csv: done, no more data" << std::endl; } }
