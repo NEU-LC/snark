@@ -55,8 +55,14 @@ static comma::csv::options csv;
 static bool verbose;
 std::string app_name="points-calc";
 typedef std::pair< Eigen::Vector3d, Eigen::Vector3d > point_pair_t;
-
 static comma::csv::ascii< Eigen::Vector3d > ascii;
+
+struct point_with_block
+{
+    Eigen::Vector3d coordinates;
+    comma::uint32 block;
+    point_with_block() : coordinates( Eigen::Vector3d::Zero() ), block( 0 ) {}
+};
 
 static void usage( bool verbose = false )
 {
@@ -104,11 +110,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --output-fields: print output field names and exit" << std::endl;
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << std::endl;
-    if( verbose )
-    {
-        std::cerr << "csv options:" << std::endl;
-        std::cerr << comma::csv::options::usage() << std::endl;
-    }
+    if( verbose ) { std::cerr << "csv options:" << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << "operation details" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    angle-axis" << std::endl;
@@ -126,11 +128,13 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "    cumulative-distance" << std::endl;
     std::cerr << "        cumulative distance between subsequent points" << std::endl;
+    std::cerr << "        if 'block' field present, calculate distance block-wise" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --differential,--diff: if present, input point represents difference with the previous point, not the absolute coordinates" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "        input fields: " << comma::join( comma::csv::names< point_with_block >( false ), ',' ) << std::endl;
+    std::cerr << "        default input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "    cumulative-discretise, cumulative-discretize, sample" << std::endl;
     std::cerr << "        read input data and discretise intervals with --step along the whole" << std::endl;
@@ -294,19 +298,21 @@ static void usage( bool verbose = false )
 
 static void calculate_distance( bool cumulative, bool propagate = false, bool differential = false )
 {
-    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
-    boost::optional< Eigen::Vector3d > last;
+    if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+    csv.full_xpath = false;
+    comma::csv::input_stream< point_with_block > istream( std::cin, csv );
+    boost::optional< point_with_block > last;
     double distance = 0;
     double previous_norm = 0;
     if( cumulative && propagate ) { std::cerr << "points-calc: cumulative distance and propagate are mutually exclusive" << std::endl; exit( 1 ); }
     if( !cumulative && differential ) { std::cerr << "points-calc: differential distance calculation is implemented only for cumulative-distance" << std::endl; exit( 1 ); }
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
-        const Eigen::Vector3d* p = istream.read();
+        const point_with_block* p = istream.read();
         if( !p ) { break; }
-        double norm = differential ? p->norm() : last ? ( *p - *last ).norm() : 0;
+        double norm = differential ? p->coordinates.norm() : last ? ( p->coordinates - last->coordinates ).norm() : 0;
         if( propagate ) { if( comma::math::equal( norm, 0 ) ) { norm = previous_norm; } else { previous_norm = norm; } }
-        distance = cumulative ? distance + norm : norm;
+        distance = cumulative ? ( !last || p->block == last->block ? distance + norm : 0 ) : norm;
         last = *p;
         if( csv.binary() )
         {
@@ -606,12 +612,7 @@ struct traits
     
 namespace thin_operation {
 
-struct point
-{
-    Eigen::Vector3d coordinates;
-    unsigned block;
-    point() : coordinates( Eigen::Vector3d::Zero() ), block( 0 ) {}
-};
+typedef point_with_block point;
 
 struct record
 {
@@ -625,21 +626,19 @@ struct record
 class proportional_thinner
 {
     public:
-        proportional_thinner( double rate ) : increment( 1.0 / rate )
-        {
-            count = ( std::isinf( increment ) ? 0.0 : increment / 2.0 );
-        }
+        proportional_thinner( double rate ) : increment_( 1.0 / rate ) { count_ = ( std::isinf( increment_ ) ? 0.0 : increment_ / 2.0 ); }
 
         bool keep()
         {
-            count += 1.0;
-            if( count >= increment ) { count -= increment; return true; }
-            else { return false; }
+            count_ += 1.0;
+            if( count_ < increment_ ) { return false; }
+            count_ -= increment_;
+            return true;
         }
 
     private:
-        double increment;
-        double count;
+        double increment_;
+        double count_;
 };
 
 class fixed_number_thinner
@@ -895,15 +894,15 @@ template <> struct traits< snark::points_calc::integrate_frame::pose >
     }
 };
     
-template <> struct traits< thin_operation::point >
+template <> struct traits< point_with_block >
 {
-    template< typename K, typename V > static void visit( const K&, const thin_operation::point& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const point_with_block& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "block", t.block );
     }
 
-    template< typename K, typename V > static void visit( const K&, thin_operation::point& t, V& v )
+    template< typename K, typename V > static void visit( const K&, point_with_block& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "block", t.block );
@@ -988,8 +987,10 @@ int main( int ac, char** av )
         }
         if( operation == "cumulative-distance" )
         {
-            if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
-            if( options.exists("--output-format" )){ std::cout << "d" << std::endl; return 0; }
+            if( options.exists("--input-fields" ) ) { std::cout << comma::join( comma::csv::names< point_with_block >( false ), ',' ) << std::endl; return 0; }
+            if( options.exists("--input-format" ) ) { std::cout << comma::csv::format::value< point_with_block >() << std::endl; return 0; }
+            if( options.exists("--output-fields" ) ) { std::cout << "distance" << std::endl; return 0; }
+            if( options.exists("--output-format" ) ) { std::cout << "d" << std::endl; return 0; }
             calculate_distance( true, false, options.exists( "--differential,--diff" ) );
             return 0;
         }
