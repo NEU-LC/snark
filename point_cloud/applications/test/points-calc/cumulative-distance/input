@@ -1,6 +1,3 @@
-cumulative-distance
-x,y,z
-0,0,0
-1,1,1
-2,2,2
-0,0,0
+basics[0]="( echo 0,0,0; echo 0,0,1; echo 0,1,1; echo 0,1,0 ) | points-calc cumulative-distance | tr \'\\\n\' \';\'"
+basics[1]="( echo 0,0,0; echo 0,0,1; echo 0,1,1; echo 0,1,0 ) | points-calc cumulative-distance --fields x,y,z | tr \'\\\n\' \';\'"
+block[0]="( echo 0,0,0,0; echo 0,0,1,0; echo 0,1,1,1; echo 0,1,0,1 ) | points-calc cumulative-distance --fields x,y,z,block | tr \'\\\n\' \';\'"

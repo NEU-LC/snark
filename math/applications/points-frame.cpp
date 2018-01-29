@@ -95,7 +95,7 @@ static void usage( bool verbose = false )
     std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"100,100,0\"" << std::endl;
     std::cerr << "20101010T101010,101,100,0" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"100,100,0,0,$(math-deg2rad 90),0\"" << std::endl;
+    std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"100,100,0,0,0,$(math-deg2rad 90)\"" << std::endl;
     std::cerr << "20101010T101010,100,101,0" << std::endl;
     std::cerr << std::endl;
     std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"0,-3,2,$(math-deg2rad 90),0,0\"" << std::endl;
@@ -105,7 +105,7 @@ static void usage( bool verbose = false )
     std::cerr << "20101010T101010,3,2,-1" << std::endl;
     std::cerr << std::endl;
     std::cerr << "echo 20101010T101010,1,0,0 | points-frame --from \"-2,1,3,0,0,$(math-deg2rad 90)\"" << std::endl;
-    std::cerr << "20101010T101010,-2,1,3" << std::endl;
+    std::cerr << "20101010T101010,-2,2,3" << std::endl;
     std::cerr << std::endl;
     std::cerr << "echo 1,2,3 | points-frame --from \"3,2,1\" --fields=x,y,z" << std::endl;
     std::cerr << std::endl;

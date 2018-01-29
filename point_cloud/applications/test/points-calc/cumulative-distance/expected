@@ -1,4 +1,6 @@
-output[1]="0"
-output[2]="1.73205"
-output[3]="3.4641"
-output[4]="6.9282"
+basics[0]/output="0,0,0,0;0,0,1,1;0,1,1,2;0,1,0,3;"
+basics[0]/status=0
+basics[1]/output="0,0,0,0;0,0,1,1;0,1,1,2;0,1,0,3;"
+basics[1]/status=0
+block[0]/output="0,0,0,0,0;0,0,1,0,1;0,1,1,1,0;0,1,0,1,1;"
+block[0]/status=0

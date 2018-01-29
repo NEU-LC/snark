@@ -416,7 +416,7 @@ function convert_raw()
 while : ; do
     echo "$cmd 1" | socat -T$socat_inactivity_timeout tcp:$options_host:$options_port -,ignoreeof \
         | dd ibs=1 obs=$packet_size skip=1 2>/dev/null \
-        | csv-crc recover --size=$packet_size --crc=xmodem-correct --big-endian \
+        | csv-crc recover --size=$packet_size --crc=xmodem --big-endian \
         | csv-time-stamp --size=$packet_size \
         | csv-shuffle --fields=timestamp,$packet_fields --binary=t,$packet_format --output=$output_fields \
         | csv-from-bin $output_packet_format \
