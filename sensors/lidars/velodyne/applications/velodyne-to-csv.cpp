@@ -127,6 +127,10 @@ static void usage( bool )
     std::cerr << "                                            if times differ by more than <threshold>, use system time if permissive" << std::endl;
     std::cerr << "    --output-invalid-points: output also invalid laser returns" << std::endl;
     std::cerr << "    --discard-invalid-scans: don't output scans with missing packets" << std::endl;
+    std::cerr << "    --missing-packets-threshold=<n>: number of consequtive missing packets for new/invalid scan" << std::endl;
+    std::cerr << "        if the data is missing a slice bigger than <n> packets (calculated based on timestamp), then it will mark the rest as a new scan" << std::endl;
+    std::cerr << "        use --discard-invalid-scans option together with this option to discard all the scans that have missing consequtive packets bigger than <n>" << std::endl;
+    std::cerr << "        by default (when --missing-packets-threshold is not specified) it will mark new/invalid scan if more than 25 millisecond of data is missing (half a circle at 20Hz)" << std::endl;
     std::cerr << "    --scans [<from>]:[<to>] : output only scans in given range" << std::endl;
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
     std::cerr << "                                    5: for scans 5, 6, ..." << std::endl;
@@ -335,6 +339,9 @@ int main( int ac, char** av )
                 else { s = new snark::velodyne::hdl64::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, legacy ); }
                 break;
         }
+        boost::optional<unsigned> threshold_n=options.optional<unsigned>("--missing-packets-threshold");
+        if(threshold_n && *threshold_n == 0) { COMMA_THROW( comma::exception, "invalid value for --missing-packets-threshold; expected >=1, got "<<*threshold_n); }
+        s->set_threshold_n_option(threshold_n);
         snark::velodyne_stream v( s, calculator, from, to, raw_intensity );
         comma::signal_flag is_shutdown;
         comma::csv::output_stream< snark::velodyne_point > ostream( std::cout, csv );

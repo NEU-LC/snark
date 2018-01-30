@@ -67,6 +67,7 @@ class stream : public boost::noncopyable, public velodyne::stream
 
         /// return true if scan is valid
         bool is_scan_valid();
+        void set_threshold_n_option(const boost::optional<unsigned>& threshold_n);
         
     private:
         boost::scoped_ptr< S > stream_;
@@ -123,6 +124,12 @@ inline void stream< S >::close() { closed_ = true; impl::stream_traits< S >::clo
 
 template < typename S >
 inline bool stream< S >::is_scan_valid() { return is_scan_valid_; }
+
+template < typename S >
+inline void stream< S >::set_threshold_n_option(const boost::optional<unsigned>& threshold_n)
+{
+    tick_.threshold_n=threshold_n;
+}
 
 template < typename S >
 inline void stream< S >::skip_scan()

@@ -44,6 +44,9 @@ class scan_tick
 
 //         template < typename P >
 //         static bool is_new_scan( const P& packet, unsigned int last_angle );
+        
+        /// number of missing packets for breaking into new scan
+        boost::optional<unsigned> threshold_n;
 
     private:
         unsigned int angle_;

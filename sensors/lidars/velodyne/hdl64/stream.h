@@ -70,6 +70,7 @@ class stream : public velodyne::stream, public boost::noncopyable
         
         /// return true if scan is valid
         bool is_scan_valid();
+        void set_threshold_n_option(const boost::optional<unsigned>& threshold_n);
 
     private:
         boost::optional< double > m_angularSpeed;
@@ -189,6 +190,11 @@ inline bool stream< S >::is_scan_valid()
 //     }
     return is_scan_valid_; 
     
+}
+template < typename S >
+inline void stream< S >::set_threshold_n_option(const boost::optional<unsigned>& threshold_n)
+{
+    m_tick.threshold_n=threshold_n;
 }
 
 template < typename S >

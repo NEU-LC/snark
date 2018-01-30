@@ -64,14 +64,17 @@ bool scan_tick::is_new_scan( const P& packet, boost::posix_time::ptime  timestam
     if( angle > 36000 ) { angle -= 36000; }
     if( !last_angle_ || angle < *last_angle_ ) { tick = true; valid_scan=true; }
     last_angle_ = angle;
-    if(!tick && timestamp!=boost::posix_time::not_a_date_time && last_timestamp && timestamp-*last_timestamp > P::timestamp_threshold())
+    if(timestamp!=boost::posix_time::not_a_date_time && last_timestamp && timestamp-*last_timestamp > P::timestamp_threshold(threshold_n))
     {
         tick=true;
         valid_scan=false;
 //         boost::posix_time::time_duration dt=timestamp-*last_timestamp;
 //         comma::verbose<<"borken scan detected "<< dt.total_microseconds() << ","<<boost::posix_time::to_iso_string(timestamp)<<","<<boost::posix_time::to_iso_string(*last_timestamp)<<std::endl;
     }
-    last_timestamp=timestamp;
+    if(timestamp!=boost::posix_time::not_a_date_time)
+    {
+        last_timestamp=timestamp;
+    }
     return tick;
 }
 

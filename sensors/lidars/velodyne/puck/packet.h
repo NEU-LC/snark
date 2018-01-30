@@ -38,6 +38,7 @@
 #include <comma/packed/string.h>
 #include <comma/packed/struct.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/optional.hpp>
 
 namespace snark { namespace velodyne { namespace puck {
 
@@ -81,7 +82,17 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     class const_iterator;
     
     // each packet takes 1.33 milliseconds + 20% margin
-    static boost::posix_time::time_duration timestamp_threshold() { return boost::posix_time::microseconds(1330 * 1.2); }
+    static boost::posix_time::time_duration timestamp_threshold(const boost::optional<unsigned>& threshold_n)
+    {
+        if(threshold_n)
+        {
+            return boost::posix_time::microseconds(1330 * (1+*threshold_n));
+        }
+        else
+        {
+            return boost::posix_time::microseconds( 500000 / 20 );
+        }
+    }
 };
 
 class packet::const_iterator

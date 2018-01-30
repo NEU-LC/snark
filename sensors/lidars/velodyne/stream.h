@@ -41,6 +41,7 @@ struct stream
     virtual unsigned int scan() const = 0;
     virtual void close() = 0;
     virtual bool is_scan_valid() { return true; }
+    virtual void set_threshold_n_option(const boost::optional<unsigned>& threshold_n) { }
 };
 
 } } // namespace snark {  namespace velodyne {

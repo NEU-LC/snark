@@ -39,6 +39,7 @@
 #include <comma/packed/string.h>
 #include <comma/packed/struct.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/optional.hpp>
 
 namespace snark {  namespace velodyne { namespace hdl64 {
 
@@ -90,7 +91,17 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     status status;
     
     // each packet takes 1.33 milliseconds + 20% margin
-    static boost::posix_time::time_duration timestamp_threshold() { return boost::posix_time::microseconds( 288 * 2); }
+    static boost::posix_time::time_duration timestamp_threshold(const boost::optional<unsigned>& threshold_n)
+    {
+        if(threshold_n)
+        {
+            return boost::posix_time::microseconds( 288 * (1+*threshold_n));
+        }
+        else
+        {
+            return boost::posix_time::microseconds( 500000 / 20); // 0.5 circle at 20 Hz
+        }
+    }
 };
 
 } } } // namespace snark {  namespace velodyne { namespace hdl64 {
