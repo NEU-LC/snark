@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include <boost/optional.hpp>
 #include "laser_return.h"
 
 namespace snark { namespace velodyne {
@@ -41,6 +42,10 @@ struct stream
     virtual unsigned int scan() const = 0;
     virtual void close() = 0;
     virtual bool is_scan_valid() { return true; }
+    // todo: should this function be pure virtual?
+    // todo: a better name for the function
+    // todo: a proper comment explaining what the function does (other methods are self-explanatory, but this one is obscure)
+    // todo? does this function need to be virtual? it seems that all subclasses use the same scan_tick class - should scan_tick be in base class then?
     virtual void set_threshold_n_option(const boost::optional<unsigned>& threshold_n) { }
 };
 

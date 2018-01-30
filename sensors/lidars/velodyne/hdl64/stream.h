@@ -70,6 +70,8 @@ class stream : public velodyne::stream, public boost::noncopyable
         
         /// return true if scan is valid
         bool is_scan_valid();
+        
+        // todo: doxygenate
         void set_threshold_n_option(const boost::optional<unsigned>& threshold_n);
 
     private:
