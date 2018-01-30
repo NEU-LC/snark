@@ -64,7 +64,7 @@ static void usage( bool verbose )
     std::cerr << "    --permissive; if present and only --source given, skip non-existing or unreachable targets" << std::endl;
     std::cerr << "    --source,--start-id,--from,--start,--origin: source node id" << std::endl;
     std::cerr << "        if --target specified, find the best way to target" << std::endl;
-    std::cerr << "        else read target ids on stdin (i.e. search graph once, pull best path many times" << std::endl;
+    std::cerr << "        else read target ids on stdin (i.e. search graph once, pull best path many times)" << std::endl;
     std::cerr << "    --target,--target-id,--to,--destination: target node id" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
