@@ -30,6 +30,7 @@
 #pragma once
 
 #include "laser_return.h"
+#include <boost/optional.hpp>
 
 namespace snark { namespace velodyne {
 
