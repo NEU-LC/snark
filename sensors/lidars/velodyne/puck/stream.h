@@ -68,16 +68,12 @@ class stream : public boost::noncopyable, public velodyne::stream
         /// return true if scan is valid
         bool is_scan_valid();
         
-        // todo: doxygenate
-        void set_threshold_n_option(const boost::optional<unsigned>& threshold_n);
-        
     private:
         boost::scoped_ptr< S > stream_;
         boost::posix_time::ptime timestamp_;
         const char* buffer_;
         packet::const_iterator puck_packet_iterator_;
         unsigned int scan_;
-        scan_tick tick_;
         bool closed_;
         laser_return laser_return_;
         bool output_invalid_;
@@ -99,7 +95,7 @@ inline laser_return* stream< S >::read()
             buffer_ = impl::stream_traits< S >::read( *stream_, sizeof( packet ) );
             if( !buffer_ ) { closed_ = true; return NULL; }
             const packet* p = reinterpret_cast< const packet* >( buffer_ );
-            if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *p, is_scan_valid_ ) ) { ++scan_; }
+            if( impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p, is_scan_valid_ ) ) { ++scan_; }
             puck_packet_iterator_ = packet::const_iterator( p );
             timestamp_ = ntp_ ? ntp_->update_timestamp( impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() ) : impl::stream_traits< S >::timestamp( *stream_ );
         }
@@ -128,20 +124,14 @@ template < typename S >
 inline bool stream< S >::is_scan_valid() { return is_scan_valid_; }
 
 template < typename S >
-inline void stream< S >::set_threshold_n_option(const boost::optional<unsigned>& threshold_n)
-{
-    tick_.threshold_n=threshold_n;
-}
-
-template < typename S >
 inline void stream< S >::skip_scan()
 {
     while( !closed_ )
     {
         const packet* p = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *stream_, sizeof( packet ) ) );
         if( p == NULL ) { return; }
-        if( tick_.is_new_scan( *p, impl::stream_traits< S >::timestamp( *stream_ ) ) ) { ++scan_; return; }
-        if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *p ) ) { ++scan_; return; }
+        if( scan_tick_.is_new_scan( *p, impl::stream_traits< S >::timestamp( *stream_ ) ) ) { ++scan_; return; }
+        if( impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p ) ) { ++scan_; return; }
     }
 }
 

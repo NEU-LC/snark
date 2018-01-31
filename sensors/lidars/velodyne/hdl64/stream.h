@@ -71,9 +71,6 @@ class stream : public velodyne::stream, public boost::noncopyable
         /// return true if scan is valid
         bool is_scan_valid();
         
-        // todo: doxygenate
-        void set_threshold_n_option(const boost::optional<unsigned>& threshold_n);
-
     private:
         boost::optional< double > m_angularSpeed;
         bool m_outputInvalid;
@@ -106,7 +103,6 @@ class stream : public velodyne::stream, public boost::noncopyable
         };
         index m_index;
         unsigned int m_scan;
-        scan_tick m_tick;
         bool m_closed;
         laser_return m_laserReturn;
         double angularSpeed();
@@ -160,10 +156,10 @@ inline laser_return* stream< S >::read()
             buffer_ = impl::stream_traits< S >::read( *m_stream, sizeof( packet ) );
             if( !buffer_ ) { m_closed = true; return NULL; }
             m_packet = reinterpret_cast< const packet* >( buffer_ );
-            if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet, is_scan_valid_ ) ) { ++m_scan; 
+            if( impl::stream_traits< S >::is_new_scan( scan_tick_, *m_stream, *m_packet, is_scan_valid_ ) ) { ++m_scan; 
 //                 comma::verbose<<"new scan "<<m_scan<<", "<<is_scan_valid_<<std::endl;
                 
-            } //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
+            } //if( scan_tick_.is_new_scan( *m_packet ) ) { ++m_scan; }
             m_index = index();
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
         }
@@ -193,11 +189,6 @@ inline bool stream< S >::is_scan_valid()
     return is_scan_valid_; 
     
 }
-template < typename S >
-inline void stream< S >::set_threshold_n_option(const boost::optional<unsigned>& threshold_n)
-{
-    m_tick.threshold_n=threshold_n;
-}
 
 template < typename S >
 inline void stream< S >::close() { m_closed = true; impl::stream_traits< S >::close( *m_stream ); }
@@ -210,8 +201,8 @@ inline void stream< S >::skip_scan()
         m_index = index();
         m_packet = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *m_stream, sizeof( packet ) ) );
         if( m_packet == NULL ) { return; }
-        if( m_tick.is_new_scan( *m_packet, impl::stream_traits< S >::timestamp( *m_stream ) ) ) { ++m_scan; return; }
-        if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; return; }
+        if( scan_tick_.is_new_scan( *m_packet, impl::stream_traits< S >::timestamp( *m_stream ) ) ) { ++m_scan; return; }
+        if( impl::stream_traits< S >::is_new_scan( scan_tick_, *m_stream, *m_packet ) ) { ++m_scan; return; }
     }
 }
 

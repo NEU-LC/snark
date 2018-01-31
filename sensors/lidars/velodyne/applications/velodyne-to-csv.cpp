@@ -341,7 +341,7 @@ int main( int ac, char** av )
         }
         boost::optional<unsigned> threshold_n=options.optional<unsigned>("--missing-packets-threshold");
         if(threshold_n && *threshold_n == 0) { COMMA_THROW( comma::exception, "invalid value for --missing-packets-threshold; expected >=1, got "<<*threshold_n); }
-        s->set_threshold_n_option(threshold_n);
+        s->set_missing_packets_threshold(threshold_n);
         snark::velodyne_stream v( s, calculator, from, to, raw_intensity );
         comma::signal_flag is_shutdown;
         comma::csv::output_stream< snark::velodyne_point > ostream( std::cout, csv );
