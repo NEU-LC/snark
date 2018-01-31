@@ -1922,7 +1922,7 @@ static typename impl::filters< H >::value_type ratio_impl_( const typename impl:
         }
     }
     int otype = single_channel_type( m.second.type() );
-    if ( otype != CV_64FC1 ) { otype = CV_32FC1; }
+    if ( opname != "shuffle" && otype != CV_64FC1 ) { otype = CV_32FC1; }
     switch( m.second.depth() )
     {
         case CV_8U : return per_element_ratio_selector< H, CV_8U  >( m, coefficients, otype, opname );
