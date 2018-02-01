@@ -41,6 +41,7 @@
 #include "../stream.h"
 #include "../impl/stream_traits.h"
 #include <comma/application/verbose.h>
+#include "../packet_traits.h"
 
 namespace snark { namespace velodyne { namespace hdl64 {
 
@@ -70,6 +71,8 @@ class stream : public velodyne::stream, public boost::noncopyable
         
         /// return true if scan is valid
         bool is_scan_valid();
+        
+        unsigned packet_duration() { return packet_traits<packet>::packet_duration; }
         
     private:
         boost::optional< double > m_angularSpeed;
@@ -156,7 +159,9 @@ inline laser_return* stream< S >::read()
             buffer_ = impl::stream_traits< S >::read( *m_stream, sizeof( packet ) );
             if( !buffer_ ) { m_closed = true; return NULL; }
             m_packet = reinterpret_cast< const packet* >( buffer_ );
-            if( impl::stream_traits< S >::is_new_scan( scan_tick_, *m_stream, *m_packet, is_scan_valid_ ) ) { ++m_scan; 
+            auto res=impl::stream_traits< S >::is_new_scan( scan_tick_, *m_stream, *m_packet );
+            is_scan_valid_=res.second;
+            if( res.first ) { ++m_scan; 
 //                 comma::verbose<<"new scan "<<m_scan<<", "<<is_scan_valid_<<std::endl;
                 
             } //if( scan_tick_.is_new_scan( *m_packet ) ) { ++m_scan; }
@@ -201,8 +206,8 @@ inline void stream< S >::skip_scan()
         m_index = index();
         m_packet = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *m_stream, sizeof( packet ) ) );
         if( m_packet == NULL ) { return; }
-        if( scan_tick_.is_new_scan( *m_packet, impl::stream_traits< S >::timestamp( *m_stream ) ) ) { ++m_scan; return; }
-        if( impl::stream_traits< S >::is_new_scan( scan_tick_, *m_stream, *m_packet ) ) { ++m_scan; return; }
+        if( scan_tick_.is_new_scan( *m_packet, impl::stream_traits< S >::timestamp( *m_stream ) ).first ) { ++m_scan; return; }
+        if( impl::stream_traits< S >::is_new_scan( scan_tick_, *m_stream, *m_packet ).first ) { ++m_scan; return; }
     }
 }
 

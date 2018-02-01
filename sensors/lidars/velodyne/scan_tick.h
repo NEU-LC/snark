@@ -36,22 +36,24 @@ namespace snark {  namespace velodyne {
 
 class scan_tick
 {
-    public:
-        template < typename P >
-        bool is_new_scan( const P& packet, boost::posix_time::ptime  timestamp );
-        template < typename P >
-        bool is_new_scan( const P& packet, boost::posix_time::ptime  timestamp, bool& valid_scan );
+public:
+    scan_tick();
+    
+    /// calculate whether this packet belongs to a new scan and if the scan is valid
+    /// it uses both angle and timestamp, use threshold_n to set number of missing consecutive packets
+    /// @param packet: packet data contains azimuth
+    /// @param timestamp: timestamp of the packet (obtained from the stream)
+    /// @return: first: this is new scan, second: scan is valid
+    template < typename P >
+    std::pair<bool,bool> is_new_scan( const P& packet, boost::posix_time::ptime  timestamp);
 
-//         template < typename P >
-//         static bool is_new_scan( const P& packet, unsigned int last_angle );
-        
-        /// number of missing packets for breaking into new scan
-        boost::optional<unsigned> threshold_n;
+    /// number of missing packets for breaking into new scan
+    boost::optional<unsigned> threshold_n;
 
-    private:
-        unsigned int angle_;
-        boost::optional< unsigned int > last_angle_;
-        boost::optional<boost::posix_time::ptime > last_timestamp;
+private:
+    boost::optional< unsigned int > last_angle_;
+    boost::optional<boost::posix_time::ptime > last_timestamp;
+    bool valid_scan;
 };
 
 } } // namespace snark {  namespace velodyne {
