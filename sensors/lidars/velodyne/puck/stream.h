@@ -41,6 +41,7 @@
 #include "../stream.h"
 #include "packet.h"
 #include "ntp.h"
+#include "../packet_traits.h"
 
 namespace snark {  namespace velodyne { namespace puck {
 
@@ -67,6 +68,8 @@ class stream : public boost::noncopyable, public velodyne::stream
 
         /// return true if scan is valid
         bool is_scan_valid();
+        
+        unsigned packet_duration() { return packet_traits<packet>::packet_duration; }
         
     private:
         boost::scoped_ptr< S > stream_;

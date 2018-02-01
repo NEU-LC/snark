@@ -31,6 +31,7 @@
 #include "hdl64/packet.h"
 #include "puck/packet.h"
 #include "comma/application/verbose.h"
+#include "packet_traits.h"
 
 namespace snark {  namespace velodyne {
 
@@ -39,6 +40,13 @@ namespace detail {
 static unsigned int packet_angle_( const velodyne::hdl64::packet& p ) { return p.blocks[0].rotation() + 9000; } // 0 = behind the vehicle
 
 static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; } // quick and dirty: -90 degrees for now; see todo comments in puck/calculator.cpp
+
+
+template<typename P>
+static boost::posix_time::time_duration timestamp_threshold(const boost::optional<unsigned>& threshold_n)
+{
+    return boost::posix_time::microseconds( threshold_n ? packet_traits<P>::packet_duration * (1+*threshold_n) : 500000 / 20 );
+}
 
 } // namespace detail {
     
@@ -64,7 +72,7 @@ bool scan_tick::is_new_scan( const P& packet, boost::posix_time::ptime  timestam
     if( angle > 36000 ) { angle -= 36000; }
     if( !last_angle_ || angle < *last_angle_ ) { tick = true; valid_scan=true; }
     last_angle_ = angle;
-    if(timestamp!=boost::posix_time::not_a_date_time && last_timestamp && timestamp-*last_timestamp > P::timestamp_threshold(threshold_n))
+    if(timestamp!=boost::posix_time::not_a_date_time && last_timestamp && timestamp-*last_timestamp > detail::timestamp_threshold<P>(threshold_n))
     {
         tick=true;
         valid_scan=false;

@@ -41,6 +41,7 @@
 #include "../stream.h"
 #include "../impl/stream_traits.h"
 #include <comma/application/verbose.h>
+#include "../packet_traits.h"
 
 namespace snark { namespace velodyne { namespace hdl64 {
 
@@ -70,6 +71,8 @@ class stream : public velodyne::stream, public boost::noncopyable
         
         /// return true if scan is valid
         bool is_scan_valid();
+        
+        unsigned packet_duration() { return packet_traits<packet>::packet_duration; }
         
     private:
         boost::optional< double > m_angularSpeed;
