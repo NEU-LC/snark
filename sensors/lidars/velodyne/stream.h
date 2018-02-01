@@ -44,13 +44,8 @@ struct stream
     virtual void close() = 0;
     virtual bool is_scan_valid() { return true; }
     
-    // todo: should this function be pure virtual?
-    // todo: a better name for the function
-    // todo: a proper comment explaining what the function does (other methods are self-explanatory, but this one is obscure)
-    // todo? does this function need to be virtual? it seems that all subclasses use the same scan_tick class - should scan_tick be in base class then?
-    
     /// set missing packets threshold in scan_tick
-    /// @param threshold_n todo
+    /// @param threshold_n number of consecutive packets that is used in scan_tick to break into new scan and mark it as invalid
     void set_missing_packets_threshold(const boost::optional<unsigned>& threshold_n) { scan_tick_.threshold_n = threshold_n; }
     
     virtual unsigned packet_duration() = 0;

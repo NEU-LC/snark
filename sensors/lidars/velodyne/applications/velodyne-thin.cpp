@@ -155,7 +155,7 @@ void run( S* stream )
         if( p == NULL ) { break; }
         ::memcpy( &packet, p, velodyne::hdl64::packet::size );
         boost::posix_time::ptime timestamp = stream->timestamp();
-        if( tick.is_new_scan( packet, timestamp ) ) { ++scan_id; } // quick and dirty
+        if( tick.is_new_scan( packet, timestamp ).first ) { ++scan_id; } // quick and dirty
         if( scan_rate ) { scan.thin( packet, *scan_rate, angularSpeed( packet ) ); }
         if( !scan_rate || !scan.empty() )
         {

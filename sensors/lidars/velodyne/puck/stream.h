@@ -98,7 +98,9 @@ inline laser_return* stream< S >::read()
             buffer_ = impl::stream_traits< S >::read( *stream_, sizeof( packet ) );
             if( !buffer_ ) { closed_ = true; return NULL; }
             const packet* p = reinterpret_cast< const packet* >( buffer_ );
-            if( impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p, is_scan_valid_ ) ) { ++scan_; }
+            auto res=impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
+            is_scan_valid_=res.second;
+            if( res.first ) { ++scan_; }
             puck_packet_iterator_ = packet::const_iterator( p );
             timestamp_ = ntp_ ? ntp_->update_timestamp( impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() ) : impl::stream_traits< S >::timestamp( *stream_ );
         }
@@ -133,8 +135,8 @@ inline void stream< S >::skip_scan()
     {
         const packet* p = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *stream_, sizeof( packet ) ) );
         if( p == NULL ) { return; }
-        if( scan_tick_.is_new_scan( *p, impl::stream_traits< S >::timestamp( *stream_ ) ) ) { ++scan_; return; }
-        if( impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p ) ) { ++scan_; return; }
+        if( scan_tick_.is_new_scan( *p, impl::stream_traits< S >::timestamp( *stream_ ) ).first ) { ++scan_; return; }
+        if( impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p ).first ) { ++scan_; return; }
     }
 }
 
