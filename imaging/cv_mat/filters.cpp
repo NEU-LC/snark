@@ -2425,7 +2425,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "swap-channels" )
     {
-        COMMA_THROW( comma::exception, "NYI" );
+        COMMA_THROW( comma::exception, "todo" );
         // use cv::reshape or cv::mixChannels
     }
     if( e[0] == "cross" ) // todo: quick and dirty, implement using traits
