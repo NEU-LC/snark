@@ -40,7 +40,7 @@ template < typename H >
 class life
 {
     public:
-        life( double procreation_treshold = 3, double stability_threshold = 4, double step = 1 );
+        life( double procreation_treshold = 3, double stability_threshold = 4, double step = 1, bool exit_on_stability = false );
         
         typename std::pair< H, cv::Mat > operator()( typename std::pair< H, cv::Mat > p );
         
@@ -48,6 +48,7 @@ class life
         double procreation_treshold_;
         double stability_treshold_;
         double step_;
+        bool exit_on_stability_;
         boost::optional< unsigned int > index_;
         std::array< typename std::pair< H, cv::Mat >, 2 > generations_;
 };

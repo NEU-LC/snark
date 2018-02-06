@@ -2425,7 +2425,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "swap-channels" )
     {
-        COMMA_THROW( comma::exception, "NYI" );
+        COMMA_THROW( comma::exception, "todo" );
         // use cv::reshape or cv::mixChannels
     }
     if( e[0] == "cross" ) // todo: quick and dirty, implement using traits
@@ -2448,6 +2448,21 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         const std::vector< std::string > v = comma::split( e[1], ',' );
         for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
         return std::make_pair( boost::bind< value_type_t >( rectangle_impl_< H >, _1, drawing::rectangle( cv::Point( p[0], p[1] ), cv::Point( p[2], p[3] ), cv::Scalar( p[6], p[5], p[4] ), p[7], p[8], p[9] ) ), true );
+    }
+    if( e[0] == "file" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        boost::optional< int > quality;
+        bool do_index = false;
+        bool no_header = false;
+        for( unsigned int i = 1; i < s.size(); ++i )
+        {
+            if( s[i] == "index" ) { do_index = true; }
+            else if( s[i] == "no-header" ) { no_header = true; }
+            else { quality = boost::lexical_cast< int >( s[i] ); }
+        }
+        return std::make_pair( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false );
     }
     if( e[0] == "gamma" ) { return std::make_pair( boost::bind< value_type_t >( gamma_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ), true ); }
     if( e[0] == "remove-mean")
@@ -3010,21 +3025,21 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if (s.size() == 1) { quality = boost::lexical_cast<int>(s[1]); }
             f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >(get_timestamp), _1, s[0], quality ) ) );
         }
-        else if( e[0] == "file" )
-        {
-            if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
-            std::vector< std::string > s = comma::split( e[1], ',' );
-            boost::optional< int > quality;
-            bool do_index = false;
-            bool no_header = false;
-            for( unsigned int i = 1; i < s.size(); ++i )
-            {
-                if( s[i] == "index" ) { do_index = true; }
-                else if( s[i] == "no-header" ) { no_header = true; }
-                else { quality = boost::lexical_cast< int >( s[i] ); }
-            }
-            f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false ) );
-        }
+//         else if( e[0] == "file" )
+//         {
+//             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
+//             std::vector< std::string > s = comma::split( e[1], ',' );
+//             boost::optional< int > quality;
+//             bool do_index = false;
+//             bool no_header = false;
+//             for( unsigned int i = 1; i < s.size(); ++i )
+//             {
+//                 if( s[i] == "index" ) { do_index = true; }
+//                 else if( s[i] == "no-header" ) { no_header = true; }
+//                 else { quality = boost::lexical_cast< int >( s[i] ); }
+//             }
+//             f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false ) );
+//         }
         else if( e[0] == "histogram" )
         {
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
