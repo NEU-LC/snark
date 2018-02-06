@@ -58,7 +58,11 @@ class udp_reader : public boost::noncopyable
         const boost::posix_time::ptime& timestamp() const;
 
     private:
+#if (BOOST_VERSION >= 106600)
+        boost::asio::io_context service_;
+#else
         boost::asio::io_service service_;
+#endif
         boost::asio::ip::udp::socket socket_;
         boost::array< char, 2000 > packet_; // way greater than velodyne packet
         boost::posix_time::ptime timestamp_;

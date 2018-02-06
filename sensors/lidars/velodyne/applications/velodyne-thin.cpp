@@ -109,7 +109,11 @@ static velodyne::thin::scan scan;
 static boost::scoped_ptr< comma::io::publisher > publisher;
 
 // todo: quick and dirty
+#if (BOOST_VERSION >= 106600)
+static boost::scoped_ptr< boost::asio::io_context > publisher_udp_service;
+#else
 static boost::scoped_ptr< boost::asio::io_service > publisher_udp_service;
+#endif
 static boost::scoped_ptr< boost::asio::ip::udp::socket > publisher_udp_socket;
 static unsigned int udp_port;
 boost::asio::ip::udp::endpoint udp_destination;
@@ -230,7 +234,11 @@ int main( int ac, char** av )
             if( comma::split( how, ':' )[0] == "udp" ) // quick and dirty
             {
                 udp_port = boost::lexical_cast< unsigned short >( comma::split( how, ':' )[1] );
+#if (BOOST_VERSION >= 106600)
+                publisher_udp_service.reset( new boost::asio::io_context() );
+#else
                 publisher_udp_service.reset( new boost::asio::io_service() );
+#endif
                 publisher_udp_socket.reset( new boost::asio::ip::udp::socket ( *publisher_udp_service, boost::asio::ip::udp::v4() ) );
                 boost::system::error_code error;
                 publisher_udp_socket->set_option( boost::asio::ip::udp::socket::broadcast( true ), error );
