@@ -13,7 +13,11 @@ if( ${BASLER_PYLON_MAJOR_VERSION} LESS 5 )
 endif()
 
 # voodoo, see pylon sample makefiles
-INCLUDE_DIRECTORIES( BEFORE SYSTEM ${BASLER_PYLON_DIR}/include )
+#INCLUDE_DIRECTORIES( BEFORE SYSTEM ${BASLER_PYLON_DIR}/include )
+# if building JAI is enabled, SYSTEM (that translates into c++ -isystem) makes compiler
+# pick up JAI GenApi headers in some cases, which obviously does not compile
+INCLUDE_DIRECTORIES( ${BASLER_PYLON_DIR}/include )
+
 LINK_DIRECTORIES( ${BASLER_PYLON_DIR}/lib64 )
 if( ${BASLER_PYLON_MAJOR_VERSION} LESS 5 )
     INCLUDE_DIRECTORIES( BEFORE ${BASLER_PYLON_GENICAM_DIR}/library/CPP/include )

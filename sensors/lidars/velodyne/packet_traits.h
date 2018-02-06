@@ -29,29 +29,28 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
-#include "laser_return.h"
-#include "scan_tick.h"
+#include "hdl64/packet.h"
+#include "puck/packet.h"
 
 namespace snark { namespace velodyne {
 
-struct stream
+template <typename P> struct packet_traits
 {
-    virtual ~stream() {}
-    virtual laser_return* read() = 0;
-    virtual void skip_scan() = 0;
-    virtual unsigned int scan() const = 0;
-    virtual void close() = 0;
-    virtual bool is_scan_valid() { return true; }
-    
-    /// set missing packets threshold in scan_tick
-    /// @param threshold_n number of consecutive packets that is used in scan_tick to break into new scan and mark it as invalid
-    void set_missing_packets_threshold(const boost::optional<unsigned>& threshold_n) { scan_tick_.threshold_n = threshold_n; }
-    
-    virtual unsigned packet_duration() = 0;
-    double packet_angle(double rotation_per_second) { return 360 / ( 1000000.0 /(rotation_per_second *packet_duration())); }
-protected:
-    scan_tick scan_tick_;
+//     boost::posix_time::time_duration packet_duration();
 };
 
-} } // namespace snark {  namespace velodyne {
+template <> struct packet_traits<hdl64::packet>
+{
+    /// packet duration in microseconds
+    static const unsigned packet_duration =288;
+};
+
+template <> struct packet_traits<puck::packet>
+{
+    /// packet duration in microseconds
+    static const unsigned packet_duration=1330;
+};
+    
+    
+} } // namespace comma { namespace visiting {
+    

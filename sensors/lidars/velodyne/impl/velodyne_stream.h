@@ -52,8 +52,9 @@ struct velodyne_point
     double range;
     bool valid;
     comma::uint32 scan;
+    bool valid_scan;
     
-    velodyne_point(): id( 0 ), intensity( 0 ), ray( std::make_pair( ::Eigen::Vector3d::Zero(), ::Eigen::Vector3d::Zero() ) ), azimuth( 0 ), range( 0 ), valid( false ), scan( 0 ) {}
+    velodyne_point(): id( 0 ), intensity( 0 ), ray( std::make_pair( ::Eigen::Vector3d::Zero(), ::Eigen::Vector3d::Zero() ) ), azimuth( 0 ), range( 0 ), valid( false ), scan( 0 ), valid_scan(true) {}
 };
 
 namespace velodyne {

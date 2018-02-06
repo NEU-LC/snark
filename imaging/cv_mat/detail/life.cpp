@@ -35,10 +35,11 @@
 
 namespace snark { namespace cv_mat { namespace impl {
 
-template < typename H > life< H >::life( double procreation_treshold, double stability_threshold, double step )
+template < typename H > life< H >::life( double procreation_treshold, double stability_threshold, double step, bool exit_on_stability )
     : procreation_treshold_( procreation_treshold )
     , stability_treshold_( stability_threshold )
     , step_( step )
+    , exit_on_stability_( exit_on_stability )
 {
 }
 
@@ -48,6 +49,7 @@ static int prev_( int i, int size ) { return ( i > 0 ? i : size ) - 1; }
 
 template < typename H > typename std::pair< H, cv::Mat > life< H >::operator()( typename std::pair< H, cv::Mat > p )
 {
+    bool changed = false;
     if( index_ )
     {
         cv::Mat current = generations_[ *index_ ].second;
@@ -77,6 +79,7 @@ template < typename H > typename std::pair< H, cv::Mat > life< H >::operator()( 
                                                      : 0;
                                          double new_value = c[k] + step * 255;
                                          n[k] = new_value < 0 ? 0 : new_value > 255 ? 255 : new_value;
+                                         if( c[k] != n[k] ) { changed = true; }
                                      }
                                  }
                              }
@@ -89,8 +92,9 @@ template < typename H > typename std::pair< H, cv::Mat > life< H >::operator()( 
         index_ = 0;
         p.second.copyTo( generations_[0].second );
         p.second.copyTo( generations_[1].second );
-        
+        changed = true;
     }
+    if( exit_on_stability_ && !changed ) { return std::make_pair( p.first, cv::Mat() ); }
     generations_[ *index_ ].first = p.first;
     return generations_[ *index_ ];
 }

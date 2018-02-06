@@ -158,8 +158,8 @@ void run( S* stream )
         const char* p = velodyne::impl::stream_traits< S >::read( *stream, sizeof( velodyne::hdl64::packet ) );
         if( p == NULL ) { break; }
         ::memcpy( &packet, p, velodyne::hdl64::packet::size );
-        if( tick.is_new_scan( packet ) ) { ++scan_id; } // quick and dirty
         boost::posix_time::ptime timestamp = stream->timestamp();
+        if( tick.is_new_scan( packet, timestamp ).first ) { ++scan_id; } // quick and dirty
         if( scan_rate ) { scan.thin( packet, *scan_rate, angularSpeed( packet ) ); }
         if( !scan_rate || !scan.empty() )
         {

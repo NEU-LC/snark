@@ -38,6 +38,8 @@
 #include <comma/packed/little_endian.h>
 #include <comma/packed/string.h>
 #include <comma/packed/struct.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/optional.hpp>
 
 namespace snark {  namespace velodyne { namespace hdl64 {
 

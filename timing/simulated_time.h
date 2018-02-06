@@ -29,29 +29,28 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
-#include "laser_return.h"
-#include "scan_tick.h"
+#include <boost/date_time/posix_time/posix_time.hpp>
 
-namespace snark { namespace velodyne {
+namespace snark{ namespace timing {
 
-struct stream
+struct simulated_time
 {
-    virtual ~stream() {}
-    virtual laser_return* read() = 0;
-    virtual void skip_scan() = 0;
-    virtual unsigned int scan() const = 0;
-    virtual void close() = 0;
-    virtual bool is_scan_valid() { return true; }
+
+public:
+    simulated_time();
+    simulated_time(const boost::posix_time::ptime& t);
+
+    boost::posix_time::ptime operator()() const;
+
+    void reset(const boost::posix_time::ptime& t);
     
-    /// set missing packets threshold in scan_tick
-    /// @param threshold_n number of consecutive packets that is used in scan_tick to break into new scan and mark it as invalid
-    void set_missing_packets_threshold(const boost::optional<unsigned>& threshold_n) { scan_tick_.threshold_n = threshold_n; }
-    
-    virtual unsigned packet_duration() = 0;
-    double packet_angle(double rotation_per_second) { return 360 / ( 1000000.0 /(rotation_per_second *packet_duration())); }
-protected:
-    scan_tick scan_tick_;
+    bool is_set() const;
+
+ private:
+    boost::posix_time::ptime simulated;
+    boost::posix_time::ptime start;
+
 };
 
-} } // namespace snark {  namespace velodyne {
+} } // namespace snark{ namespace timing
+

@@ -41,6 +41,7 @@
 #include "../stream.h"
 #include "packet.h"
 #include "ntp.h"
+#include "../packet_traits.h"
 
 namespace snark {  namespace velodyne { namespace puck {
 
@@ -65,22 +66,27 @@ class stream : public boost::noncopyable, public velodyne::stream
         /// interrupt reading
         void close();
 
+        /// return true if scan is valid
+        bool is_scan_valid();
+        
+        unsigned packet_duration() { return packet_traits<packet>::packet_duration; }
+        
     private:
         boost::scoped_ptr< S > stream_;
         boost::posix_time::ptime timestamp_;
         const char* buffer_;
         packet::const_iterator puck_packet_iterator_;
         unsigned int scan_;
-        scan_tick tick_;
         bool closed_;
         laser_return laser_return_;
         bool output_invalid_;
         boost::optional<ntp_t> ntp_;
+        bool is_scan_valid_;
 };
 
 
 template < typename S >
-inline stream< S >::stream( S* stream, bool output_invalid, const boost::optional< ntp_t >& ntp ) : stream_( stream ), buffer_( NULL ), scan_( 0 ), closed_( false ), output_invalid_( output_invalid ), ntp_(ntp) {}
+inline stream< S >::stream( S* stream, bool output_invalid, const boost::optional< ntp_t >& ntp ) : stream_( stream ), buffer_( NULL ), scan_( 0 ), closed_( false ), output_invalid_( output_invalid ), ntp_(ntp), is_scan_valid_(true) {}
 
 template < typename S >
 inline laser_return* stream< S >::read()
@@ -92,7 +98,9 @@ inline laser_return* stream< S >::read()
             buffer_ = impl::stream_traits< S >::read( *stream_, sizeof( packet ) );
             if( !buffer_ ) { closed_ = true; return NULL; }
             const packet* p = reinterpret_cast< const packet* >( buffer_ );
-            if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *p ) ) { ++scan_; }
+            auto res=impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
+            is_scan_valid_=res.second;
+            if( res.first ) { ++scan_; }
             puck_packet_iterator_ = packet::const_iterator( p );
             timestamp_ = ntp_ ? ntp_->update_timestamp( impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() ) : impl::stream_traits< S >::timestamp( *stream_ );
         }
@@ -118,14 +126,17 @@ template < typename S >
 inline void stream< S >::close() { closed_ = true; impl::stream_traits< S >::close( *stream_ ); }
 
 template < typename S >
+inline bool stream< S >::is_scan_valid() { return is_scan_valid_; }
+
+template < typename S >
 inline void stream< S >::skip_scan()
 {
     while( !closed_ )
     {
         const packet* p = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *stream_, sizeof( packet ) ) );
         if( p == NULL ) { return; }
-        if( tick_.is_new_scan( *p ) ) { ++scan_; return; }
-        if( impl::stream_traits< S >::is_new_scan( tick_, *stream_, *p ) ) { ++scan_; return; }
+        if( scan_tick_.is_new_scan( *p, impl::stream_traits< S >::timestamp( *stream_ ) ).first ) { ++scan_; return; }
+        if( impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p ).first ) { ++scan_; return; }
     }
 }
 

@@ -40,6 +40,8 @@
 #include "../scan_tick.h"
 #include "../stream.h"
 #include "../impl/stream_traits.h"
+#include <comma/application/verbose.h>
+#include "../packet_traits.h"
 
 namespace snark { namespace velodyne { namespace hdl64 {
 
@@ -66,7 +68,12 @@ class stream : public velodyne::stream, public boost::noncopyable
 
         /// interrupt reading
         void close();
-
+        
+        /// return true if scan is valid
+        bool is_scan_valid();
+        
+        unsigned packet_duration() { return packet_traits<packet>::packet_duration; }
+        
     private:
         boost::optional< double > m_angularSpeed;
         bool m_outputInvalid;
@@ -99,11 +106,11 @@ class stream : public velodyne::stream, public boost::noncopyable
         };
         index m_index;
         unsigned int m_scan;
-        scan_tick m_tick;
         bool m_closed;
         laser_return m_laserReturn;
         double angularSpeed();
         bool m_legacy;
+        bool is_scan_valid_;
 };
 
 template < typename S >
@@ -115,6 +122,7 @@ inline stream< S >::stream( S* stream, unsigned int rpm, bool outputInvalid, boo
     , m_scan( 0 )
     , m_closed( false )
     , m_legacy(legacy)
+    , is_scan_valid_(true)
 {
     m_index.idx = m_size;
 }
@@ -127,6 +135,7 @@ inline stream< S >::stream( S* stream, bool outputInvalid, bool legacy )
     , m_scan( 0 )
     , m_closed( false )
     , m_legacy(legacy)
+    , is_scan_valid_(true)
 {
     m_index.idx = m_size;
 }
@@ -150,7 +159,12 @@ inline laser_return* stream< S >::read()
             buffer_ = impl::stream_traits< S >::read( *m_stream, sizeof( packet ) );
             if( !buffer_ ) { m_closed = true; return NULL; }
             m_packet = reinterpret_cast< const packet* >( buffer_ );
-            if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; } //if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; }
+            auto res=impl::stream_traits< S >::is_new_scan( scan_tick_, *m_stream, *m_packet );
+            is_scan_valid_=res.second;
+            if( res.first ) { ++m_scan; 
+//                 comma::verbose<<"new scan "<<m_scan<<", "<<is_scan_valid_<<std::endl;
+                
+            } //if( scan_tick_.is_new_scan( *m_packet ) ) { ++m_scan; }
             m_index = index();
             m_timestamp = impl::stream_traits< S >::timestamp( *m_stream );
         }
@@ -167,6 +181,20 @@ inline laser_return* stream< S >::read()
 template < typename S >
 inline unsigned int stream< S >::scan() const { return m_scan; }
 
+// static int debug=0;
+template < typename S >
+inline bool stream< S >::is_scan_valid() 
+{ 
+//     if(debug<400000)
+//     {
+//         if(!(debug%20000))
+//             comma::verbose<<"hdl64 stream is_scan_valid "<<is_scan_valid_<<std::endl;
+//         debug++;
+//     }
+    return is_scan_valid_; 
+    
+}
+
 template < typename S >
 inline void stream< S >::close() { m_closed = true; impl::stream_traits< S >::close( *m_stream ); }
 
@@ -178,8 +206,8 @@ inline void stream< S >::skip_scan()
         m_index = index();
         m_packet = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *m_stream, sizeof( packet ) ) );
         if( m_packet == NULL ) { return; }
-        if( m_tick.is_new_scan( *m_packet ) ) { ++m_scan; return; }
-        if( impl::stream_traits< S >::is_new_scan( m_tick, *m_stream, *m_packet ) ) { ++m_scan; return; }
+        if( scan_tick_.is_new_scan( *m_packet, impl::stream_traits< S >::timestamp( *m_stream ) ).first ) { ++m_scan; return; }
+        if( impl::stream_traits< S >::is_new_scan( scan_tick_, *m_stream, *m_packet ).first ) { ++m_scan; return; }
     }
 }
 

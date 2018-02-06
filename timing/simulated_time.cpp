@@ -27,31 +27,29 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "./simulated_time.h"
 
-#include <boost/optional.hpp>
-#include "laser_return.h"
-#include "scan_tick.h"
+// library for simulating system time with some shift
 
-namespace snark { namespace velodyne {
+namespace snark { namespace timing {
 
-struct stream
+simulated_time::simulated_time(): simulated(boost::posix_time::not_a_date_time) {}
+
+simulated_time::simulated_time(const boost::posix_time::ptime& t): simulated(t), start(boost::posix_time::microsec_clock::universal_time()) {}
+
+boost::posix_time::ptime simulated_time::operator()() const
 {
-    virtual ~stream() {}
-    virtual laser_return* read() = 0;
-    virtual void skip_scan() = 0;
-    virtual unsigned int scan() const = 0;
-    virtual void close() = 0;
-    virtual bool is_scan_valid() { return true; }
-    
-    /// set missing packets threshold in scan_tick
-    /// @param threshold_n number of consecutive packets that is used in scan_tick to break into new scan and mark it as invalid
-    void set_missing_packets_threshold(const boost::optional<unsigned>& threshold_n) { scan_tick_.threshold_n = threshold_n; }
-    
-    virtual unsigned packet_duration() = 0;
-    double packet_angle(double rotation_per_second) { return 360 / ( 1000000.0 /(rotation_per_second *packet_duration())); }
-protected:
-    scan_tick scan_tick_;
-};
+    boost::posix_time::ptime t = boost::posix_time::microsec_clock::universal_time();
+    return is_set() ? ( simulated + ( t - start ) ) : t;
+}
 
-} } // namespace snark {  namespace velodyne {
+void simulated_time::reset(const boost::posix_time::ptime& t = boost::posix_time::not_a_date_time )
+{
+    simulated = t; 
+    start = boost::posix_time::microsec_clock::universal_time();
+}
+
+bool simulated_time::is_set() const { return !simulated.is_not_a_date_time(); }
+
+} } // namespace snark{ namespace timing
+
