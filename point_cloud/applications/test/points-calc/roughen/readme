@@ -1,0 +1,11 @@
+to view tests, try:
+
+cat input | test --view
+
+Other input can be created with:
+
+# concatenated semicircles
+$ for i in {0..1}; do for j in 1 -1; do seq 0 10 180 | csv-units --from degrees | csv-eval --fields=i --format=d "x=$j*sin(i);y=$i*4-$j-cos(i);z=0" | csv-shuffle --fields n,x,y,z --output x,y,z; done; done
+
+# random walk
+p=0,0,0; a=0; for i in {0..200}; do v=$( echo $a | csv-eval --fields=a --format=d "x=sin($a);y=cos($a);z=0" | csv-shuffle --fields a,x,y,z --output x,y,z ); p=$( echo $p,$v | points-calc add | csv-shuffle --fields ,,,,,,x,y,z --output x,y,z ); echo $p; a=$( echo $a | csv-eval --fields=a --format=d "a+=( random.random_sample() - 0.5 )" ); done
