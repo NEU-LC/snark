@@ -76,6 +76,7 @@ cat <<END
     "proximity": "0.15",
     "past_endpoint": 1,
     "heading_is_absolute_default": 0,
+    "heading_reached_threshold": "0.05",
     "frequency": "20.0",
     "reset": 0,
     "waypoints":
@@ -165,7 +166,7 @@ if [[ -z "$waypoints_fields" ]]; then
     [[ "$steering" ]] || die "failed to set default waypoints/fields; steering type is required"
     set_default_waypoints_fields $steering
 fi
-
+[[ -z $heading_reached_threshold ]] || heading_reached_threshold="--heading-reached-threshold=$heading_reached_threshold"
 if (( $( comma_options_has --input-fields "$@" ) )); then echo $waypoints_fields; exit; fi
 
 error_fields=$( control-error --output-fields --status )
@@ -199,6 +200,7 @@ control-error \
         --frequency=$frequency \
         $( (( past_endpoint )) && echo --past-endpoint ) \
         $( (( heading_is_absolute_default )) && echo --heading-is-absolute ) \
+        $heading_reached_threshold \
         --status \
         --flush \
         --verbose \

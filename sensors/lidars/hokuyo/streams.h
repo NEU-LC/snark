@@ -74,7 +74,11 @@ struct tcp_stream:public stream_base
     }
     virtual int native()
     {
+#if (BOOST_VERSION >= 106600)
+        return ios.rdbuf()->native_handle();
+#else
         return ios.rdbuf()->native();
+#endif
     }
     virtual void close()
     {
@@ -165,7 +169,11 @@ struct serial_stream:public stream_base
     }
     virtual int native()
     {
+#if (BOOST_VERSION >= 106600)
+        return port.native_handle();
+#else
         return port.native();
+#endif
     }
     virtual void close()
     {
