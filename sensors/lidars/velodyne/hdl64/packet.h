@@ -89,19 +89,6 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
 
     boost::array< laser_block, number_of_blocks > blocks;
     status status;
-    
-    // each packet takes 1.33 milliseconds + 20% margin
-    static boost::posix_time::time_duration timestamp_threshold(const boost::optional<unsigned>& threshold_n)
-    {
-        if(threshold_n)
-        {
-            return boost::posix_time::microseconds( 288 * (1+*threshold_n));
-        }
-        else
-        {
-            return boost::posix_time::microseconds( 500000 / 20); // 0.5 circle at 20 Hz
-        }
-    }
 };
 
 } } } // namespace snark {  namespace velodyne { namespace hdl64 {

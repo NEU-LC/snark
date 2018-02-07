@@ -97,6 +97,7 @@ static void usage( bool verbose = false )
     std::cerr << "    plane-intersection-with-trajectory" << std::endl;
     std::cerr << "    project-onto-line" << std::endl;
     std::cerr << "    project-onto-plane" << std::endl;
+    std::cerr << "    roughen" << std::endl;
     std::cerr << "    thin" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
@@ -269,6 +270,22 @@ static void usage( bool verbose = false )
     std::cerr << snark::points_calc::project::onto_plane::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
+    std::cerr << "    roughen" << std::endl;
+    std::cerr << "        roughen up a path of points" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields: x,y,z,id; default x,y,z" << std::endl;
+    std::cerr << "                if id is not given it is generated" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        output fields: <input line>,x,y,z,id" << std::endl;
+    std::cerr << "                where x,y,z,<id> is the next point on the roughened path" << std::endl;
+    std::cerr << "                if <id> is included in input then it's included in output" << std::endl;
+    std::cerr << "          -or- <input line> for --filter option" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options:" << std::endl;
+    std::cerr << "            --roughness=<n>: amount of roughening - 1 = no roughening" << std::endl;
+    std::cerr << "            --radius=<metres>: maximum distance to next point" << std::endl;
+    std::cerr << "            --filter: output only connected points, starting with first" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    thin" << std::endl;
     std::cerr << "        read input data and thin it down" << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
@@ -699,6 +716,50 @@ int process( double resolution, const T& empty_thinner, const comma::csv::option
 
 } // namespace thin_operation {
 
+namespace roughen_operation {
+
+static boost::optional< comma::uint32 > target_id;
+
+struct point
+{
+    Eigen::Vector3d coordinates;
+    comma::uint32 id;
+
+    point() : coordinates( 0, 0, 0 ), id( 0 ) {}
+    point( const Eigen::Vector3d& coordinates ) : coordinates( coordinates ), id( 0 ) {}
+};
+
+struct record
+{
+    roughen_operation::point point;
+    std::string line;
+    record* reference_record;
+
+    record() : reference_record( NULL ) {}
+    record( const roughen_operation::point& p, const std::string& line )
+        : point( p ), line( line ), reference_record( NULL ) {}
+};
+
+void output( comma::csv::output_stream< point >& os, const record& record, bool filter )
+{
+    if( filter )
+    {
+        if( record.point.id == *target_id )
+        {
+            std::cout.write( &record.line[0], record.line.size() );
+            if( !csv.binary() ) { std::cout << "\n"; }
+            if( csv.flush ) { std::cout.flush(); }
+            target_id = record.reference_record->point.id;
+        }
+    }
+    else
+    {
+        os.append( record.line, record.reference_record->point );
+    }
+}
+
+} // namespace roughen_operation {
+
 namespace local_operation {
 
 struct point
@@ -822,6 +883,7 @@ static void process_nearest_extremum_block( std::deque< local_operation::record 
                         for( std::size_t k = 0; k < git->second.size(); ++k )
                         {
                             local_operation::update_nearest( it->second[n], git->second[k], radius, sign, any );
+                            std::cerr << "looking at " << it->second[n]->point.id << ", " << git->second[k]->point.id << " - " << it->second[n]->reference_id << std::endl;
                         }
                     }
                 }
@@ -909,6 +971,21 @@ template <> struct traits< point_with_block >
     }
 };
 
+template <> struct traits< roughen_operation::point >
+{
+    template< typename K, typename V > static void visit( const K&, const roughen_operation::point& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "id", t.id );
+    }
+    
+    template< typename K, typename V > static void visit( const K&, roughen_operation::point& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "id", t.id );
+    }
+};
+
 template <> struct traits< local_operation::point >
 {
     template< typename K, typename V > static void visit( const K&, const local_operation::point& t, V& v )
@@ -959,7 +1036,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--output-fields,--output-format,--filter", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "integrate-frame" ) { return run< snark::points_calc::integrate_frame::traits >( options ); }
@@ -1386,6 +1463,121 @@ int main( int ac, char** av )
                 app.extents.set_hull( p->coordinates );
             }
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
+            return 0;
+        }
+        if( operation == "roughen" )
+        {
+            csv.full_xpath = false;
+            if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ); }
+
+            comma::csv::options output_csv( csv );
+            output_csv.fields = comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' );
+            std::string output_format = comma::csv::format::value< Eigen::Vector3d >();
+            bool has_id = csv.has_field( "id" );
+            if( has_id )
+            {
+                output_csv.fields = comma::join( comma::csv::names< roughen_operation::point >( false ), ',' );
+                output_format = comma::csv::format::value< roughen_operation::point >();
+            }
+            if( csv.binary() ) { output_csv.format( output_format ); }
+
+            if( options.exists( "--input-fields" )) { std::cout << comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--input-format" )) { std::cout << comma::csv::format::value< Eigen::Vector3d >() << std::endl; return 0; }
+            if( options.exists( "--output-fields" )) { std::cout << output_csv.fields << std::endl; return 0; }
+            if( options.exists( "--output-format" )) { std::cout << output_format << std::endl; return 0; }
+
+            comma::csv::input_stream< roughen_operation::point > istream( std::cin, csv );
+            comma::csv::output_stream< roughen_operation::point > ostream( std::cout, output_csv );
+
+            std::deque< roughen_operation::record > records;
+            double radius = options.value< double >( "--radius" );
+            double roughness = options.value< double >( "--roughness" );
+            bool filter = options.exists( "--filter" );
+
+            comma::uint32 id = 0;
+            comma::verbose << "reading input points..." << std::endl;
+            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+            {
+                const roughen_operation::point* p = istream.read();
+                if( !p ) { break; }
+                std::string line;
+                if( csv.binary() ) // quick and dirty
+                {
+                    line.resize( csv.format().size() );
+                    ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
+                }
+                else
+                {
+                    line = comma::join( istream.ascii().last(), csv.delimiter );
+                }
+                roughen_operation::point q = *p;
+                if( !has_id ) { q.id = id++; }
+                records.push_back( roughen_operation::record( q, line ));
+                records.back().reference_record = &records.back();
+                if( !roughen_operation::target_id ) { roughen_operation::target_id = records.back().point.id; }
+
+                double cumulative_distance = 0;
+                Eigen::Vector3d* prev_coordinates = NULL;
+                // look backwards along the path from the point we've just added
+                // and record this as the target point for any point close enough
+                for( auto it = records.rbegin(); it != records.rend(); ++it )
+                {
+                    if( prev_coordinates )
+                    {
+                        double straight_line_distance = ( records.back().point.coordinates - it->point.coordinates ).norm();
+                        cumulative_distance += ( it->point.coordinates - *prev_coordinates ).norm();
+                        if( cumulative_distance <= straight_line_distance * roughness &&
+                            cumulative_distance <= radius )
+                        {
+                            it->reference_record = &records.back();
+                        }
+                    }
+                    prev_coordinates = &it->point.coordinates;
+                }
+
+                // any points not updated by the above now have their correct target point,
+                // so we can output them (and take them off the queue)
+                unsigned int records_processed = 0;
+                for( auto it = records.begin(); it != records.end(); ++it )
+                {
+                    if( it->reference_record == &records.back() ) { break; }
+                    roughen_operation::output( ostream, *it, filter );
+                    // if( filter )
+                    // {
+                    //     if( it->point.id == *target_id )
+                    //     {
+                    //         ostream.append( it->line, it->reference_record->point );
+                    //         target_id = it->reference_record->point.id;
+                    //     }
+                    // }
+                    // else
+                    // {
+                    //     ostream.append( it->line, it->reference_record->point );
+                    // }
+                    records_processed++;
+                }
+                for( unsigned int i = 0; i < records_processed; i++ ) { records.pop_front(); }
+            }
+
+            // having read the last point and updated everything, output the remainder of the queue
+            for( auto it = records.begin(); it != records.end(); ++it )
+            {
+                // skip any record that points to itself (only the last record)
+                if( it->point.id == it->reference_record->point.id ) { break; }
+                roughen_operation::output( ostream, *it, filter );
+                // if( filter )
+                // {
+                //     if( it->point.id == *target_id )
+                //     {
+                //         ostream.append( it->line, it->reference_record->point );
+                //         target_id = it->reference_record->point.id;
+                //     }
+                // }
+                // else
+                // {
+                //     ostream.append( it->line, it->reference_record->point );
+                // }
+            }
             return 0;
         }
         std::cerr << "points-calc: expected operation, got: \"" << operation << "\"" << std::endl;

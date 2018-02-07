@@ -126,11 +126,6 @@ static void usage( bool )
     std::cerr << "    --ntp=[<threshold>],[<\"permissive\">]: get data timestamps from ntp data in packets (default: system time from input stream)" << std::endl;
     std::cerr << "                                            if times differ by more than <threshold>, use system time if permissive" << std::endl;
     std::cerr << "    --output-invalid-points: output also invalid laser returns" << std::endl;
-    std::cerr << "    --discard-invalid-scans: don't output scans with missing packets" << std::endl;
-    std::cerr << "    --missing-packets-threshold=<n>: number of consequtive missing packets for new/invalid scan" << std::endl;
-    std::cerr << "        if the data is missing a slice bigger than <n> packets (calculated based on timestamp), then it will mark the rest as a new scan" << std::endl;
-    std::cerr << "        use --discard-invalid-scans option together with this option to discard all the scans that have missing consequtive packets bigger than <n>" << std::endl;
-    std::cerr << "        by default (when --missing-packets-threshold is not specified) it will mark new/invalid scan if more than 25 millisecond of data is missing (half a circle at 20Hz)" << std::endl;
     std::cerr << "    --scans [<from>]:[<to>] : output only scans in given range" << std::endl;
     std::cerr << "                               e.g. 1:3 for scans 1, 2, 3" << std::endl;
     std::cerr << "                                    5: for scans 5, 6, ..." << std::endl;
@@ -140,6 +135,9 @@ static void usage( bool )
     std::cerr << "                      --scan-begin-angle: todo" << std::endl;
     std::cerr << "    --raw-intensity: output intensity data without any correction" << std::endl;
     std::cerr << "    --legacy: use old timetable and old algorithm for azimuth calculation" << std::endl;
+    std::cerr << "    default output columns: " << comma::join( comma::csv::names< snark::velodyne_point >(), ',' ) << std::endl;
+    std::cerr << "    default binary format: " << comma::csv::format::value< snark::velodyne_point >() << std::endl;
+    std::cerr << "time options:" << std::endl;
     std::cerr << "    --adjusted-time=<mode>: adjust input time to match velodyne period; " << std::endl;
     std::cerr << "        mode is string name for method of adjustment:" << std::endl;
     std::cerr << "            'average': adjust total deviation" << std::endl;
@@ -149,8 +147,15 @@ static void usage( bool )
     std::cerr << "        if input timestamp is greater than period * ticks + <threshold>, it will reset adjusted time and the input timestamp will be used without change" << std::endl;
     std::cerr << "    --adjusted-time-reset=<reset>: reset adjusted time after this time, only effective with --adjusted-time; unit: seconds, default: "<< adjust_timestamp::DEFAULT_RESET << std::endl;
     std::cerr << "        if input timestamp + <reset> is greater than last reset time, it will reset adjusted time and the input timestamp will be used without change" << std::endl;
-    std::cerr << "    default output columns: " << comma::join( comma::csv::names< snark::velodyne_point >(), ',' ) << std::endl;
-    std::cerr << "    default binary format: " << comma::csv::format::value< snark::velodyne_point >() << std::endl;
+    std::cerr << "packet options:" << std::endl;
+    std::cerr << "    --discard-invalid-scans: don't output scans with missing packets" << std::endl;
+    std::cerr << "    --missing-packets-threshold=<n>: number of consecutive missing packets for new/invalid scan" << std::endl;
+    std::cerr << "        if the data is missing more than <n> consecutive packets (calculated based on timestamp), then the next packet after the gap will be marked as the beginning of a new scan" << std::endl;
+    std::cerr << "        use --discard-invalid-scans option together with this option to discard all the scans that have missing consecutive packets greater than <n>" << std::endl;
+    std::cerr << "        by default (when --missing-packets-threshold is not specified) it will mark new/invalid scan if more than 25 millisecond of data is missing (half a circle at 20Hz)" << std::endl;
+    std::cerr << "    --packet-duration: print packet duration in milliseconds and exit, --model needs to be specified" << std::endl;
+    std::cerr << "    --packet-angle: print packet angle in degrees and exit; calculates packet angle based on packet duration and rotation speed, use --rotation-per-second to specify rotation speed" << std::endl;
+    std::cerr << "    --rotation-per-second: specify rotation speed, see --packet-angle; default: 20" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples:" << std::endl;
     std::cerr << "    output csv points to file:" << std::endl;
@@ -339,6 +344,8 @@ int main( int ac, char** av )
                 else { s = new snark::velodyne::hdl64::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, legacy ); }
                 break;
         }
+        if(options.exists("--packet-duration")) { std::cout<<s->packet_duration()<<std::endl; return 0; }
+        if(options.exists("--packet-angle")) { std::cout<<s->packet_angle(options.value<unsigned>("--rotation-per-second",20))<<std::endl; return 0; }
         boost::optional<unsigned> threshold_n=options.optional<unsigned>("--missing-packets-threshold");
         if(threshold_n && *threshold_n == 0) { COMMA_THROW( comma::exception, "invalid value for --missing-packets-threshold; expected >=1, got "<<*threshold_n); }
         s->set_missing_packets_threshold(threshold_n);

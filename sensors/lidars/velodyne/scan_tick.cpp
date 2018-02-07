@@ -31,6 +31,7 @@
 #include "hdl64/packet.h"
 #include "puck/packet.h"
 #include "comma/application/verbose.h"
+#include "packet_traits.h"
 
 namespace snark {  namespace velodyne {
 
@@ -40,31 +41,27 @@ static unsigned int packet_angle_( const velodyne::hdl64::packet& p ) { return p
 
 static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; } // quick and dirty: -90 degrees for now; see todo comments in puck/calculator.cpp
 
+
+template<typename P>
+static boost::posix_time::time_duration timestamp_threshold(const boost::optional<unsigned>& threshold_n)
+{
+    return boost::posix_time::microseconds( threshold_n ? packet_traits<P>::packet_duration * (1+*threshold_n) : 500000 / 20 );
+}
+
 } // namespace detail {
-    
-// template < typename P >
-// bool scan_tick::is_new_scan( const P& packet, unsigned int last_angle )
-// {
-//     unsigned int angle = detail::packet_angle_( packet );
-//     if( angle > 36000 ) { angle -= 36000; }
-//     return angle < last_angle;
-// }
+
+
+scan_tick::scan_tick() : valid_scan(true) { }
 
 template < typename P >
-bool scan_tick::is_new_scan( const P& packet, boost::posix_time::ptime  timestamp )
-{
-    bool valid_scan;
-    return is_new_scan(packet,timestamp,valid_scan);
-}
-template < typename P >
-bool scan_tick::is_new_scan( const P& packet, boost::posix_time::ptime  timestamp, bool& valid_scan )
+std::pair<bool,bool> scan_tick::is_new_scan( const P& packet, boost::posix_time::ptime  timestamp )
 {
     bool tick = false;
     unsigned int angle = detail::packet_angle_( packet );
     if( angle > 36000 ) { angle -= 36000; }
     if( !last_angle_ || angle < *last_angle_ ) { tick = true; valid_scan=true; }
     last_angle_ = angle;
-    if(timestamp!=boost::posix_time::not_a_date_time && last_timestamp && timestamp-*last_timestamp > P::timestamp_threshold(threshold_n))
+    if(timestamp!=boost::posix_time::not_a_date_time && last_timestamp && timestamp-*last_timestamp > detail::timestamp_threshold<P>(threshold_n))
     {
         tick=true;
         valid_scan=false;
@@ -75,14 +72,10 @@ bool scan_tick::is_new_scan( const P& packet, boost::posix_time::ptime  timestam
     {
         last_timestamp=timestamp;
     }
-    return tick;
+    return std::pair<bool,bool>(tick,valid_scan);
 }
 
-template bool scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet, boost::posix_time::ptime  timestamp );
-template bool scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, boost::posix_time::ptime  timestamp );
-template bool scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet, boost::posix_time::ptime  timestamp, bool& valid_scan );
-template bool scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, boost::posix_time::ptime  timestamp, bool& valid_scan );
-// template bool scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet, unsigned int last_angle );
-// template bool scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, unsigned int last_angle );
+template std::pair<bool,bool> scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet, boost::posix_time::ptime  timestamp );
+template std::pair<bool,bool> scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, boost::posix_time::ptime  timestamp );
 
 } } // namespace snark {  namespace velodyne {

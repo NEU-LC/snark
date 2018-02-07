@@ -13,6 +13,8 @@ else( IS_64_BIT )
     set( JAI_GENICAM_LIB "lib" )
 endif( IS_64_BIT )
 
+message( WARNING "attention! jai rpm installs /etc/profile.d/jaisdkenv64.sh, which sets CPATH=/usr/include/JAI:/usr/local/include, which is known to screws up compilation of other Gige cameras, e.g. basler due to enforcing incorrect includes for Genicam library; it currently is worked around, but beware" )
+
 set( JAI_INCLUDE_DIR "/usr/include/JAI" CACHE PATH "jai camera include directory" )
 set( JAI_GENICAM_ROOT "/usr/local/genicam" CACHE PATH "jai camera genicam directory" )
 set( JAI_GENICAM_CACHE "/usr/local/xml/GenApi/Cache" CACHE PATH "jai camera genicam cache directory" )

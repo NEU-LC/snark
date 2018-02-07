@@ -83,6 +83,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
     std::cerr << "    --heading-is-absolute: interpret target heading as global by default" << std::endl;
+    std::cerr << "    --heading-reached-threshold,--heading-error-threshold,--heading-threshold=[<threshold>]: set 'reached' flag when, in addition to location, the target heading is reached" << std::endl;
     std::cerr << "    --mode,-m=<mode>: control mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;    
     std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
@@ -127,11 +128,12 @@ std::string mode_to_string( control_mode_t m ) { return  named_modes.left.at( m 
 class wayline_follower
 {
 public:
-    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, double eps=1e-6 )
+    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, boost::optional< double > heading_reached_threshold = boost::optional< double >(), double eps=1e-6 )
         : mode_( mode )
         , proximity_( proximity )
         , use_past_endpoint_( use_past_endpoint )
         , reached_( false )
+        , heading_reached_threshold_( heading_reached_threshold )
         , eps_( eps )
         {
             if( proximity_ < 0 ) { COMMA_THROW( comma::exception, "expected positive proximity, got " << proximity_ ); }
@@ -148,10 +150,11 @@ public:
     void update( const feedback_t& feedback )
     {
         feedback_ = feedback;
-        reached_ = ( ( feedback.first.position - target_->position ).norm() < proximity_ ) || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
         error_.cross_track = wayline_.cross_track_error( feedback.first.position );
         error_.heading = target_->is_absolute ? comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), target_->heading - feedback.first.yaw )()
             : wayline_.heading_error( feedback.first.yaw, target_->heading );
+        reached_ = ( ( ( feedback.first.position - target_->position ).norm() < proximity_ ) || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) ) )
+            && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading ) );
     }
     bool target_reached() const { return reached_; }
     bool has_target() const { return target_ && !reached_; }
@@ -166,6 +169,7 @@ private:
     bool use_past_endpoint_;
     boost::optional< snark::control::target_t > target_;
     bool reached_;
+    boost::optional< double > heading_reached_threshold_;
     double eps_;
     snark::control::wayline wayline_;
     snark::control::error_t error_;
@@ -284,7 +288,7 @@ int main( int ac, char** av )
         target_t target;
         if( input_csv.binary() ) { target.second.resize( input_csv.format().size() ); }
         comma::signal_flag is_shutdown;
-        wayline_follower follower( mode, proximity, use_past_endpoint );
+        wayline_follower follower( mode, proximity, use_past_endpoint, options.optional< double >( "--heading-reached-threshold,--heading-error-threshold,--heading-treshold" ) );
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
             if( !input_stream.ready() && !feedback_stream.ready() ) { select.wait( boost::posix_time::milliseconds( 10 ) ); }

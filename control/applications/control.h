@@ -83,7 +83,6 @@ struct control_command_input_t
     feedback_t feedback;
     wayline_t wayline;
     error_t error;
-    bool reached;
 };
 
 struct command_t
