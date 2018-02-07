@@ -2423,11 +2423,6 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         const bool channels_to_cols = e[0] == "channels-to-cols";
         return std::make_pair( boost::bind< value_type_t >( channels_to_cols_impl_ < H >(), _1, channels_to_cols ), true );
     }
-    if( e[0] == "swap-channels" )
-    {
-        COMMA_THROW( comma::exception, "NYI" );
-        // use cv::reshape or cv::mixChannels
-    }
     if( e[0] == "cross" ) // todo: quick and dirty, implement using traits
     {
         boost::array< int, 9 > p = {{ 0, 0, 0, 0, 0, 1, 8, 0 }};
@@ -3343,11 +3338,6 @@ static std::string usage_impl_()
     oss << "                      \"crop-rows=5,1,25,1,15,1\"; block height is 1, block starts can be out of order" << std::endl;
     oss << std::endl;
     oss << "        rows-to-channels=1,4,5[,pad:value,repeat:step]; same as cols-to-channels but operates on rows" << std::endl;
-    oss << std::endl;
-    oss << "        swap-channels=2,1,0,3; re-order channels; arguments shall be integers from 0 to the total number of input channels" << std::endl;
-    oss << "            NYI - for now a placeholder only, possibly can be achieved by other operations" << std::endl;
-    oss << "            the number of arguments shall be the same as the number of input channels" << std::endl;
-    oss << "            example: \"swap-channels=2,1,0\"; revert the order of RGB channels with R becoming B and B becoming R; G is mapped onto itself" << std::endl;
     oss << std::endl;
     oss << "    basic drawing on images" << std::endl;
     oss << "        cross[=<x>,<y>]: draw cross-hair at x,y; default: at image center" << std::endl;
