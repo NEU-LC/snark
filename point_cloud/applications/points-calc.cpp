@@ -81,6 +81,7 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    angle-axis" << std::endl;
+    std::cerr << "    chord" << std::endl;
     std::cerr << "    cumulative-distance" << std::endl;
     std::cerr << "    cumulative-discretise,cumulative-discretize,sample" << std::endl;
     std::cerr << "    distance" << std::endl;
@@ -97,7 +98,6 @@ static void usage( bool verbose = false )
     std::cerr << "    plane-intersection-with-trajectory" << std::endl;
     std::cerr << "    project-onto-line" << std::endl;
     std::cerr << "    project-onto-plane" << std::endl;
-    std::cerr << "    roughen" << std::endl;
     std::cerr << "    thin" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
@@ -126,6 +126,23 @@ static void usage( bool verbose = false )
     std::cerr << "        options: " << std::endl;
     std::cerr << "            --next: subsequent points only, angle-axis to next point is appended" << std::endl;
     std::cerr << "                    (default: angle-axis to previous point is appended)" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    chord" << std::endl;
+    std::cerr << "        determine chords along a trajectory" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields: x,y,z,id; default x,y,z" << std::endl;
+    std::cerr << "                if id is not given it is generated" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        output fields: <input line>,x,y,z,id" << std::endl;
+    std::cerr << "                where x,y,z,<id> is the opposity end of the chord" << std::endl;
+    std::cerr << "                if <id> is included in input then it's included in output" << std::endl;
+    std::cerr << "          -or- <input line> for --filter option" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options:" << std::endl;
+    std::cerr << "            --arc-ratio=<n>: ratio of the length of the arc to the chord" << std::endl;
+    std::cerr << "                             the furthest point that does not exceed this ratio is chosen" << std::endl;
+    std::cerr << "            --arc-maximum=<metres>: maximum distance along the arc to next point" << std::endl;
+    std::cerr << "            --filter: output only connected points, starting with first" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    cumulative-distance" << std::endl;
     std::cerr << "        cumulative distance between subsequent points" << std::endl;
@@ -270,22 +287,6 @@ static void usage( bool verbose = false )
     std::cerr << snark::points_calc::project::onto_plane::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
-    std::cerr << "    roughen" << std::endl;
-    std::cerr << "        roughen up a path of points" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        input fields: x,y,z,id; default x,y,z" << std::endl;
-    std::cerr << "                if id is not given it is generated" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        output fields: <input line>,x,y,z,id" << std::endl;
-    std::cerr << "                where x,y,z,<id> is the next point on the roughened path" << std::endl;
-    std::cerr << "                if <id> is included in input then it's included in output" << std::endl;
-    std::cerr << "          -or- <input line> for --filter option" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        options:" << std::endl;
-    std::cerr << "            --roughness=<n>: amount of roughening - 1 = no roughening" << std::endl;
-    std::cerr << "            --radius=<metres>: maximum distance to next point" << std::endl;
-    std::cerr << "            --filter: output only connected points, starting with first" << std::endl;
-    std::cerr << std::endl;
     std::cerr << "    thin" << std::endl;
     std::cerr << "        read input data and thin it down" << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
@@ -716,7 +717,7 @@ int process( double resolution, const T& empty_thinner, const comma::csv::option
 
 } // namespace thin_operation {
 
-namespace roughen_operation {
+namespace chord_operation {
 
 static boost::optional< comma::uint32 > target_id;
 
@@ -731,12 +732,12 @@ struct point
 
 struct record
 {
-    roughen_operation::point point;
+    chord_operation::point point;
     std::string line;
     record* reference_record;
 
     record() : reference_record( NULL ) {}
-    record( const roughen_operation::point& p, const std::string& line )
+    record( const chord_operation::point& p, const std::string& line )
         : point( p ), line( line ), reference_record( NULL ) {}
 };
 
@@ -758,7 +759,7 @@ void output( comma::csv::output_stream< point >& os, const record& record, bool 
     }
 }
 
-} // namespace roughen_operation {
+} // namespace chord_operation {
 
 namespace local_operation {
 
@@ -971,15 +972,15 @@ template <> struct traits< point_with_block >
     }
 };
 
-template <> struct traits< roughen_operation::point >
+template <> struct traits< chord_operation::point >
 {
-    template< typename K, typename V > static void visit( const K&, const roughen_operation::point& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const chord_operation::point& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "id", t.id );
     }
     
-    template< typename K, typename V > static void visit( const K&, roughen_operation::point& t, V& v )
+    template< typename K, typename V > static void visit( const K&, chord_operation::point& t, V& v )
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "id", t.id );
@@ -1465,7 +1466,7 @@ int main( int ac, char** av )
             if( verbose ) { std::cerr << "points-calc: done!" << std::endl; }
             return 0;
         }
-        if( operation == "roughen" )
+        if( operation == "chord" )
         {
             csv.full_xpath = false;
             if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ); }
@@ -1476,8 +1477,8 @@ int main( int ac, char** av )
             bool has_id = csv.has_field( "id" );
             if( has_id )
             {
-                output_csv.fields = comma::join( comma::csv::names< roughen_operation::point >( false ), ',' );
-                output_format = comma::csv::format::value< roughen_operation::point >();
+                output_csv.fields = comma::join( comma::csv::names< chord_operation::point >( false ), ',' );
+                output_format = comma::csv::format::value< chord_operation::point >();
             }
             if( csv.binary() ) { output_csv.format( output_format ); }
 
@@ -1486,19 +1487,19 @@ int main( int ac, char** av )
             if( options.exists( "--output-fields" )) { std::cout << output_csv.fields << std::endl; return 0; }
             if( options.exists( "--output-format" )) { std::cout << output_format << std::endl; return 0; }
 
-            comma::csv::input_stream< roughen_operation::point > istream( std::cin, csv );
-            comma::csv::output_stream< roughen_operation::point > ostream( std::cout, output_csv );
+            comma::csv::input_stream< chord_operation::point > istream( std::cin, csv );
+            comma::csv::output_stream< chord_operation::point > ostream( std::cout, output_csv );
 
-            std::deque< roughen_operation::record > records;
-            double radius = options.value< double >( "--radius" );
-            double roughness = options.value< double >( "--roughness" );
+            std::deque< chord_operation::record > records;
+            double arc_ratio = options.value< double >( "--arc-ratio" );
+            double arc_maximum = options.value< double >( "--arc-maximum" );
             bool filter = options.exists( "--filter" );
 
             comma::uint32 id = 0;
             comma::verbose << "reading input points..." << std::endl;
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
-                const roughen_operation::point* p = istream.read();
+                const chord_operation::point* p = istream.read();
                 if( !p ) { break; }
                 std::string line;
                 if( csv.binary() ) // quick and dirty
@@ -1510,11 +1511,11 @@ int main( int ac, char** av )
                 {
                     line = comma::join( istream.ascii().last(), csv.delimiter );
                 }
-                roughen_operation::point q = *p;
+                chord_operation::point q = *p;
                 if( !has_id ) { q.id = id++; }
-                records.push_back( roughen_operation::record( q, line ));
+                records.push_back( chord_operation::record( q, line ));
                 records.back().reference_record = &records.back();
-                if( !roughen_operation::target_id ) { roughen_operation::target_id = records.back().point.id; }
+                if( !chord_operation::target_id ) { chord_operation::target_id = records.back().point.id; }
 
                 double cumulative_distance = 0;
                 Eigen::Vector3d* prev_coordinates = NULL;
@@ -1526,8 +1527,8 @@ int main( int ac, char** av )
                     {
                         double straight_line_distance = ( records.back().point.coordinates - it->point.coordinates ).norm();
                         cumulative_distance += ( it->point.coordinates - *prev_coordinates ).norm();
-                        if( cumulative_distance <= straight_line_distance * roughness &&
-                            cumulative_distance <= radius )
+                        if( cumulative_distance <= straight_line_distance * arc_ratio &&
+                            cumulative_distance <= arc_maximum )
                         {
                             it->reference_record = &records.back();
                         }
@@ -1541,7 +1542,7 @@ int main( int ac, char** av )
                 for( auto it = records.begin(); it != records.end(); ++it )
                 {
                     if( it->reference_record == &records.back() ) { break; }
-                    roughen_operation::output( ostream, *it, filter );
+                    chord_operation::output( ostream, *it, filter );
                     records_processed++;
                 }
                 for( unsigned int i = 0; i < records_processed; i++ ) { records.pop_front(); }
@@ -1552,7 +1553,7 @@ int main( int ac, char** av )
             {
                 // skip any record that points to itself (only the last record)
                 if( it->point.id == it->reference_record->point.id ) { break; }
-                roughen_operation::output( ostream, *it, filter );
+                chord_operation::output( ostream, *it, filter );
             }
             return 0;
         }

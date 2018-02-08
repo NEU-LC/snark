@@ -1,5 +1,0 @@
-#!/bin/bash
-
-args=$( cat )
-
-points-calc roughen $args | sed 's/\(.*\)/output="\1"/'

@@ -22,7 +22,7 @@ if [[ $args =~ --binary[=\ ]([0-9a-z,]*) ]]; then
     binary_out_fn="csv-from-bin $output_format"
 fi
 
-output_fields=$( echo $fields | csv-fields prefix --path first ),$( points-calc roughen $args --output-fields | csv-fields prefix --path second )
+output_fields=$( echo $fields | csv-fields prefix --path first ),$( points-calc chord $args --output-fields | csv-fields prefix --path second )
 view_points_shape=line
 
 if [[ $args =~ --filter ]]; then
@@ -37,5 +37,5 @@ seq 0 5 360 | csv-units --from degrees \
     | csv-eval --fields=i --format=d "x=sin(i);y=cos(i);z=0" \
     | csv-shuffle --fields i,x,y,z --output x,y,z | $id_fn | $extra_column_fn \
     | $binary_in_fn \
-    | points-calc roughen $args \
+    | points-calc chord $args \
     | $binary_out_fn | $output_fn
