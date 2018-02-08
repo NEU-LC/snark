@@ -1542,18 +1542,6 @@ int main( int ac, char** av )
                 {
                     if( it->reference_record == &records.back() ) { break; }
                     roughen_operation::output( ostream, *it, filter );
-                    // if( filter )
-                    // {
-                    //     if( it->point.id == *target_id )
-                    //     {
-                    //         ostream.append( it->line, it->reference_record->point );
-                    //         target_id = it->reference_record->point.id;
-                    //     }
-                    // }
-                    // else
-                    // {
-                    //     ostream.append( it->line, it->reference_record->point );
-                    // }
                     records_processed++;
                 }
                 for( unsigned int i = 0; i < records_processed; i++ ) { records.pop_front(); }
@@ -1565,18 +1553,6 @@ int main( int ac, char** av )
                 // skip any record that points to itself (only the last record)
                 if( it->point.id == it->reference_record->point.id ) { break; }
                 roughen_operation::output( ostream, *it, filter );
-                // if( filter )
-                // {
-                //     if( it->point.id == *target_id )
-                //     {
-                //         ostream.append( it->line, it->reference_record->point );
-                //         target_id = it->reference_record->point.id;
-                //     }
-                // }
-                // else
-                // {
-                //     ostream.append( it->line, it->reference_record->point );
-                // }
             }
             return 0;
         }
