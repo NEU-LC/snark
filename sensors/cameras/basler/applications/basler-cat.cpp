@@ -780,8 +780,20 @@ static bool configure_trigger( Pylon::CBaslerUsbCamera& camera, const comma::com
 static bool configure_trigger( Pylon::CBaslerGigECamera& camera, const comma::command_line_options& options )
 {
     GenApi::IEnumEntry* acquisition_start = camera.TriggerSelector.GetEntry( Basler_GigECameraParams::TriggerSelector_AcquisitionStart );
+    GenApi::IEnumEntry* trigger_source_software=camera.TriggerSource.GetEntry(Basler_GigECameraParams::TriggerSource_Software);
     std::string frame_trigger = options.value< std::string >( "--frame-trigger", "" );
-    if( acquisition_start && GenApi::IsAvailable( acquisition_start ) )
+    
+//     comma::verbose<<"IsAvailable TriggerSelector :"<<GenApi::IsAvailable(camera.TriggerSelector)<<std::endl;
+//     comma::verbose<<"IsAvailable TriggerMode :"<<GenApi::IsAvailable(camera.TriggerMode)<<std::endl;
+//     comma::verbose<<"IsAvailable TriggerSource :"<<GenApi::IsAvailable(camera.TriggerSource)<<std::endl;
+//     comma::verbose<<"IsWritable TriggerSource :"<<GenApi::IsWritable(camera.TriggerSource)<<std::endl;
+//     comma::verbose<<"IsAvailable trigger_source_software "<<GenApi::IsAvailable(trigger_source_software)<<std::endl;
+//     comma::verbose<<"IsWritable trigger_source_software "<<GenApi::IsWritable(trigger_source_software)<<std::endl;
+//     if(GenApi::IsAvailable(camera.TriggerSelector)) comma::verbose<<"camera.TriggerSelector "<<camera.TriggerSelector()<<std::endl;
+//     if(GenApi::IsAvailable(camera.TriggerMode)) comma::verbose<<"camera.TriggerMode "<<camera.TriggerMode()<<std::endl;
+//     if(GenApi::IsAvailable(camera.TriggerSource)) comma::verbose<<"camera.TriggerSource "<<camera.TriggerSource()<<std::endl;
+    
+    if( GenApi::IsWritable(trigger_source_software) && acquisition_start && GenApi::IsAvailable( acquisition_start ) )
     {
         camera.TriggerSelector = Basler_GigECameraParams::TriggerSelector_AcquisitionStart;
         camera.TriggerMode = ( frame_trigger.empty() ? Basler_GigECameraParams::TriggerMode_Off : Basler_GigECameraParams::TriggerMode_On );
@@ -937,15 +949,22 @@ static void set_exposure( T& camera, const comma::command_line_options& options 
     set_exposure_mode_timed( camera );
 
     std::string exposure = options.value( "--exposure", default_exposure );
-    camera.ExposureAuto = exposure_auto< T >::from_string( exposure );
-
-    if( exposure_is_auto( camera ))
+    if(GenApi::IsAvailable(camera.ExposureAuto))
     {
-        set_exposure_limits( camera
-                           , options.value< float >( "--exposure-lower-limit", default_exposure_lower_limit )
-                           , options.value< float >( "--exposure-upper-limit", default_exposure_upper_limit ));
+        camera.ExposureAuto = exposure_auto< T >::from_string( exposure );
+        if( exposure_is_auto( camera ))
+        {
+            set_exposure_limits( camera
+                            , options.value< float >( "--exposure-lower-limit", default_exposure_lower_limit )
+                            , options.value< float >( "--exposure-upper-limit", default_exposure_upper_limit ));
+        }
+        else { set_exposure_time( camera, boost::lexical_cast< unsigned int >( exposure )); }
     }
-    else { set_exposure_time( camera, boost::lexical_cast< unsigned int >( exposure )); }
+    else
+    {
+        comma::verbose<<"ExposureAuto not available"<<std::endl;
+        set_exposure_time( camera, boost::lexical_cast< unsigned int >( exposure ));
+    }
 }
 
 static void set_gain_selector( Pylon::CBaslerGigECamera& camera )
@@ -974,9 +993,17 @@ static void set_gain( T& camera, const comma::command_line_options& options )
 {
     set_gain_selector( camera );
     std::string gain = options.value( "--gain", default_gain );
-    camera.GainAuto = gain_auto< T >::from_string( gain );
+    if(GenApi::IsAvailable(camera.GainAuto))
+    {
+        camera.GainAuto = gain_auto< T >::from_string( gain );
 
-    if( !gain_is_auto( camera )) { set_gain_value( camera, boost::lexical_cast< unsigned int >( gain )); }
+        if( !gain_is_auto( camera )) { set_gain_value( camera, boost::lexical_cast< unsigned int >( gain )); }
+    }
+    else
+    {
+        comma::verbose<<"GainAuto not available"<<std::endl;
+        set_gain_value( camera, boost::lexical_cast< unsigned int >( gain ));
+    }
 }
 
 static void set_line_rate( Pylon::CBaslerGigECamera& camera, unsigned int line_rate ) { camera.AcquisitionLineRateAbs = line_rate; }
@@ -1080,7 +1107,7 @@ template< typename T >
 static void show_config( const T& camera )
 {
     std::cerr << "basler-cat:       exposure: ";
-    if( exposure_is_auto( camera ))
+    if( GenApi::IsAvailable(camera.ExposureAuto) && exposure_is_auto( camera ))
     {
         std::cerr << "auto " << exposure_auto< T >::to_string( camera.ExposureAuto() );
         std::cerr << " (min: " << get_exposure_lower_limit( camera ) << "µs, max: " << get_exposure_upper_limit( camera ) << "µs)";
@@ -1089,12 +1116,12 @@ static void show_config( const T& camera )
     std::cerr << std::endl;
 
     std::cerr << "basler-cat:           gain: ";
-    if( gain_is_auto( camera )) { std::cerr << "auto " << gain_auto< T >::to_string( camera.GainAuto() ); }
+    if( GenApi::IsAvailable(camera.GainAuto) && gain_is_auto( camera )) { std::cerr << "auto " << gain_auto< T >::to_string( camera.GainAuto() ); }
     else { std::cerr << get_gain( camera ) << gain_units( camera ); }
     std::cerr << std::endl;
 
     std::cerr << "basler-cat:     frame rate: ";
-    if( camera.AcquisitionFrameRateEnable() ) { std::cerr << get_frame_rate_set( camera ) << " fps"; }
+    if( GenApi::IsAvailable(camera.AcquisitionFrameRateEnable) && camera.AcquisitionFrameRateEnable() ) { std::cerr << get_frame_rate_set( camera ) << " fps"; }
     else { std::cerr << "unset"; }
     std::cerr << std::endl;
 
@@ -1374,10 +1401,6 @@ static int run( T& camera, const comma::command_line_options& options )
             else { std::cerr << "basler-cat: invalid mode for --binning-horizontal: " << v[i] << std::endl; return 1; }
         }
     }
-    else
-    {
-        camera.BinningHorizontal = 1;
-    }
     if( options.exists( "--binning-vertical" ) )
     {
         std::string s = options.value< std::string >( "--binning-vertical" );
@@ -1389,10 +1412,6 @@ static int run( T& camera, const comma::command_line_options& options )
             else if( v[i] == "average" ) { set_binning_vertical_mode_average( camera ); }
             else { std::cerr << "basler-cat: invalid mode for --binning-vertical: " << v[i] << std::endl; return 1; }
         }
-    }
-    else
-    {
-        camera.BinningVertical = 1;
     }
 
     if( options.exists( "--reverse-x" ) ) { camera.ReverseX = true; }
@@ -1425,7 +1444,7 @@ static int run( T& camera, const comma::command_line_options& options )
         std::cerr << "basler-cat: set chunk mode" << std::endl;
     }
     if( options.exists( "--frame-rate" )) { set_frame_rate( camera, options.value< double >( "--frame-rate" )); }
-    else { camera.AcquisitionFrameRateEnable = false; }
+    else if(GenApi::IsAvailable(camera.AcquisitionFrameRateEnable)) { camera.AcquisitionFrameRateEnable = false; }
     set_exposure( camera, options );
     set_gain( camera, options );
     if( options.exists( "--line-rate" )) { set_line_rate( camera, options.value< unsigned int >( "--line-rate" )); }
