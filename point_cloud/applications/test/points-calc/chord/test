@@ -1,0 +1,41 @@
+#!/bin/bash
+
+args=$( cat )
+
+fields=x,y,z
+id_fn=cat
+extra_column_fn=cat
+binary_in_fn=cat
+binary_out_fn=cat
+
+if [[ $args =~ --fields[=\ ]([a-z,]*) ]]; then
+    fields=${BASH_REMATCH[1]}
+    [[ $fields =~ id ]] && id_fn="csv-paste - line-number"
+    [[ $fields =~ foo ]] && extra_column_fn="csv-paste - value=foo"
+fi
+
+if [[ $args =~ --binary[=\ ]([0-9a-z,]*) ]]; then
+    input_format=${BASH_REMATCH[1]}
+    output_format=$input_format,$input_format
+    [[ $args =~ --filter ]] && output_format=$input_format
+    binary_in_fn="csv-to-bin $input_format"
+    binary_out_fn="csv-from-bin $output_format"
+fi
+
+output_fields=$( echo $fields | csv-fields prefix --path first ),$( points-calc chord $args --output-fields | csv-fields prefix --path second )
+view_points_shape=line
+
+if [[ $args =~ --filter ]]; then
+    output_fields=$fields
+    view_points_shape=lines
+fi
+
+output_fn="name-value-from-csv -n -p output --fields $output_fields"
+[[ $1 == --view ]] && output_fn="view-points --shape=$view_points_shape --fields=$output_fields"
+
+seq 0 5 360 | csv-units --from degrees \
+    | csv-eval --fields=i --format=d "x=sin(i);y=cos(i);z=0" \
+    | csv-shuffle --fields i,x,y,z --output x,y,z | $id_fn | $extra_column_fn \
+    | $binary_in_fn \
+    | points-calc chord $args \
+    | $binary_out_fn | $output_fn

@@ -123,7 +123,6 @@ template <> struct traits< snark::control::control_command_input_t >
         v.apply( "feedback", p.feedback );
         v.apply( "wayline", p.wayline );
         v.apply( "error", p.error );
-        v.apply( "reached", p.reached );
     }
 
     template < typename K, typename V > static void visit( const K&, const snark::control::control_command_input_t& p, V& v )
@@ -132,7 +131,6 @@ template <> struct traits< snark::control::control_command_input_t >
         v.apply( "feedback", p.feedback );
         v.apply( "wayline", p.wayline );
         v.apply( "error", p.error );
-        v.apply( "reached", p.reached );
     }
 };
 

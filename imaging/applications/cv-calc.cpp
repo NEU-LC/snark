@@ -115,6 +115,7 @@ static void usage( bool verbose=false )
     std::cerr << "                                          --non-zero=size,,1: output images with all pixels zero (makes sense only when used with --filters" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    life" << std::endl;
+    std::cerr << "        --exit-on-stability: exit, if no change" << std::endl;
     std::cerr << "        --procreation-treshold,--procreation=[<threshold>]: todo: document; default: 3.0" << std::endl;
     std::cerr << "        --stability-treshold,--stability=[<threshold>]: todo: document; default: 4.0" << std::endl;
     std::cerr << "        --step=[<step>]: todo: document; default: 1.0" << std::endl;
@@ -655,7 +656,7 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--header-fields,--header-format,--output-fields,--output-format,--crop,--no-discard,--show-partial,--permissive,--deterministic", "-.*");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--header-fields,--header-format,--output-fields,--output-format,--exit-on-stability,--crop,--no-discard,--show-partial,--permissive,--deterministic", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
@@ -721,7 +722,8 @@ int main( int ac, char** av )
             double procreation_threshold = options.value( "--procreation-threshold,--procreation", 3.0 );
             double stability_threshold = options.value( "--stability-threshold,--stability", 4.0 );
             double step = options.value( "--step", 1.0 );
-            snark::cv_mat::impl::life< boost::posix_time::ptime > life( procreation_threshold, stability_threshold, step );
+            bool exit_on_stability = options.exists( "--exit-on-stability" );
+            snark::cv_mat::impl::life< boost::posix_time::ptime > life( procreation_threshold, stability_threshold, step, exit_on_stability );
             auto iterations = options.optional< unsigned int >( "--iterations,-i" );
             std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
             if( p.second.empty() ) { return 0; }
