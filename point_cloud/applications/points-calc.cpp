@@ -76,13 +76,11 @@ static void usage( bool verbose = false )
     std::cerr << "usage examples" << std::endl;
     std::cerr << "    cat points.csv | points-calc distance > results.csv" << std::endl;
     std::cerr << "    echo -e \"0\\n1\\n3\\n6\" | points-calc distance --fields x --next" << std::endl;
-    std::cerr << "    cat points.csv | points-calc cumulative-distance > results.csv" << std::endl;
-    std::cerr << "    cat points.csv | points-calc discretise --step <step> > results.csv" << std::endl;
+    std::cerr << "    cat points.csv | points-calc trajectory-cumulative-distance > results.csv" << std::endl;
+    std::cerr << "    cat points.csv | points-calc trajectory-discretise --step <step> > results.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    angle-axis" << std::endl;
-    std::cerr << "    cumulative-distance" << std::endl;
-    std::cerr << "    cumulative-discretise,cumulative-discretize,sample" << std::endl;
     std::cerr << "    distance" << std::endl;
     std::cerr << "    discretise,discretize" << std::endl;
     std::cerr << "    find-outliers" << std::endl;
@@ -98,7 +96,9 @@ static void usage( bool verbose = false )
     std::cerr << "    project-onto-line" << std::endl;
     std::cerr << "    project-onto-plane" << std::endl;
     std::cerr << "    thin" << std::endl;
-    std::cerr << "    trajectory-chord" << std::endl;
+    std::cerr << "    trajectory-chord,chord" << std::endl;
+    std::cerr << "    trajectory-cumulative-distance,cumulative-distance" << std::endl;
+    std::cerr << "    trajectory-cumulative-discretise,cumulative-discretise,cumulative-discretize,sample" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
     std::cerr << "general options" << std::endl;
@@ -127,25 +127,6 @@ static void usage( bool verbose = false )
     std::cerr << "            --next: subsequent points only, angle-axis to next point is appended" << std::endl;
     std::cerr << "                    (default: angle-axis to previous point is appended)" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    cumulative-distance" << std::endl;
-    std::cerr << "        cumulative distance between subsequent points" << std::endl;
-    std::cerr << "        if 'block' field present, calculate distance block-wise" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        options" << std::endl;
-    std::cerr << "            --differential,--diff: if present, input point represents difference with the previous point, not the absolute coordinates" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        input fields: " << comma::join( comma::csv::names< point_with_block >( false ), ',' ) << std::endl;
-    std::cerr << "        default input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ) << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    cumulative-discretise, cumulative-discretize, sample" << std::endl;
-    std::cerr << "        read input data and discretise intervals with --step along the whole" << std::endl;
-    std::cerr << "        trajectory" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        options" << std::endl;
-    std::cerr << "            --step=<step>: linear step of discretisation" << std::endl;
-    std::cerr << std::endl;
     std::cerr << "    distance" << std::endl;
     std::cerr << "        distance between subsequent points or, if input is pairs, between the" << std::endl;
     std::cerr << "        points of the same record" << std::endl;
@@ -166,17 +147,6 @@ static void usage( bool verbose = false )
     std::cerr << "                         0,0,0,0" << std::endl;
     std::cerr << "                         0,0,1,1" << std::endl;
     std::cerr << "                         0,0,1,1" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    discretise, discretize" << std::endl;
-    std::cerr << "        read input data and discretise intervals between adjacent points" << std::endl;
-    std::cerr << "        with --step; skip discretised points that are closer to the end of" << std::endl;
-    std::cerr << "        the interval than --tolerance" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        options" << std::endl;
-    std::cerr << "            --step=<step>: linear step of discretisation" << std::endl;
-    std::cerr << "            --tolerance=<tolerance>: tolerance; default: " << std::numeric_limits< double >::min() << std::endl;
     std::cerr << std::endl;
     std::cerr << "    find-outliers" << std::endl;
     std::cerr << "        find points in low density areas currently quick and dirty, may have" << std::endl;
@@ -293,22 +263,63 @@ static void usage( bool verbose = false )
     std::cerr << "                --linear: activates this mode" << std::endl;
     std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    trajectory-chord, chord" << std::endl;
-    std::cerr << "        determine chords along a trajectory" << std::endl;
+    std::cerr << "    trajectory calculations" << std::endl;
+    std::cerr << "        the following operations perform calculations on trajectories." << std::endl;
+    std::cerr << "        a trajectory is an ordered sequence of points" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        input fields: x,y,z,id; default x,y,z" << std::endl;
-    std::cerr << "                if id is not given it is generated" << std::endl;
+    std::cerr << "        trajectory-chord, chord" << std::endl;
+    std::cerr << "            determine chords along a trajectory" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        output fields: <input line>,x,y,z,id" << std::endl;
-    std::cerr << "                where x,y,z,<id> is the opposity end of the chord" << std::endl;
-    std::cerr << "                if <id> is included in input then it's included in output" << std::endl;
-    std::cerr << "          -or- <input line> for --filter option" << std::endl;
+    std::cerr << "            input fields: x,y,z,id; default x,y,z" << std::endl;
+    std::cerr << "                    if id is not given it is generated" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        options:" << std::endl;
-    std::cerr << "            --arc-ratio=<n>: ratio of the length of the arc to the chord" << std::endl;
-    std::cerr << "                             the furthest point that does not exceed this ratio is chosen" << std::endl;
-    std::cerr << "            --arc-maximum=<metres>: maximum distance along the arc to next point" << std::endl;
-    std::cerr << "            --filter: output only connected points, starting with first" << std::endl;
+    std::cerr << "            output fields: <input line>,x,y,z,id" << std::endl;
+    std::cerr << "                    where x,y,z,<id> is the opposity end of the chord" << std::endl;
+    std::cerr << "                    if <id> is included in input then it's included in output" << std::endl;
+    std::cerr << "              -or- <input line> for --filter option" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            options:" << std::endl;
+    std::cerr << "                --arc-ratio=<n>: ratio of the length of the arc to the chord" << std::endl;
+    std::cerr << "                                 the furthest point that does not exceed this" << std::endl;
+    std::cerr << "                                 ratio is chosen" << std::endl;
+    std::cerr << "                --arc-maximum=<metres>: maximum distance along the arc to" << std::endl;
+    std::cerr << "                                 next point" << std::endl;
+    std::cerr << "                --filter: output only connected points, starting with first" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        trajectory-cumulative-distance, cumulative-distance" << std::endl;
+    std::cerr << "            cumulative distance between subsequent points" << std::endl;
+    std::cerr << "            if 'block' field present, calculate distance block-wise" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            options" << std::endl;
+    std::cerr << "                --differential,--diff: if present, input point represents" << std::endl;
+    std::cerr << "                                 difference with the previous point," << std::endl;
+    std::cerr << "                                 not the absolute coordinates" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            input fields: " << comma::join( comma::csv::names< point_with_block >( false ), ',' ) << std::endl;
+    std::cerr << "            default input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        trajectory-cumulative-discretise, cumulative-discretise, cumulative-discretize, sample" << std::endl;
+    std::cerr << "            read input data and discretise intervals with --step along the whole" << std::endl;
+    std::cerr << "            trajectory" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            options" << std::endl;
+    std::cerr << "                --step=<step>: linear step of discretisation" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        trajectory-discretise, discretise, discretize" << std::endl;
+    std::cerr << "            read input data and discretise intervals between adjacent points" << std::endl;
+    std::cerr << "            with --step; skip discretised points that are closer to the end of" << std::endl;
+    std::cerr << "            the interval than --tolerance" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            options" << std::endl;
+    std::cerr << "                --step=<step>: linear step of discretisation" << std::endl;
+    std::cerr << "                --tolerance=<tolerance>: tolerance; default: " << std::numeric_limits< double >::min() << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        trajectory-distance" << std::endl;
+    std::cerr << "            alias for distance operation" << std::endl;
     std::cerr << std::endl;
     vector_calc::usage();
     exit( 0 );
@@ -323,7 +334,7 @@ static void calculate_distance( bool cumulative, bool propagate = false, bool di
     double distance = 0;
     double previous_norm = 0;
     if( cumulative && propagate ) { std::cerr << "points-calc: cumulative distance and propagate are mutually exclusive" << std::endl; exit( 1 ); }
-    if( !cumulative && differential ) { std::cerr << "points-calc: differential distance calculation is implemented only for cumulative-distance" << std::endl; exit( 1 ); }
+    if( !cumulative && differential ) { std::cerr << "points-calc: differential distance calculation is implemented only for trajectory-cumulative-distance" << std::endl; exit( 1 ); }
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         const point_with_block* p = istream.read();
@@ -498,7 +509,7 @@ static void angle_axis_for_pairs()
     }
 }
 
-static void discretise( double step, double tolerance )
+static void trajectory_discretise( double step, double tolerance )
 {
     if( csv.has_some_of_fields( "first,first/x,first/y,first/z,second,second/x,second/y,second/z" ) )
     {
@@ -552,7 +563,7 @@ static void discretise( double step, double tolerance )
     }
 }
 
-static int cumulative_discretise( const comma::command_line_options& options )
+static int trajectory_cumulative_discretise( const comma::command_line_options& options )
 {
     double step = options.value< double >( "--step" );
     if( step <= 0 ) { std::cerr << "points-calc: expected positive step, got " << step << std::endl; return 1; }
@@ -1046,7 +1057,7 @@ int main( int ac, char** av )
         if( operation == "plane-intersection-with-trajectory" ) { return run< snark::points_calc::plane_intersection_with_trajectory::traits >( options ); }
         if( vector_calc::has_operation( operation ) ) { vector_calc::process(operation, options, csv); return 0; }
         if( operation == "plane-intersection" ) { snark::points_calc::plane_intersection::traits::process(options, csv); return 0; }
-        if( operation == "distance" )
+        if( operation == "distance" || operation == "trajectory-distance" )
         {
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
             if( options.exists("--output-format" )){ std::cout << "d" << std::endl; return 0; }
@@ -1063,7 +1074,7 @@ int main( int ac, char** av )
             else { calculate_distance( false, propagate ); }
             return 0;
         }
-        if( operation == "cumulative-distance" )
+        if( operation == "trajectory-cumulative-distance" || operation == "cumulative-distance" )
         {
             if( options.exists("--input-fields" ) ) { std::cout << comma::join( comma::csv::names< point_with_block >( false ), ',' ) << std::endl; return 0; }
             if( options.exists("--input-format" ) ) { std::cout << comma::csv::format::value< point_with_block >() << std::endl; return 0; }
@@ -1171,7 +1182,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if( operation == "discretise" || operation == "discretize" )
+        if( operation == "trajectory-discretise" || operation == "discretise" || operation == "discretize" )
         {
             double step = options.value< double >( "--step" );
             if( step <= 0 ) { std::cerr << "points-calc: expected positive step, got " << step << std::endl; return 1; }
@@ -1179,12 +1190,12 @@ int main( int ac, char** av )
             // setting --tolerance=1e-12 will not allow the last discretised point to be too close to the end of the interval and therefore the output will have two distinct points at the end
             double tolerance = options.value( "--tolerance", std::numeric_limits< double >::min() );
             if( tolerance < 0 ) { std::cerr << "points-calc: expected non-negative tolerance, got " << tolerance << std::endl; return 1; }
-            discretise( step, tolerance );
+            trajectory_discretise( step, tolerance );
             return 0;
         }
-        if( operation == "cumulative-discretise" || operation == "cumulative-discretize" || operation == "sample" )
+        if( operation == "trajectory-cumulative-discretise" || operation == "cumulative-discretise" || operation == "cumulative-discretize" || operation == "sample" )
         {
-            return cumulative_discretise( options );
+            return trajectory_cumulative_discretise( options );
         }
         if( operation == "local-max" || operation == "local-min" ) // todo: if( operation == "local-calc" ? )
         {
