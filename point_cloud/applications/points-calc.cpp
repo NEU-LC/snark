@@ -167,12 +167,13 @@ static void usage( bool verbose = false )
     std::cerr << "                    but may remove points in borderline voxels" << std::endl;
     std::cerr << "            --discard: discards records that are outliers; output: same as input" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    integrate-frame: read reference frame on stdin, append integrated reference frame" << std::endl;
+    std::cerr << "    integrate-frame" << std::endl;
+    std::cerr << "        read reference frame on stdin, append integrated reference frame" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
     std::cerr << "            --frame=[<frame>]: default frame, used as initial frame and values for skipped input fields; default: 0,0,0,0,0,0" << std::endl;
-    std::cerr << "            --from; direction of transform, default; see points-frame --help for details" << std::endl;
-    std::cerr << "            --to; direction of transform; see points-frame --help for details" << std::endl;
+    std::cerr << "            --from: direction of transform, default; see points-frame --help for details" << std::endl;
+    std::cerr << "            --to: direction of transform; see points-frame --help for details" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        examples" << std::endl;
     std::cerr << "            the following two lines should output same result" << std::endl;
