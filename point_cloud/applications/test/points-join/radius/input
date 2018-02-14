@@ -1,0 +1,2 @@
+without_radius_field[0]="( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) | points-join --fields x,y <( echo 0,1; echo 0,2; echo 0,3 )\';fields=x,y\' --radius 3 --all | tr \'\\\n\' \';\'"
+with_radius_field[0]="( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) | points-join --fields x,y,radius <( echo 0,1; echo 0,2; echo 0,3 )\';fields=x,y\' --radius 3 --all | tr \'\\\n\' \';\'"

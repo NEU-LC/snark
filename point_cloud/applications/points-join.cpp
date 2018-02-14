@@ -66,10 +66,11 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
+    std::cerr << "    --input-fields: output input fields and exit" << std::endl;
     #ifdef SNARK_USE_CUDA
     std::cerr << "    --use-cuda,--cuda: experimental option; currently 40 times slower then normal operation, thus don't use it, yet" << std::endl;
     #endif
-    std::cerr << "    --radius=<radius>: lookup radius" << std::endl;
+    std::cerr << "    --radius=<radius>: max lookup radius, required even if radius field is present" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << "    --permissive: discard invalid points or triangles and continue" << std::endl;
     std::cerr << std::endl;
@@ -108,6 +109,7 @@ static bool permissive;
 static bool use_normal;
 static bool use_block;
 static double radius;
+static bool use_radius;
 static double squared_radius;
 static double max_triangle_side;
 static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
@@ -130,9 +132,12 @@ struct point_input
 {
     Eigen::Vector3d value;
     Eigen::Vector3d normal;
+    double radius;
     comma::uint32 block;
-    point_input() : value( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ), block( 0 ) {}
+    point_input() : value( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ), radius( 0 ), block( 0 ) {}
 };
+
+static double get_squared_radius( const point_input& p ) { return use_radius ? p.radius * p.radius : squared_radius; }
 
 struct triangle_input
 {
@@ -148,6 +153,7 @@ template <> struct traits< point_input >
     {
         traits< Eigen::Vector3d >::visit( k, t.value, v );
         v.apply( "normal", t.normal );
+        v.apply( "radius", t.radius );
         v.apply( "block", t.block );
     }
 
@@ -155,6 +161,7 @@ template <> struct traits< point_input >
     {
         traits< Eigen::Vector3d >::visit( k, t.value, v );
         v.apply( "normal", t.normal );
+        v.apply( "radius", t.radius );
         v.apply( "block", t.block );
     }
 };
@@ -369,7 +376,8 @@ template < typename V > struct join_impl_
     typedef typename traits< V >::record_t filter_record_t;
     typedef typename traits< V >::grid_t grid_t;
 
-    static grid_t read_filter_block() {
+    static grid_t read_filter_block()
+    {
         static std::ifstream ifs( &filter_csv.filename[0] );
         if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
         static comma::csv::input_stream< filter_value_t > ifstream( ifs, filter_csv, filter_value_t() );
@@ -434,6 +442,7 @@ template < typename V > struct join_impl_
         typedef traits< Eigen::Vector3d >::input_t input_t;
 
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
+        use_radius = stdin_csv.has_field( "radius" );
         comma::csv::input_stream< input_t > istream( std::cin, stdin_csv, input_t() );
         #ifdef WIN32
         if( stdin_csv.binary() ) { _setmode( _fileno( stdout ), _O_BINARY ); }
@@ -445,9 +454,11 @@ template < typename V > struct join_impl_
         {
             const input_t* p = istream.read();
             if( !p ) { break; }
+            double current_squared_radius = get_squared_radius( *p );
+            if( verbose && comma::math::less( squared_radius, current_squared_radius ) ) { std::cerr << "points-join: expected point-specific radius not exceeding --radius " << std::sqrt( squared_radius ) << "; got: " << p->radius << std::endl; }
             // todo: if blocks don't match, which input to wait for?
             if ( use_block && *block != p->block ) { grid = read_filter_block(); }
-            if ( use_block && *block != p->block ) { COMMA_THROW(comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block);}
+            if ( use_block && *block != p->block ) { COMMA_THROW( comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block );}
             typename grid_t::index_type index = grid.index_of( p->value );
             typename grid_t::index_type i;
             if( all )
@@ -466,7 +477,7 @@ template < typename V > struct join_impl_
                             for( std::size_t k = 0; k < it->second.records.size(); ++k )
                             {
                                 const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
-                                if( !q || q->second > squared_radius ) { continue; }
+                                if( !q || q->second > current_squared_radius ) { continue; }
                                 if( stdin_csv.binary() )
                                 {
                                     std::cout.write( istream.binary().last(), stdin_csv.format().size() );
@@ -500,7 +511,7 @@ template < typename V > struct join_impl_
                             for( std::size_t k = 0; k < it->second.records.size(); ++k )
                             {
                                 const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
-                                if( !q || q->second > squared_radius ) { continue; }
+                                if( !q || q->second > current_squared_radius ) { continue; }
                                 if( nearest.record && nearest.squared_distance < q->second ) { continue; }
                                 nearest.record = it->second.records[k];
                                 nearest.point = q->first;
@@ -581,8 +592,7 @@ int main( int ac, char** av )
             origin = options.exists( "--origin" ) ? comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin" ) ) : Eigen::Vector3d::Zero();
         }
         resolution = Eigen::Vector3d( r, r, r );
-        return filter_triangulated ? join_impl_< snark::triangle >::run( options )
-                                   : join_impl_< Eigen::Vector3d >::run( options );
+        return filter_triangulated ? join_impl_< snark::triangle >::run( options ) : join_impl_< Eigen::Vector3d >::run( options );
     }
     catch( std::exception& ex ) { std::cerr << "points-join: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-join: unknown exception" << std::endl; }
