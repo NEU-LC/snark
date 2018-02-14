@@ -1167,18 +1167,15 @@ int main( int ac, char** av )
                     thinner_t empty_thinner( rate );
                     return thin_operation::process< thinner_t >( resolution, empty_thinner, csv );
                 }
-                else if( options.exists( "--points-per-voxel" ))
+                if( options.exists( "--points-per-voxel" ))
                 {
                     typedef thin_operation::fixed_number_thinner thinner_t;
                     unsigned int points_per_voxel = options.value< unsigned int >( "--points-per-voxel" );
                     thinner_t empty_thinner( points_per_voxel );
                     return thin_operation::process< thinner_t >( resolution, empty_thinner, csv );
                 }
-                else
-                {
-                    std::cerr << "points-calc: spatial thinning requires one of --rate or --points-per-voxel" << std::endl;
-                    return 1;
-                }
+                std::cerr << "points-calc: spatial thinning requires one of --rate or --points-per-voxel" << std::endl;
+                return 1;
             }
             return 0;
         }
