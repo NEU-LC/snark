@@ -896,7 +896,6 @@ static void process_nearest_extremum_block( std::deque< local_operation::record 
                         for( std::size_t k = 0; k < git->second.size(); ++k )
                         {
                             local_operation::update_nearest( it->second[n], git->second[k], radius, sign, any );
-                            std::cerr << "looking at " << it->second[n]->point.id << ", " << git->second[k]->point.id << " - " << it->second[n]->reference_id << std::endl;
                         }
                     }
                 }
