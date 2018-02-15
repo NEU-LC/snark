@@ -288,7 +288,7 @@ int main( int ac, char** av )
         target_t target;
         if( input_csv.binary() ) { target.second.resize( input_csv.format().size() ); }
         comma::signal_flag is_shutdown;
-        wayline_follower follower( mode, proximity, use_past_endpoint, options.optional< double >( "--heading-reached-threshold,--heading-error-threshold,--heading-treshold" ) );
+        wayline_follower follower( mode, proximity, use_past_endpoint, options.optional< double >( "--heading-reached-threshold,--heading-error-threshold,--heading-threshold" ) );
         while( !is_shutdown && std::cin.good() && std::cout.good() )
         {
             if( !input_stream.ready() && !feedback_stream.ready() ) { select.wait( boost::posix_time::milliseconds( 10 ) ); }
