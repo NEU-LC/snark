@@ -540,27 +540,47 @@ static void trajectory_discretise( double step, double tolerance )
         if( csv.binary() ) { output_csv.format( "3d" ); }
         output_csv.flush = csv.flush;
         comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, output_csv );
+        std::string previous_record;
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const Eigen::Vector3d* current_point = istream.read();
             if( !current_point ) { break; }
             if( previous_point )
             {
-                comma::csv::append( istream, ostream, *previous_point );
+                ostream.append( previous_record, *previous_point );
                 double distance = ( *previous_point - *current_point ).norm();
                 if( comma::math::less( step, distance ) )
                 {
                     Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *previous_point, *current_point );
-                    for( double t = step; comma::math::less( t + tolerance, distance ); t += step )
-                    {
-                        Eigen::Vector3d point = line.pointAt( t );
-                        comma::csv::append( istream, ostream, point );
-                    }
+                    for( double t = step; comma::math::less( t + tolerance, distance ); t += step ) { ostream.append( previous_record, line.pointAt( t ) ); }
                 }
             }
             previous_point.reset( *current_point );
+            previous_record = istream.last();
         }
-        comma::csv::append( istream, ostream, *previous_point );
+        if( previous_point ) { ostream.append( previous_record, *previous_point ); }
+        
+//         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+//         {
+//             const Eigen::Vector3d* current_point = istream.read();
+//             if( !current_point ) { break; }
+//             if( previous_point )
+//             {
+//                 comma::csv::append( istream, ostream, *previous_point );
+//                 double distance = ( *previous_point - *current_point ).norm();
+//                 if( comma::math::less( step, distance ) )
+//                 {
+//                     Eigen::ParametrizedLine< double, 3 > line = Eigen::ParametrizedLine< double, 3 >::Through( *previous_point, *current_point );
+//                     for( double t = step; comma::math::less( t + tolerance, distance ); t += step )
+//                     {
+//                         Eigen::Vector3d point = line.pointAt( t );
+//                         comma::csv::append( istream, ostream, point );
+//                     }
+//                 }
+//             }
+//             previous_point.reset( *current_point );
+//         }
+//         if( previous_point ) { comma::csv::append( istream, ostream, *previous_point ); }
     }
 }
 
