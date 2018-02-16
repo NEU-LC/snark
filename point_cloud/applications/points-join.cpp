@@ -29,6 +29,7 @@
 
 /// @author vsevolod vlaskine
 
+#include <algorithm>
 #include <cmath>
 #include <deque>
 #include <fstream>
@@ -73,6 +74,7 @@ static void usage( bool more = false )
     std::cerr << "    --radius=<radius>: max lookup radius, required even if radius field is present" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << "    --permissive: discard invalid points or triangles and continue" << std::endl;
+    std::cerr << "    --size,--number-of-points,--number-of-nearest-points=<number_of_points>; default=1: output up to a given number of nearest points in the given radius" << std::endl;
     std::cerr << std::endl;
     std::cerr << "points filter (default): for each input point find the nearest point of the filter in given radius" << std::endl;
     std::cerr << "    input: points; fields: x,y,z,[block],[normal/x,normal/y,normal/z]" << std::endl;
@@ -244,6 +246,7 @@ template <> struct traits< Eigen::Vector3d >
         Eigen::Vector3d point;
         double squared_distance;
         nearest_t() : record( NULL ), squared_distance( 0 ) {}
+        nearest_t( const record_t* record, const Eigen::Vector3d& point, double squared_distance ): record( record ), point( point ), squared_distance( squared_distance ) {}
     };
     static Eigen::Vector3d default_value() { return Eigen::Vector3d::Zero(); }
     static void set_hull( snark::math::closed_interval< double, 3 >& extents, const Eigen::Vector3d& p ) { extents.set_hull( p ); }
@@ -321,6 +324,7 @@ template <> struct traits< snark::triangle >
         Eigen::Vector3d point;
         double squared_distance;
         nearest_t() : record( NULL ), squared_distance( 0 ) {}
+        nearest_t( const record_t* record, const Eigen::Vector3d& point, double squared_distance ): record( record ), point( point ), squared_distance( squared_distance ) {}
     };
     static snark::triangle default_value() { return snark::triangle(); }
     static void set_hull( snark::math::closed_interval< double, 3 >& extents, const snark::triangle& t )
@@ -428,6 +432,8 @@ template < typename V > struct join_impl_
 
     static int run( const comma::command_line_options& options )
     {
+        options.assert_mutually_exclusive( "--all", "--size,--number-of-points,--number-of-nearest-points" );
+        unsigned int size = options.value( "--size,--number-of-points,--number-of-nearest-points", 1 );
         strict = options.exists( "--strict" );
         permissive = options.exists( "--permissive" );
         bool all = options.exists( "--all" );
@@ -435,12 +441,9 @@ template < typename V > struct join_impl_
         use_cuda = options.exists( "--use-cuda,--cuda" );
         options.assert_mutually_exclusive( "--use-cuda,--cuda,--all" );
         #endif
-
         grid_t grid = read_filter_block();
         if (!block) { std::cerr << "got 0 records from filter" << std::endl; return 1; }
-
         typedef traits< Eigen::Vector3d >::input_t input_t;
-
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
         use_radius = stdin_csv.has_field( "radius" );
         comma::csv::input_stream< input_t > istream( std::cin, stdin_csv, input_t() );
@@ -450,6 +453,9 @@ template < typename V > struct join_impl_
         if( !stdin_csv.binary() ) { std::cout.precision( stdin_csv.precision ); }
         std::size_t count = 0;
         std::size_t discarded = 0;
+        typedef typename traits< V >::nearest_t nearest_t;
+        //boost::optional< nearest_t > nearest;
+        std::multimap< double, nearest_t > nearest_map;
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const input_t* p = istream.read();
@@ -496,7 +502,8 @@ template < typename V > struct join_impl_
             }
             else
             {
-                typename traits< V >::nearest_t nearest;
+                boost::optional< nearest_t > nearest;
+                if( size > 1 ) { nearest_map.clear(); }
                 for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
                 {
                     for( i[1] = index[1] - 1; i[1] < index[1] + 2; ++i[1] )
@@ -508,26 +515,41 @@ template < typename V > struct join_impl_
                             #ifdef SNARK_USE_CUDA
                             if( use_cuda ) { it->second.calculate_squared_norms( p->value ); }
                             #endif
-                            for( std::size_t k = 0; k < it->second.records.size(); ++k )
+                            if( size == 1 ) // have to handle size 1 separately due to poorer performance of std::map
                             {
-                                const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
-                                if( !q || q->second > current_squared_radius ) { continue; }
-                                if( nearest.record && nearest.squared_distance < q->second ) { continue; }
-                                nearest.record = it->second.records[k];
-                                nearest.point = q->first;
-                                nearest.squared_distance = q->second;
+                                for( std::size_t k = 0; k < it->second.records.size(); ++k )
+                                {
+                                    const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
+                                    if( !q || q->second > current_squared_radius ) { continue; }
+                                    if( !nearest || nearest->squared_distance > q->second ) { nearest.reset( nearest_t( it->second.records[k], q->first, q->second ) ); }
+                                }
+                            }
+                            else
+                            {
+                                for( std::size_t k = 0; k < it->second.records.size(); ++k )
+                                {
+                                    const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
+                                    if( !q || q->second > current_squared_radius ) { continue; }
+                                    if( nearest_map.size() >= size )
+                                    {
+                                        if( nearest_map.rbegin()->second.squared_distance < q->second ) { continue; }
+                                        nearest_map.erase( std::prev( nearest_map.end() ) );
+                                    }
+                                    nearest_map.insert( std::make_pair( q->second, nearest_t( it->second.records[k], q->first, q->second ) ) );
+                                }
                             }
                         }
                     }
                 }
-                if( !nearest.record )
+                if( nearest_map.empty() && !nearest )
                 {
                     if( verbose ) { std::cerr.precision( 12 ); std::cerr << "points-join: record " << count << " at " << p->value.x() << "," << p->value.y() << "," << p->value.z() << ": no matches found" << std::endl; }
                     if( strict ) { return 1; }
                     ++discarded;
                     continue;
                 }
-                traits< V >::output( istream, *nearest.record, nearest.point );
+                if( size == 1 ) { traits< V >::output( istream, *nearest->record, nearest->point ); }
+                else { for( const auto& n: nearest_map ) { traits< V >::output( istream, *n.second.record, n.second.point ); } }
             }
             ++count;
         }

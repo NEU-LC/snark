@@ -1,0 +1,6 @@
+size[0]="( ( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
+size[1]="( ( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --size 1 | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
+size[2]="( ( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --size 2 | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
+size[3]="( ( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --size 3 | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
+size[4]="( ( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --size 4 | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
+size[5]="( ( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --size 4 --all | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
