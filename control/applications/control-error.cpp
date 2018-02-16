@@ -153,8 +153,12 @@ public:
         error_.cross_track = wayline_.cross_track_error( feedback.first.position );
         error_.heading = target_->is_absolute ? comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), target_->heading - feedback.first.yaw )()
             : wayline_.heading_error( feedback.first.yaw, target_->heading );
-        reached_ = ( ( ( feedback.first.position - target_->position ).norm() < proximity_ ) || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) ) )
-            && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading ) );
+
+        reached_ = ((( feedback.first.position - target_->position ).norm() < proximity_ ) && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading )))
+            || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
+
+        //reached_ = ( ( ( feedback.first.position - target_->position ).norm() < proximity_ ) || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) ) )
+        //    && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading ) );
     }
     bool target_reached() const { return reached_; }
     bool has_target() const { return target_ && !reached_; }
