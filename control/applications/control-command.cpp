@@ -162,7 +162,6 @@ int main( int ac, char** av )
         {
             const input_t* input = input_stream.read();
             if( !input ) { break; }
-            boost::posix_time::ptime curr_time = boost::posix_time::microsec_clock::universal_time();
 
             if( reset_pid )
             {
@@ -175,6 +174,7 @@ int main( int ac, char** av )
                 }
             }
             command_t command;
+            boost::posix_time::ptime curr_time = boost::posix_time::microsec_clock::universal_time();
             if( feedback_timeout && !input->feedback.t.is_not_a_date_time()
              && comma::math::less( *feedback_timeout, ( curr_time - input->feedback.t ).total_milliseconds() / 1000.0, 1e-9 ) )
             {
