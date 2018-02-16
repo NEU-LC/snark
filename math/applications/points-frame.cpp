@@ -70,6 +70,18 @@ static void usage( bool verbose = false )
     std::cerr << "    --output-frame : output each frame for each point" << std::endl;
     std::cerr << "                     can be individually specified for a frame, e.g.:" << std::endl;
     std::cerr << "                     --from \"novatel.csv;output-frame\"" << std::endl;
+    std::cerr << "    --position=[<x>,<y>,<z>,<roll>,<pitch>,<yaw>]: default position, if 'frame' fields are present" << std::endl;
+    std::cerr << "        example scenario: you have a gps unit trajectory and gps unit offset from the centre of the vehicle" << std::endl;
+    std::cerr << "                          now, you want to find the trajectory of the centre of the vehicle" << std::endl;
+    std::cerr << "                          in this case, the gps unit trajectory is the frame, which is variable," << std::endl;
+    std::cerr << "                          while the point to georeference (the vehicle centre) is fixed" << std::endl;
+    std::cerr << "                          then you could run:" << std::endl;
+    std::cerr << "                              cat gps.unit.trajectory.csv | points-frame --fields frame --position <gps unit offset relative to vehicle centre>" << std::endl;
+    std::cerr << "                          this is equivalent to a much longer version:" << std::endl;
+    std::cerr << "                              cat gps.unit.trajectory.csv \\" << std::endl;
+    std::cerr << "                                  | csv-paste - value=<gps unit offset relative to vehicle centre> \\" << std::endl;
+    std::cerr << "                                  | points-frame --fields frame,position \\" << std::endl;
+    std::cerr << "                                  | csv-shuffle --fields ,,,,,,,,,,,,x,y,z,roll,pitch,yaw --output-fields x,y,z,roll,pitch,yaw \\" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    fields" << std::endl;
     std::cerr << "        t: timestamp" << std::endl;
@@ -295,6 +307,7 @@ struct position_and_frame
 {
     snark::applications::position position;
     snark::applications::position frame;
+    position_and_frame( const snark::applications::position& position = snark::applications::position(), const snark::applications::position& frame = snark::applications::position() ): position( position ), frame( frame ) {}
 };
 
 namespace comma { namespace visiting {
@@ -330,11 +343,11 @@ int main( int ac, char** av )
         bool rotation_present = false;
         for( unsigned int i = 0; i < v.size() && !rotation_present; ++i ) { rotation_present = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
         if( stdin_has_frame ) // quick and dirty
-        {            
+        {
             for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "x" || v[i] == "y" || v[i] == "z" || v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "position/" + v[i]; } }
             csv.fields = comma::join( v, ',' );
             csv.full_xpath = true;
-            comma::csv::input_stream< position_and_frame > is( std::cin, csv );
+            comma::csv::input_stream< position_and_frame > is( std::cin, csv, position_and_frame( comma::csv::ascii< snark::applications::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) ) ) );
             comma::csv::options output_csv;
             output_csv.flush = csv.flush;
             if( csv.binary() ) { output_csv.format( comma::csv::format::value< snark::applications::position >() ); }
@@ -354,6 +367,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
+        if( options.exists( "--position" ) ) { std::cerr << "points-frame: --position given, but no frame fields on stdin: not supported, yet" << std::endl; return 1; }
         bool discard_out_of_order = options.exists( "--discard-out-of-order,--discard" );
         bool from = options.exists( "--from" );
         bool to = options.exists( "--to" );
