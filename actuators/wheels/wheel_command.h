@@ -67,7 +67,7 @@ struct limit
 };
 
 /// returned turnrate is in radians
-wheel_command compute_wheel_command( const steer_command& desired, Eigen::Matrix4d wheel_pose, double wheel_offset = 0, boost::optional< limit > angle_limit = boost::optional< limit >(), boost::optional< double > current_angle = boost::optional< double >(), bool wrap = false );
+wheel_command compute_wheel_command( const steer_command& desired, const Eigen::Matrix4d& wheel_pose, double wheel_offset = 0, const boost::optional< limit >& angle_limit = boost::optional< limit >(), boost::optional< double > current_angle = boost::optional< double >(), bool wrap = false );
 
 } } // namespace snark { namespace wheels {
 
