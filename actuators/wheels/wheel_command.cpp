@@ -102,7 +102,7 @@ bool apply_limit_reverses_direction( snark::wheels::wheel_command& i_command, sn
 }
 namespace snark { namespace wheels {
 
-wheel_command compute_wheel_command( const steer_command &desired, Eigen::Matrix4d wheel_pose, double wheel_offset, boost::optional< limit > angle_limit, boost::optional< double > current_angle, bool wrap )
+wheel_command compute_wheel_command( const steer_command &desired, const Eigen::Matrix4d& wheel_pose, double wheel_offset, const boost::optional< limit >& angle_limit, boost::optional< double > current_angle, bool wrap )
 {
     wheel_command command;
 
