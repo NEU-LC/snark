@@ -1674,50 +1674,57 @@ template < typename H >
 class map_impl_
 {
     typedef typename impl::filters< H >::value_type value_type;
-    typedef int key_type;
-    typedef double output_value_type;
+    typedef map_input_t::key_type key_type;
+    typedef map_input_t::value_type output_value_type;
     public:
         map_impl_( const std::string& map_filter_options, bool permissive ) : permissive_ ( permissive )
         {
             comma::csv::options csv_options = comma::name_value::parser( "filename", '&' , '=' ).get< comma::csv::options >( map_filter_options );
-            std::string default_csv_fields = "value";
-            bool no_key_field = true;
-            if( csv_options.fields.empty() ) { csv_options.fields = default_csv_fields; }
-            else
-            {
-                if( !csv_options.has_field( "value" ) ) { COMMA_THROW( comma::exception, "map filter: fields option is given but \"value\" field is not found" ); }
-                no_key_field = !csv_options.has_field( "key" );
-            }
+            if( csv_options.fields.empty() ) { csv_options.fields = "value"; }
+            if( !csv_options.has_field( "value" ) ) { COMMA_THROW( comma::exception, "map filter: fields option is given but \"value\" field is not found" ); }
+            bool no_key_field = !csv_options.has_field( "key" );
             std::ifstream ifs( &csv_options.filename[0] );
-            if( !ifs ) { COMMA_THROW( comma::exception, "map filter: failed to open \"" << csv_options.filename << "\"" ); }
-            BOOST_STATIC_ASSERT( ( boost::is_same< map_input_t::key_type, key_type >::value ) );
-            BOOST_STATIC_ASSERT( ( boost::is_same< map_input_t::value_type, output_value_type >::value ) );
+            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "map filter: failed to open \"" << csv_options.filename << "\"" ); }
             comma::csv::input_stream< map_input_t > map_stream( ifs , csv_options );
             for( key_type counter = 0; map_stream.ready() || ( ifs.good() && !ifs.eof() ) ; ++counter )
             {
                 const map_input_t* map_input = map_stream.read();
                 if( !map_input ) { break; }
-                key_type key = no_key_field ? counter : map_input->key;
-                map_.insert( std::pair< key_type, output_value_type >( key, map_input->value ) );
+                map_[ no_key_field ? counter : map_input->key ] = map_input->value;
             }
         }
 
-        value_type operator()( value_type m )
+        value_type operator()( value_type m ) // todo: support multiple channels
         {
-            if( m.second.channels() != 1 ) { std::cerr << "map filter: expected single channel cv type, got " << m.second.channels() << " channels" << std::endl; return value_type(); }
             value_type n( m.first, cv::Mat( m.second.size(), cv::DataType< output_value_type >::type ) );
             try
             {
-                switch( m.second.type() )
+                switch( m.second.type() ) // quick and dirty; opencv really got their design wrong: type is known in runtime whereas handling types is a compile-time thing
                 {
-                    case cv::DataType< unsigned char >::type : apply_map< unsigned char >( m.second, n.second ); break;
-                    case cv::DataType< comma::uint16 >::type : apply_map< comma::uint16 >( m.second, n.second ); break;
-                    case cv::DataType< char >::type : apply_map< char >( m.second, n.second ); break;
-                    case cv::DataType< comma::int16 >::type : apply_map< comma::int16 >( m.second, n.second ); break;
-                    case cv::DataType< comma::int32 >::type : apply_map< comma::int32 >( m.second, n.second ); break;
+                    case cv::DataType< unsigned char >::type : apply_map_< unsigned char >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< unsigned char, 2 > >::type : apply_map_< cv::Vec< unsigned char, 2 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< unsigned char, 3 > >::type : apply_map_< cv::Vec< unsigned char, 3 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< unsigned char, 4 > >::type : apply_map_< cv::Vec< unsigned char, 4 > >( m.second, n.second ); break;
+                    case cv::DataType< comma::uint16 >::type : apply_map_< comma::uint16 >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< comma::uint16, 2 > >::type : apply_map_< cv::Vec< comma::uint16, 2 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< comma::uint16, 3 > >::type : apply_map_< cv::Vec< comma::uint16, 3 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< comma::uint16, 4 > >::type : apply_map_< cv::Vec< comma::uint16, 4 > >( m.second, n.second ); break;
+                    case cv::DataType< char >::type : apply_map_< char >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< char, 2 > >::type : apply_map_< cv::Vec< char, 2 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< char, 3 > >::type : apply_map_< cv::Vec< char, 3 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< char, 4 > >::type : apply_map_< cv::Vec< char, 4 > >( m.second, n.second ); break;
+                    case cv::DataType< comma::int16 >::type : apply_map_< comma::int16 >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< comma::int16, 2 > >::type : apply_map_< cv::Vec< comma::int16, 2 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< comma::int16, 3 > >::type : apply_map_< cv::Vec< comma::int16, 3 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< comma::int16, 4 > >::type : apply_map_< cv::Vec< comma::int16, 4 > >( m.second, n.second ); break;
+                    case cv::DataType< comma::int32 >::type : apply_map_< comma::int32 >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< comma::int32, 2 > >::type : apply_map_< cv::Vec< comma::int32, 2 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< comma::int32, 3 > >::type : apply_map_< cv::Vec< comma::int32, 3 > >( m.second, n.second ); break;
+                    case cv::DataType< cv::Vec< comma::int32, 4 > >::type : apply_map_< cv::Vec< comma::int32, 4 > >( m.second, n.second ); break;
                     default: std::cerr << "map filter: expected integer cv type, got " << m.second.type() << std::endl; return value_type();
                 }
-            } catch ( std::out_of_range ) { return value_type(); }
+            }
+            catch ( std::out_of_range ) { return value_type(); }
             return n;
         }
 
@@ -1725,21 +1732,33 @@ class map_impl_
         typedef std::unordered_map< key_type, output_value_type > map_t_;
         map_t_ map_;
         bool permissive_;
+        
+        template < typename T, int Size > static T get_channel_( const cv::Vec< T, Size >& pixel, int channel ) { return pixel[channel]; }
+        template < typename T > static T get_channel_( const T& pixel, int channel ) { return pixel; }
+        template < typename T, int Size > static void set_channel_( cv::Vec< T, Size >& pixel, int channel, T value ) { return pixel[channel] = value; }
+        template < typename T > static void set_channel_( T& pixel, int channel, T value ) { pixel = value; }
 
         template < typename input_value_type >
-        void apply_map( const cv::Mat& input, cv::Mat& output )
+        void apply_map_( const cv::Mat& input, cv::Mat& output ) // todo: certainly reimplement with tbb::parallel_for
         {
-            for( int i=0; i < input.rows; ++i )
+            for( int i = 0; i < input.rows; ++i )
             {
-                for( int j=0; j < input.cols; ++j )
+                for( int j = 0; j < input.cols; ++j )
                 {
-                    key_type key = input.at< input_value_type >(i,j);
-                    map_t_::const_iterator it = map_.find( key );
-                    if( it != map_.end() ) { output.at< output_value_type >(i,j) = map_.at( key ); }
-                    else
+                    const auto& keys = input.at< input_value_type >(i,j);
+                    for( int channel = 0; channel < input.channels(); ++channel )
                     {
-                        if( permissive_ ) { output.at< output_value_type >(i,j) = key; }
-                        else { std::cerr << "map filter: expected a pixel value from the map, got: pixel at " << i << "," << j << " with value " << key << std::endl; throw std::out_of_range(""); }
+                        auto key = get_channel_( keys, channel );
+                        map_t_::const_iterator it = map_.find( key );
+                        if( it == map_.end() )
+                        {
+                            if( permissive_ ) { std::cerr << "map filter: expected a pixel value from the map, got: pixel at " << i << "," << j << " with value " << key << std::endl; throw std::out_of_range(""); }
+                            set_channel_( output.at< output_value_type >(i,j), channel, output_value_type( key ) ); // todo? implement value clipping to 0 or 1? refactor not-found behaviour!
+                        }
+                        else
+                        { 
+                            set_channel_( output.at< output_value_type >(i,j), channel, it->second );
+                        }
                     }
                 }
             }
@@ -2673,7 +2692,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         // For the case where the file is just a file descriptor, no extenstion, use e[2]
         return std::make_pair( impl::load< H >( e[1] ), true );
     }
-    if( e[0] == "map" )
+    if( e[0] == "map" ) // todo! refactor usage, especially csv option separators and equal sign; make optionally map for each channel separately
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
         std::stringstream s; s << e[1]; for( std::size_t i = 2; i < e.size(); ++i ) { s << "=" << e[i]; }
