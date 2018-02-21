@@ -34,7 +34,6 @@
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/names.h>
-#include <comma/io/select.h>
 #include <comma/math/cyclic.h>
 #include "../pid.h"
 #include "control.h"
