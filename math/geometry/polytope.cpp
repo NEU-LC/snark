@@ -40,7 +40,7 @@ convex_polytope::convex_polytope( const std::vector< Eigen::VectorXd >& normals,
     : normals_( normals.size(), normals[0].size() )
     , distances_( distances.size() )
 {
-    if( !normals.size() || normals[0].size() ) { COMMA_THROW( comma::exception, "normals cannot empty" ); }
+    if( !normals.size() || !normals[0].size() ) { COMMA_THROW( comma::exception, "normals cannot be empty or have zero dimensions" ); }
     if( normals.size() != distances.size() ) { COMMA_THROW( comma::exception, "normals and distances should be of same size, got "<< normals.size()<<" normals and " << distances.size() << " distances" ); }
     for( unsigned int i = 0; i < normals.size(); ++i )
     {
