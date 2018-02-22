@@ -190,16 +190,25 @@ is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || p
 
 config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
 
-grep -E '(^|,)is_absolute(,|$)' <<< $waypoints_fields &>/dev/null
-hasnt_absolute_field=$?
+grep -E '(^|,)is_absolute(,|$)' <<< $waypoints_fields &>/dev/null;
+(( 0 == $? )) && has_absolute_field=1 || has_absolute_field=0
+epsilon=0.0001
 
 echo "$scriptname: starting control pipeline" >&2
 
-if (( hasnt_absolute_field )) || [[ 'omni' = $steering ]]
+if [[ 'skid' = $steering ]]
 then
-    cat -
+    if (( has_absolute_field ))
+    then
+        csv-eval --fields=$waypoints_fields --exit-if "( 1 == is_absolute ) & ( $epsilon < abs( speed ) )" --with-error "heading must not be absolute for skid steering (except spot turn)."
+    elif (( heading_is_absolute_default ))
+    then
+        die "heading must not default to absolute for skid steering, check config file."
+    else
+        cat -
+    fi
 else
-    csv-eval --fields=$waypoints_fields --exit-if '( 1 == is_absolute ) & ( 0 != speed )' --with-error "heading must not be absolute for skid steering (except spot turn)."
+    cat -
 fi |
 control-error \
         --fields=$waypoints_fields \
