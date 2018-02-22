@@ -22,7 +22,7 @@ if [[ $args =~ --binary[=\ ]([0-9a-z,]*) ]]; then
     binary_out_fn="csv-from-bin $output_format"
 fi
 
-output_fields=$( echo $fields | csv-fields prefix --path first ),$( points-calc chord $args --output-fields | csv-fields prefix --path second )
+output_fields=$( echo $fields | csv-fields prefix --path first ),$( echo $fields | csv-fields prefix --path second )
 view_points_shape=line
 
 if [[ $args =~ --filter ]]; then
