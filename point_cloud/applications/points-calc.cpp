@@ -275,7 +275,7 @@ static void usage( bool verbose = false )
     std::cerr << "                    if id is not given it is generated" << std::endl;
     std::cerr << std::endl;
     std::cerr << "            output fields: <input line>,<chord line>" << std::endl;
-    std::cerr << "                    where <chord line> is the input line that is the opposity end of the chord" << std::endl;
+    std::cerr << "                    where <chord line> is the input line that is the opposite end of the chord" << std::endl;
     std::cerr << "              -or- <input line> for --filter option" << std::endl;
     std::cerr << std::endl;
     std::cerr << "            options:" << std::endl;
