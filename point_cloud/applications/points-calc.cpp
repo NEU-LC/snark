@@ -35,6 +35,7 @@
 #include <limits>
 #include <boost/optional.hpp>
 #include <boost/unordered_set.hpp>
+#include <boost/circular_buffer.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
@@ -115,17 +116,24 @@ static void usage( bool verbose = false )
     std::cerr << "operation details" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    angle-axis" << std::endl;
-    std::cerr << "        angle-axis between subsequent points or, if input is pairs, between" << std::endl;
+    std::cerr << "        angle-axis at the origin between subsequent points, or if input is pairs, between" << std::endl;
     std::cerr << "        the points of the same record. For subsequent points the first value" << std::endl;
     std::cerr << "        (or last if --next is given) is invalid as we don't yet have a pair of" << std::endl;
     std::cerr << "        points." << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << "                      " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << std::endl;
+    std::cerr << "                      " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << " ( not with --relative )" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options: " << std::endl;
-    std::cerr << "            --next: subsequent points only, angle-axis to next point is appended" << std::endl;
+    std::cerr << "            --next: subsequent points only and mutually exclusive with --relative" << std::endl;
+    std::cerr << "                    angle-axis to next point is appended" << std::endl;
     std::cerr << "                    (default: angle-axis to previous point is appended)" << std::endl;
+    std::cerr << "            --relative: at each point, calculate the angle-axis between the previous" << std::endl;
+    std::cerr << "                     and next point. First and last are assigned 0 angle as they have" << std::endl;
+    std::cerr << "                     no previous and next point respectively" << std::endl;
+    std::cerr << "                    (default: angle-axis is at the origin)" << std::endl;
+    std::cerr << "            --reverse,--supplementary: used with --relative, output the supplementary" << std::endl;
+    std::cerr << "                    angle to the result of --relative operation" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance" << std::endl;
     std::cerr << "        distance between subsequent points or, if input is pairs, between the" << std::endl;
@@ -417,6 +425,75 @@ static void calculate_distance_for_pairs( bool propagate )
             std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << norm << std::endl;
         }
     }
+}
+
+namespace angle_axis_relative
+{
+
+struct record
+{
+    Eigen::Vector3d coordinates;
+    std::string line;
+    Eigen::AngleAxis< double > angle_axis;
+
+    record( Eigen::Vector3d const& c, comma::csv::input_stream< Eigen::Vector3d >const& istrm )
+        : coordinates( c )
+        , line()
+        , angle_axis( 0, Eigen::Vector3d( 0, 0, 0 ) )
+    {
+        if( csv.binary() )
+        {
+            line.resize( csv.format().size() );
+            ::memcpy( &line[ 0 ], istrm.binary().last(), csv.format().size() );
+        }
+        else
+        {
+            line = comma::join( istrm.ascii().last(), csv.delimiter );
+        }
+    }
+
+    void calculate_angle_axis( Eigen::Vector3d const& prev_coordinates, Eigen::Vector3d const& next_coordinates, bool const supplementary )
+    {
+        angle_axis = supplementary
+            ? Eigen::Quaternion< double >::FromTwoVectors( next_coordinates - coordinates, prev_coordinates - coordinates )
+            : Eigen::Quaternion< double >::FromTwoVectors( coordinates - prev_coordinates, next_coordinates - coordinates );
+    }
+
+    void output( comma::csv::output_stream< Eigen::AngleAxis< double > >& ostrm )
+    {
+        ostrm.append( line, angle_axis );
+        if( csv.binary() && csv.flush ) { std::cout.flush(); }
+    }
+};
+
+static void execute( bool const supplementary )
+{
+    if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+    csv.full_xpath = false;
+
+    comma::csv::options output_csv( csv );
+    output_csv.fields = comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' );
+    if( output_csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::AngleAxis< double > >() ); }
+
+    boost::circular_buffer< record > que( 3 );
+    comma::csv::input_stream< Eigen::Vector3d > istrm( std::cin, csv );
+    comma::csv::output_stream< Eigen::AngleAxis< double > > ostrm( std::cout, output_csv );
+
+    while( istrm.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const Eigen::Vector3d* p = istrm.read();
+        if( !p ) { break; }
+        que.push_back( record( *p, istrm ) ); // this discards que[ 0 ] if que.size() == 3
+
+        if( 3 == que.size() )
+        {
+            que[ 1 ].calculate_angle_axis( que[ 0 ].coordinates, que[ 2 ].coordinates, supplementary );
+            que[ 0 ].output( ostrm );
+        }
+    }
+    for( auto ii = ( 3 == que.size() ? 1U : 0U ); ii < que.size(); ii++ ) { que[ ii ].output( ostrm ); }
+}
+
 }
 
 static void angle_axis()
@@ -1092,16 +1169,23 @@ int main( int ac, char** av )
             if( options.exists("--output-fields" )){ std::cout << comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' ) << std::endl; return 0; }
             if( options.exists("--output-format" )){ std::cout << comma::csv::format::value< Eigen::AngleAxis< double > >() << std::endl; return 0; }
 
-            if(    csv.has_field( "first" )   || csv.has_field( "second" )
-                || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
-                || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
-                || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
+            if( options.exists( "--relative" ) )
             {
-                angle_axis_for_pairs();
-                return 0;
+                angle_axis_relative::execute( options.exists( "--reverse,--supplementary" ) );
             }
-            if ( options.exists( "--next" ) ) { angle_axis_next(); }
-            else { angle_axis(); }
+            else
+            {
+                if(    csv.has_field( "first" )   || csv.has_field( "second" )
+                        || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
+                        || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
+                        || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
+                {
+                    angle_axis_for_pairs();
+                    return 0;
+                }
+                if ( options.exists( "--next" ) ) { angle_axis_next(); }
+                else { angle_axis(); }
+            }
             return 0;
         }
         if( operation == "nearest" )
