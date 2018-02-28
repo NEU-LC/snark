@@ -492,8 +492,7 @@ static void execute( bool const supplementary )
         {
             auto relevant_index = que.size() - 2U;
             que[ relevant_index ].calculate_angle_axis( que[ 0 ].coordinates, que.back().coordinates, supplementary );
-            for( auto ii = 0U; ii < relevant_index; ii ++ ) { que[ ii ].output( ostrm ); }
-            que.erase( que.cbegin(), que.cbegin() + relevant_index );
+            while( 2 < que.size() ) { que.front().output( ostrm ); que.pop_front(); }
             unique_points = 2;
         }
     }
