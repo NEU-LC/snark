@@ -124,6 +124,7 @@ static void usage( bool verbose = false )
     std::cerr << "                      " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << " ( not with --relative )" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options: " << std::endl;
+    std::cerr << "            --ignore-repeats: used with --relative, ignore repeating points" << std::endl;
     std::cerr << "            --next: subsequent points only and mutually exclusive with --relative" << std::endl;
     std::cerr << "                    angle-axis to next point is appended" << std::endl;
     std::cerr << "                    (default: angle-axis to previous point is appended)" << std::endl;
@@ -466,7 +467,7 @@ struct record
     }
 };
 
-static void execute( bool const supplementary )
+static void execute( bool const supplementary, bool const ignore_repeats )
 {
     if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
     csv.full_xpath = false;
@@ -485,7 +486,7 @@ static void execute( bool const supplementary )
         const Eigen::Vector3d* p = istrm.read();
         if( !p ) { break; }
 
-        if( que.empty() || ( *p - que.back().coordinates ).norm() >= 1e-6 ) { unique_points++; }
+        if( que.empty() || !ignore_repeats || ( *p - que.back().coordinates ).norm() >= 1e-6 ) { unique_points++; }
         que.emplace_back( *p, istrm );
 
         if( 3U == unique_points )
@@ -1176,7 +1177,7 @@ int main( int ac, char** av )
 
             if( options.exists( "--relative" ) )
             {
-                angle_axis_relative::execute( options.exists( "--reverse,--supplementary" ) );
+                angle_axis_relative::execute( options.exists( "--reverse,--supplementary" ), options.exists( "--ignore-repeats" ) );
             }
             else
             {
