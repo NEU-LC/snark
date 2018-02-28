@@ -35,7 +35,6 @@
 #include <limits>
 #include <boost/optional.hpp>
 #include <boost/unordered_set.hpp>
-#include <boost/circular_buffer.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
@@ -476,23 +475,29 @@ static void execute( bool const supplementary )
     output_csv.fields = comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' );
     if( output_csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::AngleAxis< double > >() ); }
 
-    boost::circular_buffer< record > que( 3 );
+    std::deque< record > que;
     comma::csv::input_stream< Eigen::Vector3d > istrm( std::cin, csv );
     comma::csv::output_stream< Eigen::AngleAxis< double > > ostrm( std::cout, output_csv );
 
+    auto unique_points = 0U;
     while( istrm.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
         const Eigen::Vector3d* p = istrm.read();
         if( !p ) { break; }
-        que.push_back( record( *p, istrm ) ); // this discards que[ 0 ] if que.size() == 3
 
-        if( 3 == que.size() )
+        if( que.empty() || ( *p - que.back().coordinates ).norm() >= 1e-6 ) { unique_points++; }
+        que.emplace_back( *p, istrm );
+
+        if( 3U == unique_points )
         {
-            que[ 1 ].calculate_angle_axis( que[ 0 ].coordinates, que[ 2 ].coordinates, supplementary );
-            que[ 0 ].output( ostrm );
+            auto relevant_index = que.size() - 2U;
+            que[ relevant_index ].calculate_angle_axis( que[ 0 ].coordinates, que.back().coordinates, supplementary );
+            for( auto ii = 0U; ii < relevant_index; ii ++ ) { que[ ii ].output( ostrm ); }
+            que.erase( que.cbegin(), que.cbegin() + relevant_index );
+            unique_points = 2;
         }
     }
-    for( auto ii = ( 3 == que.size() ? 1U : 0U ); ii < que.size(); ii++ ) { que[ ii ].output( ostrm ); }
+    for( auto ii = 0U; ii < que.size(); ii++ ) { que[ ii ].output( ostrm ); }
 }
 
 }
