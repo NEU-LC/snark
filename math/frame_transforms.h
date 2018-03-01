@@ -64,6 +64,7 @@ struct tr_transform
     tr_transform() : translation(Eigen::Vector3d::Zero()), rotation(1,0,0,0){}
     Eigen::Vector3d translation;
     Eigen::Quaternion<double> rotation;
+    Eigen::Matrix4d to_matrix() const;
 };
 
 /// inverts a homogeneous transform using transpose formula

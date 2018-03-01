@@ -45,7 +45,13 @@ namespace snark { namespace frame_transforms {
     t.vector() = translation;
     return ::Eigen::Affine3d( snark::rotation_matrix::rotation( rotation ).transpose() * t.inverse() );
 }
-    
+
+
+Eigen::Matrix4d tr_transform::to_matrix() const
+{
+    return homogeneous_transform(rotation.toRotationMatrix(),translation);
+}
+
 Eigen::Matrix4d inverse_transform(const Eigen::Matrix4d& T)
 {
     return homogeneous_transform(T.topLeftCorner(3,3).transpose(),-T.topLeftCorner(3,3).transpose()*T.topRightCorner(3,1));
