@@ -115,17 +115,25 @@ static void usage( bool verbose = false )
     std::cerr << "operation details" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    angle-axis" << std::endl;
-    std::cerr << "        angle-axis between subsequent points or, if input is pairs, between" << std::endl;
+    std::cerr << "        angle-axis at the origin between subsequent points, or if input is pairs, between" << std::endl;
     std::cerr << "        the points of the same record. For subsequent points the first value" << std::endl;
     std::cerr << "        (or last if --next is given) is invalid as we don't yet have a pair of" << std::endl;
     std::cerr << "        points." << std::endl;
     std::cerr << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << "                      " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << std::endl;
+    std::cerr << "                      " << comma::join( comma::csv::names< point_pair_t >( true ), ',' ) << " ( not with --relative )" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options: " << std::endl;
-    std::cerr << "            --next: subsequent points only, angle-axis to next point is appended" << std::endl;
+    std::cerr << "            --ignore-repeats: used with --relative, ignore repeating points" << std::endl;
+    std::cerr << "            --next: subsequent points only and mutually exclusive with --relative" << std::endl;
+    std::cerr << "                    angle-axis to next point is appended" << std::endl;
     std::cerr << "                    (default: angle-axis to previous point is appended)" << std::endl;
+    std::cerr << "            --relative: at each point, calculate the angle-axis between the previous" << std::endl;
+    std::cerr << "                     and next point. First and last are assigned 0 angle as they have" << std::endl;
+    std::cerr << "                     no previous and next point respectively" << std::endl;
+    std::cerr << "                    (default: angle-axis is at the origin)" << std::endl;
+    std::cerr << "            --reverse,--supplementary: used with --relative, output the supplementary" << std::endl;
+    std::cerr << "                    angle to the result of --relative operation" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance" << std::endl;
     std::cerr << "        distance between subsequent points or, if input is pairs, between the" << std::endl;
@@ -271,20 +279,20 @@ static void usage( bool verbose = false )
     std::cerr << "        trajectory-chord, chord" << std::endl;
     std::cerr << "            determine chords along a trajectory" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "            input fields: x,y,z,id; default x,y,z" << std::endl;
+    std::cerr << "            input fields: x,y,z; default x,y,z" << std::endl;
     std::cerr << "                    if id is not given it is generated" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "            output fields: <input line>,x,y,z,id" << std::endl;
-    std::cerr << "                    where x,y,z,<id> is the opposity end of the chord" << std::endl;
-    std::cerr << "                    if <id> is included in input then it's included in output" << std::endl;
+    std::cerr << "            output fields: <input line>,<chord line>" << std::endl;
+    std::cerr << "                    where <chord line> is the input line that is the opposite" << std::endl;
+    std::cerr << "                                       end of the chord" << std::endl;
     std::cerr << "              -or- <input line> for --filter option" << std::endl;
     std::cerr << std::endl;
     std::cerr << "            options:" << std::endl;
     std::cerr << "                --arc-ratio=<n>: ratio of the length of the arc to the chord" << std::endl;
     std::cerr << "                                 the furthest point that does not exceed this" << std::endl;
     std::cerr << "                                 ratio is chosen" << std::endl;
-    std::cerr << "                --arc-maximum=<metres>: maximum distance along the arc to" << std::endl;
-    std::cerr << "                                 next point" << std::endl;
+    std::cerr << "                --arc-maximum,--arc-max=<metres>: maximum distance along the" << std::endl;
+    std::cerr << "                                 arc to next point" << std::endl;
     std::cerr << "                --filter: output only connected points, starting with first" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        trajectory-cumulative-distance, cumulative-distance" << std::endl;
@@ -418,6 +426,80 @@ static void calculate_distance_for_pairs( bool propagate )
             std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << norm << std::endl;
         }
     }
+}
+
+namespace angle_axis_relative
+{
+
+struct record
+{
+    Eigen::Vector3d coordinates;
+    std::string line;
+    Eigen::AngleAxis< double > angle_axis;
+
+    record( Eigen::Vector3d const& c, comma::csv::input_stream< Eigen::Vector3d >const& istrm )
+        : coordinates( c )
+        , line()
+        , angle_axis( 0, Eigen::Vector3d( 0, 0, 0 ) )
+    {
+        if( csv.binary() )
+        {
+            line.resize( csv.format().size() );
+            ::memcpy( &line[ 0 ], istrm.binary().last(), csv.format().size() );
+        }
+        else
+        {
+            line = comma::join( istrm.ascii().last(), csv.delimiter );
+        }
+    }
+
+    void calculate_angle_axis( Eigen::Vector3d const& prev_coordinates, Eigen::Vector3d const& next_coordinates, bool const supplementary )
+    {
+        angle_axis = supplementary
+            ? Eigen::Quaternion< double >::FromTwoVectors( next_coordinates - coordinates, prev_coordinates - coordinates )
+            : Eigen::Quaternion< double >::FromTwoVectors( coordinates - prev_coordinates, next_coordinates - coordinates );
+    }
+
+    void output( comma::csv::output_stream< Eigen::AngleAxis< double > >& ostrm )
+    {
+        ostrm.append( line, angle_axis );
+        if( csv.binary() && csv.flush ) { std::cout.flush(); }
+    }
+};
+
+static void execute( bool const supplementary, bool const ignore_repeats )
+{
+    if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+    csv.full_xpath = false;
+
+    comma::csv::options output_csv( csv );
+    output_csv.fields = comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' );
+    if( output_csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::AngleAxis< double > >() ); }
+
+    std::deque< record > que;
+    comma::csv::input_stream< Eigen::Vector3d > istrm( std::cin, csv );
+    comma::csv::output_stream< Eigen::AngleAxis< double > > ostrm( std::cout, output_csv );
+
+    auto unique_points = 0U;
+    while( istrm.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const Eigen::Vector3d* p = istrm.read();
+        if( !p ) { break; }
+
+        if( que.empty() || !ignore_repeats || ( *p - que.back().coordinates ).norm() >= 1e-6 ) { unique_points++; }
+        que.emplace_back( *p, istrm );
+
+        if( 3U == unique_points )
+        {
+            auto relevant_index = que.size() - 2U;
+            que[ relevant_index ].calculate_angle_axis( que[ 0 ].coordinates, que.back().coordinates, supplementary );
+            while( 2 < que.size() ) { que.front().output( ostrm ); que.pop_front(); }
+            unique_points = 2;
+        }
+    }
+    for( auto ii = 0U; ii < que.size(); ii++ ) { que[ ii ].output( ostrm ); }
+}
+
 }
 
 static void angle_axis()
@@ -751,43 +833,43 @@ int process( double resolution, const T& empty_thinner, const comma::csv::option
 
 namespace trajectory_chord_operation {
 
-static boost::optional< comma::uint32 > target_id;
-
-struct point
-{
-    Eigen::Vector3d coordinates;
-    comma::uint32 id;
-
-    point() : coordinates( 0, 0, 0 ), id( 0 ) {}
-    point( const Eigen::Vector3d& coordinates ) : coordinates( coordinates ), id( 0 ) {}
-};
 
 struct record
 {
-    trajectory_chord_operation::point point;
+    Eigen::Vector3d coordinates;
     std::string line;
     record* reference_record;
 
-    record() : reference_record( NULL ) {}
-    record( const trajectory_chord_operation::point& p, const std::string& line )
-        : point( p ), line( line ), reference_record( NULL ) {}
+    record() : reference_record( nullptr ) {}
+    record( const Eigen::Vector3d& c, const std::string& line )
+        : coordinates( c ), line( line ), reference_record( nullptr ) {}
 };
 
-void output( comma::csv::output_stream< point >& os, const record& record, bool filter )
+static record* target_record = nullptr;
+
+void output( const record& record, bool filter )
 {
     if( filter )
     {
-        if( record.point.id == *target_id )
+        if( &record == target_record )
         {
             std::cout.write( &record.line[0], record.line.size() );
-            if( !csv.binary() ) { std::cout << "\n"; }
+            if( !csv.binary() ) { std::cout << std::endl; }
             if( csv.flush ) { std::cout.flush(); }
-            target_id = record.reference_record->point.id;
+            target_record = record.reference_record;
         }
     }
     else
     {
-        os.append( record.line, record.reference_record->point );
+        if( csv.binary() )
+        {
+            std::cout.write( &record.line[0], record.line.size() );
+            std::cout.write( &record.reference_record->line[0], record.reference_record->line.size() );
+        }
+        else
+        {
+            std::cout << record.line << csv.delimiter << record.reference_record->line << std::endl;
+        }
     }
 }
 
@@ -1003,21 +1085,6 @@ template <> struct traits< point_with_block >
     }
 };
 
-template <> struct traits< trajectory_chord_operation::point >
-{
-    template< typename K, typename V > static void visit( const K&, const trajectory_chord_operation::point& t, V& v )
-    {
-        v.apply( "coordinates", t.coordinates );
-        v.apply( "id", t.id );
-    }
-    
-    template< typename K, typename V > static void visit( const K&, trajectory_chord_operation::point& t, V& v )
-    {
-        v.apply( "coordinates", t.coordinates );
-        v.apply( "id", t.id );
-    }
-};
-
 template <> struct traits< local_operation::point >
 {
     template< typename K, typename V > static void visit( const K&, const local_operation::point& t, V& v )
@@ -1108,16 +1175,23 @@ int main( int ac, char** av )
             if( options.exists("--output-fields" )){ std::cout << comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' ) << std::endl; return 0; }
             if( options.exists("--output-format" )){ std::cout << comma::csv::format::value< Eigen::AngleAxis< double > >() << std::endl; return 0; }
 
-            if(    csv.has_field( "first" )   || csv.has_field( "second" )
-                || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
-                || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
-                || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
+            if( options.exists( "--relative" ) )
             {
-                angle_axis_for_pairs();
-                return 0;
+                angle_axis_relative::execute( options.exists( "--reverse,--supplementary" ), options.exists( "--ignore-repeats" ) );
             }
-            if ( options.exists( "--next" ) ) { angle_axis_next(); }
-            else { angle_axis(); }
+            else
+            {
+                if(    csv.has_field( "first" )   || csv.has_field( "second" )
+                        || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
+                        || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
+                        || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
+                {
+                    angle_axis_for_pairs();
+                    return 0;
+                }
+                if ( options.exists( "--next" ) ) { angle_axis_next(); }
+                else { angle_axis(); }
+            }
             return 0;
         }
         if( operation == "nearest" )
@@ -1499,35 +1573,20 @@ int main( int ac, char** av )
             csv.full_xpath = false;
             if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ); }
 
-            comma::csv::options output_csv( csv );
-            output_csv.fields = comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' );
-            std::string output_format = comma::csv::format::value< Eigen::Vector3d >();
-            bool has_id = csv.has_field( "id" );
-            if( has_id )
-            {
-                output_csv.fields = comma::join( comma::csv::names< trajectory_chord_operation::point >( false ), ',' );
-                output_format = comma::csv::format::value< trajectory_chord_operation::point >();
-            }
-            if( csv.binary() ) { output_csv.format( output_format ); }
-
             if( options.exists( "--input-fields" )) { std::cout << comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ) << std::endl; return 0; }
             if( options.exists( "--input-format" )) { std::cout << comma::csv::format::value< Eigen::Vector3d >() << std::endl; return 0; }
-            if( options.exists( "--output-fields" )) { std::cout << output_csv.fields << std::endl; return 0; }
-            if( options.exists( "--output-format" )) { std::cout << output_format << std::endl; return 0; }
 
-            comma::csv::input_stream< trajectory_chord_operation::point > istream( std::cin, csv );
-            comma::csv::output_stream< trajectory_chord_operation::point > ostream( std::cout, output_csv );
+            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
 
             std::deque< trajectory_chord_operation::record > records;
             double arc_ratio = options.value< double >( "--arc-ratio" );
-            double arc_maximum = options.value< double >( "--arc-maximum" );
+            double arc_maximum = options.value< double >( "--arc-maximum,--arc-max" );
             bool filter = options.exists( "--filter" );
 
-            comma::uint32 id = 0;
             comma::verbose << "reading input points..." << std::endl;
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
-                const trajectory_chord_operation::point* p = istream.read();
+                const Eigen::Vector3d* p = istream.read();
                 if( !p ) { break; }
                 std::string line;
                 if( csv.binary() ) // quick and dirty
@@ -1539,11 +1598,9 @@ int main( int ac, char** av )
                 {
                     line = comma::join( istream.ascii().last(), csv.delimiter );
                 }
-                trajectory_chord_operation::point q = *p;
-                if( !has_id ) { q.id = id++; }
-                records.push_back( trajectory_chord_operation::record( q, line ));
+                records.push_back( trajectory_chord_operation::record( *p, line ));
                 records.back().reference_record = &records.back();
-                if( !trajectory_chord_operation::target_id ) { trajectory_chord_operation::target_id = records.back().point.id; }
+                if( !trajectory_chord_operation::target_record ) { trajectory_chord_operation::target_record = &records.back(); }
 
                 double cumulative_distance = 0;
                 Eigen::Vector3d* prev_coordinates = NULL;
@@ -1553,15 +1610,15 @@ int main( int ac, char** av )
                 {
                     if( prev_coordinates )
                     {
-                        double straight_line_distance = ( records.back().point.coordinates - it->point.coordinates ).norm();
-                        cumulative_distance += ( it->point.coordinates - *prev_coordinates ).norm();
+                        double straight_line_distance = ( records.back().coordinates - it->coordinates ).norm();
+                        cumulative_distance += ( it->coordinates - *prev_coordinates ).norm();
                         if( cumulative_distance <= straight_line_distance * arc_ratio &&
                             cumulative_distance <= arc_maximum )
                         {
                             it->reference_record = &records.back();
                         }
                     }
-                    prev_coordinates = &it->point.coordinates;
+                    prev_coordinates = &it->coordinates;
                 }
 
                 // any points not updated by the above now have their correct target point,
@@ -1570,7 +1627,7 @@ int main( int ac, char** av )
                 for( auto it = records.begin(); it != records.end(); ++it )
                 {
                     if( it->reference_record == &records.back() ) { break; }
-                    trajectory_chord_operation::output( ostream, *it, filter );
+                    trajectory_chord_operation::output( *it, filter );
                     records_processed++;
                 }
                 for( unsigned int i = 0; i < records_processed; i++ ) { records.pop_front(); }
@@ -1580,8 +1637,8 @@ int main( int ac, char** av )
             for( auto it = records.begin(); it != records.end(); ++it )
             {
                 // skip any record that points to itself (only the last record)
-                if( it->point.id == it->reference_record->point.id ) { break; }
-                trajectory_chord_operation::output( ostream, *it, filter );
+                if( &*it == it->reference_record ) { break; }
+                trajectory_chord_operation::output( *it, filter );
             }
             return 0;
         }
