@@ -199,18 +199,12 @@ public:
         if( csv.binary() ) { record.line.resize( csv.format().size() ); }
 
         comma::signal_flag is_shutdown;
-        comma::verbose << "starting" << std::endl;
         while( !is_shutdown )
         {
-            comma::verbose << std::endl;
-            comma::verbose << "input_stream.ready(): " << ( input_stream.ready() ? "true" : "false" )
-                           << "; nav_stream.ready(): " << ( nav_stream.ready() ? "true" : "false" ) << std::endl;
             if( !input_stream.ready() && !nav_stream.ready() ) { select.wait( boost::posix_time::milliseconds( 10 )); }
 
             while( !is_shutdown && ( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ))))
             {
-                comma::verbose << "input_stream.ready(): " << ( input_stream.ready() ? "true" : "false" )
-                               << "; select.read().ready( stdin ): " << ( select.read().ready( comma::io::stdin_fd ) ? "true" : "false" ) << std::endl;
                 const input_t* p = input_stream.read();
                 if( !p ) { comma::verbose << "end of input stream" << std::endl; select.read().remove( comma::io::stdin_fd ); break; }
                 record.coordinates = *p;
@@ -220,19 +214,13 @@ public:
                 point_carrots.push_back( point_carrot( record, record ));
                 update_point_carrots( max_error, max_look_ahead );
             }
-            comma::verbose << "input_stream.ready(): " << ( input_stream.ready() ? "true" : "false" )
-                           << "; select.read().ready( stdin ): " << ( select.read().ready( comma::io::stdin_fd ) ? "true" : "false" ) << std::endl;
             while( !is_shutdown && ( nav_stream.ready() || ( select.check() && select.read().ready( nav_in ))))
             {
-                comma::verbose << "nav_stream.ready(): " << ( nav_stream.ready() ? "true" : "false" )
-                               << "; select.read().ready( nav ): " << ( select.read().ready( nav_in ) ? "true" : "false" ) << std::endl;
                 const nav_data* p = nav_stream.read();
                 if( !p ) { comma::verbose << "end of nav stream" << std::endl; return 1; }
                 comma::verbose << "got " << p->position[0] << "," << p->position[1] << " on nav" << std::endl;
                 carrot( p->position[0], p->position[1], search_distance ).output( csv );
             }
-            comma::verbose << "nav_stream.ready(): " << ( nav_stream.ready() ? "true" : "false" )
-                           << "; select.read().ready( nav ): " << ( select.read().ready( nav_in ) ? "true" : "false" ) << std::endl;
         }
         return 0;
     }
