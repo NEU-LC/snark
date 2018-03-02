@@ -327,7 +327,7 @@ int main( int ac, char** av )
         if( options.exists( "--bash-completion" ) ) bash_completion( ac, av );
         comma::csv::options input_csv( options );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--verbose,-v,--input-fields,--input-format,--nav-fields,--nav-format,--output-fields,--output-format", "-.*" );
-        if( unnamed.empty() ) { std::cerr << "points-calc: operation required" << std::endl; return 1; }
+        if( unnamed.empty() ) { std::cerr << "control-calc: operation required" << std::endl; return 1; }
         const std::string& operation = unnamed[0];
         if( operation == "carrot" ) { return snark::control_calc::carrot_op( options ).run(); }
         std::cerr << "control-calc: expected operation, got: \"" << operation << "\"" << std::endl;
