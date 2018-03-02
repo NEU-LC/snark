@@ -477,7 +477,7 @@ static void execute( bool const supplementary, bool const ignore_repeats )
     if( output_csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::AngleAxis< double > >() ); }
 
     std::deque< record > que;
-    comma::csv::input_stream< Eigen::Vector3d > istrm( std::cin, csv );
+    comma::csv::input_stream< Eigen::Vector3d > istrm( std::cin, csv, Eigen::Vector3d::Zero() );
     comma::csv::output_stream< Eigen::AngleAxis< double > > ostrm( std::cout, output_csv );
 
     auto unique_points = 0U;
