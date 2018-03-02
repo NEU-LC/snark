@@ -129,7 +129,7 @@ public:
         {
             std::cout.write( &line[0], line.size() );
             if( !csv.binary() ) { std::cout << "\n"; }
-            if( csv.flush ) { std::cout.flush(); }
+            std::cout.flush();
         }
     };
 
