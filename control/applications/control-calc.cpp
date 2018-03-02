@@ -75,7 +75,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\ncarrot operation options:";
     std::cerr << "\n    --max-error=<n>; maximum error between full and direct path";
-    std::cerr << "\n    --max-look-ahead=<n>; maximum distance to look ahead";
+    std::cerr << "\n    --max-look-ahead=[<n>]; maximum distance to look ahead";
     std::cerr << "\n    --nav=<host>:<port>; navigation feed";
     std::cerr << "\n    --nav-fields; show navigation fields and exit";
     std::cerr << "\n    --nav-format; show navigation format and exit";
@@ -89,7 +89,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    nearest point.";
     std::cerr << "\n";
     std::cerr << "\nexamples:";
-    std::cerr << "\n    cat plan.csv | control-calc carrot --nav tcp:localhost:12345 --max-error=1.005 --max-look-ahead=10";
+    std::cerr << "\n    cat plan.csv | control-calc carrot --nav tcp:localhost:12345 --max-error=1.005";
     std::cerr << "\n" << std::endl;
     exit( 1 );
 }
@@ -167,9 +167,10 @@ public:
         if( options.exists( "--output-format" ) ) { std::cout << ( csv.binary() ? csv.format().string() : format< input_t >() ) << std::endl; return 0; }
 
         double max_error = options.value< double >( "--max-error" );
-        double max_look_ahead = options.value< double >( "--max-look-ahead" );
-        boost::optional< double > search_distance;
-        if( options.exists( "--search" )) { search_distance = options.value< double >( "--search" ); }
+        boost::optional< double > max_look_ahead = boost::make_optional( options.exists( "--max-look-ahead" )
+                                                                       , options.value( "--max-look-ahead", double() ));
+        boost::optional< double > search_distance = boost::make_optional( options.exists( "--search" )
+                                                                        , options.value( "--search", double() ));
 
         comma::csv::input_stream< input_t > input_stream( std::cin, csv, input_t() );
 
@@ -268,7 +269,7 @@ private:
 
     // look backwards along the path from the point we've just added and
     // record this as the target point (carrot) for any point close enough
-    void update_point_carrots( double max_error, double max_look_ahead )
+    void update_point_carrots( double max_error, boost::optional< double > max_look_ahead )
     {
         double cumulative_distance = 0;
         input_t* prev_coordinates = nullptr;
@@ -280,7 +281,7 @@ private:
                 double straight_line_distance = ( last_point.coordinates - it->point.coordinates ).norm();
                 cumulative_distance += ( it->point.coordinates - *prev_coordinates ).norm();
                 if( cumulative_distance <= straight_line_distance * max_error &&
-                    cumulative_distance <= max_look_ahead )
+                  !( max_look_ahead && cumulative_distance > *max_look_ahead ))
                 {
                     it->carrot = last_point;
                 }
