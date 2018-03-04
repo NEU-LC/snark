@@ -111,16 +111,15 @@ namespace snark { namespace control_calc {
 class carrot_op
 {
 public:
-    typedef snark::control::wayline::position_t input_t;
-    typedef snark::control::wayline::position_t output_t;
+    typedef snark::control::wayline::position_t position_t;
 
     struct record_t
     {
-        input_t coordinates;
+        position_t coordinates;
         std::string line;
     
         record_t() {}
-        record_t( const input_t& coordinates, const std::string& line )
+        record_t( const position_t& coordinates, const std::string& line )
             : coordinates( coordinates )
             , line( line )
         {}
@@ -159,12 +158,12 @@ public:
 
     int run()
     {
-        if( options.exists( "--input-fields" ) ) { std::cout << field_names< input_t >() << std::endl; return 0; }
-        if( options.exists( "--input-format" ) ) { std::cout << format< input_t >() << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << field_names< position_t >() << std::endl; return 0; }
+        if( options.exists( "--input-format" ) ) { std::cout << format< position_t >() << std::endl; return 0; }
         if( options.exists( "--nav-fields" ) ) { std::cout << field_names< nav_data >() << std::endl; return 0; }
         if( options.exists( "--nav-format" ) ) { std::cout << format< nav_data >() << std::endl; return 0; }
-        if( options.exists( "--output-fields" ) ) { std::cout << ( !csv.fields.empty() ? csv.fields : field_names< input_t >() ) << std::endl; return 0; }
-        if( options.exists( "--output-format" ) ) { std::cout << ( csv.binary() ? csv.format().string() : format< input_t >() ) << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << ( !csv.fields.empty() ? csv.fields : field_names< position_t >() ) << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << ( csv.binary() ? csv.format().string() : format< position_t >() ) << std::endl; return 0; }
 
         double max_error = options.value< double >( "--max-error" );
         boost::optional< double > max_look_ahead = boost::make_optional( options.exists( "--max-look-ahead" )
@@ -172,7 +171,7 @@ public:
         boost::optional< double > search_distance = boost::make_optional( options.exists( "--search" )
                                                                         , options.value( "--search", double() ));
 
-        comma::csv::input_stream< input_t > input_stream( std::cin, csv, input_t() );
+        comma::csv::input_stream< position_t > input_stream( std::cin, csv, position_t() );
 
         std::string nav_option = options.value< std::string >( "--nav" );
         comma::csv::options nav_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( nav_option );
@@ -206,7 +205,7 @@ public:
 
             while( !is_shutdown && ( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ))))
             {
-                const input_t* p = input_stream.read();
+                const position_t* p = input_stream.read();
                 if( !p ) { comma::verbose << "end of input stream" << std::endl; select.read().remove( comma::io::stdin_fd ); break; }
                 record.coordinates = *p;
                 comma::verbose << "got " << record.coordinates[0] << "," << record.coordinates[1] << " on stdin" << std::endl;
@@ -231,7 +230,7 @@ private:
     // and return the associated carrot
     record_t carrot( double x, double y, const boost::optional< double >& search_distance )
     {
-        input_t current_point( x, y );
+        position_t current_point( x, y );
 
         // limit the search if desired
         size_t first_search_point = 0;
@@ -272,7 +271,7 @@ private:
     void update_point_carrots( double max_error, boost::optional< double > max_look_ahead )
     {
         double cumulative_distance = 0;
-        input_t* prev_coordinates = nullptr;
+        position_t* prev_coordinates = nullptr;
         const record_t& last_point = point_carrots.back().point;
         for( auto it = point_carrots.rbegin(); it != point_carrots.rend(); ++it )
         {
