@@ -51,7 +51,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --help -h --verbose -v"
         " carrot"
         " --input-fields --input-format --output-fields --output-format"
-        " --nav-fields --nav-format --nav --max-error --max-look-ahead --search"
+        " --nav-fields --nav-format --nav --max-error --max-look-ahead --search --stuck-timeout"
         ;
     std::cout << completion_options << std::endl;
     exit( 0 );
@@ -80,6 +80,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --nav-fields; show navigation fields and exit";
     std::cerr << "\n    --nav-format; show navigation format and exit";
     std::cerr << "\n    --search=[<n>]; distance from current point to search for nearest point";
+    std::cerr << "\n    --stuck-timeout=[<n>]; timeout in seconds before trying to become unstuck";
     std::cerr << "\n";
     std::cerr << "\n    --search is used to limit the distance along the path which is searched for";
     std::cerr << "\n    the nearest point. This is useful if the path crosses over itself or later";
@@ -87,6 +88,11 @@ static void usage( bool verbose = false )
     std::cerr << "\n    pattern. Without this option if the robot was pushed off the path it would";
     std::cerr << "\n    likely pick-up the geographically near, but path-wise distant, point as it's";
     std::cerr << "\n    nearest point.";
+    std::cerr << "\n";
+    std::cerr << "\n    If the nearest point remains the same for --stuck-timeout seconds the robot";
+    std::cerr << "\n    is considered to be stuck. To become unstuck the nearest point is pushed forward";
+    std::cerr << "\n    by one space. If the robot remains stuck for a further --stuck-timeout period";
+    std::cerr << "\n    the procedure is repeated. No action is taken if --stuck-timeout is unset.";
     std::cerr << "\n";
     std::cerr << "\nexamples:";
     std::cerr << "\n    cat plan.csv | control-calc carrot --nav tcp:localhost:12345 --max-error=1.005";
@@ -152,8 +158,10 @@ public:
         : options( options )
         , csv( options )
         , nearest_point_index( 0 )
+        , last_nearest_point_index( 0 )
     {
         csv.full_xpath = false;
+        last_nearest_time = boost::posix_time::microsec_clock::universal_time();
     }
 
     int run()
@@ -170,6 +178,8 @@ public:
                                                                        , options.value( "--max-look-ahead", double() ));
         boost::optional< double > search_distance = boost::make_optional( options.exists( "--search" )
                                                                         , options.value( "--search", double() ));
+        boost::optional< int > stuck_timeout_ms = boost::make_optional( options.exists( "--stuck-timeout" )
+                                                                      , int( options.value( "--stuck-timeout", double() ) * 1000 ));
 
         comma::csv::input_stream< position_t > input_stream( std::cin, csv, position_t() );
 
@@ -219,7 +229,7 @@ public:
                 const nav_data* p = nav_stream.read();
                 if( !p ) { comma::verbose << "end of nav stream" << std::endl; return 1; }
                 comma::verbose << "got " << p->position[0] << "," << p->position[1] << " on nav" << std::endl;
-                carrot( p->position[0], p->position[1], search_distance ).output( csv );
+                carrot( p->position[0], p->position[1], search_distance, stuck_timeout_ms ).output( csv );
             }
         }
         return 0;
@@ -228,7 +238,9 @@ public:
 private:
     // find the nearest point on the path to the current point
     // and return the associated carrot
-    record_t carrot( double x, double y, const boost::optional< double >& search_distance )
+    record_t carrot( double x, double y
+                   , const boost::optional< double >& search_distance
+                   , const boost::optional< int >& stuck_timeout_ms )
     {
         position_t current_point( x, y );
 
@@ -263,7 +275,28 @@ private:
             double d = ( point_carrots[i].point.coordinates - current_point ).norm();
             if( d < min_distance ) { min_distance = d; nearest_point_index = i; }
         }
-        return point_carrots[nearest_point_index].carrot;
+
+        if( last_nearest_point_index != nearest_point_index )
+        {
+            last_nearest_point_index = nearest_point_index;
+            last_nearest_time = boost::posix_time::microsec_clock::universal_time();
+            comma::verbose << "moved nearest to " << point_carrots[nearest_point_index].point.coordinates[0] << "," << point_carrots[nearest_point_index].point.coordinates[1] << std::endl;
+        }
+
+        size_t nudged_nearest_point_index = nearest_point_index;
+        if( stuck_timeout_ms )
+        {
+            // for how many "timeout" periods have we been stuck in the same place?
+            unsigned int num_stuck_timeouts = ( boost::posix_time::microsec_clock::universal_time() - last_nearest_time ).total_milliseconds() / *stuck_timeout_ms;
+            if( num_stuck_timeouts > 0 )
+            {
+                nudged_nearest_point_index = nearest_point_index + num_stuck_timeouts;
+                if( nudged_nearest_point_index >= point_carrots.size() ) { nudged_nearest_point_index = point_carrots.size() - 1; }
+                comma::verbose << "nudging nearest point by " << num_stuck_timeouts << " to " << point_carrots[nudged_nearest_point_index].point.coordinates[0] << "," << point_carrots[nudged_nearest_point_index].point.coordinates[1] << std::endl;
+            }
+        }
+
+        return point_carrots[nudged_nearest_point_index].carrot;
     }
 
     // look backwards along the path from the point we've just added and
@@ -293,6 +326,8 @@ private:
     comma::csv::options csv;
     std::deque< point_carrot > point_carrots;
     size_t nearest_point_index;
+    size_t last_nearest_point_index;
+    boost::posix_time::ptime last_nearest_time;
 };
 
 } } // namespace snark { namespace control_calc {
