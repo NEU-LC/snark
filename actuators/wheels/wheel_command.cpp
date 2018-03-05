@@ -104,13 +104,24 @@ namespace snark { namespace wheels {
 
 wheel_command compute_wheel_command( const steer_command &desired, const Eigen::Matrix4d& wheel_pose, double wheel_offset, const boost::optional< limit >& angle_limit, boost::optional< double > current_angle, bool wrap )
 {
+    boost::optional<Eigen::Vector2d> icr;
+    if( std::fabs( desired.turnrate ) >= turnrate_tolerance )
+    {
+        // find ICR position, ICR is at a 90 deg rotation from velocity vector
+        icr=Eigen::Vector2d(-desired.velocity.y() / desired.turnrate, desired.velocity.x() / desired.turnrate);
+    }
+    return compute_wheel_command(desired, wheel_pose, wheel_offset, angle_limit, current_angle, wrap,icr);
+}
+
+wheel_command compute_wheel_command(const steer_command& desired, const Eigen::Matrix4d& wheel_pose, double wheel_offset, const boost::optional< limit >& angle_limit, boost::optional< double > current_angle, bool wrap,const boost::optional<Eigen::Vector2d>& icr)
+{
     wheel_command command;
 
     double positive_velocity;
     double negative_velocity;
 
     // a very small non zero turnrate will cause calculation errors
-    if( std::fabs( desired.turnrate ) < turnrate_tolerance )
+    if( !icr )
     {
         // get angle in wheel pose
         Eigen::Vector4d origin( 0, 0, 0, 1 );
@@ -126,8 +137,7 @@ wheel_command compute_wheel_command( const steer_command &desired, const Eigen::
     }
     else
     {
-        // find ICR position, ICR is at a 90 deg rotation from velocity vector
-        Eigen::Vector4d icr_position( -desired.velocity.y() / desired.turnrate, desired.velocity.x() / desired.turnrate, 0, 1 );
+        Eigen::Vector4d icr_position( icr->x(), icr->y(), 0, 1 );
 
         // ICR in wheel steering axis frame
         icr_position = frame_transforms::inverse_transform( wheel_pose ) * icr_position;

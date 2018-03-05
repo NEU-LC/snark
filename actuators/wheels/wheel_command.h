@@ -33,6 +33,7 @@
 #include <boost/math/constants/constants.hpp>
 #include <Eigen/Core>
 #include "../../math/frame_transforms.h"
+#include <boost/optional.hpp>
 
 namespace snark { namespace wheels {
 
@@ -66,8 +67,11 @@ struct limit
     limit( const double min, const double max ) : min( min ), max( max ) { }
 };
 
+
 /// returned turnrate is in radians
 wheel_command compute_wheel_command( const steer_command& desired, const Eigen::Matrix4d& wheel_pose, double wheel_offset = 0, const boost::optional< limit >& angle_limit = boost::optional< limit >(), boost::optional< double > current_angle = boost::optional< double >(), bool wrap = false );
+// both steer_command and icr are in robot frame
+wheel_command compute_wheel_command(const steer_command& desired, const Eigen::Matrix4d& wheel_pose, double wheel_offset, const boost::optional< limit >& angle_limit, boost::optional< double > current_angle, bool wrap,const boost::optional<Eigen::Vector2d>& icr);
 
 } } // namespace snark { namespace wheels {
 
