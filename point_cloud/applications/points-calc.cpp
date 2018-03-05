@@ -464,12 +464,12 @@ struct record
                 ? Eigen::Quaternion< double >::FromTwoVectors( dist2, -dist1 )
                 : Eigen::Quaternion< double >::FromTwoVectors( dist1, dist2 );
 
-            std::cerr << std::setprecision( 16 ) << "input:" << std::endl
-                << prev_coordinates.x() << ',' << prev_coordinates.y() << ',' << prev_coordinates.z() << std::endl
-                << coordinates.x() << ',' << coordinates.y() << ',' << coordinates.z() << std::endl
-                << next_coordinates.x() << ',' << next_coordinates.y() << ',' << next_coordinates.z() << std::endl
-                << "output:" << std::endl
-                << angle_axis.angle() << ',' << angle_axis.axis().x() << ',' << angle_axis.axis().y() << ',' << angle_axis.axis().z() << std::endl;
+            //std::cerr << std::setprecision( 16 ) << "input:" << std::endl
+            //    << prev_coordinates.x() << ',' << prev_coordinates.y() << ',' << prev_coordinates.z() << std::endl
+            //    << coordinates.x() << ',' << coordinates.y() << ',' << coordinates.z() << std::endl
+            //    << next_coordinates.x() << ',' << next_coordinates.y() << ',' << next_coordinates.z() << std::endl
+            //    << "output:" << std::endl
+            //    << angle_axis.angle() << ',' << angle_axis.axis().x() << ',' << angle_axis.axis().y() << ',' << angle_axis.axis().z() << std::endl;
         }
     }
 
