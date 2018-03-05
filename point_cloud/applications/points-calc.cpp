@@ -455,9 +455,15 @@ struct record
 
     void calculate_angle_axis( Eigen::Vector3d const& prev_coordinates, Eigen::Vector3d const& next_coordinates, bool const supplementary )
     {
-        angle_axis = supplementary
-            ? Eigen::Quaternion< double >::FromTwoVectors( next_coordinates - coordinates, prev_coordinates - coordinates )
-            : Eigen::Quaternion< double >::FromTwoVectors( coordinates - prev_coordinates, next_coordinates - coordinates );
+        auto const dist1 = ( coordinates - prev_coordinates );
+        auto const dist2 = ( next_coordinates - coordinates );
+
+        if( comma::math::less( 1e-6, dist1.norm() ) && comma::math::less( 1e-6, dist2.norm() ) )
+        {
+            angle_axis = supplementary
+                ? Eigen::Quaternion< double >::FromTwoVectors( dist2, -dist1 )
+                : Eigen::Quaternion< double >::FromTwoVectors( dist1, dist2 );
+        }
     }
 
     void output( comma::csv::output_stream< Eigen::AngleAxis< double > >& ostrm )
@@ -477,7 +483,7 @@ static void execute( bool const supplementary, bool const ignore_repeats )
     if( output_csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::AngleAxis< double > >() ); }
 
     std::deque< record > que;
-    comma::csv::input_stream< Eigen::Vector3d > istrm( std::cin, csv );
+    comma::csv::input_stream< Eigen::Vector3d > istrm( std::cin, csv, Eigen::Vector3d::Zero() );
     comma::csv::output_stream< Eigen::AngleAxis< double > > ostrm( std::cout, output_csv );
 
     auto unique_points = 0U;
