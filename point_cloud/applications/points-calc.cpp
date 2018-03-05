@@ -407,7 +407,7 @@ static void calculate_distance_next( bool propagate )
 
 static void calculate_distance_for_pairs( bool propagate )
 {
-    comma::csv::input_stream< point_pair_t > istream( std::cin, csv );
+    comma::csv::input_stream< point_pair_t > istream( std::cin, csv, point_pair_t( Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() ) );
     double previous_norm = 0;
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
@@ -593,7 +593,7 @@ static void angle_axis_for_pairs()
     comma::csv::options output_csv( csv );
     output_csv.fields = comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' );
     if( output_csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::AngleAxis< double > >() ); }
-    comma::csv::input_stream< point_pair_t > istream( std::cin, csv );
+    comma::csv::input_stream< point_pair_t > istream( std::cin, csv, point_pair_t( Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() ) );
     comma::csv::output_stream< Eigen::AngleAxis< double > > ostream( std::cout, output_csv );
     comma::csv::tied< point_pair_t, Eigen::AngleAxis< double > > tied( istream, ostream );
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
