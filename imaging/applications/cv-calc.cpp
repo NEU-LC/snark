@@ -35,6 +35,7 @@
 #include <boost/random/variate_generator.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
 #include <tbb/parallel_for.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
@@ -60,6 +61,7 @@ static void usage( bool verbose=false )
     std::cerr << "usage: cat images.bin | cv-calc <operation> [<options>] > processed.bin " << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
+    std::cerr << "    chessboard-corners: detect and output corners of a chessboard calibration image" << std::endl;
     std::cerr << "    draw: draw on the image primitives defined in the image header; skip a primitive if its dimensions are zero" << std::endl;
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
@@ -86,6 +88,10 @@ static void usage( bool verbose=false )
     else { std::cerr << "    run --help --verbose for more details..." << std::endl; }
     std::cerr << std::endl;
     std::cerr << "operation options" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    chessboard-corners" << std::endl;
+    std::cerr << "        --draw; outputs image with detected corners drawn" << std::endl;
+    std::cerr << "        --size=<rows,cols>; size of internal grid of corners in chessboard" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    draw" << std::endl;
     std::cerr << "        --circles=<options>: draw circles given in the image header; fields: x,y,radius" << std::endl;
@@ -675,6 +681,36 @@ int main( int ac, char** av )
         if( output_options.fields.empty() ) { output_options.fields = input_options.fields; } // output fields and format will be empty when the user specifies only --output no-header or --output header-only
         if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-calc: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
+        if( operation == "chessboard-corners")
+        {
+            snark::cv_mat::serialization input_serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
+
+            const std::vector< std::string >& s = comma::split( options.value< std::string >( "--size" ), ',' );
+            if( s.size() != 2 ) { std::cerr << "cv-calc: chessboard-corners: expected --size=<rows>,<cols>, got: \"" << options.value< std::string >( "--size" ) << std::endl; return 1; }
+            cv::Size pattern_size(boost::lexical_cast<comma::uint32>(s[0]), boost::lexical_cast<comma::uint32>(s[1]));
+            while( std::cin.good() )
+            {
+                auto p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( p.second.empty() ) { break; }
+                cv::Mat out;
+                bool found = cv::findChessboardCorners(p.second, pattern_size, out);
+                if (options.exists("--draw"))
+                {
+                    cv::drawChessboardCorners(p.second, pattern_size, out, found);
+                    output_serialization.write_to_stdout(p, csv.flush );
+                }
+                else
+                {
+                    for (comma::int32 c = 0; c < out.rows; c++)
+                    {
+                        // todo: make output_t and use csv output stream?
+                        std::cout << boost::posix_time::to_iso_string(p.first) << "," << out.row(c).at<float>(0) << "," << out.row(c).at<float>(1) << std::endl;
+                    }
+                }
+            }
+            return 0;
+        }
         if( operation == "draw" )
         {
             snark::imaging::operations::draw::shapes sample( options );
