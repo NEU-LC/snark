@@ -71,7 +71,6 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "usage" << std::endl;
     std::cerr << "    points-calc <operation> [<options>]" << std::endl;
-    std::cerr << "    points-calc --help" << std::endl;
     std::cerr << std::endl;
     std::cerr << "usage examples" << std::endl;
     std::cerr << "    cat points.csv | points-calc distance > results.csv" << std::endl;
