@@ -227,7 +227,6 @@ public:
                     select.read().remove( comma::io::stdin_fd ); break;
                 }
                 record.coordinates = *p;
-                comma::verbose << "got " << record.coordinates[0] << "," << record.coordinates[1] << " on stdin" << std::endl;
                 if( csv.binary() ) { ::memcpy( &record.line[0], input_stream.binary().last(), record.line.size() ); }
                 else { record.line = comma::join( input_stream.ascii().last(), csv.delimiter ); }
                 point_carrots.push_back( point_carrot( record, record ));
@@ -237,7 +236,6 @@ public:
             {
                 const nav_data* p = nav_stream.read();
                 if( !p ) { comma::verbose << "end of nav stream" << std::endl; return 1; }
-                comma::verbose << "got " << p->position[0] << "," << p->position[1] << " on nav" << std::endl;
                 carrot( p->position[0], p->position[1], search_distance, stuck_timeout_ms ).output( csv );
             }
         }
