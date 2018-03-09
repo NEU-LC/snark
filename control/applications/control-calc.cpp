@@ -74,13 +74,13 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --verbose,-v; more output";
     std::cerr << "\n";
     std::cerr << "\ncarrot operation options:";
-    std::cerr << "\n    --max-error=<n>; maximum error between full and direct path";
-    std::cerr << "\n    --max-look-ahead=[<n>]; maximum distance to look ahead";
+    std::cerr << "\n    --max-error=<ratio>; maximum error between full and direct path";
+    std::cerr << "\n    --max-look-ahead=[<metres>]; maximum distance to look ahead";
     std::cerr << "\n    --nav=<host>:<port>; navigation feed";
     std::cerr << "\n    --nav-fields; show navigation fields and exit";
     std::cerr << "\n    --nav-format; show navigation format and exit";
-    std::cerr << "\n    --search=[<n>]; distance from current point to search for nearest point";
-    std::cerr << "\n    --stuck-timeout=[<n>]; timeout in seconds before trying to become unstuck";
+    std::cerr << "\n    --search=[<metres>]; distance from current point to search for nearest point";
+    std::cerr << "\n    --stuck-timeout=[<seconds>]; timeout before trying to become unstuck";
     std::cerr << "\n";
     std::cerr << "\n    --search is used to limit the distance along the path which is searched for";
     std::cerr << "\n    the nearest point. This is useful if the path crosses over itself or later";
