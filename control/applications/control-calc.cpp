@@ -217,7 +217,15 @@ public:
             while( !is_shutdown && ( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ))))
             {
                 const position_t* p = input_stream.read();
-                if( !p ) { comma::verbose << "end of input stream" << std::endl; select.read().remove( comma::io::stdin_fd ); break; }
+                if( !p )
+                {
+                    if( comma::verbose )
+                    {
+                        std::cerr << "control-calc: end of input stream" << std::endl;
+                        for( const point_carrot& pc : point_carrots ) { std::cerr << "control-calc: point " << pc.point.line << " to carrot " << pc.carrot.line << std::endl; }
+                    }
+                    select.read().remove( comma::io::stdin_fd ); break;
+                }
                 record.coordinates = *p;
                 comma::verbose << "got " << record.coordinates[0] << "," << record.coordinates[1] << " on stdin" << std::endl;
                 if( csv.binary() ) { ::memcpy( &record.line[0], input_stream.binary().last(), record.line.size() ); }
