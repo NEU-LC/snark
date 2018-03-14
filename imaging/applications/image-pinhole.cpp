@@ -146,7 +146,7 @@ int main( int ac, char** av )
                 const Eigen::Vector3d* p = is.read();
                 if( !p ) { break; }
                 const Eigen::Vector3d& q = pinhole.to_cartesian( Eigen::Vector2d( p->x(), p->y() ) );
-                tied.append( normalize ? q.normalized() : has_z ? q * ( p->z() / -pinhole.config().focal_length ) : q );
+                tied.append( normalize ? q.normalized() : has_z ? Eigen::Vector3d( q * ( p->z() / -pinhole.config().focal_length )) : q );
             }
             return 0;
         }
@@ -163,7 +163,7 @@ int main( int ac, char** av )
             auto xy = [&]( const Eigen::Vector3d& v )->Eigen::Vector2d
             {
                 Eigen::Vector2d w( v.x(), v.y() );
-                return has_z && !comma::math::equal( v.z(), 0 ) ? w * ( -pinhole.config().focal_length / v.z() ) : w;
+                return has_z && !comma::math::equal( v.z(), 0 ) ? Eigen::Vector2d( w * ( -pinhole.config().focal_length / v.z() )) : w;
             };
             while( is.ready() || std::cin.good() )
             {

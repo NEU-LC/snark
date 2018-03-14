@@ -31,6 +31,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
 #include <boost/static_assert.hpp>
 #include <Eigen/Geometry>
 #include <comma/application/command_line_options.h>
