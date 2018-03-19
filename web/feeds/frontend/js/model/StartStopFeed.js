@@ -29,7 +29,7 @@ define('StartStopFeed', ["jquery", "Feed"], function ($) {
         // };
         StartStopFeed.prototype.addListeners = function () {
             var this_ = this;
-            $($(this.form).find("input[type=text]")).on("input", function () {
+            $($(this.form).find("input")).on("input", function () {
                 $(this_.form).find("button[name=start]").removeAttr('disabled');
                 $(this_.form).find("button[name=clear]").removeAttr('disabled');
             });
@@ -182,7 +182,8 @@ define('StartStopFeed', ["jquery", "Feed"], function ($) {
 
         var update_ui_status = function (status, form) {
             if (status == "1") {
-                $(form).find("input[type=text]").attr("readonly", "readonly"); //[value!='']
+                $(form).find("input").attr("readonly", "readonly"); //[value!='']
+                $(form).find("input").attr("title", "readonly"); //[value!='']
                 $(form).find("button[name=start]").attr('disabled', "disabled");
                 $(form).find("button[name=clear]").attr('disabled', "disabled");
                 $(form).find("button[name=stop]").removeAttr('disabled');
@@ -191,7 +192,8 @@ define('StartStopFeed', ["jquery", "Feed"], function ($) {
                 $(form).find("button[name=stop]").attr('disabled', "disabled");
                 $(form).find("button[name=clear]").removeAttr('disabled');
                 $(form).find("button[name=start]").removeAttr('disabled');
-                $(form).find("input[type=text]").removeAttr("readonly"); //[value!='']
+                $(form).find("input").removeAttr("readonly"); //[value!='']
+                $(form).find("input").removeAttr("title");
             }
         };
         StartStopFeed.prototype.removeOldStatus = function () {

@@ -59,13 +59,13 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
 
     Feed.prototype.reset = function () {
         if (this.config.refresh.auto) {
-            $(this.input_container).find("input[type=text]").attr("readonly", "readonly");
-            $(this.input_container).find("input[type=text]").attr("title", "readonly");
+            $(this.input_container).find("input").attr("readonly", "readonly");
+            $(this.input_container).find("input").attr("title", "readonly");
             this.refresh();
         } else {
             this.clear_interval();
-            $(this.input_container).find("input[type=text]").removeAttr("readonly");
-            $(this.input_container).find("input[type=text]").removeAttr("title");
+            $(this.input_container).find("input").removeAttr("readonly");
+            $(this.input_container).find("input").removeAttr("title");
         }
     };
 
@@ -228,7 +228,7 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
             {class: "col-sm-2"}));
     };
     Feed.prototype.addListeners = function () {
-        $($(this.form).find("input[type=text]")).on("input", function () {
+        $($(this.form).find("input")).on("input", function () {
             $($(this).closest("form").find("button")).each(function () {
                 $(this).removeAttr('disabled');
             });
@@ -331,9 +331,15 @@ define('Feed', ["jquery", "jquery_timeago", "utils"], function ($) {
             var each = $('<div>', {
                 class: " col-sm-8"
             });
+            var input_type = 'text';
+            switch (typeof this.fields[field]) {
+                case 'number':
+                    input_type = 'number';
+                    break;
+            }
             var input = $('<input>',
                 {
-                    type: 'text',
+                    type: input_type,
                     class: "form-control ",
                     name: field,
                     value: this.fields[field]
