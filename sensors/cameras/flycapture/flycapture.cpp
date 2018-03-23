@@ -220,6 +220,9 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 bus_manager().GetNumOfCameras( &num_cameras ),
                 "cannot find point grey cameras"
             );
+
+            if ( num_cameras == 0 ) { COMMA_THROW(comma::exception, "no cameras found"); }
+
 // USB Cameras
             for (unsigned int i = 0; i < num_cameras; ++i)
             {
@@ -230,6 +233,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                 );
                 list.push_back(serial_number);
             }
+
 // GigE Cameras
             // BUG DiscoverGigECameras will sometimes crash if there are devices on a different subnet
             FlyCapture2::CameraInfo cam_info[num_cameras];
