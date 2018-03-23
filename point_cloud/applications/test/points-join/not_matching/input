@@ -1,0 +1,2 @@
+not_matching[0]="( echo 0,0,1 | points-join <( echo 0,0,1 ) --radius 0.5 --not-matching | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
+not_matching[1]="( ( echo 0,0,0; echo 0,0,1; echo 0,0,2 ) | points-join <( echo 0,0,1 ) --radius 0.5 --not-matching | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
