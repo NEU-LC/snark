@@ -68,7 +68,8 @@ static void usage( bool more = false )
     std::cerr << "options" << std::endl;
     std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
     std::cerr << "    --input-fields: output input fields and exit" << std::endl;
-    std::cerr << "    --not-matching: output only points that do not have a match, i.e. negation of the join operation" << std::endl;
+    std::cerr << "    --matching: output only points that have a match, do not append nearest point; a convenience option" << std::endl;
+    std::cerr << "    --not-matching: output only points that do not have a match, i.e. opposite of --matching" << std::endl;
     std::cerr << "    --radius=<radius>: max lookup radius, required even if radius field is present" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << "    --permissive: discard invalid points or triangles and continue" << std::endl;
@@ -116,6 +117,7 @@ static bool use_radius;
 static double squared_radius;
 static double max_triangle_side;
 static bool matching;
+static bool append_nearest;
 static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
 static Eigen::Vector3d resolution;
 static comma::csv::options stdin_csv;
@@ -294,11 +296,13 @@ template <> struct traits< Eigen::Vector3d >
         if( stdin_csv.binary() ) // quick and dirty
         {
             std::cout.write( istream.binary().last(), stdin_csv.format().size() );
-            std::cout.write( &nearest.line[0], filter_csv.format().size() );
+            if( append_nearest ) { std::cout.write( &nearest.line[0], filter_csv.format().size() ); }
         }
         else
         {
-            std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter;
+            std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter );
+            if( !append_nearest ) { std::cout << std::endl; return; }
+            std::cout << stdin_csv.delimiter;
             if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &nearest.line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
             else { std::cout << nearest.line << std::endl; }
         }
@@ -366,6 +370,7 @@ template <> struct traits< snark::triangle >
         if( stdin_csv.binary() ) // quick and dirty
         {
             std::cout.write( istream.binary().last(), stdin_csv.format().size() );
+            if( !append_nearest ) { return; }
             std::cout.write( &nearest.line[0], filter_csv.format().size() );
             static comma::csv::binary< Eigen::Vector3d > b;
             static std::vector< char > buf( b.format().size() );
@@ -374,7 +379,9 @@ template <> struct traits< snark::triangle >
         }
         else
         {
-            std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << stdin_csv.delimiter;
+            std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter );
+            if( !append_nearest ) { std::cout << std::endl; return; }
+            std::cout << stdin_csv.delimiter;
             if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &nearest.line[0], stdin_csv.delimiter, stdin_csv.precision ); }
             else { std::cout << nearest.line; }
             std::cout << stdin_csv.delimiter << nearest_point.x() << stdin_csv.delimiter << nearest_point.y() << stdin_csv.delimiter << nearest_point.z() << std::endl;
@@ -597,7 +604,9 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         verbose = options.exists( "--verbose,-v" );
         stdin_csv = comma::csv::options( options );
+        options.assert_mutually_exclusive( "--matching,--not-matching" );
         matching = !options.exists( "--not-matching" );
+        append_nearest = !options.exists( "--matching" ) && matching;
         if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
         stdin_csv.full_xpath = true;
         std::vector< std::string > unnamed = options.unnamed( "--not-matching,--use-cuda,--cuda,--verbose,-v,--strict,--all", "-.*" );
