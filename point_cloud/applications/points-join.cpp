@@ -631,8 +631,8 @@ int main( int ac, char** av )
         const std::vector< std::string > normal_strings = { "normal" };
         const std::vector< std::string > block_strings = { "block" };
         bool filter_triangulated = find_in_fields( v, corner_strings );
-        use_normal = ( find_in_fields(w, normal_strings) && find_in_fields(v, normal_strings) );
-        use_block = ( find_in_fields(w, block_strings) && find_in_fields(v, block_strings) );
+        use_normal = ( find_in_fields( w, normal_strings ) && find_in_fields( v, normal_strings ) );
+        use_block = filter_csv.has_field( "block" ) && stdin_csv.has_field( "block" );
         #ifdef SNARK_USE_CUDA
         if (use_cuda && use_normal) { std::cerr << "todo: point normals not implemented for cuda" << std::endl; return 1; }
         #endif
