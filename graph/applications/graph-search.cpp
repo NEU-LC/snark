@@ -119,28 +119,16 @@ template <> struct traits< node >
 
 template <> struct traits< edge >
 {
-    template < typename K, typename V > static void visit( const K&, edge& n, V& v )
-    {
-        v.apply( "cost", n.cost );
-    }
+    template < typename K, typename V > static void visit( const K&, edge& n, V& v ) { v.apply( "cost", n.cost ); }
     
-    template < typename K, typename V > static void visit( const K&, const edge& n, V& v )
-    {
-        v.apply( "cost", n.cost );
-    }
+    template < typename K, typename V > static void visit( const K&, const edge& n, V& v ) { v.apply( "cost", n.cost ); }
 };
 
 template <> struct traits< record >
 {
-    template < typename K, typename V > static void visit( const K&, record& n, V& v )
-    {
-        v.apply( "id", n.id );
-    }
+    template < typename K, typename V > static void visit( const K&, record& n, V& v ) { v.apply( "id", n.id ); }
     
-    template < typename K, typename V > static void visit( const K&, const record& n, V& v )
-    {
-        v.apply( "id", n.id );
-    }
+    template < typename K, typename V > static void visit( const K&, const record& n, V& v ) { v.apply( "id", n.id ); }
 };
     
 } } // namespace comma { namespace visiting {
@@ -256,6 +244,8 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         verbose = options.exists( "--verbose,-v" );
         bool permissive = options.exists( "--permissive,--skip-non-existing-targets" );
+        if( options.exists( "--edge-fields" ) ) { std::cout << "source,target," << comma::join( comma::csv::names< ::edge >(), ',' ) << std::endl; return 0; } // quick and dirty
+        if( options.exists( "--node-fields" ) ) { std::cout << "id," << comma::join( comma::csv::names< ::node >( false ), ',' ) << std::endl; return 0; } // quick and dirty
         boost::optional< comma::csv::options > node_csv;
         if( options.exists( "--vertices,--nodes" ) )
         { 
