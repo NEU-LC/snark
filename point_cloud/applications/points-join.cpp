@@ -153,6 +153,7 @@ struct triangle_input
 };
 
 namespace comma { namespace visiting {
+
 template <> struct traits< point_input >
 {
     template< typename K, typename V > static void visit( const K& k, point_input& t, V& v )
@@ -394,12 +395,9 @@ template < typename V > struct join_impl_
     typedef typename traits< V >::input_t filter_value_t;
     typedef typename traits< V >::record_t filter_record_t;
     typedef typename traits< V >::grid_t grid_t;
-
-    static grid_t read_filter_block()
+    
+    static grid_t read_filter_block( comma::csv::input_stream< filter_value_t >& ifstream )
     {
-        static std::ifstream ifs( &filter_csv.filename[0] );
-        if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
-        static comma::csv::input_stream< filter_value_t > ifstream( ifs, filter_csv, filter_value_t() );
         static std::deque< filter_record_t > filter_points;
         filter_points.clear();
         snark::math::closed_interval< double, 3 > extents;
@@ -441,8 +439,19 @@ template < typename V > struct join_impl_
         #ifdef SNARK_USE_CUDA
         if( use_cuda ) { cuda_buf = traits< V >::to_cuda( grid, filter_points ); }
         #endif
-
         return grid;
+    }
+
+    static grid_t read_filter_block()
+    {
+        static std::ifstream ifs( &filter_csv.filename[0] );
+        if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
+        static comma::csv::input_stream< filter_value_t > ifstream( ifs, filter_csv, filter_value_t() );
+        return read_filter_block( ifstream );
+    }
+    
+    static void handle_record( const typename traits< Eigen::Vector3d >::input_t& r )
+    {
     }
 
     static int run( const comma::command_line_options& options )
@@ -585,15 +594,15 @@ template < typename V > struct join_impl_
     }
 };
 
-bool find_in_fields( const std::vector<std::string>& fields, const std::vector<std::string>& strings )
+static int self_join( const comma::command_line_options& options )
 {
-    for (const auto& s : strings )
-    {
-        for( const auto& f : fields )
-        {
-            if( comma::split( f, "[/" )[0] == s ) { return true; }
-        }
-    }
+    std::cerr << "points-join: self-join: todo" << std::endl;
+    return 1;
+}
+
+bool find_in_fields( const std::vector< std::string >& fields, const std::vector< std::string >& strings )
+{
+    for( const auto& s : strings ) { for( const auto& f : fields ) { if( comma::split( f, "[/" )[0] == s ) { return true; } } }
     return false;
 }
 
@@ -609,8 +618,7 @@ int main( int ac, char** av )
         append_nearest = !options.exists( "--matching" ) && matching;
         if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
         stdin_csv.full_xpath = true;
-        std::vector< std::string > unnamed = options.unnamed( "--not-matching,--use-cuda,--cuda,--verbose,-v,--strict,--all", "-.*" );
-        if( unnamed.empty() ) { std::cerr << "points-join: please specify the second source; self-join: todo" << std::endl; return 1; }
+        std::vector< std::string > unnamed = options.unnamed( "--use-cuda,--cuda,--matching,--not-matching,--verbose,-v,--strict,--all", "-.*" );
         if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
@@ -619,29 +627,28 @@ int main( int ac, char** av )
         if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
         const std::vector< std::string >& w = comma::split( stdin_csv.fields, ',' );
-        const std::vector<std::string> corner_strings = { "corners" };
-        const std::vector<std::string> normal_strings = { "normal" };
-        const std::vector<std::string> block_strings = { "block" };
-        bool filter_triangulated = find_in_fields(v, corner_strings);
+        const std::vector< std::string > corner_strings = { "corners" };
+        const std::vector< std::string > normal_strings = { "normal" };
+        const std::vector< std::string > block_strings = { "block" };
+        bool filter_triangulated = find_in_fields( v, corner_strings );
         use_normal = ( find_in_fields(w, normal_strings) && find_in_fields(v, normal_strings) );
         use_block = ( find_in_fields(w, block_strings) && find_in_fields(v, block_strings) );
-
         #ifdef SNARK_USE_CUDA
         if (use_cuda && use_normal) { std::cerr << "todo: point normals not implemented for cuda" << std::endl; return 1; }
         #endif
-
         radius = options.value< double >( "--radius" );
         squared_radius = radius * radius;
         double r = radius;
         if( filter_triangulated ) // quick and dirty
         {
+            if( unnamed.empty() ) { std::cerr << "points-join: self-join is not supported for triangles" << std::endl; return 1; }
             max_triangle_side = options.value< double >( "--max-triangle-side", r );
             if( max_triangle_side > r ) { r = max_triangle_side; }
             r *= 2; // todo: quick and dirty, calculate precise upper bound; needed to contain all triangles in given radius
             origin = options.exists( "--origin" ) ? comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin" ) ) : Eigen::Vector3d::Zero();
         }
         resolution = Eigen::Vector3d( r, r, r );
-        return filter_triangulated ? join_impl_< snark::triangle >::run( options ) : join_impl_< Eigen::Vector3d >::run( options );
+        return unnamed.empty() ? self_join( options ) : filter_triangulated ? join_impl_< snark::triangle >::run( options ) : join_impl_< Eigen::Vector3d >::run( options );
     }
     catch( std::exception& ex ) { std::cerr << "points-join: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-join: unknown exception" << std::endl; }
