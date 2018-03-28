@@ -252,14 +252,7 @@ int main( int ac, char** av )
             node_csv = comma::name_value::parser( "filename", ';' ).get< comma::csv::options >( options.value< std::string >( "--vertices,--nodes" ) );
             if( node_csv->fields.empty() ) { node_csv->fields = "id"; }
             std::vector< std::string > v = comma::split( node_csv->fields, ',' );
-            for( unsigned int i = 0; i < v.size(); ++i )
-            {
-                if( v[i] == "x" || v[i] == "y" || v[i] == "z" )
-                {
-                    v[i] = "value/position/" + v[i];
-                    by_distance = true;
-                }
-            }
+            for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "x" || v[i] == "y" || v[i] == "z" ) { v[i] = "value/position/" + v[i]; by_distance = true; } }
             node_csv->fields = comma::join( v, ',' );
             node_csv->full_xpath = true;
         }
