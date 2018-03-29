@@ -223,7 +223,10 @@ public:
                     if( comma::verbose )
                     {
                         std::cerr << "control-calc: end of input stream" << std::endl;
-                        for( const point_carrot& pc : point_carrots ) { std::cerr << "control-calc: point " << pc.point.line << " to carrot " << pc.carrot.line << std::endl; }
+                        if( !csv.binary() )
+                        {
+                            for( const point_carrot& pc : point_carrots ) { std::cerr << "control-calc: point " << pc.point.line << " to carrot " << pc.carrot.line << std::endl; }
+                        }
                     }
                     select.read().remove( comma::io::stdin_fd ); break;
                 }
