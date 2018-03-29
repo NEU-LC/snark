@@ -320,7 +320,7 @@ static void usage( bool verbose = false )
     std::cerr << "            with --step; skip discretised points that are closer to the end of" << std::endl;
     std::cerr << "            the interval than --tolerance" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "            input fields" << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "            input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "            options" << std::endl;
     std::cerr << "                --step=<step>: linear step of discretisation" << std::endl;
