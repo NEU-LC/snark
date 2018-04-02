@@ -619,7 +619,7 @@ int main( int ac, char** av )
         if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
         stdin_csv.full_xpath = true;
         std::vector< std::string > unnamed = options.unnamed( "--use-cuda,--cuda,--matching,--not-matching,--verbose,-v,--strict,--all", "-.*" );
-        if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
+        if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
         if ( filter_csv.fields.empty() ) { filter_csv.fields="x,y,z"; }
@@ -627,9 +627,9 @@ int main( int ac, char** av )
         if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
         const std::vector< std::string >& w = comma::split( stdin_csv.fields, ',' );
-        const std::vector< std::string > corner_strings = { "corners" };
-        const std::vector< std::string > normal_strings = { "normal" };
-        const std::vector< std::string > block_strings = { "block" };
+        std::vector< std::string > corner_strings = { "corners" };
+        std::vector< std::string > normal_strings = { "normal" };
+        std::vector< std::string > block_strings = { "block" };
         bool filter_triangulated = find_in_fields( v, corner_strings );
         use_normal = ( find_in_fields( w, normal_strings ) && find_in_fields( v, normal_strings ) );
         use_block = filter_csv.has_field( "block" ) && stdin_csv.has_field( "block" );
