@@ -201,7 +201,6 @@ void run( const std::vector< boost::shared_ptr< snark::applications::frame > >& 
     comma::signal_flag is_shutdown;
     comma::csv::input_stream< snark::applications::frame::point_type > istream( std::cin, csv );
     comma::csv::output_stream< snark::applications::frame::point_type > ostream( std::cout, csv );
-    if( !ostream.is_binary() ) { ostream.ascii().precision( 12 ); } // quick and dirty, brush up later
     // ---------------------------------------------------
     // outputting frame: quick and dirty, uglier than britney spears! brush up later
     unsigned int output_frame_count = 0;
@@ -336,7 +335,6 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv( options );
         if( csv.fields == "" ) { csv.fields="t,x,y,z"; }
-        csv.precision = 12;
         std::vector< std::string > v = comma::split( csv.fields, ',' );
         bool stdin_has_frame = false;
         for( unsigned int i = 0; i < v.size() && !stdin_has_frame; ++i ) { stdin_has_frame = v[i] == "frame" || v[i] == "frame/x" || v[i] == "frame/y" || v[i] == "frame/z" || v[i] == "frame/roll" || v[i] == "frame/pitch" || v[i] == "frame/yaw"; }

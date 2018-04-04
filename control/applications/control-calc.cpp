@@ -89,7 +89,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    likely pick-up the geographically near, but path-wise distant, point as";
     std::cerr << "\n    it's nearest point.";
     std::cerr << "\n";
-    std::cerr << "\n    If the nearest point remains the same for --stuck-timeout seconds the robot";
+    std::cerr << "\n    If the nearest point doesn't advance for --stuck-timeout seconds the robot";
     std::cerr << "\n    is considered to be stuck. To become unstuck the nearest point is pushed";
     std::cerr << "\n    forward by one space. If the robot remains stuck for further --stuck-timeout";
     std::cerr << "\n    periods the procedure is repeated.";
@@ -160,9 +160,10 @@ public:
         , csv( options )
         , nearest_point_index( 0 )
         , last_nearest_point_index( 0 )
+        , most_advanced_point_index( 0 )
     {
         csv.full_xpath = false;
-        last_nearest_time = boost::posix_time::microsec_clock::universal_time();
+        last_advanced_time = boost::posix_time::microsec_clock::universal_time();
     }
 
     int run()
@@ -222,7 +223,10 @@ public:
                     if( comma::verbose )
                     {
                         std::cerr << "control-calc: end of input stream" << std::endl;
-                        for( const point_carrot& pc : point_carrots ) { std::cerr << "control-calc: point " << pc.point.line << " to carrot " << pc.carrot.line << std::endl; }
+                        if( !csv.binary() )
+                        {
+                            for( const point_carrot& pc : point_carrots ) { std::cerr << "control-calc: point " << pc.point.line << " to carrot " << pc.carrot.line << std::endl; }
+                        }
                     }
                     select.read().remove( comma::io::stdin_fd ); break;
                 }
@@ -283,18 +287,22 @@ private:
             if( d < min_distance ) { min_distance = d; nearest_point_index = i; }
         }
 
-        if( last_nearest_point_index != nearest_point_index )
+        if( nearest_point_index != last_nearest_point_index )
         {
             last_nearest_point_index = nearest_point_index;
-            last_nearest_time = boost::posix_time::microsec_clock::universal_time();
             comma::verbose << "moved nearest to " << point_carrots[nearest_point_index].point.coordinates[0] << "," << point_carrots[nearest_point_index].point.coordinates[1] << std::endl;
+            if( nearest_point_index > most_advanced_point_index )
+            {
+                most_advanced_point_index = nearest_point_index;
+                last_advanced_time = boost::posix_time::microsec_clock::universal_time();
+            }
         }
 
         size_t nudged_nearest_point_index = nearest_point_index;
         if( stuck_timeout_ms )
         {
-            // for how many "timeout" periods have we been stuck in the same place?
-            unsigned int num_stuck_timeouts = ( boost::posix_time::microsec_clock::universal_time() - last_nearest_time ).total_milliseconds() / *stuck_timeout_ms;
+            // for how many "timeout" periods have we not advanced?
+            unsigned int num_stuck_timeouts = ( boost::posix_time::microsec_clock::universal_time() - last_advanced_time ).total_milliseconds() / *stuck_timeout_ms;
             if( num_stuck_timeouts > 0 )
             {
                 nudged_nearest_point_index = nearest_point_index + num_stuck_timeouts;
@@ -334,7 +342,8 @@ private:
     std::deque< point_carrot > point_carrots;
     size_t nearest_point_index;
     size_t last_nearest_point_index;
-    boost::posix_time::ptime last_nearest_time;
+    size_t most_advanced_point_index;
+    boost::posix_time::ptime last_advanced_time;
 };
 
 } } // namespace snark { namespace control_calc {

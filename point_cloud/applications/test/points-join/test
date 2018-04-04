@@ -1,8 +1,7 @@
 #!/bin/bash
 
-source $( type -p comma-application-util ) || { echo "cannot source 'comma-application-util'" >&2; exit 1; }
+source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
 
-comma_path_value_to_var
+source $( type -p comma-application-util ) 
 
-echo -e "$input" | points-join --fields="$fields" <( echo -e "$filter" )";fields=$filter_fields" $options | name-value-from-csv point --prefix output -n -d @
-comma_status_ok && echo 'result="success"' || echo 'result="failed"'
+comma_test_commands
