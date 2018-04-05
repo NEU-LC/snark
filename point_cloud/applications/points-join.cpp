@@ -102,7 +102,7 @@ static void usage( bool more = false )
     std::cerr << "                              default: 0,0,0" << std::endl;
     std::cerr << std::endl;
     if( more ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage() << std::endl << std::endl; }
-    std::cerr << "examples: todo" << std::endl;
+    std::cerr << "examples: todo" << std::endl;al
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -122,7 +122,7 @@ static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
 static Eigen::Vector3d resolution;
 static comma::csv::options stdin_csv;
 static comma::csv::options filter_csv;
-static boost::optional<comma::uint32> block;
+static boost::optional< comma::uint32 > block;
 #ifdef SNARK_USE_CUDA
 bool use_cuda;
 void* cuda_buf = NULL;
@@ -403,12 +403,12 @@ template < typename V > struct join_impl_
         snark::math::closed_interval< double, 3 > extents;
         if( verbose ) { std::cerr << "points-join: reading filter records..." << std::endl; }
         std::size_t count = 0;
-        static const filter_value_t* p;
-        if (!block) { p = ifstream.read(); }
-        if (p) { block = p->block; }
+        static const filter_value_t* p = nullptr;
+        if( !block ) { p = ifstream.read(); }
+        if( p ) { block = p->block; }
         while( p )
         {
-            if (use_block && ( p->block != *block ) ) { break; }
+            if( use_block && ( p->block != *block ) ) { break; } // todo: is the condition excessive? is not it just ( p->block != *block )?
             std::string line;
             if( filter_csv.binary() ) // quick and dirty
             {
@@ -466,7 +466,7 @@ template < typename V > struct join_impl_
         options.assert_mutually_exclusive( "--use-cuda,--cuda,--all" );
         #endif
         grid_t grid = read_filter_block();
-        if (!block) { std::cerr << "got 0 records from filter" << std::endl; return 1; }
+        if( !block ) { std::cerr << "points-join: got no records from filter" << std::endl; return 1; }
         typedef traits< Eigen::Vector3d >::input_t input_t;
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
         use_radius = stdin_csv.has_field( "radius" );
@@ -624,7 +624,7 @@ int main( int ac, char** av )
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
         if ( filter_csv.fields.empty() ) { filter_csv.fields="x,y,z"; }
         filter_csv.full_xpath = true;
-        if( stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
+        if( append_nearest && stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
         const std::vector< std::string >& w = comma::split( stdin_csv.fields, ',' );
         std::vector< std::string > corner_strings = { "corners" };
