@@ -527,12 +527,13 @@ template < typename V > struct join_impl_
             else
             {
                 boost::optional< nearest_t > nearest;
+                bool enough = false;
                 if( size > 1 ) { nearest_map.clear(); }
-                for( i[0] = index[0] - 1; i[0] < index[0] + 2; ++i[0] )
+                for( i[0] = index[0] - 1; !enough && i[0] < index[0] + 2; ++i[0] )
                 {
-                    for( i[1] = index[1] - 1; i[1] < index[1] + 2; ++i[1] )
+                    for( i[1] = index[1] - 1; !enough && i[1] < index[1] + 2; ++i[1] )
                     {
-                        for( i[2] = index[2] - 1; i[2] < index[2] + 2; ++i[2] )
+                        for( i[2] = index[2] - 1; !enough && i[2] < index[2] + 2; ++i[2] )
                         {
                             typename grid_t::iterator it = grid.find( i );
                             if( it == grid.end() ) { continue; }
@@ -546,6 +547,7 @@ template < typename V > struct join_impl_
                                     const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
                                     if( !q || q->second > current_squared_radius ) { continue; }
                                     if( !nearest || nearest->squared_distance > q->second ) { nearest.reset( nearest_t( it->second.records[k], q->first, q->second ) ); }
+                                    if( !append_nearest ) { enough = true; break; }
                                 }
                             }
                             else
