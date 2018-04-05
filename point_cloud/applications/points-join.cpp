@@ -102,7 +102,7 @@ static void usage( bool more = false )
     std::cerr << "                              default: 0,0,0" << std::endl;
     std::cerr << std::endl;
     if( more ) { std::cerr << "csv options" << std::endl << comma::csv::options::usage() << std::endl << std::endl; }
-    std::cerr << "examples: todo" << std::endl;al
+    std::cerr << "examples: todo" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
