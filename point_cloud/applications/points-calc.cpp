@@ -90,6 +90,7 @@ static void usage( bool verbose = false )
     std::cerr << "    nearest-max" << std::endl;
     std::cerr << "    nearest-point,nearest-any" << std::endl;
     std::cerr << "    nearest" << std::endl;
+    std::cerr << "    percentile-in-radius,percentile-in-range,percentile" << std::endl;
     std::cerr << "    plane-intersection" << std::endl;
     std::cerr << "    plane-intersection-with-trajectory" << std::endl;
     std::cerr << "    project-onto-line" << std::endl;
@@ -235,6 +236,23 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "        example: get local height maxima in the radius of 5 metres:" << std::endl;
     std::cerr << "            cat xyz.csv | points-calc local-max --fields=x,y,scalar --radius=5" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    percentile-in-radius, percentile-in-range, percentile" << std::endl;
+    std::cerr << "        for each point, append the point at the given percentile in a given radius," << std::endl;
+    std::cerr << "        based on scalar field" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        input fields: x,y,z,scalar; default: x,y,z,scalar" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        output fields: <input line>,<reference_line>" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --fast: consider all the points in enclosing and adjacent voxels of the point." << std::endl;
+    std::cerr << "            --min-count=[<count>]: output only points which has atleast this number of neighbours" << std::endl;
+    std::cerr << "            --percentile=<percentile>: percentile value in (0,1]" << std::endl;
+    std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        example:" << std::endl;
+    std::cerr << "            cat xyz.csv | points-calc percentile-in-radius --fields=x,y,scalar --radius=5" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    nearest" << std::endl;
     std::cerr << "        find point nearest to a given point" << std::endl;
@@ -426,6 +444,182 @@ static void calculate_distance_for_pairs( bool propagate )
         }
     }
 }
+
+namespace percentile_in_radius
+{
+
+struct input_t
+{
+    Eigen::Vector3d coordinates;
+    double scalar;
+    comma::uint32 block;
+
+    input_t() : coordinates( Eigen::Vector3d::Zero() ), scalar( 0.0 ), block( 0U ) {}
+};
+
+struct record_t
+{
+    input_t input;
+    std::string line;
+    record_t* reference_record;
+
+    record_t( input_t const& in, comma::csv::input_stream< input_t > const& istrm )
+        : input( in )
+        , line()
+        , reference_record( nullptr )
+    {
+        if( csv.binary() )
+        {
+            line.resize( csv.format().size() );
+            ::memcpy( &line[ 0 ], istrm.binary().last(), csv.format().size() );
+        }
+        else
+        {
+            line = comma::join( istrm.ascii().last(), csv.delimiter );
+        }
+    }
+
+    void output() const
+    {
+        if( reference_record )
+        {
+            if( csv.binary() )
+            {
+                std::cout.write( &line[0], line.size() );
+                std::cout.write( &reference_record->line[0], reference_record->line.size() );
+                std::cout.flush();
+            }
+            else
+            {
+                std::cout << line << csv.delimiter << reference_record->line << std::endl;
+            }
+        }
+    }
+};
+
+struct map_value
+{
+    record_t* record;
+    comma::uint32 in_range;
+
+    map_value( record_t* rec = nullptr, comma::uint16 in_range = 1U ): record( rec ), in_range( 1 ) {}
+};
+
+static void process( std::deque< record_t >& que
+                                          , snark::math::closed_interval< double, 3 > const& extents
+                                          , Eigen::Vector3d const&  resolution
+                                          , double const percentile
+                                          , double const radius
+                                          , size_t const min_count
+                                          , bool const fast )
+{
+    //auto compare = []( record_t const*const lhs, record_t const*const rhs ) { return comma::math::less( lhs->input.scalar, rhs->input.scalar ); }
+
+    if( verbose ) { std::cerr << "points-calc: loading " << que.size() << " points into grid..." << std::endl; }
+
+    typedef std::multimap< double, record_t* > voxel_t; 
+    typedef snark::voxel_map< voxel_t, 3 > grid_t;
+
+    grid_t grid( extents.min(), resolution );
+
+    for( std::size_t reci = 0; reci < que.size(); reci++ )
+    {
+        ( grid.touch_at( que[ reci ].input.coordinates ) )->second.emplace( std::make_pair( que[ reci ].input.scalar, &que[ reci ] ) );
+    }
+
+    for( grid_t::iterator vi = grid.begin(); vi != grid.end(); ++vi )
+    {
+        std::multimap< double, map_value > points_in_range;
+        grid_t::index_type adj_vx;
+
+        for( adj_vx[0] = vi->first[0] - 1; adj_vx[0] < vi->first[0] + 2; ++adj_vx[0] )
+        {
+            for( adj_vx[1] = vi->first[1] - 1; adj_vx[1] < vi->first[1] + 2; ++adj_vx[1] )
+            {
+                for( adj_vx[2] = vi->first[2] - 1; adj_vx[2] < vi->first[2] + 2; ++adj_vx[2] )
+                {
+
+                    grid_t::iterator adj_vi = grid.find( adj_vx );
+                    if( adj_vi == grid.end() ) { continue; }
+
+                    for( auto adj_pi = adj_vi->second.cbegin(); adj_pi != adj_vi->second.cend(); adj_pi++ )
+                    {
+                        points_in_range.emplace( std::make_pair( adj_pi->second->input.scalar, map_value( adj_pi->second ) ) );
+                    }
+                }
+            }
+        }
+        if( fast )
+        {
+            if( min_count <= points_in_range.size() )
+            {
+                auto percentile_index = ( size_t )std::ceil( percentile * points_in_range.size() ) - 1;
+                auto percentilei = points_in_range.cbegin();
+                auto percentilex = size_t( 0U );
+                for( ; percentilex < percentile_index; percentilex++, percentilei++ );
+
+                for( auto pi = vi->second.begin(); pi != vi->second.end(); pi++ ) { pi->second->reference_record = percentilei->second.record; }
+            }
+        }
+        else
+        {
+            for( auto pi = vi->second.begin(); pi != vi->second.end(); pi++ )
+            {
+                size_t range_size = 0;
+                for( auto adj_pi = points_in_range.begin(); adj_pi != points_in_range.end(); adj_pi++ )
+                {
+                    if(( pi->second->input.coordinates - adj_pi->second.record->input.coordinates ).norm() <= radius )
+                    {
+                        adj_pi->second.in_range =  1U;
+                        range_size++;
+                    }
+                    else { adj_pi->second.in_range =  0U; }
+                }
+                if( min_count <= range_size )
+                {
+                    auto percentile_index = ( size_t )std::ceil( percentile * range_size ) - 1;
+                    auto percentilei = points_in_range.cbegin();
+                    auto percentilex = size_t( 0U );
+
+                    while(( percentilex += percentilei->second.in_range ) <= percentile_index ) { percentilei++; }
+                    pi->second->reference_record = percentilei->second.record;
+                }
+            }
+        }
+    }
+}
+
+static void execute( double const radius, double const percentile, size_t const min_count, bool const force )
+{
+    if( csv.fields.empty() ) { csv.fields = "x,y,z,scalar"; }
+    csv.full_xpath = false;
+
+    comma::csv::options output_csv( csv );
+
+    std::deque< record_t > que;
+    comma::csv::input_stream< input_t > istrm( std::cin, csv );
+
+    auto extents = snark::math::closed_interval< double, 3 >();
+    auto const resolution = Eigen::Vector3d( radius, radius, radius );
+    comma::uint32 block = 0U;
+    while( istrm.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        auto in = istrm.read();
+        if( !in || block != in->block )
+        {
+            process( que, extents, resolution, percentile, radius, min_count, force );
+            for( auto const& ii: que ) { ii.output(); }
+            extents = snark::math::closed_interval< double, 3 >();
+            que.clear();
+
+            if( !in ) { break; }
+        }
+        que.emplace_back( *in, istrm );
+        extents.set_hull( in->coordinates );
+    }
+}
+
+} // namespace percentile_in_radius
 
 namespace angle_axis_relative
 {
@@ -1127,6 +1321,23 @@ template <> struct traits< local_operation::output >
     }
 };
 
+template <> struct traits< percentile_in_radius::input_t >
+{
+    template< typename K, typename V > static void visit( const K&, const percentile_in_radius::input_t& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "scalar", t.scalar );
+        v.apply( "block", t.block );
+    }
+
+    template< typename K, typename V > static void visit( const K&, percentile_in_radius::input_t& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "scalar", t.scalar );
+        v.apply( "block", t.block );
+    }
+};
+    
 } } // namespace comma { namespace visiting {
 
 template < typename Traits > static int run( const comma::command_line_options& options )
@@ -1147,7 +1358,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--output-fields,--output-format,--filter", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--output-fields,--output-format,--filter,--fast,--percentile,--min-count", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "integrate-frame" ) { return run< snark::points_calc::integrate_frame::traits >( options ); }
@@ -1180,6 +1391,18 @@ int main( int ac, char** av )
             if( options.exists("--output-fields" ) ) { std::cout << "distance" << std::endl; return 0; }
             if( options.exists("--output-format" ) ) { std::cout << "d" << std::endl; return 0; }
             calculate_distance( true, false, options.exists( "--differential,--diff" ) );
+            return 0;
+        }
+        if( operation == "percentile-in-radius" || operation == "percentile-in-range" || operation == "percentile" )
+        {
+            auto const percentile = options.value< double >( "--percentile" );
+            auto const force = options.exists( "--fast" );
+            auto const radius = options.value< double >( "--radius" );
+            auto const min_count = options.value< size_t >( "--min-count", 0U );
+
+            if( !comma::math::less( 0.0, percentile ) || comma::math::less( 1.0, percentile ) ) { COMMA_THROW( comma::exception, "percentile must be in (0,1], got: " << percentile ); }
+
+            percentile_in_radius::execute( radius, percentile, min_count, force );
             return 0;
         }
         if( operation == "angle-axis" )
