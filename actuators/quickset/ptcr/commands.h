@@ -44,12 +44,12 @@ struct pan_status: public comma::packed::packed_struct< pan_status, 1 >
 {
     comma::packed::byte value;
 
-    bool cwsl() const { return 0x80 & *value.data(); }
-    bool ccwsl() const { return 0x40 & *value.data(); }
-    bool cwhl() const { return 0x20 & *value.data(); }
-    bool ccwhl() const { return 0x10 & *value.data(); }
-    bool to() const { return 0x8 & *value.data(); }
-    bool de() const { return 0x4 & *value.data(); }
+    bool cwsl() const { return 0x80 & *value.data(); }  // cw soft limit reached
+    bool ccwsl() const { return 0x40 & *value.data(); } // ccw soft limit reached
+    bool cwhl() const { return 0x20 & *value.data(); }  // cw hard limit reached
+    bool ccwhl() const { return 0x10 & *value.data(); } // ccw hard limit reached
+    bool to() const { return 0x8 & *value.data(); }     // timeout
+    bool de() const { return 0x4 & *value.data(); }     // direction error
     bool fault() const { return de() || to(); }
     std::string to_string() const { std::ostringstream oss; oss << cwsl() << ccwsl() << cwhl() << ccwhl() << to() << de() << 0 << 0; return oss.str(); }
 };
@@ -58,12 +58,12 @@ struct tilt_status: public comma::packed::packed_struct< tilt_status, 1 >
 {
     comma::packed::byte value;
 
-    bool usl() const { return 0x80 & *value.data(); }
-    bool dsl() const { return 0x40 & *value.data(); }
-    bool uhl() const { return 0x20 & *value.data(); }
-    bool dhl() const { return 0x10 & *value.data(); }
-    bool to() const { return 0x8 & *value.data(); }
-    bool de() const { return 0x4 & *value.data(); }
+    bool usl() const { return 0x80 & *value.data(); } // up soft limit reached
+    bool dsl() const { return 0x40 & *value.data(); } // down soft limit return
+    bool uhl() const { return 0x20 & *value.data(); } // up hard limit reached 
+    bool dhl() const { return 0x10 & *value.data(); } // down hard limit return
+    bool to() const { return 0x8 & *value.data(); }   // timeout
+    bool de() const { return 0x4 & *value.data(); }   // direction error
     bool fault() const { return de() || to(); }
     std::string to_string() const { std::ostringstream oss; oss << usl() << dsl() << uhl() << dhl() << to() << de() << 0 << 0; return oss.str(); }
 };
@@ -72,14 +72,14 @@ struct general_status: public comma::packed::packed_struct< general_status, 1 >
 {
     comma::packed::byte value;
 
-    bool con() const { return 0x80 & *value.data(); }
-    bool exec() const { return 0x40 & *value.data(); }
-    bool des() const { return 0x20 & *value.data(); }
-    bool oslr() const { return 0x10 & *value.data(); }
-    bool cwm() const { return 0x8 & *value.data(); }
-    bool ccwm() const { return 0x4 & *value.data(); }
-    bool upm() const { return 0x2 & *value.data(); }
-    bool dwnm() const { return 0x1 & *value.data(); }
+    bool con() const { return 0x80 & *value.data(); }  // continuous rotation - limits ignored
+    bool exec() const { return 0x40 & *value.data(); } // executing command
+    bool des() const { return 0x20 & *value.data(); }  // returning destination coords, not current
+    bool oslr() const { return 0x10 & *value.data(); } // soft limit override
+    bool cwm() const { return 0x8 & *value.data(); }   // moving cw
+    bool ccwm() const { return 0x4 & *value.data(); }  // moving ccw
+    bool upm() const { return 0x2 & *value.data(); }   // moving up
+    bool dwnm() const { return 0x1 & *value.data(); }  // moving down
     std::string to_string() const { std::ostringstream oss; oss << con() << exec() << des() << oslr() << cwm() << ccwm() << upm() << dwnm(); return oss.str(); }
 };
     
