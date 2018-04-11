@@ -170,7 +170,7 @@ void widget::paintGL()
 
     glClearColor(background_color.red(),background_color.green(),background_color.blue(),background_color.alpha());
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    glEnable( GL_DEPTH_TEST );
+//     glEnable( GL_DEPTH_TEST );
     glEnable( GL_BLEND );
     glBlendEquation( GL_FUNC_ADD );
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );

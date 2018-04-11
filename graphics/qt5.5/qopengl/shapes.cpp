@@ -87,7 +87,7 @@ point::point(float point_size) : shape(GL_POINTS),point_size(point_size)
 void point::paint()
 {
     //disable GL_PROGRAM_POINT_SIZE
-    glHint(GL_POINT_SMOOTH, GL_NICEST);
+    glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
     if(point_size!=1) { glEnable(GL_POINT_SMOOTH); } //circular point, otherwise draws square points
     glPointSize(point_size);
     shape::paint();
