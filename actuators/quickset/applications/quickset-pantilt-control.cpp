@@ -51,19 +51,22 @@ static void usage( bool verbose = false )
 {
     std::cerr << std::endl;
     std::cerr << "control a quickset pan/tilt unit via serial port or tcp" << std::endl;
-    std::cerr << "output pan/tilt status to stdout" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage" << std::endl;
-    std::cerr << "    cat commands.csv | " << comma::verbose.app_name() << " <address> [<options>]" << std::endl;
+    std::cerr << "usage: cat commands.csv | " << comma::verbose.app_name() << " <address> [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "<address>: tcp address or serial port" << std::endl;
     std::cerr << "    tcp address: e.g: tcp:192.168.0.1:12345" << std::endl;
     std::cerr << "    serial port: e.g: /dev/ttyS0" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "input: pan,tilt" << std::endl;
+    std::cerr << "output: t,pan,tilt,status-bits" << std::endl;
+    std::cerr << "    angles are in radians" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show this help; --help --verbose for more help" << std::endl;
     std::cerr << "    --diff: if present, take differential input" << std::endl;
-    std::cerr << "    --format: print binary output format to stdout and exit" << std::endl;
+    std::cerr << "    --output-fields: print output fields and exit" << std::endl;
+    std::cerr << "    --output-format: print binary format of output stream and exit" << std::endl;
     std::cerr << "    --output-if-changed: output position, only when changed" << std::endl;
     std::cerr << "    --pan-limits <limits>: set pan limits and exit; range -2PI:2PI" << std::endl;
     std::cerr << "    --tilt-limits <limits>: set tilt limits and exit; range -PI:PI" << std::endl;
@@ -72,10 +75,30 @@ static void usage( bool verbose = false )
     std::cerr << "    --verbose,-v: more output to stderr" << std::endl;
     std::cerr << "    --debug: even more output to stderr" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "fields" << std::endl;
-    std::cerr << "    input: default pan,tilt (2d)" << std::endl;
-    std::cerr << "    output: default t,pan,tilt,... (t,2d) (todo)" << std::endl;
-    std::cerr << "    angles are in radians" << std::endl;
+    std::cerr << "output status fields" << std::endl;
+    std::cerr << "    con      continuous rotation - limits ignored" << std::endl;
+    std::cerr << "    exec     executing command" << std::endl;
+    std::cerr << "    des      returning destination coords, not current" << std::endl;
+    std::cerr << "    oslr     soft limit override" << std::endl;
+    std::cerr << "    cwm      moving cw" << std::endl;
+    std::cerr << "    ccwm     moving ccw" << std::endl;
+    std::cerr << "    upm      moving up" << std::endl;
+    std::cerr << "    dwnm     moving down" << std::endl;
+    std::cerr << "    cwsl     cw soft limit reached" << std::endl;
+    std::cerr << "    ccwsl    ccw soft limit reached" << std::endl;
+    std::cerr << "    cwhl     cw hard limit reached" << std::endl;
+    std::cerr << "    ccwhl    ccw hard limit reached" << std::endl;
+    std::cerr << "    pan-to   pan timeout" << std::endl;
+    std::cerr << "    pan-de   pan direction error" << std::endl;
+    std::cerr << "    usl      up soft limit reached" << std::endl;
+    std::cerr << "    dsl      down soft limit return" << std::endl;
+    std::cerr << "    uhl      up hard limit reached " << std::endl;
+    std::cerr << "    dhl      down hard limit return" << std::endl;
+    std::cerr << "    tilt-to  tilt timeout" << std::endl;
+    std::cerr << "    tilt-de  tilt direction error" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    (all are binary 0/1)" << std::endl;
+
     std::cerr << std::endl;
     if( verbose )
     {
@@ -375,10 +398,11 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        if( options.exists( "--format" ) ) { std::cout << "t,2d,b" << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< status >( false ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< status >() << std::endl; return 0; }
         if( options.exists( "--pan-limits,--tilt-limits,--debug" )) { comma::verbose.init( true, "" ); }
         debug = options.exists( "--debug" );
-        std::vector< std::string > v = options.unnamed( "--diff,--help,-h,--verbose,-v,--debug,--format,--output-if-changed", "--binary,-b,--fields,-f,--delimiter,-d,--pan-limits,--tilt-limits,--camera" );
+        std::vector< std::string > v = options.unnamed( "--diff,--help,-h,--verbose,-v,--debug,--output-fields,--output-format,--output-if-changed", "--binary,-b,--fields,-f,--delimiter,-d,--pan-limits,--tilt-limits,--camera" );
         if( v.empty() ) { std::cerr << comma::verbose.app_name() << ": please specify port name" << std::endl; exit( 1 ); }
         if( v.size() > 1 ) { std::cerr << comma::verbose.app_name() << ": expected one serial port name, got \"" << comma::join( v, ' ' ) << std::endl; exit( 1 ); }
         std::string name = v[0];
