@@ -1,0 +1,11 @@
+negative[0]=" echo | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.5 | tr \'\\\n\' \';\'; comma_status_ok"
+negative[1]=" echo | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.0 --fast | tr \'\\\n\' \';\'; comma_status_ok"
+
+fast_basic[0]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; echo 4,4,4 ; echo 7,7,7 ; echo 5,5,5 ; echo 6,6,6 ) | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.26 --radius=2.9 --fast | tr \'\\\n\' \';\'"
+
+fast_min_count[0]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; echo 4,4,4 ; echo 7,7,7 ; echo 5,5,5 ; echo 6,6,6 ) | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.26 --radius=2.9 --fast --min-count=7 | tr \'\\\n\' \';\'"
+
+basic[0]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; echo 4,4,4 ; echo 7,7,7 ; echo 5,5,5 ; echo 6,6,6 ) | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.25 --radius=2.9 | tr \'\\\n\' \';\'"
+basic[1]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; echo 4,4,4 ; echo 7,7,7 ; echo 5,5,5 ; echo 6,6,6 ) | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.26 --radius=2.9 | tr \'\\\n\' \';\'"
+
+basic_min_count[0]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; echo 4,4,4 ; echo 7,7,7 ; echo 5,5,5 ; echo 6,6,6 ) | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.61 --radius=2.9 --min-count=5 | tr \'\\\n\' \';\'"
