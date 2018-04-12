@@ -246,7 +246,7 @@ static void usage( bool verbose = false )
     std::cerr << "        output fields: <input line>,<reference_line>" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
-    std::cerr << "            --fast: consider all the points in enclosing and adjacent voxels of the point." << std::endl;
+    std::cerr << "            --fast: consider the enclosing and adjacent voxels as the search region" << std::endl;
     std::cerr << "            --min-count=[<count>]: output only points which has atleast this number of neighbours" << std::endl;
     std::cerr << "            --percentile=<percentile>: percentile value in (0,1]" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
@@ -513,8 +513,6 @@ static void process( std::deque< record_t >& que
                                           , size_t const min_count
                                           , bool const fast )
 {
-    //auto compare = []( record_t const*const lhs, record_t const*const rhs ) { return comma::math::less( lhs->input.scalar, rhs->input.scalar ); }
-
     if( verbose ) { std::cerr << "points-calc: loading " << que.size() << " points into grid..." << std::endl; }
 
     typedef std::multimap< double, record_t* > voxel_t; 
@@ -526,6 +524,7 @@ static void process( std::deque< record_t >& que
     {
         ( grid.touch_at( que[ reci ].input.coordinates ) )->second.emplace( std::make_pair( que[ reci ].input.scalar, &que[ reci ] ) );
     }
+    if( verbose ) { std::cerr << "points-calc: grid size " << grid.size() << std::endl; }
 
     for( grid_t::iterator vi = grid.begin(); vi != grid.end(); ++vi )
     {
