@@ -10,6 +10,7 @@ read args
 read fields
 [[ $fields ]] || fields=$( points-calc $args --input-fields )
 output_fields=$( points-calc $args --output-fields )
+[[ -n $output_fields ]] || output_fields=$fields
 
 echo "         args: $args" >&2
 echo " input fields: $fields" >&2
