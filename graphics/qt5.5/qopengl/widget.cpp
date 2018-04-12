@@ -170,7 +170,9 @@ void widget::paintGL()
 
     glClearColor(background_color.red(),background_color.green(),background_color.blue(),background_color.alpha());
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-//     glEnable( GL_DEPTH_TEST );
+    // this is needed for screen to 3d map e.g. mouse click
+    glEnable( GL_DEPTH_TEST );
+    glDepthFunc(GL_ALWAYS);
     glEnable( GL_BLEND );
     glBlendEquation( GL_FUNC_ADD );
     glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
@@ -183,7 +185,7 @@ void widget::paintGL()
 
     for(auto& i : shapes) { if(i->visible) { i->paint(); } }
 
-    glDisable( GL_DEPTH_TEST );
+//     glDisable( GL_DEPTH_TEST );
 
     program_->release();
     
