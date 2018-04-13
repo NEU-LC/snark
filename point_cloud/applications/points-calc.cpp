@@ -248,7 +248,7 @@ static void usage( bool verbose = false )
     std::cerr << "        options" << std::endl;
     std::cerr << "            --fast: consider the enclosing and adjacent voxels as the search region" << std::endl;
     std::cerr << "            --min-count=[<count>]: output only points which has atleast this number of neighbours" << std::endl;
-    std::cerr << "            --percentile=<percentile>: percentile value in (0,1]" << std::endl;
+    std::cerr << "            --percentile=<percentile>: percentile value in [0,1]" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        example:" << std::endl;
@@ -1395,12 +1395,13 @@ int main( int ac, char** av )
         }
         if( operation == "percentile-in-radius" || operation == "percentile-in-range" || operation == "percentile" )
         {
-            auto const percentile = options.value< double >( "--percentile" );
             auto const force = options.exists( "--fast" );
             auto const radius = options.value< double >( "--radius" );
             auto const min_count = options.value< size_t >( "--min-count", 0U );
 
-            if( !comma::math::less( 0.0, percentile ) || comma::math::less( 1.0, percentile ) ) { COMMA_THROW( comma::exception, "percentile must be in (0,1], got: " << percentile ); }
+            auto percentile = options.value< double >( "--percentile" );
+            if( comma::math::less( percentile, 0.0 ) || comma::math::less( 1.0, percentile ) ) { COMMA_THROW( comma::exception, "percentile must be in [0,1], got: " << percentile ); }
+            if( comma::math::equal( percentile, 0.0 ) ) { percentile = std::numeric_limits< double >::min(); }
 
             percentile_in_radius::execute( radius, percentile, min_count, force );
             return 0;
