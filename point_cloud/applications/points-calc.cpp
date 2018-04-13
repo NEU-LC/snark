@@ -252,7 +252,7 @@ static void usage( bool verbose = false )
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        example:" << std::endl;
-    std::cerr << "            cat xyz.csv | points-calc percentile-in-radius --fields=x,y,scalar --radius=5" << std::endl;
+    std::cerr << "            cat xyz.csv | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.3 --radius=1" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    nearest" << std::endl;
     std::cerr << "        find point nearest to a given point" << std::endl;
@@ -612,6 +612,7 @@ static void execute( double const radius, double const percentile, size_t const 
             que.clear();
 
             if( !in ) { break; }
+            block = in->block;
         }
         que.emplace_back( *in, istrm );
         extents.set_hull( in->coordinates );
