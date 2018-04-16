@@ -33,8 +33,8 @@
 #include <deque>
 #include <iostream>
 #include <limits>
+#include <unordered_set>
 #include <boost/optional.hpp>
-#include <boost/unordered_set.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
@@ -227,6 +227,7 @@ static void usage( bool verbose = false )
     std::cerr << "                       where reference_id is nearest min or max id" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        options" << std::endl;
+    std::cerr << "            --fast: consider the enclosing and adjacent voxels as the search region" << std::endl;
     std::cerr << "            --output-extremums-only,--output-extremums,--extremums:" << std::endl;
     std::cerr << "                    output only the extremum records associated with points" << std::endl;
     std::cerr << "            --output-full-record,--full-record,--full:" << std::endl;
@@ -250,6 +251,7 @@ static void usage( bool verbose = false )
     std::cerr << "            --min-count=[<count>]: output only points which has atleast this number of neighbours" << std::endl;
     std::cerr << "            --percentile=<percentile>: percentile value in [0,1]" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
+    std::cerr << "            --reduce: output only the percentile record" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        example:" << std::endl;
     std::cerr << "            cat xyz.csv | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.3 --radius=1" << std::endl;
@@ -479,19 +481,20 @@ struct record_t
         }
     }
 
-    void output() const
+    void output( bool const reduce = false ) const
     {
         if( reference_record )
         {
             if( csv.binary() )
             {
-                std::cout.write( &line[0], line.size() );
+                if( !reduce ) { std::cout.write( &line[0], line.size() ); }
                 std::cout.write( &reference_record->line[0], reference_record->line.size() );
                 std::cout.flush();
             }
             else
             {
-                std::cout << line << csv.delimiter << reference_record->line << std::endl;
+                if( !reduce ) { std::cout << line << csv.delimiter; }
+                std::cout << reference_record->line << std::endl;
             }
         }
     }
@@ -588,7 +591,27 @@ static void process( std::deque< record_t >& que
     }
 }
 
-static void execute( double const radius, double const percentile, size_t const min_count, bool const force )
+static void output( std::deque< record_t > const& que, bool const reduce )
+{
+    if( reduce )
+    {
+        std::unordered_set< record_t const* > unique_rec;
+        for( auto ri = que.cbegin(); ri != que.cend(); ri++ )
+        {
+            if( ri->reference_record )
+            {
+                if( unique_rec.find( ri->reference_record ) == unique_rec.cend() )
+                {
+                    unique_rec.insert( ri->reference_record );
+                    ri->output( reduce );
+                }
+            }
+        }
+    }
+    else { for( auto const& ii: que ) { ii.output(); } }
+}
+
+static void execute( double const radius, double const percentile, size_t const min_count, bool const force, bool const reduce )
 {
     if( csv.fields.empty() ) { csv.fields = "x,y,z,scalar"; }
     csv.full_xpath = false;
@@ -606,10 +629,13 @@ static void execute( double const radius, double const percentile, size_t const 
         auto in = istrm.read();
         if( !in || block != in->block )
         {
-            process( que, extents, resolution, percentile, radius, min_count, force );
-            for( auto const& ii: que ) { ii.output(); }
-            extents = snark::math::closed_interval< double, 3 >();
-            que.clear();
+            if( !que.empty() )
+            {
+                process( que, extents, resolution, percentile, radius, min_count, force );
+                output( que, reduce );
+                extents = snark::math::closed_interval< double, 3 >();
+                que.clear();
+            }
 
             if( !in ) { break; }
             block = in->block;
@@ -1176,7 +1202,9 @@ static void process_nearest_extremum_block( std::deque< local_operation::record 
                                           , Eigen::Vector3d const&  resolution
                                           , double const sign
                                           , double const radius
-                                          , bool const any )
+                                          , bool const any
+                                          , bool const fast
+                                          )
 {
     if( verbose ) { std::cerr << "points-calc: loading " << records.size() << " points into grid..." << std::endl; }
     typedef std::vector< local_operation::record* > voxel_t; // todo: is vector a good container? use deque
@@ -1191,19 +1219,59 @@ static void process_nearest_extremum_block( std::deque< local_operation::record 
     for( grid_t::iterator it = grid.begin(); it != grid.end(); ++it )
     {
         grid_t::index_type i;
-        for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2; ++i[0] )
+        if( !fast )
         {
-            for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2; ++i[1] )
+            for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2; ++i[0] )
             {
-                for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2; ++i[2] )
+                for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2; ++i[1] )
                 {
-                    grid_t::iterator git = grid.find( i );
-                    if( git == grid.end() ) { continue; }
-                    for( std::size_t n = 0; n < it->second.size(); ++n )
+                    for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2; ++i[2] )
                     {
+                        grid_t::iterator git = grid.find( i );
+                        if( git == grid.end() ) { continue; }
+                        for( std::size_t n = 0; n < it->second.size(); ++n )
+                        {
+                            for( std::size_t k = 0; k < git->second.size(); ++k )
+                            {
+                                local_operation::update_nearest( it->second[n], git->second[k], radius, sign, any );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            std::unordered_set< local_operation::record* > extremums;
+            for( i[0] = it->first[0] - 1; i[0] < it->first[0] + 2; ++i[0] )
+            {
+                for( i[1] = it->first[1] - 1; i[1] < it->first[1] + 2; ++i[1] )
+                {
+                    for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2; ++i[2] )
+                    {
+                        grid_t::iterator git = grid.find( i );
+                        if( git == grid.end() ) { continue; }
                         for( std::size_t k = 0; k < git->second.size(); ++k )
                         {
-                            local_operation::update_nearest( it->second[n], git->second[k], radius, sign, any );
+                            if( !extremums.empty() )
+                            {
+                                if( comma::math::less(( git->second[k]->point.scalar - (*extremums.begin())->point.scalar ) * sign, 0 )) { continue; }
+                                if( !comma::math::equal(( git->second[k]->point.scalar - (*extremums.begin())->point.scalar ) * sign, 0 )) { extremums.clear(); }
+                            }
+                            extremums.insert( git->second[k] );
+                        }
+                        for( std::size_t n = 0; n < it->second.size(); ++n )
+                        {
+                            it->second[n]->reference_record = nullptr;
+                            for( auto exi = extremums.cbegin(); exi != extremums.cend(); exi++ )
+                            {
+                                if( !it->second[n]->reference_record || comma::math::less
+                                        ( ( (*exi)->point.coordinates - it->second[n]->point.coordinates ).norm()
+                                        , ( it->second[n]->reference_record->point.coordinates - it->second[n]->point.coordinates ).norm() ) )
+                                {
+                                    it->second[n]->reference_record = *exi;
+                                }
+                            }
                         }
                     }
                 }
@@ -1236,7 +1304,7 @@ static void output_nearest_extremum_block( const std::deque< local_operation::re
     }
     if( output_extremums_only )
     {
-        boost::unordered_set< comma::uint32 > ids;
+        std::unordered_set< comma::uint32 > ids;
         for( std::size_t i = 0; i < records.size(); ++i )
         {
             if( !records[i].reference_record ) { continue; }
@@ -1358,7 +1426,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--output-fields,--output-format,--filter,--fast,--percentile,--min-count", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--output-fields,--output-format,--filter,--fast,--percentile,--min-count,--reduce", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "integrate-frame" ) { return run< snark::points_calc::integrate_frame::traits >( options ); }
@@ -1396,6 +1464,7 @@ int main( int ac, char** av )
         if( operation == "percentile-in-radius" || operation == "percentile-in-range" || operation == "percentile" )
         {
             auto const force = options.exists( "--fast" );
+            auto const reduce = options.exists( "--reduce" );
             auto const radius = options.value< double >( "--radius" );
             auto const min_count = options.value< size_t >( "--min-count", 0U );
 
@@ -1403,7 +1472,7 @@ int main( int ac, char** av )
             if( comma::math::less( percentile, 0.0 ) || comma::math::less( 1.0, percentile ) ) { COMMA_THROW( comma::exception, "percentile must be in [0,1], got: " << percentile ); }
             if( comma::math::equal( percentile, 0.0 ) ) { percentile = std::numeric_limits< double >::min(); }
 
-            percentile_in_radius::execute( radius, percentile, min_count, force );
+            percentile_in_radius::execute( radius, percentile, min_count, force, reduce );
             return 0;
         }
         if( operation == "angle-axis" )
@@ -1710,8 +1779,10 @@ int main( int ac, char** av )
             _setmode( _fileno( stdout ), _O_BINARY );
 #endif
             options.assert_mutually_exclusive( "--output-full-record,--full-record,--full", "--output-extremums-only,--output-extremums,--extremums" );
+            options.assert_mutually_exclusive( "--nearest-any,--nearest-point", "--fast" );
             bool const output_full_record = options.exists( "--output-full-record,--full-record,--full" );
             bool output_extremums_only = options.exists( "--output-extremums-only,--output-extremums,--extremums" );
+            bool const fast = options.exists( "--fast" );
             std::string endl;
             std::string delimiter;
             comma::csv::options output_csv;
@@ -1732,16 +1803,19 @@ int main( int ac, char** av )
                 const local_operation::point* p = istream.read();
                 if ( !p || block != p->block )
                 {
-                    if( verbose ) { std::cerr << "points-calc " << operation << ": processing points of block: " << block << std::endl; }
-                    local_operation::process_nearest_extremum_block( records, extents, resolution, sign, radius, any );
-                    if( verbose ) { std::cerr << "points-calc " << operation << ": outputting points of block: " << block << std::endl; }
-                    output_nearest_extremum_block( records, output_csv, endl, delimiter, output_full_record, output_extremums_only );
-                    extents = snark::math::closed_interval< double, 3 >();
-                    records.clear();
+                    if( !records.empty() )
+                    {
+                        if( verbose ) { std::cerr << "points-calc " << operation << ": processing points of block: " << block << std::endl; }
+                        local_operation::process_nearest_extremum_block( records, extents, resolution, sign, radius, any, fast );
+                        if( verbose ) { std::cerr << "points-calc " << operation << ": outputting points of block: " << block << std::endl; }
+                        output_nearest_extremum_block( records, output_csv, endl, delimiter, output_full_record, output_extremums_only );
+                        extents = snark::math::closed_interval< double, 3 >();
+                        records.clear();
+                    }
                     if( verbose ) { std::cerr << "points-calc " << operation << ": reading input points of block: " << block << std::endl; }
+                    if( !p ) { break; }
+                    block = p->block;
                 }
-                if( !p ) { break; }
-                block = p->block;
                 std::string line;
                 if( csv.binary() ) // quick and dirty
                 {

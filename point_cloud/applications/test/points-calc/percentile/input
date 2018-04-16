@@ -11,6 +11,8 @@ basic[0]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; ech
 basic[1]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; echo 4,4,4 ; echo 7,7,7 ; echo 5,5,5 ; echo 6,6,6 ) | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.00 --radius=2.9 | tr \'\\\n\' \';\'"
 basic[2]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; echo 4,4,4 ; echo 7,7,7 ; echo 5,5,5 ; echo 6,6,6 ) | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.26 --radius=2.9 | tr \'\\\n\' \';\'"
 
+reduce[2]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; echo 4,4,4 ; echo 7,7,7 ; echo 5,5,5 ; echo 6,6,6 ) | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.26 --radius=2.9 --reduce | tr \'\\\n\' \';\'"
+
 
 basic_min_count[0]="( echo 0,0,0 ; echo 3,3,3 ; echo 1,1,1 ; echo 2,2,2 ; echo 8,8,8 ; echo 4,4,4 ; echo 7,7,7 ; echo 5,5,5 ; echo 6,6,6 ) | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.61 --radius=2.9 --min-count=5 | tr \'\\\n\' \';\'"
 
