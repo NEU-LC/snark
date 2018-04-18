@@ -252,7 +252,9 @@ static void usage( bool verbose = false )
     std::cerr << "            --min-count=[<count>]: output only points which has atleast this number of neighbours" << std::endl;
     std::cerr << "            --percentile=<percentile>: percentile value in [0,1]" << std::endl;
     std::cerr << "            --radius=<metres>: radius of the local region to search" << std::endl;
-    std::cerr << "            --output-percentile-record-only,--output-percentile: output only the percentile record" << std::endl;
+    std::cerr << "            --output-percentile-record-only,--output-percentile: output only the percentile record once," << std::endl;
+    std::cerr << "                                                                 even if there are several input points records" << std::endl;
+    std::cerr << "                                                                 referring to the same percentile record" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        example:" << std::endl;
     std::cerr << "            cat xyz.csv | points-calc percentile-in-radius --fields=x,y,scalar --percentile=0.3 --radius=1" << std::endl;
