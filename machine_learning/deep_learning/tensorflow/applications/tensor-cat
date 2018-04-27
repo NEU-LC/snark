@@ -83,6 +83,11 @@ examples
 
 """
 
+def say( m ): print >> sys.stderr, "tensor-cat: ", m
+
+def saymore( m ):
+    if args.verbose: say( m )
+
 def warn( m ): print >> sys.stderr, "tensor-cat: warning:", m
 
 def die( m ): print >> sys.stderr, "tensor-cat:", m; sys.exit( 1 )
@@ -119,13 +124,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
     parser.add_argument( '--batch-size', type = int, default = 1, help = 'todo: process input in batches of given size; default: %(default)i' )
     parser.add_argument( '--footer-size', type = int, default = 0, help = 'if a footer of given size in bytes is present, pass it to stdout with output tensor prepended' )
+    parser.add_argument( '--get-operations', '--get-operation-names', '--operation-names', '--operations', action="store_true", help = 'load graph, print operation names, and exit')
     parser.add_argument( '--header-size', type = int, default = 0, help = 'if a header of given size in bytes is present, pass it to stdout with output tensor appended' )
     parser.add_argument( '--keep-devices', action="store_true", help = 'do not clear devices on graph load, i.e. you plan to run inference in the same environment as training; has effect only in tensorflow 1.0 and higher')
     parser.add_argument( '--keep-input', action="store_true", help = 'append output to input' )
     parser.add_argument( '--input', '-i', type = str, default = 'input', help = 'input layer name; default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
-    parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename; default: %(default)s' )
+    parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename (without extension); default: %(default)s' )
     parser.add_argument( '--session-dir', '--dir', default = '.', type = str, help = 'saved session directory; default: %(default)s' )
+    parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
+    parser.add_argument( '--tensor', type = str, help = 'tensor name, if using tensor options; e.g. "image_tensor:0"' )
+    parser.add_argument( '--tensor-shape', action = "store_true", help = 'print tensor shape and exit' )
+    parser.add_argument( '--tensor-type', '--tensor-dtype', action = "store_true", help = 'print tensor type and exit' )
     parser.add_argument( '--variable', '--var', nargs = '*', type = str, help = 'variables to pass to the model as name-value pairs, e.g: "y:5", "dim:[3,4,5]", etc' )
     parser.add_argument( '--verbose', '-v', action="store_true", help = 'more output' )
     # todo: device pinning
@@ -133,12 +143,20 @@ if __name__ == '__main__':
     outputs = args.output
     if ( not args.output is None ) and len( args.output ) == 1: outputs = args.output[0].split( ',' )
     import tensorflow as tf
+    tf.logging.set_verbosity( tf.logging.INFO if args.verbose else tf.logging.WARN )
     tf_version = map( int, tf.__version__.split( '.' ) )
     with tf.Session() as session:
         session_file = args.session_dir + '/' + args.session
-        session_meta = session_file + '.meta'
+        session_meta = args.session_graph if not args.session_graph is None else session_file + '.meta'
         if tf_version[0] < 1 and args.keep_devices : warn( "--keep-devices specified, but will have no effect: not implemented in tensorflow version " + tf.__version__ + " that you are running" )
+        saymore( "importing meta graph file from '" + session_meta + "'..." )
         saver = tf.train.import_meta_graph( session_meta ) if tf_version[0] < 1 else tf.train.import_meta_graph( session_meta, clear_devices = not args.keep_devices )
+        if args.tensor_shape: print session.graph.get_tensor_by_name( args.tensor ).shape; sys.exit( 0 )
+        if args.tensor_type: print session.graph.get_tensor_by_name( args.tensor ).dtype; sys.exit( 0 )        
+        if args.get_operations:
+            for o in session.graph.get_operations(): print o.name
+            sys.exit( 0 )
+        saymore( "restoring session from '" + session_file + "'..." )
         saver.restore( session, session_file )
         input = get_collection( args.input )
         keep_prob = get_collection( 'keep_prob', True ) # todo! quick and dirty
