@@ -52,9 +52,16 @@ static const std::string default_mode = "fixed";
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
 template< typename T > std::string format( bool full_xpath = false, const std::string& fields = "" ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 
+struct target_block_t : public snark::control::target_t
+{
+    comma::uint32 block;
+
+    target_block_t( bool is_absolute = false ) : snark::control::target_t( is_absolute ), block( 0 ) {}
+};
+
 typedef snark::control::control_error_output_t output_t;
 typedef std::pair< snark::control::feedback_t, std::string > feedback_t;
-typedef std::pair< snark::control::target_t, std::string > target_t;
+typedef std::pair< target_block_t, std::string > target_t;
 
 static void usage( bool verbose = false )
 {
@@ -102,6 +109,25 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     exit( 1 );
 }
+
+namespace comma { namespace visiting {
+
+template <> struct traits< target_block_t >
+{
+    template < typename K, typename V > static void visit( const K& k, target_block_t& p, V& v )
+    {
+        traits< snark::control::target_t >::visit( k, p, v );
+        v.apply( "block", p.block );
+    }
+
+    template < typename K, typename V > static void visit( const K& k, const target_block_t& p, V& v )
+    {
+        traits< snark::control::target_t >::visit( k, p, v );
+        v.apply( "block", p.block );
+    }
+};
+
+} }
 
 std::string serialise( const snark::control::wayline::position_t& p )
 {
@@ -183,7 +209,7 @@ private:
 class full_output_t
 {
 public:
-    full_output_t( const comma::csv::input_stream< snark::control::target_t >& input_stream,
+    full_output_t( const comma::csv::input_stream< target_block_t >& input_stream,
               const comma::csv::input_stream< snark::control::feedback_t >& feedback_stream,
               comma::csv::output_stream< output_t >& output_stream,
               boost::optional< double > frequency )
@@ -254,13 +280,15 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options );
-        comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv, snark::control::target_t( options.exists( "--heading-is-absolute" ) ) );
+        comma::csv::input_stream< target_block_t > input_stream( std::cin, input_csv, target_block_t( options.exists( "--heading-is-absolute" ) ) );
         comma::csv::output_stream< output_t > output_stream( std::cout, input_csv.binary(), true, input_csv.flush, output_t() );
-        if( options.exists( "--input-fields" ) ) { std::cout << field_names< snark::control::target_t >( true ) << std::endl; return 0; }
-        if( options.exists( "--format,--input-format" ) ) { std::cout << format< snark::control::target_t >() << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << field_names< target_block_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--format,--input-format" ) ) { std::cout << format< target_block_t >() << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << field_names< output_t >( true ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< output_t >( true ) << std::endl; return 0; }
         control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
+        bool const has_block = input_csv.has_field( "block" );
+        if( has_block && mode == fixed ) { std::cerr << "control-error: --mode fixed and block field are incompatible (for now)" << std::endl; return 1; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool strict = options.exists( "--strict" );
@@ -290,6 +318,7 @@ int main( int ac, char** av )
         select.read().add( comma::io::stdin_fd );
         std::deque< target_t > targets;
         target_t target;
+        comma::uint32 block = 0U;
         if( input_csv.binary() ) { target.second.resize( input_csv.format().size() ); }
         comma::signal_flag is_shutdown;
         wayline_follower follower( mode, proximity, use_past_endpoint, options.optional< double >( "--heading-reached-threshold,--heading-error-threshold,--heading-threshold" ) );
@@ -299,8 +328,10 @@ int main( int ac, char** av )
             // todo? don't do select.check() on stdin in the loop or do it only in "dynamic" mode?
             while( !is_shutdown && ( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ) ) ) )
             {
-                const snark::control::target_t* p = input_stream.read();
+                const target_block_t* p = input_stream.read();
                 if( !p ) { break; }
+                if( p->block != block ) { targets.clear(); }
+                block = p->block;
                 target.first = *p;
                 if( input_csv.binary() ) { ::memcpy( &target.second[0], input_stream.binary().last(), target.second.size() ); }
                 else { target.second = comma::join( input_stream.ascii().last(), input_csv.delimiter ); }
@@ -327,7 +358,7 @@ int main( int ac, char** av )
             {
                 if( !follower.has_target() || ( mode == dynamic && targets.size() > 1 ) )
                 {
-                    if( mode == dynamic )
+                    if( mode == dynamic && !has_block )
                     {
                         target_t target = targets.back();
                         targets.clear();
