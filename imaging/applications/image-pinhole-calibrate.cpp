@@ -67,6 +67,7 @@ static void usage( bool verbose )
     std::cerr << "    --pattern-height,--height=<height>: number of inner corners per column on calibration pattern" << std::endl;
     std::cerr << "    --pattern-width,--width=<width>: number of inner corners per row on calibration pattern" << std::endl;
     std::cerr << "    --pattern-square-size,--square-size=<size>: size of a square on calibration board in user-defined metric (pixels, millimeters, etc)" << std::endl;
+    std::cerr << "                                                default: 1" << std::endl;
     std::cerr << "    --pattern=<pattern>: calibration pattern: chessboard, circles-grid, asymmetric-circles-grid" << std::endl;
     std::cerr << "                         default: chessboard" << std::endl;
     std::cerr << std::endl;
@@ -192,7 +193,7 @@ int main( int ac, char** av )
                                 : pattern_string == "asymmetric-circles-grid" ? patterns::asymmetric_circles_grid
                                 : patterns::invalid;
         if( pattern == patterns::invalid ) { std::cerr << "image-pinhole-calibration: expected calibration pattern, got: \"" << pattern_string << "\"" << std::endl; }
-        float square_size = options.value< float >( "--pattern-square-size,--square-size", 0 ); 
+        float square_size = options.value< float >( "--pattern-square-size,--square-size", 1 ); 
         int flags = 0;
         if( options.exists( "--no-principal-point" ) ) { flags |= CV_CALIB_FIX_PRINCIPAL_POINT; }
         if( options.exists( "--no-tangential-distortion" ) ) { flags |= CV_CALIB_ZERO_TANGENT_DIST; }
