@@ -38,7 +38,7 @@ void usage( bool const verbose )
     static const char* const indent="    ";
 
     std::cerr << std::endl;
-    std::cerr << "control the speed of plan." << std::endl;
+    std::cerr << "read trajectory points, append speed moderated according to turn angle, max lateral acceleration, etc" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Usage:" << std::endl;
     std::cerr << indent << comma::verbose.app_name() << " <operation> [<options>...]" << std::endl;
@@ -47,30 +47,30 @@ void usage( bool const verbose )
     operations(4);
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
-    std::cerr << "    common:" << std::endl;
-    std::cerr << "        --binary, -b=<fields>; input format." << std::endl;
-    std::cerr << "        --fields, -f=<fields>; default=x,y,speed; input fields." << std::endl;
-    std::cerr << std::endl;
     std::cerr << "    decelerate:" << std::endl;
-    std::cerr << "        --deceleration, -c=<deceleration>; default=0.5; deceleration by which to moderate sudden decreases in speed." << std::endl;
+    std::cerr << "        --deceleration, -c=<deceleration>; deceleration by which to moderate sudden decreases in speed." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    turn:" << std::endl;
-    std::cerr << "        --approach-speed,-a=<speed>; default=0.3; approach with this speed for waypoints with sharp turns." << std::endl;
-    std::cerr << "        --max-acceleration, -c=<acceleration>; default=1; maximum centripetal acceleration allowed." << std::endl;
-    std::cerr << "        --sharp-turn-angle,-t=<angle>; default=1.178097245; assign 'approach-speed' for waypoints having turn angle greater than this." << std::endl;
-    std::cerr << "        --speed,-s=<speed>; use this speed if it is not in input fields." << std::endl;
-    std::cerr << "        --stop-on-sharp-turn,--pivot,-p; on sharp turns (i.e. waypoints set with 'approach-speed'), output extra point with relative heading and no speed." << std::endl;
+    std::cerr << "        --approach-speed, -a=<speed>; approach with this speed for waypoints with sharp turns." << std::endl;
+    std::cerr << "        --max-acceleration, -c=<acceleration>; maximum centripetal acceleration allowed." << std::endl;
+    std::cerr << "        --sharp-turn-angle, -t=<angle>; default=1.57; assign 'approach-speed' for waypoints having turn angle greater than this." << std::endl;
+    std::cerr << "        --speed, -s=[<speed>]; use this speed if it is not in input fields." << std::endl;
+    std::cerr << "        --stop-on-sharp-turn, --pivot, -p; on sharp turns (i.e. waypoints set with 'approach-speed'), output extra point with relative heading and no speed." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Info:" << std::endl;
     std::cerr << "    --input-fields; print input fields to stdout and exit." << std::endl;
     std::cerr << "    --output-fields; print output fields to stdout and exit." << std::endl;
     std::cerr << "    --output-format; print output fields to stdout and exit." << std::endl;
-    if( verbose ) { std::cerr << std::endl << comma::csv::options::usage() << std::endl; }
+    std::cerr << std::endl;
+    if( verbose ) { std::cerr << "Csv options:" << std::endl << comma::csv::options::usage( "x,y,z,speed" ) << std::endl; }
+    else { std::cerr << "Csv options: run --help --verbose for more info..." << std::endl; }
     std::cerr << std::endl;
     std::cerr << "Examples:" << std::endl;
-    std::cerr << "    cat plan.csv |" << std::endl;
-    std::cerr << "    control-speed turn --fields=x,y,z,speed --max-acceleration=0.3 --min-speed=0.3 |" << std::endl;
-    std::cerr << "    control-speed decelerate --fields=x,y,z,,speed --deceleration=0.2" << std::endl;
+    std::cerr << "    ( echo '0.0,0.0'; echo '0.3,0.3'; echo '0.6,0.6'; echo '0.6,0.9'; echo '0.6,1.2'; echo '0.9,1.2'; echo '1.2,1.2'; echo '1.5,0.9'; echo '1.8,0.6' ) > trajectory.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    control-speed turn --fields=x,y --max-acceleration=0.5 --approach-speed=0.2 --speed=1 --pivot < trajectory.csv > moderated.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    control-speed decelerate --fields=x,y,speed --deceleration=0.5 < moderated.csv > decelerated.csv" << std::endl;
     std::cerr << std::endl;
 }
 
@@ -89,10 +89,10 @@ namespace turn
 {
 struct output_t
 {
-    double speed;
-    double heading;
+    double moderated_speed;
+    double relative_heading;
 
-    output_t() : speed( 0.0 ), heading( 0.0 ) {}
+    output_t( double sp = 0.0 ) : moderated_speed( sp ), relative_heading( 0.0 ) {}
 };
 
 struct record_t
@@ -106,6 +106,7 @@ struct record_t
 
     record_t( generic::input_t const& in, comma::csv::input_stream< generic::input_t > const& istrm, comma::csv::options const& csv )
         : input( in )
+        , output( in.speed )
         , line()
         //...debug...
         //, angle( 0 )
@@ -127,7 +128,7 @@ struct record_t
         ostrm.append( line, output );
         if( csv.binary() && csv.flush ) { std::cout.flush(); }
         //...debug...
-        //std::cerr << line << csv.delimiter << speed << csv.delimiter << angle << csv.delimiter << radius << std::endl;
+        //std::cerr << line << csv.delimiter << output.moderated_speed << csv.delimiter << angle << csv.delimiter << radius << std::endl;
     }
 };
 }
@@ -162,7 +163,7 @@ struct record_t
         ostrm.write( input, line );
         if( csv.binary() && csv.flush ) { std::cout.flush(); }
         //...debug...
-        //std::cerr << line << csv.delimiter << speed << csv.delimiter << angle << csv.delimiter << radius << std::endl;
+        //std::cerr << line << csv.delimiter << input.speed << csv.delimiter << angle << csv.delimiter << radius << std::endl;
     }
 };
 }
@@ -187,7 +188,7 @@ double radius_calc( Eigen::Vector3d const& p1, Eigen::Vector3d const& p2, Eigen:
     }
     else
     {
-        return comma::math::less( side1, side3 ) && comma::math::less( side2, side3 ) ? std::numeric_limits< double >::max() : std::numeric_limits< double >::min();
+        return comma::math::less( side1, side3 ) && comma::math::less( side2, side3 ) ? std::numeric_limits< double >::max() : 0.0;
     }
 }
 
@@ -226,14 +227,14 @@ template <> struct traits< turn::output_t >
 {
     template < typename K, typename V > static void visit ( const K&, turn::output_t& t, V& v )
     {
-        v.apply( "moderated_speed", t.speed );
-        v.apply( "relative_heading", t.heading );
+        v.apply( "moderated_speed", t.moderated_speed );
+        v.apply( "relative_heading", t.relative_heading );
     }
 
     template < typename K, typename V > static void visit ( const K&, const turn::output_t& t, V& v )
     {
-        v.apply( "moderated_speed", t.speed );
-        v.apply( "relative_heading", t.heading );
+        v.apply( "moderated_speed", t.moderated_speed );
+        v.apply( "relative_heading", t.relative_heading );
     }
 };
 
@@ -251,7 +252,7 @@ int main( int ac, char* av[] )
         if( operations.size() != 1 ) { std::cerr << comma::verbose.app_name() << ": expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
 
         comma::csv::options csv( options );
-        if( csv.fields.empty() ) { csv.fields = "x,y,speed"; }
+        if( csv.fields.empty() ) { csv.fields = "x,y,z,speed"; }
         csv.full_xpath = false;
 
         if( "turn" == operations[ 0 ] )
@@ -266,9 +267,9 @@ int main( int ac, char* av[] )
             if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< turn::output_t >( out_csv.fields, true ) << std::endl; return 0; }
 
             auto const speed = options.value< double >( "--speed,-s", 0.0 );
-            auto const max_acceleration = options.value< double >( "--max-acceleration,-c", 1 );
-            auto const approach_speed = options.value< double >( "--approach-speed,-a", 0.3 );
-            auto const sharp_turn_angle = options.value< double >( "--sharp-turn-angle,-t", 3 * M_PI / 8 );
+            auto const max_acceleration = options.value< double >( "--max-acceleration,-c" );
+            auto const approach_speed = options.value< double >( "--approach-speed,-a" );
+            auto const sharp_turn_angle = options.value< double >( "--sharp-turn-angle,-t", 1.57 ); // near 90 degrees
             auto const spot_turn_radius = approach_speed * approach_speed / max_acceleration;
             auto const points_min_separation = 1e-6; // arbitrary
 
@@ -294,18 +295,17 @@ int main( int ac, char* av[] )
                     if( comma::math::less( std::fabs( angle ), sharp_turn_angle ) && comma::math::less( spot_turn_radius, radius ) )
                     {
                         auto updated_speed = std::sqrt( max_acceleration * radius );
-                        if( comma::math::less( updated_speed, approach_speed ) ) { std::cerr << "Error: speed calculated is less than min speed." << std::endl; return 1; }
-                        que[ relevant_index ].output.speed = std::max( approach_speed, std::min( que[ relevant_index ].input.speed, updated_speed ) );
+                        que[ relevant_index ].output.moderated_speed = std::max( approach_speed, std::min( que[ relevant_index ].input.speed, updated_speed ) );
                     }
                     else
                     {
-                        que[ relevant_index ].output.speed = std::min( que[ relevant_index ].input.speed, approach_speed );
+                        que[ relevant_index ].output.moderated_speed = std::min( que[ relevant_index ].input.speed, approach_speed );
                         if( pivot )
                         {
                             auto temp = que.back();
                             que.back() = que[ relevant_index ];
-                            que.back().output.speed = 0;
-                            que.back().output.heading = angle;
+                            que.back().output.moderated_speed = 0;
+                            que.back().output.relative_heading = angle;
                             que.push_back( temp );
                         }
                     }
@@ -314,6 +314,7 @@ int main( int ac, char* av[] )
                 }
             }
             for( auto ii = 0U; ii < que.size(); ii++ ) { que[ ii ].write( ostrm, csv ); }
+            return 0;
         }
         else if( "decelerate" == operations[ 0 ] )
         {
@@ -322,7 +323,7 @@ int main( int ac, char* av[] )
             comma::csv::output_stream< generic::input_t > ostrm( std::cout, csv );
             std::deque< deceleration::record_t > que;
 
-            auto const deceleration = options.value< double >( "--deceleration,-c", 0.5 );
+            auto const deceleration = options.value< double >( "--deceleration,-c" );
             auto max_speed = 0.0;
             while( istrm.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
@@ -351,12 +352,13 @@ int main( int ac, char* av[] )
                 }
             }
             for( auto ii = 0U; ii < que.size(); ii++ ) { que[ ii ].write( ostrm, csv ); }
+            return 0;
         }
-        else { std::cerr << comma::verbose.app_name() << ": unknown operation: " <<  operations[ 0 ] << std::endl; }
-
+        std::cerr << comma::verbose.app_name() << ": unknown operation: " <<  operations[ 0 ] << std::endl;
+        return 1;
     }
     catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl; }
-    return 0;
+    return 1;
 }
 
