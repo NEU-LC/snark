@@ -2107,6 +2107,8 @@ static typename impl::filters< H >::value_type gamma_( const typename impl::filt
     return m;
 }
 
+// todo! refactor as class
+// todo! support multichannel images
 template < typename H >
 static typename impl::filters< H >::value_type gamma_impl_(const typename impl::filters< H >::value_type m, const double gamma )
 {
