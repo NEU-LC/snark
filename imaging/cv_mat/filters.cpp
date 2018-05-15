@@ -2120,6 +2120,15 @@ static typename impl::filters< H >::value_type gamma_impl_(const typename impl::
 }
 
 template < typename H >
+static typename impl::filters< H >::value_type pow_impl_(const typename impl::filters< H >::value_type m, const double value )
+{
+    typename impl::filters< H >::value_type n;
+    n.first = m.first;
+    cv::pow( m.second, value, n.second );
+    return n;
+}
+
+template < typename H >
 static typename impl::filters< H >::value_type inrange_impl_( const typename impl::filters< H >::value_type m, const cv::Scalar& lower, const cv::Scalar& upper )
 {
     typename impl::filters< H >::value_type n;
@@ -2475,6 +2484,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         return std::make_pair( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false );
     }
     if( e[0] == "gamma" ) { return std::make_pair( boost::bind< value_type_t >( gamma_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ), true ); }
+    if( e[0] == "pow" || e[0] == "power" ) { return std::make_pair( boost::bind< value_type_t >( pow_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ), true ); }
     if( e[0] == "remove-mean")
     {
         std::vector< std::string > s = comma::split( e[1], ',' );
@@ -3231,6 +3241,7 @@ static std::string usage_impl_()
     oss << "            <bits>: number of bits, currently only 12-bit packing from 16-bit is supported (pack 2 pixels into 3 bytes)" << std::endl;
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
     oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
+    oss << "        pow,power=<value>; each image channel power, currently plain wrapper of opencv pow(), thus may be slow; todo? parallelize and/or implement mapping with interpolation" << std::endl;
     oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
     oss << "                             in format <width>,<height>,<interpolation> corresponding numeric values can be used: " << cv::INTER_NEAREST << ", " << cv::INTER_LINEAR << ", " << cv::INTER_AREA << ", " << cv::INTER_CUBIC << ", " << cv::INTER_LANCZOS4 << std::endl;
