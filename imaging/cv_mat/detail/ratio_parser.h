@@ -53,6 +53,7 @@ namespace ratios
         term_ = eps[ _val = ratios::term( 1.0, channel::constant ) ] >>
             (
                     double_[ bind( &term::value, _val ) = _1 ] >> -lit('*') >> channel_[ bind( &term::c, _val ) = _1 ]
+                |   channel_[ bind( &term::c, _val ) = _1 ] >> lit('*') >> double_[ bind( &term::value, _val ) = _1 ]
                 |   channel_[ bind( &term::c, _val ) = _1 ]
                 |   lit('+')[ bind( &term::value, _val ) = 1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]
                 |   lit('-')[ bind( &term::value, _val ) = -1 ] >> -( double_[ bind( &term::value, _val ) *= _1 ] >> -lit('*') ) >> channel_[ bind( &term::c, _val ) = _1 ]

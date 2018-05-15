@@ -167,8 +167,8 @@ namespace ratios
         o << w << "        ( linear combination ) / ( linear combination )\n";
         o << w << "    here 'linear combination' is in the form Ar + Bg + Cb + Da + F, where A, B, C, D, F\n";
         o << w << "    are floating-point constants and r, g, b, a are symbolic channel names; the multiplication\n";
-        o << w << "    sign '*' is allowed between the constant and channel name; the F term gives a fixed offset\n";
-        o << w << "    to be added to the output\n";
+        o << w << "    sign '*' is allowed between the constant and channel name; something like 3r, 3*r, r*3 are allowed and mean the same\n";
+        o << w << "    the F term gives a fixed offset to be added to the output\n";
         o << w << "        term / ( linear combination )\n";
         o << w << "    here 'term' is either A or Ac, where A is a constant and c is one of the channel names\n";
         o << w << "    for a single term, surrounding brackets are optional, 'term' is the same as '(term)'\n";

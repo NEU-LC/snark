@@ -148,6 +148,12 @@ TEST( ratios, combination )
         verify( v, boost::assign::list_of(0.0)(0.0)(0.0)(3.0)(0.0) );
         EXPECT_EQ( v.to_string(), "3b" );
     }
+    {
+        std::string input = "b*3";
+        EXPECT_TRUE( process( parser, input, v ) );
+        verify( v, boost::assign::list_of(0.0)(0.0)(0.0)(3.0)(0.0) );
+        EXPECT_EQ( v.to_string(), "3b" );
+    }
 
     {
         std::string input = "-3.5b";

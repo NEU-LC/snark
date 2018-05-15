@@ -91,11 +91,7 @@ namespace ratios
         std::vector< term > terms;
     };
 
-    inline std::ostream & operator<<( std::ostream & o, const combination & c )
-    {
-        c.print( o );
-        return o;
-    }
+    inline std::ostream & operator<<( std::ostream & o, const combination & c ) { c.print( o ); return o; }
 
     struct ratio
     {
@@ -110,11 +106,7 @@ namespace ratios
         static std::string describe_syntax( size_t offset = 0 );
     };
 
-    inline std::ostream & operator<<( std::ostream & o, const ratio & r )
-    {
-        o << r.numerator << "/" << r.denominator;
-        return o;
-    }
+    inline std::ostream& operator<<( std::ostream & o, const ratio & r ) { o << r.numerator << "/" << r.denominator; return o; }
 
     template< typename Iterator >
     struct rules
