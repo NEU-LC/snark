@@ -27,15 +27,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "ratio_impl.h"
-
 #include <comma/base/exception.h>
+#include "ratio_parser.h"
 
-namespace snark{ namespace cv_mat {
+namespace snark { namespace cv_mat {
 
 namespace ratios
 {
-
     std::ostream & operator<<( std::ostream & o, const channel & c )
     {
         switch( c.c )
@@ -56,7 +54,8 @@ namespace ratios
             case( channel::NUM_CHANNELS ):
                 break;
             case( channel::constant ):
-                o << t.value; break;
+                o << t.value;
+                break;
             default:
                 if ( t.value == 1.0 ) {
                     o << t.c;
@@ -103,20 +102,14 @@ namespace ratios
         // no c++-11
         struct counter
         {
-            static size_t non_zero( size_t count, const term& t )
-            {
-                return count + ( t.value != 0.0 );
-            }
+            static size_t non_zero( size_t count, const term& t ) { return count + ( t.value != 0.0 ); }
         };
         return std::accumulate( terms.begin(), terms.end(), 0, counter::non_zero );
     }
 
-    bool combination::unity() const
-    {
-        return terms[0].value == 1.0 && non_zero_term_count() == 1;
-    }
+    bool combination::unity() const { return terms[0].value == 1.0 && non_zero_term_count() == 1; }
 
-    std::string combination::stringify( ) const
+    std::string combination::to_string( ) const
     {
         std::ostringstream o;
         std::vector< term >::const_iterator i = terms.begin();
@@ -136,10 +129,7 @@ namespace ratios
 
     void combination::print( std::ostream & o ) const
     {
-        for ( std::vector< term >::const_iterator i = terms.begin(); i != terms.end(); )  // incremented explicitly
-        {
-            o << i->value; o << ( ++i == terms.end() ? "" : "," );
-        }
+        for ( std::vector< term >::const_iterator i = terms.begin(); i != terms.end(); ) { o << i->value; o << ( ++i == terms.end() ? "" : "," ); }
     }
 
     const double combination::epsilon = 1.0e-10;
@@ -155,16 +145,13 @@ namespace ratios
         }
     }
 
-    std::string ratio::stringify( ) const
+    std::string ratio::to_string( ) const
     {
         bool divide = !denominator.unity();
         bool nbrackets = ( numerator.non_zero_term_count() > 1 ) && divide;
         bool dbrackets = ( denominator.non_zero_term_count() > 1 );
-        std::string rv = ( nbrackets ? "( " : "" ) + numerator.stringify() + ( nbrackets ? " )" : "" );
-        if ( divide )
-        {
-            rv += std::string(" / ") + ( dbrackets ? "( " : "" ) + denominator.stringify() + ( dbrackets ? " )" : "" );
-        }
+        std::string rv = ( nbrackets ? "( " : "" ) + numerator.to_string() + ( nbrackets ? " )" : "" );
+        if( divide ) { rv += std::string(" / ") + ( dbrackets ? "( " : "" ) + denominator.to_string() + ( dbrackets ? " )" : "" ); }
         return rv;
     }
 

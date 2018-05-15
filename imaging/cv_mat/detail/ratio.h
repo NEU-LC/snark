@@ -82,15 +82,10 @@ namespace ratios
 
         explicit combination();
         combination( const term & t );
-
         void update( const term & t );
-
         size_t non_zero_term_count() const;
         bool unity() const;
-
-        // pretty-printer
-        std::string stringify( ) const;
-
+        std::string to_string( ) const;
         void print( std::ostream & o ) const;
 
         std::vector< term > terms;
@@ -111,10 +106,7 @@ namespace ratios
         explicit ratio( const std::vector< double > & n, const std::vector< double > & d );
 
         static size_t num_channels() { return channel::NUM_CHANNELS; }
-
-        // pretty-printer
-        std::string stringify( ) const;
-
+        std::string to_string( ) const;
         static std::string describe_syntax( size_t offset = 0 );
     };
 
