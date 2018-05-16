@@ -62,7 +62,7 @@ void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "    distort: take on stdin undistorted pixels, append their distorted values (uses distortion map file)" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    distortion-map: build distortion map from camera parameters in config and write to stdout (binary image matrix of map x, map y)" << std::endl;
+    std::cerr << "    distortion-map,undistort-rectify-map: build distortion map from camera parameters in config and write to stdout (binary image matrix of map x, map y)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: print help; --help --verbose for more help" << std::endl;
@@ -210,7 +210,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if( operation=="distortion-map" )
+        if( operation=="distortion-map" || operation == "undistort-rectify-map" )
         {
             snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
             if( !pinhole.distortion_map() ) { std::cerr << "image-pinhole: no distortion specified in config" << std::endl; return 1; }
@@ -218,7 +218,6 @@ int main( int ac, char** av )
             return 0;
         }
         std::cerr << "image-pinhole: error: unrecognized operation: "<< operation << std::endl;
-        return 1;
     }
     catch( std::exception& ex ) { std::cerr << "image-pinhole: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "image-pinhole: unknown exception" << std::endl; }
