@@ -271,7 +271,8 @@ int main( int ac, char** av )
             const std::vector< std::string >& s = comma::split( options.value< std::string >( "--pattern-size" ), ',' );
             if( s.size() != 2 ) { std::cerr << "image-pinhole-calibrate: expected --pattern-size=<rows>,<cols>, got: \"" << options.value< std::string >( "--size" ) << std::endl; return 1; }
             pattern_size = cv::Size(boost::lexical_cast<comma::uint32>(s[0]), boost::lexical_cast<comma::uint32>(s[1]));
-        } else
+        } 
+        else
         {
             pattern_size = cv::Size( options.value< int >( "--pattern-width,--width" ), options.value< int >( "--pattern-height,--height" ) );
         } 
@@ -350,13 +351,8 @@ int main( int ac, char** av )
             if ( !p.principal_point || !p.distortion ) { std::cerr << "image-pinhole-calibrate: failed to load all coefficients from " << file_path[0] << std::endl; }
             
             // config overrides pixel size from command line?
-            pixel_size = p.sensor_size->x() / p.image_size.x();
-
-            camera_matrix.at<double>(0,0) = p.focal_length / pixel_size;
-            camera_matrix.at<double>(1,1) = p.focal_length * (double)p.image_size.y() / p.sensor_size->y();
-            camera_matrix.at<double>(2,2) = 1.0;
-            camera_matrix.at<double>(0,2) = p.principal_point->x();
-            camera_matrix.at<double>(1,2) = p.principal_point->y();
+            camera_matrix = p.camera_matrix();
+            pixel_size = p.pixel_size().x();
             distortion_coefficients.at<double>(0) = p.distortion->radial.k1;
             distortion_coefficients.at<double>(1) = p.distortion->radial.k2;
             distortion_coefficients.at<double>(2) = p.distortion->tangential.p1;
@@ -412,7 +408,10 @@ int main( int ac, char** av )
         } 
         else if (what == "intrinsics")
         {
-            comma::csv::output_stream< snark::camera::pinhole::config_t > ostream(std::cout, comma::csv::options(options));
+            comma::csv::options csv(options);
+            csv.full_xpath=true;
+            csv.fields = comma::join(comma::csv::names<snark::camera::pinhole::config_t>(output.pinhole),',');
+            comma::csv::output_stream< snark::camera::pinhole::config_t > ostream(std::cout, csv);
             ostream.write(output.pinhole);
         }
         else if (what == "offsets")
