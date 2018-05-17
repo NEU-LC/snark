@@ -95,6 +95,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;    
     std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --strict: fail if the feedback timestamp is earlier than the previous one (default: skip offending records)" << std::endl;
+    std::cerr << "    --feedback-init-wait=<seconds>: initial wait timeout on feedback stream, default=1" << std::endl;
     std::cerr << std::endl;
     std::cerr << "control modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
@@ -301,8 +302,9 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( feedback_in );
         feedback_t feedback;
+        double feedback_init_wait=options.value<double>("--feedback-init-wait",1);
         if( feedback_csv.binary() ) { feedback.second.resize( feedback_csv.format().size() ); }
-        if( select.wait( boost::posix_time::seconds( 1 ) ) ) // TODO: consider using feedback timeout (when implemented) instead of the hardcoded 1 sec
+        if( select.wait( boost::posix_time::seconds( feedback_init_wait ) ) ) // TODO: consider using feedback timeout (when implemented) instead of the hardcoded 1 sec
         {
             const snark::control::feedback_t* p = feedback_stream.read();
             if( !p ) { std::cerr << name << ": feedback stream error" << std::endl; return 1; }
