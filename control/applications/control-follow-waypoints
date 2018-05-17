@@ -187,7 +187,7 @@ fi
 passed_fields=$( prefix target <<< $waypoints_fields ),$( prefix feedback <<< $feedback_fields ),$error_fields
 is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || passed_binary=
 [[ -z $feedback_timeout ]] || feedback_timeout="--feedback-timeout=$feedback_timeout"
-[[ -n $feedback_inti_wait ]] || feedback_inti_wait="1"
+[[ -n $feedback_init_wait ]] || feedback_init_wait="1"
 
 config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
 
@@ -214,7 +214,7 @@ fi |
 control-error \
         --fields=$waypoints_fields \
         --binary=$waypoints_binary \
-        "$feedback_address;fields=$feedback_fields;binary=$feedback_binary" --feedback-init-wait $feedback_inti_wait \
+        "$feedback_address;fields=$feedback_fields;binary=$feedback_binary" --feedback-init-wait $feedback_init_wait \
         --mode=$mode \
         --proximity=$proximity \
         --frequency=$frequency \
