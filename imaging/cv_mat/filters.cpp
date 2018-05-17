@@ -2195,20 +2195,28 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if( e[0] == "accumulated" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "accumulated: please specify operation" ); }
-        auto s = comma::split(e[1], ',');
+        const auto& s = comma::split(e[1], ',');
         try
         {
             if( s.front() == "average" ) { return std::make_pair(  boost::bind< value_type_t >( accumulated::average< H >(), _1 ), false ); }
-            else if( s.front() == "moving-average" ) { 
+            if( s.front() == "moving-average" )
+            { 
                 if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: error please provide window size for " << s.front() ); }
                 return std::make_pair(  boost::bind< value_type_t >( accumulated::moving_average< H >( boost::lexical_cast< comma::uint32 >(s[1]) ), _1 ), false ); 
             }
-            else if( s.front() == "ema" ) { 
+            if( s.front() == "ema" )
+            { 
                 if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: error please provide alpha value for " << s.front() ); }
                 return std::make_pair( boost::bind< value_type_t >( accumulated::ema< H >( boost::lexical_cast< float >(s[1]), s.size() < 3 ? 1 : boost::lexical_cast< comma::uint32 >(s[2]) ), _1 ), false ); 
             }
-            else { COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front()); }
-        } catch( boost::bad_lexical_cast bc ) { COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what()); }
+            if( s.front() == "min" ) { return std::make_pair( boost::bind< value_type_t >( accumulated::min< H >(), _1 ), false ); }
+            if( s.front() == "max" ) { return std::make_pair( boost::bind< value_type_t >( accumulated::max< H >(), _1 ), false ); }
+            COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front());
+        }
+        catch( boost::bad_lexical_cast& bc )
+        {
+            COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what());
+        }
     }
     if( e[0] == "canny" )
     {
@@ -3160,12 +3168,14 @@ static std::string usage_impl_()
     oss << "        accumulated=<operation>: apply a pixel-wise operation to the input images" << std::endl;
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
-    oss << "                 moving-average,<window>: pixelwise moving average" << std::endl;
-    oss << "                     <window>: number of images in sliding window" << std::endl;
     oss << "                 ema,alpha[,<spin_up>]: pixelwise exponential moving average" << std::endl;
     oss << "                     <alpha>: range: between 0 and 1.0, larger value will retain more historical data." << std::endl;
     oss << "                     <spin_up>: default = 1;" << std::endl;
     oss << "                     formula: ema += (new_pixel_value - ema) * <alpha>" << std::endl;
+    oss << "                 min: image minimum" << std::endl;
+    oss << "                 max: image maximum" << std::endl;
+    oss << "                 moving-average,<window>: pixelwise moving average" << std::endl;
+    oss << "                     <window>: number of images in sliding window" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;
     oss << "        blur=<type>,<parameters>: apply a blur to the image (positive and odd kernel sizes)" << std::endl;
     oss << "            blur=box,<kernel_size> " << std::endl;
