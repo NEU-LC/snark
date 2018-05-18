@@ -338,7 +338,8 @@ int main( int ac, char* av[] )
                 double updated_speed, distance;
 
                 for( ; previ != que.rend()
-                         && comma::math::less( 0.0, distance = ( curri->input.coordinates - previ->input.coordinates ).norm() )
+                         && ( comma::math::less( 0.0, distance = ( curri->input.coordinates - previ->input.coordinates ).norm() )
+                           || comma::math::less( 0.0, curri->input.speed ) )
                          && comma::math::less( updated_speed = std::sqrt( curri->input.speed * curri->input.speed + 2 * deceleration * distance )
                                              , previ->input.speed )
                      ; previ++, curri++ )
