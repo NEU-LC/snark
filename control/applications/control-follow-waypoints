@@ -4,11 +4,11 @@ function options_description
 {
     cat <<EOF
 --config=[<config>]; config file name
+--config-sample,--sample-config; output sample config
+--config-fields; print list of config fields and exit
 --input-fields; show waypoint fields (config is used if provided)
 --output-fields; show output fields (config is used if provided)
 --output-format; show output format of binary stream (config is used if provided)
---sample-config; output sample config
---config-fields; print list of config fields and exit
 --steering=[<steering>]; steering type (omni or skid)
 EOF
 }
@@ -31,7 +31,7 @@ examples:
     $scriptname --input-fields --steering=omni
     $scriptname --output-fields --steering=omni
     $scriptname --output-format --steering=omni
-    $scriptname --sample-config
+    $scriptname --config-sample
 
 END
     if (( ! $verbose )); then echo "for more output: $scriptname -h -v" >&2; return; fi
@@ -49,7 +49,7 @@ $( sample_config | sed 's/^/    /' )
     proximity: distance for deciding when a waypoint is reached
     past_endpoint: 1 -> besides proximity condition, consider a waypoint as reached if the vehicle has moved past the end line, 0 -> use only proximity condition
         ( the end line is a line which goes through the target waypoint and is perpendicular to the current wayline)
-    heading_is_absolute_default: 1 -> interpret heading as the desired global (absolute) heading, 0 -> heading is relative offset wrt the wayline heading
+    heading/is_absolute_default: 1 -> interpret heading as the desired global (absolute) heading, 0 -> heading is relative offset wrt the wayline heading
         ( this describes default behaviour when is_absolute is not provided in the input; when is_absolute is given, it takes precedence )
     frequency: control frequency, i.e. the rate at which wheel commands are output when moving towards a waypoint
         ( when the last given waypoint is reached, no output is produced until new waypoints are given )
@@ -64,6 +64,7 @@ $( sample_config | sed 's/^/    /' )
         address: generic address for feedback
         fields: csv fields of feedback (required fields: $default_feedback_fields)
         binary: binary format of feedback (ascii stream is assumed by default)
+        init_timeout: initial timeout waiting for feedback stream, passed to control-error
 
 END
 }
@@ -118,21 +119,21 @@ END
 function config_fields()
 {
     cat <<EOF
-mode
-steering
-proximity
-past_endpoint
 frequency
-reset
-heading_is_absolute_default
-heading_reached_threshold
+heading/is_absolute_default
+heading/reached_threshold
 feedback/address
 feedback/fields
 feedback/binary
-feedback/init_wait
+feedback/init_timeout
 feedback/timeout
+mode
+past_endpoint
 pid/cross_track
 pid/heading
+proximity
+reset
+steering
 waypoints/fields
 waypoints/binary
 EOF
@@ -179,7 +180,7 @@ if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); t
     exit
 fi
 
-if (( $( comma_options_has --sample-config "$@" ) )); then sample_config; exit; fi
+if (( $( comma_options_has --sample-config "$@" ) || $( comma_options_has --config-sample "$@" ) )); then sample_config; exit; fi
 if (( $( comma_options_has --config-fields "$@" ) )); then config_fields; exit; fi
 
 eval $( options_description | grep '^--config=' | comma-options-to-name-value "$@" | comma_path_value_mangle )
@@ -213,7 +214,7 @@ fi
 passed_fields=$( prefix target <<< $config_waypoints_fields ),$( prefix feedback <<< $config_feedback_fields ),$error_fields
 is_binary && passed_binary=$config_waypoints_binary,$config_feedback_binary,$error_binary || passed_binary=
 [[ -z $config_feedback_timeout ]] || feedback_timeout="--feedback-timeout=$config_feedback_timeout"
-[[ -n $config_feedback_init_wait ]] || config_feedback_init_wait="1"
+[[ -n $config_feedback_init_timeout ]] || config_feedback_init_timeout="1"
 
 config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
 
@@ -240,7 +241,7 @@ fi |
 control-error \
         --fields=$config_waypoints_fields \
         --binary=$config_waypoints_binary \
-        "$config_feedback_address;fields=$config_feedback_fields;binary=$config_feedback_binary" --feedback-init-wait $config_feedback_init_wait \
+        "$config_feedback_address;fields=$config_feedback_fields;binary=$config_feedback_binary" --feedback-init-timeout $config_feedback_init_timeout \
         --mode=$config_mode \
         --proximity=$config_proximity \
         --frequency=$config_frequency \
