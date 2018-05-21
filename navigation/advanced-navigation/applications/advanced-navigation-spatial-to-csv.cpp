@@ -85,7 +85,7 @@ void usage(bool detail)
     std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --description=<field>; print out one line description text for input values of <field>; csv options apply to input" << std::endl;
     std::cerr << "        <field>: system_status | filter_status" << std::endl;
-    std::cerr << "    --no-flush: don't flush output stream after each write" << std::endl;
+    std::cerr << "    --flush: flush output stream after each write" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -459,8 +459,8 @@ int main( int argc, char** argv )
         
         if(options.exists("--bash-completion")) { bash_completion( argc, argv ); return 0; }
         
-        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--no-flush", "-.*" );
-        flush=!options.exists("--no-flush");
+        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--flush", "-.*" );
+        flush=options.exists("--flush");
         
         auto opt_description=options.optional<std::string>("--description");
         if(opt_description)
