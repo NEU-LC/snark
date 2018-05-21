@@ -8,6 +8,7 @@ function options_description
 --output-fields; show output fields (config is used if provided)
 --output-format; show output format of binary stream (config is used if provided)
 --sample-config; output sample config
+--config-fields; print list of config fields and exit
 --steering=[<steering>]; steering type (omni or skid)
 EOF
 }
@@ -114,10 +115,33 @@ pid/heading
 END
 }
 
+function config_fields()
+{
+    cat <<EOF
+mode
+steering
+proximity
+past_endpoint
+frequency
+reset
+heading_is_absolute_default
+heading_reached_threshold
+feedback/address
+feedback/fields
+feedback/binary
+feedback/init_wait
+feedback/timeout
+pid/cross_track
+pid/heading
+waypoints/fields
+waypoints/binary
+EOF
+}
+
 function is_binary
 {
-    [[ -z "$waypoints_binary" && -z "$feedback_binary" ]] && return 1
-    [[ -n "$waypoints_binary" && -n "$feedback_binary" ]] && return 0
+    [[ -z "$config_waypoints_binary" && -z "$config_feedback_binary" ]] && return 1
+    [[ -n "$config_waypoints_binary" && -n "$config_feedback_binary" ]] && return 0
     die "input and feedback streams should be both ascii or both binary"
 }
 
@@ -129,8 +153,8 @@ function set_default_waypoints_fields
 {
     local steering=$1
     case "$steering" in
-        omni) waypoints_fields=$waypoints_fields_omni ;;
-        skid) waypoints_fields=$waypoints_fields_skid ;;
+        omni) config_waypoints_fields=$waypoints_fields_omni ;;
+        skid) config_waypoints_fields=$waypoints_fields_skid ;;
         *) die "steering '$steering' is not recongnised" ;;
     esac
 }
@@ -140,12 +164,12 @@ scriptname=$( basename $0 )
 source $( which comma-application-util ) || { echo "$scriptname: failed to source comma-application-util" >&2; exit 1; }
 
 # default fields (note that default fields for waypoints depend on steering type and need to be set once the steering type is known)
-feedback_fields="t,x,y,yaw"
+config_feedback_fields="t,x,y,yaw"
 waypoints_fields_omni="x,y,heading"
 waypoints_fields_skid="x,y"
 
-feedback_binary=""
-waypoints_binary=""
+config_feedback_binary=""
+config_waypoints_binary=""
 
 feedback_format="t,d,d,d"
 
@@ -156,18 +180,20 @@ if (( $( comma_options_has --help "$@" ) || $( comma_options_has -h "$@" ) )); t
 fi
 
 if (( $( comma_options_has --sample-config "$@" ) )); then sample_config; exit; fi
+if (( $( comma_options_has --config-fields "$@" ) )); then config_fields; exit; fi
 
 eval $( options_description | grep '^--config=' | comma-options-to-name-value "$@" | comma_path_value_mangle )
 if [[ -n "$config" ]]; then
-    eval $( name-value-convert --from=json < "$config" | comma_path_value_mangle; comma_status_ok ) || die "failed to import config '$config'"
+    eval $( name-value-convert --from=json < "$config" | comma_path_value_mangle | sed 's#^#config_#' ; comma_status_ok ) || die "failed to import config '$config'"
 fi
 eval $( options_description | comma-options-to-name-value "$@" | comma_path_value_mangle )
-if [[ -z "$waypoints_fields" ]]; then
+[[ -z $config_steering ]] || steering="$config_steering"
+if [[ -z "$config_waypoints_fields" ]]; then
     [[ "$steering" ]] || die "failed to set default waypoints/fields; steering type is required"
     set_default_waypoints_fields $steering
 fi
-[[ -z $heading_reached_threshold ]] || heading_reached_threshold="--heading-reached-threshold=$heading_reached_threshold"
-if (( $( comma_options_has --input-fields "$@" ) )); then echo $waypoints_fields; exit; fi
+[[ -z $config_heading_reached_threshold ]] || heading_reached_threshold="--heading-reached-threshold=$config_heading_reached_threshold"
+if (( $( comma_options_has --input-fields "$@" ) )); then echo $config_waypoints_fields; exit; fi
 
 error_fields=$( control-error --output-fields --status )
 error_binary=$( control-error --output-format --status )
@@ -176,22 +202,22 @@ command_fields=$( control-command --steering=$steering --output-fields )
 command_binary=$( control-command --steering=$steering --output-format )
 
 if (( $( comma_options_has --output-fields "$@" ) )); then
-    echo $( prefix feedback <<< $feedback_fields ),$error_fields,$( prefix command <<< $command_fields )
+    echo $( prefix feedback <<< $config_feedback_fields ),$error_fields,$( prefix command <<< $command_fields )
     exit
 fi
 if (( $( comma_options_has --output-format "$@" ) )); then
-    echo ${feedback_binary:-$feedback_format},$error_binary,$command_binary
+    echo ${config_feedback_binary:-$feedback_format},$error_binary,$command_binary
     exit
 fi
 
-passed_fields=$( prefix target <<< $waypoints_fields ),$( prefix feedback <<< $feedback_fields ),$error_fields
-is_binary && passed_binary=$waypoints_binary,$feedback_binary,$error_binary || passed_binary=
-[[ -z $feedback_timeout ]] || feedback_timeout="--feedback-timeout=$feedback_timeout"
-[[ -n $feedback_init_wait ]] || feedback_init_wait="1"
+passed_fields=$( prefix target <<< $config_waypoints_fields ),$( prefix feedback <<< $config_feedback_fields ),$error_fields
+is_binary && passed_binary=$config_waypoints_binary,$config_feedback_binary,$error_binary || passed_binary=
+[[ -z $config_feedback_timeout ]] || feedback_timeout="--feedback-timeout=$config_feedback_timeout"
+[[ -n $config_feedback_init_wait ]] || config_feedback_init_wait="1"
 
 config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
 
-grep -E '(^|,)is_absolute(,|$)' <<< $waypoints_fields &>/dev/null;
+grep -E '(^|,)is_absolute(,|$)' <<< $config_waypoints_fields &>/dev/null;
 (( 0 == $? )) && has_absolute_field=1 || has_absolute_field=0
 epsilon=0.0001
 
@@ -201,8 +227,8 @@ if [[ 'skid' = $steering ]]
 then
     if (( has_absolute_field ))
     then
-        csv-eval --fields=$waypoints_fields --exit-if "( 1 == is_absolute ) & ( $epsilon < abs( speed ) )" --with-error "heading must not be absolute for skid steering (except spot turn)."
-    elif (( heading_is_absolute_default ))
+        csv-eval --fields=$config_waypoints_fields --exit-if "( 1 == is_absolute ) & ( $epsilon < abs( speed ) )" --with-error "heading must not be absolute for skid steering (except spot turn)."
+    elif (( config_heading_is_absolute_default ))
     then
         die "heading must not default to absolute for skid steering, check config file."
     else
@@ -212,14 +238,14 @@ else
     cat -
 fi |
 control-error \
-        --fields=$waypoints_fields \
-        --binary=$waypoints_binary \
-        "$feedback_address;fields=$feedback_fields;binary=$feedback_binary" --feedback-init-wait $feedback_init_wait \
-        --mode=$mode \
-        --proximity=$proximity \
-        --frequency=$frequency \
-        $( (( past_endpoint )) && echo --past-endpoint ) \
-        $( (( heading_is_absolute_default )) && echo --heading-is-absolute ) \
+        --fields=$config_waypoints_fields \
+        --binary=$config_waypoints_binary \
+        "$config_feedback_address;fields=$config_feedback_fields;binary=$config_feedback_binary" --feedback-init-wait $config_feedback_init_wait \
+        --mode=$config_mode \
+        --proximity=$config_proximity \
+        --frequency=$config_frequency \
+        $( (( config_past_endpoint )) && echo --past-endpoint ) \
+        $( (( config_heading_is_absolute_default )) && echo --heading-is-absolute ) \
         $heading_reached_threshold \
         --status \
         --flush \
@@ -228,10 +254,10 @@ control-command \
         --fields=$passed_fields \
         --binary=$passed_binary \
         $feedback_timeout \
-        --cross-track-pid=$pid_cross_track \
-        --heading-pid=$pid_heading \
+        --cross-track-pid=$config_pid_cross_track \
+        --heading-pid=$config_pid_heading \
         --steering=$steering \
-         $( (( reset )) && echo --reset ) \
+         $( (( config_reset )) && echo --reset ) \
         --flush \
         --verbose
 comma_status_ok && status=0 || status=1
