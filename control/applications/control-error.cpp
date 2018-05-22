@@ -90,7 +90,9 @@ static void usage( bool verbose = false )
     std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
     std::cerr << "    --heading-is-absolute: interpret target heading as global by default" << std::endl;
-    std::cerr << "    --heading-reached-threshold,--heading-error-threshold,--heading-threshold=[<threshold>]: set 'reached' flag when, in addition to location, the target heading is reached" << std::endl;
+    std::cerr << "    --heading-reached-threshold,--heading-error-threshold,--heading-threshold=[<threshold>]: set 'reached' flag when, in addition to location," << std::endl;
+    std::cerr << "          the target heading is reached; currently this threshold kicks in only if two waypoints have the same position but a different desired" << std::endl;
+    std::cerr << "          heading, which makes it possible to specify points where the vehicle needs to stop and adjust its heading" << std::endl;
     std::cerr << "    --mode,-m=<mode>: control mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;    
     std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
@@ -155,11 +157,12 @@ std::string mode_to_string( control_mode_t m ) { return  named_modes.left.at( m 
 class wayline_follower
 {
 public:
-    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, boost::optional< double > heading_reached_threshold = boost::optional< double >(), double eps=1e-6 )
+    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, boost::optional< double > heading_reached_threshold = boost::optional< double >(), double eps=0.01 ) // todo: if required, expose epsilon in command line options
         : mode_( mode )
         , proximity_( proximity )
         , use_past_endpoint_( use_past_endpoint )
         , reached_( false )
+        , source_and_target_collocated_( false )
         , heading_reached_threshold_( heading_reached_threshold )
         , eps_( eps )
         {
@@ -171,7 +174,8 @@ public:
         snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : current_position;
         target_ = target;
         reached_ = false;
-        if( ( from - target_->position ).norm() < eps_ ) { return; } // if from is too close to the new target, the old wayline will be used
+        source_and_target_collocated_ = ( from - target_->position ).norm() < eps_;
+        if( source_and_target_collocated_ ) { return; } // if from is too close to the new target, the old wayline will be used
         wayline_ = snark::control::wayline( from, target_->position );
     }
     void update( const feedback_t& feedback )
@@ -181,14 +185,11 @@ public:
         error_.heading = target_->is_absolute ? comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), target_->heading - feedback.first.yaw )()
             : wayline_.heading_error( feedback.first.yaw, target_->heading );
 
-        bool const close_to_endpoint = ( feedback.first.position - target_->position ).norm() < proximity_;
-        bool const facing_desired_heading = !( heading_reached_threshold_ && std::fabs( error_.heading ) > *heading_reached_threshold_ );
-        bool const overshooting = wayline_.endpoint_overshoot( feedback.first.position ) > ( heading_reached_threshold_ ? proximity_ : 0.0 );
-
-        reached_ = ( close_to_endpoint && facing_desired_heading ) || overshooting;
-
-        // reached_ = ((( feedback.first.position - target_->position ).norm() < proximity_ ) && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading )))
-        //    || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
+        bool const close_to_target = ( feedback.first.position - target_->position ).norm() < proximity_;
+        bool const overshooting = use_past_endpoint_ && wayline_.endpoint_overshoot( feedback.first.position ) > ( heading_reached_threshold_ && source_and_target_collocated_ ? proximity_ : 0.0 );
+        bool const desired_heading_reached = !heading_reached_threshold_ || std::fabs( error_.heading ) < *heading_reached_threshold_;
+        reached_ =    ( source_and_target_collocated_ && ( ( !close_to_target && overshooting ) || ( close_to_target && desired_heading_reached ) ) )
+                   || ( !source_and_target_collocated_ && ( close_to_target || overshooting ) );
     }
     bool target_reached() const { return reached_; }
     bool has_target() const { return target_ && !reached_; }
@@ -203,6 +204,7 @@ private:
     bool use_past_endpoint_;
     boost::optional< snark::control::target_t > target_;
     bool reached_;
+    bool source_and_target_collocated_;
     boost::optional< double > heading_reached_threshold_;
     double eps_;
     snark::control::wayline wayline_;
