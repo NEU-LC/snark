@@ -216,7 +216,7 @@ is_binary && passed_binary=$config_waypoints_binary,$config_feedback_binary,$err
 [[ -z $config_feedback_timeout ]] || feedback_timeout="--feedback-timeout=$config_feedback_timeout"
 [[ -n $config_feedback_init_timeout ]] || config_feedback_init_timeout="1"
 
-config_fields_mandatory | comma_path_assert_defined || die "found undefined config parameters"
+config_fields_mandatory | sed 's/^/config_/g' | comma_path_assert_defined || die "found undefined config parameters"
 
 grep -E '(^|,)is_absolute(,|$)' <<< $config_waypoints_fields &>/dev/null;
 (( 0 == $? )) && has_absolute_field=1 || has_absolute_field=0
