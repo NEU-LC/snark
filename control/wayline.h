@@ -40,6 +40,7 @@ public:
     typedef Eigen::Matrix< double, dimensions, 1 > position_t;
     wayline() : heading_( 0 ) {} 
     wayline( const position_t& from, const position_t& to );
+    double endpoint_overshoot( const position_t& position ) const;
     bool is_past_endpoint( const position_t& position ) const;
     double cross_track_error( const position_t& position ) const;
     double heading_error( double current_heading, double target_heading ) const;    

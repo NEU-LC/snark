@@ -44,9 +44,14 @@ wayline::wayline( const position_t& from, const position_t& to )
         BOOST_STATIC_ASSERT( dimensions == 2 );
     }
 
+double wayline::endpoint_overshoot( const position_t& position ) const
+{
+    return perpendicular_line_at_end_.signedDistance( position );
+}
+
 bool wayline::is_past_endpoint( const position_t& position ) const
 {
-    return perpendicular_line_at_end_.signedDistance( position ) > 0;
+    return endpoint_overshoot( position ) > 0;
 }
 
 double wayline::cross_track_error( const position_t& position ) const

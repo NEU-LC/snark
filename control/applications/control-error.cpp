@@ -181,11 +181,14 @@ public:
         error_.heading = target_->is_absolute ? comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), target_->heading - feedback.first.yaw )()
             : wayline_.heading_error( feedback.first.yaw, target_->heading );
 
-        reached_ = ((( feedback.first.position - target_->position ).norm() < proximity_ ) && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading )))
-            || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
+        bool const close_to_endpoint = ( feedback.first.position - target_->position ).norm() < proximity_;
+        bool const facing_desired_heading = !( heading_reached_threshold_ && std::fabs( error_.heading ) > *heading_reached_threshold_ );
+        bool const overshooting = wayline_.endpoint_overshoot( feedback.first.position ) > ( heading_reached_threshold_ ? proximity_ : 0.0 );
 
-        //reached_ = ( ( ( feedback.first.position - target_->position ).norm() < proximity_ ) || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) ) )
-        //    && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading ) );
+        reached_ = ( close_to_endpoint && facing_desired_heading ) || overshooting;
+
+        // reached_ = ((( feedback.first.position - target_->position ).norm() < proximity_ ) && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading )))
+        //    || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
     }
     bool target_reached() const { return reached_; }
     bool has_target() const { return target_ && !reached_; }
