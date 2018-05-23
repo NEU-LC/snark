@@ -18,6 +18,7 @@ void bash_completion( unsigned const ac, char const * const * av )
         " --input-fields --output-fields --output-format",
         " --deceleration -c",
         " --max-acceleration",
+        " --min-points-separation --min-gap -g",
         " --approach-speed -s",
         " --sharp-turn-angle -t",
         " --stop-on-sharp-turn --pivot -p"
@@ -53,6 +54,7 @@ void usage( bool const verbose )
     std::cerr << "    turn:" << std::endl;
     std::cerr << "        --approach-speed, -a=<speed>; approach with this speed for waypoints with sharp turns." << std::endl;
     std::cerr << "        --max-acceleration, -c=<acceleration>; maximum centripetal acceleration allowed." << std::endl;
+    std::cerr << "        --min-points-separation, --min-gap, -g=<distance>; default=0.01; minimum distance between points for their consideration in the operation." << std::endl;
     std::cerr << "        --sharp-turn-angle, -t=<angle>; default=1.57; assign 'approach-speed' for waypoints having turn angle greater than this." << std::endl;
     std::cerr << "        --speed, -s=[<speed>]; use this speed if it is not in input fields." << std::endl;
     std::cerr << "        --stop-on-sharp-turn, --pivot, -p; on sharp turns (i.e. waypoints set with 'approach-speed'), output extra point with relative heading and no speed." << std::endl;
@@ -248,7 +250,7 @@ int main( int ac, char* av[] )
         if( options.exists( "--bash-completion" ) ) bash_completion( ac, av );
         handle_info_options( options );
 
-        std::vector< std::string > operations = options.unnamed( "","--binary,-b,--delimiter,-d,--fields,-f,--flush,--format,--full-xpath,--help,-h,--quote,--precision,--verbose,-v,--input-fields,--output-fields,--output-format,--deceleration,--max-acceleration,-c,--approach-speed,-a,--sharp-turn-angle,-t,--speed,-s,--stop-on-sharp-turn,--pivot,-p" );
+        std::vector< std::string > operations = options.unnamed( "","--binary,-b,--delimiter,-d,--fields,-f,--flush,--format,--full-xpath,--help,-h,--quote,--precision,--verbose,-v,--input-fields,--output-fields,--output-format,--deceleration,--max-acceleration,-c,--approach-speed,-a,--sharp-turn-angle,-t,--speed,-s,--stop-on-sharp-turn,--pivot,-p,--min-points-separation,--min-gap,-g" );
         if( operations.size() != 1 ) { std::cerr << comma::verbose.app_name() << ": expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
 
         comma::csv::options csv( options );
@@ -270,8 +272,8 @@ int main( int ac, char* av[] )
             auto const max_acceleration = options.value< double >( "--max-acceleration,-c" );
             auto const approach_speed = options.value< double >( "--approach-speed,-a" );
             auto const sharp_turn_angle = options.value< double >( "--sharp-turn-angle,-t", 1.57 ); // near 90 degrees
+            auto const min_points_gap = options.value< double >( "--min-points-separation,--min-gap,-g", 0.01 );
             auto const spot_turn_radius = approach_speed * approach_speed / max_acceleration;
-            auto const points_min_separation = 1e-6; // arbitrary
 
             auto unique_points = 0U;
             std::deque< turn::record_t > que;
@@ -283,7 +285,7 @@ int main( int ac, char* av[] )
             while( istrm.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
                 auto input = istrm.read(); if( !input ) break;
-                if( que.empty() || ( input->coordinates - que.back().input.coordinates ).norm() >= points_min_separation ) { unique_points++; }
+                if( que.empty() || ( input->coordinates - que.back().input.coordinates ).norm() >= min_points_gap ) { unique_points++; }
                 que.emplace_back( *input, istrm, csv );
 
                 if( 3U == unique_points )
