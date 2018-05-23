@@ -27,8 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include <iostream>
+#include <sstream>
 #include <comma/application/command_line_options.h>
 #include <comma/application/contact_info.h>
 #include <comma/csv/stream.h>
@@ -37,6 +37,21 @@
 #include "../../colours.h"
 #include "../traits.h"
 #include "../../colour_map.h"
+
+std::string example()
+{
+    std::ostringstream oss;
+    oss << "csv-to-svg header --width 800px --height 600px --viewbox \"0 0 800 600\"" << std::endl;
+    oss << "csv-to-svg group_begin --style \"stroke:black\"" << std::endl;
+    oss << "echo -e \"10,10\\n790,10\\n790,590\\n10,590\" | csv-to-svg polygon --style \"fill:#D0EEEE\"" << std::endl;
+    oss << "echo -e \"15,15\\n785,15\\n785,585\\n15,585\" | csv-to-svg polyline --style \"fill:none\" --stroke-width 5" << std::endl;
+    oss << "csv-to-svg group_end" << std::endl;
+    oss << "echo -e \"100,100\\n200,200\\n400,300\" | csv-to-svg point --point-size 20 --colour blue" << std::endl;
+    oss << "echo -e \"100,100,200,200\\n200,200,400,300\" | csv-to-svg line --colour grey --stroke-width 10" << std::endl;
+    oss << "echo -e \"50,500,30,0\\n150,500,30,1\\n250,500,30,2\\n350,500,30,3\\n450,500,30,4\\n550,500,30,5\\n650,500,30,6\\n750,500,30,7\" | csv-to-svg circle --fields x,y,r,scalar --colour 0:10,jet --stroke-width 4 --style \"stroke:crimson\"" << std::endl;
+    oss << "csv-to-svg footer" << std::endl;
+    return oss.str();
+}
 
 void usage( bool verbose = false )
 {
@@ -88,6 +103,7 @@ void usage( bool verbose = false )
     std::cerr << "    --attributes='<attributes>': svg element attributes which will be used as is" << std::endl;
     std::cerr << "    --class=<string>" << std::endl;
     std::cerr << "    --id=<string>" << std::endl;
+    std::cerr << "    --example: output example to stdout and exit" << std::endl;
     std::cerr << "    --transform=\"<transform-list>\": svg transformations" << std::endl;
     std::cerr << "    --style=\"<style>\" ;-seperated CSS name:value pairs e.g." << std::endl;
     std::cerr << "          fill:<colour>" << std::endl;
@@ -101,22 +117,13 @@ void usage( bool verbose = false )
     std::cerr << std::endl;
     if( !verbose )
     {
-        std::cerr << "examples: csv-to-svg --help --verbose" << std::endl;
+        std::cerr << "examples: csv-to-svg --help --verbose..." << std::endl;
     }
     else
     {
         std::cerr << "examples:" << std::endl;
         std::cerr << "    output svg with a few circles and lines" << std::endl;
-        std::cerr << std::endl;
-        std::cerr << "csv-to-svg header --width 800px --height 600px --viewbox \"0 0 800 600\"" << std::endl;
-        std::cerr << "csv-to-svg group_begin --style \"stroke:black\"" << std::endl;
-        std::cerr << "echo -e \"10,10\\n790,10\\n790,590\\n10,590\" | csv-to-svg polygon --style \"fill:#D0EEEE\"" << std::endl;
-        std::cerr << "echo -e \"15,15\\n785,15\\n785,585\\n15,585\" | csv-to-svg polyline --style \"fill:none\" --stroke-width 5" << std::endl;
-        std::cerr << "csv-to-svg group_end" << std::endl;
-        std::cerr << "echo -e \"100,100\\n200,200\\n400,300\" | csv-to-svg point --point-size 20 --colour blue" << std::endl;
-        std::cerr << "echo -e \"100,100,200,200\\n200,200,400,300\" | csv-to-svg line --colour grey --stroke-width 10" << std::endl;
-        std::cerr << "echo -e \"50,500,30,0\\n150,500,30,1\\n250,500,30,2\\n350,500,30,3\\n450,500,30,4\\n550,500,30,5\\n650,500,30,6\\n750,500,30,7\" | csv-to-svg circle --fields x,y,r,scalar --colour 0:10,jet --stroke-width 4 --style \"stroke:crimson\"" << std::endl;
-        std::cerr << "csv-to-svg footer" << std::endl;
+        std::cerr << example() << std::endl;
     }
     std::cerr << std::endl;
     std::cerr << comma::contact_info << std::endl;
@@ -215,6 +222,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        if( options.exists( "--example" ) ) { std::cout << example() << std::endl; return 0; }
         const std::vector< std::string >& unnamed = options.unnamed( "--verbose,-v,--have-css,--loop" , "-.*" );
         if( unnamed.size() != 1 ) { std::cerr << "csv-to-svg: expected one operation name" << ( unnamed.size() ? "; got " + comma::join( unnamed, ' ' ) : "" ) << std::endl; return 1; }
         std::string what = unnamed[0];
