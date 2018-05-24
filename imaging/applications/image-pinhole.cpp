@@ -71,6 +71,7 @@ void usage( bool verbose )
     std::cerr << "                      e.g: --config=\"focal_length=123;image_size/x=222;image_size/y=123.1;...\"" << std::endl;
     std::cerr << "    --input-fields: output input fields for given operation and exit" << std::endl;
     std::cerr << "    --output-config,--sample-config,--config-sample: output sample config and exit" << std::endl;
+    std::cerr << "    --output-config-fields,--config-fields: output config fields and exit" << std::endl;
     std::cerr << "    --output-fields: output appended fields for given operation and exit" << std::endl;
     std::cerr << "    --output-format: output appended fields binary format for given operation and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
@@ -111,22 +112,24 @@ static snark::camera::pinhole::config_t make_config( const std::string& config_p
     return config;
 }
 
+static snark::camera::pinhole::config_t make_sample_config()
+{
+    snark::camera::pinhole::config_t config;
+    config.focal_length = 0.1;
+    config.image_size = Eigen::Vector2i( 1000, 2000 );
+    config.sensor_size = Eigen::Vector2d( 0.1, 0.2 );
+    config.distortion = snark::camera::pinhole::config_t::distortion_t( snark::camera::pinhole::config_t::distortion_t::radial_t( 0.001, -0.0002, 0.003 ), snark::camera::pinhole::config_t::distortion_t::tangential_t( 0.0004, -0.0005 ) );
+    return config;
+}
+
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--deprecated" ) ) { std::cerr << "image-pinhole: --deprecated support has been removed" << std::endl; return 1; }
-        if( options.exists( "--output-config,--sample-config,--config-sample" ) )
-        {
-            snark::camera::pinhole::config_t config;
-            config.focal_length = 0.1;
-            config.image_size = Eigen::Vector2i( 1000, 2000 );
-            config.sensor_size = Eigen::Vector2d( 0.1, 0.2 );
-            config.distortion = snark::camera::pinhole::config_t::distortion_t( snark::camera::pinhole::config_t::distortion_t::radial_t( 0.001, -0.0002, 0.003 ), snark::camera::pinhole::config_t::distortion_t::tangential_t( 0.0004, -0.0005 ) );
-            comma::write_json( config, std::cout );
-            return 0;
-        }
+        if( options.exists( "--output-config,--sample-config,--config-sample" ) ) { comma::write_json( make_sample_config(), std::cout ); return 0; }
+        if( options.exists( "--output-config-fields,--config-fields" ) ) { for( const auto& field: comma::csv::names( true, make_sample_config() ) ) { std::cout << field << std::endl; } return 0; }
         const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--flush,--clip,--keep,--normalize", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
