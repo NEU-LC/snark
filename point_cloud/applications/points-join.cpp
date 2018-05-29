@@ -613,6 +613,8 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
+        if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< point_input >( true ), ',' ) << std::endl; return 0; }
+
         verbose = options.exists( "--verbose,-v" );
         stdin_csv = comma::csv::options( options );
         options.assert_mutually_exclusive( "--matching,--not-matching" );
@@ -621,7 +623,7 @@ int main( int ac, char** av )
         if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
         stdin_csv.full_xpath = true;
         std::vector< std::string > unnamed = options.unnamed( "--use-cuda,--cuda,--matching,--not-matching,--verbose,-v,--strict,--all", "-.*" );
-        if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
+        if( unnamed.size() != 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
         if ( filter_csv.fields.empty() ) { filter_csv.fields="x,y,z"; }
