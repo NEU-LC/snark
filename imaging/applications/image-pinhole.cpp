@@ -55,7 +55,7 @@ void usage( bool verbose )
     std::cerr << "            default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to-pixels: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
-    std::cerr << "        --clip: clip pixels outside of image" << std::endl;
+    std::cerr << "        --clip,--discard: discard pixels outside of image" << std::endl;
     std::cerr << "        --fields: x,y,z; if z is given, the input points will be projected to the sensor plane; default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
@@ -161,7 +161,7 @@ int main( int ac, char** av )
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv, Eigen::Vector3d::Zero() );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
-            bool clip = options.exists( "--clip" ) || ( options.exists( "--deprecated" ) && !options.exists( "--keep" ) );
+            bool clip = options.exists( "--clip,--discard" ) || ( options.exists( "--deprecated" ) && !options.exists( "--keep" ) );
             bool has_z = csv.has_field( "z" );
             auto xy = [&]( const Eigen::Vector3d& v )->Eigen::Vector2d
             {
