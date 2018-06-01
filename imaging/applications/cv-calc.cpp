@@ -30,13 +30,14 @@
 #include <algorithm>
 #include <memory>
 #include <numeric>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_real.hpp>
-#include <boost/random/variate_generator.hpp>
+#include <random>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <tbb/parallel_for.h>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/math/interval.h>
@@ -62,6 +63,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    chessboard-corners: detect and output corners of a chessboard calibration image" << std::endl;
+    std::cerr << "    crop-random,roi-random,random-crop,random-roi: output random patches of given size" << std::endl;
     std::cerr << "    draw: draw on the image primitives defined in the image header; skip a primitive if its dimensions are zero" << std::endl;
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
@@ -132,6 +134,11 @@ static void usage( bool verbose=false )
     std::cerr << "              default: calculate a mean on all pixels" << std::endl;
     std::cerr << "        default output fields: t,rows,cols,type,mean,count" << std::endl;
     std::cerr << "                               count: total number of non-zero pixels used in calculating the mean" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    random-patch" << std::endl;
+    std::cerr << "        --size=<x>,<y>: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
+    std::cerr << "        --no-discard; do not discards frames where the roi is not seen" << std::endl;
+    std::cerr << "        --permissive,--show-partial; allow partial overlaps of roi and input image, default: if partial roi and image overlap, set entire image to zeros." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
@@ -716,6 +723,43 @@ int main( int ac, char** av )
             }
             return 0;
         }
+        if( operation == "crop-random" || operation == "roi-random" || operation == "random-crop" || operation == "random-roi" )
+        {
+            snark::cv_mat::serialization input_serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
+            options.assert_mutually_exclusive( "--size", "--width,--height" );
+            boost::optional< unsigned int > width = options.optional< unsigned int >( "--width" );
+            boost::optional< unsigned int > height = options.optional< unsigned int >( "--height" );
+            if( !width )
+            {
+                const std::vector< std::string >& v = comma::split( options.value< std::string >( "--size" ), ',' );
+                if( v.size() != 2 ) { std::cerr << "cv-calc: expected --size=<width>,<height>, got: '" << comma::join( v, ',' ) << std::endl; return 1; }
+                width = boost::lexical_cast< unsigned int >( v[0] );
+                height = boost::lexical_cast< unsigned int >( v[1] );
+            }
+            
+            
+            std::default_random_engine generator;
+            std::uniform_int_distribution< unsigned int > distribution( 1, 6 );
+            //distribution( generator );
+            
+            
+//             const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( options.value< std::string >( "--filter,--filters", "" ) );
+//             if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: grep: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
+//             while( std::cin.good() && !std::cin.eof() )
+//             {
+//                 std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+//                 if( p.second.empty() ) { return 0; }
+//                 std::pair< boost::posix_time::ptime, cv::Mat > filtered;
+//                 if( filters.empty() ) { filtered = p; } else { p.second.copyTo( filtered.second ); }
+//                 for( auto& filter: filters ) { filtered = filter( filtered ); }
+//                 non_zero.size( filtered.second.rows * filtered.second.cols );
+//                 if( non_zero.keep( filtered.second ) ) { output_serialization.write_to_stdout( p ); }
+//                 std::cout.flush();
+//             }
+            std::cerr << "cv-calc: crop-random: implementing..." << std::endl; return 1;
+            return 0;
+        }
         if( operation == "draw" )
         {
             snark::imaging::operations::draw::shapes sample( options );
@@ -1049,7 +1093,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        std::cerr << name << " unknown operation: " << operation << std::endl;
+        std::cerr << name << " unknown operation: '" << operation << "'" << std::endl;
     }
     catch( std::exception& ex ) { std::cerr << "cv-calc: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "cv-calc: unknown exception" << std::endl; }
