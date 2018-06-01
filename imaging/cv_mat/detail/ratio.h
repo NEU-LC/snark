@@ -82,25 +82,16 @@ namespace ratios
 
         explicit combination();
         combination( const term & t );
-
         void update( const term & t );
-
         size_t non_zero_term_count() const;
         bool unity() const;
-
-        // pretty-printer
-        std::string stringify( ) const;
-
+        std::string to_string( ) const;
         void print( std::ostream & o ) const;
 
         std::vector< term > terms;
     };
 
-    inline std::ostream & operator<<( std::ostream & o, const combination & c )
-    {
-        c.print( o );
-        return o;
-    }
+    inline std::ostream & operator<<( std::ostream & o, const combination & c ) { c.print( o ); return o; }
 
     struct ratio
     {
@@ -111,18 +102,11 @@ namespace ratios
         explicit ratio( const std::vector< double > & n, const std::vector< double > & d );
 
         static size_t num_channels() { return channel::NUM_CHANNELS; }
-
-        // pretty-printer
-        std::string stringify( ) const;
-
+        std::string to_string( ) const;
         static std::string describe_syntax( size_t offset = 0 );
     };
 
-    inline std::ostream & operator<<( std::ostream & o, const ratio & r )
-    {
-        o << r.numerator << "/" << r.denominator;
-        return o;
-    }
+    inline std::ostream& operator<<( std::ostream & o, const ratio & r ) { o << r.numerator << "/" << r.denominator; return o; }
 
     template< typename Iterator >
     struct rules

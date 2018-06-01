@@ -23,7 +23,7 @@ endif()
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} ${snark_graphics_qt3d_moc} ${gl_source} )
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${snark_graphics_qt3d_moc} ${gl_source} )
-SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
+SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} LINKER_LANGUAGE CXX )
 
 if( QT_VERSION_MAJOR EQUAL 4 )
   target_link_libraries( ${TARGET_NAME} snark_math ${QT_LIBRARIES} ${Qt3D_LIB} ${snark_ALL_EXTERNAL_LIBRARIES} )

@@ -46,7 +46,7 @@ INSTALL( TARGETS points-align
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
 
-INSTALL( PROGRAMS examples/points-eigen DESTINATION ${snark_INSTALL_BIN_DIR} )
+INSTALL( PROGRAMS examples/points-eigen points-to-image DESTINATION ${snark_INSTALL_BIN_DIR} )
 
 add_executable( points-mesh points-mesh.cpp )
 target_link_libraries( points-mesh ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )

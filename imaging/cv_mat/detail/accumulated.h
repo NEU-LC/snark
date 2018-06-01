@@ -77,4 +77,24 @@ private:
     std::deque< cv::Mat > window_;
 };
 
+template < typename H >
+class min
+{
+    public:
+        typedef std::pair< H, cv::Mat > value_type;
+        value_type operator()( const value_type& n );
+    private:
+        value_type value_;
+};
+
+template < typename H >
+class max
+{
+    public:
+        typedef std::pair< H, cv::Mat > value_type;
+        value_type operator()( const value_type& n );
+    private:
+        value_type value_;
+};
+
 } } }  // namespace snark { namespace cv_mat { namespace accumulated {

@@ -140,11 +140,7 @@ void camera::set_feature( const std::string& name, const std::string& value ) co
 
 void camera::set_features( const std::string& name_value_pairs ) const
 {
-    comma::name_value::map m( name_value_pairs );
-    for( comma::name_value::map::map_type::const_iterator it = m.get().begin(); it != m.get().end(); ++it )
-    {
-        set_feature( it->first, it->second );
-    }
+    for( const auto& f: comma::name_value::map::as_vector( name_value_pairs ) ) { set_feature( f.first, f.second ); }
 }
 
 void camera::start_acquisition( frame_observer::callback_fn callback ) const

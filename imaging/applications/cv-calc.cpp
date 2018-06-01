@@ -91,6 +91,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "    chessboard-corners" << std::endl;
     std::cerr << "        --draw; outputs image with detected corners drawn" << std::endl;
+    std::cerr << "        --select; filters images, only outputs images where chessboards were detected" << std::endl;
     std::cerr << "        --size=<rows,cols>; size of internal grid of corners in chessboard" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    draw" << std::endl;
@@ -695,7 +696,11 @@ int main( int ac, char** av )
                 if( p.second.empty() ) { break; }
                 cv::Mat out;
                 bool found = cv::findChessboardCorners(p.second, pattern_size, out);
-                if (options.exists("--draw"))
+                if (options.exists("--select"))
+                {
+                    if (found) { output_serialization.write_to_stdout(p, csv.flush ); }
+                }
+                else if (options.exists("--draw"))
                 {
                     cv::drawChessboardCorners(p.second, pattern_size, out, found);
                     output_serialization.write_to_stdout(p, csv.flush );

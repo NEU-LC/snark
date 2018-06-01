@@ -191,6 +191,24 @@ typename moving_average< H >::value_type moving_average< H >::operator()( const 
     return value_type(n.first, output); 
 }
 
+template < typename H >
+typename min< H >::value_type min< H >::operator()( const typename min< H >::value_type& n )
+{
+    value_.first = n.first;
+    if( value_.second.empty() ) { n.second.copyTo( value_.second ); }
+    cv::min( n.second, value_.second, value_.second );
+    return value_; 
+}
+
+template < typename H >
+typename max< H >::value_type max< H >::operator()( const typename max< H >::value_type& n )
+{
+    value_.first = n.first;
+    if( value_.second.empty() ) { n.second.copyTo( value_.second ); }
+    cv::max( n.second, value_.second, value_.second );
+    return value_; 
+}
+
 } } }  // namespace snark { namespace cv_mat { namespace accumulated {
 
 template class snark::cv_mat::accumulated::average< boost::posix_time::ptime >;
@@ -199,3 +217,7 @@ template class snark::cv_mat::accumulated::ema< boost::posix_time::ptime >;
 template class snark::cv_mat::accumulated::ema< std::vector< char > >;
 template class snark::cv_mat::accumulated::moving_average< boost::posix_time::ptime >;
 template class snark::cv_mat::accumulated::moving_average< std::vector< char > >;
+template class snark::cv_mat::accumulated::min< boost::posix_time::ptime >;
+template class snark::cv_mat::accumulated::min< std::vector< char > >;
+template class snark::cv_mat::accumulated::max< boost::posix_time::ptime >;
+template class snark::cv_mat::accumulated::max< std::vector< char > >;

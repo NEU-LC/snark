@@ -55,14 +55,14 @@ void usage( bool verbose )
     std::cerr << "            default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to-pixels: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
-    std::cerr << "        --clip: clip pixels outside of image" << std::endl;
+    std::cerr << "        --clip,--discard: discard pixels outside of image" << std::endl;
     std::cerr << "        --fields: x,y,z; if z is given, the input points will be projected to the sensor plane; default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distort: take on stdin undistorted pixels, append their distorted values (uses distortion map file)" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "    distortion-map: build distortion map from camera parameters in config and write to stdout (binary image matrix of map x, map y)" << std::endl;
+    std::cerr << "    distortion-map,undistort-rectify-map: build distortion map from camera parameters in config and write to stdout (binary image matrix of map x, map y)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: print help; --help --verbose for more help" << std::endl;
@@ -71,6 +71,7 @@ void usage( bool verbose )
     std::cerr << "                      e.g: --config=\"focal_length=123;image_size/x=222;image_size/y=123.1;...\"" << std::endl;
     std::cerr << "    --input-fields: output input fields for given operation and exit" << std::endl;
     std::cerr << "    --output-config,--sample-config,--config-sample: output sample config and exit" << std::endl;
+    std::cerr << "    --output-config-fields,--config-fields: output config fields and exit" << std::endl;
     std::cerr << "    --output-fields: output appended fields for given operation and exit" << std::endl;
     std::cerr << "    --output-format: output appended fields binary format for given operation and exit" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
@@ -111,22 +112,24 @@ static snark::camera::pinhole::config_t make_config( const std::string& config_p
     return config;
 }
 
+static snark::camera::pinhole::config_t make_sample_config()
+{
+    snark::camera::pinhole::config_t config;
+    config.focal_length = 0.1;
+    config.image_size = Eigen::Vector2i( 1000, 2000 );
+    config.sensor_size = Eigen::Vector2d( 0.1, 0.2 );
+    config.distortion = snark::camera::pinhole::config_t::distortion_t( snark::camera::pinhole::config_t::distortion_t::radial_t( 0.001, -0.0002, 0.003 ), snark::camera::pinhole::config_t::distortion_t::tangential_t( 0.0004, -0.0005 ) );
+    return config;
+}
+
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--deprecated" ) ) { std::cerr << "image-pinhole: --deprecated support has been removed" << std::endl; return 1; }
-        if( options.exists( "--output-config,--sample-config,--config-sample" ) )
-        {
-            snark::camera::pinhole::config_t config;
-            config.focal_length = 0.1;
-            config.image_size = Eigen::Vector2i( 1000, 2000 );
-            config.sensor_size = Eigen::Vector2d( 0.1, 0.2 );
-            config.distortion = snark::camera::pinhole::config_t::distortion_t( snark::camera::pinhole::config_t::distortion_t::radial_t( 0.001, -0.0002, 0.003 ), snark::camera::pinhole::config_t::distortion_t::tangential_t( 0.0004, -0.0005 ) );
-            comma::write_json( config, std::cout );
-            return 0;
-        }
+        if( options.exists( "--output-config,--sample-config,--config-sample" ) ) { comma::write_json( make_sample_config(), std::cout ); return 0; }
+        if( options.exists( "--output-config-fields,--config-fields" ) ) { for( const auto& field: comma::csv::names( true, make_sample_config() ) ) { std::cout << field << std::endl; } return 0; }
         const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--flush,--clip,--keep,--normalize", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-pinhole: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
@@ -158,7 +161,7 @@ int main( int ac, char** av )
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv, Eigen::Vector3d::Zero() );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
-            bool clip = options.exists( "--clip" ) || ( options.exists( "--deprecated" ) && !options.exists( "--keep" ) );
+            bool clip = options.exists( "--clip,--discard" ) || ( options.exists( "--deprecated" ) && !options.exists( "--keep" ) );
             bool has_z = csv.has_field( "z" );
             auto xy = [&]( const Eigen::Vector3d& v )->Eigen::Vector2d
             {
@@ -210,7 +213,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if( operation=="distortion-map" )
+        if( operation=="distortion-map" || operation == "undistort-rectify-map" )
         {
             snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
             if( !pinhole.distortion_map() ) { std::cerr << "image-pinhole: no distortion specified in config" << std::endl; return 1; }
@@ -218,7 +221,6 @@ int main( int ac, char** av )
             return 0;
         }
         std::cerr << "image-pinhole: error: unrecognized operation: "<< operation << std::endl;
-        return 1;
     }
     catch( std::exception& ex ) { std::cerr << "image-pinhole: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "image-pinhole: unknown exception" << std::endl; }

@@ -52,9 +52,16 @@ static const std::string default_mode = "fixed";
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
 template< typename T > std::string format( bool full_xpath = false, const std::string& fields = "" ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 
+struct target_block_t : public snark::control::target_t
+{
+    comma::uint32 block;
+
+    target_block_t( bool is_absolute = false ) : snark::control::target_t( is_absolute ), block( 0 ) {}
+};
+
 typedef snark::control::control_error_output_t output_t;
 typedef std::pair< snark::control::feedback_t, std::string > feedback_t;
-typedef std::pair< snark::control::target_t, std::string > target_t;
+typedef std::pair< target_block_t, std::string > target_t;
 
 static void usage( bool verbose = false )
 {
@@ -83,11 +90,14 @@ static void usage( bool verbose = false )
     std::cerr << "    --format,--input-format: show binary format of default input stream fields and exit" << std::endl;
     std::cerr << "    --frequency,-f=<frequency>: control frequency (the rate at which " << name <<" outputs control errors using latest feedback)" << std::endl;
     std::cerr << "    --heading-is-absolute: interpret target heading as global by default" << std::endl;
-    std::cerr << "    --heading-reached-threshold,--heading-error-threshold,--heading-threshold=[<threshold>]: set 'reached' flag when, in addition to location, the target heading is reached" << std::endl;
+    std::cerr << "    --heading-reached-threshold,--heading-error-threshold,--heading-threshold=[<threshold>]: set 'reached' flag when, in addition to location," << std::endl;
+    std::cerr << "          the target heading is reached; currently this threshold kicks in only if two waypoints have the same position but a different desired" << std::endl;
+    std::cerr << "          heading, which makes it possible to specify points where the vehicle needs to stop and adjust its heading" << std::endl;
     std::cerr << "    --mode,-m=<mode>: control mode (default: " << default_mode << ")" << std::endl;
     std::cerr << "    --past-endpoint: a wayline is traversed as soon as current position is past the endpoint (or proximity condition is met)" << std::endl;    
     std::cerr << "    --proximity,-p=<proximity>: a wayline is traversed as soon as current position is within proximity of the endpoint (default: " << default_proximity << ")" << std::endl;
     std::cerr << "    --strict: fail if the feedback timestamp is earlier than the previous one (default: skip offending records)" << std::endl;
+    std::cerr << "    --feedback-init-timeout=<seconds>: initial wait timeout on feedback stream, default=1" << std::endl;
     std::cerr << std::endl;
     std::cerr << "control modes: " << std::endl;
     std::cerr << "    fixed: wait until the current waypoint is reached before accepting a new waypoint (first feedback position is the start of the first wayline)" << std::endl;
@@ -102,6 +112,25 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     exit( 1 );
 }
+
+namespace comma { namespace visiting {
+
+template <> struct traits< target_block_t >
+{
+    template < typename K, typename V > static void visit( const K& k, target_block_t& p, V& v )
+    {
+        traits< snark::control::target_t >::visit( k, p, v );
+        v.apply( "block", p.block );
+    }
+
+    template < typename K, typename V > static void visit( const K& k, const target_block_t& p, V& v )
+    {
+        traits< snark::control::target_t >::visit( k, p, v );
+        v.apply( "block", p.block );
+    }
+};
+
+} }
 
 std::string serialise( const snark::control::wayline::position_t& p )
 {
@@ -128,11 +157,12 @@ std::string mode_to_string( control_mode_t m ) { return  named_modes.left.at( m 
 class wayline_follower
 {
 public:
-    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, boost::optional< double > heading_reached_threshold = boost::optional< double >(), double eps=1e-6 )
+    wayline_follower( control_mode_t mode, double proximity, bool use_past_endpoint, boost::optional< double > heading_reached_threshold = boost::optional< double >(), double eps=0.01 ) // todo: if required, expose epsilon in command line options
         : mode_( mode )
         , proximity_( proximity )
         , use_past_endpoint_( use_past_endpoint )
         , reached_( false )
+        , source_and_target_collocated_( false )
         , heading_reached_threshold_( heading_reached_threshold )
         , eps_( eps )
         {
@@ -144,7 +174,8 @@ public:
         snark::control::wayline::position_t from = ( mode_ == fixed && target_ ) ? target_->position : current_position;
         target_ = target;
         reached_ = false;
-        if( ( from - target_->position ).norm() < eps_ ) { return; } // if from is too close to the new target, the old wayline will be used
+        source_and_target_collocated_ = ( from - target_->position ).norm() < eps_;
+        if( source_and_target_collocated_ ) { return; } // if from is too close to the new target, the old wayline will be used
         wayline_ = snark::control::wayline( from, target_->position );
     }
     void update( const feedback_t& feedback )
@@ -154,11 +185,11 @@ public:
         error_.heading = target_->is_absolute ? comma::math::cyclic< double >( comma::math::interval< double >( -M_PI, M_PI ), target_->heading - feedback.first.yaw )()
             : wayline_.heading_error( feedback.first.yaw, target_->heading );
 
-        reached_ = ((( feedback.first.position - target_->position ).norm() < proximity_ ) && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading )))
-            || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) );
-
-        //reached_ = ( ( ( feedback.first.position - target_->position ).norm() < proximity_ ) || ( use_past_endpoint_ && wayline_.is_past_endpoint( feedback.first.position ) ) )
-        //    && ( !heading_reached_threshold_ || *heading_reached_threshold_ > std::fabs( error_.heading ) );
+        bool const close_to_target = ( feedback.first.position - target_->position ).norm() < proximity_;
+        bool const overshooting = use_past_endpoint_ && wayline_.endpoint_overshoot( feedback.first.position ) > ( heading_reached_threshold_ && source_and_target_collocated_ ? proximity_ : 0.0 );
+        bool const desired_heading_reached = !heading_reached_threshold_ || std::fabs( error_.heading ) < *heading_reached_threshold_;
+        reached_ =    ( source_and_target_collocated_ && ( ( !close_to_target && overshooting ) || ( close_to_target && desired_heading_reached ) ) )
+                   || ( !source_and_target_collocated_ && ( close_to_target || overshooting ) );
     }
     bool target_reached() const { return reached_; }
     bool has_target() const { return target_ && !reached_; }
@@ -173,6 +204,7 @@ private:
     bool use_past_endpoint_;
     boost::optional< snark::control::target_t > target_;
     bool reached_;
+    bool source_and_target_collocated_;
     boost::optional< double > heading_reached_threshold_;
     double eps_;
     snark::control::wayline wayline_;
@@ -183,7 +215,7 @@ private:
 class full_output_t
 {
 public:
-    full_output_t( const comma::csv::input_stream< snark::control::target_t >& input_stream,
+    full_output_t( const comma::csv::input_stream< target_block_t >& input_stream,
               const comma::csv::input_stream< snark::control::feedback_t >& feedback_stream,
               comma::csv::output_stream< output_t >& output_stream,
               boost::optional< double > frequency )
@@ -254,13 +286,15 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options );
-        comma::csv::input_stream< snark::control::target_t > input_stream( std::cin, input_csv, snark::control::target_t( options.exists( "--heading-is-absolute" ) ) );
+        comma::csv::input_stream< target_block_t > input_stream( std::cin, input_csv, target_block_t( options.exists( "--heading-is-absolute" ) ) );
         comma::csv::output_stream< output_t > output_stream( std::cout, input_csv.binary(), true, input_csv.flush, output_t() );
-        if( options.exists( "--input-fields" ) ) { std::cout << field_names< snark::control::target_t >( true ) << std::endl; return 0; }
-        if( options.exists( "--format,--input-format" ) ) { std::cout << format< snark::control::target_t >() << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << field_names< target_block_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--format,--input-format" ) ) { std::cout << format< target_block_t >() << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << field_names< output_t >( true ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< output_t >( true ) << std::endl; return 0; }
         control_mode_t mode = mode_from_string( options.value< std::string >( "--mode", default_mode ) );
+        bool const has_block = input_csv.has_field( "block" );
+        if( has_block && mode == fixed ) { std::cerr << "control-error: --mode fixed and block field are incompatible (for now)" << std::endl; return 1; }
         double proximity = options.value< double >( "--proximity", default_proximity );
         bool use_past_endpoint = options.exists( "--past-endpoint" );
         bool strict = options.exists( "--strict" );
@@ -273,8 +307,9 @@ int main( int ac, char** av )
         comma::io::select select;
         select.read().add( feedback_in );
         feedback_t feedback;
+        double feedback_init_timeout=options.value<double>("--feedback-init-timeout",1);
         if( feedback_csv.binary() ) { feedback.second.resize( feedback_csv.format().size() ); }
-        if( select.wait( boost::posix_time::seconds( 1 ) ) ) // TODO: consider using feedback timeout (when implemented) instead of the hardcoded 1 sec
+        if( select.wait( boost::posix_time::seconds( feedback_init_timeout ) ) ) // TODO: consider using feedback timeout (when implemented) instead of the hardcoded 1 sec
         {
             const snark::control::feedback_t* p = feedback_stream.read();
             if( !p ) { std::cerr << name << ": feedback stream error" << std::endl; return 1; }
@@ -290,6 +325,7 @@ int main( int ac, char** av )
         select.read().add( comma::io::stdin_fd );
         std::deque< target_t > targets;
         target_t target;
+        comma::uint32 block = 0U;
         if( input_csv.binary() ) { target.second.resize( input_csv.format().size() ); }
         comma::signal_flag is_shutdown;
         wayline_follower follower( mode, proximity, use_past_endpoint, options.optional< double >( "--heading-reached-threshold,--heading-error-threshold,--heading-threshold" ) );
@@ -299,8 +335,10 @@ int main( int ac, char** av )
             // todo? don't do select.check() on stdin in the loop or do it only in "dynamic" mode?
             while( !is_shutdown && ( input_stream.ready() || ( select.check() && select.read().ready( comma::io::stdin_fd ) ) ) )
             {
-                const snark::control::target_t* p = input_stream.read();
+                const target_block_t* p = input_stream.read();
                 if( !p ) { break; }
+                if( p->block != block ) { targets.clear(); }
+                block = p->block;
                 target.first = *p;
                 if( input_csv.binary() ) { ::memcpy( &target.second[0], input_stream.binary().last(), target.second.size() ); }
                 else { target.second = comma::join( input_stream.ascii().last(), input_csv.delimiter ); }
@@ -327,7 +365,7 @@ int main( int ac, char** av )
             {
                 if( !follower.has_target() || ( mode == dynamic && targets.size() > 1 ) )
                 {
-                    if( mode == dynamic )
+                    if( mode == dynamic && !has_block )
                     {
                         target_t target = targets.back();
                         targets.clear();

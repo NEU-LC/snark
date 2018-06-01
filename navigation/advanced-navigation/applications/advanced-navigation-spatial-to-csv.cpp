@@ -54,6 +54,7 @@ using namespace snark::navigation::advanced_navigation;
 comma::signal_flag signaled;
 const unsigned default_baud_rate=115200;
 const unsigned default_sleep=10000;
+bool flush=true;
 
 void usage(bool detail)
 {
@@ -84,6 +85,7 @@ void usage(bool detail)
     std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --description=<field>; print out one line description text for input values of <field>; csv options apply to input" << std::endl;
     std::cerr << "        <field>: system_status | filter_status" << std::endl;
+    std::cerr << "    --flush: flush output stream after each write" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -334,6 +336,7 @@ struct app_nav : public app_t<output>
         o.system_status=msg->system_status();
         o.filter_status=msg->filter_status();
         os.write(o);
+        if(flush) { os.flush(); }
     }
 };
 
@@ -353,6 +356,7 @@ protected:
         std::memcpy(&obuf[0],msg_header->data(),messages::header::size);
         std::memcpy(&obuf[messages::header::size],msg_data,msg_data_length);
         std::cout.write(&obuf[0],obuf.size());
+        if(flush) { std::cout.flush(); }
     }
 };
 
@@ -368,6 +372,7 @@ struct app_all : public app_t<output_all>
 //         output.system_state=msg;
 
         os.write(output);
+        if(flush) { os.flush(); }
     }
     void handle(const messages::raw_sensors* msg)
     {
@@ -394,6 +399,7 @@ struct app_packet : public app_t<T>
     void handle(const T* msg)
     {
         app_t<T>::os.write(*msg);
+        if(flush) { app_t<T>::os.flush(); }
     }
 };
 
@@ -453,7 +459,8 @@ int main( int argc, char** argv )
         
         if(options.exists("--bash-completion")) { bash_completion( argc, argv ); return 0; }
         
-        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin", "-.*" );
+        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--flush", "-.*" );
+        flush=options.exists("--flush");
         
         auto opt_description=options.optional<std::string>("--description");
         if(opt_description)

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import argparse, sys
-from signal import signal, SIGPIPE, SIG_DFL
+from signal import signal, SIGPIPE, SIG_DFL, SIG_IGN
 import rospy, rostopic
 import comma.csv
 import comma.application
@@ -55,7 +55,7 @@ def main():
     group_dry.add_argument( '--dry-run', '--dry', help = 'output messages to stdout, do not send to topic', action = 'store_true' )
     group_dry.add_argument( '--ros-queue-size', '--ros-queue', '--queue-size', '--queue', metavar = 'NUM', default = 1, help = 'length of ROS publisher queue', type = int )
     args = parser.parse_args()
-    signal( SIGPIPE, SIG_DFL ) # do no want the IOError message trace
+    signal( SIGPIPE, SIG_IGN ) # do no want the IOError message trace
     if args.dry_run:
         import numpy
         numpy.set_printoptions( linewidth=numpy.inf, threshold=numpy.inf, precision=args.precision and args.precision or numpy.get_printoptions()['precision'] )
