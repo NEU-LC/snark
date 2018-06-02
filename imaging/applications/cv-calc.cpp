@@ -38,6 +38,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/math/interval.h>
@@ -63,7 +64,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    chessboard-corners: detect and output corners of a chessboard calibration image" << std::endl;
-    std::cerr << "    crop-random,roi-random,random-crop,random-roi: output random patches of given size" << std::endl;
+    std::cerr << "    crop-random,roi-random,random-crop,random-roi: output random patches of given size, e.g. to create a machine learning test dataset" << std::endl;
     std::cerr << "    draw: draw on the image primitives defined in the image header; skip a primitive if its dimensions are zero" << std::endl;
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
@@ -95,6 +96,14 @@ static void usage( bool verbose=false )
     std::cerr << "        --draw; outputs image with detected corners drawn" << std::endl;
     std::cerr << "        --select; filters images, only outputs images where chessboards were detected" << std::endl;
     std::cerr << "        --size=<rows,cols>; size of internal grid of corners in chessboard" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    crop-random,roi-random,random-crop,random-roi" << std::endl;
+    std::cerr << "        --count=<n>; default=1; how many crops per image to output" << std::endl;
+    std::cerr << "        --height=<y>: crop height, unless --size given" << std::endl;
+    std::cerr << "        --padding=<x>,<y>: minimum crop offset from image borders" << std::endl;
+    std::cerr << "        --size=<x>,<y>: crop size" << std::endl;
+    std::cerr << "        --width=<x>: crop width, unless --size given" << std::endl;
+    std::cerr << "        --permissive; discard images smaller than crop size" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    draw" << std::endl;
     std::cerr << "        --circles=<options>: draw circles given in the image header; fields: x,y,radius" << std::endl;
@@ -134,11 +143,6 @@ static void usage( bool verbose=false )
     std::cerr << "              default: calculate a mean on all pixels" << std::endl;
     std::cerr << "        default output fields: t,rows,cols,type,mean,count" << std::endl;
     std::cerr << "                               count: total number of non-zero pixels used in calculating the mean" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    random-patch" << std::endl;
-    std::cerr << "        --size=<x>,<y>: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
-    std::cerr << "        --no-discard; do not discards frames where the roi is not seen" << std::endl;
-    std::cerr << "        --permissive,--show-partial; allow partial overlaps of roi and input image, default: if partial roi and image overlap, set entire image to zeros." << std::endl;
     std::cerr << std::endl;
     std::cerr << "    roi" << std::endl;
     std::cerr << "        --crop: crop to roi and output instead of setting region outside of roi to zero" << std::endl;
@@ -551,7 +555,7 @@ class non_zero
 { 
     public:
         non_zero() {}
-        non_zero( const std::string s )
+        non_zero( const std::string& s )
         {
             if( s.empty() ) { return; }
             const std::vector< std::string >& v = comma::split( s, ',' );
@@ -725,39 +729,42 @@ int main( int ac, char** av )
         }
         if( operation == "crop-random" || operation == "roi-random" || operation == "random-crop" || operation == "random-roi" )
         {
+            bool permissive = options.exists( "--permissive" );
+            unsigned int count = options.value( "--count", 1 );
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
             options.assert_mutually_exclusive( "--size", "--width,--height" );
             boost::optional< unsigned int > width = options.optional< unsigned int >( "--width" );
             boost::optional< unsigned int > height = options.optional< unsigned int >( "--height" );
-            if( !width )
+            if( !width || !height )
             {
                 const std::vector< std::string >& v = comma::split( options.value< std::string >( "--size" ), ',' );
                 if( v.size() != 2 ) { std::cerr << "cv-calc: expected --size=<width>,<height>, got: '" << comma::join( v, ',' ) << std::endl; return 1; }
                 width = boost::lexical_cast< unsigned int >( v[0] );
                 height = boost::lexical_cast< unsigned int >( v[1] );
             }
-            
-            
+            const std::vector< std::string >& v = comma::split( options.value< std::string >( "--padding", "0,0" ), ',' );
+            if( v.size() != 2 ) { std::cerr << "cv-calc: expected --size=<width>,<height>, got: '" << comma::join( v, ',' ) << std::endl; return 1; }
+            unsigned int padding_x = boost::lexical_cast< unsigned int >( v[0] );
+            unsigned int padding_y = boost::lexical_cast< unsigned int >( v[1] );
             std::default_random_engine generator;
-            std::uniform_int_distribution< unsigned int > distribution( 1, 6 );
-            //distribution( generator );
-            
-            
-//             const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( options.value< std::string >( "--filter,--filters", "" ) );
-//             if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: grep: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
-//             while( std::cin.good() && !std::cin.eof() )
-//             {
-//                 std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
-//                 if( p.second.empty() ) { return 0; }
-//                 std::pair< boost::posix_time::ptime, cv::Mat > filtered;
-//                 if( filters.empty() ) { filtered = p; } else { p.second.copyTo( filtered.second ); }
-//                 for( auto& filter: filters ) { filtered = filter( filtered ); }
-//                 non_zero.size( filtered.second.rows * filtered.second.cols );
-//                 if( non_zero.keep( filtered.second ) ) { output_serialization.write_to_stdout( p ); }
-//                 std::cout.flush();
-//             }
-            std::cerr << "cv-calc: crop-random: implementing..." << std::endl; return 1;
+            std::uniform_real_distribution< float > distribution( 0, 1 );
+            while( std::cin.good() && !std::cin.eof() )
+            {
+                std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                if( p.second.cols < int( *width + 2 * padding_x ) ) { std::cerr << "cv-calc: " << ( permissive ? "warning: " : "" ) << " expected image width at least " << ( *width + 2 * padding_x ) << " got: " << p.second.cols << std::endl; if( !permissive ) { return 1; } }
+                if( p.second.rows < int( *height + 2 * padding_y ) ) { std::cerr << "cv-calc: " << ( permissive ? "warning: " : "" ) << " expected image height at least " << ( *height + 2 * padding_y ) << " got: " << p.second.rows << std::endl; if( !permissive ) { return 1; } }
+                for( unsigned int i = 0; i < count; ++i )
+                {
+                    unsigned int x = padding_x + distribution( generator ) * ( p.second.cols - padding_x - *width );
+                    unsigned int y = padding_y + distribution( generator ) * ( p.second.rows - padding_y - *height );
+                    cv::Mat m;
+                    p.second( cv::Rect( x, y, *width, *height ) ).copyTo( m );
+                    output_serialization.write_to_stdout( std::make_pair( p.first, m ) );
+                }
+                std::cout.flush();
+            }
             return 0;
         }
         if( operation == "draw" )
