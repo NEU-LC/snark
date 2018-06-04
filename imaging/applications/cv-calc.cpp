@@ -48,6 +48,7 @@
 #include "../../imaging/cv_mat/filters.h"
 #include "../../imaging/cv_mat/serialization.h"
 #include "../../imaging/cv_mat/detail/life.h"
+#include "../../visiting/eigen.h"
 
 const char* name = "cv-calc: ";
 
@@ -249,6 +250,15 @@ struct extents
     cv::Point2i min;
     cv::Point2i max;
     extents(): min( 0, 0 ), max( 0, 0 ) {}
+};
+
+struct chessboard_corner_t
+{
+    boost::posix_time::ptime t;
+    comma::uint32 block;
+    comma::uint32 row;
+    comma::uint32 col;
+    Eigen::Vector2d position;
 };
 
 namespace snark { namespace imaging { namespace operations { namespace draw {
@@ -543,6 +553,26 @@ template <> struct traits< snark::imaging::operations::draw::shapes >
     }
 };
 
+template <> struct traits< chessboard_corner_t >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, chessboard_corner_t& p, Visitor& v)
+    {
+        v.apply("t", p.t);
+        v.apply("block", p.block);
+        v.apply("row", p.row);
+        v.apply("col", p.col);
+        v.apply("position", p.position);
+    }
+    template < typename Key, class Visitor > static void visit( const Key&, const chessboard_corner_t& p, Visitor& v)
+    {
+        v.apply("t", p.t);
+        v.apply("block", p.block);
+        v.apply("row", p.row);
+        v.apply("col", p.col);
+        v.apply("position", p.position);
+    }
+};
+
 } } // namespace comma { namespace visiting {
 
 static bool verbose = false;
@@ -695,12 +725,16 @@ int main( int ac, char** av )
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
         if( operation == "chessboard-corners")
         {
+            if (options.exists("--output-fields")) { std::cout << comma::join(comma::csv::names<chessboard_corner_t>(), ',') << std::endl; return 0; }
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
 
             const std::vector< std::string >& s = comma::split( options.value< std::string >( "--size" ), ',' );
             if( s.size() != 2 ) { std::cerr << "cv-calc: chessboard-corners: expected --size=<rows>,<cols>, got: \"" << options.value< std::string >( "--size" ) << std::endl; return 1; }
-            cv::Size pattern_size(boost::lexical_cast<comma::uint32>(s[0]), boost::lexical_cast<comma::uint32>(s[1]));
+            comma::uint32 rows = boost::lexical_cast<comma::uint32>(s[0]);
+            comma::uint32 cols = boost::lexical_cast<comma::uint32>(s[1]);
+            cv::Size pattern_size(rows, cols);
+            comma::uint32 block = 0;
             while( std::cin.good() )
             {
                 auto p = input_serialization.read< boost::posix_time::ptime >( std::cin );
@@ -718,11 +752,18 @@ int main( int ac, char** av )
                 }
                 else
                 {
-                    for (comma::int32 c = 0; c < out.rows; c++)
-                    {
-                        // todo: make output_t and use csv output stream?
-                        std::cout << boost::posix_time::to_iso_string(p.first) << "," << out.row(c).at<float>(0) << "," << out.row(c).at<float>(1) << std::endl;
+                    comma::csv::output_stream< chessboard_corner_t > output(std::cout, csv);
+                    chessboard_corner_t corner;
+                    corner.t = p.first;
+                    corner.block = block;
+                    for (comma::uint32 c = 0; c < out.rows; c++)
+                    {    
+                        corner.row = c / rows;
+                        corner.col = c % rows;
+                        corner.position = Eigen::Vector2d(out.row(c).at<float>(0), out.row(c).at<float>(1));
+                        output.write(corner);
                     }
+                    block++;
                 }
             }
             return 0;
