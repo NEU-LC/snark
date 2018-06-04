@@ -149,11 +149,16 @@ int main( int argc, char** argv )
         unsigned int capacity = 16;
         unsigned int number_of_threads = 0;
         unsigned int number_of_frames_to_skip = 0;
+        comma::uint32 image_type;
+        std::string image_format;
         boost::program_options::options_description description( "options" );
         std::string help_command;
         description.add_options()
             ( "help,h", boost::program_options::value< std::string >( &help_command )->implicit_value( "" ), "display help message; if '--help command' is specified, focus on the 'command'-specific help" )
             ( "verbose,v", "more output; --help --verbose: more help" )
+            ( "image-format", boost::program_options::value< comma::uint32 >(& image_type ), "get image format from type enumeration" )
+            ( "image-type", boost::program_options::value< std::string >(& image_format ), "get image type enumeration from format or name" )
+            ( "image-types", "get all image type enumerations" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "camera", "use first available opencv-supported camera" )
             ( "file", boost::program_options::value< std::string >( &name ), "video file name" )
@@ -173,6 +178,9 @@ int main( int argc, char** argv )
         boost::program_options::parsed_options parsed = boost::program_options::command_line_parser(argc, argv).options( description ).allow_unregistered().run();
         boost::program_options::notify( vm );
         comma::verbose.init(vm.count( "verbose" ), argv[0]);
+        if( vm.count( "image-format" ) ) { std::cout << snark::cv_mat::format_from_type( image_type ) << std::endl; return 0; }
+        if( vm.count( "image-type" ) ) { std::cout << snark::cv_mat::type_from_string( image_format ) << std::endl; return 0; }
+        if( vm.count( "image-types" ) ) { std::cout << snark::cv_mat::all_image_types(); return 0; }
         if ( vm.count( "help" ) )
         {
             std::string command = vm[ "help" ].as< std::string >();

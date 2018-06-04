@@ -55,7 +55,7 @@ void usage( bool verbose )
     std::cerr << "            default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to-pixels: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
-    std::cerr << "        --clip,--discard: discard pixels outside of image" << std::endl;
+    std::cerr << "        --clip,--discard: discard pixels outside of image and behind camera" << std::endl;
     std::cerr << "        --fields: x,y,z; if z is given, the input points will be projected to the sensor plane; default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
@@ -174,6 +174,7 @@ int main( int ac, char** av )
                 if( !p ) { break; }
                 const Eigen::Vector2d& pixel = pinhole.to_pixel( xy( *p ) );
                 if ( !clip || (    !comma::math::less( pixel.x(), 0 )
+                                && !comma::math::less( p->z(), 0 )
                                 && comma::math::less( pixel.x(), pinhole.config().image_size.x() )
                                 && !comma::math::less( pixel.y(), 0 )
                                 && comma::math::less( pixel.y(), pinhole.config().image_size.y() ) ) )

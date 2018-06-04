@@ -35,6 +35,7 @@
 #include <comma/base/last_error.h>
 #include <comma/csv/binary.h>
 #include <comma/string/string.h>
+#include <boost/bimap.hpp>
 #include "serialization.h"
 
 namespace snark { namespace cv_mat {
@@ -291,7 +292,7 @@ void serialization::write_to_stdout( const std::pair< boost::posix_time::ptime, 
     if( flush ) { ::fflush( stdout ); }
 }
 
-unsigned int type_from_string_( const std::string& t )
+unsigned type_from_string( const std::string& t )
 {
     if( t == "CV_8UC1" || t == "ub" ) { return CV_8UC1; }
     else if( t == "CV_8UC2" || t == "2ub" ) { return CV_8UC2; }
@@ -321,7 +322,77 @@ unsigned int type_from_string_( const std::string& t )
     else if( t == "CV_64FC2" || t == "2d" ) { return CV_64FC2; }
     else if( t == "CV_64FC3" || t == "3d" ) { return CV_64FC3; }
     else if( t == "CV_64FC4" || t == "4d" ) { return CV_64FC4; }
-    else { COMMA_THROW( comma::exception, "expected type, got \"" << t << "\"" ); }
+    COMMA_THROW( comma::exception, "expected type, got \"" << t << "\"" );
+}
+
+std::string format_from_type( unsigned type )
+{
+    switch( type )
+    {
+        case CV_8UC1: return std::string( "ub" );
+        case CV_8UC2: return std::string( "2ub" );
+        case CV_8UC3: return std::string( "3ub" );
+        case CV_8UC4: return std::string( "4ub" );
+        case CV_8SC1: return std::string( "b" );
+        case CV_8SC2: return std::string( "2b" );
+        case CV_8SC3: return std::string( "3b" );
+        case CV_8SC4: return std::string( "4b" );
+        case CV_16UC1: return std::string( "uw" );
+        case CV_16UC2: return std::string( "2uw" );
+        case CV_16UC3: return std::string( "3uw" );
+        case CV_16UC4: return std::string( "4uw" );
+        case CV_16SC1: return std::string( "w" );
+        case CV_16SC2: return std::string( "2w" );
+        case CV_16SC3: return std::string( "3w" );
+        case CV_16SC4: return std::string( "4w" );
+        case CV_32SC1: return std::string( "i" );
+        case CV_32SC2: return std::string( "2i" );
+        case CV_32SC3: return std::string( "3i" );
+        case CV_32SC4: return std::string( "4i" );
+        case CV_32FC1: return std::string( "f" );
+        case CV_32FC2: return std::string( "2f" );
+        case CV_32FC3: return std::string( "3f" );
+        case CV_32FC4: return std::string( "4f" );
+        case CV_64FC1: return std::string( "d" );
+        case CV_64FC2: return std::string( "2d" );
+        case CV_64FC3: return std::string( "3d" );
+        case CV_64FC4: return std::string( "4d" );
+    }
+    COMMA_THROW( comma::exception, "type: \"" << type << "\" is not valid" );
+}
+
+std::string all_image_types()
+{
+    std::stringstream stream;
+    stream << "CV_8UC1,ub," << CV_8UC1 << std::endl;
+    stream << "CV_8UC2,2ub," << CV_8UC2 << std::endl;
+    stream << "CV_8UC3,3ub," << CV_8UC3 << std::endl;
+    stream << "CV_8UC4,4ub," << CV_8UC4 << std::endl;
+    stream << "CV_8SC1,b," << CV_8SC1 << std::endl;
+    stream << "CV_8SC2,2b," << CV_8SC2 << std::endl;
+    stream << "CV_8SC3,3b," << CV_8SC3 << std::endl;
+    stream << "CV_8SC4,4b," << CV_8SC4 << std::endl;
+    stream << "CV_16UC1,uw," << CV_16UC1 << std::endl;
+    stream << "CV_16UC2,2uw," << CV_16UC2 << std::endl;
+    stream << "CV_16UC3,3uw," << CV_16UC3 << std::endl;
+    stream << "CV_16UC4,4uw," << CV_16UC4 << std::endl;
+    stream << "CV_16SC1,w," << CV_16SC1 << std::endl;
+    stream << "CV_16SC2,2w," << CV_16SC2 << std::endl;
+    stream << "CV_16SC3,3w," << CV_16SC3 << std::endl;
+    stream << "CV_16SC4,4w," << CV_16SC4 << std::endl;
+    stream << "CV_32SC1,i," << CV_32SC1 << std::endl;
+    stream << "CV_32SC2,2i," << CV_32SC2 << std::endl;
+    stream << "CV_32SC3,3i," << CV_32SC3 << std::endl;
+    stream << "CV_32SC4,4i," << CV_32SC4 << std::endl;
+    stream << "CV_32FC1,f," << CV_32FC1 << std::endl;
+    stream << "CV_32FC2,2f," << CV_32FC2 << std::endl;
+    stream << "CV_32FC3,3f," << CV_32FC3 << std::endl;
+    stream << "CV_32FC4,4f," << CV_32FC4 << std::endl;
+    stream << "CV_64FC1,d," << CV_64FC1 << std::endl;
+    stream << "CV_64FC2,2d," << CV_64FC2 << std::endl;
+    stream << "CV_64FC3,3d," << CV_64FC3 << std::endl;
+    stream << "CV_64FC4,4d," << CV_64FC4 << std::endl;
+    return stream.str();
 }
 
 serialization::header serialization::options::get_header() const
@@ -330,7 +401,7 @@ serialization::header serialization::options::get_header() const
     h.cols = cols;
     h.rows = rows;
     h.size = cols * rows;
-    if( !type.empty() ) { h.type = type_from_string_( type ); }
+    if( !type.empty() ) { h.type = type_from_string( type ); }
     return h;
 }
 

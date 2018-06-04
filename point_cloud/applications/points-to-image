@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 source $( type -p comma-application-util )
 
 function say() { echo "$scriptname: $@" >&2; }
@@ -33,15 +32,18 @@ function common_run_options()
 {
     cat <<EOF
 --binary=[<format>]; binary input format.
---camera-config,--pinhole-config,-c=<config>; config having camera intrinsic calibrations.
---fields,-f=<fields>; default=x,y,z; input fields.
+--format=[<format>]; if ascii, specify format of input fields.
+--flush; flush output stream after each record.
 EOF
 }
 
 function to_pixels_run_options()
 {
     cat <<EOF
+--fields,-f=<fields>; default=x,y,z; input fields, 3d coordinates.
+--camera-config,--pinhole-config,-c=<config>; config having camera intrinsic calibrations.
 --camera-offset,-o=<pose>; default=0,0,0,0,0,0; frame offset of camera.
+--discard,--clip; remove points output of image.
 --points-offset,-p=<pose>; default=0,0,0,0,0,0; point cloud offset.
 EOF
 }
@@ -49,7 +51,10 @@ EOF
 function join_run_options()
 {
     cat <<EOF
---image,-i=<attributes>; image file, its fields and format .
+--fields,-f=<fields>; default=t,x,y; input fields, timestamped pixel coordinates.
+--images,-i=<file>; file containing timestamped images.
+--filter,-l=[<attributes>]; attributes to filter the images.
+--output-non-zero; join only with pixels that have non-zero data.
 EOF
 }
 
@@ -85,23 +90,23 @@ $( info_options | sed 's/^/    /' )
 Example:
     cat point_cloud.csv \\
         | $scriptname to-pixels --fields=x,y,z --camera-offset="1,0,0,0,0,0" --camera-config=config.json \\
-        | $scriptname join --fields=,,,x,y, --image=<file> --camera-config=config.json
+        | $scriptname join --fields=,,,x,y, --images="20171011*.bin" --decode="bayer2"
 
 EOF
     exit 0
 }
 
-function to_pixels_input_fields() { echo "x,y,z"; }
-function to_pixels_output_fields() { image-pinhole to-pixels --output-fields; }
-function to_pixels_output_format() { image-pinhole to-pixels --output-format; }
+function to_pixels_input_fields() { echo 'x,y,z'; }
+function to_pixels_output_fields() { echo 'x,y'; }
+function to_pixels_output_format() { echo 'ui,ui'; }
 
-function join_input_fields() { echo "x,y"; }
+function join_input_fields() { echo "t,x,y"; }
+function join_output_fields() { echo 't,<channels>,block'; }
+function join_output_format() { echo 't,<channels>,ui'; }
 
 function handle_info_options()
 {
-
     [[ -z $options_operations ]] || { operations; exit 0; }
-
     [[ -n "$options_operation" ]] || die "Operation is not specified."
     is_function "${options_operation}_execute" || die "expected operation, got '$operation'"
 
@@ -125,8 +130,37 @@ function to_pixels_execute()
 {
     # info options
     # ...
+    mangle_text=$( name-value-convert < "$options_camera_config" | comma_path_value_mangle | sed 's/^/local camera_/g' ); eval "$mangle_text"; unset mangle_text
 
-    unset mangle_text 
+    local fields binary image_fields image_binary
+
+    trailing_fields
+    fields=$( csv-fields clear --except=x,y,z <<< $options_fields )
+    image_fields=$( to_pixels_output_fields | csv-fields prefix --path=image )
+    [[ -z $options_discard ]] || options_discard='--discard'
+
+    if [[ -n $options_binary ]]
+    then
+        binary="binary=$options_binary"
+        image_binary="--$binary,$( image-pinhole to-pixels --output-format )"
+        output_binary="--output-$binary,$( to_pixels_output_format )"
+        binary="--$binary"
+    fi
+
+    #NOTE: assumes image-pinhole to-pixels outputs x and y only
+    { points-frame --fields=$fields --from=$options_points_offset --to=$options_camera_offset $binary $options_flush |
+        image-pinhole to-pixels --config="$options_camera_config" --fields=$fields $options_discard $binary $options_flush |
+        csv-eval --full-xpath --fields=$( csv-fields clear <<< $options_fields ),$image_fields 'image_x=round(image_x);image_y=round(image_y)' $image_binary $options_flush |
+        if [[ -z $options_binary ]]; then cat -; else csv-cast $image_binary $output_binary --force $options_flush; fi
+    }
+}
+
+function to_pixels_execute_old()
+{
+    # info options
+    # ...
+
+    unset mangle_text
     local -r plane="0,0,-$camera_focal_length,0,0,1"
     local fields binary intersection_fields intersection_binary image_fields image_binary
 
@@ -145,14 +179,6 @@ function to_pixels_execute()
 
     fi
 
-    cat <<EOF >&2
-    { points-frame --fields=$fields --from=$options_points_offset --to=$options_camera_offset $binary |
-        points-calc plane-intersection --fields=$( csv-fields prefix --path=first <<< $fields ) --plane="$plane" $binary |
-        image-pinhole to-pixels --config="$options_camera_config" --fields=$( csv-fields clear <<< $fields ),$intersection_fields $intersection_binary |
-        csv-shuffle --fields=$options_fields,$( csv-fields clear <<< $intersection_fields ),$image_fields --output=$options_fields,$image_fields $image_binary |
-        csv-eval --full-xpath --fields=$( csv-fields clear <<< $options_fields ),$image_fields 'image_x=floor(image_x);image_y=floor(image_y)' $shuffle_binary
-    }
-EOF
     { points-frame --fields=$fields --from=$options_points_offset --to=$options_camera_offset $binary |
         points-calc plane-intersection --fields=$( csv-fields prefix --path=first <<< $fields ) --plane="$plane" $binary |
         image-pinhole to-pixels --config="$options_camera_config" --fields=$( csv-fields clear <<< $fields ),$intersection_fields $intersection_binary |
@@ -164,13 +190,81 @@ EOF
 
 function join_execute()
 {
-    mangle_text=$( tr ';' '\n' <<< "source=$options_image" | comma_path_value_mangle | sed 's/^/image_/g' ); eval "$mangle_text"; unset mangle_text
+    unset mangle_text
+    trailing_fields
 
-    { csv-time-join --fields=$options_fields <( socat "tcp:$camera_address:$camera_port" - )";$camera_fields" --nearest |
-        csv-join --fields=$( csv-fields clear <<< $options_fields ),$camera_fields <( socat "tcp:$image_csv_address:$image_csv_port" - )";fields=$image_csv_fields" --time
+    [[ -z $options_output_non_zero ]] || options_output_non_zero='--output-non-zero'
 
+    function get_image_type()
+    {
+        { cat $options_images |
+            cv-cat $options_filter --output=header-only |
+            csv-from-bin t,3ui --flush |
+            head -n1 |
+            csv-shuffle --fields=t,rows,cols,type --output=type
+        }
+        comma_status_ok
+    }
 
-    :
+    local image_type image_csv_fields
+    image_type=$( get_image_type ) || die "unable to get image type from images: \"$options_images\"."
+    image_csv_format=$( cv-cat --image-format=$image_type | csv-format expand ) || die "unable to get image pixel format from image type: $image_type."
+    image_csv_format="t,ui,ui,$image_csv_format"
+    image_csv_fields=$( csv-fields make-fixed --count $( csv-format count <<< $image_csv_format ) --force <<< "t,x,y,r,g,b,a" )
+    image_block_fields="$image_csv_fields,block"
+    image_block_format="$image_csv_format,ui"
+
+    image_ts_fields="t,block"
+    image_ts_format="t,ui"
+
+    local fields=$( csv-fields clear --except=$( join_input_fields ) <<< $options_fields )
+
+    local binary image_ts_binary tjoin_binary image_csv_binary image_arg_binary image_attr_binary cjoin_binary
+    if [[ -n $options_binary ]]
+    then
+        binary="--binary=$options_binary"
+        image_ts_binary=";binary=$image_ts_format"
+        tjoin_binary="$binary,$image_ts_format"
+
+        image_csv_binary="--binary=$image_csv_format"
+        image_attr_binary=";binary=$image_block_format"
+        cjoin_binary="$tjoin_binary,$image_block_format"
+        image_arg_binary="--binary=$image_block_format"
+    fi
+
+    function images_timestamps()
+    {
+#    cat >&2 <<eof
+        { cat $options_images |
+            cv-cat --output=header-only |
+            csv-shuffle --fields=t --output=t --binary=t,3ui $options_flush |
+            csv-paste "-;binary=t" line-number $options_flush |
+            if [[ -n $options_binary ]]; then cat -; else csv-from-bin $image_ts_format $options_flush; fi
+        }
+#eof
+    }
+
+    function images_csv()
+    {
+#    cat >&2 <<eof
+        { cat $options_images |
+            cv-cat $options_filter |
+            image-to-csv $image_csv_binary $options_output_non_zero $options_flush |
+            csv-blocks group --fields=$( clear_fields_after rename t --to=id <<< $image_csv_fields ) $image_csv_binary $options_flush
+        }
+#eof
+    }
+
+    local shuffle_point_fields=$( csv-fields prefix --path=points <<< $fields )
+    local shuffle_image_fields=$( csv-fields prefix --path=image <<< $image_block_fields )
+    local shuffle_output_fields=$shuffle_point_fields,$( csv-fields cut --fields=image/x,image/y <<< $shuffle_image_fields )
+#    cat >&2 <<eof
+    { csv-time-join --fields=$fields --nearest <( images_timestamps )";fields=$( csv-fields clear --except=t <<< $image_ts_fields )$image_ts_binary" $binary |
+        csv-join --fields=$( csv-fields clear --except=x,y <<< $fields ),$( csv-fields clear --except=block <<< $image_ts_fields ) \
+            <( images_csv )";fields=$image_block_fields$image_attr_binary" $tjoin_binary $options_flush |
+        csv-shuffle --fields=$shuffle_point_fields,$( csv-fields prefix --path=tjoin <<< $image_ts_fields ),$shuffle_image_fields $cjoin_binary --output=$shuffle_output_fields $options_flush
+    }
+#eof
     # info options
     # ...
 
@@ -187,7 +281,7 @@ function execute()
     handle_info_options
 
     mangle_text=$( { common_run_options; ${options_operation}_run_options; } | mangle_options "$@"; comma_status_ok ) || die "Invalid arguments."; eval "$mangle_text";
-    mangle_text=$( name-value-convert < "$options_camera_config" | comma_path_value_mangle | sed 's/^/local camera_/g' ); eval "$mangle_text"
+    [[ -z $options_flush ]] || options_flush='--flush'
     ${options_operation}_execute "$@"
 }
 

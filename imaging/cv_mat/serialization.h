@@ -40,6 +40,15 @@
 
 namespace snark { namespace cv_mat {
 
+/// e.g. type_from_string( "3uw" ) would return 18 (CV_3UC)
+unsigned type_from_string( const std::string& s );
+
+/// e.g. format_from_type( 18 ) would return "3uw"
+std::string format_from_type( unsigned int type );
+
+/// all types in csv name,format,type
+std::string all_image_types( void );
+
 class serialization
 {
     public:
