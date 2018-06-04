@@ -30,13 +30,15 @@
 #include <algorithm>
 #include <memory>
 #include <numeric>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_real.hpp>
-#include <boost/random/variate_generator.hpp>
+#include <random>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <tbb/parallel_for.h>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/math/interval.h>
@@ -46,6 +48,7 @@
 #include "../../imaging/cv_mat/filters.h"
 #include "../../imaging/cv_mat/serialization.h"
 #include "../../imaging/cv_mat/detail/life.h"
+#include "../../visiting/eigen.h"
 
 const char* name = "cv-calc: ";
 
@@ -62,6 +65,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
     std::cerr << "    chessboard-corners: detect and output corners of a chessboard calibration image" << std::endl;
+    std::cerr << "    crop-random,roi-random,random-crop,random-roi: output random patches of given size, e.g. to create a machine learning test dataset" << std::endl;
     std::cerr << "    draw: draw on the image primitives defined in the image header; skip a primitive if its dimensions are zero" << std::endl;
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
@@ -93,6 +97,14 @@ static void usage( bool verbose=false )
     std::cerr << "        --draw; outputs image with detected corners drawn" << std::endl;
     std::cerr << "        --select; filters images, only outputs images where chessboards were detected" << std::endl;
     std::cerr << "        --size=<rows,cols>; size of internal grid of corners in chessboard" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    crop-random,roi-random,random-crop,random-roi" << std::endl;
+    std::cerr << "        --count=<n>; default=1; how many crops per image to output" << std::endl;
+    std::cerr << "        --height=<y>: crop height, unless --size given" << std::endl;
+    std::cerr << "        --padding=<x>,<y>: minimum crop offset from image borders" << std::endl;
+    std::cerr << "        --size=<x>,<y>: crop size" << std::endl;
+    std::cerr << "        --width=<x>: crop width, unless --size given" << std::endl;
+    std::cerr << "        --permissive; discard images smaller than crop size" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    draw" << std::endl;
     std::cerr << "        --circles=<options>: draw circles given in the image header; fields: x,y,radius" << std::endl;
@@ -238,6 +250,15 @@ struct extents
     cv::Point2i min;
     cv::Point2i max;
     extents(): min( 0, 0 ), max( 0, 0 ) {}
+};
+
+struct chessboard_corner_t
+{
+    boost::posix_time::ptime t;
+    comma::uint32 block;
+    comma::uint32 row;
+    comma::uint32 col;
+    Eigen::Vector2d position;
 };
 
 namespace snark { namespace imaging { namespace operations { namespace draw {
@@ -532,6 +553,26 @@ template <> struct traits< snark::imaging::operations::draw::shapes >
     }
 };
 
+template <> struct traits< chessboard_corner_t >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, chessboard_corner_t& p, Visitor& v)
+    {
+        v.apply("t", p.t);
+        v.apply("block", p.block);
+        v.apply("row", p.row);
+        v.apply("col", p.col);
+        v.apply("position", p.position);
+    }
+    template < typename Key, class Visitor > static void visit( const Key&, const chessboard_corner_t& p, Visitor& v)
+    {
+        v.apply("t", p.t);
+        v.apply("block", p.block);
+        v.apply("row", p.row);
+        v.apply("col", p.col);
+        v.apply("position", p.position);
+    }
+};
+
 } } // namespace comma { namespace visiting {
 
 static bool verbose = false;
@@ -544,7 +585,7 @@ class non_zero
 { 
     public:
         non_zero() {}
-        non_zero( const std::string s )
+        non_zero( const std::string& s )
         {
             if( s.empty() ) { return; }
             const std::vector< std::string >& v = comma::split( s, ',' );
@@ -684,12 +725,16 @@ int main( int ac, char** av )
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
         if( operation == "chessboard-corners")
         {
+            if (options.exists("--output-fields")) { std::cout << comma::join(comma::csv::names<chessboard_corner_t>(), ',') << std::endl; return 0; }
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
 
             const std::vector< std::string >& s = comma::split( options.value< std::string >( "--size" ), ',' );
             if( s.size() != 2 ) { std::cerr << "cv-calc: chessboard-corners: expected --size=<rows>,<cols>, got: \"" << options.value< std::string >( "--size" ) << std::endl; return 1; }
-            cv::Size pattern_size(boost::lexical_cast<comma::uint32>(s[0]), boost::lexical_cast<comma::uint32>(s[1]));
+            comma::uint32 rows = boost::lexical_cast<comma::uint32>(s[0]);
+            comma::uint32 cols = boost::lexical_cast<comma::uint32>(s[1]);
+            cv::Size pattern_size(rows, cols);
+            comma::uint32 block = 0;
             while( std::cin.good() )
             {
                 auto p = input_serialization.read< boost::posix_time::ptime >( std::cin );
@@ -707,12 +752,59 @@ int main( int ac, char** av )
                 }
                 else
                 {
-                    for (comma::int32 c = 0; c < out.rows; c++)
-                    {
-                        // todo: make output_t and use csv output stream?
-                        std::cout << boost::posix_time::to_iso_string(p.first) << "," << out.row(c).at<float>(0) << "," << out.row(c).at<float>(1) << std::endl;
+                    comma::csv::output_stream< chessboard_corner_t > output(std::cout, csv);
+                    chessboard_corner_t corner;
+                    corner.t = p.first;
+                    corner.block = block;
+                    for (comma::uint32 c = 0; c < out.rows; c++)
+                    {    
+                        corner.row = c / rows;
+                        corner.col = c % rows;
+                        corner.position = Eigen::Vector2d(out.row(c).at<float>(0), out.row(c).at<float>(1));
+                        output.write(corner);
                     }
+                    block++;
                 }
+            }
+            return 0;
+        }
+        if( operation == "crop-random" || operation == "roi-random" || operation == "random-crop" || operation == "random-roi" )
+        {
+            bool permissive = options.exists( "--permissive" );
+            unsigned int count = options.value( "--count", 1 );
+            snark::cv_mat::serialization input_serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
+            options.assert_mutually_exclusive( "--size", "--width,--height" );
+            boost::optional< unsigned int > width = options.optional< unsigned int >( "--width" );
+            boost::optional< unsigned int > height = options.optional< unsigned int >( "--height" );
+            if( !width || !height )
+            {
+                const std::vector< std::string >& v = comma::split( options.value< std::string >( "--size" ), ',' );
+                if( v.size() != 2 ) { std::cerr << "cv-calc: expected --size=<width>,<height>, got: '" << comma::join( v, ',' ) << std::endl; return 1; }
+                width = boost::lexical_cast< unsigned int >( v[0] );
+                height = boost::lexical_cast< unsigned int >( v[1] );
+            }
+            const std::vector< std::string >& v = comma::split( options.value< std::string >( "--padding", "0,0" ), ',' );
+            if( v.size() != 2 ) { std::cerr << "cv-calc: expected --size=<width>,<height>, got: '" << comma::join( v, ',' ) << std::endl; return 1; }
+            unsigned int padding_x = boost::lexical_cast< unsigned int >( v[0] );
+            unsigned int padding_y = boost::lexical_cast< unsigned int >( v[1] );
+            std::default_random_engine generator;
+            std::uniform_real_distribution< float > distribution( 0, 1 );
+            while( std::cin.good() && !std::cin.eof() )
+            {
+                std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                if( p.second.cols < int( *width + 2 * padding_x ) ) { std::cerr << "cv-calc: " << ( permissive ? "warning: " : "" ) << " expected image width at least " << ( *width + 2 * padding_x ) << " got: " << p.second.cols << std::endl; if( !permissive ) { return 1; } }
+                if( p.second.rows < int( *height + 2 * padding_y ) ) { std::cerr << "cv-calc: " << ( permissive ? "warning: " : "" ) << " expected image height at least " << ( *height + 2 * padding_y ) << " got: " << p.second.rows << std::endl; if( !permissive ) { return 1; } }
+                for( unsigned int i = 0; i < count; ++i )
+                {
+                    unsigned int x = padding_x + distribution( generator ) * ( p.second.cols - padding_x - *width );
+                    unsigned int y = padding_y + distribution( generator ) * ( p.second.rows - padding_y - *height );
+                    cv::Mat m;
+                    p.second( cv::Rect( x, y, *width, *height ) ).copyTo( m );
+                    output_serialization.write_to_stdout( std::make_pair( p.first, m ) );
+                }
+                std::cout.flush();
             }
             return 0;
         }
@@ -1049,7 +1141,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        std::cerr << name << " unknown operation: " << operation << std::endl;
+        std::cerr << name << " unknown operation: '" << operation << "'" << std::endl;
     }
     catch( std::exception& ex ) { std::cerr << "cv-calc: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "cv-calc: unknown exception" << std::endl; }
