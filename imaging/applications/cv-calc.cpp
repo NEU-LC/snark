@@ -756,14 +756,14 @@ int main( int ac, char** av )
                     chessboard_corner_t corner;
                     corner.t = p.first;
                     corner.block = block;
-                    for (comma::uint32 c = 0; c < out.rows; c++)
+                    for (comma::uint32 c = 0; int( c ) < out.rows; c++)
                     {    
                         corner.row = c / rows;
                         corner.col = c % rows;
                         corner.position = Eigen::Vector2d(out.row(c).at<float>(0), out.row(c).at<float>(1));
                         output.write(corner);
                     }
-                    block++;
+                    ++block;
                 }
             }
             return 0;
