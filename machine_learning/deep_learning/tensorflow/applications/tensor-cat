@@ -134,8 +134,7 @@ if __name__ == '__main__':
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
     parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename (without extension); default: %(default)s' )
     parser.add_argument( '--session-dir', '--dir', default = '.', type = str, help = 'saved session directory; default: %(default)s' )
-    #parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
-    parser.add_argument( '--session-graph', '--graph', '--graph-file', type = str, help = 'path to saved graph file; default: %(default)s' )
+    parser.add_argument( '--session-graph', '--graph', '--graph-file', '--model', type = str, help = 'path to saved graph file' ) #parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
     parser.add_argument( '--tensor', type = str, help = 'tensor name, if using tensor options; e.g. "image_tensor:0"' )
     parser.add_argument( '--tensor-shape', action = "store_true", help = 'print tensor shape and exit' )
     parser.add_argument( '--tensor-type', '--tensor-dtype', action = "store_true", help = 'print tensor type and exit' )
@@ -156,7 +155,7 @@ if __name__ == '__main__':
         saymore( "importing meta graph file from '" + session_meta + "'..." )
         saver = tf.train.import_meta_graph( session_meta ) if tf_version[0] < 1 else tf.train.import_meta_graph( session_meta, clear_devices = not args.keep_devices )
         if args.tensor_shape: print session.graph.get_tensor_by_name( args.tensor ).shape; sys.exit( 0 )
-        if args.tensor_type: print session.graph.get_tensor_by_name( args.tensor ).dtype; sys.exit( 0 )        
+        if args.tensor_type: print session.graph.get_tensor_by_name( args.tensor ).dtype; sys.exit( 0 )
         if args.get_operations:
             for o in session.graph.get_operations(): print o.name
             sys.exit( 0 )
