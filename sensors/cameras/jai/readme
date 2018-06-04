@@ -14,6 +14,15 @@ INSTALLATION NOTES
      volatile keyword. snark cmake fixes it by disabling optimization specifically
      for jai-cat
 
+   - If not run as root, jai-cat sometimes gives the following error message:
+
+   """
+   Warning - Acquisition Thread is not allowed real-time priority! [1]
+   Thread will be started with normal priority. Packet- and frame loss might occur!
+   """
+
+     This message is output to *stdout* after the first frame of output
+
 3. Enable building jai-cat in ccmake (set snark_build_sensors_jai to ON)
 
 CHECKING THE CAMERA
