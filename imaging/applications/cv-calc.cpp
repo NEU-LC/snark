@@ -35,6 +35,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <tbb/parallel_for.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
@@ -102,6 +103,7 @@ static void usage( bool verbose=false )
     std::cerr << "        --count=<n>; default=1; how many crops per image to output" << std::endl;
     std::cerr << "        --height=<y>: crop height, unless --size given" << std::endl;
     std::cerr << "        --padding=<x>,<y>: minimum crop offset from image borders" << std::endl;
+    std::cerr << "        --seed=<seed>; random seed, if not specified, the seed will be randomized as much as possible" << std::endl;
     std::cerr << "        --size=<x>,<y>: crop size" << std::endl;
     std::cerr << "        --width=<x>: crop width, unless --size given" << std::endl;
     std::cerr << "        --permissive; discard images smaller than crop size" << std::endl;
@@ -788,7 +790,9 @@ int main( int ac, char** av )
             if( v.size() != 2 ) { std::cerr << "cv-calc: expected --size=<width>,<height>, got: '" << comma::join( v, ',' ) << std::endl; return 1; }
             unsigned int padding_x = boost::lexical_cast< unsigned int >( v[0] );
             unsigned int padding_y = boost::lexical_cast< unsigned int >( v[1] );
-            std::default_random_engine generator;
+            boost::optional< unsigned int > seed = options.optional< unsigned int >( "--seed" );
+            if( !seed ) { seed = ( boost::posix_time::microsec_clock::universal_time() - boost::posix_time::from_iso_string( "20180101T000000" ) ).total_microseconds(); } // quick and dirty, use std::chrono instead?
+            std::default_random_engine generator( *seed );
             std::uniform_real_distribution< float > distribution( 0, 1 );
             while( std::cin.good() && !std::cin.eof() )
             {
