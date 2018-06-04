@@ -33,6 +33,7 @@ __author__ = 'v.vlaskine'
 
 import argparse
 import numpy as np
+import os
 import signal
 import sys
 
@@ -129,10 +130,12 @@ if __name__ == '__main__':
     parser.add_argument( '--keep-devices', action="store_true", help = 'do not clear devices on graph load, i.e. you plan to run inference in the same environment as training; has effect only in tensorflow 1.0 and higher')
     parser.add_argument( '--keep-input', action="store_true", help = 'append output to input' )
     parser.add_argument( '--input', '-i', type = str, default = 'input', help = 'input layer name; default: %(default)s' )
+    parser.add_argument( '--min-log-level', '--log-level', type = str, default = "2", help = 'min log level (as os.environ[\'TF_CPP_MIN_LOG_LEVEL\']); default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
     parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename (without extension); default: %(default)s' )
     parser.add_argument( '--session-dir', '--dir', default = '.', type = str, help = 'saved session directory; default: %(default)s' )
-    parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
+    #parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
+    parser.add_argument( '--session-graph', '--graph', '--graph-file', type = str, help = 'path to saved graph file; default: %(default)s' )
     parser.add_argument( '--tensor', type = str, help = 'tensor name, if using tensor options; e.g. "image_tensor:0"' )
     parser.add_argument( '--tensor-shape', action = "store_true", help = 'print tensor shape and exit' )
     parser.add_argument( '--tensor-type', '--tensor-dtype', action = "store_true", help = 'print tensor type and exit' )
@@ -140,8 +143,9 @@ if __name__ == '__main__':
     parser.add_argument( '--verbose', '-v', action="store_true", help = 'more output' )
     # todo: device pinning
     args = parser.parse_args()
-    outputs = args.output
-    if ( not args.output is None ) and len( args.output ) == 1: outputs = args.output[0].split( ',' )
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = args.min_log_level
+    output_names = args.output
+    if ( not args.output is None ) and len( args.output ) == 1: output_names = args.output[0].split( ',' )
     import tensorflow as tf
     tf.logging.set_verbosity( tf.logging.INFO if args.verbose else tf.logging.WARN )
     tf_version = map( int, tf.__version__.split( '.' ) )
@@ -160,18 +164,19 @@ if __name__ == '__main__':
         saver.restore( session, session_file )
         input = get_collection( args.input )
         keep_prob = get_collection( 'keep_prob', True ) # todo! quick and dirty
-        output = [ get_collection( name )[0] for name in outputs ]
+        outputs = [ get_collection( name )[0] for name in output_names ]
         feeds = variables( args.variable )
         if args.verbose:
             print >> sys.stderr, "tensor-cat: input '" + args.input + "':", input
-            print >> sys.stderr, "tensor-cat: output '" + args.output + "':", output
+            for i in range( len( output_names ) ): print >> sys.stderr, "tensor-cat: output '" + output_names[i] + "':", outputs[i]
         for header, data, footer in iterator( sys.stdin, input, args.header_size, args.footer_size ):
             if data is None: break
             feeds[input[0]] = data
             if len( keep_prob ) > 0: feeds[keep_prob[0]] = 1.0
-            values = session.run( output, feed_dict = feeds )
+            values = session.run( outputs, feed_dict = feeds )
             header.tofile( sys.stdout )
             if args.keep_input: data.tofile( sys.stdout )
             footer.tofile( sys.stdout )
             for value in values: value.tofile( sys.stdout )
             sys.stdout.flush()
+        session.close()
