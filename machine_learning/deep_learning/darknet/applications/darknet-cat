@@ -245,6 +245,8 @@ def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
     free_detections(dets, num)
     return res
 
+def say( m ): print >> sys.stderr, "darknet-cat: ", m
+
 def warn( m ): print >> sys.stderr, "darknet-cat: warning:", m
 
 def die( m ): print >> sys.stderr, "darknet-cat:", m; sys.exit( 1 )
@@ -273,7 +275,7 @@ if __name__ == '__main__':
     parser.add_argument( '--classes', help="number of classes", required=True, type=int)
     parser.add_argument( '--darknet-src', help="location of darknet repository (todo: fix)", required=False, default=home + "/src/darknet")
     args = parser.parse_args()
-    print >>sys.stderr, "ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment"
+    warn( "ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment" )
 
     set_up_darknet_funcs(args.darknet_src) # todo: install darknet somehow
     net = load_net(args.config.encode('utf-8'), args.weights.encode('utf-8'), 0) # todo: get number of classes from config file
