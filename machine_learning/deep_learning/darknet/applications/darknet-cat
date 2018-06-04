@@ -49,46 +49,14 @@ description = """
 
 read tensors as binary on stdin, load model from file, apply model, write output tensors to stdout
 
+ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment
+
 
 """
 
 epilog = """
 examples
-    main use cases
-        each record contains only tensor
-            cat input-tensors.bin | darknet-cat --session model > output-tensors.bin
-            
-        each record in input data has header followed by tensor and then footer (e.g. containing timestamp, sequence number, or alike)
-            cat header.input-tensor.footer.bin | darknet-cat --header-size 24 --footer-size 16 ... > header.footer.output-tensor.bin
-            
-        running on mnist
-            # train and export mnist model
-            tensorflow/examples/tensorflow-mnist-train-and-export
-            
-            # output predictions for first 10 images
-            cat MNIST_data/t10k-images-idx3-ubyte.gz \\
-                | gunzip \\
-                | tail -c+17 \\
-                | cv-cat --input "rows=28;cols=28;type=ub;no-header" "convert-to=f,0.0039" \\
-                | darknet-cat --session session --dir mnist -i x -o argmax \\
-                | csv-from-bin l \\
-                | head
-                
-            # save first 10 images as png and view to compare with the max output among the predictions
-            cat MNIST_data/t10k-images-idx3-ubyte.gz | gunzip | tail -c+17 \\
-                | cv-cat --input "rows=28;cols=28;type=ub;no-header" "head=10" \\
-                | cv-cat --input "rows=28;cols=28;type=ub;no-header" "file=png;null"
-            eog *.png
-            
-            # visualise e.g. the first convolution activations
-            cat MNIST_data/t10k-images-idx3-ubyte.gz \\
-                | gunzip \\
-                | tail -c+17 \\
-                | cv-cat --input "rows=28;cols=28;type=ub;no-header" "convert-to=f,0.0039" \\
-                | darknet-cat --session session --dir mnist -i x -o h_pool1 \\
-                | math-array transpose --shape 14,14,32 --to 2,0,1 \\
-                | cv-cat --fps 1 --input "no-header;rows=$((32*14));cols=14;type=f" "untile=8,4;resize=4;view;null"
-
+    todo
 """
 
 
@@ -305,6 +273,7 @@ if __name__ == '__main__':
     parser.add_argument( '--classes', help="number of classes", required=True, type=int)
     parser.add_argument( '--darknet-src', help="location of darknet repository (todo: fix)", required=False, default=home + "/src/darknet")
     args = parser.parse_args()
+    print >>sys.stderr, "ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment"
 
     set_up_darknet_funcs(args.darknet_src) # todo: install darknet somehow
     net = load_net(args.config.encode('utf-8'), args.weights.encode('utf-8'), 0) # todo: get number of classes from config file
