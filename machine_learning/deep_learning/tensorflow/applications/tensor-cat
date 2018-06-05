@@ -94,9 +94,9 @@ def warn( m ): print >> sys.stderr, "tensor-cat: warning:", m
 def die( m ): print >> sys.stderr, "tensor-cat:", m; sys.exit( 1 )
 
 def iterator( file, input, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
-    shape = ( input[0].get_shape() if tf_version[0] < 1 else input[0].shape ).as_list()
+    shape = ( input.get_shape() if tf_version[0] < 1 else input.shape ).as_list()
     shape = [ 1 if v is None else v for v in shape ] # quick and dirty
-    ntype = ( input[0]._dtype if tf_version[0] < 1 else input[0].dtype ).as_numpy_dtype()
+    ntype = ( input._dtype if tf_version[0] < 1 else input.dtype ).as_numpy_dtype()
     size = np.prod( shape )
     while True:
         header = np.fromfile( file, np.uint8, header_size )
@@ -105,13 +105,17 @@ def iterator( file, input, header_size, footer_size ): # todo: quick and dirty; 
         if data.shape[0] == size: yield header, data.reshape( shape ), footer
         else: yield None, None, None
 
-def get_collection( name, permissive = False ): # todo? support multiple outputs?
-    entry = tf.get_collection( name )
-    if len( entry ) == 0:
-        if permissive: warn( "graph does not have entry named '" + name + "'; skipped" )
-        else: die( "tensor-cat: graph does not have entry named '" + name + "'" )
-    if len( entry ) > 1: die( "expected entry size 1 for entry named '" + name + "'; got: " + str( len( entry ) ) + "(todo?)" )
-    return entry
+def get_tensor( name, permissive = False ):
+    try:
+        return session.graph.get_tensor_by_name( name )
+    except:
+        saymore( "no tensor '" + name + "' in graph " + session_meta + ", checking collection..." )
+        entries = tf.get_collection( name )
+        if len( entries ) == 0:
+            if permissive: warn( "graph does not have entry named '" + name + "'; skipped" ); return None
+            else: die( "graph does not have entry named '" + name + "'" )
+        if len( entries ) > 1: die( "expected entry size 1 for entry named '" + name + "'; got: " + str( len( entries ) ) + "(todo?)" )
+        return entries[0]
 
 def variables( v ):
     if v is None : return {}
@@ -145,7 +149,9 @@ if __name__ == '__main__':
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = args.min_log_level
     output_names = args.output
     if ( not args.output is None ) and len( args.output ) == 1: output_names = args.output[0].split( ',' )
+    saymore( "importing tensorflow..." )
     import tensorflow as tf
+    saymore( "imported tensorflow" )
     tf.logging.set_verbosity( tf.logging.INFO if args.verbose else tf.logging.WARN )
     tf_version = map( int, tf.__version__.split( '.' ) )
     with tf.Session() as session:
@@ -154,6 +160,7 @@ if __name__ == '__main__':
         if tf_version[0] < 1 and args.keep_devices : warn( "--keep-devices specified, but will have no effect: not implemented in tensorflow version " + tf.__version__ + " that you are running" )
         saymore( "importing meta graph file from '" + session_meta + "'..." )
         saver = tf.train.import_meta_graph( session_meta ) if tf_version[0] < 1 else tf.train.import_meta_graph( session_meta, clear_devices = not args.keep_devices )
+        saymore( "imported meta graph file from '" + session_meta + "'" )
         if args.tensor_shape: print session.graph.get_tensor_by_name( args.tensor ).shape; sys.exit( 0 )
         if args.tensor_type: print session.graph.get_tensor_by_name( args.tensor ).dtype; sys.exit( 0 )
         if args.get_operations:
@@ -161,17 +168,18 @@ if __name__ == '__main__':
             sys.exit( 0 )
         saymore( "restoring session from '" + session_file + "'..." )
         saver.restore( session, session_file )
-        input = get_collection( args.input )
-        keep_prob = get_collection( 'keep_prob', True ) # todo! quick and dirty
-        outputs = [ get_collection( name )[0] for name in output_names ]
+        saymore( "restored session from '" + session_file + "'" )
+        input = get_tensor( args.input )
+        keep_prob = get_tensor( 'keep_prob', True ) # todo! quick and dirty
+        outputs = [ get_tensor( name ) for name in output_names ]
         feeds = variables( args.variable )
         if args.verbose:
             print >> sys.stderr, "tensor-cat: input '" + args.input + "':", input
             for i in range( len( output_names ) ): print >> sys.stderr, "tensor-cat: output '" + output_names[i] + "':", outputs[i]
         for header, data, footer in iterator( sys.stdin, input, args.header_size, args.footer_size ):
             if data is None: break
-            feeds[input[0]] = data
-            if len( keep_prob ) > 0: feeds[keep_prob[0]] = 1.0
+            feeds[input] = data
+            if not keep_prob is None: feeds[keep_prob] = 1.0
             values = session.run( outputs, feed_dict = feeds )
             header.tofile( sys.stdout )
             if args.keep_input: data.tofile( sys.stdout )
