@@ -185,6 +185,7 @@ if __name__ == '__main__':
         if args.verbose:
             print >> sys.stderr, "tensor-cat: input '" + args.input + "':", input
             for i in range( len( output_names ) ): print >> sys.stderr, "tensor-cat: output '" + output_names[i] + "':", outputs[i]
+        saymore( "running inference..." )
         for header, data, footer in iterator( sys.stdin, input, args.header_size, args.footer_size ):
             if data is None: break
             feeds[input] = data
@@ -196,3 +197,4 @@ if __name__ == '__main__':
             for value in values: value.tofile( sys.stdout )
             sys.stdout.flush()
         session.close()
+        saymore( "done" )
