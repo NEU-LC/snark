@@ -40,7 +40,7 @@
 namespace snark { namespace graphics { namespace view {
 
 /// display an image as a texture, set its position from an input csv stream
-class TextureReader : public Reader
+class texture_reader : public Reader
 {
     public:
         struct image_options
@@ -55,7 +55,7 @@ class TextureReader : public Reader
             image_options( const std::string& filename, double width, double height ) : filename( filename ), width( width ), height( height ) {}
         };
 
-        TextureReader( const reader_parameters& params, const std::vector< image_options >& io );
+        texture_reader( const reader_parameters& params, const std::vector< image_options >& io );
 
         void start();
         std::size_t update( const Eigen::Vector3d& offset );

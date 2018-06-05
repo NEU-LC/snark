@@ -33,7 +33,7 @@
 
 namespace snark { namespace graphics { namespace view {
 
-TextureReader::image_::image_( const TextureReader::image_options& o ) : image( &o.filename[0] )
+texture_reader::image_::image_( const texture_reader::image_options& o ) : image( &o.filename[0] )
 {
     texture.setImage( image );
     material.setTexture( &texture );
@@ -56,32 +56,25 @@ TextureReader::image_::image_( const TextureReader::image_options& o ) : image( 
     node->setMaterial( &material );
 }
 
-TextureReader::TextureReader( const reader_parameters& params
-                            , const std::vector< image_options >& io )
+texture_reader::texture_reader( const reader_parameters& params, const std::vector< image_options >& io )
     : Reader( reader_parameters( params ), NULL, "", Eigen::Vector3d( 0, 1, 1 ) )
 {
     for( unsigned int i = 0; i < io.size(); ++i ) { images_.push_back( new image_( io[i] ) ); }
 }
 
-void TextureReader::start()
-{
-    m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) );
-}
+void texture_reader::start() { m_thread.reset( new boost::thread( boost::bind( &Reader::read, boost::ref( *this ) ) ) ); }
 
-std::size_t TextureReader::update( const Eigen::Vector3d& offset )
-{
-    return updatePoint( offset ) ? 1 : 0;
-}
+std::size_t texture_reader::update( const Eigen::Vector3d& offset ) { return updatePoint( offset ) ? 1 : 0; }
 
-bool TextureReader::empty() const { return !m_point; }
+bool texture_reader::empty() const { return !m_point; }
 
-const Eigen::Vector3d& TextureReader::somePoint() const
+const Eigen::Vector3d& texture_reader::somePoint() const
 {
     boost::mutex::scoped_lock lock( m_mutex );
     return *m_point;
 }
 
-void TextureReader::render( Viewer& viewer, QGLPainter* painter )
+void texture_reader::render( Viewer& viewer, QGLPainter* painter )
 {
     if( !m_point ) { return; }
     comma::uint32 id = id_;
@@ -95,7 +88,7 @@ void TextureReader::render( Viewer& viewer, QGLPainter* painter )
     painter->modelViewMatrix().pop();
 }
 
-bool TextureReader::read_once()
+bool texture_reader::read_once()
 {
     if( !m_stream ) // quick and dirty: handle named pipes
     {
@@ -115,6 +108,4 @@ bool TextureReader::read_once()
     return true;
 }
 
-
 } } } // namespace snark { namespace graphics { namespace view {
-

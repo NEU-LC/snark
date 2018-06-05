@@ -165,18 +165,6 @@ static void usage()
         "\n                                   where 'begin' and 'end' are x,y,z points"
         "\n                                   and 'middle' is a point between begin and end on the arc"
         "\n                                   default: 'begin,end', with centre 0,0,0"
-        "\n                     \"ellipse\": e.g. --shape=ellipse --fields=,,center,orientation,minor,major,"
-        "\n                                  orientation: roll,pitch,yaw; default: in x,y plane"
-        "\n                     \"extents\": e.g. --shape=extents --fields=,,min,max,,,"
-        qt55_unsupported_marker_start
-        "\n                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label"
-        qt55_unsupported_marker_end
-        "\n                     \"line\": e.g. --shape=line --fields=,,first,second,,,"
-        "\n                     \"lines\": connect all points of a block from first to the last; fields same as for 'point'"
-        "\n                     \"loop\": connect all points of a block; fields same as for 'point'"
-        "\n                     \"triangle\": e.g. --shape=triangle --fields=,,corners,,,"
-        "\n                                     or --shape=triangle --fields=,,corners[0],,,corners[1],,,corners[2],,,"
-        "\n                                     or --shape=triangle --fields=,,corners[0]/x,,corners[0]/y,,corners[0]/z,,,,corners[1],,,corners[2],,, etc"
         "\n                     \"axis\": draws three axis lines per record, in red/green/blue corresponding to x/y/z axes, using position and orientation e.g. --shape=axis --fields=position,orientation"
         "\n                                     fields: position,orientation"
         "\n                                         default fields: position,orientation"
@@ -190,13 +178,27 @@ static void usage()
 #endif
         "\n                                         by default each axis is painted with different colors x:red y:green z:blue; unless"
         "\n                                             if --color option exists or any of id or scalar fields are present it will use the normal coloring for all axis lines"
+        "\n                     \"ellipse\": e.g. --shape=ellipse --fields=,,center,orientation,minor,major,"
+        "\n                                  orientation: roll,pitch,yaw; default: in x,y plane"
+        "\n                     \"extents\": e.g. --shape=extents --fields=,,min,max,,,"
+        qt55_unsupported_marker_start
+        "\n                     \"label\": e.g. --shape=label --fields=,x,y,z,,,label"
+        qt55_unsupported_marker_end
+        "\n                     \"line\": e.g. --shape=line --fields=,,first,second,,,"
+        "\n                     \"lines\": connect all points of a block from first to the last; fields same as for 'point'"
+        "\n                     \"loop\": connect all points of a block; fields same as for 'point'"
+        "\n                     \"triangle\": e.g. --shape=triangle --fields=,,corners,,,"
+        "\n                                     or --shape=triangle --fields=,,corners[0],,,corners[1],,,corners[2],,,"
+        "\n                                     or --shape=triangle --fields=,,corners[0]/x,,corners[0]/y,,corners[0]/z,,,,corners[1],,,corners[2],,, etc"
         qt55_unsupported_marker_start
         "\n                     \"model file ( obj, ply... )>[;<options>]\": e.g. --shape=vehicle.obj"
         "\n                          <options>"
         "\n                              flip\": flip the model around the x-axis"
         "\n                              scale=<value>\": resize model (ply only, todo), e.g. show model half-size: scale=0.5"
         qt55_unsupported_marker_end
-        "\n                     \"<image file>[,<image options>]:<image file>[,<image options>]\": show image, e.g. --shape=\"vehicle-lights-on.jpg,vehicle-lights-off.jpg\""
+        "\n                     \"<image file>[,<image options>]:<image file>[,<image options>]\": show image, e.g. --shape=\"vehicle-lights-on.jpg:vehicle-lights-off.jpg\""
+        "\n                            <image file>: e.g. either: images/cat.png"
+        "\n                                                   or: images/*.png; images can be displayed by id (see note 2 for the id field description"
         "\n                            <image options>: <width>,<height> or <pixel-size>"
         "\n                                <width>,<height>: image width and height in meters when displaying images in the scene; default: 1,1"
         "\n                                <pixel size>: single pixel size in metres"
@@ -360,6 +362,54 @@ static void usage()
     exit( 1 );
 }
 
+template < typename Options >
+static std::vector< Options > make_image_options( const std::string& shape )
+{
+    std::vector< Options > image_options;
+    const std::vector< std::string >& v = comma::split( shape, ':' );
+    for( unsigned int i = 0; i < v.size(); ++i )
+    {
+        const std::vector< std::string >& w = comma::split( v[i], ',' );
+        if( w.empty() || w[0].empty() ) { COMMA_THROW( comma::exception, "got empty image options in '" << shape << "'" ); }
+        boost::optional< double > p1;
+        boost::optional< double > p2;
+        switch( w.size() ) // quick and dirty
+        {
+            case 1: break;
+            case 2: p1 = boost::lexical_cast< double >( w[1] ); break;
+            case 3: p1 = boost::lexical_cast< double >( w[1] ); p2 = boost::lexical_cast< double >( w[2] ); break;
+            default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: '" << shape << "'" );
+        }
+        boost::filesystem::path path( w[0] );
+        std::string e = path.extension().string();
+        if( e != ".png" && e != ".jpg" && e != ".jpeg" && e != ".bmp" && e != ".gif" ) { break; } // quick and dirty
+        std::vector< std::string > filenames;
+        if( path.leaf().string() == ( "*" + e ) ) // quick and dirty; proper regex: todo
+        {
+            std::string dir = path.branch_path().string();
+            if( dir.empty() ) { dir = "."; }
+            for( boost::filesystem::directory_iterator it( dir ); it != boost::filesystem::directory_iterator(); ++it ) { if( it->path().extension() == e ) { filenames.push_back( it->path().string() ); } }
+            if( filenames.empty() ) { COMMA_THROW( comma::exception, "no " << e << " files found in " << dir ); }
+        }
+        else
+        {
+            filenames.push_back( w[0] );
+        }
+        std::sort( filenames.begin(), filenames.end() ); // quick and dirty
+        for( const auto& filename: filenames )
+        {
+            switch( w.size() )
+            {
+                case 1: image_options.push_back( Options( filename ) ); break;
+                case 2: image_options.push_back( Options( filename, *p1 ) ); break;
+                case 3: image_options.push_back( Options( filename, *p1, *p2 ) ); break;
+                default: break; // never here
+            }
+        }
+    }
+    return image_options;
+}
+
 static bool data_passed_through = false;
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
@@ -487,39 +537,11 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     {
         if( param.options.fields == "" ) { param.options.fields="point,orientation"; param.options.full_xpath = true; }
 #if Qt3D_VERSION==1
-        std::vector< snark::graphics::view::TextureReader::image_options > image_options;
-        std::vector< std::string > v = comma::split( shape, ':' );
-        for( unsigned int i = 0; i < v.size(); ++i )
-        {
-            std::vector< std::string > w = comma::split( v[i], ',' );
-            std::string e = comma::split( w[0], '.' ).back();
-            if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
-            switch( w.size() )
-            {
-                case 1: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0] ) ); break;
-                case 2: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ) ) ); break;
-                case 3: image_options.push_back( snark::graphics::view::TextureReader::image_options( w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ) ) ); break;
-                default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
-            }
-        }
+        auto image_options = make_image_options< snark::graphics::view::texture_reader::image_options >( shape );
 #elif Qt3D_VERSION==2
-        std::vector<snark::graphics::view::image_options> image_options;
-        std::vector< std::string > v = comma::split( shape, ':' );
-        for( unsigned int i = 0; i < v.size(); ++i )
-        {
-            std::vector< std::string > w = comma::split(v[i], ',' );
-            std::string e = comma::split( w[0], '.' ).back();
-            if( e != "png" && e != "jpg" && e != "jpeg" && e != "bmp" && e != "gif" ) { break; }
-            switch( w.size() )
-            {
-                case 1: image_options.push_back(snark::graphics::view::image_options(w[0])); break;
-                case 2: image_options.push_back(snark::graphics::view::image_options(w[0], boost::lexical_cast< double >( w[1] ))); break;
-                case 3: image_options.push_back(snark::graphics::view::image_options(w[0], boost::lexical_cast< double >( w[1] ), boost::lexical_cast< double >( w[2] ))); break;
-                default: COMMA_THROW( comma::exception, "expected <image>[,<width>,<height>]; got: " << shape );
-            }
-        }
+        auto image_options = make_image_options< snark::graphics::view::image_options >( shape );
 #endif
-        if( image_options.empty() )
+        if( image_options.empty() ) // quick and dirty
         {
             snark::graphics::view::model_options m = comma::name_value::parser( ';', '=' ).get< snark::graphics::view::model_options >( properties );
             m.filename = shape;
@@ -527,7 +549,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
             std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::model_reader( param, m, colored, label ) );
             reader->show( show );
 #if Qt3D_VERSION==2
-            std::cerr << "view-points: cad models are not supported yet for qt 5.5+ " << Qt3D_VERSION << std::endl;
+            std::cerr << "view-points: cad models are not supported yet for qt 5.5+ " << Qt3D_VERSION << " yet; todo" << std::endl;
             exit(1);
 #endif
             return reader;
@@ -535,9 +557,9 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         else
         {
 #if Qt3D_VERSION==1
-            std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::TextureReader( param, image_options ) );
+            std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::texture_reader( param, image_options ) );
 #elif Qt3D_VERSION==2
-            std::unique_ptr<snark::graphics::view::Reader> reader(new snark::graphics::view::image_reader(param, image_options));
+            std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::image_reader( param, image_options ) );
 #endif
             reader->show( show );
             return reader;
