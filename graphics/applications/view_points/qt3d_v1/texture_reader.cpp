@@ -88,6 +88,24 @@ void texture_reader::render( Viewer& viewer, QGLPainter* painter )
     painter->modelViewMatrix().pop();
 }
 
+// todo: something like this:
+// void texture_reader::render( Viewer& viewer, QGLPainter* painter )
+// {
+//     boost::mutex::scoped_lock lock( m_mutex );
+//     if( !points_.empty() ) { return; }
+//     for( const auto& point: points_ )
+//     {
+//         if( p.id() >= images_.size() ) { continue; }
+//         painter->setStandardEffect( QGL::FlatReplaceTexture2D );
+//         painter->modelViewMatrix().push();
+//         Eigen::Vector3d d = p.translation() - m_offset;
+//         painter->modelViewMatrix().translate( QVector3D( d.x(), d.y(), d.z() ) );
+//         painter->modelViewMatrix().rotate( m_quaternion );
+//         images_[p.id()].node->draw( painter );
+//         painter->modelViewMatrix().pop();
+//     }
+// }
+
 bool texture_reader::read_once()
 {
     if( !m_stream ) // quick and dirty: handle named pipes
