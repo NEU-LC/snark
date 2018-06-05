@@ -95,7 +95,14 @@ def die( m ): print >> sys.stderr, "tensor-cat:", m; sys.exit( 1 )
 
 def iterator( file, input, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
     shape = ( input.get_shape() if tf_version[0] < 1 else input.shape ).as_list()
-    shape = [ 1 if v is None else v for v in shape ] # quick and dirty
+    if args.input_shape is None:
+        shape = [ 1 if v is None else v for v in shape ] # quick and dirty
+    else:
+        input_shape = eval( "[" + args.input_shape + "]" )
+        if len( shape ) != len( input_shape ): die( "expected input shape dimensions " + str( len( shape ) ) + ", got " + str( len( input_shape ) ) + " in --input-shape: [" + args.input_shape + "]" )
+        for i in range( len( shape ) ):
+            if shape[i] is None: shape[i] = input_shape[i]
+            elif shape[i] != input_shape[i]: die( "expected input shape dimension " + str( i ) + ": " + str( shape[i] ) + ", got " + str( input_shape[i] ) + " in --input-shape: [" + args.input_shape + "]" )
     ntype = ( input._dtype if tf_version[0] < 1 else input.dtype ).as_numpy_dtype()
     size = np.prod( shape )
     while True:
@@ -115,6 +122,7 @@ def get_tensor( name, permissive = False ):
             if permissive: warn( "graph does not have entry named '" + name + "'; skipped" ); return None
             else: die( "graph does not have entry named '" + name + "'" )
         if len( entries ) > 1: die( "expected entry size 1 for entry named '" + name + "'; got: " + str( len( entries ) ) + "(todo?)" )
+        saymore( "tensor '" + name + "' found in collection" )
         return entries[0]
 
 def variables( v ):
@@ -134,6 +142,7 @@ if __name__ == '__main__':
     parser.add_argument( '--keep-devices', action="store_true", help = 'do not clear devices on graph load, i.e. you plan to run inference in the same environment as training; has effect only in tensorflow 1.0 and higher')
     parser.add_argument( '--keep-input', action="store_true", help = 'append output to input' )
     parser.add_argument( '--input', '-i', type = str, default = 'input', help = 'input layer name; default: %(default)s' )
+    parser.add_argument( '--input-shape', type = str, help = 'shape of a single input record as a comma-separated list' )
     parser.add_argument( '--min-log-level', '--log-level', type = str, default = "2", help = 'min log level (as os.environ[\'TF_CPP_MIN_LOG_LEVEL\']); default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
     parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename (without extension); default: %(default)s' )
@@ -161,8 +170,8 @@ if __name__ == '__main__':
         saymore( "importing meta graph file from '" + session_meta + "'..." )
         saver = tf.train.import_meta_graph( session_meta ) if tf_version[0] < 1 else tf.train.import_meta_graph( session_meta, clear_devices = not args.keep_devices )
         saymore( "imported meta graph file from '" + session_meta + "'" )
-        if args.tensor_shape: print session.graph.get_tensor_by_name( args.tensor ).shape; sys.exit( 0 )
-        if args.tensor_type: print session.graph.get_tensor_by_name( args.tensor ).dtype; sys.exit( 0 )
+        if args.tensor_shape: print get_tensor( args.tensor ).shape; sys.exit( 0 )
+        if args.tensor_type: print get_tensor( args.tensor ).dtype; sys.exit( 0 )
         if args.get_operations:
             for o in session.graph.get_operations(): print o.name
             sys.exit( 0 )
