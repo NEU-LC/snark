@@ -253,7 +253,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                     cam_prop.absValue = boost::lexical_cast<float>( value );             
                 }
             }
-            assert_ok(handle->SetProperty( &cam_prop ), "Error setting attributes");
+            assert_ok(handle->SetProperty( &cam_prop ), "Error setting attribute " + key + " to " + value);
             return;
         } else if (FlyCapture2::GigECamera* camera = dynamic_cast<FlyCapture2::GigECamera*>(handle)){
             set_attribute(camera, key, value);
