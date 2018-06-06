@@ -47,7 +47,7 @@ examples
     todo
 """
 
-def die( m ): print >> sys.stderr, "math-numpy:", m; sys.exit( 1 )
+def die( m ): print >> sys.stderr, "math-array:", m; sys.exit( 1 )
 
 if __name__ == '__main__':
     def handle_signal( s, f ): print >> sys.stderr, "tensor-cat: broken pipe, exit"; sys.exit( 0 )
