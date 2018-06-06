@@ -203,24 +203,24 @@ namespace snark{ namespace cameras{ namespace flycapture{
 
         if( key == "trigger_on" ) 
         {
-            if( value == "true" ) {trigger_mode.onOff = true;}
-            else if( value == "false" ) {trigger_mode.onOff = false;}
+            if( value == "true" || value == "1" ) {trigger_mode.onOff = true;}
+            else if( value == "false" || value == "0") {trigger_mode.onOff = false;}
             else { COMMA_THROW( comma::exception, "Error: invalid trigger_on setting. Please use true/false" ); }
         }
         else if( key == "trigger_polarity" ) 
         {
-            if( value == "high" ) {trigger_mode.polarity = 1;}
-            else if( value == "low" ) {trigger_mode.polarity = 0;}
+            if( value == "high" || value == "1" ) {trigger_mode.polarity = 1;}
+            else if( value == "low" || value == "0" ) {trigger_mode.polarity = 0;}
             else { COMMA_THROW( comma::exception, "Error: invalid trigger_polarity setting. Please use high/low"); }
         }
         else if( key == "trigger_source" ) // 0-3 are GPIO, 4 = none
         {
-            if( value == "GPIO0" ) {trigger_mode.source = 0;} 
-            else if( value == "GPIO1" ) {trigger_mode.source = 1;}
-            else if( value == "GPIO2" ) {trigger_mode.source = 2;}
-            else if( value == "GPIO3" ) {trigger_mode.source = 3;}
-            else if( value == "none"  ) {trigger_mode.source = 4;}
-            else if( value == "software" ) {trigger_mode.source = 7;}
+            if( value == "GPIO0" || value == "0" ) {trigger_mode.source = 0;} 
+            else if( value == "GPIO1" || value == "1" ) {trigger_mode.source = 1;}
+            else if( value == "GPIO2" || value == "2" ) {trigger_mode.source = 2;}
+            else if( value == "GPIO3" || value == "3" ) {trigger_mode.source = 3;}
+            else if( value == "none"  || value == "4" ) {trigger_mode.source = 4;}
+            else if( value == "software" || value == "7" ) {trigger_mode.source = 7;}
             else {COMMA_THROW( comma::exception, "Error: unknown trigger source. please use 'GPIO[0-3]', 'software' or 'none'");}
         }
         else if( key == "trigger_mode" )      {trigger_mode.mode = boost::lexical_cast<int>(value);}
@@ -253,7 +253,7 @@ namespace snark{ namespace cameras{ namespace flycapture{
                     cam_prop.absValue = boost::lexical_cast<float>( value );             
                 }
             }
-            assert_ok(handle->SetProperty( &cam_prop ), "Error setting attributes");
+            assert_ok(handle->SetProperty( &cam_prop ), "Error setting attribute " + key + " to " + value);
             return;
         } else if (FlyCapture2::GigECamera* camera = dynamic_cast<FlyCapture2::GigECamera*>(handle)){
             set_attribute(camera, key, value);
