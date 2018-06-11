@@ -40,15 +40,9 @@ description = """
 
 a trivial numpy convenience wrapper: read a stream of multidimensional arrays as binary on stdin, perform an operation, output as contiguous arrays to stdout
 
-operations
-    paste
-        todo
-        or just try double transpose!!!
-            cat arrays.bin | math-array paste --fields ,,a,b,c --binary t,f,2400f,600f,600f "a;shape=600,4f" "b;shape=600,f" "c;shape=600,f"
-            cat arrays.bin | math-array paste --fields ,,a,b,c --size 600 "a;format=4f" "b;format=f" "c;format=f" [--repeat-header] [--repeat-footer]
-    
+operations    
     transpose
-        help: todo...
+        transpose a stream of arrays (simply performs numpy.transpose on each record)
 
 """
 
