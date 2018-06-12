@@ -40,6 +40,10 @@ description = """
 
 a trivial numpy convenience wrapper: read a stream of multidimensional arrays as binary on stdin, perform an operation, output as contiguous arrays to stdout
 
+operations    
+    transpose
+        transpose a stream of arrays (simply performs numpy.transpose on each record)
+
 """
 
 epilog = """
