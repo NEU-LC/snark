@@ -1,0 +1,6 @@
+split[0]="( echo some_other_stuff,0,1,2,3,4,5; echo more_other_stuff,6,7,8,9,10,11 ) | csv-to-bin s[32],6f | math-array split --shape 3,2 --header-size 32 | csv-from-bin s[32],2f | tr '\\n' ';'; comma_status_ok || exit 1"
+
+transpose[0]="( echo 0,1,2,3,4,5; echo 6,7,8,9,10,11 ) | csv-to-bin 6f | math-array transpose --to-axes 1,0 --shape 3,2 | csv-from-bin 6f | tr '\\n' ';'; comma_status_ok || exit 1"
+transpose[1]="( echo header.0,0,1,2,3,4,5,footer.0; echo header.1,6,7,8,9,10,11,footer.1 ) | csv-to-bin s[32],6f,s[32] | math-array transpose --to-axes 1,0 --shape 3,2 --header-size 32 --footer-size 32 | csv-from-bin s[32],6f,s[32] | tr '\\n' ';'; comma_status_ok || exit 1"
+
+numpy_operation[0]="( echo some_other_stuff,0,1,2,3,4,5; echo more_other_stuff,6,7,8,9,10,11 ) | csv-to-bin s[32],6f | math-array "np.swapaxes, axis1 = 0, axis2 = 1" --shape 3,2 --header-size 32 | csv-from-bin s[32],6f | tr '\\n' ';'; comma_status_ok || exit 1"

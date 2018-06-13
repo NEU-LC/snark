@@ -46,7 +46,7 @@ operations
         split each record in the stream of arrays, repeating header and/or footer for each record
     transpose
         transpose stream of arrays (simply performs numpy.transpose on each record)
-    arbitrary numpy operation on array, as
+    (somewhat) arbitrary numpy operation on array, as
         <operation>[,<parameters>], where <parameter>: <name>=<value>
 
 """
@@ -54,12 +54,12 @@ operations
 epilog = """
 examples
     split
-        csv-paste line-number | head -n12 | csv-to-bin f | csv-paste "line-number" "-;binary=6f" | math-array split --shape 3,2 --header 4 | csv-from-bin ui,2f
+        ( echo some_other_stuff,0,1,2,3,4,5; echo more_other_stuff,6,7,8,9,10,11 ) | csv-to-bin s[32],6f | math-array split --shape 3,2 --header-size 32 | csv-from-bin s[32],2f
     transpose
-        csv-paste line-number | head -n6 | csv-to-bin f | math-array "np.transpose, axes = [1,0]" --shape 3,2 | csv-from-bin 3f
-    arbitrary numpy operation
-        csv-paste line-number | head -n6 | csv-to-bin f | math-array "np.transpose, axes = [1,0]" --shape 3,2 | csv-from-bin 3f
-        csv-paste line-number | head -n6 | csv-to-bin f | math-array "np.swapaxes, axis1 = 1, axis2 = 0" --shape 3,2 | csv-from-bin 3f
+        ( echo 0,1,2,3,4,5; echo 6,7,8,9,10,11 ) | csv-to-bin 6f | math-array transpose --to-axes 1,0 --shape 3,2 | csv-from-bin 6f
+        ( echo some_other_stuff,0,1,2,3,4,5; echo more_other_stuff,6,7,8,9,10,11 ) | csv-to-bin s[32],6f | math-array transpose --to-axes 1,0 --shape 3,2 --header-size 32 | csv-from-bin s[32],6f
+    (somewhat) arbitrary numpy operation
+        ( echo some_other_stuff,0,1,2,3,4,5; echo more_other_stuff,6,7,8,9,10,11 ) | csv-to-bin s[32],6f | math-array "np.swapaxes, axis1 = 0, axis2 = 1" --shape 3,2 --header-size 32 | csv-from-bin s[32],6f
 """
 
 def die( m ): print >> sys.stderr, "math-array:", m; sys.exit( 1 )
