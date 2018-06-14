@@ -52,6 +52,7 @@ static pair_t capture( snark::jai::stream& stream )
     if( is_shutdown ) { reader->stop(); return pair_t(); }
     try { return stream.read(); }
     catch( std::exception& ex ) { std::cerr << "jai-cat: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "jai-cat: unknown exception" << std::endl; }
     return pair_t();
 }
 
@@ -155,9 +156,14 @@ int main( int argc, char** argv )
             return 0;
         }
         discard = vm.count( "discard" ) ? 1 : 0;
-        if( verbose ) { std::cerr << "jai-cat: connecting..." << std::endl; }
-        boost::scoped_ptr< snark::jai::camera > camera( factory.make_camera( id ) );
-        if( verbose ) { std::cerr << "jai-cat: connected to a camera" << std::endl; }
+        boost::scoped_ptr< snark::jai::camera > camera;
+        {
+            comma::signal_flag is_shutdown;
+            if( verbose ) { std::cerr << "jai-cat: connecting..." << std::endl; }
+            camera.reset( factory.make_camera( id ) );
+            if( verbose ) { std::cerr << "jai-cat: connected to a camera" << std::endl; }
+            if (is_shutdown) { std::cerr << "jai-cat: received signal while connecting, shutting down..." << std::endl; return 0; }
+        }
         if( vm.count( "list-settings" ) )
         {
             bool all = vm.count( "all" );

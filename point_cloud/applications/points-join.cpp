@@ -622,7 +622,7 @@ int main( int ac, char** av )
         append_nearest = !options.exists( "--matching" ) && matching;
         if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
         stdin_csv.full_xpath = true;
-        std::vector< std::string > unnamed = options.unnamed( "--use-cuda,--cuda,--matching,--not-matching,--verbose,-v,--strict,--all", "-.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--all,--matching,--not-matching--strict,--permissive,--use-cuda,--cuda,--flush,--full-xpath,--verbose,-v", "-.*" );
         if( unnamed.size() != 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
