@@ -84,7 +84,7 @@ examples
 
 """
 
-def say( m ): print >> sys.stderr, "tensor-cat: ", m
+def say( m ): print >> sys.stderr, "tensor-cat:", m
 
 def saymore( m ):
     if args.verbose: say( m )
