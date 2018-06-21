@@ -116,6 +116,7 @@ static void usage( bool verbose=false )
     std::cerr << "                <size>: number of primitives" << std::endl;
     std::cerr << "                <r>,<g>,<b>: line colour as unsigned-byte rgb; default: 0,0,0 (black)" << std::endl;
     std::cerr << "                <weight>: line weight; default: 1" << std::endl;
+    std::cerr << "                normalized: if present, the input points are expected in [0,1) interval and will be rescaled to the image size" << std::endl;
     std::cerr << "        fields: t,rows,cols,type,circles,labels,rectangles" << std::endl;
     std::cerr << "        example: todo" << std::endl;
     std::cerr << std::endl;
@@ -261,8 +262,8 @@ struct stride_positions_t : public positions_t
 
 struct extents
 {
-    cv::Point2i min;
-    cv::Point2i max;
+    cv::Point2f min;
+    cv::Point2f max;
     extents(): min( 0, 0 ), max( 0, 0 ) {}
 };
 
@@ -337,7 +338,8 @@ public:
     {
         shapes::color color;
         comma::uint32 weight;
-        properties() : weight( 1 ) {}
+        bool normalized;
+        properties() : weight( 1 ), normalized( false ) {}
     };
 
     struct config : public properties
@@ -356,14 +358,15 @@ public:
         bool draw( cv::Mat m ) const
         {
             if( max.x == 0 && min.x == 0 && max.y == 0 && max.y == 0 ) { return false; }
-            cv::rectangle( m, min, max, properties.color, properties.weight ); // CV_AA );
+            if( properties.normalized ) { cv::rectangle( m, cv::Point2i( min.x * m.cols, min.y * m.rows ), cv::Point2i( max.x * m.cols, max.y * m.rows ), properties.color, properties.weight ); } // CV_AA );
+            else { cv::rectangle( m, min, max, properties.color, properties.weight ); } // CV_AA );
             return true;
         }
     };
 
     struct circle
     {
-        cv::Point2i centre;
+        cv::Point2f centre;
         double radius;
         shapes::properties properties; // todo: record-wise support
         circle() : centre( 0, 0 ), radius( 0 ) {}
@@ -371,14 +374,15 @@ public:
         bool draw( cv::Mat m ) const
         {
             if( !comma::math::less( 0, radius ) ) { return false; }
-            cv::circle( m, centre, radius, properties.color, properties.weight, CV_AA );
+            if( properties.normalized ) { cv::circle( m, cv::Point2i( centre.x * m.cols, centre.y * m.rows ), radius * m.cols, properties.color, properties.weight, CV_AA ); }
+            else { cv::circle( m, centre, radius, properties.color, properties.weight, CV_AA ); }
             return true;
         }
     };
 
     struct label
     {
-        cv::Point2i position;
+        cv::Point2f position;
         std::string text;
         shapes::properties properties; // todo: record-wise support
         label() : position( 0, 0 ) {}
@@ -386,7 +390,7 @@ public:
         bool draw( cv::Mat m ) const
         {
             if( text.empty() ) { return false; }
-            cv::putText( m, text, position, cv::FONT_HERSHEY_SIMPLEX, 1.0, properties.color, properties.weight, CV_AA );
+            cv::putText( m, text, properties.normalized ? cv::Point2f( position.x * m.cols, position.y * m.rows ) : position, cv::FONT_HERSHEY_SIMPLEX, 1.0, properties.color, properties.weight, CV_AA );
             return true;
         }
     };
@@ -429,28 +433,14 @@ namespace comma { namespace visiting {
 
 template <> struct traits< positions_t::config >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, positions_t::config& p, Visitor& v )
-    {
-        v.apply( "size", p.size );
-    }
-
-    template < typename Key, class Visitor > static void visit( const Key&, const positions_t::config& p, Visitor& v )
-    {
-        v.apply( "size", p.size );
-    }
+    template < typename Key, class Visitor > static void visit( const Key&, positions_t::config& p, Visitor& v ) { v.apply( "size", p.size ); }
+    template < typename Key, class Visitor > static void visit( const Key&, const positions_t::config& p, Visitor& v ) { v.apply( "size", p.size ); }
 };
 
 template <> struct traits< positions_t >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, positions_t& p, Visitor& v )
-    {
-        v.apply( "positions", p.positions );
-    }
-
-    template < typename Key, class Visitor > static void visit( const Key&, const positions_t& p, Visitor& v )
-    {
-        v.apply( "positions", p.positions );
-    }
+    template < typename Key, class Visitor > static void visit( const Key&, positions_t& p, Visitor& v ) { v.apply( "positions", p.positions ); }
+    template < typename Key, class Visitor > static void visit( const Key&, const positions_t& p, Visitor& v ) { v.apply( "positions", p.positions ); }
 };
 
 template <> struct traits< stride_positions_t >
@@ -527,26 +517,21 @@ template <> struct traits< snark::imaging::operations::draw::shapes::properties 
     {
         v.apply( "color", p.color );
         v.apply( "weight", p.weight );
+        v.apply( "normalized", p.normalized );
     }
 
     template < typename Key, class Visitor > static void visit( const Key&, const snark::imaging::operations::draw::shapes::properties& p, Visitor& v )
     {
         v.apply( "color", p.color );
         v.apply( "weight", p.weight );
+        v.apply( "normalized", p.normalized );
     }
 };
 
 template <> struct traits< snark::imaging::operations::roi::shapes::config >
 {
-    template < typename Key, class Visitor > static void visit( const Key& k, snark::imaging::operations::roi::shapes::config& p, Visitor& v )
-    {
-        v.apply( "size", p.size );
-    }
-
-    template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::roi::shapes::config& p, Visitor& v )
-    {
-        v.apply( "size", p.size );
-    }
+    template < typename Key, class Visitor > static void visit( const Key& k, snark::imaging::operations::roi::shapes::config& p, Visitor& v ) { v.apply( "size", p.size ); }
+    template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::roi::shapes::config& p, Visitor& v ) { v.apply( "size", p.size ); }
 };
 
 template <> struct traits< snark::imaging::operations::roi::shapes::circle >
@@ -598,15 +583,8 @@ template <> struct traits< snark::imaging::operations::draw::shapes::config >
 
 template <> struct traits< snark::imaging::operations::draw::shapes::rectangle >
 {
-    template < typename Key, class Visitor > static void visit( const Key& k, snark::imaging::operations::draw::shapes::rectangle& p, Visitor& v )
-    {
-        traits< ::extents >::visit( k, p, v );
-    }
-
-    template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::draw::shapes::rectangle& p, Visitor& v )
-    {
-        traits< ::extents >::visit( k, p, v );
-    }
+    template < typename Key, class Visitor > static void visit( const Key& k, snark::imaging::operations::draw::shapes::rectangle& p, Visitor& v ) { traits< ::extents >::visit( k, p, v ); }
+    template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::draw::shapes::rectangle& p, Visitor& v ) { traits< ::extents >::visit( k, p, v ); }
 };
 
 template <> struct traits< snark::imaging::operations::draw::shapes::circle >
@@ -1188,7 +1166,7 @@ int main( int ac, char** av )
             bool permissive = options.exists("--show-partial,--permissive");
             bool no_discard = options.exists( "--no-discard" );
 
-            if( csv.has_field( "rectangles" ) || options.exists( "--rectangles" ) )
+            if( csv.has_some_of_paths( "rectangles" ) || options.exists( "--rectangles" ) )
             {
                 snark::imaging::operations::roi::shapes sample( options );
                 input_options.fields = comma::join( comma::csv::names< snark::imaging::operations::roi::shapes >( input_options.fields, true, sample ), ',' );
@@ -1227,10 +1205,10 @@ int main( int ac, char** av )
                         }
                         if( permissive )
                         {
-                            ext.min.x = std::max( ext.min.x, 0 );
-                            ext.min.y = std::max( ext.min.y, 0 );
-                            ext.max.x = std::min( ext.max.x, mat.cols );
-                            ext.max.y = std::min( ext.max.y, mat.rows );
+                            ext.min.x = std::max( int( ext.min.x ), 0 );
+                            ext.min.y = std::max( int( ext.min.y ), 0 );
+                            ext.max.x = std::min( int( ext.max.x ), mat.cols );
+                            ext.max.y = std::min( int( ext.max.y ), mat.rows );
                         }
                         int width = ext.max.x - ext.min.x;
                         int height = ext.max.y - ext.min.y;
@@ -1295,10 +1273,10 @@ int main( int ac, char** av )
                     }
                     if( permissive )
                     {
-                        ext.min.x = std::max( ext.min.x, 0 );
-                        ext.min.y = std::max( ext.min.y, 0 );
-                        ext.max.x = std::min( ext.max.x, mat.cols );
-                        ext.max.y = std::min( ext.max.y, mat.rows );
+                        ext.min.x = std::max( int( ext.min.x ), 0 );
+                        ext.min.y = std::max( int( ext.min.y ), 0 );
+                        ext.max.x = std::min( int( ext.max.x ), mat.cols );
+                        ext.max.y = std::min( int( ext.max.y ), mat.rows );
                     }
                     int width = ext.max.x - ext.min.x;
                     int height = ext.max.y - ext.min.y;
@@ -1329,4 +1307,3 @@ int main( int ac, char** av )
     catch( ... ) { std::cerr << "cv-calc: unknown exception" << std::endl; }
     return 1;
 }
-
