@@ -265,6 +265,11 @@ function join_execute()
         csv-shuffle --fields=$shuffle_point_fields,$( csv-fields prefix --path=tjoin <<< $image_ts_fields ),$shuffle_image_fields $cjoin_binary --output=$shuffle_output_fields $options_flush
     }
 #eof
+    #{ csv-time-join --fields=$fields --nearest <( images_timestamps )";fields=$( csv-fields clear --except=t <<< $image_ts_fields )$image_ts_binary" $binary |
+    #    csv-join --fields=$( csv-fields clear --except=x,y <<< $fields ),$( csv-fields clear --except=block <<< $image_ts_fields ) --not-matching \
+    #        <( images_csv )";fields=$image_block_fields$image_attr_binary" $tjoin_binary $options_flush
+    #}
+
     # info options
     # ...
 
