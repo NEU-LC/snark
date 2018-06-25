@@ -39,6 +39,8 @@ import sys
 
 description = """
 
+a thin trivial convenience wrapper for tensorflow.session.run()
+
 read tensors as binary on stdin, load model from file, apply model, write output tensors to stdout
 
 for more on session export/import: see https://www.tensorflow.org/programmers_guide/meta_graph

@@ -39,6 +39,8 @@ import sys
 
 description = """
 
+a thin trivial convenience wrapper for caffe.net.forward_all()
+
 read tensors as binary on stdin, load model from file, apply model, write output tensors to stdout
 
 """
