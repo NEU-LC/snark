@@ -55,22 +55,35 @@ def die( m ): print >> sys.stderr, "tensor-records: " + args.operation[0] + ":",
 if __name__ == '__main__':
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
     parser.add_argument( 'operation', nargs = 1, choices = [ "boxes-from-csv" ], type = str, help = 'operation' )
-    parser.add_argument( '--input-fields', action="store_true", help = 'if operation takes csv values on stdin, print input fields and exit' )
-    parser.add_argument( '--verbose', '-v', action="store_true", help = 'more output to stderr' )
+    parser.add_argument( '--input-fields', action = "store_true", help = 'if operation takes csv values on stdin, print input fields and exit' )
+    parser.add_argument( '--output-file', '--output', type = str, help = 'output file (tensorflow tfrecordwriter does not seem to like stdout)' )
+    parser.add_argument( '--verbose', '-v', action = "store_true", help = 'more output to stderr' )
     comma.csv.add_options( parser )
     args = parser.parse_args()
 
 if args.operation[0] == "boxes-from-csv":
+    if args.input_fields: print 'filename,min/x,min/y,max/x,max/y,label'; sys.exit( 0 )
+    if args.output_file is None: die( "please specify --output-file" )
     import hashlib
     import numpy as np
-    import tensorflow
+    import tensorflow as tf
     point_t = comma.csv.struct( 'x,y', 'int32', 'int32' )
     record_type = comma.csv.struct( 'filename,min,max,label', 'S256', point_t, point_t, 'int32' )
-    print ','.join( comma.csv.format.to_numpy( args.binary ) )
-    istream = comma.csv.stream( record_type, fields = args.fields, delimiter = args.delimiter, binary = None if args.binary is None else ','.join( comma.csv.format.to_numpy( args.binary ) ), full_xpath = True )
+    istream = comma.csv.stream( record_type, fields = args.fields, delimiter = args.delimiter, full_xpath = True, binary = None if args.binary == "" else ','.join( comma.csv.format.to_numpy( args.binary ) ) )
+    writer = tf.python_io.TFRecordWriter( args.output_file )
+    filename = None
     for records in istream:
-        for record in records: # todo? try assigning the whole array at once? should be a better performance? but we may need to expand comma.csv.struct.assign() to make it working
+        for record in records:
+            if filename is None or filename != record['filename']:
+                # todo: if boxes not empty, write a tfrecord
+                filename = record['filename']
+                # todo: read image
+                # todo: transmogrify, set keys, set height and width, etc
+                # todo: clear boxes
+            # todo: append record to the tfrecord file
+                
             print record['filename'], record['min']['x'], record['min']['y'], record['max']['x'], record['max']['y'], record['label']
+    writer.close()
     die( "implementing..." )
     sys.exit( 0 )
 
