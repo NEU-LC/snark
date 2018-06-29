@@ -45,6 +45,8 @@ if operation semantics don't suit you, use the code as an example and write your
 
 operations
     boxes-from-csv: take image filenames and bounding boxes as csv stream on stdin, output tfrecords file
+    boxes-to-csv: read tfrecords file with bounding boxes, output as csv
+    paths: print to stdout paths present in records and exit
 
 """
 
@@ -61,11 +63,14 @@ def die( m ): print >> sys.stderr, "tensor-records: " + args.operation[0] + ":",
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
-    parser.add_argument( 'operation', nargs = 1, choices = [ "boxes-from-csv", "boxes-to-csv" ], type = str, help = 'operation' )
+    parser.add_argument( 'operation', nargs = 1, choices = [ "boxes-from-csv", "boxes-to-csv", "paths", "to-path-value" ], type = str, help = 'operation' )
     parser.add_argument( '--input-file', '--input', type = str, help = 'input file (tensorflow tf_record_iterator does not seem to like stdin)' )
     parser.add_argument( '--input-fields', action = "store_true", help = 'if operation takes csv values on stdin, print input fields and exit' )
     parser.add_argument( '--output-fields', action = "store_true", help = 'if operation outputs csv values on stdout, print input fields and exit' )
     parser.add_argument( '--output-file', '--output', type = str, help = 'output file (tensorflow tfrecordwriter does not seem to like stdout)' )
+    #parser.add_argument( '--paths', type = str, help = 'to-path-value: output values only for given comma-separated list of paths, default: output values for all paths (not a great idea, since images are binary)' )
+    parser.add_argument( '--paths-all', '--all', action = "store_true", help = 'output paths for all records (default: output paths for first record)' )
+    parser.add_argument( '--paths-indexed', '--indexed', action = "store_true", help = 'output paths prefixed with an index' )
     parser.add_argument( '--scaled', '--normalized', action = "store_true", help = 'bounding box coordinates normalized, do not scale by image width and height' )
     parser.add_argument( '--verbose', '-v', action = "store_true", help = 'more output to stderr' )
     comma.csv.add_options( parser )
@@ -146,4 +151,39 @@ if __name__ == '__main__':
                 ymax = np.round( np.multiply( ymax, height ) ).astype( int )
             for i in range( len( xmin ) ): print filename + "," + str( xmin[i] ) + "," + str( ymin[i] ) + "," + str( xmax[i] ) + "," + str( ymax[i] ) + "," + str( labels[i] )
         sys.exit( 0 )
+    if args.operation[0] == "paths":
+        import tensorflow as tf
+        index = 0
+        for record in tf.python_io.tf_record_iterator( args.input_file ):
+            example = tf.train.Example()
+            example.ParseFromString( record )
+            for k in example.features.feature:
+                if args.paths_indexed: print "[" + str( index ) + "]/" + k
+                else: print k
+            index = index + 1
+            if not args.paths_all: break
+        sys.exit( 0 )
         
+    # todo: get semantics right
+    #if args.operation[0] == "to-json":
+        #import google.protobuf
+        #import tensorflow as tf
+        #i = 0
+        
+        #for record in tf.python_io.tf_record_iterator( args.input_file ):
+            #example = tf.train.Example()
+            #example.ParseFromString( record )
+            #print google.protobuf.json_format.MessageToJson( example )
+            #break
+        #sys.exit()
+        
+        #paths = list()
+        #if not args.paths is None: paths = args.paths.split( ',' )
+        #for record in tf.python_io.tf_record_iterator( args.input_file ):
+            #example = tf.train.Example()
+            #example.ParseFromString( record )
+            #for k, v in example.features.feature.items():
+                #if len( paths ) > 0 and not k in paths: continue
+                #print "[" + str( i ) + "]/" + k
+                #print type( v )
+            #i = i + 1
