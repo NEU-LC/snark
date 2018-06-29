@@ -32,12 +32,17 @@
 __author__ = 'v.vlaskine'
 
 import argparse
+import io
+import os
 import sys
 import comma.csv
 
 description = """
 
 operations on tensorflow records
+
+operations
+    boxes-from-csv: take image filenames and bounding boxes as csv stream on stdin, output tfrecords file
 
 """
 
@@ -60,227 +65,53 @@ if __name__ == '__main__':
     parser.add_argument( '--verbose', '-v', action = "store_true", help = 'more output to stderr' )
     comma.csv.add_options( parser )
     args = parser.parse_args()
-
-if args.operation[0] == "boxes-from-csv":
-    if args.input_fields: print 'filename,min/x,min/y,max/x,max/y,label'; sys.exit( 0 )
-    if args.output_file is None: die( "please specify --output-file" )
-    import hashlib
-    import numpy as np
-    import tensorflow as tf
-    point_t = comma.csv.struct( 'x,y', 'int32', 'int32' )
-    record_type = comma.csv.struct( 'filename,min,max,label', 'S256', point_t, point_t, 'int32' )
-    istream = comma.csv.stream( record_type, fields = args.fields, delimiter = args.delimiter, full_xpath = True, binary = None if args.binary == "" else ','.join( comma.csv.format.to_numpy( args.binary ) ) )
-    writer = tf.python_io.TFRecordWriter( args.output_file )
-    filename = None
-    for records in istream:
-        for record in records:
-            if filename is None or filename != record['filename']:
-                # todo: if boxes not empty, write a tfrecord
+    if args.operation[0] == "boxes-from-csv":
+        if args.input_fields: print 'filename,min/x,min/y,max/x,max/y,label'; sys.exit( 0 )
+        if args.output_file is None: die( "please specify --output-file" )
+        import hashlib
+        import numpy as np
+        import PIL as pil
+        import tensorflow as tf
+        point_t = comma.csv.struct( 'x,y', 'uint32', 'uint32' )
+        record_type = comma.csv.struct( 'filename,min,max,label', 'S256', point_t, point_t, 'uint32' )
+        istream = comma.csv.stream( record_type, fields = args.fields, delimiter = args.delimiter, full_xpath = True, binary = None if args.binary == "" else ','.join( comma.csv.format.to_numpy( args.binary ) ) )
+        writer = tf.python_io.TFRecordWriter( args.output_file )
+        filename = None
+        xmin, ymin, xmax, ymax, labels = list(), list(), list(), list(), list()
+        def write_record():
+            global filename, xmin, ymin, xmax, ymax, labels
+            if len( xmin ) == 0: return
+            binary_image = tf.gfile.GFile( filename, 'rb').read()
+            image = pil.Image.open( io.BytesIO( binary_image ) )
+            image_format = image.format.lower()
+            image = np.asarray( image )
+            width, height = image.shape[1], image.shape[0]
+            key = hashlib.sha256( binary_image ).hexdigest()
+            feature = {
+                        'image/height': tf.train.Feature( int64_list = tf.train.Int64List( value = [ height ] ) ),
+                        'image/width': tf.train.Feature( int64_list = tf.train.Int64List( value = [ width ] ) ),
+                        'image/filename': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ filename.encode( 'utf8' ) ] ) ),
+                        'image/source_id': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ filename.encode( 'utf8' ) ] ) ),
+                        'image/key/sha256': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ key.encode( 'utf8' ) ] ) ),
+                        'image/encoded': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ binary_image ] ) ),
+                        'image/format': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ image_format.encode( 'utf8' ) ] ) ),
+                        'image/object/bbox/xmin': tf.train.Feature( float_list = tf.train.FloatList( value = np.divide( xmin, width ) ) ),
+                        'image/object/bbox/ymin': tf.train.Feature( float_list = tf.train.FloatList( value = np.divide( ymin, height ) ) ),
+                        'image/object/bbox/xmax': tf.train.Feature( float_list = tf.train.FloatList( value = np.divide( xmax, width ) ) ),
+                        'image/object/bbox/ymax': tf.train.Feature( float_list = tf.train.FloatList( value = np.divide( ymax, height ) ) ),
+                        'image/object/class/label': tf.train.Feature(int64_list = tf.train.Int64List( value = labels ) )
+                    }
+            writer.write( tf.train.Example( features = tf.train.Features( feature = feature ) ).SerializeToString() )
+            xmin, ymin, xmax, ymax, labels = list(), list(), list(), list(), list()
+        for records in istream:
+            for record in records:
+                if filename != record['filename']: write_record()
                 filename = record['filename']
-                # todo: read image
-                # todo: transmogrify, set keys, set height and width, etc
-                # todo: clear boxes
-            # todo: append record to the tfrecord file
-                
-            print record['filename'], record['min']['x'], record['min']['y'], record['max']['x'], record['max']['y'], record['label']
-    writer.close()
-    die( "implementing..." )
-    sys.exit( 0 )
-
-
-"""Objects and functions for converting python objects to TensorFlow objects.
-
-.. sectionauthor:: Asher Bender <a.bender@acfr.usyd.edu.au>
-.. codeauthor:: Asher Bender <a.bender@acfr.usyd.edu.au>
-
-"""
-import io
-import os
-import hashlib
-from collections import OrderedDict
-
-import numpy as np
-import PIL.Image as pil
-import tensorflow as tf
-
-# Scripts copied from tensorflow.
-import ctf.dataset_util
-import ctf.label_map_util
-
-
-def tf_label_map_from_dict(path, label_map_dict):
-    """Create a TensorFlow label map from a dictionary.
-
-    Args:
-       path (str): location to save TensorFlow label map.
-       label_map_dict (dict): Dictionary storing object ID and name.
-
-    """
-
-    from google.protobuf import text_format
-
-    label_map = ctf.label_map_util.string_int_label_map_pb2.StringIntLabelMap()
-    for name, item_id in sorted(label_map_dict.items(), key=lambda x: x[1]):
-        label_map.item.add(name=name, id=item_id)
-
-    ctf.label_map_util._validate_label_map(label_map)
-    label_map_string = text_format.MessageToString(label_map)
-    with tf.gfile.GFile(path, 'wb') as fid:
-        fid.write(label_map_string)
-
-
-def tf_example_from_JSON(annotations, name2id,
-                         min_dim=None, min_area=None, boarder=None):
-    """Creates a tf.Example proto from a JSON image annotation
-
-    Args:
-       annotation (dct): dictionary of image annotations.
-       name2id (dct): dictionary mapping object names to class integers.
-       min_dim (int, optional): if set to an integer, objects with a smaller
-           side will be skipped. If set to None (default), objects will not be
-           skipped based on size.
-        min_area (int, optional): if set to an integer, objects with a smaller
-           area will be skipped. If set to None (default), objects will not be
-           skipped based on area.
-        boarder (int, optional): if set to an integer, objects occurring on the
-           boarder will have their dimension reduced so they fit within the
-           boarder. Size and area calculations occur after this step. If set to
-           None (default) objects on the boarder will not be modified.
-
-    Returns:
-       tuple: (dct, tf) a python dictionary containing image annotations and an
-           equivalent tf.train.Example object.
-
-    """
-
-    # Read image data from disk.
-    filename = os.path.split(annotations['filename'])[-1]
-    with tf.gfile.GFile(annotations['filename'], 'rb') as fid:
-        binary_image = fid.read()
-
-    # Decode image.
-    image = pil.open(io.BytesIO(binary_image))
-    image_format = image.format.lower()
-    image = np.asarray(image)
-    width, height = image.shape[1], image.shape[0]
-    key = hashlib.sha256(binary_image).hexdigest()
-
-    # Store object information (bounding box etc).
-    obj_xmin, obj_xmax = list(), list()
-    obj_ymin, obj_ymax = list(), list()
-    obj_name = list()
-    obj_id = list()
-
-    # Gather object data from annotations.
-    boarder = 0 if boarder is None else boarder
-    for annotation in annotations['annotations']:
-        name = annotation['name']
-
-        # Validate bounding boxes.
-        y = min(max(boarder, height * annotation['y']), height)
-        x = min(max(boarder, width * annotation['x']), width)
-        h = height * float(annotation['height'])
-        w = width * float(annotation['width'])
-        h = height - y - boarder if (y + h) > height else h
-        w = width - x - boarder if (x + w) > width else w
-        area = float(w*h) / float(width*height)
-
-        # If bounding box was squashed to zero or its dimensions are too small,
-        # skip the annotation.
-        if ((h < 0 or w < 0) or
-            ((min_dim is not None) and (h < min_dim or w < min_dim))):
-            continue
-
-        # If bounding box is too small, skip the annotation.
-        if (min_area is not None) and (area < min_area):
-            continue
-
-        # Store annotation in array for tf.train.Example()
-        obj_name.append(name.encode('utf8'))
-        obj_id.append(name2id[name])
-        obj_ymin.append(y / float(height))
-        obj_xmin.append(x / float(width))
-        obj_ymax.append((y + h) / float(height))
-        obj_xmax.append((x + w) / float(width))
-
-    # Annotations available.
-    if obj_name:
-
-        # TF data is a pain to deal with. Return copy in pythonic dictionary.
-        dct = {'filename': filename, 'annotations': list() }
-        obj = zip(obj_name, obj_xmin, obj_xmax, obj_ymin, obj_ymax)
-        for name, xmin, xmax, ymin, ymax in obj:
-            dct['annotations'].append({'type': 'bounding-box',
-                                       'name': name,
-                                       'x': xmin, 'y': ymin,
-                                       'width': np.abs(xmax - xmin),
-                                       'height': np.abs(ymax - ymin),
-                                      })
-
-        # Create tf-example proto.
-        example = {
-            'image/height': ctf.dataset_util.int64_feature(height),
-            'image/width': ctf.dataset_util.int64_feature(width),
-            'image/filename': ctf.dataset_util.bytes_feature(filename.encode('utf8')),
-            'image/source_id': ctf.dataset_util.bytes_feature(filename.encode('utf8')),
-            'image/key/sha256': ctf.dataset_util.bytes_feature(key.encode('utf8')),
-            'image/encoded': ctf.dataset_util.bytes_feature(binary_image),
-            'image/format': ctf.dataset_util.bytes_feature(image_format.encode('utf8')),
-            'image/object/bbox/xmin': ctf.dataset_util.float_list_feature(obj_xmin),
-            'image/object/bbox/xmax': ctf.dataset_util.float_list_feature(obj_xmax),
-            'image/object/bbox/ymin': ctf.dataset_util.float_list_feature(obj_ymin),
-            'image/object/bbox/ymax': ctf.dataset_util.float_list_feature(obj_ymax),
-            'image/object/class/text': ctf.dataset_util.bytes_list_feature(obj_name),
-            'image/object/class/label': ctf.dataset_util.int64_list_feature(obj_id),
-        }
-
-        return dct, tf.train.Example(features=tf.train.Features(feature=example))
-
-    # Annotations filtered out.
-    else:
-        return None, None
-
-
-def tf_detection_to_dict(image, boxes, scores, classes, min_score=0.5):
-    """Convert a TensorFlow detection to a dictionary.
-
-    Args:
-       image (np.array): (N, M, 3) colour image.
-       boxes (np.array): array of box detections.
-       scores (np.array): array of detection scores.
-       classes (np.array): array of class IDs.
-       min_score (float, optional): minimum score to include. Detections with a
-           lower score will not be returned.
-
-
-    Returns:
-       dict: dictionary containing TensorFlow image detections.
-
-    """
-
-    # Get image dimensions.
-    height, width = image.shape[:2]
-
-    # Remove poor detections.
-    idx = np.nonzero(scores.squeeze() > min_score)[0]
-    boxes = np.squeeze(boxes)[idx, :]
-    scores = np.squeeze(scores)[idx]
-    classes = np.squeeze(classes)[idx]
-
-    # Gather list of annotations stored as dictionaries.
-    annotations = list()
-    for c, s, box in zip(classes, scores, boxes):
-        ymin, xmin, ymax, xmax = box
-        x, w = np.array([xmin, xmax - xmin])
-        y, h = np.array([ymin, ymax - ymin])
-        annotations.append(OrderedDict())
-        annotations[-1]['type'] = 'bounding-box'
-        annotations[-1]['name'] = None
-        annotations[-1]['id'] = int(c)
-        annotations[-1]['score'] = float(s)
-        annotations[-1]['x'] = float(x)
-        annotations[-1]['y'] = float(y)
-        annotations[-1]['width'] = float(w)
-        annotations[-1]['height'] = float(h)
-
-    return annotations
+                xmin.append( float( record['min']['x'] ) )
+                ymin.append( float( record['min']['y'] ) )
+                xmax.append( float( record['max']['x'] ) )
+                ymax.append( float( record['max']['y'] ) )
+                labels.append( record['label'] )
+        write_record()
+        writer.close()
+        sys.exit( 0 )
