@@ -41,6 +41,8 @@ description = """
 
 operations on tensorflow records
 
+if operation semantics don't suit you, use the code as an example and write your own
+
 operations
     boxes-from-csv: take image filenames and bounding boxes as csv stream on stdin, output tfrecords file
 
@@ -59,9 +61,12 @@ def die( m ): print >> sys.stderr, "tensor-records: " + args.operation[0] + ":",
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
-    parser.add_argument( 'operation', nargs = 1, choices = [ "boxes-from-csv" ], type = str, help = 'operation' )
+    parser.add_argument( 'operation', nargs = 1, choices = [ "boxes-from-csv", "boxes-to-csv" ], type = str, help = 'operation' )
+    parser.add_argument( '--input-file', '--input', type = str, help = 'input file (tensorflow tf_record_iterator does not seem to like stdin)' )
     parser.add_argument( '--input-fields', action = "store_true", help = 'if operation takes csv values on stdin, print input fields and exit' )
+    parser.add_argument( '--output-fields', action = "store_true", help = 'if operation outputs csv values on stdout, print input fields and exit' )
     parser.add_argument( '--output-file', '--output', type = str, help = 'output file (tensorflow tfrecordwriter does not seem to like stdout)' )
+    parser.add_argument( '--scaled', '--normalized', action = "store_true", help = 'bounding box coordinates normalized, do not scale by image width and height' )
     parser.add_argument( '--verbose', '-v', action = "store_true", help = 'more output to stderr' )
     comma.csv.add_options( parser )
     args = parser.parse_args()
@@ -78,8 +83,9 @@ if __name__ == '__main__':
         writer = tf.python_io.TFRecordWriter( args.output_file )
         filename = None
         xmin, ymin, xmax, ymax, labels = list(), list(), list(), list(), list()
+        count = 0
         def write_record():
-            global filename, xmin, ymin, xmax, ymax, labels
+            global args, count, filename, xmin, ymin, xmax, ymax, labels
             if len( xmin ) == 0: return
             binary_image = tf.gfile.GFile( filename, 'rb').read()
             image = pil.Image.open( io.BytesIO( binary_image ) )
@@ -88,21 +94,22 @@ if __name__ == '__main__':
             width, height = image.shape[1], image.shape[0]
             key = hashlib.sha256( binary_image ).hexdigest()
             feature = {
-                        'image/height': tf.train.Feature( int64_list = tf.train.Int64List( value = [ height ] ) ),
-                        'image/width': tf.train.Feature( int64_list = tf.train.Int64List( value = [ width ] ) ),
-                        'image/filename': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ filename.encode( 'utf8' ) ] ) ),
-                        'image/source_id': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ filename.encode( 'utf8' ) ] ) ),
-                        'image/key/sha256': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ key.encode( 'utf8' ) ] ) ),
-                        'image/encoded': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ binary_image ] ) ),
-                        'image/format': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ image_format.encode( 'utf8' ) ] ) ),
-                        'image/object/bbox/xmin': tf.train.Feature( float_list = tf.train.FloatList( value = np.divide( xmin, width ) ) ),
-                        'image/object/bbox/ymin': tf.train.Feature( float_list = tf.train.FloatList( value = np.divide( ymin, height ) ) ),
-                        'image/object/bbox/xmax': tf.train.Feature( float_list = tf.train.FloatList( value = np.divide( xmax, width ) ) ),
-                        'image/object/bbox/ymax': tf.train.Feature( float_list = tf.train.FloatList( value = np.divide( ymax, height ) ) ),
-                        'image/object/class/label': tf.train.Feature(int64_list = tf.train.Int64List( value = labels ) )
-                    }
+                            'image/height': tf.train.Feature( int64_list = tf.train.Int64List( value = [ height ] ) )
+                          , 'image/width': tf.train.Feature( int64_list = tf.train.Int64List( value = [ width ] ) )
+                          , 'image/filename': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ filename.encode( 'utf8' ) ] ) )
+                          , 'image/source_id': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ filename.encode( 'utf8' ) ] ) )
+                          , 'image/key/sha256': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ key.encode( 'utf8' ) ] ) )
+                          , 'image/encoded': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ binary_image ] ) )
+                          , 'image/format': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ image_format.encode( 'utf8' ) ] ) )
+                          , 'image/object/bbox/xmin': tf.train.Feature( float_list = tf.train.FloatList( value = xmin if args.scaled else np.divide( xmin, width ) ) )
+                          , 'image/object/bbox/ymin': tf.train.Feature( float_list = tf.train.FloatList( value = ymin if args.scaled else np.divide( ymin, height ) ) )
+                          , 'image/object/bbox/xmax': tf.train.Feature( float_list = tf.train.FloatList( value = xmax if args.scaled else np.divide( xmax, width ) ) )
+                          , 'image/object/bbox/ymax': tf.train.Feature( float_list = tf.train.FloatList( value = ymax if args.scaled else np.divide( ymax, height ) ) )
+                          , 'image/object/class/label': tf.train.Feature(int64_list = tf.train.Int64List( value = labels ) )
+                      }
             writer.write( tf.train.Example( features = tf.train.Features( feature = feature ) ).SerializeToString() )
             xmin, ymin, xmax, ymax, labels = list(), list(), list(), list(), list()
+            count = count + 1
         for records in istream:
             for record in records:
                 if filename != record['filename']: write_record()
@@ -114,4 +121,29 @@ if __name__ == '__main__':
                 labels.append( record['label'] )
         write_record()
         writer.close()
+        say( "wrote " + str( count ) + " record(s)" )
         sys.exit( 0 )
+    if args.operation[0] == "boxes-to-csv":
+        if args.output_fields: print 'filename,min/x,min/y,max/x,max/y,label'; sys.exit( 0 )
+        if args.input_file is None: die( "please specify --input-file" )
+        import numpy as np
+        import tensorflow as tf
+        for record in tf.python_io.tf_record_iterator( args.input_file ):
+            example = tf.train.Example()
+            example.ParseFromString( record )
+            filename = str( example.features.feature['image/filename'].bytes_list.value[0] )
+            xmin = example.features.feature['image/object/bbox/xmin'].float_list.value
+            ymin = example.features.feature['image/object/bbox/ymin'].float_list.value
+            xmax = example.features.feature['image/object/bbox/xmax'].float_list.value
+            ymax = example.features.feature['image/object/bbox/ymax'].float_list.value
+            labels = example.features.feature['image/object/class/label'].int64_list.value
+            if not args.scaled:
+                height = int( example.features.feature['image/height'].int64_list.value[0] )
+                width = int( example.features.feature['image/width'].int64_list.value[0] )
+                xmin = np.round( np.multiply( xmin, width ) ).astype( int )
+                ymin = np.round( np.multiply( ymin, height ) ).astype( int )
+                xmax = np.round( np.multiply( xmax, width ) ).astype( int )
+                ymax = np.round( np.multiply( ymax, height ) ).astype( int )
+            for i in range( len( xmin ) ): print filename + "," + str( xmin[i] ) + "," + str( ymin[i] ) + "," + str( xmax[i] ) + "," + str( ymax[i] ) + "," + str( labels[i] )
+        sys.exit( 0 )
+        
