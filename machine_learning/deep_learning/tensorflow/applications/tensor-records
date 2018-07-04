@@ -45,7 +45,7 @@ if operation semantics don't suit you, use the code as an example and write your
 
 operations
     boxes-from-csv: take image filenames and bounding boxes as csv stream on stdin, output tfrecords file
-    boxes-to-csv: read tfrecords file with bounding boxes, output as csv
+    boxes-to-csv: read tfrecords file with bounding boxes, output as csv, clip boxes that are partly outside of image
     paths: print to stdout paths present in records and exit
 
 """
@@ -98,6 +98,11 @@ if __name__ == '__main__':
             image = np.asarray( image )
             width, height = image.shape[1], image.shape[0]
             key = hashlib.sha256( binary_image ).hexdigest()
+            xmin = [ max( x, 0 ) for x in xmin ]
+            ymin = [ max( y, 0 ) for y in ymin ]
+            xmax = [ min( x, width ) for x in xmax ]
+            ymax = [ min( y, height ) for y in ymax ]
+            # todo? validate x and y; discard boxes that are too small
             feature = {
                             'image/height': tf.train.Feature( int64_list = tf.train.Int64List( value = [ height ] ) )
                           , 'image/width': tf.train.Feature( int64_list = tf.train.Int64List( value = [ width ] ) )
