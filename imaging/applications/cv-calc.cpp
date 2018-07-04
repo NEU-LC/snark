@@ -41,6 +41,7 @@
 #include <boost/random/variate_generator.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <comma/base/exception.h>
+#include <comma/io/stream.h>
 #include <comma/csv/stream.h>
 #include <comma/math/interval.h>
 #include <comma/name_value/parser.h>
@@ -287,300 +288,347 @@ struct chessboard_corner_t
 
 namespace region
 {
-    template< typename T >
-    struct indexed : public T
+template< typename T >
+struct indexed : public T
+{
+    boost::posix_time::ptime timestamp;
+    comma::uint32 index;
+
+    indexed() : index( 0 ) {}
+    indexed( T const& value) : T(value), index( 0U ) {}
+};
+
+struct properties
+{
+    bool normalized;
+    properties() : normalized( false ) {}
+};
+
+struct config : public comma::csv::options
+{
+    comma::uint32 size;
+    config() : size( 0 ) {}
+};
+
+using rectangle = ::extents;
+
+struct circle
+{
+    cv::Point2f centre;
+    double radius;
+    circle() : centre( 0, 0 ), radius( 0 ) {}
+};
+
+struct label
+{
+    cv::Point2f position;
+    std::string text;
+
+    label() : position( 0, 0 ) {}
+};
+
+template < typename T >
+class join_filter
+{
+public:
+    using key_type = boost::posix_time::ptime;
+    using record_type = indexed< T >;
+    using stream_type = comma::csv::input_stream< record_type >;
+
+    join_filter() {}
+
+    template < typename properties_type >
+    join_filter( comma::csv::options const& csv, properties_type properties )
+        : m_ifstrm( csv.filename, csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii )
+        , m_istrm( *m_ifstrm, csv, record_type( T( properties ) ) )
+        {}
+
+    std::vector< record_type > read_at( key_type const& timestamp )
     {
-        boost::posix_time::ptime timestamp;
-        comma::uint32 index;
-
-        indexed( comma::uint32 ii = 0 ) : index( ii ) {}
-    };
-
-    struct properties
-    {
-        bool normalized;
-        properties() : normalized( false ) {}
-    };
-
-    struct config : public comma::csv::options
-    {
-        comma::uint32 size;
-        config() : size( 1 ) {}
-    };
-
-    using rectangle = ::extents;
-
-    struct circle
-    {
-        cv::Point2f centre;
-        double radius;
-        circle() : centre( 0, 0 ), radius( 0 ) {}
-    };
-
-    struct label
-    {
-        cv::Point2f position;
-        std::string text;
-
-        label() : position( 0, 0 ) {}
-    };
-
-    template < typename shape_type, typename config_type > static void init_( std::vector< shape_type >& s, const comma::command_line_options& options, const std::string& what )
-    {
-        std::string config_string = options.value< std::string >( what, "" );
-        if( config_string.empty() ) { return; }
-
-        char delimiter = std::string::npos == config_string.find( ';' ) && std::string::npos != config_string.find( ',' ) ? ',' : ';';
-        if( ',' == delimiter ) { std::cerr << "cv-calc: warning: ',' as delimiter in shape attributes is deprecated, use ';'. Got attributes string: \"" << config_string << "\"" << std::endl; }
-
-        std::string unnamed_attr = config_string.substr( 0U, config_string.find_first_of( delimiter ) );
-        std::string unnamed_attr_name = std::find_if_not( unnamed_attr.cbegin(), unnamed_attr.cend(), []( char const c ) { return 0 != std::isdigit( c ); } ) == unnamed_attr.cend()
-            ? "size" : "filename";
-
-        if( "size" == unnamed_attr_name ) { std::cerr << "cv-calc: warning: using 'size' as the unnamed shape attribute is deprecated, the unnamed attribute should be filename. Attribute string: " << config_string << std::endl; }
-        const auto& cfg = comma::name_value::parser( unnamed_attr_name, delimiter, '=' ).get< config_type >( config_string );
-        s.resize( cfg.size, shape_type( cfg.properties ) );
+        std::vector< record_type > result;
+        if( m_record )
+        {
+            if( timestamp < m_record->timestamp ) { return result; }
+            if( timestamp == m_record->timestamp ) { result.push_back( *m_record ); m_record = boost::none; }
+            else if( timestamp > m_record->timestamp ) { m_record = boost::none; }
+        }
+        while( m_ifstrm->good() && !m_ifstrm->eof() )
+        {
+            auto rec = m_istrm.read(); if( !rec ) { break; }
+            if( timestamp > rec->timestamp ) continue;
+            if( timestamp < rec->timestamp ) { m_record = *rec; break; }
+            result.push_back( *rec );
+            if( 0 == rec->index ) { break; }
+        }
+        return result;
     }
+
+    void read_at( std::vector< record_type >& list, key_type const& timestamp )
+    {
+        if( m_record )
+        {
+            if( timestamp < m_record->timestamp ) { return; }
+            if( timestamp == m_record->timestamp ) { list.push_back( *m_record ); m_record = boost::none; }
+            if( timestamp > m_record->timestamp ) { m_record = boost::none; }
+        }
+        while( m_ifstrm->good() && !m_ifstrm->eof() )
+        {
+            auto rec = m_istrm.read(); if( !rec ) { break; }
+            if( timestamp > rec->timestamp ) continue;
+            if( timestamp < rec->timestamp ) { m_record = *rec; return; }
+            list.push_back( *rec );
+            if( 0 == rec->index ) { return; }
+        }
+    }
+
+
+
+private:
+    comma::io::istream m_ifstrm;
+    stream_type m_istrm;
+    boost::optional< record_type > m_record;
+};
+
+template < typename shape_type, typename config_type > static void init_( std::vector< shape_type >& header_shapes , std::unique_ptr< join_filter< shape_type > >& stream_shapes
+        , const comma::command_line_options& options, const std::string& what )
+{
+    std::string config_string = options.value< std::string >( what, "" );
+    if( config_string.empty() ) { return; }
+
+    char delimiter = std::string::npos == config_string.find( ';' ) && std::string::npos != config_string.find( ',' ) ? ',' : ';';
+    if( ',' == delimiter ) { std::cerr << "cv-calc: warning: ',' as delimiter in shape attributes is deprecated, use ';'. Got attributes string: \"" << config_string << "\"" << std::endl; }
+
+    std::string unnamed_attr = config_string.substr( 0U, config_string.find_first_of( delimiter ) );
+    std::string unnamed_attr_name = std::find_if_not( unnamed_attr.cbegin(), unnamed_attr.cend(), []( char const c ) { return 0 != std::isdigit( c ); } ) == unnamed_attr.cend()
+        ? "size" : "filename";
+
+    if( "size" == unnamed_attr_name ) { std::cerr << "cv-calc: warning: using 'size' as the unnamed shape attribute is deprecated, the unnamed attribute should be filename. Attribute string: " << config_string << std::endl; }
+    auto cfg = comma::name_value::parser( unnamed_attr_name, delimiter, '=' ).get< config_type >( config_string );
+
+    if( !cfg.filename.empty() ) { cfg.full_xpath = true; stream_shapes = std::unique_ptr< region::join_filter< shape_type > >( new region::join_filter< shape_type >( cfg, cfg.properties ) ); }
+    if( 0 < cfg.size ) header_shapes.resize( cfg.size, shape_type( cfg.properties ) );
+}
 
 } //namespace region
 
-//template < typename T >
-//class time_join_filter
-//{
-//    public:
-//        using key_type = boost::posix_time::ptime;
-//
-//        struct record
-//        {
-//            boost::posix_time::ptime timestamp;
-//            std::string line;
-//
-//            record( boost::posix_time::ptime const& ts, comma::csv::input_stream< boost::posix_time::ptime > const& istrm, comma::csv::options const& csv )
-//            {
-//                if( csv.binary() ) { line.resize( csv.format().size() ); std::memcpy( &line[0], istrm.binary().last(), csv.format().size() ); }
-//                else { line = comma::join( istrm.ascii().last(), csv.delimiter ); }
-//            }
-//
-//        };
-//        typedef std::pair< K, T > value_type
-//        typedef comma::csv::stream< std::pair< K, T > stream_type;
-//        join_by_type( stream_type& istream ): istream_( istream ) {}
-//        const std::vector< value_type >* read_at( K k )
-//        {
-//            if( !records_.empty() )
-//            {
-//                if( k == records_[0].first ) { return &records_; }
-//                if( k > records[0].first ) { records_.clear(); }
-//            }
-//            while( istream.ready() || ... )
-//            {
-//                const value_type* v = istream_.read();
-//                if( !v ) { break; }
-//                if( v->first < k ) { continue; }
-//                // todo: check that the keys are the same
-//                records_.push_back( *v );
-//                if( v->second.index == 0 ) { break; }
-//            }
-//            if( records_.empty() || records_[0].key > k ) { return nullptr; }
-//            return &records_;
-//            }
-//        }
-//    private:
-//        stream_type& istream_;
-//        std::vector< value_type > records_;
-//};
-
 namespace snark { namespace imaging { namespace operations { namespace roi {
 
-    class shapes
+struct shapes
+{
+    struct config : public region::config
     {
-        public:
-        struct config : public region::config
-        {
-            region::properties properties;
-        };
-
-        struct rectangle : public region::rectangle
-        {
-            region::properties properties; // to do, per record properties
-            rectangle() {}
-            rectangle( region::properties const& properties ) : properties( properties ) {}
-        };
-
-            struct circle : public region::circle
-        {
-            region::properties properties; // to do, per record properties
-            circle() {}
-            circle( region::properties const& properties ) : properties( properties ) {}
-        };
-
-        //std::vector< shapes::circle > circles;
-        std::vector< shapes::rectangle > rectangles;
-        boost::posix_time::ptime timestamp;
-
-        shapes() {}
-
-        shapes( const comma::command_line_options& options )
-        {
-            region::init_< rectangle, config > ( rectangles, options, "--rectangles" );
-            //::shapes::init_< circle, config > ( circles, options, "--circles" );
-        }
+        region::properties properties;
     };
 
-} } } } // namespace snark { namespace imaging { namespace operations { namespace draw {
+    struct rectangle : public region::rectangle
+    {
+        region::properties properties; // to do, per record properties
+        rectangle() {}
+        rectangle( region::properties const& properties ) : properties( properties ) {}
+    };
+
+    struct header_shapes
+    {
+        std::vector< shapes::rectangle > rectangles;
+        boost::posix_time::ptime timestamp;
+    };
+
+    struct stream_shapes
+    {
+        std::unique_ptr< region::join_filter< shapes::rectangle > > rectangles;
+    };
+
+    header_shapes hdr_shapes;
+    stream_shapes strm_shapes;
+
+    shapes() {}
+
+    shapes( const comma::command_line_options& options )
+    {
+        region::init_< rectangle, config >( hdr_shapes.rectangles, strm_shapes.rectangles, options, "--rectangles" );
+    }
+};
+
+} } } } // namespace snark { namespace imaging { namespace operations { namespace roi {
 
 namespace snark { namespace imaging { namespace operations { namespace draw {
 
-    class shapes
+class shapes
+{
+public:
+    struct color
     {
-        public:
-            struct color
-            {
-                unsigned char r;
-                unsigned char g;
-                unsigned char b;
-                color(): r( 0 ), g( 0 ), b( 0 ) {}
-                operator cv::Scalar() const { return cv::Scalar( b, g, r ); }
-            };
-
-        struct properties : public region::properties
-        {
-            shapes::color color;
-            comma::uint32 weight;
-            properties() : weight( 1 ) {}
-        };
-
-        struct config : public region::config
-        {
-            shapes::properties properties;
-        };
-
-            //void draw( cv::Mat m ) const { cv::circle( m, center, radius, color, thickness, line_type, shift ); }
-
-        struct rectangle : public region::rectangle
-        {
-            shapes::properties properties; // todo: record-wise support
-            rectangle() {}
-            rectangle( const shapes::properties& properties ): properties( properties ) {}
-            bool draw( cv::Mat m ) const
-            {
-                if( max.x == 0 && min.x == 0 && max.y == 0 && max.y == 0 ) { return false; }
-                if( properties.normalized ) { cv::rectangle( m, cv::Point2i( min.x * m.cols, min.y * m.rows ), cv::Point2i( max.x * m.cols, max.y * m.rows ), properties.color, properties.weight ); } // CV_AA );
-                else { cv::rectangle( m, min, max, properties.color, properties.weight ); } // CV_AA );
-                return true;
-            }
-        };
-
-            struct circle : public region::circle
-        {
-            shapes::properties properties; // todo: record-wise support
-            circle() {}
-            circle( const shapes::properties& properties ): properties( properties ) {}
-            bool draw( cv::Mat m ) const
-            {
-                if( !comma::math::less( 0, radius ) ) { return false; }
-                if( properties.normalized ) { cv::circle( m, cv::Point2i( centre.x * m.cols, centre.y * m.rows ), radius * m.cols, properties.color, properties.weight, CV_AA ); }
-                else { cv::circle( m, centre, radius, properties.color, properties.weight, CV_AA ); }
-                return true;
-            }
-        };
-
-            struct label : public region::label
-        {
-            shapes::properties properties; // todo: record-wise support
-            label() {}
-            label( const shapes::properties& properties ): properties( properties ) {}
-            bool draw( cv::Mat m ) const
-            {
-                if( text.empty() ) { return false; }
-                cv::putText( m, text, properties.normalized ? cv::Point2f( position.x * m.cols, position.y * m.rows ) : position, cv::FONT_HERSHEY_SIMPLEX, 1.0, properties.color, properties.weight, CV_AA );
-                return true;
-            }
-        };
-
-            std::vector< shapes::circle > circles;
-            std::vector< shapes::label > labels;
-            std::vector< shapes::rectangle > rectangles;
-
-            shapes() {}
-
-            shapes( const comma::command_line_options& options )
-            {
-                region::init_< rectangle, config >( rectangles, options, "--rectangles" );
-                region::init_< circle, config >( circles, options, "--circles" );
-                region::init_< label, config >( labels, options, "--labels" );
-            }
-
-            void draw( cv::Mat m ) const
-            {
-                draw_( m, circles );
-                draw_( m, labels );
-                draw_( m, rectangles );
-            }
-
-        private:
-            template < typename T > void draw_( cv::Mat m, const std::vector< T >& s ) const { for( unsigned int i = 0; i < s.size(); s[i].draw( m ), ++i ); }
+        unsigned char r;
+        unsigned char g;
+        unsigned char b;
+        color(): r( 0 ), g( 0 ), b( 0 ) {}
+        operator cv::Scalar() const { return cv::Scalar( b, g, r ); }
     };
+
+    struct properties : public region::properties
+    {
+        shapes::color color;
+        comma::uint32 weight;
+        properties() : weight( 1 ) {}
+    };
+
+    struct config : public region::config
+    {
+        shapes::properties properties;
+    };
+
+        //void draw( cv::Mat m ) const { cv::circle( m, center, radius, color, thickness, line_type, shift ); }
+
+    struct rectangle : public region::rectangle
+    {
+        shapes::properties properties; // todo: record-wise support
+        rectangle() {}
+        rectangle( const shapes::properties& properties ): properties( properties ) {}
+        bool draw( cv::Mat m ) const
+        {
+            if( max.x == 0 && min.x == 0 && max.y == 0 && max.y == 0 ) { return false; }
+            if( properties.normalized ) { cv::rectangle( m, cv::Point2i( min.x * m.cols, min.y * m.rows ), cv::Point2i( max.x * m.cols, max.y * m.rows ), properties.color, properties.weight ); } // CV_AA );
+            else { cv::rectangle( m, min, max, properties.color, properties.weight ); } // CV_AA );
+            return true;
+        }
+    };
+
+    struct circle : public region::circle
+    {
+        shapes::properties properties; // todo: record-wise support
+        circle() {}
+        circle( const shapes::properties& properties ): properties( properties ) {}
+        bool draw( cv::Mat m ) const
+        {
+            if( !comma::math::less( 0, radius ) ) { return false; }
+            if( properties.normalized ) { cv::circle( m, cv::Point2i( centre.x * m.cols, centre.y * m.rows ), radius * m.cols, properties.color, properties.weight, CV_AA ); }
+            else { cv::circle( m, centre, radius, properties.color, properties.weight, CV_AA ); }
+            return true;
+        }
+    };
+
+    struct label : public region::label
+    {
+        shapes::properties properties; // todo: record-wise support
+        label() {}
+        label( const shapes::properties& properties ): properties( properties ) {}
+        bool draw( cv::Mat m ) const
+        {
+            if( text.empty() ) { return false; }
+            cv::putText( m, text, properties.normalized ? cv::Point2f( position.x * m.cols, position.y * m.rows ) : position, cv::FONT_HERSHEY_SIMPLEX, 1.0, properties.color, properties.weight, CV_AA );
+            return true;
+        }
+    };
+
+    struct header_shapes
+    {
+        std::vector< shapes::circle > circles;
+        std::vector< shapes::label > labels;
+        std::vector< shapes::rectangle > rectangles;
+
+        void draw( cv::Mat m )
+        {
+            draw_( m, circles );
+            draw_( m, labels );
+            draw_( m, rectangles );
+        }
+
+    private:
+        template < typename T > void draw_( cv::Mat m, const std::vector< T >& hdr_shapes ) const { for( auto& ii : hdr_shapes ) { ii.draw( m ); } }
+    };
+
+    struct stream_shapes
+    {
+        std::unique_ptr< region::join_filter< shapes::circle > > circles;
+        std::unique_ptr< region::join_filter< shapes::label > > labels;
+        std::unique_ptr< region::join_filter< shapes::rectangle > > rectangles;
+
+        void draw( cv::Mat m, boost::posix_time::ptime const& t )
+        {
+            draw_( m, t, circles );
+            draw_( m, t, labels );
+            draw_( m, t, rectangles );
+        }
+    private:
+        template < typename T > void draw_( cv::Mat m, boost::posix_time::ptime const& t, std::unique_ptr< region::join_filter< T > >& strm_shapes )
+        {
+            if( strm_shapes ) { auto list = strm_shapes->read_at( t ); for( auto& ii : list ) { ii.draw( m ); } }
+        }
+    };
+
+    header_shapes hdr_shapes;
+    stream_shapes strm_shapes;
+
+    shapes() {}
+
+    shapes( const comma::command_line_options& options )
+    {
+        region::init_< circle, config >( hdr_shapes.circles, strm_shapes.circles, options, "--circles" );
+        region::init_< label, config >( hdr_shapes.labels, strm_shapes.labels, options, "--labels" );
+        region::init_< rectangle, config >( hdr_shapes.rectangles, strm_shapes.rectangles, options, "--rectangles" );
+
+    }
+};
 
 } } } } // namespace snark { namespace imaging { namespace operations { namespace draw {
 
 namespace comma { namespace visiting {
 
-    template <> struct traits< positions_t::config >
+template <> struct traits< positions_t::config >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, positions_t::config& p, Visitor& v ) { v.apply( "size", p.size ); }
+    template < typename Key, class Visitor > static void visit( const Key&, const positions_t::config& p, Visitor& v ) { v.apply( "size", p.size ); }
+};
+
+template <> struct traits< positions_t >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, positions_t& p, Visitor& v ) { v.apply( "positions", p.positions ); }
+    template < typename Key, class Visitor > static void visit( const Key&, const positions_t& p, Visitor& v ) { v.apply( "positions", p.positions ); }
+};
+
+template <> struct traits< stride_positions_t >
+{
+    template < typename Key, class Visitor > static void visit( const Key& k, stride_positions_t& p, Visitor& v )
     {
-        template < typename Key, class Visitor > static void visit( const Key&, positions_t::config& p, Visitor& v ) { v.apply( "size", p.size ); }
-        template < typename Key, class Visitor > static void visit( const Key&, const positions_t::config& p, Visitor& v ) { v.apply( "size", p.size ); }
-    };
+        v.apply( "index", p.index );
+        traits< ::positions_t >::visit( k, p, v );
+    }
 
-    template <> struct traits< positions_t >
+    template < typename Key, class Visitor > static void visit( const Key& k, const stride_positions_t& p, Visitor& v )
     {
-        template < typename Key, class Visitor > static void visit( const Key&, positions_t& p, Visitor& v ) { v.apply( "positions", p.positions ); }
-        template < typename Key, class Visitor > static void visit( const Key&, const positions_t& p, Visitor& v ) { v.apply( "positions", p.positions ); }
-    };
+        v.apply( "index", p.index );
+        traits< ::positions_t >::visit( k, p, v );
+    }
+};
 
-    template <> struct traits< stride_positions_t >
+template < typename T > struct traits< cv::Point_< T > >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, cv::Point_< T >& p, Visitor& v )
     {
-        template < typename Key, class Visitor > static void visit( const Key& k, stride_positions_t& p, Visitor& v )
-        {
-            v.apply( "index", p.index );
-            traits< ::positions_t >::visit( k, p, v );
-        }
+        v.apply( "x", p.x );
+        v.apply( "y", p.y );
+    }
 
-        template < typename Key, class Visitor > static void visit( const Key& k, const stride_positions_t& p, Visitor& v )
-        {
-            v.apply( "index", p.index );
-            traits< ::positions_t >::visit( k, p, v );
-        }
-    };
-
-    template < typename T > struct traits< cv::Point_< T > >
+    template < typename Key, class Visitor > static void visit( const Key&, const cv::Point_< T >& p, Visitor& v )
     {
-        template < typename Key, class Visitor > static void visit( const Key&, cv::Point_< T >& p, Visitor& v )
-        {
-            v.apply( "x", p.x );
-            v.apply( "y", p.y );
-        }
+        v.apply( "x", p.x );
+        v.apply( "y", p.y );
+    }
+};
 
-        template < typename Key, class Visitor > static void visit( const Key&, const cv::Point_< T >& p, Visitor& v )
-        {
-            v.apply( "x", p.x );
-            v.apply( "y", p.y );
-        }
-    };
-
-    template <> struct traits< ::extents >
+template <> struct traits< ::extents >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, ::extents& p, Visitor& v )
     {
-        template < typename Key, class Visitor > static void visit( const Key&, ::extents& p, Visitor& v )
-        {
-            v.apply( "min", p.min );
-            v.apply( "max", p.max );
-        }
+        v.apply( "min", p.min );
+        v.apply( "max", p.max );
+    }
 
-        template < typename Key, class Visitor > static void visit( const Key&, const ::extents& p, Visitor& v )
-        {
-            v.apply( "min", p.min );
-            v.apply( "max", p.max );
-        }
+    template < typename Key, class Visitor > static void visit( const Key&, const ::extents& p, Visitor& v )
+    {
+        v.apply( "min", p.min );
+        v.apply( "max", p.max );
+    }
 };
 
 template < typename T > struct traits< region::indexed< T > >
@@ -664,28 +712,22 @@ template <> struct traits< snark::imaging::operations::roi::shapes::config >
     }
 };
 
-template <> struct traits< snark::imaging::operations::roi::shapes::circle >
-{
-    template < typename Key, class Visitor > static void visit( const Key& k, snark::imaging::operations::roi::shapes::circle& p, Visitor& v ) { traits< region::circle >::visit( k, p, v ); }
-    template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::roi::shapes::circle& p, Visitor& v ) { traits< region::circle >::visit( k, p, v ); }
-};
-
 template <> struct traits< snark::imaging::operations::roi::shapes::rectangle >
 {
-    template < typename Key, class Visitor > static void visit( const Key& k, snark::imaging::operations::roi::shapes::rectangle& p, Visitor& v ) { traits< region::rectangle >::visit( k, p, v ); }
-    template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::roi::shapes::rectangle& p, Visitor& v ) { traits< region::rectangle >::visit( k, p, v ); }
+    template < typename Key, class Visitor > static void visit( const Key& k, snark::imaging::operations::roi::shapes::rectangle& p, Visitor& v ) { traits< ::extents >::visit( k, p, v ); }
+    template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::roi::shapes::rectangle& p, Visitor& v ) { traits< ::extents >::visit( k, p, v ); }
 };
 
-template <> struct traits< snark::imaging::operations::roi::shapes >
+template <> struct traits< snark::imaging::operations::roi::shapes::header_shapes >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, snark::imaging::operations::roi::shapes& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::imaging::operations::roi::shapes::header_shapes& p, Visitor& v )
     {
         //v.apply( "circles", p.circles );
         v.apply( "rectangles", p.rectangles );
         v.apply( "t", p.timestamp );
     }
 
-    template < typename Key, class Visitor > static void visit( const Key&, const snark::imaging::operations::roi::shapes& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::imaging::operations::roi::shapes::header_shapes& p, Visitor& v )
     {
         //v.apply( "circles", p.circles );
         v.apply( "rectangles", p.rectangles );
@@ -750,8 +792,8 @@ template <> struct traits< snark::imaging::operations::draw::shapes::config >
 
 template <> struct traits< snark::imaging::operations::draw::shapes::rectangle >
 {
-    template < typename Key, class Visitor > static void visit( const Key& k, snark::imaging::operations::draw::shapes::rectangle& p, Visitor& v ) { traits< region::rectangle >::visit( k, p, v ); }
-    template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::draw::shapes::rectangle& p, Visitor& v ) { traits< region::rectangle >::visit( k, p, v ); }
+    template < typename Key, class Visitor > static void visit( const Key& k, snark::imaging::operations::draw::shapes::rectangle& p, Visitor& v ) { traits< ::extents >::visit( k, p, v ); }
+    template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::draw::shapes::rectangle& p, Visitor& v ) { traits< ::extents >::visit( k, p, v ); }
 };
 
 template <> struct traits< snark::imaging::operations::draw::shapes::circle >
@@ -766,16 +808,16 @@ template <> struct traits< snark::imaging::operations::draw::shapes::label >
     template < typename Key, class Visitor > static void visit( const Key& k, const snark::imaging::operations::draw::shapes::label& p, Visitor& v ) { traits< region::label >::visit( k, p, v ); }
 };
 
-template <> struct traits< snark::imaging::operations::draw::shapes >
+template <> struct traits< snark::imaging::operations::draw::shapes::header_shapes >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, snark::imaging::operations::draw::shapes& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::imaging::operations::draw::shapes::header_shapes& p, Visitor& v )
     {
         v.apply( "circles", p.circles );
         v.apply( "labels", p.labels );
         v.apply( "rectangles", p.rectangles );
     }
 
-    template < typename Key, class Visitor > static void visit( const Key&, const snark::imaging::operations::draw::shapes& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::imaging::operations::draw::shapes::header_shapes& p, Visitor& v )
     {
         v.apply( "circles", p.circles );
         v.apply( "labels", p.labels );
@@ -1043,18 +1085,20 @@ int main( int ac, char** av )
         if( operation == "draw" )
         {
             snark::imaging::operations::draw::shapes sample( options );
-            input_options.fields = comma::join( comma::csv::names< snark::imaging::operations::draw::shapes >( input_options.fields, true, sample ), ',' );
-            output_options.fields = comma::join( comma::csv::names< snark::imaging::operations::draw::shapes >( output_options.fields, true, sample ), ',' );
+            input_options.fields = comma::join( comma::csv::names< snark::imaging::operations::draw::shapes::header_shapes >( input_options.fields, true, sample.hdr_shapes ), ',' );
+            output_options.fields = comma::join( comma::csv::names< snark::imaging::operations::draw::shapes::header_shapes >( output_options.fields, true, sample.hdr_shapes ), ',' );
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
-            comma::csv::binary< snark::imaging::operations::draw::shapes > binary( csv, sample ); // todo: sample seems not to take effect; debug
+            comma::csv::binary< snark::imaging::operations::draw::shapes::header_shapes > binary( csv, sample.hdr_shapes ); // todo: sample seems not to take effect; debug
+
             while( std::cin.good() )
             {
                 auto p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
                 if( p.second.empty() ) { break; }
-                snark::imaging::operations::draw::shapes shape = sample; // todo: quick and dirty; tear down, once todo above is sorted
+                snark::imaging::operations::draw::shapes::header_shapes shape = sample.hdr_shapes; // todo: quick and dirty; tear down, once todo above is sorted
                 binary.get( shape, &input_serialization.header_buffer()[0] );
                 shape.draw( p.second );
+                sample.strm_shapes.draw( p.second, input_serialization.get_header( &input_serialization.header_buffer()[0] ).timestamp );
                 output_serialization.write_to_stdout( p, csv.flush );
             }
             return 0;
@@ -1318,13 +1362,13 @@ int main( int ac, char** av )
             if( csv.has_some_of_paths( "rectangles" ) || options.exists( "--rectangles" ) )
             {
                 snark::imaging::operations::roi::shapes sample( options );
-                input_options.fields = comma::join( comma::csv::names< snark::imaging::operations::roi::shapes >( input_options.fields, true, sample ), ',' );
-                output_options.fields = comma::join( comma::csv::names< snark::imaging::operations::roi::shapes >( output_options.fields, true, sample ), ',' );
+                input_options.fields = comma::join( comma::csv::names< snark::imaging::operations::roi::shapes::header_shapes >( input_options.fields, true, sample.hdr_shapes ), ',' );
+                output_options.fields = comma::join( comma::csv::names< snark::imaging::operations::roi::shapes::header_shapes >( output_options.fields, true, sample.hdr_shapes ), ',' );
                 if( crop ) { output_options.fields = std::string(); output_options.format = comma::csv::format(); }// comma::join( comma::csv::names< snark::cv_mat::serialization::header >( output_options.fields, true ), ',' ); }
 
                 snark::cv_mat::serialization input_serialization( input_options );
                 snark::cv_mat::serialization output_serialization( output_options );
-                comma::csv::binary< snark::imaging::operations::roi::shapes > binary( csv, sample ); // todo: sample seems not to take effect; debug
+                comma::csv::binary< snark::imaging::operations::roi::shapes::header_shapes > binary( csv, sample.hdr_shapes ); // todo: sample seems not to take effect; debug
 
                 cv::Mat mask;
                 comma::uint64 count = 0;
@@ -1337,7 +1381,7 @@ int main( int ac, char** av )
                     cv::Mat& mat = p.second;
                     ++count;
 
-                    snark::imaging::operations::roi::shapes shape = sample; // todo: quick and dirty; tear down, once todo above is sorted
+                    snark::imaging::operations::roi::shapes::header_shapes shape = sample.hdr_shapes; // todo: quick and dirty; tear down, once todo above is sorted
                     binary.get( shape, &input_serialization.header_buffer()[0] );
 
                     if( mask.rows != mat.rows || mask.cols != mat.cols ) { mask = cv::Mat::ones( mat.rows, mat.cols, CV_8U ); }
