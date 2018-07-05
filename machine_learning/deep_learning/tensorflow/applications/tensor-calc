@@ -67,7 +67,7 @@ def die( m ): print >> sys.stderr, "tensor-calc: " + args.operation[0] + ":", m;
 if __name__ == '__main__':
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
     parser.add_argument( 'operation', nargs = 1, choices = [ "graph-freeze", "records-boxes-from-csv", "records-boxes-to-csv", "records-paths" ], type = str, help = 'operation' )
-    parser.add_argument( '--graph-clear-devices', '--clear-devices', '--clear', default = '.', type = str, help = 'clear devices, when creating session' )
+    parser.add_argument( '--graph-clear-devices', '--clear-devices', '--clear', action = "store_true", help = 'clear devices, when creating session' )
     parser.add_argument( '--graph-model-dir', '--graph-dir', default = '.', type = str, help = 'graph model directory; default: %(default)s' )
     parser.add_argument( '--graph-output-node-names', '--graph-output-nodes', '--output-nodes', type = str, help = 'comma-separated graph output node names, e.g: --graph-output-nodes="detection_boxes,detection_scores,detection_classes"' )
     parser.add_argument( '--graph-output-file', '--graph-output', default = './frozen_graph.pb', type = str, help = 'frozen graph name; default: %(default)s' )
