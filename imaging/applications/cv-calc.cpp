@@ -367,52 +367,78 @@ public:
     join_filter( comma::csv::options const& csv, properties_type properties )
         : m_ifstrm( csv.filename, csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii )
         , m_istrm( *m_ifstrm, csv, record_type( T( properties ) ) )
+        , has_timestamp( csv.has_field( "t" ) )
         {}
 
     std::vector< record_type > read_at( key_type const& timestamp )
     {
         std::vector< record_type > result;
-        if( m_record )
+        if( has_timestamp )
         {
-            if( timestamp < m_record->timestamp ) { return result; }
-            if( timestamp == m_record->timestamp ) { result.push_back( *m_record ); m_record = boost::none; }
-            else if( timestamp > m_record->timestamp ) { m_record = boost::none; }
+            if( m_record )
+            {
+                if( timestamp < m_record->timestamp ) { return result; }
+                if( timestamp == m_record->timestamp ) { result.push_back( *m_record ); m_record = boost::none; }
+                else if( timestamp > m_record->timestamp ) { m_record = boost::none; }
+            }
+            while( m_ifstrm->good() && !m_ifstrm->eof() )
+            {
+                auto rec = m_istrm.read(); if( !rec ) { break; }
+                if( timestamp > rec->timestamp ) continue;
+                if( timestamp < rec->timestamp ) { m_record = *rec; break; }
+                result.push_back( *rec );
+                if( 0 == rec->index ) { break; }
+            }
         }
-        while( m_ifstrm->good() && !m_ifstrm->eof() )
+        else
         {
-            auto rec = m_istrm.read(); if( !rec ) { break; }
-            if( timestamp > rec->timestamp ) continue;
-            if( timestamp < rec->timestamp ) { m_record = *rec; break; }
-            result.push_back( *rec );
-            if( 0 == rec->index ) { break; }
+            assert( !m_record );
+            while( m_ifstrm->good() && !m_ifstrm->eof() )
+            {
+                auto rec = m_istrm.read(); if( !rec ) { break; }
+                result.push_back( *rec );
+                if( 0 == rec->index ) { break; }
+            }
         }
         return result;
     }
 
     void read_at( std::vector< T >& list, key_type const& timestamp )
     {
-        if( m_record )
+        if( has_timestamp )
         {
-            if( timestamp < m_record->timestamp ) { return; }
-            if( timestamp == m_record->timestamp ) { list.push_back( *m_record ); m_record = boost::none; }
-            else if( timestamp > m_record->timestamp ) { m_record = boost::none; }
+            if( m_record )
+            {
+                if( timestamp < m_record->timestamp ) { return; }
+                if( timestamp == m_record->timestamp ) { list.push_back( *m_record ); m_record = boost::none; }
+                else if( timestamp > m_record->timestamp ) { m_record = boost::none; }
+            }
+            while( m_ifstrm->good() && !m_ifstrm->eof() )
+            {
+                auto rec = m_istrm.read(); if( !rec ) { break; }
+                if( timestamp > rec->timestamp ) continue;
+                if( timestamp < rec->timestamp ) { m_record = *rec; return; }
+                list.push_back( *rec );
+                if( 0 == rec->index ) { return; }
+            }
         }
-        while( m_ifstrm->good() && !m_ifstrm->eof() )
+        else
         {
-            auto rec = m_istrm.read(); if( !rec ) { break; }
-            if( timestamp > rec->timestamp ) continue;
-            if( timestamp < rec->timestamp ) { m_record = *rec; return; }
-            list.push_back( *rec );
-            if( 0 == rec->index ) { return; }
+            assert( !m_record );
+            while( m_ifstrm->good() && !m_ifstrm->eof() )
+            {
+                auto rec = m_istrm.read(); if( !rec ) { break; }
+                list.push_back( *rec );
+                if( 0 == rec->index ) { break; }
+            }
         }
     }
-
-
 
 private:
     comma::io::istream m_ifstrm;
     stream_type m_istrm;
     boost::optional< record_type > m_record;
+    bool has_timestamp;
 };
 
 template < typename shape_type, typename config_type > static void init_( std::vector< shape_type >& header_shapes , std::unique_ptr< join_filter< shape_type > >& stream_shapes
