@@ -1136,7 +1136,9 @@ int main( int ac, char** av )
             output_options.fields = comma::join( comma::csv::names< draw::shapes::header_shapes >( output_options.fields, true, sample.hdr_shapes ), ',' );
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
-            comma::csv::binary< draw::shapes::header_shapes > binary( csv, sample.hdr_shapes ); // todo: sample seems not to take effect; debug
+            auto binary = csv.binary()
+                ? comma::csv::binary< draw::shapes::header_shapes >( csv, sample.hdr_shapes )
+                : comma::csv::binary< draw::shapes::header_shapes >(); // todo: sample seems not to take effect; debug
 
             while( std::cin.good() )
             {
@@ -1415,7 +1417,9 @@ int main( int ac, char** av )
 
                 snark::cv_mat::serialization input_serialization( input_options );
                 snark::cv_mat::serialization output_serialization( output_options );
-                comma::csv::binary< roi::shapes::header_shapes > binary( csv, sample.hdr_shapes ); // todo: sample seems not to take effect; debug
+                auto binary = csv.binary()
+                    ? comma::csv::binary< roi::shapes::header_shapes >( csv, sample.hdr_shapes )
+                    : comma::csv::binary< roi::shapes::header_shapes >(); // todo: sample seems not to take effect; debug
 
                 cv::Mat mask;
                 comma::uint64 count = 0;
