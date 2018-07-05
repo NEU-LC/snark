@@ -45,7 +45,7 @@ if operation semantics don't suit you, use the code as an example and write your
 
 operations
     graph
-        graph-freeze: freeze model in a .pb file
+        graph-freeze: freeze model in a .pb file (or use native tensorflow freeze_graph)
     records
         records-boxes-from-csv: take image filenames and bounding boxes as csv stream on stdin, output tfrecords file
         records-boxes-to-csv: read tfrecords file with bounding boxes, output as csv, clip boxes that are partly outside of image
