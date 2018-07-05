@@ -39,14 +39,17 @@ import comma.csv
 
 description = """
 
-operations on tensorflow records
+a convenience wrapper for various operations on tensorflow graphs, records, etc
 
 if operation semantics don't suit you, use the code as an example and write your own
 
 operations
-    boxes-from-csv: take image filenames and bounding boxes as csv stream on stdin, output tfrecords file
-    boxes-to-csv: read tfrecords file with bounding boxes, output as csv, clip boxes that are partly outside of image
-    paths: print to stdout paths present in records and exit
+    graph
+        graph-freeze: freeze model in a .pb file
+    records
+        records-boxes-from-csv: take image filenames and bounding boxes as csv stream on stdin, output tfrecords file
+        records-boxes-to-csv: read tfrecords file with bounding boxes, output as csv, clip boxes that are partly outside of image
+        records-paths: print to stdout paths present in records and exit
 
 """
 
@@ -57,13 +60,17 @@ examples:
 
 """
 
-def say( m ): print >> sys.stderr, "tensor-records: " + args.operation[0] + ":", m
+def say( m ): print >> sys.stderr, "tensor-calc: " + args.operation[0] + ":", m
 
-def die( m ): print >> sys.stderr, "tensor-records: " + args.operation[0] + ":", m; sys.exit( 1 )
+def die( m ): print >> sys.stderr, "tensor-calc: " + args.operation[0] + ":", m; sys.exit( 1 )
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
-    parser.add_argument( 'operation', nargs = 1, choices = [ "boxes-from-csv", "boxes-to-csv", "paths", "to-path-value" ], type = str, help = 'operation' )
+    parser.add_argument( 'operation', nargs = 1, choices = [ "graph-freeze", "records-boxes-from-csv", "records-boxes-to-csv", "records-paths" ], type = str, help = 'operation' )
+    parser.add_argument( '--graph-clear-devices', '--clear-devices', '--clear', default = '.', type = str, help = 'clear devices, when creating session' )
+    parser.add_argument( '--graph-model-dir', '--graph-dir', default = '.', type = str, help = 'graph model directory; default: %(default)s' )
+    parser.add_argument( '--graph-output-node-names', '--graph-output-nodes', '--output-nodes', type = str, help = 'comma-separated graph output node names, e.g: --graph-output-nodes="detection_boxes,detection_scores,detection_classes"' )
+    parser.add_argument( '--graph-output-file', '--graph-output', default = './frozen_graph.pb', type = str, help = 'frozen graph name; default: %(default)s' )
     parser.add_argument( '--input-file', '--input', type = str, help = 'input file (tensorflow tf_record_iterator does not seem to like stdin)' )
     parser.add_argument( '--input-fields', action = "store_true", help = 'if operation takes csv values on stdin, print input fields and exit' )
     parser.add_argument( '--output-fields', action = "store_true", help = 'if operation outputs csv values on stdout, print input fields and exit' )
@@ -75,7 +82,23 @@ if __name__ == '__main__':
     parser.add_argument( '--verbose', '-v', action = "store_true", help = 'more output to stderr' )
     comma.csv.add_options( parser )
     args = parser.parse_args()
-    if args.operation[0] == "boxes-from-csv":
+    if args.operation[0] == "graph-freeze":
+        import tensorflow as tf
+        output_filename = args.graph_output_file if args.output_file is None else args.output_file
+        if not args.graph_output_node_names: die( "please specify --graph-output-node-names" )
+        checkpoint = tf.train.get_checkpoint_state( args.graph_model_dir )
+        input_checkpoint = checkpoint.model_checkpoint_path
+        say( "got input_checkpoint '" + input_checkpoint + "' from checkpoint in " + args.graph_model_dir )
+        clear_devices = True
+        with tf.Session( graph = tf.Graph() ) as sess:
+            saver = tf.train.import_meta_graph( input_checkpoint + '.meta', clear_devices = args.graph_clear_devices )
+            saver.restore( sess, input_checkpoint )
+            output_graph_def = tf.graph_util.convert_variables_to_constants( sess, tf.get_default_graph().as_graph_def(), args.graph_output_node_names.split( "," ) )
+        with tf.gfile.GFile( output_filename, "wb" ) as f:
+            f.write( output_graph_def.SerializeToString() )
+        say( "%d operations in the final graph." % len( output_graph_def.node ) )
+        sys.exit( 0 )
+    if args.operation[0] == "records-boxes-from-csv":
         if args.input_fields: print 'filename,min/x,min/y,max/x,max/y,label'; sys.exit( 0 )
         if args.output_file is None: die( "please specify --output-file" )
         import hashlib
@@ -133,7 +156,7 @@ if __name__ == '__main__':
         writer.close()
         say( "wrote " + str( count ) + " record(s)" )
         sys.exit( 0 )
-    if args.operation[0] == "boxes-to-csv":
+    if args.operation[0] == "records-boxes-to-csv":
         if args.output_fields: print 'filename,min/x,min/y,max/x,max/y,label'; sys.exit( 0 )
         if args.input_file is None: die( "please specify --input-file" )
         import numpy as np
@@ -156,7 +179,7 @@ if __name__ == '__main__':
                 ymax = np.round( np.multiply( ymax, height ) ).astype( int )
             for i in range( len( xmin ) ): print filename + "," + str( xmin[i] ) + "," + str( ymin[i] ) + "," + str( xmax[i] ) + "," + str( ymax[i] ) + "," + str( labels[i] )
         sys.exit( 0 )
-    if args.operation[0] == "paths":
+    if args.operation[0] == "records-paths":
         import tensorflow as tf
         index = 0
         for record in tf.python_io.tf_record_iterator( args.input_file ):
