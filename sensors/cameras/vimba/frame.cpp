@@ -95,6 +95,7 @@ frame::pixel_format_desc frame::format_desc() const
         case VmbPixelFormatBayerRG12Packed: // BayerRG12Packed
         case VmbPixelFormatBayerGB12Packed: // BayerGB12Packed
         case VmbPixelFormatBayerBG12Packed: // BayerBG12Packed
+        case VmbPixelFormatMono12Packed:// Mono12Packed
             return pixel_format_desc( CV_8UC1, 1.5 );
 
         case VmbPixelFormatMono8:       // Mono8
@@ -113,12 +114,11 @@ frame::pixel_format_desc frame::format_desc() const
 
         case VmbPixelFormatMono10:      // Mono10
         case VmbPixelFormatMono12:      // Mono12
-        case VmbPixelFormatMono12Packed:// Mono12Packed
         case VmbPixelFormatMono14:      // Mono14
-
         case VmbPixelFormatBayerBG10:   // BayerBG10
         case VmbPixelFormatBayerGR12:   // BayerGR12
         case VmbPixelFormatBayerRG12:   // BayerRG12
+            return pixel_format_desc( CV_16UC1, 1.0 );
 
                                         // RGB10Packed (no obvious mapping)
         case VmbPixelFormatRgb12:       // RGB12Packed
