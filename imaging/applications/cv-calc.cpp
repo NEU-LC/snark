@@ -113,7 +113,7 @@ static void usage( bool verbose=false )
     std::cerr << "        --circles=<options>|<deprecated-options>: draw circles given in the image header; fields: centre/x,centre/y,radius" << std::endl;
     std::cerr << "        --labels=<options>|<deprecated-options>: draw labels given in the image header; fields: position/x,position/y,text" << std::endl;
     std::cerr << "        --rectangles=<options>|<deprecated-options>: rectangles as min and max given in the image header; fields: min/x,min/y,max/x,max/y" << std::endl;
-    std::cerr << "            <options>:<filename>[;size=<size>][;normalized][;weight=<weight>][;color/(r|g|b)]*[;<csv_options>]" << std::endl;
+    std::cerr << "            <options>:<filename>[;size=<size>][;normalized][;weight=<weight>][;color/(r|g|b)]*[;<csv_options>]; fields: t,index,<shape_fields>" << std::endl;
     std::cerr << "            <deprecated-options>:<size>[,normalized][,weight=<weight>][,color/(r|g|b)=<component>]*]" << std::endl;
     std::cerr << "                <filename>: file name as in csv options." << std::endl;
     std::cerr << "                <csv_options>: acfr csv options like fields, format etc." << std::endl;
@@ -122,12 +122,27 @@ static void usage( bool verbose=false )
     std::cerr << "                <weight>: line weight; default: 1" << std::endl;
     std::cerr << "                normalized: if present, the input points are expected in [0,1) interval and will be rescaled to the image size" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "            examples:" << std::endl;
-    std::cerr << "                cv-calc draw --circles=\"circles.csv;fields=t,index,centre/x,centre/y,radius;weight=3;normalized\" \\" << std::endl;
-    std::cerr << "                    --labels=\"labels.csv;fields=t,index,text,position/x,position/y;binary=t,ui,s[128],2d;color/r=255;color/b=255\"" << std::endl;
+    std::cerr << "            if (reverse) index field present, all the shapes in one block from each file is drawn, otherwise only one shape from each file is drawn" << std::endl;
+    std::cerr << "            if t (timestamp) field present, then shapes are drawn on the frame with matching timestamp, otherwise they are drawn on next available image" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "                cv-calc draw --rectangles=\"5,color/g=255,weight=2\" \\" << std::endl;
-    std::cerr << "                    --circles=\"circles.csv;fields=t,index,centre/x,centre/y,radius;weight=3;normalized\"" << std::endl;
+    std::cerr << "        examples:" << std::endl;
+    std::cerr << "            > # reading one circle at a time, draw on next available image" << std::endl;
+    std::cerr << "            > cv-calc draw --circles=\"circles.csv;fields=centre/x,centre/y,radius;weight=3;normalized\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            > # reading a block (based on reverse 'index' field) of labels at a time from a binary file, draw on next available image" << std::endl;
+    std::cerr << "            > cv-calc draw --labels=\"labels.csv;fields=index,text,position/x,position/y;binary=ui,s[128],2d;color/r=255;color/b=255\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            > # draw circles and labels (one block each at a time) from files on images with matching timestamp" << std::endl;
+    std::cerr << "            > cv-calc draw --circles=\"circles.csv;fields=t,index,centre/x,centre/y,radius;weight=3;normalized\" \\" << std::endl;
+    std::cerr << "                --labels=\"labels.csv;fields=t,index,text,position/x,position/y;binary=t,ui,s[128],2d;color/r=255;color/b=255\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            > # read rectangles from headers and circles from file" << std::endl;
+    std::cerr << "            > cv-calc draw --rectangles=\";size=5;color/g=255;weight=2\" \\" << std::endl;
+    std::cerr << "                --circles=\"circles.csv;fields=t,index,centre/x,centre/y,radius;weight=3;normalized\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            > # read rectangles from headers (using deprecated semantics) and circles from file" << std::endl;
+    std::cerr << "            > cv-calc draw --rectangles=\"5,color/g=255,weight=2\" \\" << std::endl;
+    std::cerr << "                --circles=\"circles.csv;fields=t,index,centre/x,centre/y,radius;weight=3;normalized\"" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        fields: t,rows,cols,type,circles,labels,rectangles" << std::endl;
     std::cerr << std::endl;
@@ -164,7 +179,7 @@ static void usage( bool verbose=false )
     std::cerr << "        --no-discard; do not discards frames where the roi is not seen" << std::endl;
     std::cerr << "        --permissive,--show-partial; allow partial overlaps of roi and input image, default: if partial roi and image overlap, set entire image to zeros." << std::endl;
     std::cerr << "        --rectangles=<options>|<deprecated-options>: rectangles as min and max given in the image header; fields: min/x,min/y,max/x,max/y" << std::endl;
-    std::cerr << "            <options>:<filename>[;size=<size>][;normalized][;<csv_options>]" << std::endl;
+    std::cerr << "            <options>:<filename>[;size=<size>][;normalized][;<csv_options>]; fields: t,index,<shape_fields>" << std::endl;
     std::cerr << "            <deprecated-options>:<size>[,normalized]" << std::endl;
     std::cerr << "                <filename>: file name as in csv options." << std::endl;
     std::cerr << "                <csv_options>: acfr csv options like fields, format etc." << std::endl;
@@ -173,10 +188,21 @@ static void usage( bool verbose=false )
     std::cerr << "                             regions with zero width or height will be ignored" << std::endl;
     std::cerr << "                normalized: if present, the input points are expected in [0,1) interval and will be rescaled to the image size" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "            examples:" << std::endl;
-    std::cerr << "                cv-calc roi --rectangles=\"boxes.csv;fields=t,index,centre/x,centre/y,radius\"" << std::endl;
+    std::cerr << "            if (reverse) index field present, all the shapes in one block from each file is drawn, otherwise only one shape from each file is drawn" << std::endl;
+    std::cerr << "            if t (timestamp) field present, then shapes are drawn on the frame with matching timestamp, otherwise they are drawn on next available image" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "                cv-calc roi --rectangles=\"5,normalized\" --crop" << std::endl;
+    std::cerr << "        examples:" << std::endl;
+    std::cerr << "            > # reading one rectangle at a time, mask image with matching timestamp" << std::endl;
+    std::cerr << "            > cv-calc roi --rectangles=\"boxes.csv;fields=t,min/x,min/y,max/x,max/y\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            > # reading block of rectangles at a time, mask next available image" << std::endl;
+    std::cerr << "            > cv-calc roi --rectangles=\"boxes.csv;fields=index,min/x,min/y,max/x,max/y\"" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            > # reading rectangles from headers, crop relevant image" << std::endl;
+    std::cerr << "            > cv-calc roi --rectangles=\";size=5;normalized\" --crop" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            > # reading rectangles from headers (deprecated semantics), crop relevant image" << std::endl;
+    std::cerr << "            > cv-calc roi --rectangles=\"5,normalized\" --crop" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        fields: t,rows,cols,type,rectangles" << std::endl;
     std::cerr << std::endl;
@@ -387,7 +413,7 @@ public:
                 if( timestamp > rec->timestamp ) continue;
                 if( timestamp < rec->timestamp ) { m_record = *rec; break; }
                 result.push_back( *rec );
-                if( 0 == rec->index ) { break; }
+                if( 0 == rec->index ) { break; } // TODO: use config::size semantics here
             }
         }
         else
@@ -397,7 +423,7 @@ public:
             {
                 auto rec = m_istrm.read(); if( !rec ) { break; }
                 result.push_back( *rec );
-                if( 0 == rec->index ) { break; }
+                if( 0 == rec->index ) { break; } // TODO: use config::size semantics here
             }
         }
         return result;
@@ -419,7 +445,7 @@ public:
                 if( timestamp > rec->timestamp ) continue;
                 if( timestamp < rec->timestamp ) { m_record = *rec; return; }
                 list.push_back( *rec );
-                if( 0 == rec->index ) { return; }
+                if( 0 == rec->index ) { return; } // TODO: use config::size here
             }
         }
         else
@@ -429,7 +455,7 @@ public:
             {
                 auto rec = m_istrm.read(); if( !rec ) { break; }
                 list.push_back( *rec );
-                if( 0 == rec->index ) { break; }
+                if( 0 == rec->index ) { break; } // TODO: use config::size here
             }
         }
     }
@@ -451,7 +477,7 @@ template < typename shape_type, typename config_type > static void init_( std::v
     if( ',' == delimiter ) { std::cerr << "cv-calc: warning: ',' as delimiter in shape attributes is deprecated, use ';'. Got attributes string: \"" << config_string << "\"" << std::endl; }
 
     std::string unnamed_attr = config_string.substr( 0U, config_string.find_first_of( delimiter ) );
-    std::string unnamed_attr_name = std::find_if_not( unnamed_attr.cbegin(), unnamed_attr.cend(), []( char const c ) { return 0 != std::isdigit( c ); } ) == unnamed_attr.cend()
+    std::string unnamed_attr_name = !unnamed_attr.empty() && std::find_if_not( unnamed_attr.cbegin(), unnamed_attr.cend(), []( char const c ) { return 0 != std::isdigit( c ); } ) == unnamed_attr.cend()
         ? "size" : "filename";
 
     if( "size" == unnamed_attr_name ) { std::cerr << "cv-calc: warning: using 'size' as the unnamed shape attribute is deprecated, the unnamed attribute should be filename. Attribute string: " << config_string << std::endl; }
