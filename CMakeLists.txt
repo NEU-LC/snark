@@ -235,7 +235,6 @@ ENDIF( snark_BUILD_TESTS )
 
 OPTION( snark_build_actuators "build actuators" ON )
 OPTION( snark_build_batteries "build batteries" OFF )
-OPTION( snark_build_comms "build comms" ON )
 OPTION( snark_build_control "build control" OFF )
 OPTION( snark_build_graph "build graph" ON )
 OPTION( snark_build_graphics "build graphics" ON )
@@ -427,10 +426,6 @@ INSTALL( FILES ${snark_PACKAGE_CMAKEFILES}
          DESTINATION ${snark_INSTALL_PACKAGE_DIR} )
 
 add_subdirectory( actuators )
-
-IF( snark_build_comms )
-    add_subdirectory( comms )
-ENDIF( snark_build_comms )
 
 IF( snark_build_graphics )
     add_subdirectory( graphics )
