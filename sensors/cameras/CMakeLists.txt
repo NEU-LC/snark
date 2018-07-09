@@ -33,3 +33,7 @@ ENDIF( snark_build_sensors_vimba )
 if(snark_build_sensors_realsense)
     add_subdirectory(realsense)
 endif()
+
+if(snark_build_sensors_realsense2)
+    add_subdirectory(realsense2)
+endif()
