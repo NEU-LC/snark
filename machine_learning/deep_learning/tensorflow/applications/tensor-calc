@@ -1,0 +1,233 @@
+#!/usr/bin/python
+
+# This file is part of snark, a generic and flexible library
+# Copyright (c) 2011 The University of Sydney
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the University of Sydney nor the
+#    names of its contributors may be used to endorse or promote products
+#    derived from this software without specific prior written permission.
+#
+# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+# GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+# HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+__author__ = 'v.vlaskine'
+
+import argparse
+import io
+import os
+import sys
+import comma.csv
+
+description = """
+
+a convenience wrapper for various operations on tensorflow graphs, records, etc
+
+if operation semantics don't suit you, use the code as an example and write your own
+
+operations
+    graph
+        graph-freeze: freeze model in a .pb file (or use native tensorflow freeze_graph)
+        graph-nodes: output graph nodes
+    records
+        records-boxes-from-csv: take image filenames and bounding boxes as csv stream on stdin, output tfrecords file
+        records-boxes-to-csv: read tfrecords file with bounding boxes, output as csv, clip boxes that are partly outside of image
+        records-paths: print to stdout paths present in records and exit
+
+"""
+
+epilog = """
+
+examples:
+    todo
+
+"""
+
+def say( m ): print >> sys.stderr, "tensor-calc: " + args.operation[0] + ":", m
+
+def die( m ): print >> sys.stderr, "tensor-calc: " + args.operation[0] + ":", m; sys.exit( 1 )
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
+    parser.add_argument( 'operation', nargs = 1, choices = [ "graph-freeze", "graph-nodes", "records-boxes-from-csv", "records-boxes-to-csv", "records-paths" ], type = str, help = 'operation' )
+    #parser.add_argument( '--graph-clear-devices', '--clear-devices', '--clear', action = "store_true", help = 'clear devices, when creating session' )
+    parser.add_argument( '--graph-model-dir', '--graph-dir', default = '.', type = str, help = 'graph model directory; default: %(default)s' )
+    parser.add_argument( '--graph-output-node-names', '--graph-output-nodes', '--output-nodes', type = str, help = 'comma-separated graph output node names, e.g: --graph-output-nodes="detection_boxes,detection_scores,detection_classes"' )
+    parser.add_argument( '--graph-output-file', '--graph-output', default = './frozen_graph.pb', type = str, help = 'frozen graph name; default: %(default)s' )
+    parser.add_argument( '--input-file', '--input', type = str, help = 'input file (tensorflow tf_record_iterator does not seem to like stdin)' )
+    parser.add_argument( '--input-fields', action = "store_true", help = 'if operation takes csv values on stdin, print input fields and exit' )
+    parser.add_argument( '--output-fields', action = "store_true", help = 'if operation outputs csv values on stdout, print input fields and exit' )
+    parser.add_argument( '--output-file', '--output', type = str, help = 'output file (tensorflow tfrecordwriter does not seem to like stdout)' )
+    #parser.add_argument( '--paths', type = str, help = 'to-path-value: output values only for given comma-separated list of paths, default: output values for all paths (not a great idea, since images are binary)' )
+    parser.add_argument( '--paths-all', '--all', action = "store_true", help = 'output paths for all records (default: output paths for first record)' )
+    parser.add_argument( '--paths-indexed', '--indexed', action = "store_true", help = 'output paths prefixed with an index' )
+    parser.add_argument( '--scaled', '--normalized', action = "store_true", help = 'bounding box coordinates normalized, do not scale by image width and height' )
+    parser.add_argument( '--verbose', '-v', action = "store_true", help = 'more output to stderr' )
+    comma.csv.add_options( parser )
+    args = parser.parse_args()
+    if args.operation[0] == "graph-freeze":
+        import tensorflow as tf
+        output_filename = args.graph_output_file if args.output_file is None else args.output_file
+        if not args.graph_output_node_names: die( "please specify --graph-output-node-names" )
+        checkpoint = tf.train.get_checkpoint_state( args.graph_model_dir )
+        input_checkpoint = checkpoint.model_checkpoint_path
+        say( "got input_checkpoint '" + input_checkpoint + "' from checkpoint in " + args.graph_model_dir )
+        with tf.Session( graph = tf.Graph() ) as sess:
+            say( "importing graph..." )
+            saver = tf.train.import_meta_graph( input_checkpoint + '.meta', clear_devices = True )
+            say( "restoring session..." )
+            saver.restore( sess, input_checkpoint )
+            say( "graph and session imported" )
+            output_graph_def = tf.graph_util.convert_variables_to_constants( sess, tf.get_default_graph().as_graph_def(), args.graph_output_node_names.split( "," ) )            
+        with tf.gfile.GFile( output_filename, "wb" ) as f:
+            say( "writing graph to " + output_filename + "..." )
+            f.write( output_graph_def.SerializeToString() )
+            say( "writing graph to " + output_filename + ": done" )
+        say( "%d operations in the final graph." % len( output_graph_def.node ) )
+        sys.exit( 0 )
+    if args.operation[0] == "graph-nodes":
+        import tensorflow as tf
+        checkpoint = tf.train.get_checkpoint_state( args.graph_model_dir )
+        input_checkpoint = checkpoint.model_checkpoint_path
+        say( "got input_checkpoint '" + input_checkpoint + "' from checkpoint in " + args.graph_model_dir )
+        with tf.Session( graph = tf.Graph() ) as sess:
+            say( "importing graph..." )
+            saver = tf.train.import_meta_graph( input_checkpoint + '.meta', clear_devices = True )
+            say( "importing graph: done" )
+            for n in tf.get_default_graph().as_graph_def().node: print n.name
+        sys.exit( 0 )
+    if args.operation[0] == "records-boxes-from-csv":
+        if args.input_fields: print 'filename,min/x,min/y,max/x,max/y,label'; sys.exit( 0 )
+        if args.output_file is None: die( "please specify --output-file" )
+        import hashlib
+        import numpy as np
+        import PIL as pil
+        import tensorflow as tf
+        point_t = comma.csv.struct( 'x,y', 'uint32', 'uint32' )
+        record_type = comma.csv.struct( 'filename,min,max,label', 'S256', point_t, point_t, 'uint32' )
+        istream = comma.csv.stream( record_type, fields = args.fields, delimiter = args.delimiter, full_xpath = True, binary = None if args.binary == "" else ','.join( comma.csv.format.to_numpy( args.binary ) ) )
+        writer = tf.python_io.TFRecordWriter( args.output_file )
+        filename = None
+        xmin, ymin, xmax, ymax, labels = list(), list(), list(), list(), list()
+        count = 0
+        def write_record():
+            global args, count, filename, xmin, ymin, xmax, ymax, labels
+            if len( xmin ) == 0: return
+            binary_image = tf.gfile.GFile( filename, 'rb').read()
+            image = pil.Image.open( io.BytesIO( binary_image ) )
+            image_format = image.format.lower()
+            image = np.asarray( image )
+            width, height = image.shape[1], image.shape[0]
+            key = hashlib.sha256( binary_image ).hexdigest()
+            xmin = [ max( x, 0 ) for x in xmin ]
+            ymin = [ max( y, 0 ) for y in ymin ]
+            xmax = [ min( x, width ) for x in xmax ]
+            ymax = [ min( y, height ) for y in ymax ]
+            # todo? validate x and y; discard boxes that are too small
+            feature = {
+                            'image/height': tf.train.Feature( int64_list = tf.train.Int64List( value = [ height ] ) )
+                          , 'image/width': tf.train.Feature( int64_list = tf.train.Int64List( value = [ width ] ) )
+                          , 'image/filename': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ filename.encode( 'utf8' ) ] ) )
+                          , 'image/source_id': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ filename.encode( 'utf8' ) ] ) )
+                          , 'image/key/sha256': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ key.encode( 'utf8' ) ] ) )
+                          , 'image/encoded': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ binary_image ] ) )
+                          , 'image/format': tf.train.Feature( bytes_list = tf.train.BytesList( value = [ image_format.encode( 'utf8' ) ] ) )
+                          , 'image/object/bbox/xmin': tf.train.Feature( float_list = tf.train.FloatList( value = xmin if args.scaled else np.divide( xmin, width ) ) )
+                          , 'image/object/bbox/ymin': tf.train.Feature( float_list = tf.train.FloatList( value = ymin if args.scaled else np.divide( ymin, height ) ) )
+                          , 'image/object/bbox/xmax': tf.train.Feature( float_list = tf.train.FloatList( value = xmax if args.scaled else np.divide( xmax, width ) ) )
+                          , 'image/object/bbox/ymax': tf.train.Feature( float_list = tf.train.FloatList( value = ymax if args.scaled else np.divide( ymax, height ) ) )
+                          , 'image/object/class/label': tf.train.Feature(int64_list = tf.train.Int64List( value = labels ) )
+                      }
+            writer.write( tf.train.Example( features = tf.train.Features( feature = feature ) ).SerializeToString() )
+            xmin, ymin, xmax, ymax, labels = list(), list(), list(), list(), list()
+            count = count + 1
+        for records in istream:
+            for record in records:
+                if filename != record['filename']: write_record()
+                filename = record['filename']
+                xmin.append( float( record['min']['x'] ) )
+                ymin.append( float( record['min']['y'] ) )
+                xmax.append( float( record['max']['x'] ) )
+                ymax.append( float( record['max']['y'] ) )
+                labels.append( record['label'] )
+        write_record()
+        writer.close()
+        say( "wrote " + str( count ) + " record(s)" )
+        sys.exit( 0 )
+    if args.operation[0] == "records-boxes-to-csv":
+        if args.output_fields: print 'filename,min/x,min/y,max/x,max/y,label'; sys.exit( 0 )
+        if args.input_file is None: die( "please specify --input-file" )
+        import numpy as np
+        import tensorflow as tf
+        for record in tf.python_io.tf_record_iterator( args.input_file ):
+            example = tf.train.Example()
+            example.ParseFromString( record )
+            filename = str( example.features.feature['image/filename'].bytes_list.value[0] )
+            xmin = example.features.feature['image/object/bbox/xmin'].float_list.value
+            ymin = example.features.feature['image/object/bbox/ymin'].float_list.value
+            xmax = example.features.feature['image/object/bbox/xmax'].float_list.value
+            ymax = example.features.feature['image/object/bbox/ymax'].float_list.value
+            labels = example.features.feature['image/object/class/label'].int64_list.value
+            if not args.scaled:
+                height = int( example.features.feature['image/height'].int64_list.value[0] )
+                width = int( example.features.feature['image/width'].int64_list.value[0] )
+                xmin = np.round( np.multiply( xmin, width ) ).astype( int )
+                ymin = np.round( np.multiply( ymin, height ) ).astype( int )
+                xmax = np.round( np.multiply( xmax, width ) ).astype( int )
+                ymax = np.round( np.multiply( ymax, height ) ).astype( int )
+            for i in range( len( xmin ) ): print filename + "," + str( xmin[i] ) + "," + str( ymin[i] ) + "," + str( xmax[i] ) + "," + str( ymax[i] ) + "," + str( labels[i] )
+        sys.exit( 0 )
+    if args.operation[0] == "records-paths":
+        import tensorflow as tf
+        index = 0
+        for record in tf.python_io.tf_record_iterator( args.input_file ):
+            example = tf.train.Example()
+            example.ParseFromString( record )
+            for k in example.features.feature:
+                if args.paths_indexed: print "[" + str( index ) + "]/" + k
+                else: print k
+            index = index + 1
+            if not args.paths_all: break
+        sys.exit( 0 )
+        
+    # todo: get semantics right
+    #if args.operation[0] == "to-json":
+        #import google.protobuf
+        #import tensorflow as tf
+        #i = 0
+        
+        #for record in tf.python_io.tf_record_iterator( args.input_file ):
+            #example = tf.train.Example()
+            #example.ParseFromString( record )
+            #print google.protobuf.json_format.MessageToJson( example )
+            #break
+        #sys.exit()
+        
+        #paths = list()
+        #if not args.paths is None: paths = args.paths.split( ',' )
+        #for record in tf.python_io.tf_record_iterator( args.input_file ):
+            #example = tf.train.Example()
+            #example.ParseFromString( record )
+            #for k, v in example.features.feature.items():
+                #if len( paths ) > 0 and not k in paths: continue
+                #print "[" + str( i ) + "]/" + k
+                #print type( v )
+            #i = i + 1

@@ -169,7 +169,9 @@ if __name__ == '__main__':
     saymore( "tensorflow version: " + tf.__version__ )
     graph = None
     #with tf.device( args.device ) as device: run() # todo: tf.device() does not quite work
+    # todo: load from checkpoint
     if args.frozen_graph is None: # todo! there is an intermittent problem that prevents this branch from working; looking into it, but any help is welcome...
+        say( "warning: if loading with --session does not work, use tensor-calc graph-freeze to freeze the graph and run tensor-cat --frozen-graph ...; loading from checkpoint: todo" )
         tf.reset_default_graph() # voodoo?
         session_file = args.session_dir + '/' + args.session
         session_meta = args.session_graph if not args.session_graph is None else session_file + '.meta'
