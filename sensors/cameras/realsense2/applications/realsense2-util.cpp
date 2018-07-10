@@ -31,35 +31,66 @@
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
 #include <librealsense2/rs.hpp>
+#include <vector>
+#include <string>
+#include <iostream>
 
 void usage(bool detail)
 {
-    std::cerr<<"    Intel realsense2 API utility" << std::endl;
+    std::cerr<<"Intel realsense2 API utility" << std::endl;
     std::cerr << std::endl;
-    std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
+    std::cerr<< "usage: " << comma::verbose.app_name() << "<operation> [ <options> ]" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "options" << std::endl;
-    std::cerr << "    --help,-h: show help" << std::endl;
-    std::cerr << "    --list,--list-devices: output available devices and exit, fields: name, serial no, port"<< std::endl;
-    std::cerr << "    --reset: send hardware reset to all devices"<< std::endl;
+    std::cerr << "operations" << std::endl;
+    std::cerr << "    list,list-devices: output available devices and exit, fields: name, serial no, port"<< std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    reset: send hardware reset to all devices"<< std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --all-devices,--all; reset all available devices" << std::endl;
+    std::cerr << "            --device=[<serial_number>]; device to reset (multiple --device options allowed)" << std::endl;
     std::cerr << std::endl;
 }
 
 int main( int argc, char** argv )
 {
-    comma::command_line_options options( argc, argv, usage );
     try
     {
+        comma::command_line_options options( argc, argv, usage );
+        std::vector<std::string> unnamed=options.unnamed( "--verbose,-v,--all-devices,--all", "-.*" );
+        if(unnamed.size()!=1) { COMMA_THROW( comma::exception, "expected one unnamed arguement, got: "<<unnamed.size()); }
         rs2::context context;
         auto devices=context.query_devices();
-        bool list=options.exists("--list,--list-devices");
-        bool reset=options.exists("--reset-all");
-        for(rs2::device dev : devices)
+        if(unnamed[0]=="list" || unnamed[0]=="list-devices")
         {
-            if(list)
+            for(rs2::device dev : devices)
+            {
                 std::cout<<dev.get_info(RS2_CAMERA_INFO_NAME)<<","<<dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER)<<","<<dev.get_info(RS2_CAMERA_INFO_PHYSICAL_PORT)<<std::endl;
-            if(reset)
-                dev.hardware_reset();
+            }
+        }
+        else if(unnamed[0]=="reset")
+        {
+            bool all=options.exists("--all-devices,--all");
+            std::vector<std::string> device_serial_nos=options.values<std::string>("--device");
+            if(!all && device_serial_nos.empty()) { COMMA_THROW(comma::exception, "reset: either --all or --device must be specified"); }
+            for(rs2::device dev : devices)
+            {
+                if(all)
+                {
+                    dev.hardware_reset();
+                }
+                else
+                {
+                    std::string serial_no=dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
+                    for(auto& i : device_serial_nos)
+                    {
+                        if(i==serial_no)
+                        {
+                            dev.hardware_reset();
+                            break;
+                        }
+                    }
+                }
+            }
         }
         return 0;
     }
