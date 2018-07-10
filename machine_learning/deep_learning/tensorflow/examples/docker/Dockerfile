@@ -87,7 +87,7 @@ RUN    apt-get update \
 
 # =================== installing pretrained models and training dependencies ===================
 
-# git reset: set a working version (HEAD version will clash with protoc version)
+# currently seem to work at tag 7367d494135368a7790df6172206a58a2a2f3d40
 # rm -rf .git: since git history is not required in this container, remove it to reduce the container image size
 RUN    git clone https://github.com/tensorflow/models.git /root/src/tensorflow_models \
     && cd /root/src/tensorflow_models \
