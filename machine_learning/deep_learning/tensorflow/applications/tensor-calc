@@ -84,6 +84,7 @@ if __name__ == '__main__':
     comma.csv.add_options( parser )
     args = parser.parse_args()
     if args.operation[0] == "graph-freeze":
+        die( "to finalize along the lines of getting output tensors based on input tensor names; see _export_inference_graph in tensorflow models exporter.py file" )
         import tensorflow as tf
         output_filename = args.graph_output_file if args.output_file is None else args.output_file
         if not args.graph_output_node_names: die( "please specify --graph-output-node-names" )
