@@ -79,7 +79,7 @@ void usage(bool detail)
     std::cerr << "    --raw: output raw packets to stdout, " << std::endl;
     std::cerr << "    --stdin; read packets from stdin, can't be used with options that need to write to device (e.g. --ntrip)" << std::endl;
     std::cerr << "    --device=<filename>; filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
-    std::cerr << "    --baud-rate=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
+    std::cerr << "    --baud-rate,--baud=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
     std::cerr << "    --sleep=<n>: microsecond sleep between reading, default "<< default_sleep << std::endl;
     std::cerr << "    --ntrip=<stream>: read ntrip data from stream and send it to device" << std::endl;
     std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
@@ -279,7 +279,7 @@ struct app_base : protected device
     comma::io::select select;
 public:
     app_base(const std::string& port,const comma::command_line_options& options) : 
-        device(port,options.value<unsigned>("--baud-rate",default_baud_rate)),
+        device(port,options.value<unsigned>("--baud-rate,--baud",default_baud_rate)),
         us(options.value<unsigned>("--sleep",default_sleep))
     {
         select.read().add( fd() );
