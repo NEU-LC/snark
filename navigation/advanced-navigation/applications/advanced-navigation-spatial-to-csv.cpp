@@ -501,6 +501,7 @@ int main( int argc, char** argv )
             input="-";
             if(options.exists("--device")) { COMMA_THROW( comma::exception, "--stdin conflicts with --device"); }
             if(opt_ntrip) { COMMA_THROW( comma::exception, "--stdin conflicts with --ntrip"); }
+            comma::csv::detail::unsynchronize_with_stdio();
         }
         else
         {
