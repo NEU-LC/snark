@@ -118,7 +118,7 @@ void device::process()
                     handle(reinterpret_cast<messages::orientation_standard_deviation*>(&buf[head+5]));
                     break;
                 default:
-                    comma::verbose<<"unhandled msg id: "<<int(msg_header->id())<<" len "<<int(msg_header->length())<<" "<<head<<" "<<index<<std::endl;
+//                     comma::verbose<<"unhandled msg id: "<<int(msg_header->id())<<" len "<<int(msg_header->length())<<" "<<head<<" "<<index<<std::endl;
                     break;
                 }
                 if(debug_count)
