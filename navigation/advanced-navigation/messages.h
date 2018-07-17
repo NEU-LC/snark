@@ -46,13 +46,16 @@ struct header : public comma::packed::packed_struct<header,5>
 {
     comma::packed::uint8 LRC;
     comma::packed::uint8 id;
+private:
     comma::packed::uint8 length;
+public:
     comma::packed::little_endian_uint16 msg_crc;
     bool is_valid() const;
     //The CRC is a CRC16-CCITT. The starting value is 0xFFFF. The CRC covers only the packet data.
     bool check_crc(const char* data) const;   //length is from header
     header();
     header(unsigned char id, unsigned char length,const char* data);
+    unsigned len() const { return unsigned(length()); }
 };
 
 struct system_state : public comma::packed::packed_struct<system_state,100>

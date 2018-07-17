@@ -114,6 +114,7 @@ void usage(bool detail)
 
 struct output
 {
+    output() : height(0), system_status(0), filter_status(0) { }
     boost::posix_time::ptime t;
     snark::spherical::coordinates coordinates;
     double height;

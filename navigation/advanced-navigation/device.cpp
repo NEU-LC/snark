@@ -58,16 +58,19 @@ void device::process()
         {
             index=head=0;
         }
+        msg_header=NULL;
     }
-    int to_read=buf.size()-index;
-    if(to_read>0)
+    unsigned rest_size=buf.size()-index;
+    if(rest_size>0)
     {
-        unsigned read_size=stream->read_some(&buf[index],to_read);
+        unsigned to_read=msg_header? msg_header->len()-(index-head-5) : 10;
+//         unsigned to_read=rest_size;
+        unsigned read_size=stream->read_some(&buf[index],rest_size,to_read);
 //         comma::verbose<<"device::process read "<<read_size<<std::endl;
         if(read_size==0)
             return;
-        if(read_size>(unsigned)to_read)
-            comma::verbose<<"read long "<<read_size<<" vs "<<to_read<<std::endl;
+        if(read_size>(unsigned)rest_size)
+            comma::verbose<<"read long "<<read_size<<" vs "<<rest_size<<std::endl;
         index+=read_size;
     }
     while(index-head>=5)
@@ -90,13 +93,13 @@ void device::process()
         }
         if(msg_header)
         {
-            if( (index-head-5) < unsigned(msg_header->length()))
+            if( (index-head-5) < msg_header->len())
             {
                 return;
             }
             if(msg_header->check_crc(&buf[head+5]))
             {
-                handle_raw(msg_header,&buf[head+5],msg_header->length());
+                handle_raw(msg_header,&buf[head+5],msg_header->len());
                 switch(msg_header->id())
                 {
                 case messages::system_state::id:
@@ -118,7 +121,7 @@ void device::process()
                     handle(reinterpret_cast<messages::orientation_standard_deviation*>(&buf[head+5]));
                     break;
                 default:
-//                     comma::verbose<<"unhandled msg id: "<<int(msg_header->id())<<" len "<<int(msg_header->length())<<" "<<head<<" "<<index<<std::endl;
+//                     comma::verbose<<"unhandled msg id: "<<int(msg_header->id())<<" len "<<msg_header->len()<<" "<<head<<" "<<index<<std::endl;
                     break;
                 }
                 if(debug_count)
@@ -126,16 +129,16 @@ void device::process()
                     if(!skipper)
                         comma::verbose<<" skipped "<<debug_count<<std::endl;
                     else
-                        comma::verbose<<" skipped "<<debug_count<<"; "<<unsigned(skipper->LRC())<<" "<<unsigned(skipper->id())<<" "<<unsigned(skipper->length())<<std::endl;
+                        comma::verbose<<" skipped "<<debug_count<<"; "<<unsigned(skipper->LRC())<<" "<<unsigned(skipper->id())<<" "<<skipper->len()<<std::endl;
                     debug_count=0;
                     skipper=NULL;
                 }
             }
             else
             {
-                comma::verbose<<"crc failed "<<unsigned(msg_header->LRC())<<" "<<unsigned(msg_header->id())<<" "<<unsigned(msg_header->length())<<std::endl;
+                comma::verbose<<"crc failed "<<unsigned(msg_header->LRC())<<" "<<unsigned(msg_header->id())<<" "<<msg_header->len()<<std::endl;
             }
-            head+=unsigned(msg_header->length())+5;
+            head+=msg_header->len()+5;
             msg_header=NULL;
         }
     }

@@ -43,10 +43,10 @@ serial_stream::serial_stream(const std::string& name,const advanced_navigation::
     port.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
 }
 
-std::size_t serial_stream::read_some(char* buf,std::size_t to_read)
+std::size_t serial_stream::read_some(char* buf,std::size_t buf_size,std::size_t read_size)
 {
     boost::system::error_code ec;
-    std::size_t count = port.read_some( boost::asio::buffer( buf, to_read ), ec );
+    std::size_t count = port.read_some( boost::asio::buffer( buf, buf_size ), ec );
     if( ec ) { COMMA_THROW( comma::exception, ec.message() ); }
     return count;
 }
@@ -65,12 +65,12 @@ io_stream::io_stream(const std::string& name,const advanced_navigation::options&
 {
 //     std::cerr<<"io_stream::io_stream "<<name<<" "<<(bool)ios<<std::endl;
 }
-std::size_t io_stream::read_some(char* buf,std::size_t to_read)
+std::size_t io_stream::read_some(char* buf,std::size_t buf_size,std::size_t read_size)
 {
 //     std::cerr<<"io_stream::read_some "<<to_read<<" "<<(void*)buf<<std::endl;
     if(!is->good()) { throw eois_exception(std::string("end of file on istream ")+is.name()); }
-//     return is->readsome(buf,to_read);
-    is->read(buf,to_read);
+//     return is->readsome(buf,buf_size);
+    is->read(buf,read_size);
     return is->gcount();
 //     unsigned read=ios->gcount();
 //     std::cerr<<"io_stream::read_some / "<<read<<std::endl;
