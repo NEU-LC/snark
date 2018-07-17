@@ -394,6 +394,7 @@ public:
         : m_ifstrm( csv.filename, csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii )
         , m_istrm( *m_ifstrm, csv, record_type( T( properties ) ) )
         , has_timestamp( csv.has_field( "t" ) )
+        , has_index( csv.has_field( "index" ) )
         {}
 
     std::vector< record_type > read_at( key_type const& timestamp )
@@ -413,7 +414,7 @@ public:
                 if( timestamp > rec->timestamp ) continue;
                 if( timestamp < rec->timestamp ) { m_record = *rec; break; }
                 result.push_back( *rec );
-                if( 0 == rec->index ) { break; } // TODO: use config::size semantics here
+                if( 0 == rec->index && has_index ) { break; } // TODO: use config::size semantics here
             }
         }
         else
@@ -445,7 +446,7 @@ public:
                 if( timestamp > rec->timestamp ) continue;
                 if( timestamp < rec->timestamp ) { m_record = *rec; return; }
                 list.push_back( *rec );
-                if( 0 == rec->index ) { return; } // TODO: use config::size here
+                if( 0 == rec->index && has_index ) { return; } // TODO: use config::size here
             }
         }
         else
@@ -465,6 +466,7 @@ private:
     stream_type m_istrm;
     boost::optional< record_type > m_record;
     bool has_timestamp;
+    bool has_index;
 };
 
 template < typename shape_type, typename config_type > static void init_( std::vector< shape_type >& header_shapes , std::unique_ptr< join_filter< shape_type > >& stream_shapes
