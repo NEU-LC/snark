@@ -74,25 +74,26 @@ static void usage( bool verbose = false )
     std::cerr << "Usage: " << comma::verbose.app_name() << " [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Options: " << std::endl;
-    std::cerr << "    --help,-h:           show this help, --help --verbose for more help" << std::endl;
-    std::cerr << "    --verbose,-v:        more output" << std::endl;
-    std::cerr << "    --version:           output the library version" << std::endl;
-    std::cerr << "    --list-cameras:      list all cameras and exit" << std::endl;
-    std::cerr << "    --list-attributes [<names>]: list camera attributes; default: list all" << std::endl;
-    std::cerr << "    --ptp-status=<stream>; publish ptp status data to <stream> in binary"<< std::endl;
+    std::cerr << "    --help,-h:                         show this help, --help --verbose for more help" << std::endl;
+    std::cerr << "    --dont-check-frames:               don't check if we've stop receiving frames" << std::endl;
+    std::cerr << "    --fields=<fields>:                 header fields; default: " << default_fields << std::endl;
+    std::cerr << "    --frames-buffer-size,--num-frames; default=3; camera frame acquisition buffer size" << std::endl;
+    std::cerr << "    --header:                          output header only" << std::endl;
+    std::cerr << "    --id=<camera id>:                  camera id; default: use first available camera" << std::endl;
+    std::cerr << "    --list-cameras:                    list all cameras and exit" << std::endl;
+    std::cerr << "    --list-attributes [<names>]:       list camera attributes; default: list all" << std::endl;
+    std::cerr << "    --no-header:                       output image data only" << std::endl;
+    std::cerr << "    --ptp-status=<stream>;             publish ptp status data to <stream> in binary"<< std::endl;
     std::cerr << "        <stream>: tcp:<port> | udp:<port> | <filename>"<< std::endl;
     std::cerr << "        fields: t,use_ptp,value"<< std::endl;
     std::cerr << "        format: ascii; t,ub,s[20]"<< std::endl;
-    std::cerr << "    --ptp-status-fields; print ptp status fields and exit"<< std::endl;
-    std::cerr << "    --ptp-status-format; print ptp status format and exit"<< std::endl;
-    std::cerr << "    --set <attributes>:  set camera attributes" << std::endl;
-    std::cerr << "    --set-and-exit <attributes>: set attributes and exit" << std::endl;
-    std::cerr << "    --id=<camera id>:    default: first available camera" << std::endl;
-    std::cerr << "    --fields=<fields>:   header fields; default: " << default_fields << std::endl;
-    std::cerr << "    --header:            output header only" << std::endl;
-    std::cerr << "    --no-header:         output image data only" << std::endl;
-    std::cerr << "    --dont-check-frames: don't check if we've stop receiving frames" << std::endl;
-    std::cerr << "    --retries-on-no-frames=<n>: retry attempts if no frames detected; default: " << default_retries_on_no_frames << std::endl;
+    std::cerr << "    --ptp-status-fields;               print ptp status fields and exit"<< std::endl;
+    std::cerr << "    --ptp-status-format;               print ptp status format and exit"<< std::endl;
+    std::cerr << "    --retries-on-no-frames=<n>:        retry attempts if no frames detected; default: " << default_retries_on_no_frames << std::endl;
+    std::cerr << "    --set <attributes>:                set camera attributes" << std::endl;
+    std::cerr << "    --set-and-exit <attributes>:       set attributes and exit" << std::endl;
+    std::cerr << "    --verbose,-v:                      more output" << std::endl;
+    std::cerr << "    --version:                         output the vimba library version" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    Possible values for <fields> are: " << possible_fields << "." << std::endl;
     std::cerr << "    <attributes> are semicolon-separated name-value pairs." << std::endl;
@@ -371,6 +372,7 @@ int main( int argc, char** argv )
 
         if( options.exists( "--no-header" )) { fields = ""; }
         else { header_only = ( options.exists( "--header" )); }
+        unsigned int num_frames = options.value< unsigned int >( "--frames-buffer-size,--num-frames", 3 );
 
         snark::cv_mat::serialization serialization( fields, format, header_only );
 
@@ -382,9 +384,7 @@ int main( int argc, char** argv )
         int exit_code = 0;
         while( acquiring )
         {
-            camera.start_acquisition( boost::bind( &output_frame, _1
-                                                 , boost::ref( serialization )
-                                                 , boost::ref( camera )));
+            camera.start_acquisition( boost::bind( &output_frame, _1, boost::ref( serialization ), boost::ref( camera ) ), num_frames );
             comma::signal_flag is_shutdown;
             long frames_delivered = 0;
             do {
@@ -443,13 +443,7 @@ int main( int argc, char** argv )
         comma::verbose << "exiting with code " << exit_code << std::endl;
         return exit_code;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl; }
     return 1;
 }
