@@ -99,12 +99,14 @@ def iterator( file, input, header_size, footer_size ): # todo: quick and dirty; 
     shape = ( input.get_shape() if tf_version[0] < 1 else input.shape ).as_list()
     if args.input_shape is None:
         shape = [ 1 if v is None else v for v in shape ] # quick and dirty
+        print >>sys.stderr, "tensor-cat: warning: input shape: --input-shape not defined, tried to deduce it as:", shape
     else:
         input_shape = eval( "[" + args.input_shape + "]" )
         if len( shape ) != len( input_shape ): die( "expected input shape dimensions " + str( len( shape ) ) + ", got " + str( len( input_shape ) ) + " in --input-shape: [" + args.input_shape + "]" )
         for i in range( len( shape ) ):
             if shape[i] is None: shape[i] = input_shape[i]
             elif shape[i] != input_shape[i]: die( "expected input shape dimension " + str( i ) + ": " + str( shape[i] ) + ", got " + str( input_shape[i] ) + " in --input-shape: [" + args.input_shape + "]" )
+    print >>sys.stderr, "tensor-cat: using input shape:", shape
     ntype = ( input._dtype if tf_version[0] < 1 else input.dtype ).as_numpy_dtype()
     size = np.prod( shape )
     while True:
