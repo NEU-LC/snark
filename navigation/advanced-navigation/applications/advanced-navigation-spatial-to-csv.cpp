@@ -85,6 +85,7 @@ void usage(bool detail)
     std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --description=<field>; print out one line description text for input values of <field>; csv options apply to input" << std::endl;
     std::cerr << "        <field>: system_status | filter_status" << std::endl;
+    std::cerr << "    --full-description=<field>; print out all the flags with description of set/unset; <field> only filter_status is supported"<< std::endl;
     std::cerr << "    --flush: flush output stream after each write" << std::endl;
     std::cerr << std::endl;
     if(detail)
@@ -109,6 +110,7 @@ void usage(bool detail)
     std::cerr << "  see description of filter_status values" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/usb/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,filter_status --description filter_status" << std::endl;
     std::cerr << "    echo 1029 | " << comma::verbose.app_name() << " --description filter_status" << std::endl;
+    std::cerr << "    echo 1029 | " << comma::verbose.app_name() << " --full-description filter_status | tr ';' '\\n' | tail -n+2" << std::endl;
     std::cerr << std::endl;
 }
 
@@ -442,11 +444,27 @@ struct description
     }
 };
 
+template<typename T>
+struct full_description
+{
+    comma::csv::input_stream< status_data > is;
+    full_description( const comma::command_line_options& options ) : is( std::cin, comma::csv::options( options ) ) { }
+    void process()
+    {
+        while( std::cin.good() )
+        {
+            const status_data* p = is.read();
+            if( !p ) { break; }
+            std::cout << T::full_description( p->status ) << std::endl;
+        }
+    }
+};
+
 static void bash_completion( int argc, char** argv )
 {
     std::cout << "--help --verbose" <<
         " all navigation raw-sensors system-state satellites" <<
-        " --output-fields --output-format --raw --stdin --description"<< 
+        " --output-fields --output-format --raw --stdin --description --full-description"<< 
         std::endl;
 }
 
@@ -469,6 +487,15 @@ int main( int argc, char** argv )
             if( *opt_description == "system_status" ) { description< messages::system_status_description >( options ).process(); }
             else if( *opt_description == "filter_status" ) { description< messages::filter_status_description >( options ).process(); }
             else { COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got " << *opt_description ); }
+            return 0;
+        }
+        auto opt_full_description=options.optional<std::string>("--full-description");
+        if(opt_full_description)
+        {
+//             if( *opt_full_description == "system_status" ) { description< messages::system_status_description >( options ).process(); }
+//             else 
+                if( *opt_full_description == "filter_status" ) { full_description< messages::filter_status_description >( options ).process(); }
+            else { COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got " << *opt_full_description ); }
             return 0;
         }
         

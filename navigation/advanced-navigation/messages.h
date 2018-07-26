@@ -82,37 +82,15 @@ struct system_state : public comma::packed::packed_struct<system_state,100>
 struct system_status_description
 {
     static const std::vector< std::string > text;
-    static std::string string( const comma::uint16 status )
-    {
-        if( !status ) { return "null"; }
-        std::stringstream ss;
-        unsigned bit = 1;
-        for( unsigned i = 0; i < text.size(); ++i )
-        {
-            if( status & bit ) { ss << i << ": " << text[i] << "; "; }
-            bit <<= 1;
-        }
-        return ss.str();
-    }
+    static std::string string(uint16_t status);
 };
 
 struct filter_status_description
 {
     static const std::vector< std::string > text;
     static const std::vector< std::string > gnss_fix_text;
-    static std::string string( const comma::uint16 status )
-    {
-        std::stringstream ss;
-        unsigned index = ( status >> 4 ) & 7;
-        ss << "GNSS fix " << index << ": " << gnss_fix_text[index] << "; ";
-        unsigned bit = 1;
-        for( unsigned i = 0; i < text.size(); ++i )
-        {
-            if( ( status & bit ) && !text[i].empty() ) { ss << i << ": " << text[i] << "; "; }
-            bit <<= 1;
-        }
-        return ss.str();
-    }
+    static std::string string(uint16_t status);
+    static std::string full_description(uint16_t status);
 };
 
 struct raw_sensors : public comma::packed::packed_struct<raw_sensors,48>

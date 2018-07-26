@@ -133,6 +133,19 @@ const std::vector< std::string > system_status_description::text({
     "Data Output Overflow Alarm"
 });
 
+std::string system_status_description::string(uint16_t status)
+{
+    if( !status ) { return "null"; }
+    std::stringstream ss;
+    unsigned bit = 1;
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        if( status & bit ) { ss << i << ": " << text[i] << "; "; }
+        bit <<= 1;
+    }
+    return ss.str();
+}
+
 const std::vector< std::string > filter_status_description::text({
     "Orientation Filter Initialised",
     "Navigation Filter Initialised",
@@ -162,6 +175,44 @@ const std::vector< std::string > filter_status_description::gnss_fix_text({
     "RTK Float GNSS fix",
     "RTK Fixed GNSS fix"
 });
+
+std::string filter_status_description::full_description(uint16_t status)
+{
+    std::stringstream ss;
+    unsigned index = ( status >> 4 ) & 7;
+    ss << "GNSS fix " << index << ": " << gnss_fix_text[index] << ";";
+    unsigned bit = 1;
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        if( !text[i].empty() ) 
+        { 
+            //split last word
+            std::string::size_type index=text[i].find_last_of(' ');
+            //prolog
+            ss << i << "," << text[i].substr(0,index);
+            if (!(status & bit))
+                ss<<" NOT";
+            //epilog
+             ss<<text[i].substr(index)<<","<<((status & bit)?1:0)<< ";";
+        }
+        bit <<= 1;
+    }
+    return ss.str();
+}
+
+std::string filter_status_description::string(uint16_t status)
+{
+    std::stringstream ss;
+    unsigned index = ( status >> 4 ) & 7;
+    ss << "GNSS fix " << index << ": " << gnss_fix_text[index] << "; ";
+    unsigned bit = 1;
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        if( ( status & bit ) && !text[i].empty() ) { ss << i << ": " << text[i] << "; "; }
+        bit <<= 1;
+    }
+    return ss.str();
+}
 
 } //namespace messages {
     
