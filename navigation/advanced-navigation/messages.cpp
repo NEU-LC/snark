@@ -145,6 +145,32 @@ std::string system_status_description::string(uint16_t status)
     }
     return ss.str();
 }
+void system_status_description::descroption(std::ostream& os)
+{
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        os<<i<<","<<"\""<<text[i]<<"\""<<std::endl;
+    }
+}
+
+system_status_description::system_status_description(uint16_t status):status(status) { }
+unsigned system_status_description::system_failure() const { return (status&1)?1:0; }
+unsigned system_status_description::accelerometer_sensor_failure() const { return (status&2)?1:0; }
+unsigned system_status_description::gyroscope_sensor_failure() const { return (status&4)?1:0; }
+unsigned system_status_description::magnetometer_sensor_failure() const { return (status&8)?1:0; }
+unsigned system_status_description::pressure_sensor_failure() const { return (status&0x10)?1:0; }
+unsigned system_status_description::gnss_failure() const { return (status&0x20)?1:0; }
+unsigned system_status_description::accelerometer_over_range() const { return (status&0x40)?1:0; }
+unsigned system_status_description::gyroscope_over_range() const { return (status&0x80)?1:0; }
+unsigned system_status_description::magnetometer_over_range() const { return (status&0x100)?1:0; }
+unsigned system_status_description::pressure_over_range() const { return (status&0x200)?1:0; }
+unsigned system_status_description::minimum_temperature_alarm() const { return (status&0x400)?1:0; }
+unsigned system_status_description::maximum_temperature_alarm() const { return (status&0x800)?1:0; }
+unsigned system_status_description::low_voltage_alarm() const { return (status&0x1000)?1:0; }
+unsigned system_status_description::high_voltage_alarm() const { return (status&0x2000)?1:0; }
+unsigned system_status_description::gnss_antenna_short_circuit() const { return (status&0x4000)?1:0; }
+unsigned system_status_description::data_output_overflow_alarm() const { return (status&0x8000)?1:0; }
+
 
 const std::vector< std::string > filter_status_description::text({
     "Orientation Filter Initialised",
@@ -213,6 +239,39 @@ std::string filter_status_description::string(uint16_t status)
     }
     return ss.str();
 }
+void filter_status_description::descroption(std::ostream& os)
+{
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        if(!text[i].empty())
+            os<<i<<","<<"\""<<text[i]<<"\""<<std::endl;
+    }
+}
+void filter_status_description::gnss_fix_descroption(std::ostream& os)
+{
+    for( unsigned i = 0; i < gnss_fix_text.size(); ++i )
+    {
+        os<<i<<","<<"\""<<gnss_fix_text[i]<<"\""<<std::endl;
+    }
+}
+
+filter_status_description::filter_status_description(uint16_t status) : status(status) { }
+
+unsigned filter_status_description::gnss_fix() const { return ( status >> 4 ) & 7; }
+unsigned filter_status_description::orientation_filter_initialised() const { return (status&0x1)?1:0; }
+unsigned filter_status_description::navigation_filter_initialised() const { return (status&0x2)?1:0; }
+unsigned filter_status_description::heading_initialised() const { return (status&0x4)?1:0; }
+unsigned filter_status_description::utc_time_initialised() const { return (status&0x8)?1:0; }
+unsigned filter_status_description::event_1_occurred() const { return (status&0x80)?1:0; }
+unsigned filter_status_description::event_2_occurred() const { return (status&0x100)?1:0; }
+unsigned filter_status_description::internal_gnss_enabled() const { return (status&0x200)?1:0; }
+unsigned filter_status_description::dual_antenna_heading_active() const { return (status&0x400)?1:0; }
+unsigned filter_status_description::velocity_heading_enabled() const { return (status&0x800)?1:0; }
+unsigned filter_status_description::atmospheric_altitude_enabled() const { return (status&0x1000)?1:0; }
+unsigned filter_status_description::external_position_active() const { return (status&0x2000)?1:0; }
+unsigned filter_status_description::external_velocity_active() const { return (status&0x4000)?1:0; }
+unsigned filter_status_description::external_heading_active() const { return (status&0x8000)?1:0; }
+
 
 } //namespace messages {
     

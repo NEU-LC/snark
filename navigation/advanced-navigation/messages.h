@@ -83,6 +83,26 @@ struct system_status_description
 {
     static const std::vector< std::string > text;
     static std::string string(uint16_t status);
+    static void descroption(std::ostream& os);
+    
+    system_status_description(uint16_t status=0);
+    uint16_t status;
+    unsigned system_failure() const;
+    unsigned accelerometer_sensor_failure() const;
+    unsigned gyroscope_sensor_failure() const;
+    unsigned magnetometer_sensor_failure() const;
+    unsigned pressure_sensor_failure() const;
+    unsigned gnss_failure() const;
+    unsigned accelerometer_over_range() const;
+    unsigned gyroscope_over_range() const;
+    unsigned magnetometer_over_range() const;
+    unsigned pressure_over_range() const;
+    unsigned minimum_temperature_alarm() const;
+    unsigned maximum_temperature_alarm() const;
+    unsigned low_voltage_alarm() const;
+    unsigned high_voltage_alarm() const;
+    unsigned gnss_antenna_short_circuit() const;
+    unsigned data_output_overflow_alarm() const;
 };
 
 struct filter_status_description
@@ -91,6 +111,25 @@ struct filter_status_description
     static const std::vector< std::string > gnss_fix_text;
     static std::string string(uint16_t status);
     static std::string full_description(uint16_t status);
+    static void descroption(std::ostream& os);
+    static void gnss_fix_descroption(std::ostream& os);
+    
+    filter_status_description(uint16_t status=0);
+    uint16_t status;
+    unsigned gnss_fix() const;
+    unsigned orientation_filter_initialised() const;
+    unsigned navigation_filter_initialised() const;
+    unsigned heading_initialised() const;
+    unsigned utc_time_initialised() const;
+    unsigned event_1_occurred() const;
+    unsigned event_2_occurred() const;
+    unsigned internal_gnss_enabled() const;
+    unsigned dual_antenna_heading_active() const;
+    unsigned velocity_heading_enabled() const;
+    unsigned atmospheric_altitude_enabled() const;
+    unsigned external_position_active() const;
+    unsigned external_velocity_active() const;
+    unsigned external_heading_active() const;
 };
 
 struct raw_sensors : public comma::packed::packed_struct<raw_sensors,48>
