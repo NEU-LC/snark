@@ -473,6 +473,7 @@ struct full_description
             {
 //                 comma::write_path_value(description,std::cout);
                 comma::property_tree::to_path_value( std::cout, ptree, comma::property_tree::disabled, '=', ';' );
+                std::cout<<std::endl;
             }
         }
     }
@@ -482,7 +483,7 @@ static void bash_completion( int argc, char** argv )
 {
     std::cout << "--help --verbose" <<
         " all navigation raw-sensors system-state satellites" <<
-        " --output-fields --output-format --raw --stdin --description --full-description"<< 
+        " --output-fields --output-format --raw --stdin --status --status-description --json"<< 
         std::endl;
 }
 
@@ -496,7 +497,7 @@ int main( int argc, char** argv )
         
         if(options.exists("--bash-completion")) { bash_completion( argc, argv ); return 0; }
         
-        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--flush", "-.*" );
+        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--flush, --json", "-.*" );
         flush=options.exists("--flush");
         
         auto opt_description=options.optional<std::string>("--description");
@@ -512,7 +513,7 @@ int main( int argc, char** argv )
         {
             if( *opt_full_description == "system_status" ) { full_description< messages::system_status_description >( options ).process(); }
             else if( *opt_full_description == "filter_status" ) { full_description< messages::filter_status_description >( options ).process(); }
-            else { COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got " << *opt_full_description ); }
+            else { COMMA_THROW( comma::exception, "invalid field for --status. expected 'system_status' or 'filter_status', got " << *opt_full_description ); }
             return 0;
         }
         auto opt_status_description=options.optional<std::string>("--status-description");
@@ -521,7 +522,7 @@ int main( int argc, char** argv )
             if( *opt_status_description == "system_status" ) { messages::system_status_description::descroption(std::cout); }
             else if( *opt_status_description == "filter_status" ) { messages::filter_status_description::descroption(std::cout); }
             else if( *opt_status_description == "gnss_fix" ) { messages::filter_status_description::gnss_fix_descroption(std::cout); }
-            else { COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status' or 'gnss_fix', got " << *opt_status_description ); }
+            else { COMMA_THROW( comma::exception, "invalid field for --status-description. expected 'system_status' or 'filter_status' or 'gnss_fix', got " << *opt_status_description ); }
             return 0;
         }
         
