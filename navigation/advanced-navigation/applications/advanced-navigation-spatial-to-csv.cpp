@@ -66,30 +66,30 @@ void usage(bool detail)
     std::cerr<< "    <what>: select data packet to output, default: navigation"<< std::endl;
     std::cerr << std::endl;
     std::cerr<< "what: " << std::endl;
-    std::cerr<< "    navigation: navigation data from system state packet" << std::endl;
-    std::cerr<< "    system-state: full system state packet"<< std::endl;
-    std::cerr<< "    raw-sensors" << std::endl;
     std::cerr<< "    all: combines system-state, raw-sensors and standard deviations into one record" << std::endl;
+    std::cerr<< "    navigation: navigation data from system state packet" << std::endl;
+    std::cerr<< "    raw-sensors" << std::endl;
     std::cerr<< "    satellites" << std::endl;
+    std::cerr<< "    system-state: full system state packet"<< std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
+    std::cerr << "    --baud-rate,--baud=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
+    std::cerr << "    --device=<filename>; filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
+    std::cerr << "    --flush: flush output stream after each write" << std::endl;
     std::cerr << "    --help,-h:       show help" << std::endl;
-    std::cerr << "    --verbose,-v:    show detailed messages" << std::endl;
+    std::cerr << "    --ntrip=<stream>: read ntrip data from stream and send it to device" << std::endl;
+    std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << "    --raw: output raw packets to stdout, " << std::endl;
-    std::cerr << "    --stdin; read packets from stdin, can't be used with options that need to write to device (e.g. --ntrip)" << std::endl;
-    std::cerr << "    --device=<filename>; filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
-    std::cerr << "    --baud-rate,--baud=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
     std::cerr << "    --sleep=<n>: microsecond sleep between reading, default "<< default_sleep << std::endl;
-    std::cerr << "    --ntrip=<stream>: read ntrip data from stream and send it to device" << std::endl;
-    std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --status=<field>; print out expanded status bit map of input values of <field>; csv options apply to input" << std::endl;
     std::cerr << "        <field>: system_status | filter_status" << std::endl;
     std::cerr << "        --json; format output in json"<< std::endl;
     std::cerr << "    --status-description=<field>; print bit index/value and their human readable description and then exit"<< std::endl;
     std::cerr << "        <field>: system_status | filter_status | gnss_fix" << std::endl;
-    std::cerr << "    --flush: flush output stream after each write" << std::endl;
+    std::cerr << "    --stdin; read packets from stdin, can't be used with options that need to write to device (e.g. --ntrip)" << std::endl;
+    std::cerr << "    --verbose,-v:    show detailed messages" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -431,21 +431,21 @@ struct factory_t : public factory_i
     }
 };
 
-template< typename T >
-struct description
-{
-    comma::csv::input_stream< status_data > is;
-    description( const comma::command_line_options& options ) : is( std::cin, comma::csv::options( options ) ) { }
-    void process()
-    {
-        while( std::cin.good() )
-        {
-            const status_data* p = is.read();
-            if( !p ) { break; }
-            std::cout << T::string( p->status ) << std::endl;
-        }
-    }
-};
+// template< typename T >
+// struct description
+// {
+//     comma::csv::input_stream< status_data > is;
+//     description( const comma::command_line_options& options ) : is( std::cin, comma::csv::options( options ) ) { }
+//     void process()
+//     {
+//         while( std::cin.good() )
+//         {
+//             const status_data* p = is.read();
+//             if( !p ) { break; }
+//             std::cout << T::string( p->status ) << std::endl;
+//         }
+//     }
+// };
 
 template<typename T>
 struct full_description
@@ -500,14 +500,14 @@ int main( int argc, char** argv )
         std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--flush, --json", "-.*" );
         flush=options.exists("--flush");
         
-        auto opt_description=options.optional<std::string>("--description");
-        if(opt_description)
-        {
-            if( *opt_description == "system_status" ) { description< messages::system_status_description >( options ).process(); }
-            else if( *opt_description == "filter_status" ) { description< messages::filter_status_description >( options ).process(); }
-            else { COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got " << *opt_description ); }
-            return 0;
-        }
+//         auto opt_description=options.optional<std::string>("--description");
+//         if(opt_description)
+//         {
+//             if( *opt_description == "system_status" ) { description< messages::system_status_description >( options ).process(); }
+//             else if( *opt_description == "filter_status" ) { description< messages::filter_status_description >( options ).process(); }
+//             else { COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got " << *opt_description ); }
+//             return 0;
+//         }
         auto opt_full_description=options.optional<std::string>("--status");
         if(opt_full_description)
         {
