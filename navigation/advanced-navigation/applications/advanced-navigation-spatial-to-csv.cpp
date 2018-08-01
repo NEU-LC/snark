@@ -83,11 +83,13 @@ void usage(bool detail)
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << "    --raw: output raw packets to stdout, " << std::endl;
     std::cerr << "    --sleep=<n>: microsecond sleep between reading, default "<< default_sleep << std::endl;
-    std::cerr << "    --status=<field>; print out expanded status bit map of input values of <field>; csv options apply to input" << std::endl;
-    std::cerr << "        <field>: system_status | filter_status" << std::endl;
+    std::cerr << "    --status=<what>; print out expanded status bit map of input values" << std::endl;
+    std::cerr << "        <what>: system_status | filter_status" << std::endl;
+    std::cerr << "        csv options apply to input" << std::endl;
+    std::cerr << "            input fields: status" << std::endl;
     std::cerr << "        --json; format output in json"<< std::endl;
-    std::cerr << "    --status-description=<field>; print bit index/value and their human readable description and then exit"<< std::endl;
-    std::cerr << "        <field>: system_status | filter_status | gnss_fix" << std::endl;
+    std::cerr << "    --status-description=<what>; print bit index/value and their human readable description and then exit"<< std::endl;
+    std::cerr << "        <what>: system_status | filter_status | gnss_fix" << std::endl;
     std::cerr << "    --stdin; read packets from stdin, can't be used with options that need to write to device (e.g. --ntrip)" << std::endl;
     std::cerr << "    --verbose,-v:    show detailed messages" << std::endl;
     std::cerr << std::endl;
