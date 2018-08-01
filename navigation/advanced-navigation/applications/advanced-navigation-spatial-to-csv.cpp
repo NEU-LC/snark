@@ -49,6 +49,7 @@
 #include <thread>
 #include <chrono>
 #include <comma/name_value/serialize.h>
+#include <regex>
 
 using namespace snark::navigation::advanced_navigation;
 
@@ -474,8 +475,8 @@ struct full_description
             else
             {
 //                 comma::write_path_value(description,std::cout);
-                comma::property_tree::to_path_value( std::cout, ptree, comma::property_tree::disabled, '=', ';' );
-                std::cout<<std::endl;
+                std::string s=comma::property_tree::to_path_value_string( ptree, comma::property_tree::disabled, '=', ';' );
+                std::cout<<std::regex_replace(s,std::regex("\"([0-9]*)\""),"$1")<<std::endl;
             }
         }
     }
