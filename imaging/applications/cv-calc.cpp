@@ -53,6 +53,7 @@
 #include "../../visiting/eigen.h"
 
 const char* name = "cv-calc: ";
+static bool verbose = false;
 
 static void usage( bool verbose=false )
 {
@@ -395,7 +396,9 @@ public:
         , m_istrm( *m_ifstrm, csv, record_type( T( properties ) ) )
         , has_timestamp( csv.has_field( "t" ) )
         , has_index( csv.has_field( "index" ) )
-        {}
+    {
+        if( m_ifstrm.fd() == comma::io::invalid_file_descriptor ) { std::cerr << "cv-calc: draw: failed to open '" << csv.filename << "'" << std::endl; exit( 1 ); }
+    }
 
     std::vector< record_type > read_at( key_type const& timestamp )
     {
@@ -483,8 +486,11 @@ template < typename shape_type, typename config_type > static void init_( std::v
         ? "size" : "filename";
 
     if( "size" == unnamed_attr_name ) { std::cerr << "cv-calc: warning: using 'size' as the unnamed shape attribute is deprecated, the unnamed attribute should be filename. Attribute string: " << config_string << std::endl; }
-    auto cfg = comma::name_value::parser( unnamed_attr_name, delimiter, '=' ).get< config_type >( config_string );
-
+    bool data_from_stdin = unnamed_attr.empty() || unnamed_attr == "-" || unnamed_attr.find_first_of( '=' ) != std::string::npos;
+    if( verbose ) { std::cerr << "cv-calc: draw: shapes from " << ( data_from_stdin ? std::string( "stdin" ) : unnamed_attr ) << std::endl; }
+    auto cfg = data_from_stdin
+             ? comma::name_value::parser( delimiter, '=' ).get< config_type >( config_string )
+             : comma::name_value::parser( unnamed_attr_name, delimiter, '=' ).get< config_type >( config_string );
     if( !cfg.filename.empty() ) { cfg.full_xpath = true; stream_shapes = std::unique_ptr< region::join_filter< shape_type > >( new region::join_filter< shape_type >( cfg, cfg.properties ) ); }
     if( 0 < cfg.size ) header_shapes.resize( cfg.size, shape_type( cfg.properties ) );
 }
@@ -951,8 +957,6 @@ template <> struct traits< chessboard_corner_t >
 };
 
 } } // namespace comma { namespace visiting {
-
-static bool verbose = false;
 
 namespace grep {
 
