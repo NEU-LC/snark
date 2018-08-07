@@ -133,6 +133,45 @@ const std::vector< std::string > system_status_description::text({
     "Data Output Overflow Alarm"
 });
 
+std::string system_status_description::string(uint16_t status)
+{
+    if( !status ) { return "null"; }
+    std::stringstream ss;
+    unsigned bit = 1;
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        if( status & bit ) { ss << i << ": " << text[i] << "; "; }
+        bit <<= 1;
+    }
+    return ss.str();
+}
+void system_status_description::descroption(std::ostream& os)
+{
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        os<<i<<","<<"\""<<text[i]<<"\""<<std::endl;
+    }
+}
+
+system_status_description::system_status_description(uint16_t status):status(status) { }
+unsigned system_status_description::system_failure() const { return (status&1)?1:0; }
+unsigned system_status_description::accelerometer_sensor_failure() const { return (status&2)?1:0; }
+unsigned system_status_description::gyroscope_sensor_failure() const { return (status&4)?1:0; }
+unsigned system_status_description::magnetometer_sensor_failure() const { return (status&8)?1:0; }
+unsigned system_status_description::pressure_sensor_failure() const { return (status&0x10)?1:0; }
+unsigned system_status_description::gnss_failure() const { return (status&0x20)?1:0; }
+unsigned system_status_description::accelerometer_over_range() const { return (status&0x40)?1:0; }
+unsigned system_status_description::gyroscope_over_range() const { return (status&0x80)?1:0; }
+unsigned system_status_description::magnetometer_over_range() const { return (status&0x100)?1:0; }
+unsigned system_status_description::pressure_over_range() const { return (status&0x200)?1:0; }
+unsigned system_status_description::minimum_temperature_alarm() const { return (status&0x400)?1:0; }
+unsigned system_status_description::maximum_temperature_alarm() const { return (status&0x800)?1:0; }
+unsigned system_status_description::low_voltage_alarm() const { return (status&0x1000)?1:0; }
+unsigned system_status_description::high_voltage_alarm() const { return (status&0x2000)?1:0; }
+unsigned system_status_description::gnss_antenna_short_circuit() const { return (status&0x4000)?1:0; }
+unsigned system_status_description::data_output_overflow_alarm() const { return (status&0x8000)?1:0; }
+
+
 const std::vector< std::string > filter_status_description::text({
     "Orientation Filter Initialised",
     "Navigation Filter Initialised",
@@ -162,6 +201,77 @@ const std::vector< std::string > filter_status_description::gnss_fix_text({
     "RTK Float GNSS fix",
     "RTK Fixed GNSS fix"
 });
+
+std::string filter_status_description::full_description(uint16_t status)
+{
+    std::stringstream ss;
+    unsigned index = ( status >> 4 ) & 7;
+    ss << "GNSS fix " << index << ": " << gnss_fix_text[index] << ";";
+    unsigned bit = 1;
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        if( !text[i].empty() ) 
+        { 
+            //split last word
+            std::string::size_type index=text[i].find_last_of(' ');
+            //prolog
+            ss << i << "," << text[i].substr(0,index);
+            if (!(status & bit))
+                ss<<" NOT";
+            //epilog
+             ss<<text[i].substr(index)<<","<<((status & bit)?1:0)<< ";";
+        }
+        bit <<= 1;
+    }
+    return ss.str();
+}
+
+std::string filter_status_description::string(uint16_t status)
+{
+    std::stringstream ss;
+    unsigned index = ( status >> 4 ) & 7;
+    ss << "GNSS fix " << index << ": " << gnss_fix_text[index] << "; ";
+    unsigned bit = 1;
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        if( ( status & bit ) && !text[i].empty() ) { ss << i << ": " << text[i] << "; "; }
+        bit <<= 1;
+    }
+    return ss.str();
+}
+void filter_status_description::descroption(std::ostream& os)
+{
+    for( unsigned i = 0; i < text.size(); ++i )
+    {
+        if(!text[i].empty())
+            os<<i<<","<<"\""<<text[i]<<"\""<<std::endl;
+    }
+}
+void filter_status_description::gnss_fix_descroption(std::ostream& os)
+{
+    for( unsigned i = 0; i < gnss_fix_text.size(); ++i )
+    {
+        os<<i<<","<<"\""<<gnss_fix_text[i]<<"\""<<std::endl;
+    }
+}
+
+filter_status_description::filter_status_description(uint16_t status) : status(status) { }
+
+unsigned filter_status_description::gnss_fix() const { return ( status >> 4 ) & 7; }
+unsigned filter_status_description::orientation_filter_initialised() const { return (status&0x1)?1:0; }
+unsigned filter_status_description::navigation_filter_initialised() const { return (status&0x2)?1:0; }
+unsigned filter_status_description::heading_initialised() const { return (status&0x4)?1:0; }
+unsigned filter_status_description::utc_time_initialised() const { return (status&0x8)?1:0; }
+unsigned filter_status_description::event_1_occurred() const { return (status&0x80)?1:0; }
+unsigned filter_status_description::event_2_occurred() const { return (status&0x100)?1:0; }
+unsigned filter_status_description::internal_gnss_enabled() const { return (status&0x200)?1:0; }
+unsigned filter_status_description::dual_antenna_heading_active() const { return (status&0x400)?1:0; }
+unsigned filter_status_description::velocity_heading_enabled() const { return (status&0x800)?1:0; }
+unsigned filter_status_description::atmospheric_altitude_enabled() const { return (status&0x1000)?1:0; }
+unsigned filter_status_description::external_position_active() const { return (status&0x2000)?1:0; }
+unsigned filter_status_description::external_velocity_active() const { return (status&0x4000)?1:0; }
+unsigned filter_status_description::external_heading_active() const { return (status&0x8000)?1:0; }
+
 
 } //namespace messages {
     

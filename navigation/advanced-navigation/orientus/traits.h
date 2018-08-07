@@ -71,7 +71,7 @@ struct traits< messages::header >
     {
         v.apply( "lrc", p.LRC() );
         v.apply( "id", p.id() );
-        v.apply( "length", p.length() );
+        v.apply( "length", p.len() );
         v.apply( "crc", p.msg_crc() );
     }
 };

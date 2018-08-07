@@ -67,7 +67,54 @@ struct traits<messages::system_state>
         v.apply( "angular_velocity", p.angular_velocity );
         v.apply( "position_stddev", p.position_stddev );
     }
-    
+};
+
+template <>
+struct traits<messages::filter_status_description>
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const messages::filter_status_description& p, Visitor& v )
+    {
+        v.apply( "status", p.status );
+        v.apply( "orientation_filter_initialised", p.orientation_filter_initialised() );
+        v.apply( "navigation_filter_initialised", p.navigation_filter_initialised() );
+        v.apply( "heading_initialised", p.heading_initialised() );
+        v.apply( "utc_time_initialised", p.utc_time_initialised() );
+        v.apply( "gnss_fix", p.gnss_fix() );
+        v.apply( "event_1_occurred", p.event_1_occurred() );
+        v.apply( "event_2_occurred", p.event_2_occurred() );
+        v.apply( "internal_gnss_enabled", p.internal_gnss_enabled() );
+        v.apply( "dual_antenna_heading_active", p.dual_antenna_heading_active() );
+        v.apply( "velocity_heading_enabled", p.velocity_heading_enabled() );
+        v.apply( "atmospheric_altitude_enabled", p.atmospheric_altitude_enabled() );
+        v.apply( "external_position_active", p.external_position_active() );
+        v.apply( "external_velocity_active", p.external_velocity_active() );
+        v.apply( "external_heading_active", p.external_heading_active() );
+    }
+};
+
+template <>
+struct traits<messages::system_status_description>
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const messages::system_status_description& p, Visitor& v )
+    {
+        v.apply( "status", p.status );
+        v.apply( "system_failure", p.system_failure() );
+        v.apply( "accelerometer_sensor_failure", p.accelerometer_sensor_failure() );
+        v.apply( "gyroscope_sensor_failure", p.gyroscope_sensor_failure() );
+        v.apply( "magnetometer_sensor_failure", p.magnetometer_sensor_failure() );
+        v.apply( "pressure_sensor_failure", p.pressure_sensor_failure() );
+        v.apply( "gnss_failure", p.gnss_failure() );
+        v.apply( "accelerometer_over_range", p.accelerometer_over_range() );
+        v.apply( "gyroscope_over_range", p.gyroscope_over_range() );
+        v.apply( "magnetometer_over_range", p.magnetometer_over_range() );
+        v.apply( "pressure_over_range", p.pressure_over_range() );
+        v.apply( "minimum_temperature_alarm", p.minimum_temperature_alarm() );
+        v.apply( "maximum_temperature_alarm", p.maximum_temperature_alarm() );
+        v.apply( "low_voltage_alarm", p.low_voltage_alarm() );
+        v.apply( "high_voltage_alarm", p.high_voltage_alarm() );
+        v.apply( "gnss_antenna_short_circuit", p.gnss_antenna_short_circuit() );
+        v.apply( "data_output_overflow_alarm", p.data_output_overflow_alarm() );
+    }
 };
 
 template <>

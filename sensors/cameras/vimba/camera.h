@@ -75,7 +75,9 @@ class camera
         void set_features( const std::string& name_values ) const;
 
         void set_acquisition_mode( acquisition_mode_t acquisition_mode ) { acquisition_mode_ = acquisition_mode; }
-        void start_acquisition( frame_observer::callback_fn callback ) const;
+        /// in tests double-buffering seems sufficient but we'll use three frames to
+        /// allow for possible jitter in processing time
+        void start_acquisition( frame_observer::callback_fn callback, unsigned int num_frames = 3 ) const;
         void stop_acquisition() const;
 
         timestamped_frame frame_to_timestamped_frame( const snark::vimba::frame& frame, snark::vimba::ptp_status& ptp_status_out ) const;

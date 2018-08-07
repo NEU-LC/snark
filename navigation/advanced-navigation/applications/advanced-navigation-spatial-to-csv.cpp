@@ -48,6 +48,8 @@
 #include <tbb/concurrent_queue.h>
 #include <thread>
 #include <chrono>
+#include <comma/name_value/serialize.h>
+#include <regex>
 
 using namespace snark::navigation::advanced_navigation;
 
@@ -65,27 +67,32 @@ void usage(bool detail)
     std::cerr<< "    <what>: select data packet to output, default: navigation"<< std::endl;
     std::cerr << std::endl;
     std::cerr<< "what: " << std::endl;
-    std::cerr<< "    navigation: navigation data from system state packet" << std::endl;
-    std::cerr<< "    system-state: full system state packet"<< std::endl;
-    std::cerr<< "    raw-sensors" << std::endl;
     std::cerr<< "    all: combines system-state, raw-sensors and standard deviations into one record" << std::endl;
+    std::cerr<< "    navigation: navigation data from system state packet" << std::endl;
+    std::cerr<< "    raw-sensors" << std::endl;
     std::cerr<< "    satellites" << std::endl;
+    std::cerr<< "    system-state: full system state packet"<< std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
+    std::cerr << "    --baud-rate,--baud=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
+    std::cerr << "    --device=<filename>; filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
+    std::cerr << "    --flush: flush output stream after each write" << std::endl;
     std::cerr << "    --help,-h:       show help" << std::endl;
-    std::cerr << "    --verbose,-v:    show detailed messages" << std::endl;
+    std::cerr << "    --ntrip=<stream>: read ntrip data from stream and send it to device" << std::endl;
+    std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << "    --raw: output raw packets to stdout, " << std::endl;
-    std::cerr << "    --stdin; read packets from stdin, can't be used with options that need to write to device (e.g. --ntrip)" << std::endl;
-    std::cerr << "    --device=<filename>; filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
-    std::cerr << "    --baud-rate,--baud=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
     std::cerr << "    --sleep=<n>: microsecond sleep between reading, default "<< default_sleep << std::endl;
-    std::cerr << "    --ntrip=<stream>: read ntrip data from stream and send it to device" << std::endl;
-    std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
-    std::cerr << "    --description=<field>; print out one line description text for input values of <field>; csv options apply to input" << std::endl;
-    std::cerr << "        <field>: system_status | filter_status" << std::endl;
-    std::cerr << "    --flush: flush output stream after each write" << std::endl;
+    std::cerr << "    --status=<what>; print out expanded status bit map of input values" << std::endl;
+    std::cerr << "        <what>: system_status | filter_status" << std::endl;
+    std::cerr << "        csv options apply to input" << std::endl;
+    std::cerr << "            input fields: status" << std::endl;
+    std::cerr << "        --json; format output in json"<< std::endl;
+    std::cerr << "    --status-description=<what>; print bit index/value and their human readable description and then exit"<< std::endl;
+    std::cerr << "        <what>: system_status | filter_status | gnss_fix" << std::endl;
+    std::cerr << "    --stdin; read packets from stdin, can't be used with options that need to write to device (e.g. --ntrip)" << std::endl;
+    std::cerr << "    --verbose,-v:    show detailed messages" << std::endl;
     std::cerr << std::endl;
     if(detail)
     {
@@ -103,17 +110,19 @@ void usage(bool detail)
     std::cerr << "    "<<comma::verbose.app_name()<<" \"/dev/usb/ttyUSB0\" --raw-sensors" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  see description of system_status values" << std::endl;
-    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/usb/ttyUSB0 | " << comma::verbose.app_name() << " --fields system_status --description system_status" << std::endl;
-    std::cerr << "    echo 128 | " << comma::verbose.app_name() << " --description system_status" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/usb/ttyUSB0 | " << comma::verbose.app_name() << " --fields system_status --status system_status" << std::endl;
+    std::cerr << "    echo 128 | " << comma::verbose.app_name() << " --status system_status --json" << std::endl;
     std::cerr << std::endl;
     std::cerr << "  see description of filter_status values" << std::endl;
-    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/usb/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,filter_status --description filter_status" << std::endl;
-    std::cerr << "    echo 1029 | " << comma::verbose.app_name() << " --description filter_status" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/usb/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,filter_status --status filter_status" << std::endl;
+    std::cerr << "    echo 1029 | " << comma::verbose.app_name() << " --status filter_status" << std::endl;
+    std::cerr << "    " << comma::verbose.app_name() << " --status-description filter_status" << std::endl;
     std::cerr << std::endl;
 }
 
 struct output
 {
+    output() : height(0), system_status(0), filter_status(0) { }
     boost::posix_time::ptime t;
     snark::spherical::coordinates coordinates;
     double height;
@@ -425,18 +434,50 @@ struct factory_t : public factory_i
     }
 };
 
-template< typename T >
-struct description
+// template< typename T >
+// struct description
+// {
+//     comma::csv::input_stream< status_data > is;
+//     description( const comma::command_line_options& options ) : is( std::cin, comma::csv::options( options ) ) { }
+//     void process()
+//     {
+//         while( std::cin.good() )
+//         {
+//             const status_data* p = is.read();
+//             if( !p ) { break; }
+//             std::cout << T::string( p->status ) << std::endl;
+//         }
+//     }
+// };
+
+template<typename T>
+struct full_description
 {
     comma::csv::input_stream< status_data > is;
-    description( const comma::command_line_options& options ) : is( std::cin, comma::csv::options( options ) ) { }
+    bool json;
+    full_description( const comma::command_line_options& options ) : is( std::cin, comma::csv::options( options ) ),json(options.exists("--json")) { }
     void process()
     {
         while( std::cin.good() )
         {
             const status_data* p = is.read();
             if( !p ) { break; }
-            std::cout << T::string( p->status ) << std::endl;
+            T description(p->status);
+            boost::property_tree::ptree ptree;
+            comma::to_ptree to_ptree( ptree, comma::xpath() );
+            comma::visiting::apply( to_ptree ).to( description );
+            std::cout.precision( 16 ); // quick and dirty
+            if(json)
+            {
+//                 comma::write_json(description,std::cout);
+                boost::property_tree::write_json( std::cout, ptree, false );
+            }
+            else
+            {
+//                 comma::write_path_value(description,std::cout);
+                std::string s=comma::property_tree::to_path_value_string( ptree, comma::property_tree::disabled, '=', ';' );
+                std::cout<<std::regex_replace(s,std::regex("\"([0-9]*)\""),"$1")<<std::endl;
+            }
         }
     }
 };
@@ -445,7 +486,7 @@ static void bash_completion( int argc, char** argv )
 {
     std::cout << "--help --verbose" <<
         " all navigation raw-sensors system-state satellites" <<
-        " --output-fields --output-format --raw --stdin --description"<< 
+        " --output-fields --output-format --raw --stdin --status --status-description --json"<< 
         std::endl;
 }
 
@@ -459,15 +500,32 @@ int main( int argc, char** argv )
         
         if(options.exists("--bash-completion")) { bash_completion( argc, argv ); return 0; }
         
-        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--flush", "-.*" );
+        std::vector<std::string> unnamed=options.unnamed( comma::csv::options::valueless_options()+ ",--verbose,-v,--output-fields,--output-format,--raw,--stdin,--flush, --json", "-.*" );
         flush=options.exists("--flush");
         
-        auto opt_description=options.optional<std::string>("--description");
-        if(opt_description)
+//         auto opt_description=options.optional<std::string>("--description");
+//         if(opt_description)
+//         {
+//             if( *opt_description == "system_status" ) { description< messages::system_status_description >( options ).process(); }
+//             else if( *opt_description == "filter_status" ) { description< messages::filter_status_description >( options ).process(); }
+//             else { COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got " << *opt_description ); }
+//             return 0;
+//         }
+        auto opt_full_description=options.optional<std::string>("--status");
+        if(opt_full_description)
         {
-            if( *opt_description == "system_status" ) { description< messages::system_status_description >( options ).process(); }
-            else if( *opt_description == "filter_status" ) { description< messages::filter_status_description >( options ).process(); }
-            else { COMMA_THROW( comma::exception, "invalid field for description. expected 'system_status' or 'filter_status', got " << *opt_description ); }
+            if( *opt_full_description == "system_status" ) { full_description< messages::system_status_description >( options ).process(); }
+            else if( *opt_full_description == "filter_status" ) { full_description< messages::filter_status_description >( options ).process(); }
+            else { COMMA_THROW( comma::exception, "invalid field for --status. expected 'system_status' or 'filter_status', got " << *opt_full_description ); }
+            return 0;
+        }
+        auto opt_status_description=options.optional<std::string>("--status-description");
+        if(opt_status_description)
+        {
+            if( *opt_status_description == "system_status" ) { messages::system_status_description::descroption(std::cout); }
+            else if( *opt_status_description == "filter_status" ) { messages::filter_status_description::descroption(std::cout); }
+            else if( *opt_status_description == "gnss_fix" ) { messages::filter_status_description::gnss_fix_descroption(std::cout); }
+            else { COMMA_THROW( comma::exception, "invalid field for --status-description. expected 'system_status' or 'filter_status' or 'gnss_fix', got " << *opt_status_description ); }
             return 0;
         }
         

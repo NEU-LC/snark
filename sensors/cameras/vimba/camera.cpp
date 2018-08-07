@@ -41,10 +41,6 @@
 
 namespace snark { namespace vimba {
 
-// In tests double-buffering seems sufficient but we'll use three frames to
-// allow for possible jitter in processing time
-static const unsigned int num_frames = 3;
-
 camera::camera( const std::string& camera_id )
     : acquisition_mode_( ACQUISITION_MODE_UNKNOWN )
     , last_frame_id_( 0 )
@@ -143,7 +139,7 @@ void camera::set_features( const std::string& name_value_pairs ) const
     for( const auto& f: comma::name_value::map::as_vector( name_value_pairs ) ) { set_feature( f.first, f.second ); }
 }
 
-void camera::start_acquisition( frame_observer::callback_fn callback ) const
+void camera::start_acquisition( frame_observer::callback_fn callback, unsigned int num_frames ) const
 {
     comma::verbose << "starting image acquisition..." << std::endl;
 

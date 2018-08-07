@@ -46,13 +46,16 @@ struct header : public comma::packed::packed_struct<header,5>
 {
     comma::packed::uint8 LRC;
     comma::packed::uint8 id;
+private:
     comma::packed::uint8 length;
+public:
     comma::packed::little_endian_uint16 msg_crc;
     bool is_valid() const;
     //The CRC is a CRC16-CCITT. The starting value is 0xFFFF. The CRC covers only the packet data.
     bool check_crc(const char* data) const;   //length is from header
     header();
     header(unsigned char id, unsigned char length,const char* data);
+    unsigned len() const { return unsigned(length()); }
 };
 
 struct system_state : public comma::packed::packed_struct<system_state,100>
@@ -79,37 +82,54 @@ struct system_state : public comma::packed::packed_struct<system_state,100>
 struct system_status_description
 {
     static const std::vector< std::string > text;
-    static std::string string( const comma::uint16 status )
-    {
-        if( !status ) { return "null"; }
-        std::stringstream ss;
-        unsigned bit = 1;
-        for( unsigned i = 0; i < text.size(); ++i )
-        {
-            if( status & bit ) { ss << i << ": " << text[i] << "; "; }
-            bit <<= 1;
-        }
-        return ss.str();
-    }
+    static std::string string(uint16_t status);
+    static void descroption(std::ostream& os);
+    
+    system_status_description(uint16_t status=0);
+    uint16_t status;
+    unsigned system_failure() const;
+    unsigned accelerometer_sensor_failure() const;
+    unsigned gyroscope_sensor_failure() const;
+    unsigned magnetometer_sensor_failure() const;
+    unsigned pressure_sensor_failure() const;
+    unsigned gnss_failure() const;
+    unsigned accelerometer_over_range() const;
+    unsigned gyroscope_over_range() const;
+    unsigned magnetometer_over_range() const;
+    unsigned pressure_over_range() const;
+    unsigned minimum_temperature_alarm() const;
+    unsigned maximum_temperature_alarm() const;
+    unsigned low_voltage_alarm() const;
+    unsigned high_voltage_alarm() const;
+    unsigned gnss_antenna_short_circuit() const;
+    unsigned data_output_overflow_alarm() const;
 };
 
 struct filter_status_description
 {
     static const std::vector< std::string > text;
     static const std::vector< std::string > gnss_fix_text;
-    static std::string string( const comma::uint16 status )
-    {
-        std::stringstream ss;
-        unsigned index = ( status >> 4 ) & 7;
-        ss << "GNSS fix " << index << ": " << gnss_fix_text[index] << "; ";
-        unsigned bit = 1;
-        for( unsigned i = 0; i < text.size(); ++i )
-        {
-            if( ( status & bit ) && !text[i].empty() ) { ss << i << ": " << text[i] << "; "; }
-            bit <<= 1;
-        }
-        return ss.str();
-    }
+    static std::string string(uint16_t status);
+    static std::string full_description(uint16_t status);
+    static void descroption(std::ostream& os);
+    static void gnss_fix_descroption(std::ostream& os);
+    
+    filter_status_description(uint16_t status=0);
+    uint16_t status;
+    unsigned gnss_fix() const;
+    unsigned orientation_filter_initialised() const;
+    unsigned navigation_filter_initialised() const;
+    unsigned heading_initialised() const;
+    unsigned utc_time_initialised() const;
+    unsigned event_1_occurred() const;
+    unsigned event_2_occurred() const;
+    unsigned internal_gnss_enabled() const;
+    unsigned dual_antenna_heading_active() const;
+    unsigned velocity_heading_enabled() const;
+    unsigned atmospheric_altitude_enabled() const;
+    unsigned external_position_active() const;
+    unsigned external_velocity_active() const;
+    unsigned external_heading_active() const;
 };
 
 struct raw_sensors : public comma::packed::packed_struct<raw_sensors,48>
