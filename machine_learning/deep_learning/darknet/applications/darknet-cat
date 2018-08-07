@@ -42,8 +42,7 @@ import random
 from os.path import expanduser
 from collections import namedtuple
 import comma
-import numpy as np
-
+import cv2
 
 description = """
 
@@ -59,8 +58,6 @@ examples
     todo
 """
 
-
-
 home = expanduser("~")
 
 def sample(probs):
@@ -75,7 +72,8 @@ def sample(probs):
 
 def c_array(ctype, values):
     arr = (ctype*len(values))()
-    arr[:] = values
+    assert sizeof(arr) == values.nbytes
+    memmove(byref(arr), values.ctypes.data, values.nbytes)
     return arr
 
 class BOX(Structure):
@@ -213,24 +211,31 @@ def set_up_darknet_funcs(darknet_dir):
     predict_image.argtypes = [c_void_p, IMAGE]
     predict_image.restype = POINTER(c_float)
 
-def array_to_image(arr):
-    arr = arr.transpose(2,0,1)
+def array_to_image(arr, input_type):
+    arr = arr if arr.shape[2] == 1 else arr[:, :, [2, 1, 0]]
+
+    arr = arr.transpose(2,0,1).astype(np.float32)
+
     c = arr.shape[0]
     h = arr.shape[1]
     w = arr.shape[2]
-    #arr = (arr/255.0).flatten()
-    arr = (arr).flatten()
+    arr = arr.flatten()
+
     data = c_array(c_float, arr)
+
     im = IMAGE(w,h,c,data)
+
     return im
 
-def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
-    im = array_to_image(image)
-    rgbgr_image(im)
+def detect(net, meta, image, input_type, thresh=.25, hier_thresh=.5, nms=.45):
+    im = array_to_image(image, input_type)
 
     num = c_int(0)
+
     pnum = pointer(num)
+
     predict_image(net, im)
+
     dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, None, 0, pnum)
     num = pnum[0]
     if (nms): do_nms_obj(dets, num, meta.classes, nms);
@@ -251,9 +256,7 @@ def warn( m ): print >> sys.stderr, "darknet-cat: warning:", m
 
 def die( m ): print >> sys.stderr, "darknet-cat:", m; sys.exit( 1 )
 
-def iterator( file, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
-    ntype = np.float32
-    shape = np.array((500,500,3))
+def iterator( file, shape, n_type, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
     size = np.prod( shape )
     while True:
         header = np.fromfile( file, np.uint8, header_size )
@@ -266,10 +269,13 @@ if __name__ == '__main__':
     def handle_signal( s, f ): print >> sys.stderr, "darknet-cat: broken pipe, exit"; sys.exit( 0 )
     signal.signal( signal.SIGPIPE, handle_signal ) 
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
-    parser.add_argument( '--footer-size', type = int, default = 0, help = 'if a footer of given size in bytes is present, pass it to stdout with output tensor prepended' )
+    parser.add_argument( '--input-shape', type = str, required=True, help = 'image size in the the format width,height,channels' )
+    parser.add_argument( '--footer-size', type = int, default = 0, help = 'if a footer of given size in bytes is present, pass it to stdout with output tensor prepended' )    
     parser.add_argument( '--header-size', type = int, default = 0, help = 'if a header of given size in bytes is present, pass it to stdout with output tensor appended' )
     parser.add_argument( '--keep-input', action="store_true", help = 'append output to input' )
+    parser.add_argument( '--thresh', type=float, default=0.25, help='detector threshold' )
     parser.add_argument( '--verbose', '-v', action="store_true", help = 'more output' )
+    parser.add_argument( '--save-images', action="store_true", help = 'save to labelled images' )
     parser.add_argument( '--config', help="configuration (cfg) file required by darknet", required=True)
     parser.add_argument( '--weights', help="tained darknet weights file", required=True)
     parser.add_argument( '--classes', help="number of classes", required=True, type=int)
@@ -281,13 +287,21 @@ if __name__ == '__main__':
     net = load_net(args.config.encode('utf-8'), args.weights.encode('utf-8'), 0) # todo: get number of classes from config file
 
     meta = namedtuple("meta", "classes names") # create meta class directly rather than requiring a file
-    meta.classes=args.classes 
+    meta.classes=args.classes
     meta.names = ['{}'.format(x) for x in range(meta.classes)] # create class strings by enumerating integers, decodes back to integers below
 
-    for header, data, footer in iterator( sys.stdin, args.header_size, args.footer_size ):
+    input_shape = np.array(args.input_shape.split(',')).astype(int)[[1,0,2]]
+
+    ntype=np.float32
+
+    img_counter = 0
+    for header, data, footer in iterator( sys.stdin, input_shape, ntype, args.header_size, args.footer_size ):
         if data is None: break
-        results = detect(net, meta, data)
-        for (label, likelihood, output) in results: 
+        results = detect(net, meta, data, ntype, thresh=args.thresh)
+
+        p1_list, p2_list = list(), list()
+
+        for (label, likelihood, output) in results:
             header.tofile( sys.stdout )
             if args.keep_input: data.tofile( sys.stdout )
             footer.tofile( sys.stdout )
@@ -295,3 +309,17 @@ if __name__ == '__main__':
             np.asarray( likelihood, np.float32 ).tofile( sys.stdout )
             np.asarray( output, np.float32 ).tofile( sys.stdout ) # todo: is this generic enough - is it always a label, likelihood, tuple-of-floats?
             sys.stdout.flush()
+
+            if args.save_images:
+                x, y, w, h = np.array(output).astype(int)
+                p1_list.append((x-w/2, y-h/2))
+                p2_list.append((x+w/2, y+h/2))
+
+        if args.save_images:
+            data = data.copy()
+            img = (data / np.max(data) * 255).astype(np.uint8)
+            img = img if img.shape[2] == 3 else np.repeat(img, 3, axis=2)
+            for p1, p2 in zip(p1_list, p2_list):
+                cv2.rectangle(img, p1, p2, (0, 0, 255), 2)
+            cv2.imwrite("pred_%05d.png" % img_counter, img)
+            img_counter += 1
