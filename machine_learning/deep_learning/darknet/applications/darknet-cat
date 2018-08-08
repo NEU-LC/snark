@@ -121,7 +121,7 @@ load_image = None
 rgbgr_image = None
 predict_image = None
 
-def set_up_darknet_funcs(darknet_dir):
+def set_up_darknet_funcs():
     global lib
     global predict
     global set_gpu
@@ -142,7 +142,7 @@ def set_up_darknet_funcs(darknet_dir):
     global rgbgr_image
     global predict_image
 
-    lib = CDLL(darknet_dir + "/libdarknet.so", RTLD_GLOBAL)
+    lib = CDLL("/usr/local/lib/libdarknet.so", RTLD_GLOBAL)
     lib.network_width.argtypes = [c_void_p]
     lib.network_width.restype = c_int
     lib.network_height.argtypes = [c_void_p]
@@ -279,11 +279,10 @@ if __name__ == '__main__':
     parser.add_argument( '--config', help="configuration (cfg) file required by darknet", required=True)
     parser.add_argument( '--weights', help="tained darknet weights file", required=True)
     parser.add_argument( '--classes', help="number of classes", required=True, type=int)
-    parser.add_argument( '--darknet-src', help="location of darknet repository (todo: fix)", required=False, default=home + "/src/darknet")
     args = parser.parse_args()
     warn( "ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment" )
 
-    set_up_darknet_funcs(args.darknet_src) # todo: install darknet somehow
+    set_up_darknet_funcs() # todo: install darknet somehow
     net = load_net(args.config.encode('utf-8'), args.weights.encode('utf-8'), 0) # todo: get number of classes from config file
 
     meta = namedtuple("meta", "classes names") # create meta class directly rather than requiring a file
