@@ -31,6 +31,7 @@
 
 #include <cmath>
 #include <deque>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <unordered_set>
@@ -99,6 +100,7 @@ static void usage( bool verbose = false )
     std::cerr << "    trajectory-chord,chord" << std::endl;
     std::cerr << "    trajectory-cumulative-distance,cumulative-distance" << std::endl;
     std::cerr << "    trajectory-cumulative-discretise,cumulative-discretise,cumulative-discretize,sample" << std::endl;
+    std::cerr << "    trajectory-partition" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
     std::cerr << "general options" << std::endl;
@@ -351,6 +353,20 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "        trajectory-distance" << std::endl;
     std::cerr << "            alias for distance operation" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        trajectory-partition" << std::endl;
+    std::cerr << "            read input, append partition ids based on a rule or heuristic (see options below)" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "            options" << std::endl;
+    std::cerr << "                --by-direction; default behaviour; input is direction vectors for trajectory points, NOT trajectory points themselves" << std::endl;
+    std::cerr << "                                take first point, for each next point, if threshold exceeded, start new partition" << std::endl;
+    std::cerr << "                --input-fields; print input fields and exit" << std::endl;
+    std::cerr << "                --input-format; print input format and exit" << std::endl;
+    std::cerr << "                --output-fields; print output fields and exit" << std::endl;
+    std::cerr << "                --output-format; print output format and exit" << std::endl;
+    std::cerr << "                --threshold=<radians>; default=1.57079632679; whenever angle is greater than threshold, start new partition" << std::endl;
     std::cerr << std::endl;
     vector_calc::usage();
     exit( 0 );
@@ -1329,8 +1345,19 @@ static void output_nearest_extremum_block( const std::deque< local_operation::re
 
 } // namespace local_operation {
 
+namespace snark { namespace points_calc { namespace trajectory_partition {
+
+struct output { comma::uint32 id; output( comma::uint32 id = 0 ): id( id ) {} };
+
+} } } // namespace snark { namespace points_calc { namespace trajectory_partition {
+
 namespace comma { namespace visiting {
 
+template <> struct traits< snark::points_calc::trajectory_partition::output >
+{
+    template< typename K, typename V > static void visit( const K&, const snark::points_calc::trajectory_partition::output& t, V& v ) { v.apply( "id", t.id ); }
+};
+    
 template <> struct traits< snark::points_calc::integrate_frame::pose >
 {
     template< typename K, typename V > static void visit( const K&, const snark::points_calc::integrate_frame::pose& t, V& v )
@@ -1953,6 +1980,31 @@ int main( int ac, char** av )
                 // skip any record that points to itself (only the last record)
                 if( &*it == it->reference_record ) { break; }
                 trajectory_chord_operation::output( *it, filter );
+            }
+            return 0;
+        }
+        if( operation == "trajectory-partition" )
+        {
+            if( options.exists( "--input-fields" )) { std::cout << comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--input-format" )) { std::cout << comma::csv::format::value< Eigen::Vector3d >() << std::endl; return 0; }
+            if( options.exists( "--output-fields" )) { std::cout << "id" << std::endl; return 0; }
+            if( options.exists( "--output-format" )) { std::cout << "ui" << std::endl; return 0; }
+            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
+            comma::csv::output_stream< snark::points_calc::trajectory_partition::output > ostream( std::cout );
+            comma::csv::tied< Eigen::Vector3d, snark::points_calc::trajectory_partition::output > tied( istream, ostream );
+            double threshold = options.value( "--threshold", M_PI / 2 );
+            unsigned int id = 0;
+            boost::optional< Eigen::Vector3d > cur;
+            std::function< bool( const Eigen::Vector3d& ) > is_new_partition;
+            // --by-direction is currently the only policy, but is_new_partition is a placeholder for adding more policies
+            if( true || options.exists( "--by-direction" ) ) { is_new_partition = [&]( const Eigen::Vector3d& v )->bool { return std::abs( Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( *cur, v ) ).angle() ) >= threshold; }; }
+            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+            {
+                const Eigen::Vector3d* p = istream.read();
+                if( !p ) { break; }
+                if( !cur ) { cur = *p; }
+                if( is_new_partition( *p ) ) { ++id; cur = *p; }
+                tied.append( snark::points_calc::trajectory_partition::output( id ) );
             }
             return 0;
         }
