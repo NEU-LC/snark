@@ -65,7 +65,7 @@ struct point_with_block
     point_with_block() : coordinates( Eigen::Vector3d::Zero() ), block( 0 ) {}
 };
 
-struct point_with_direction : public Eigen::Vector3d
+struct point_with_direction : public Eigen::Vector3d // todo: a bit of trash bin... decouple trajectory-partition operation into a set of operations?
 {
     Eigen::Vector3d direction;
     point_with_direction( const Eigen::Vector3d v = Eigen::Vector3d::Zero(), const Eigen::Vector3d d = Eigen::Vector3d::Zero() ): Eigen::Vector3d( v ), direction( d ) {}
@@ -360,21 +360,41 @@ static void usage( bool verbose = false )
     std::cerr << "        trajectory-distance" << std::endl;
     std::cerr << "            alias for distance operation" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        trajectory-partition" << std::endl;
+    std::cerr << "        trajectory-partitions" << std::endl;
     std::cerr << "            read input, append partition ids based on a rule or heuristic (see options below)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "            input fields: " << comma::join( comma::csv::names< point_with_direction >( true ), ',' ) << std::endl;
+    std::cerr << "                          default: x,y,z" << std::endl;
     std::cerr << std::endl;
     std::cerr << "            options" << std::endl;
-    std::cerr << "                --by-direction; default behaviour; input is direction vectors for trajectory points, NOT trajectory points themselves" << std::endl;
-    std::cerr << "                                take first point, for each next point, if threshold exceeded, start new partition" << std::endl;
+    std::cerr << "                --how=<how>; default=by-direction; how to partition" << std::endl;
+    std::cerr << "                    by-direction,direction; input is trajectory points and direction vectors for them" << std::endl;
+    std::cerr << "                                            take first point, for each next point, if threshold exceeded, start new partition" << std::endl;
+    std::cerr << "                        options" << std::endl;
+    std::cerr << "                            --threshold,--angle-threshold=<radians>; default=1.57079632679; whenever angle is greater than threshold, start new partition" << std::endl;
+    std::cerr << "                            --tolerance,--distance-tolerance,--distance-threshold=<meters>; if present, even if angle threshold reached, do not start new partition until trajectory moves farther than a given distance" << std::endl;
     std::cerr << "                --input-fields; print input fields and exit" << std::endl;
     std::cerr << "                --input-format; print input format and exit" << std::endl;
     std::cerr << "                --output-fields; print output fields and exit" << std::endl;
     std::cerr << "                --output-format; print output format and exit" << std::endl;
-    std::cerr << "                --threshold,--angle-threshold=<radians>; default=1.57079632679; whenever angle is greater than threshold, start new partition" << std::endl;
-    std::cerr << "                --tolerance,--distance-tolerance=<meters>; if present, even if angle threshold reached, do not start new partition until trajectory moves farther than a given distance" << std::endl;
     std::cerr << std::endl;
+//     std::cerr << "        trajectory-partitions-match" << std::endl;
+//     std::cerr << "            read input, append partition ids based on a rule or heuristic (see options below)" << std::endl;
+//     std::cerr << std::endl;
+//     std::cerr << "            input fields: " << comma::join( comma::csv::names< point_with_block >( true ), ',' ) << std::endl;
+//     std::cerr << std::endl;
+//     std::cerr << "            options" << std::endl;
+//     std::cerr << "                --how=<how>; default=by-proximity; how to partition" << std::endl;
+//     std::cerr << "                    by-proximity,proximity; input is points with partition ids; if two partitions are close enough, the same id for each of them is appended id" << std::endl;
+//     std::cerr << "                                            no silver bullet: finds proximity among the points of two trajectories, NOT lines, thus if trajectory too sparse, discretize it" << std::endl;
+//     std::cerr << "                            --accumulate; if a trajectory block matches a previous one, add the current block to the previous to use for further matching" << std::endl;
+//     std::cerr << "                            --ratio-threshold,--ratio=<ratio>; default 1; how many points of second trajectory block have to be close enough to the first one" << std::endl;
+//     std::cerr << "                            --resolution,--distance-threshold=<meters>; default 1; yes, it's voxel grid resolution..." << std::endl;
+//     std::cerr << "                --input-fields; print input fields and exit" << std::endl;
+//     std::cerr << "                --input-format; print input format and exit" << std::endl;
+//     std::cerr << "                --output-fields; print output fields and exit" << std::endl;
+//     std::cerr << "                --output-format; print output format and exit" << std::endl;
+//     std::cerr << std::endl;
     vector_calc::usage();
     exit( 0 );
 }
@@ -1352,13 +1372,13 @@ static void output_nearest_extremum_block( const std::deque< local_operation::re
 
 } // namespace local_operation {
 
-namespace snark { namespace points_calc { namespace trajectory_partition {
+namespace snark { namespace points_calc { namespace trajectory_partitions {
 
 typedef point_with_direction input;
     
 struct output { comma::uint32 id; output( comma::uint32 id = 0 ): id( id ) {} };
 
-} } } // namespace snark { namespace points_calc { namespace trajectory_partition {
+} } } // namespace snark { namespace points_calc { namespace trajectory_partitions {
 
 namespace comma { namespace visiting {
 
@@ -1377,9 +1397,9 @@ template <> struct traits< point_with_direction >
     }
 };
     
-template <> struct traits< snark::points_calc::trajectory_partition::output >
+template <> struct traits< snark::points_calc::trajectory_partitions::output >
 {
-    template< typename K, typename V > static void visit( const K&, const snark::points_calc::trajectory_partition::output& t, V& v ) { v.apply( "id", t.id ); }
+    template< typename K, typename V > static void visit( const K&, const snark::points_calc::trajectory_partitions::output& t, V& v ) { v.apply( "id", t.id ); }
 };
     
 template <> struct traits< snark::points_calc::integrate_frame::pose >
@@ -2007,24 +2027,27 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if( operation == "trajectory-partition" )
+        if( operation == "trajectory-partitions" )
         {
             if( options.exists( "--input-fields" )) { std::cout << comma::join( comma::csv::names< point_with_direction >( true ), ',' ) << std::endl; return 0; }
             if( options.exists( "--input-format" )) { std::cout << comma::csv::format::value< point_with_direction >() << std::endl; return 0; }
             if( options.exists( "--output-fields" )) { std::cout << "id" << std::endl; return 0; }
             if( options.exists( "--output-format" )) { std::cout << "ui" << std::endl; return 0; }
             csv.full_xpath = true;
+            if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
             comma::csv::input_stream< point_with_direction > istream( std::cin, csv );
-            comma::csv::output_stream< snark::points_calc::trajectory_partition::output > ostream( std::cout );
-            comma::csv::tied< point_with_direction, snark::points_calc::trajectory_partition::output > tied( istream, ostream );
-            double threshold = options.value( "--threshold,--angle-threshold", M_PI / 2 );
-            boost::optional< double > distance_tolerance = options.optional< double >( "--tolerance,--distance-tolerance" );
+            comma::csv::output_stream< snark::points_calc::trajectory_partitions::output > ostream( std::cout );
+            comma::csv::tied< point_with_direction, snark::points_calc::trajectory_partitions::output > tied( istream, ostream );
             unsigned int id = 0;
             std::function< bool( const point_with_direction& ) > is_new_partition;
-            if( true || options.exists( "--by-direction" ) ) // by-direction currently is the only policy
+            std::string how = options.value< std::string >( "--how", "by-direction" );
+            if( how == "by-direction" || how == "direction" ) // by-direction currently is the only policy
             {
                 is_new_partition = [&]( const point_with_direction& v )->bool
                                    {
+                                       if( !csv.has_paths( "direction" ) ) { std::cerr << "points-calc: trajectory-partitions --how=by-distance: please specify direction fields"; }
+                                       static double threshold = options.value( "--threshold,--angle-threshold", M_PI / 2 );
+                                       static boost::optional< double > distance_tolerance = options.optional< double >( "--tolerance,--distance-tolerance,--distance-threshold" );
                                        static boost::optional< Eigen::Vector3d > partition_direction;
                                        static boost::optional< Eigen::Vector3d > first_point_over_threshold;
                                        if( !partition_direction ) { partition_direction = v.direction; return false; }
@@ -2040,14 +2063,82 @@ int main( int ac, char** av )
                                        return true;
                                    };
             }
+            else
+            {
+                std::cerr << "points-calc: trajectory-partitions: expected --how, got: '" << how << "'" << std::endl;
+            }
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
                 const point_with_direction* p = istream.read();
                 if( !p ) { break; }
                 if( is_new_partition( *p ) ) { ++id; }
-                tied.append( snark::points_calc::trajectory_partition::output( id ) );
+                tied.append( snark::points_calc::trajectory_partitions::output( id ) );
             }
             return 0;
+        }
+        if( operation == "trajectory-partitions-match" )
+        {
+            std::cerr << "points-calc: trajectory-partitions-match: todo" << std::endl; exit( 1 );
+//             if( options.exists( "--input-fields" )) { std::cout << comma::join( comma::csv::names< point_with_block >( true ), ',' ) << std::endl; return 0; }
+//             if( options.exists( "--input-format" )) { std::cout << comma::csv::format::value< point_with_block >() << std::endl; return 0; }
+//             if( options.exists( "--output-fields" )) { std::cout << "id" << std::endl; return 0; }
+//             if( options.exists( "--output-format" )) { std::cout << "ui" << std::endl; return 0; }
+//             csv.full_xpath = true;
+//             comma::csv::input_stream< point_with_direction > istream( std::cin, csv );
+//             comma::csv::output_stream< snark::points_calc::trajectory_partitions::output > ostream( std::cout );
+//             comma::csv::tied< point_with_direction, snark::points_calc::trajectory_partitions::output > tied( istream, ostream );
+//             unsigned int id = 0;
+//             std::function< bool( const point_with_direction& ) > is_new_partition;
+//             std::string how = options.value< std::string >( "--how", "by-direction" );
+//             if( how == "by-direction" || how == "direction" ) // by-direction currently is the only policy
+//             {
+//                 is_new_partition = [&]( const point_with_direction& v )->bool
+//                                    {
+//                                        if( !csv.has_paths( "direction" ) ) { std::cerr << "points-calc: trajectory-partitions --how=by-distance: please specify direction fields"; }
+//                                        static double threshold = options.value( "--threshold,--angle-threshold", M_PI / 2 );
+//                                        static boost::optional< double > distance_tolerance = options.optional< double >( "--tolerance,--distance-tolerance,--distance-threshold" );
+//                                        static boost::optional< Eigen::Vector3d > partition_direction;
+//                                        static boost::optional< Eigen::Vector3d > first_point_over_threshold;
+//                                        if( !partition_direction ) { partition_direction = v.direction; return false; }
+//                                        double angle = std::abs( Eigen::AngleAxis< double >( Eigen::Quaternion< double >::FromTwoVectors( *partition_direction, v.direction ) ).angle() );
+//                                        if( angle < threshold ) { first_point_over_threshold.reset(); return false; }
+//                                        if( distance_tolerance )
+//                                        {
+//                                            if( !first_point_over_threshold ) { first_point_over_threshold = v; return false; }
+//                                            if( ( *first_point_over_threshold - v ).norm() < distance_tolerance ) { return false; }
+//                                        }
+//                                        first_point_over_threshold.reset();
+//                                        partition_direction = v.direction;
+//                                        return true;
+//                                    };
+//             }
+//             else if( how == "by-proximity" || how == "proximity" )
+//             {
+//                 if( !csv.has_field( "block" ) ) { std::cerr << "points-calc: trajectory-partitions --how=by-proximity: please specify block field"; }
+//                 is_new_partition = [&]( const point_with_direction& v )->bool
+//                                    {
+//                                        static double ratio = options.value( "--ratio-threshold,--ratio", 1. );
+//                                        static double resolution = options.value( "--resolution,--distance-threshold,--threshold", 1. );
+//                                        static bool accumulate = options.exists( "--accumulate" );
+//                                        
+//                                        
+//                                        // todo
+//                                        return false;
+//                                    };
+//             }
+//             else
+//             {
+//                 std::cerr << "points-calc: trajectory-partitions-match: expected --how, got: '" << how << "'" << std::endl;
+//             }
+//             comma::uint32 block = 0;
+//             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+//             {
+//                 const point_with_direction* p = istream.read();
+//                 if( !p ) { break; }
+//                 if( is_new_partition( *p ) ) { ++id; }
+//                 tied.append( snark::points_calc::trajectory_partitions::output( id ) );
+//             }
+//            return 0;
         }
         std::cerr << "points-calc: expected operation, got: \"" << operation << "\"" << std::endl;
         return 1;
