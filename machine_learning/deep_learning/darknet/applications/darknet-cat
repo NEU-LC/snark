@@ -43,6 +43,7 @@ from os.path import expanduser
 from collections import namedtuple
 import comma
 import cv2
+from time import time
 
 description = """
 
@@ -295,6 +296,9 @@ if __name__ == '__main__':
 
     img_counter = 0
     for header, data, footer in iterator( sys.stdin, input_shape, ntype, args.header_size, args.footer_size ):
+        if args.verbose:
+            t0=time()
+
         if data is None: break
         results = detect(net, meta, data, ntype, thresh=args.thresh)
 
@@ -322,3 +326,5 @@ if __name__ == '__main__':
                 cv2.rectangle(img, p1, p2, (0, 0, 255), 2)
             cv2.imwrite("pred_%05d.png" % img_counter, img)
             img_counter += 1
+
+        args.verbose and say("processing time per image: {}".format(time()-t0))
