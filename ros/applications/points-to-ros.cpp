@@ -54,6 +54,7 @@ void usage(bool detail)
     std::cerr << "    --all; sends all the records as one ros message (when no block field), otherwise send each record as a message" << std::endl;
     std::cerr << "    --hang-on,--stay; waits about three seconds before exiting so that subscribers can receive the last message" << std::endl;
     std::cerr << "    --help,-h: show help; --help --verbose: show more help" << std::endl;
+    std::cerr << "    --frame: ros message frame as string"<<std::endl;
     std::cerr << "    --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
     std::cerr << "    --node-name: node name for this process, when not specified uses ros::init_options::AnonymousName flag" << std::endl;
     std::cerr << "    --pass-through,--pass; pass input data to stdout" << std::endl;
