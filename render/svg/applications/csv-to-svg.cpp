@@ -115,15 +115,15 @@ void usage( bool verbose = false )
     std::cerr << "                                      <min>:<max>,<from-colour>:<to-colour> (black, blue, green, cyan, red, magenta, yellow, white)" << std::endl; 
     std::cerr << "                                      <min>:<max>,<colourmap> (jet, hot)" << std::endl; 
     std::cerr << std::endl;
-    if( !verbose )
-    {
-        std::cerr << "examples: csv-to-svg --help --verbose..." << std::endl;
-    }
-    else
+    if( verbose )
     {
         std::cerr << "examples:" << std::endl;
         std::cerr << "    output svg with a few circles and lines" << std::endl;
         std::cerr << example() << std::endl;
+    }
+    else
+    {
+        std::cerr << "examples: csv-to-svg --help --verbose..." << std::endl;
     }
     std::cerr << std::endl;
     std::cerr << comma::contact_info << std::endl;
@@ -226,23 +226,20 @@ int main( int ac, char** av )
         const std::vector< std::string >& unnamed = options.unnamed( "--verbose,-v,--have-css,--loop" , "-.*" );
         if( unnamed.size() != 1 ) { std::cerr << "csv-to-svg: expected one operation name" << ( unnamed.size() ? "; got " + comma::join( unnamed, ' ' ) : "" ) << std::endl; return 1; }
         std::string what = unnamed[0];
-
         comma::csv::options csv( options );
         std::cout.precision( csv.precision );
         snark::render::colour_map colour_map;
         bool parse_colour = true;
-        if( ( what == "point" || what == "circle" || what == "line" || what == "lines" ) && csv.has_field( "scalar" ) )
+        if( csv.has_field( "scalar" ) && ( what == "point" || what == "circle" || what == "line" || what == "lines" ) )
         {
             colour_map = parse_colour_map( options.value< std::string >( "--colour,--color,-c", "" ) );
             parse_colour = false;
         }
-
         if( options.exists( "--class" ) ) { snark::render::svg::element::DEFAULT_ATTRIBUTES += " class=\"" + options.value< std::string >( "--class" ) + "\""; }
         if( options.exists( "--id" ) ) { snark::render::svg::element::DEFAULT_ATTRIBUTES += " id=\"" + options.value< std::string >( "--id" ) + "\""; }
         if( options.exists( "--transform" ) ) { snark::render::svg::element::DEFAULT_ATTRIBUTES += " transform=\"" + options.value< std::string >( "--transform" ) + "\""; }
         if( options.exists( "--attributes" ) ) { snark::render::svg::element::DEFAULT_ATTRIBUTES += " " + options.value< std::string >( "--attributes" ); }
         snark::render::svg::element::DEFAULT_STYLE = make_style( options, what, parse_colour );
-
         if( what == "header" )
         {
             std::cout << snark::render::svg::header(
@@ -251,22 +248,23 @@ int main( int ac, char** av )
                 , options.value< std::string >( "--viewbox" )
                 , options.optional< std::string >( "--css" )
                 ) << std::endl;
+            return 0;
         }
-        else if( what == "footer" ) { std::cout << snark::render::svg::footer() << std::endl; }
-        else if( what == "script" ) { std::cout << snark::render::svg::script( options.value< std::string >( "--file" ) ) << std::endl; }
-        else if( what == "script_begin" ) { std::cout << snark::render::svg::script::begin() << std::endl; }
-        else if( what == "script_end" ) { std::cout << snark::render::svg::script::end() << std::endl; }
-        else if( what == "style_begin" ) { std::cout << snark::render::svg::style::begin() << std::endl; }
-        else if( what == "style_end" ) { std::cout << snark::render::svg::style::end() << std::endl; }
-        else if( what == "group_begin" ) { std::cout << snark::render::svg::g() << std::endl; }
-        else if( what == "group_end" ) { std::cout << snark::render::svg::g::end() << std::endl; }
-        else if( what == "point" || what == "circle" )
+        if( what == "footer" ) { std::cout << snark::render::svg::footer() << std::endl; return 0; }
+        if( what == "script" ) { std::cout << snark::render::svg::script( options.value< std::string >( "--file" ) ) << std::endl; return 0; }
+        if( what == "script_begin" ) { std::cout << snark::render::svg::script::begin() << std::endl; return 0; }
+        if( what == "script_end" ) { std::cout << snark::render::svg::script::end() << std::endl; return 0; }
+        if( what == "style_begin" ) { std::cout << snark::render::svg::style::begin() << std::endl; return 0; }
+        if( what == "style_end" ) { std::cout << snark::render::svg::style::end() << std::endl; return 0; }
+        if( what == "group_begin" ) { std::cout << snark::render::svg::g() << std::endl; return 0; }
+        if( what == "group_end" ) { std::cout << snark::render::svg::g::end() << std::endl; return 0; }
+        if( what == "point" || what == "circle" )
         { 
             boost::optional< double > r = options.optional< double >( "--point-size,--weight,--radius,-r" );
             if( r ) { snark::render::svg::circle::DEFAULT_RADIUS = *r; }
             if( csv.has_field( "scalar" ) )
             {
-                if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< coloured< snark::render::svg::circle > >( csv.fields, true ) ); }
+                // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< coloured< snark::render::svg::circle > >( csv.fields, true ) ); }
                 comma::csv::input_stream< coloured< snark::render::svg::circle > > istream( std::cin, csv );
                 while( std::cin.good() )
                 {
@@ -278,7 +276,7 @@ int main( int ac, char** av )
             else
             {
                 if( csv.fields.empty() ) { csv.fields = what == "point" ? "x,y" : comma::join( comma::csv::names< snark::render::svg::circle >(), ',' ); }
-                if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::circle >( csv.fields, true ) ); }
+                // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::circle >( csv.fields, true ) ); }
                 comma::csv::input_stream< snark::render::svg::circle > istream( std::cin, csv );
                 while( std::cin.good() )
                 {
@@ -287,12 +285,13 @@ int main( int ac, char** av )
                     std::cout << *c << std::endl;
                 }
             }
+            return 0;
         }
-        else if( what == "line" )
+        if( what == "line" )
         {
             if( csv.has_field( "scalar" ) )
             {
-                if( options.exists( "--binary,-b" ) ) { csv.format( options.value< std::string >( "--binary,-b", comma::csv::format::value< coloured< snark::render::svg::line > >( csv.fields, true ) ) ); }
+                // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( options.value< std::string >( "--binary,-b", comma::csv::format::value< coloured< snark::render::svg::line > >( csv.fields, true ) ) ); }
                 comma::csv::input_stream< coloured< snark::render::svg::line > > istream( std::cin, csv );
                 while( std::cin.good() )
                 {
@@ -304,7 +303,7 @@ int main( int ac, char** av )
             else
             {
                 if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::render::svg::line >(), ',' ); }
-                if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::line >( csv.fields, true ) ); }
+                // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::line >( csv.fields, true ) ); }
                 comma::csv::input_stream< snark::render::svg::line > istream( std::cin, csv );
                 while( std::cin.good() )
                 {
@@ -313,12 +312,13 @@ int main( int ac, char** av )
                     std::cout << *l << std::endl;
                 }
             }
+            return 0;
         }
-        else if( what == "lines" )
+        if( what == "lines" )
         {
             if( csv.has_field( "scalar" ) )
             {
-                if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< coloured< snark::render::svg::point > >( csv.fields, true ) ); }
+                // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< coloured< snark::render::svg::point > >( csv.fields, true ) ); }
                 comma::csv::input_stream< coloured< snark::render::svg::point > > istream( std::cin, csv );
                 boost::optional< coloured< snark::render::svg::point > > prev;
                 while( std::cin.good() )
@@ -332,7 +332,7 @@ int main( int ac, char** av )
             else
             {
                 if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::render::svg::point >(), ',' ); }
-                if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
+                // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
                 comma::csv::input_stream< snark::render::svg::point > istream( std::cin, csv );
                 boost::optional< snark::render::svg::point > prev;
                 while( std::cin.good() )
@@ -343,11 +343,12 @@ int main( int ac, char** av )
                     prev = *p;
                 }
             }
+            return 0;
         }
-        else if( what == "polyline" )
+        if( what == "polyline" )
         {
             if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::render::svg::point >(), ',' ); }
-            if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
+            // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
             comma::csv::input_stream< snark::render::svg::point > istream( std::cin, csv );
             snark::render::svg::polyline polyline;
             while( std::cin.good() )
@@ -361,11 +362,12 @@ int main( int ac, char** av )
                 if( options.exists( "--loop" ) ) { polyline.points.push_back( polyline.points[0] ); }
                 std::cout << polyline << std::endl;
             }
+            return 0;
         }
-        else if( what == "polygon" )
+        if( what == "polygon" )
         {
             if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::render::svg::point >(), ',' ); }
-            if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
+            // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
             comma::csv::input_stream< snark::render::svg::point > istream( std::cin, csv );
             snark::render::svg::polygon polygon;
             boost::optional< snark::render::svg::point > first;
@@ -379,8 +381,9 @@ int main( int ac, char** av )
                 prev = *p;
             }
             if( polygon.points.size() ) { std::cout << polygon << std::endl; }
+            return 0;
         }
-        else if( what == "text" )
+        if( what == "text" )
         {
             if( csv.has_field( "scalar" ) )
             {
@@ -403,22 +406,11 @@ int main( int ac, char** av )
                     std::cout << *t << std::endl;
                 }
             }
+            return 0;
         }
-        else
-        {
-            std::cerr << "csv-to-svg: unrecognized operation: \"" << what << "\"" << std::endl;
-            return 1;
-        }
-
-        return 0;
+        std::cerr << "csv-to-svg: expected operation, got: \"" << what << "\"" << std::endl;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << "csv-to-svg: " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << "csv-to-svg: unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << "csv-to-svg: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "csv-to-svg: unknown exception" << std::endl; }
     return 1;
 }

@@ -68,6 +68,7 @@ void usage(bool detail)
     std::cerr << std::endl;
     std::cerr<< "what: " << std::endl;
     std::cerr<< "    all: combines system-state, raw-sensors and standard deviations into one record" << std::endl;
+    std::cerr << "        --wait-for-all: it won't output messages for the first time until it receives all the message types" << std::endl;
     std::cerr<< "    navigation: navigation data from system state packet" << std::endl;
     std::cerr<< "    raw-sensors" << std::endl;
     std::cerr<< "    satellites" << std::endl;
@@ -372,7 +373,15 @@ protected:
 /// accumulate several packets into one big output record
 struct app_all : public app_t<output_all>
 {
-    app_all(const std::string& port,const comma::command_line_options& options) : app_t(port,options) { }
+    enum { raw_sensors_mask=1, velocity_standard_deviation_mask=2, orientation_standard_deviation_mask=4, satellites_mask=8, all_mask=15 };
+    unsigned recieved_messages_mask;
+    unsigned wait_for_all_counter;
+
+    app_all(const std::string& port,const comma::command_line_options& options) : app_t(port,options), recieved_messages_mask(0), wait_for_all_counter(0)
+    {
+        if(!options.exists("--wait-for-all"))
+            recieved_messages_mask=all_mask;
+    }
     output_all output;
     void handle(const messages::system_state* msg)
     {
@@ -380,23 +389,43 @@ struct app_all : public app_t<output_all>
         memcpy(output.system_state.data(), msg->data(),messages::system_state::size);
 //         output.system_state=msg;
 
-        os.write(output);
-        if(flush) { os.flush(); }
+        if((recieved_messages_mask&all_mask)==all_mask)
+        {
+            os.write(output);
+            if(flush) { os.flush(); }
+        }
+        else if(wait_for_all_counter++==100)
+        {
+            std::cerr<<"(--wait-for-all specified) still waiting for messages: ";
+            if(!(recieved_messages_mask&raw_sensors_mask))
+                std::cerr<<"raw_sensors ";
+            if(!(recieved_messages_mask&velocity_standard_deviation_mask))
+                std::cerr<<"velocity_standard_deviation ";
+            if(!(recieved_messages_mask&orientation_standard_deviation_mask))
+                std::cerr<<"orientation_standard_deviation ";
+            if(!(recieved_messages_mask&satellites_mask))
+                std::cerr<<"satellites ";
+            std::cerr<<std::endl;
+        }
     }
     void handle(const messages::raw_sensors* msg)
     {
+        recieved_messages_mask|=raw_sensors_mask;
         std::memcpy(output.raw_sensors.data(),msg->data(),messages::raw_sensors::size);
     }
     void handle(const messages::velocity_standard_deviation* msg)
     {
+        recieved_messages_mask|=velocity_standard_deviation_mask;
         output.velocity_stddev=Eigen::Vector3f(msg->stddev[0](),msg->stddev[1](),msg->stddev[2]());
     }
     void handle(const messages::orientation_standard_deviation* msg)
     {
+        recieved_messages_mask|=orientation_standard_deviation_mask;
         output.orientation_stddev=Eigen::Vector3f(msg->stddev[0](),msg->stddev[1](),msg->stddev[2]());
     }
     void handle(const messages::satellites* msg)
     {
+        recieved_messages_mask|=satellites_mask;
         std::memcpy(output.satellites.data(),msg->data(),messages::satellites::size);
     }
 };
