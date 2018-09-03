@@ -30,12 +30,14 @@
 /**
  * Created by vrushali on 15/10/15.
  */
+
 define('TextFeed', ["jquery", "Feed"], function ($) {
     var Feed = require('Feed');
     var TextFeed = function (feed_name, feed_path, config) {
         this.base = Feed;
         this.base(feed_name, feed_path, config);
-        this.height = this.config.height != undefined ? this.config.height : 0;
+        this.height = this.config.height == undefined ? 0 : this.config.height;
+        // todo: this.width = this.config.width == undefined ? 0 : this.config.width;
     };
     TextFeed.prototype = Object.create(Feed.prototype);
     TextFeed.prototype.load = function () {
@@ -49,17 +51,13 @@ define('TextFeed', ["jquery", "Feed"], function ($) {
         }).fail(function (jqXHR, textStatus, errorThrown) {
             this.onerror();
         });
-        if (this.height > 0) {
-            this.target.height(this.height);
-        }
+        if( this.height > 0 ) { this.target.height( this.height ); }
+        // todo: if( this.width > 0 ) { this.target.width( this.width ); }
     };
     TextFeed.prototype.onload_ = function (data) {
-        if (data && data.length && data[data.length - 1] == '\n') {
-            data = data.substring(0, data.length - 1);
-        }
+        if (data && data.length && data[data.length - 1] == '\n') { data = data.substring(0, data.length - 1); }
         var orig_data = data;
         data = data ? data : '&nbsp;';
-
         if (this.form_show_buttons) {
             var panel = $(this.target).find(".text-pre");
             if (panel.length > 0) {
@@ -76,19 +74,15 @@ define('TextFeed', ["jquery", "Feed"], function ($) {
                 $(panel).css("overflow", "auto");
             }
             var this_ = this;
-            var height = 100;
-            if (this.height > 0) {
-                height = this.height;
-            }
-            $(panel).css("max-height", function () {
-                return height;
-            });
-
+            var height = this.height > 0 ? this.height : 100;
+            // todo: var width = this.width > 0 ? this.width : 150;
+            $(panel).css("max-height", function () { return height; });
             this.draw();
             $(panel).scrollTop($(panel)[0].scrollHeight);
         }
         else {
-            this.target.append('<tr><td><pre>' + data + '</pre></td></tr>');
+            this.target.append('<tr><td><pre ' + ( this.config.style == undefined ? '' : 'style="' + this.config.style + '"' ) + '>' + data + '</pre></td></tr>');
+            //this.target.append( '<tr><td><pre' + style + '>' + data + '</pre></td></tr>' );
             this.draw();
         }
     };

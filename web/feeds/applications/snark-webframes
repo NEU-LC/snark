@@ -55,7 +55,7 @@ examples:
     %(prog)s --config=web.backend.json --robot-config=config.json --publish-config=publish.json --port=8000 --timeout=15
 
 http requests:
-    http://robot:8000/novatel
+    http://robot:8000/navigation
     http://robot:8000/camera
 
 notes:
@@ -76,19 +76,14 @@ web.backend.json:
         "timeout": "30",
         "content-type": "image/jpg"
     },
-    "novatel":
+    "navigation":
     {
-        "command": "novatel-to-csv | head -n1"
+        "command": "navigation-to-csv | head -n1"
     },
     "battery-voltage":
     {
         "xpath": "battery",
         "command": "braille-to-csv  --type=info --fields=voltage | head -n1"
-    },
-    "sick":
-    {
-        "xpath": "sick/publisher/data",
-        "command": "sick-ldmrs-to-csv | head -n1"
     }
 }
 
@@ -99,9 +94,8 @@ publish.json:
 
 config.json:
 {
-    "novatel": { "address": "robot", port: "10000" }
+    "navigation": { "address": "robot", port: "10000" }
     "battery": { "address": "robot", "port": "20000" }
-    "sick": { "publisher": { "data": { "address": "robot", "port": "30000" } } }
 }
 """
 verbose_epilog="""
