@@ -1,0 +1,17 @@
+{
+    "ntp": { "command": "head -n5" },
+
+    "ping": { "command": "head -n1" },
+
+    "battery-charge":
+    {
+        "xpath": "battery",
+        "command": "braille-to-csv --type=status --fields=state_of_charge | head -n1"
+    },
+
+    "camera":
+    {
+        "command": "cv-cat 'encode=jpg;head=1' --output=no-header",
+        "Content-type": "image/jpg"
+    }
+}
