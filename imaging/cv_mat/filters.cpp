@@ -48,7 +48,9 @@
 #include <boost/mpl/list.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <Eigen/Core>
+#if CV_MAJOR_VERSION <= 2
 #include <opencv2/contrib/contrib.hpp>
+#endif // #if CV_MAJOR_VERSION <= 2
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
@@ -792,7 +794,7 @@ static typename impl::filters< H >::value_type blur_impl_( typename impl::filter
             cv::bilateralFilter(m.second, n.second, params.neighbourhood_size, params.sigma_colour, params.sigma_space);
             break;
         case blur_t::adaptive_bilateral:
-            cv::adaptiveBilateralFilter(m.second, n.second, params.kernel_size, params.sigma_colour, params.sigma_space);
+            //cv::adaptiveBilateralFilter(m.second, n.second, params.kernel_size, params.sigma_colour, params.sigma_space);
             break;
     }
     return n;
@@ -1247,6 +1249,7 @@ template < typename T > static T cv_read_( const std::string& filename = "", con
     return t;
 }
 
+#if CV_MAJOR_VERSION <= 2
 template < typename H >
 struct simple_blob_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
@@ -1264,6 +1267,7 @@ struct simple_blob_impl_ {
         return m;
     }
 };
+#endif // #if CV_MAJOR_VERSION <= 2
 
 template < typename H >
 struct grab_impl_ {
@@ -1361,7 +1365,7 @@ template < typename H >
 static typename impl::filters< H >::value_type invert_impl_( const typename impl::filters< H >::value_type& m )
 {
     if( m.second.type() != CV_8UC1 && m.second.type() != CV_8UC2 && m.second.type() != CV_8UC3 && m.second.type() != CV_8UC4 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
-    for( unsigned char* c = m.second.datastart; c < m.second.dataend; *c = 255 - *c, ++c );
+    for( unsigned char* c = const_cast< unsigned char* >( m.second.datastart ); c < m.second.dataend; *c = 255 - *c, ++c );
     return m;
 }
 
@@ -1371,7 +1375,7 @@ static typename impl::filters< H >::value_type invert_brightness_impl_( typename
     if( m.second.type() != CV_8UC3 ) { COMMA_THROW( comma::exception, "expected image type 3ub; got: " << type_as_string( m.second.type() ) ); }
     cv::Mat n;
     cv::cvtColor( m.second, n, CV_RGB2HSV );
-    for( unsigned char* c = n.datastart + 2; c < n.dataend; *c = 255 - *c, c += 3 );
+    for( unsigned char* c = const_cast< unsigned char* >( m.second.datastart ) + 2; c < n.dataend; *c = 255 - *c, c += 3 );
     cv::cvtColor( n, m.second, CV_HSV2RGB );
     return m;
 }
@@ -1383,8 +1387,7 @@ static typename impl::filters< H >::value_type equalize_histogram_impl_(typename
     int chs=m.second.channels();
     //split
     std::vector<cv::Mat> planes;
-    for(int i=0;i<chs;i++)
-        planes.push_back(cv::Mat(1,1,single_channel_type(m.second.type())));
+    for( int i=0; i<chs; i++ ) { planes.push_back(cv::Mat(1,1,single_channel_type(m.second.type()))); }
     cv::split(m.second,planes);
     //equalize
     for(int i=0;i<chs;i++)
@@ -1653,12 +1656,12 @@ class max_impl_ // experimental, to debug
             value_type s( m.first, cv::Mat( m.second.rows, m.second.cols, m.second.type() ) );
             // For min, memset has to set max value
             // TODO: support other image types other than ub
-            ::memset( m.second.datastart, 0, m.second.rows * m.second.cols * m.second.channels() );
+            ::memset( const_cast< unsigned char* >( m.second.datastart ), 0, m.second.rows * m.second.cols * m.second.channels() );
             static unsigned int count = 0;
             for( unsigned int i = 0; i < deque_.size(); ++i )
             {
-                unsigned char* p = deque_[i].second.datastart;
-                for( unsigned char* q = s.second.datastart; q < s.second.dataend; *q = is_max_ ? std::max( *p, *q ) : std::min( *p, *q ), ++p, ++q );
+                unsigned char* p = const_cast< unsigned char* >( deque_[i].second.datastart );
+                for( unsigned char* q = const_cast< unsigned char* >( s.second.datastart ); q < s.second.dataend; *q = is_max_ ? std::max( *p, *q ) : std::min( *p, *q ), ++p, ++q );
             }
             ++count;
             return s;
@@ -1670,6 +1673,7 @@ class max_impl_ // experimental, to debug
         std::deque< value_type > deque_; // use vector?
 };
 
+#if CV_MAJOR_VERSION <= 2
 template < typename H >
 class map_impl_
 {
@@ -1764,6 +1768,7 @@ class map_impl_
             }
         }
 };
+#endif // #if CV_MAJOR_VERSION <= 2
 
 template < typename H >
 static typename impl::filters< H >::value_type magnitude_impl_( typename impl::filters< H >::value_type m )
@@ -2708,12 +2713,16 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "map" ) // todo! refactor usage, especially csv option separators and equal sign; make optionally map for each channel separately
     {
+#if CV_MAJOR_VERSION <= 2
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
         std::stringstream s; s << e[1]; for( std::size_t i = 2; i < e.size(); ++i ) { s << "=" << e[i]; }
         std::string map_filter_options = s.str();
         std::vector< std::string > items = comma::split( map_filter_options, '&' );
         bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
         return std::make_pair( map_impl_ < H >( map_filter_options, permissive ), true );
+#else // #if CV_MAJOR_VERSION <= 2
+        COMMA_THROW( comma::exception, "map: opencv 3 support: todo" );
+#endif // #if CV_MAJOR_VERSION <= 2
     }
     if( e[0] == "inrange" )
     {
@@ -3076,6 +3085,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "simple-blob" )
         {
+#if CV_MAJOR_VERSION <= 2
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'simple-blob' as the last filter, got \"" << how << "\"" ); }
             std::vector< std::string > s;
             if( e.size() > 1 ) { s = comma::split( e[1], ',' ); }
@@ -3103,6 +3113,9 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             }
             f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >(get_timestamp), _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), is_binary ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
+#else // #if CV_MAJOR_VERSION <= 2
+            COMMA_THROW( comma::exception, "simple-blob: opencv 3 support: todo" );
+#endif // #if CV_MAJOR_VERSION <= 2
         }
         else if( e[0] == "null" )
         {
@@ -3155,6 +3168,9 @@ template < typename H >
 static std::string usage_impl_()
 {
     std::ostringstream oss;
+    oss << std::endl;
+    oss << "    OpenCV version: " << CV_MAJOR_VERSION << std::endl;
+    oss << std::endl;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>[,<how>]: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;

@@ -9,5 +9,7 @@ TARGET_LINK_LIBRARIES( regionprops-demo snark_imaging ${comma_ALL_LIBRARIES} ${c
 ADD_EXECUTABLE( frequency-demo frequency-demo.cpp )
 TARGET_LINK_LIBRARIES( frequency-demo snark_imaging ${comma_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
 
-ADD_EXECUTABLE( stereo-demo stereo-demo.cpp )
-TARGET_LINK_LIBRARIES( stereo-demo snark_imaging snark_math ${comma_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
+if( snark_build_imaging_stereo ) # todo: add proper cmake to stereo
+    ADD_EXECUTABLE( stereo-demo stereo-demo.cpp )
+    TARGET_LINK_LIBRARIES( stereo-demo snark_imaging snark_math ${comma_ALL_LIBRARIES} ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
+endif( snark_build_imaging_stereo )
