@@ -138,22 +138,20 @@ define('StartStopFeed', ["jquery", "Feed"], function ($) {
             if (data.status != undefined) {
                 var status = data.status;
                 if (status.code != undefined) {
-
-                    if (status.code != 0) {
-                        this.el.addClass('panel-disabled');
-                        $(this.form).append($('<label>', {
-                            class: "error-message col-sm-11 ",
-                            text: (status.message ? status.message : "Error.")
-                        }));
-                        $(this.form).append($('<div>', {class: "clear"}));
-                    }
-                    else {
+                    if (status.code == 0) {
                         $(this.form).append($('<label>', {
                             class: "success-message col-sm-11",
-                            text: (status.message ? status.message : "Success. ")
+                            text: ( status.message == undefined ? "Success" : status.message )
                         }));
-                        $(this.form).append($('<div>', {class: "clear"}));
                     }
+                    else {
+                        this.el.addClass('panel-disabled');
+                        $(this.form).append($('<label>', {
+                            class: "error-message col-sm-11",
+                            text: ( status.message == undefined ? "Error" : status.message )
+                        }));
+                    }
+                    $(this.form).append($('<div>', {class: "clear"}));
                 }
             }
 
