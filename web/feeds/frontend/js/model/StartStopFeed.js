@@ -161,6 +161,7 @@ define('StartStopFeed', ["jquery", "Feed"], function ($) {
                 var json = $.parseJSON(data);
                 if (json != undefined && json.status != undefined && json.status.code != undefined && json.status.code == 0) {
                     this.update_ui(json);
+                    this.update_output(json);
                 }
             }
         };
