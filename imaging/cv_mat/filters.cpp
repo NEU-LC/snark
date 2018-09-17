@@ -48,14 +48,14 @@
 #include <boost/mpl/list.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <Eigen/Core>
-#if CV_MAJOR_VERSION <= 2
-#include <opencv2/contrib/contrib.hpp>
-#endif // #if CV_MAJOR_VERSION <= 2
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
+#if CV_MAJOR_VERSION <= 2
+#include <opencv2/contrib/contrib.hpp>
+#endif // #if CV_MAJOR_VERSION <= 2
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_reduce.h>
