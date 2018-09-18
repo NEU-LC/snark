@@ -2539,16 +2539,16 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         std::vector< std::string > w = comma::split( e[1], ',' );
         cv::Point p( 10, 10 );
         if( w.size() >= 3 ) { p = cv::Point( boost::lexical_cast< unsigned int >( w[1] ), boost::lexical_cast< unsigned int >( w[2] ) ); }
-        cv::Scalar s( 0, 255, 255 );
+        cv::Scalar s( 0, 0xffff, 0xffff );
         if( w.size() >= 4 )
         {
-            if( w[3] == "red" ) { s = cv::Scalar( 0, 0, 255 ); }
-            else if( w[3] == "green" ) { s = cv::Scalar( 0, 255, 0 ); }
-            else if( w[3] == "blue" ) { s = cv::Scalar( 255, 0, 0 ); }
-            else if( w[3] == "white" ) { s = cv::Scalar( 255, 255, 255 ); }
+            if( w[3] == "red" ) { s = cv::Scalar( 0, 0, 0xffff ); }
+            else if( w[3] == "green" ) { s = cv::Scalar( 0, 0xffff, 0 ); }
+            else if( w[3] == "blue" ) { s = cv::Scalar( 0xffff, 0, 0 ); }
+            else if( w[3] == "white" ) { s = cv::Scalar( 0xffff, 0xffff, 0xffff ); }
             else if( w[3] == "black" ) { s = cv::Scalar( 0, 0, 0 ); }
-            else if( w[3] == "yellow" ) { s = cv::Scalar( 0, 255, 255 ); }
-            else { COMMA_THROW( comma::exception, "expected colour of text in \"" << comma::join( e, '=' ) << "\", got '" << w[3] << "'" ); }
+            else if( w[3] == "yellow" ) { s = cv::Scalar( 0, 0xffff, 0xffff ); }
+            else { COMMA_THROW( comma::exception, "expected colour of text, e.g. 'red', in \"" << comma::join( e, '=' ) << "\", got '" << w[3] << "'" ); }
         }
         return std::make_pair( boost::bind< value_type_t >( text_impl_< H >, _1, w[0], p, s ), true );
     }
