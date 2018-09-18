@@ -282,12 +282,12 @@ int main( int argc, char** argv )
 
         if( vm.count( "file" ) )
         {
-            if( !vm.count( "video" ) ) { p.second = cv::imread( name ); }
+            if( !vm.count( "video" ) ) { p.second = cv::imread( name, cv::IMREAD_UNCHANGED ); }
             if( p.second.data )
             {
                 if( vm.count( "timestamped" ) )
                 {
-                    std::vector<std::string> time_strings = comma::split( comma::split( name, '/' ).back(), '.' );
+                    std::vector<std::string> time_strings = comma::split( comma::split( name, '/' ).back(), '.' ); // quick and dirty, use boost::filesystem
                     if ( time_strings.size() == 2 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] ); }
                     else if ( time_strings.size() == 3 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] + '.' + time_strings[1] ); }
                 }
