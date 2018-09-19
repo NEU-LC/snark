@@ -102,6 +102,7 @@ class reader
 // - input
 //   - streams
 //   - video
+// - filters: file=png,,prefix:...
 // - snark/pages
 //   - set up
 //   - blog
@@ -119,6 +120,14 @@ int main( int ac, char** av )
         comma::signal_flag is_shutdown;
         std::deque< cv::Mat > image_edit_history;
         unsigned int undo_depth = options.value< unsigned int >( "--undo-depth,--undo-size,--undo,-u", 10 );
+        auto log = [&]( unsigned int i, unsigned int j, const std::string& s ) // quick and dirty, use visiting? output path-value?
+        {
+            //std::string images = "images[" + boost::lexical_cast< unsigned int >( i ) + "]/";
+            //std::string edit = "edits[" + boost::lexical_cast< unsigned int >( i ) + "]";
+            //std::cerr << images << "source=\"" << reader.source() << std::endl;
+            //std::cerr << images << "source=\"" << reader.source() << std::endl;
+            std::cerr << i << "," << j << ",\"" << reader.source() << "\",\"" << s << "\",\"" << comma::join( filters_history, ';' ) << "\"" << std::endl;
+        };
         for( unsigned int i = 0; !is_shutdown && std::cin.good(); ++i )
         {
             pair_t current = reader.read();
@@ -128,21 +137,28 @@ int main( int ac, char** av )
             image_edit_history.push_back( cv::Mat() );
             current.second.copyTo( image_edit_history.back() );
             bool new_image = true;
-            while( !is_shutdown && std::cin.good() )
+            for( unsigned int j = 0; !is_shutdown && std::cin.good(); ++j )
             {
-                std::string filter_string;
-                std::getline( std::cin, filter_string );
-                filter_string = comma::strip( filter_string );
-                if( filter_string.empty() || filter_string[0] == '#' ) { continue; }
-                std::cerr << i << ";" << reader.source() << ";" << filter_string << std::endl;
-                const std::vector< std::string >& v = comma::split( filter_string, '=' );
+                std::string command;
+                std::getline( std::cin, command );
+                command = comma::strip( command );
+                if( command.empty() || command[0] == '#' ) { continue; }
+                std::string filter_string = command;
+                const std::vector< std::string >& v = comma::split( command, '=' );
                 if( v[0] == "next" )
                 {
+                    log( i, j, command );
                     break;
+                }
+                if( v[0] == "exit" )
+                {
+                    log( i, j, command );
+                    return 0;
                 }
                 if( v[0] == "clear" )
                 {
                     filters_history.clear();
+                    log( i, j, command );
                     continue;
                 }
                 if( v[0] == "undo" )
@@ -152,18 +168,17 @@ int main( int ac, char** av )
                     for( unsigned int k = 0; k < depth; ++k ) { image_edit_history.pop_back(); }
                     serialization.write_to_stdout( pair_t( current.first, image_edit_history.back() ) );
                     filters_history.resize( filters_history.size() - depth );
+                    log( i, j, command );
                     continue;
                 }
                 if( v[0] == "apply" )
                 {
-                    if( !new_image ) { continue; } // todo: dodgy, better semantics
+                    if( !new_image ) { log( i, j, command ); continue; } // todo: dodgy, better semantics
                     filter_string = comma::join( filters_history, ';' );
                 }
-                else
-                {
-                    if( new_image ) { filters_history.clear(); } // todo: dodgy, better semantics
-                    filters_history.push_back( filter_string );
-                }
+                if( new_image ) { filters_history.clear(); } // todo: dodgy, better semantics
+                filters_history.push_back( filter_string );
+                log( i, j, command );
                 new_image = false;
                 const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( filter_string );
                 pair_t filtered;
