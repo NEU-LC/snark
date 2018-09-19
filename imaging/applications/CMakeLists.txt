@@ -18,6 +18,10 @@ TARGET_LINK_LIBRARIES( cv-cat snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS
 ADD_EXECUTABLE( cv-calc cv-calc.cpp )
 TARGET_LINK_LIBRARIES( cv-calc snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
 
+ADD_EXECUTABLE( image-edit image-edit.cpp )
+TARGET_LINK_LIBRARIES( image-edit snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
+install( TARGETS image-edit RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+
 ADD_EXECUTABLE( image-color-calc image-color-calc.cpp )
 TARGET_LINK_LIBRARIES( image-color-calc snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
 
