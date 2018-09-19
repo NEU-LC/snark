@@ -55,7 +55,7 @@ static void usage( bool verbose = false )
     std::cerr << "usage: todo" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --undo-depth,-u=<depth>; number of undo steps; default: 10" << std::endl;
+    std::cerr << "    --undo-depth,--undo-size,--undo,-u=<depth>; number of undo steps; default: 10" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples: todo" << std::endl;
     std::cerr << std::endl;
@@ -69,30 +69,36 @@ namespace snark { namespace image_edit {
 class reader
 {
     public:
-        reader( const std::vector< std::string >& sources ): sources_( sources ), index_( 0 )
+        reader( const std::vector< std::string >& sources ): sources_( sources )
         {
             if( sources.empty() ) { std::cerr << "image-edit: please specify image or image source" << std::endl; exit( 1 ); }
         }
         
         pair_t read()
         {
-            if( index_ >= sources_.size() ) { return pair_t(); }
+            if( index_ ) { if( *index_ >= sources_.size() ) { return pair_t(); } else { index_ = *index_ + 1; } } else { index_ = 0; };
             pair_t p;
-            p.second = cv::imread( sources_[index_], cv::IMREAD_UNCHANGED ); // stream and video support: todo
-            ++index_;
+            p.second = cv::imread( sources_[ *index_ ], cv::IMREAD_UNCHANGED ); // stream and video support: todo
             return p;
         }
         
+        const std::string& source() const { return sources_[ *index_ ]; }
+        const std::vector< std::string >& sources() const { return sources_; }
+        unsigned int index() const { return *index_; }
+        
     private:
         std::vector< std::string > sources_;
-        unsigned int index_;
+        boost::optional< unsigned int > index_;
 };
 
 } } // namespace snark { namespace image_edit {
 
 // todo:
 // - --help
-// - apply: better semantics
+//   - usage
+//   - examples
+// - dry run: take operation log, output combined filter
+// ? --make-filter
 // - input
 //   - streams
 //   - video
@@ -107,12 +113,12 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         verbose = options.exists( "--verbose,-v" );
-        std::vector< std::string > history;
+        std::vector< std::string > filters_history;
         snark::image_edit::reader reader( options.unnamed( "-h,--help,-v,--verbose", "-.*" ) );
         snark::cv_mat::serialization serialization;
         comma::signal_flag is_shutdown;
         std::deque< cv::Mat > image_edit_history;
-        unsigned int undo_depth = options.value< unsigned int >( "--undo-depth,-h", 10 );
+        unsigned int undo_depth = options.value< unsigned int >( "--undo-depth,--undo-size,--undo,-u", 10 );
         for( unsigned int i = 0; !is_shutdown && std::cin.good(); ++i )
         {
             pair_t current = reader.read();
@@ -121,26 +127,44 @@ int main( int ac, char** av )
             image_edit_history.clear();
             image_edit_history.push_back( cv::Mat() );
             current.second.copyTo( image_edit_history.back() );
-            while( std::cin.good() )
+            bool new_image = true;
+            while( !is_shutdown && std::cin.good() )
             {
                 std::string filter_string;
                 std::getline( std::cin, filter_string );
                 filter_string = comma::strip( filter_string );
                 if( filter_string.empty() || filter_string[0] == '#' ) { continue; }
-                std::cerr << i << ";" << filter_string << std::endl;
+                std::cerr << i << ";" << reader.source() << ";" << filter_string << std::endl;
                 const std::vector< std::string >& v = comma::split( filter_string, '=' );
-                if( v[0] == "next" ) { break; }
-                if( v[0] == "clear" ) { history.clear(); continue; }
+                if( v[0] == "next" )
+                {
+                    break;
+                }
+                if( v[0] == "clear" )
+                {
+                    filters_history.clear();
+                    continue;
+                }
                 if( v[0] == "undo" )
                 {
                     unsigned int depth = v.size() == 1 ? 1 : boost::lexical_cast< unsigned int >( v[1] );
                     depth = depth < ( image_edit_history.size() - 1 ) ? depth : ( image_edit_history.size() - 1 );
                     for( unsigned int k = 0; k < depth; ++k ) { image_edit_history.pop_back(); }
                     serialization.write_to_stdout( pair_t( current.first, image_edit_history.back() ) );
+                    filters_history.resize( filters_history.size() - depth );
                     continue;
                 }
-                if( v[0] == "apply" ) { filter_string = comma::join( history, ';' ); } // quick and dirty
-                history.push_back( filter_string );
+                if( v[0] == "apply" )
+                {
+                    if( !new_image ) { continue; } // todo: dodgy, better semantics
+                    filter_string = comma::join( filters_history, ';' );
+                }
+                else
+                {
+                    if( new_image ) { filters_history.clear(); } // todo: dodgy, better semantics
+                    filters_history.push_back( filter_string );
+                }
+                new_image = false;
                 const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( filter_string );
                 pair_t filtered;
                 filtered.first = current.first;
