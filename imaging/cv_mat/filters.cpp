@@ -1346,6 +1346,54 @@ struct timestamp_impl_ {
 };
 
 template < typename H >
+class save_impl_
+{
+    public:
+        typedef typename impl::filters< H >::value_type value_type;
+
+        save_impl_( const std::string& filename, bool no_header, const boost::optional< int >& quality, bool do_index ) : filename_( filename ), index_( 0 ), quality_( quality ), do_index_( do_index )
+        {
+            snark::cv_mat::serialization::options options;
+            options.no_header = no_header;
+            serialization_ = snark::cv_mat::serialization( options );
+            const auto& v = comma::split( filename, '.' );
+            if( v.size() == 1 ) { COMMA_THROW( comma::exception, "save: expected filename with image type extension, got: \"" << filename << "\"" ); }
+            basename_ = comma::join( v, v.size() - 1, '.' );
+            type_ = v.back();
+        }
+
+        value_type operator()( value_type m )
+        {
+            if( m.second.empty() ) { return m; }
+            std::vector< int > params;
+            if( quality_ ) { params = imwrite_params( type_, *quality_ ); }
+            std::string filename = do_index_ ? basename_ + '.' + boost::lexical_cast< std::string  >( index_ ) + '.' + type_ : filename_;
+            if( type_ == "bin" )
+            {
+                std::ofstream ofs( filename );
+                if( !ofs.is_open() ) { COMMA_THROW( comma::exception, "" ); }
+                serialization_.write( ofs, m );
+            }
+            else
+            {
+                encode_impl_check_type< H >( m, type_ );
+                cv::imwrite( filename, m.second, params );
+            }
+            ++index_;
+            return m;
+        }
+        
+    private:
+        snark::cv_mat::serialization serialization_;
+        std::string filename_;
+        std::string basename_;
+        std::string type_;
+        unsigned int index_;
+        boost::optional< int > quality_;
+        bool do_index_;
+};
+
+template < typename H >
 struct count_impl_
 {
     count_impl_() : count( 0 ) {}
@@ -2496,6 +2544,21 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         }
         return std::make_pair( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false );
     }
+    if( e[0] == "save" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename" ); }
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        boost::optional< int > quality;
+        bool do_index = false;
+        bool no_header = false;
+        for( unsigned int i = 1; i < s.size(); ++i )
+        {
+            if( s[i] == "index" ) { do_index = true; }
+            else if( s[i] == "no-header" ) { no_header = true; }
+            else { quality = boost::lexical_cast< int >( s[i] ); }
+        }
+        return std::make_pair( boost::bind< value_type_t >( save_impl_< H >( s[0], no_header, quality, do_index ), _1 ), true );
+    }
     if( e[0] == "gamma" ) { return std::make_pair( boost::bind< value_type_t >( gamma_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ), true ); }
     if( e[0] == "pow" || e[0] == "power" ) { return std::make_pair( boost::bind< value_type_t >( pow_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ), true ); }
     if( e[0] == "remove-mean")
@@ -3231,6 +3294,7 @@ static std::string usage_impl_()
     oss << "                                   <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
     oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "                                   index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
+    oss << "                                   also see save operation" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        grab=<format>[,<quality>]: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
@@ -3281,6 +3345,11 @@ static std::string usage_impl_()
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
+    oss << "        save=<filename>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <filename>: <base>.<format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "                                   <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
+    oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
+    oss << "                                   index: if present, for each image, files will be named as: <base>.<index>.<extension>, e.g: my-file.0.png, my-file.1.png, etc" << std::endl;
+    oss << "                                   also see file operation" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;

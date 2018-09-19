@@ -102,7 +102,6 @@ class reader
 // - input
 //   - streams
 //   - video
-// - filters: file=png,,prefix:...
 // - snark/pages
 //   - set up
 //   - blog
