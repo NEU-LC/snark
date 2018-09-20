@@ -52,12 +52,47 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "read filters on stdin, apply to image, output image to stdout, keep image in memory meanwhile" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "usage: todo" << std::endl;
+    std::cerr << "usage: cat commands.txt | image-edit <source> <source> ... [<options>] > edits.bin" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "<source>" << std::endl;
+    std::cerr << "    file name: e.g. dog.jpg, cat.png, etc" << std::endl;
+    std::cerr << "    image streams in cv-cat format (see cv-cat -h -v): todo, e.g:" << std::endl;
+    std::cerr << "        \"my-images.bin\"" << std::endl;
+    std::cerr << "        \"tcp:localhost:12345\"" << std::endl;
+    std::cerr << "        \"local:my/local/socket\"" << std::endl;
+    std::cerr << "        <( cat ./*.bin )" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "commands" << std::endl;
+    std::cerr << "    any filter or sequence of filters, same as for cv-cat, e.g. \"resize=0.25\", \"flip;flop;inver\", etc" << std::endl;
+    std::cerr << "    or:" << std::endl;
+    std::cerr << "        apply; if new image, apply all the filters from the previous image" << std::endl;
+    std::cerr << "               if not a new image, ignore" << std::endl;
+    std::cerr << "        clear; clear all filter history" << std::endl;
+    std::cerr << "        exit; exit" << std::endl;
+    std::cerr << "        next; load new image" << std::endl;
+    std::cerr << "        undo[=<depth>]; undo last <depth> commands; default <depth>=1" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --undo-depth,--undo-size,--undo,-u=<depth>; number of undo steps; default: 10" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "examples: todo" << std::endl;
+    std::cerr << "filters" << std::endl;
+    if( verbose ) { std::cerr << snark::cv_mat::filters::usage() << std::endl; } else { std::cerr << "    run image-edit --help --verbose for details..." << std::endl; }
+    std::cerr << std::endl;
+    std::cerr << "image serialization" << std::endl;
+    if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } else { std::cerr << "    run image-edit --help --verbose for details..." << std::endl; }
+    std::cerr << std::endl;
+    std::cerr << "examples" << std::endl;
+    std::cerr << "    edit two images, apply some filters to cat.jpg, then apply the same filters to dog.jpg and continue editing" << std::endl;
+    std::cerr << "        > cat <<eof | image-edit cat.jpg dog.jpg | cv-cat \"view=1000;null\"" << std::endl;
+    std::cerr << "        resize=0.25" << std::endl;
+    std::cerr << "        invert" << std::endl;
+    std::cerr << "        flip" << std::endl;
+    std::cerr << "        undo" << std::endl;
+    std::cerr << "        next" << std::endl;
+    std::cerr << "        apply" << std::endl;
+    std::cerr << "        flop" << std::endl;
+    std::cerr << "        exit" << std::endl;
+    std::cerr << "        eof" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -94,9 +129,6 @@ class reader
 } } // namespace snark { namespace image_edit {
 
 // todo:
-// - --help
-//   - usage
-//   - examples
 // - dry run: take operation log, output combined filter
 // ? --make-filter
 // - input
