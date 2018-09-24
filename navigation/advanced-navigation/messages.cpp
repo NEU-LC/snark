@@ -287,6 +287,22 @@ command magnetic_calibration_configuration::get_command() const
     return command(id,data(),size);
 }
 
+void magnetic_calibration_status::status_description(std::ostream& os)
+{
+    os<<"0,Magnetic calibration not completed"<<std::endl;
+    os<<"1,2D magnetic calibration completed"<<std::endl;
+    os<<"2,3D magnetic calibration completed"<<std::endl;
+    os<<"3,Custom values magnetic calibration completed"<<std::endl;
+    os<<"5,2D calibration in progress"<<std::endl;
+    os<<"6,3D calibration in progress"<<std::endl;
+    os<<"7,2D calibration error: excessive roll"<<std::endl;
+    os<<"8,2D calibration error: excessive pitch"<<std::endl;
+    os<<"9,Calibration error: sensor over range event"<<std::endl;
+    os<<"10,Calibration error: time-out"<<std::endl;
+    os<<"11,Calibration error: system error"<<std::endl;
+    os<<"12,Calibration error: interference error"<<std::endl;
+}
+
 const char* acknowledgement::result_msg(unsigned result)
 {
     switch(result)

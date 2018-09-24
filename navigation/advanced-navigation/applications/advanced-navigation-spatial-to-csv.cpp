@@ -93,6 +93,7 @@ void usage(bool detail)
     std::cerr << "    --device=<filename>; filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
     std::cerr << "    --flush: flush output stream after each write" << std::endl;
     std::cerr << "    --help,-h:       show help" << std::endl;
+    std::cerr << "    --magnetic-calibration-description: print magnetic calibration status description table and exit"<< std::endl;
     std::cerr << "    --ntrip=<stream>: read ntrip data from stream and send it to device" << std::endl;
     std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
@@ -136,6 +137,7 @@ void usage(bool detail)
     std::cerr << "  send 2D magnetic calibration command and see status" << std::endl;
     std::cerr << "    echo 1 | " << comma::verbose.app_name() << " --send magnetic-calibration --device /dev/usb/ttyUSB0 -v"<< std::endl;
     std::cerr << "    "<< comma::verbose.app_name() << " magnetic-calibration --device /dev/usb/ttyUSB0"<< std::endl;
+    std::cerr << "    "<< comma::verbose.app_name() << " --magnetic-calibration-description"<<std::endl;
     std::cerr << std::endl;
 }
 
@@ -533,8 +535,8 @@ struct full_description
 static void bash_completion( int argc, char** argv )
 {
     std::cout << "--help --verbose" <<
-        " all navigation raw-sensors system-state satellites" <<
-        " --output-fields --output-format --raw --stdin --status --status-description --json"<< 
+        " all magnetic-calibration navigation raw-sensors system-state satellites " <<
+        " --magnetic-calibration-description --output-fields --output-format --raw --send --stdin --status --status-description --json"<< 
         std::endl;
 }
 
@@ -638,6 +640,7 @@ int main( int argc, char** argv )
             else { COMMA_THROW( comma::exception, "invalid field for --status-description. expected 'system_status' or 'filter_status' or 'gnss_fix', got " << *opt_status_description ); }
             return 0;
         }
+        if(options.exists("--magnetic-calibration-description")) { messages::magnetic_calibration_status::status_description(std::cout); return 0; }
         
         auto opt_send=options.optional<std::string>("--send");
         if(opt_send)

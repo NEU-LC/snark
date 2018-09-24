@@ -214,6 +214,7 @@ struct magnetic_calibration_status : public comma::packed::packed_struct<magneti
     comma::packed::uint8 status;
     comma::packed::uint8 progress;
     comma::packed::uint8 error;
+    static void status_description(std::ostream& os);
 };
 
 } //namespace messages {
