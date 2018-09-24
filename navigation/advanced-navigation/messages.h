@@ -55,6 +55,7 @@ public:
     bool check_crc(const char* data) const;   //length is from header
     header();
     header(unsigned char id, unsigned char length,const char* data);
+    void reset(unsigned char id, unsigned char length,const char* data);
     unsigned len() const { return unsigned(length()); }
 };
 
@@ -181,6 +182,38 @@ struct orientation_standard_deviation : public comma::packed::packed_struct<velo
 {
     enum { id = 26 };
     boost::array<comma::packed::little_endian_float32,3> stddev;
+};
+
+struct acknowledgement : public comma::packed::packed_struct<acknowledgement,4>
+{
+    enum { id = 0 };
+    comma::packed::uint8 packet_id;
+    comma::packed::uint16 crc;
+    comma::packed::uint8 result;
+    static const char* result_msg(unsigned result);
+};
+
+struct command : public comma::packed::packed_struct<command,260>
+{
+    messages::header header;
+    boost::array<comma::packed::uint8,255> msg_data;
+    command() { }
+    command(uint8_t id, const char* buf, unsigned size);
+};
+
+struct magnetic_calibration_configuration : public comma::packed::packed_struct<magnetic_calibration_configuration,1>
+{
+    enum { id = 190 };
+    comma::packed::uint8 action;
+    command get_command() const;
+};
+
+struct magnetic_calibration_status : public comma::packed::packed_struct<magnetic_calibration_status,3>
+{
+    enum { id = 191 };
+    comma::packed::uint8 status;
+    comma::packed::uint8 progress;
+    comma::packed::uint8 error;
 };
 
 } //namespace messages {

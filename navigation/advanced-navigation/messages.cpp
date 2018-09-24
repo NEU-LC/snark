@@ -92,6 +92,11 @@ bool header::check_crc(const char* data) const
 header::header() { LRC=1; id=255; length=0; msg_crc=0; }   //invalid header
 header::header(unsigned char i, unsigned char l,const char* buf)
 {
+    reset(i,l,buf);
+}
+
+void header::reset(unsigned char i, unsigned char l,const char* buf)
+{
     id=i;
     length=l;
     msg_crc=detail::calculate_crc((const uint8_t*)buf,length());
@@ -272,6 +277,38 @@ unsigned filter_status_description::external_position_active() const { return (s
 unsigned filter_status_description::external_velocity_active() const { return (status&0x4000)?1:0; }
 unsigned filter_status_description::external_heading_active() const { return (status&0x8000)?1:0; }
 
+command::command(uint8_t id, const char* buf, unsigned size) : header(id,size,buf)
+{
+    std::memcpy(&msg_data[0],buf,size);
+}
+
+command magnetic_calibration_configuration::get_command() const
+{
+    return command(id,data(),size);
+}
+
+const char* acknowledgement::result_msg(unsigned result)
+{
+    switch(result)
+    {
+        case 0:
+            return "Acknowledge success";
+        case 1:
+            return "Acknowledge failure, CRC error";
+        case 2: 
+            return "Acknowledge failure, packet size incorrect";
+        case 3: 
+            return "Acknowledge failure, values outside of valid ranges";
+        case 4: 
+            return "Acknowledge failure, system flash memory failure";
+        case 5: 
+            return "Acknowledge failure, system not ready";
+        case 6: 
+            return "Acknowledge failure, unknown packet";
+        default:
+        { COMMA_THROW( comma::exception, "Acknowledge result invalid value (result msg)"); }
+    }
+}
 
 } //namespace messages {
     
