@@ -92,6 +92,11 @@ bool header::check_crc(const char* data) const
 header::header() { LRC=1; id=255; length=0; msg_crc=0; }   //invalid header
 header::header(unsigned char i, unsigned char l,const char* buf)
 {
+    reset(i,l,buf);
+}
+
+void header::reset(unsigned char i, unsigned char l,const char* buf)
+{
     id=i;
     length=l;
     msg_crc=detail::calculate_crc((const uint8_t*)buf,length());
@@ -272,6 +277,54 @@ unsigned filter_status_description::external_position_active() const { return (s
 unsigned filter_status_description::external_velocity_active() const { return (status&0x4000)?1:0; }
 unsigned filter_status_description::external_heading_active() const { return (status&0x8000)?1:0; }
 
+command::command(uint8_t id, const char* buf, unsigned size) : header(id,size,buf)
+{
+    std::memcpy(&msg_data[0],buf,size);
+}
+
+command magnetic_calibration_configuration::get_command() const
+{
+    return command(id,data(),size);
+}
+
+void magnetic_calibration_status::status_description(std::ostream& os)
+{
+    os<<"0,Magnetic calibration not completed"<<std::endl;
+    os<<"1,2D magnetic calibration completed"<<std::endl;
+    os<<"2,3D magnetic calibration completed"<<std::endl;
+    os<<"3,Custom values magnetic calibration completed"<<std::endl;
+    os<<"5,2D calibration in progress"<<std::endl;
+    os<<"6,3D calibration in progress"<<std::endl;
+    os<<"7,2D calibration error: excessive roll"<<std::endl;
+    os<<"8,2D calibration error: excessive pitch"<<std::endl;
+    os<<"9,Calibration error: sensor over range event"<<std::endl;
+    os<<"10,Calibration error: time-out"<<std::endl;
+    os<<"11,Calibration error: system error"<<std::endl;
+    os<<"12,Calibration error: interference error"<<std::endl;
+}
+
+const char* acknowledgement::result_msg(unsigned result)
+{
+    switch(result)
+    {
+        case 0:
+            return "Acknowledge success";
+        case 1:
+            return "Acknowledge failure, CRC error";
+        case 2: 
+            return "Acknowledge failure, packet size incorrect";
+        case 3: 
+            return "Acknowledge failure, values outside of valid ranges";
+        case 4: 
+            return "Acknowledge failure, system flash memory failure";
+        case 5: 
+            return "Acknowledge failure, system not ready";
+        case 6: 
+            return "Acknowledge failure, unknown packet";
+        default:
+        { COMMA_THROW( comma::exception, "Acknowledge result invalid value (result msg)"); }
+    }
+}
 
 } //namespace messages {
     
