@@ -11,12 +11,52 @@
   - snark_cmake_options: "-DBUILD_TESTS=ON -DINSTALL_TESTS=ON -DINSTALL_BASH_COMPLETION=ON -Dsnark_BUILD_XML=ON -Dsnark_BUILD_ZEROMQ=ON -Dsnark_INSTALL_WEB_SHELL=OFF"
 
   tasks:
-  #- name: "install snark dependencies"
-    #become: true
-    #apt: pkg={{ item }} state=present update_cache=yes
-    #with_items:
-      #- curl
+  - name: "install snark dependencies"
+    become: true
+    apt: pkg={{ item }} state=present update_cache=yes
+    with_items:
+      - libeigen3-dev
+      - libtbb-dev
+      - zlib1g-dev
+      - libbz2-dev
+      - libopencv-dev 
+      - libopencv-highgui-dev
+      - libpcap-dev
+      - qtbase5-dev 
+      - qt5-default 
+      - qt3d5-dev
+      - python-opencv
+      - libqt4-dev
 
+  - name: "vimba: download"
+    get_url:
+        url: "https://cdn.alliedvision.com/fileadmin/content/software/software/Vimba/Vimba_v2.1.3_Linux.tgz"
+        dest: "/tmp/Vimba_v2.1.3_Linux.tgz"
+
+  - name: "vimba: extract"
+    unarchive:
+        src: "/tmp/Vimba_v2.1.3_Linux.tgz"
+        dest: "/opt"
+    become: true
+
+  - name: "vimba: symlink 1/1"
+    file:
+        dest: /opt/vimba
+        src: /opt/Vimba_2_1
+        state: link
+    become: true
+    
+  - name: "vimba: symlink 2/2"
+    file:
+        dest: /usr/local/bin/vimba-viewer
+        src: /opt/vimba/Tools/Viewer/Bin/x86_64bit/VimbaViewer
+        state: link
+    become: true
+
+  - name: "vimba: install"
+    command: chdir=/opt/vimba/VimbaGigETL ./Install.sh
+    become: true
+      
   - name: "snark: make source directory at {{ base }}"
     file: path={{ base }}/{{ item }} state=directory
     with_items:
