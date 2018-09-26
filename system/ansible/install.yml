@@ -11,7 +11,7 @@
   - snark_cmake_options: "-DBUILD_TESTS=ON -DINSTALL_TESTS=ON -DINSTALL_BASH_COMPLETION=ON -Dsnark_build_control=ON -Dsnark_build_graph=ON -Dsnark_build_graphics=ON -Dsnark_build_math_fft=ON -Dsnark_build_geometry=ON -Dsnark_build_point_cloud=ON -Dsnark_build_sensors_dc1394=ON -Dsnark_build_sensors_velodyne=ON -Dsnark_build_sensors_vimba=ON -Dsnark_build_web=ON -Dsnark_build_web_feeds=ON -Dsnark_build_imaging=ON -Dsnark_build_imaging_stereo=OFF"
 
   tasks:
-  - name: "install snark dependencies"
+  - name: "snark: dependencies: installing"
     become: true
     apt: pkg={{ item }} state=present update_cache=yes
     with_items:
@@ -28,32 +28,32 @@
       - python-opencv
       - libqt4-dev
 
-  - name: "vimba: download"
+  - name: "snark: dependencies: vimba: download"
     get_url:
         url: "https://cdn.alliedvision.com/fileadmin/content/software/software/Vimba/Vimba_v2.1.3_Linux.tgz"
         dest: "/tmp/Vimba_v2.1.3_Linux.tgz"
 
-  - name: "vimba: extract"
+  - name: "snark: dependencies: vimba: extract"
     unarchive:
         src: "/tmp/Vimba_v2.1.3_Linux.tgz"
         dest: "/opt"
     become: true
 
-  - name: "vimba: symlink 1/1"
+  - name: "snark: dependencies: vimba: library symlink"
     file:
         dest: /opt/vimba
         src: /opt/Vimba_2_1
         state: link
     become: true
     
-  - name: "vimba: symlink 2/2"
+  - name: "snark: dependencies: vimba: VimbaViever symlink"
     file:
         dest: /usr/local/bin/vimba-viewer
         src: /opt/vimba/Tools/Viewer/Bin/x86_64bit/VimbaViewer
         state: link
     become: true
 
-  - name: "vimba: install"
+  - name: "snark: dependencies: vimba: running install"
     command: chdir=/opt/vimba/VimbaGigETL ./Install.sh
     become: true
       
