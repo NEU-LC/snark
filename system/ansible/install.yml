@@ -1,0 +1,59 @@
+---
+# sample ansible-playbook script to install snark dependencies and build snark from source; include it as it is or copy to your playbook
+
+- hosts: localhost
+  connection: local
+  vars:
+  - build_j: 6
+  - base: "{{ ansible_env.HOME }}"
+  - snark_src_dir: "{{ base }}/src/snark"
+  - snark_build_dir: "{{ base }}/build/snark"
+  - snark_cmake_options: "-DBUILD_TESTS=ON -DINSTALL_TESTS=ON -DINSTALL_BASH_COMPLETION=ON -Dsnark_BUILD_XML=ON -Dsnark_BUILD_ZEROMQ=ON -Dsnark_INSTALL_WEB_SHELL=OFF"
+
+  tasks:
+  #- name: "install snark dependencies"
+    #become: true
+    #apt: pkg={{ item }} state=present update_cache=yes
+    #with_items:
+      #- curl
+
+  - name: "snark: make source directory at {{ base }}"
+    file: path={{ base }}/{{ item }} state=directory
+    with_items:
+        - src
+        - build
+      
+  - name: "snark: clone comma"
+    git:
+        repo: "https://gitlab.com/orthographic/comma.git"
+        dest: "{{ base }}/src/comma"
+        clone: yes
+        update: yes
+      
+  - name: "snark: install comma"
+    script: /usr/bin/ansible-playbook {{ base }}/src/comma/system/ansible/install.yml
+    
+  - name: "snark: clone"
+    git:
+        repo: "https://gitlab.com/orthographic/snark.git"
+        dest: "{{ base }}/src/snark"
+        clone: yes
+        update: yes
+        
+  - name: "snark: make build directory at {{ base }}"
+    file: dest="{{ snark_build_dir }}" state=directory
+
+  - name: "snark: cmake"
+    shell: "/usr/bin/cmake {{ snark_cmake_options }} {{ snark_src_dir }} chdir={{ snark_build_dir }}"
+
+  - name: "snark: make"
+    make:
+        chdir: "{{ snark_build_dir }}"
+        params:
+            MAKEFLAGS: "-j {{ build_j }}"
+
+  - name: "snark: install"
+    become: true
+    make:
+        chdir: "{{ snark_build_dir }}"
+        target: "install"
