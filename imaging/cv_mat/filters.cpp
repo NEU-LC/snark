@@ -1346,6 +1346,54 @@ struct timestamp_impl_ {
 };
 
 template < typename H >
+class save_impl_
+{
+    public:
+        typedef typename impl::filters< H >::value_type value_type;
+
+        save_impl_( const std::string& filename, bool no_header, const boost::optional< int >& quality, bool do_index ) : filename_( filename ), index_( 0 ), quality_( quality ), do_index_( do_index )
+        {
+            snark::cv_mat::serialization::options options;
+            options.no_header = no_header;
+            serialization_ = snark::cv_mat::serialization( options );
+            const auto& v = comma::split( filename, '.' );
+            if( v.size() == 1 ) { COMMA_THROW( comma::exception, "save: expected filename with image type extension, got: \"" << filename << "\"" ); }
+            basename_ = comma::join( v, v.size() - 1, '.' );
+            type_ = v.back();
+        }
+
+        value_type operator()( value_type m )
+        {
+            if( m.second.empty() ) { return m; }
+            std::vector< int > params;
+            if( quality_ ) { params = imwrite_params( type_, *quality_ ); }
+            std::string filename = do_index_ ? basename_ + '.' + boost::lexical_cast< std::string  >( index_ ) + '.' + type_ : filename_;
+            if( type_ == "bin" )
+            {
+                std::ofstream ofs( filename );
+                if( !ofs.is_open() ) { COMMA_THROW( comma::exception, "" ); }
+                serialization_.write( ofs, m );
+            }
+            else
+            {
+                encode_impl_check_type< H >( m, type_ );
+                cv::imwrite( filename, m.second, params );
+            }
+            ++index_;
+            return m;
+        }
+        
+    private:
+        snark::cv_mat::serialization serialization_;
+        std::string filename_;
+        std::string basename_;
+        std::string type_;
+        unsigned int index_;
+        boost::optional< int > quality_;
+        bool do_index_;
+};
+
+template < typename H >
 struct count_impl_
 {
     count_impl_() : count( 0 ) {}
@@ -2496,6 +2544,21 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         }
         return std::make_pair( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false );
     }
+    if( e[0] == "save" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename" ); }
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        boost::optional< int > quality;
+        bool do_index = false;
+        bool no_header = false;
+        for( unsigned int i = 1; i < s.size(); ++i )
+        {
+            if( s[i] == "index" ) { do_index = true; }
+            else if( s[i] == "no-header" ) { no_header = true; }
+            else { quality = boost::lexical_cast< int >( s[i] ); }
+        }
+        return std::make_pair( boost::bind< value_type_t >( save_impl_< H >( s[0], no_header, quality, do_index ), _1 ), false );
+    }
     if( e[0] == "gamma" ) { return std::make_pair( boost::bind< value_type_t >( gamma_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ), true ); }
     if( e[0] == "pow" || e[0] == "power" ) { return std::make_pair( boost::bind< value_type_t >( pow_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ), true ); }
     if( e[0] == "remove-mean")
@@ -3227,10 +3290,6 @@ static std::string usage_impl_()
     oss << "                     magnitude: output magnitude only" << std::endl;
     oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=2,5,0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
     oss << "                      cv-cat --file image.jpg \"split;crop-tile=2,5,0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
-    oss << "        file=<format>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
-    oss << "                                   <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
-    oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
-    oss << "                                   index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        grab=<format>[,<quality>]: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
@@ -3239,16 +3298,6 @@ static std::string usage_impl_()
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        kmeans=<k>[,<params>]: perform k-means clustering on image and replace each pixel with the mean of its cluster" << std::endl;
-    oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
-    oss << "                         supported file types by filename extension:" << std::endl;
-    oss << "                             - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
-    oss << "                             - otherwise whatever cv::imread supports" << std::endl;
-    oss << "        log=<options>: write images to files" << std::endl;
-    oss << "            log=<filename>: write images to a single file" << std::endl;
-    oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
-    oss << "            log=<dirname>,period:<seconds>: write images to files in a given directory, each file containing frames for a given period of time" << std::endl;
-    oss << "                                            e.g. for log=tmp,period:1.5 each file will contain 1.5 seconds worth of images" << std::endl;
-    oss << "            log=<options>,index: write index file, describing file number and offset of each frame" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
@@ -3317,6 +3366,26 @@ static std::string usage_impl_()
     oss << "                       therefore, unfortunately:" << std::endl;
     oss << "                           instead of: cv-cat 'view;do-something;view'" << std::endl;
     oss << "                                  use: cv-cat 'view;do-something' | cv-cat 'view'" << std::endl;
+    oss << std::endl;
+    oss << "    file read/write operations" << std::endl;
+    oss << "        file=<format>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "            <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
+    oss << "            <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
+    oss << "            index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
+    oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
+    oss << "            supported file types by filename extension:" << std::endl;
+    oss << "                - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
+    oss << "                - otherwise whatever cv::imread supports" << std::endl;
+    oss << "        log=<options>: write images to files" << std::endl;
+    oss << "            log=<filename>: write images to a single file" << std::endl;
+    oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
+    oss << "            log=<dirname>,period:<seconds>: write images to files in a given directory, each file containing frames for a given period of time" << std::endl;
+    oss << "                                            e.g. for log=tmp,period:1.5 each file will contain 1.5 seconds worth of images" << std::endl;
+    oss << "            log=<options>,index: write index file, describing file number and offset of each frame" << std::endl;
+    oss << "        save=<filename>[,<quality>][,index][,no-header]: write images to files with timestamp as name in the specified format. <filename>: <base>.<format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "            <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
+    oss << "            <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
+    oss << "            index: if present, for each image, files will be named as: <base>.<index>.<extension>, e.g: my-file.0.png, my-file.1.png, etc" << std::endl;
     oss << std::endl;
     oss << "    operations on channels" << std::endl;
     oss << "        clone-channels=<n>: take 1-channel image, output n-channel image, with each channel a copy of the input" << std::endl;
