@@ -63,14 +63,14 @@
         - src
         - build
       
-  - name: "snark: clone comma"
+  - name: "snark: dependencies: clone comma"
     git:
         repo: "https://gitlab.com/orthographic/comma.git"
         dest: "{{ base }}/src/comma"
         clone: yes
         update: yes
       
-  - name: "snark: install comma"
+  - name: "snark: dependencies: install comma"
     script: /usr/bin/ansible-playbook {{ base }}/src/comma/system/ansible/install.yml
     
   - name: "snark: clone"
