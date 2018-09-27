@@ -16,4 +16,4 @@ RUN mkdir /root/src -p \
         && cd /root/src \
         && git clone https://gitlab.com/orthographic/snark.git \
         && ansible-playbook /root/src/snark/system/ansible/install.yml; \
-        (( $? == 0 )) || { cat /root/build/snark/CMakeFiles/CMakeError.log; exit 1; }
+        bash -c "(( $? == 0 )) || { cat /root/build/snark/CMakeFiles/CMakeError.log; exit 1; }"
