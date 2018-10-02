@@ -13,6 +13,17 @@ cannot import rospy_message_converter module; usually you can install it as
     sudo apt-get install ros-kinetic-rospy-message-converter
 (use your ROS distro name in place of kinetic). If the module is not available
 in your package manager, build and install the module manually.
+
+on ubuntu 18.04 ros melodic may not have ros-kinetic-rospy-message-converter packaged yet
+you can install it from source as:
+> git clone https://github.com/baalexander/rospy_message_converter.git
+> cd rospy_message_converter
+> git checkout 0.4.0
+> python setup.bash build
+> python setup.bash install
+
+versions of ros-kinetic-rospy-message-converter have broken backward compatibility
+see the fix in this code, look for 0.4.0
 """
     raise ImportError( msg )
 
@@ -52,8 +63,9 @@ def _ros_message_to_csv_record( message, lengths={}, prefix='' ):
     # see Python programming FAQ why-do-lambdas-defined-in-a-loop-with-different-values-all-return-the-same-result
     # for the explanation of all the lambda signatures (and some function signatures in case of time)
     for field_name, field_type in message_fields:
-        fields.append( field_name )
         #if mc.is_ros_binary_type( field_type, None ): # use this code once commit e846f546 of 2017-05-06 is released
+        element_t = None
+        name = field_name
         if field_type in mc.ros_binary_types: # use this for tag 0.4.0
             ctor = lambda msg, field_name=field_name, field_type=field_type: mc._convert_to_ros_binary( field_type, getattr( msg, field_name ) )
             current_path = full_path( field_name )
@@ -86,10 +98,21 @@ def _ros_message_to_csv_record( message, lengths={}, prefix='' ):
         elif mc._is_field_type_an_array(field_type):
             ctor = lambda msg, field_name=field_name: getattr( msg, field_name )
             m = mc.list_brackets.search( field_type )
-            element_t = ( field_type[:m.start()], ( int(m.group()[1:-1]), ) )
+            size_string = m.group()[1:-1]
+            size = 0 if size_string == '' else int( size_string )
+            #if size > 0: # todo! quick and dirty; better semantics for empty values; print warning?
+            element_t = ( field_type[:m.start()], ( size, ) )
+            name = field_name
+            #comma = "" # quick and dirty
+            #for i in range( size ):
+            #    name = name + comma + field_name + '[' + i + ']'
+            #    comma = ','
+            #    name = name + comma + field_name + '[' + i + ']'
         else:
             element_t, element_ctor = _ros_message_to_csv_record( getattr( message, field_name ), lengths=lengths, prefix=full_path( field_name ) )
             ctor = lambda msg, field_name=field_name, element_ctor=element_ctor: element_ctor( getattr( msg, field_name ) )
+        # todo? don't output empty elements?
+        fields.append( name )
         ctors.append( ctor )
         types.append( element_t )
 
