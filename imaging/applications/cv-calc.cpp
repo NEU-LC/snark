@@ -529,13 +529,13 @@ struct shapes
             {
                 ext.min.x = std::max( int( ext.min.x ), 0 );
                 ext.min.y = std::max( int( ext.min.y ), 0 );
-                ext.max.x = std::min( int( ext.max.x ), cols );
-                ext.max.y = std::min( int( ext.max.y ), rows );
+                ext.max.x = std::min( int( ext.max.x ), cols - 1 );
+                ext.max.y = std::min( int( ext.max.y ), rows - 1 );
             }
             cv::Rect rect( ext.min.x, ext.min.y, ext.max.x - ext.min.x, ext.max.y - ext.min.y );
             if( 0 > rect.width || 0 > rect.height ) { return std::make_pair( status::error, cv::Rect() ); }
             if( 0 == rect.width || 0 == rect.height ) { return std::make_pair( status::ignore, cv::Rect() ); }
-            if( ext.min.x < 0 || ext.min.y < 0 || ext.max.x >= cols || ext.max.y >= cols ) { return std::make_pair( status::ignore, cv::Rect() ); }
+            if( ext.min.x < 0 || ext.min.y < 0 || ext.max.x >= cols || ext.max.y >= rows ) { return std::make_pair( status::ignore, cv::Rect() ); }
             return std::make_pair( status::success, rect );
         }
 
