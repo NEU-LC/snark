@@ -27,14 +27,14 @@ see the fix in this code, look for 0.4.0
 """
     raise ImportError( msg )
 
-def ros_message_to_csv_record( message, lengths={} ):
+def ros_message_to_csv_record( message, lengths={}, ignore_variable_size_arrays = True ):
     """
     Takes a ROS message and returns a comma.csv.struct (Python type) representing this message
     and a lambda function converting the message into an instance of the new comma.csv.struct
     Optional second argument allows to specify explicitly the length of variable-length values,
     such as strings. By default, take the lengths from the message itself.
 """
-    record_t, record_ctor = _ros_message_to_csv_record( message, lengths=lengths, prefix='' )
+    record_t, record_ctor = _ros_message_to_csv_record( message, lengths = lengths, ignore_variable_size_arrays = ignore_variable_size_arrays, prefix='' )
     for k, v in lengths.items():
         try:
             pos = record_t.fields.index( k )
@@ -48,7 +48,7 @@ def from_csv_supported_types( v ):
     microseconds = numpy.int64( v )
     return rospy.Time( microseconds / 1000000, ( microseconds % 1000000 ) * 1000 )
 
-def _ros_message_to_csv_record( message, lengths={}, prefix='' ):
+def _ros_message_to_csv_record( message, lengths={}, ignore_variable_size_arrays = True, prefix='' ):
     """
     Private implementation of ros_message_to_csv_record. Called recursively.
 """
@@ -64,8 +64,6 @@ def _ros_message_to_csv_record( message, lengths={}, prefix='' ):
     # for the explanation of all the lambda signatures (and some function signatures in case of time)
     for field_name, field_type in message_fields:
         #if mc.is_ros_binary_type( field_type, None ): # use this code once commit e846f546 of 2017-05-06 is released
-        element_t = None
-        name = field_name
         if field_type in mc.ros_binary_types: # use this for tag 0.4.0
             ctor = lambda msg, field_name=field_name, field_type=field_type: mc._convert_to_ros_binary( field_type, getattr( msg, field_name ) )
             current_path = full_path( field_name )
@@ -100,19 +98,13 @@ def _ros_message_to_csv_record( message, lengths={}, prefix='' ):
             m = mc.list_brackets.search( field_type )
             size_string = m.group()[1:-1]
             size = 0 if size_string == '' else int( size_string )
-            #if size > 0: # todo! quick and dirty; better semantics for empty values; print warning?
+            if size == 0 and ignore_variable_size_arrays: continue
             element_t = ( field_type[:m.start()], ( size, ) )
-            name = field_name
-            #comma = "" # quick and dirty
-            #for i in range( size ):
-            #    name = name + comma + field_name + '[' + i + ']'
-            #    comma = ','
-            #    name = name + comma + field_name + '[' + i + ']'
         else:
-            element_t, element_ctor = _ros_message_to_csv_record( getattr( message, field_name ), lengths=lengths, prefix=full_path( field_name ) )
+            element_t, element_ctor = _ros_message_to_csv_record( getattr( message, field_name ), lengths=lengths, ignore_variable_size_arrays = ignore_variable_size_arrays, prefix=full_path( field_name ) )
             ctor = lambda msg, field_name=field_name, element_ctor=element_ctor: element_ctor( getattr( msg, field_name ) )
         # todo? don't output empty elements?
-        fields.append( name )
+        fields.append( field_name )
         ctors.append( ctor )
         types.append( element_t )
 
