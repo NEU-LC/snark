@@ -53,7 +53,8 @@ def _ros_message_to_csv_record( message, lengths={}, prefix='' ):
     # for the explanation of all the lambda signatures (and some function signatures in case of time)
     for field_name, field_type in message_fields:
         fields.append( field_name )
-        if field_type in mc.ros_binary_types:
+        #if mc.is_ros_binary_type( field_type, None ): # use this code once commit e846f546 of 2017-05-06 is released
+        if field_type in mc.ros_binary_types: # use this for tag 0.4.0
             ctor = lambda msg, field_name=field_name, field_type=field_type: mc._convert_to_ros_binary( field_type, getattr( msg, field_name ) )
             current_path = full_path( field_name )
             try:

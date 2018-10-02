@@ -1,4 +1,8 @@
-set( ros_path "/opt/ros/kinetic" CACHE STRING "path to ros kinetic" )
+set( ros_path "/opt/ros/kinetic" CACHE STRING "path to ros, something like /opt/ros/kinetic" )
+if( NOT EXISTS "${ros_path}")
+    message( "${ros_path} not found; please specify ros path as something like /opt/ros/kinetic on your computer or set snark_build_ros to OFF" )
+    set( ros_path "NOT FOUND" CACHE STRING "path to ros, something like /opt/ros/kinetic" )
+endif( NOT EXISTS "${ros_path}")
 link_directories( "${ros_path}/lib" )
 include_directories( "${ros_path}/include" )
 
