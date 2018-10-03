@@ -33,7 +33,7 @@
 
   - pip:
         name: "pysolar"
-        executable: pip3
+        executable: pip
     become: true
 
   - name: "snark: dependencies: vimba: download"
