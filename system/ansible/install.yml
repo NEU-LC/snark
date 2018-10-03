@@ -32,7 +32,7 @@
 
   - name: "snark: dependencies: pysolar: install"
     become: true
-    pip:
+    pip3:
         name: pysolar
 
   - name: "snark: dependencies: vimba: download"
