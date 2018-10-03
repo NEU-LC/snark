@@ -20,4 +20,5 @@ You could build a docker image (which will run ansible install.yml):
 
 Not all snark components are turned install.yml, since you probably will not need them all.
 
-If you want to turn on/off various bits of snark, use snark/system/ansible/install.yml and snark/system/docker/Dockerfile to create your own playbook and docker image.
+If you want to turn on/off various bits of snark, use snark/system/ansible/install.yml
+and snark/system/docker/Dockerfile to create your own playbook and docker image.
