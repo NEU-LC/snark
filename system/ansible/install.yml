@@ -30,6 +30,11 @@
       - python-opencv
       - libqt4-dev
 
+  - name: "snark: dependencies: pysolar: install"
+    become: true
+    pip:
+        name: pysolar
+
   - name: "snark: dependencies: vimba: download"
     get_url:
         url: "https://cdn.alliedvision.com/fileadmin/content/software/software/Vimba/Vimba_v2.1.3_Linux.tgz"
