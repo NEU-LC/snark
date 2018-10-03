@@ -85,17 +85,17 @@
   - name: "snark: make build directory at {{ base }}"
     file: dest="{{ base }}/build/snark" state=directory
 
-  - name: "snark: cmake"
-    shell: "/usr/bin/cmake {{ snark_cmake_options }} {{ base }}/src/snark chdir={{ base }}/build/snark"
-
-  - name: "snark: make"
-    make:
-        chdir: "{{ base }}/build/snark"
-        params:
-            MAKEFLAGS: "-j {{ make_j }}"
-
-  - name: "snark: install"
-    become: true
-    make:
-        chdir: "{{ base }}/build/snark"
-        target: "install"
+#  - name: "snark: cmake"
+#    shell: "/usr/bin/cmake {{ snark_cmake_options }} {{ base }}/src/snark chdir={{ base }}/build/snark"
+#
+#  - name: "snark: make"
+#    make:
+#        chdir: "{{ base }}/build/snark"
+#        params:
+#            MAKEFLAGS: "-j {{ make_j }}"
+#
+#  - name: "snark: install"
+#    become: true
+#    make:
+#        chdir: "{{ base }}/build/snark"
+#        target: "install"
