@@ -30,10 +30,10 @@
       - python-opencv
       - libqt4-dev
 
-  - name: "snark: dependencies: pysolar: install"
+  - pip:
+        name: "pysolar"
+        executable: pip3
     become: true
-    pip3:
-        name: pysolar
 
   - name: "snark: dependencies: vimba: download"
     get_url:
