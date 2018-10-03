@@ -15,4 +15,4 @@ RUN mkdir /root/src -p \
 RUN mkdir /root/src -p \
         && cd /root/src \
         && git clone https://gitlab.com/orthographic/snark.git \
-        && ansible-playbook /root/src/snark/system/ansible/install.yml
+        && /bin/bash -c "ansible-playbook /root/src/snark/system/ansible/install.yml"
