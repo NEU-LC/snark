@@ -29,6 +29,7 @@
       - libassimp-dev
       - python-opencv
       - libqt4-dev
+      - python-pip3
 
   - pip:
         name: "pysolar"
