@@ -1429,6 +1429,25 @@ static typename impl::filters< H >::value_type invert_brightness_impl_( typename
 }
 
 template < typename H >
+class clahe_impl_
+{
+    public:
+        clahe_impl_( float clip_limit, const cv::Size& tile_size ) : clahe_( cv::createCLAHE( clip_limit, tile_size ) ) {}
+
+        typedef typename impl::filters< H >::value_type value_type;
+
+        value_type operator()( value_type m )
+        {
+            value_type n;
+            n.first = m.first;
+            clahe_->apply( m.second, n.second );
+            return n;
+        }
+    private:
+        cv::Ptr< cv::CLAHE > clahe_;
+};
+
+template < typename H >
 static typename impl::filters< H >::value_type equalize_histogram_impl_(typename impl::filters< H >::value_type m)
 {
     if( single_channel_type( m.second.type() ) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected currently supported types: ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); } //cv::equalizeHist only supports 8-bit single channel
@@ -2273,6 +2292,21 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         double threshold2 = boost::lexical_cast< double >( s[1] );
         int kernel_size = s.size() > 2 ? boost::lexical_cast< int >( s[2] ) : 3;
         return std::make_pair( boost::bind< value_type_t >( canny_impl_< H >(), _1, threshold1, threshold2, kernel_size ), true );
+    }
+    if( e[0] == "clahe" )
+    {
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        if( s.size() != 3 ) { COMMA_THROW( comma::exception, "clahe: please specify <clip_limit>,<tile_size_x>,<tile_size_y>" ); }
+        try
+        {
+            float clip_limit = boost::lexical_cast< float >( s[0] );
+            cv::Size tile_size( boost::lexical_cast< unsigned int >( s[1] ), boost::lexical_cast< unsigned int >( s[2] ) );
+            return std::make_pair( clahe_impl_< H >( clip_limit, tile_size ), true );
+        }
+        catch( boost::bad_lexical_cast& bc )
+        {
+            COMMA_THROW( comma::exception, "clahe=" << e[1] << ": failed to cast parameter: " << bc.what());
+        }
     }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
@@ -3259,6 +3293,7 @@ static std::string usage_impl_()
     oss << "        canny=<threshold1>,<threshold2>[,<kernel_size>]: finds edges using the Canny86 algorithm (see cv::Canny)" << std::endl;
     oss << "                                                         generates a mask with bright lines representing the edges on a black background, requires single-channel 8-bit input image" << std::endl;
     oss << "                threshold1, threshold2: the smaller value is used for edge linking, the larger value is used to find initial segments of strong edges" << std::endl;
+    oss << "        clahe=<clip_limit>,<tile_size_x>,<tile_size_y>: CLAHE, contrast limited adaptive histogram equalization (see opencv documentation for more)" << std::endl;
     oss << "                kernel_size: size of the extended Sobel kernel; it must be 1, 3, 5 or 7" << std::endl;
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
