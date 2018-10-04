@@ -3293,7 +3293,7 @@ static std::string usage_impl_()
     oss << "        canny=<threshold1>,<threshold2>[,<kernel_size>]: finds edges using the Canny86 algorithm (see cv::Canny)" << std::endl;
     oss << "                                                         generates a mask with bright lines representing the edges on a black background, requires single-channel 8-bit input image" << std::endl;
     oss << "                threshold1, threshold2: the smaller value is used for edge linking, the larger value is used to find initial segments of strong edges" << std::endl;
-    oss << "        clahe=<clip_limit>,<tile_size_x>,<tile_size_y>: CLAHE, contrast limited adaptive histogram equalization (see opencv documentation for more)" << std::endl;
+    oss << "        clahe=<clip_limit>,<tile_size_x>,<tile_size_y>: CLAHE, contrast limited adaptive histogram equalization (see opencv documentation for more), e.g. try clahe=2.0,8,8" << std::endl;
     oss << "                kernel_size: size of the extended Sobel kernel; it must be 1, 3, 5 or 7" << std::endl;
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
