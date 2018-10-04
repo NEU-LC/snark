@@ -42,8 +42,10 @@ IF(NOT CMAKE_BUILD_TYPE)
       FORCE)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
+find_package( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
+
 if( UNIX )
-    INCLUDE( ${comma_DIR}/check.c++.standard.cmake REQUIRED )
+    include( ${comma_DIR}/check.c++.standard.cmake REQUIRED )
 endif()
 
 IF(WIN32)
@@ -241,6 +243,7 @@ INCLUDE( CMakeDependentOption )
 OPTION( snark_build_actuators "build actuators" ON )
 OPTION( snark_build_batteries "build batteries" OFF )
 OPTION( snark_build_control "build control" OFF )
+OPTION( snark_build_geodesy_solar "build geodesy solar" OFF )
 OPTION( snark_build_graph "build graph" ON )
 OPTION( snark_build_graphics "build graphics" ON )
 OPTION( snark_build_imaging "build imaging" ON )
@@ -314,8 +317,6 @@ IF( snark_build_imaging )
         set( snark_build_imaging_stereo OFF )
     endif( ${OpenCV_VERSION_MAJOR} GREATER 2 )
 ENDIF( snark_build_imaging )
-
-FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
 
 if( snark_build_graphics )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_graphics_qt3d-d

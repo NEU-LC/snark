@@ -8,9 +8,7 @@
   vars:
   - make_j: 6
   - base: "{{ ansible_env.HOME }}"
-  - snark_cmake_options: "-DBUILD_TESTS=ON -DINSTALL_TESTS=ON -DINSTALL_BASH_COMPLETION=ON"
-  
-  #-Dsnark_build_control=ON -Dsnark_build_graph=ON -Dsnark_build_graphics=ON -Dsnark_build_math_fft=ON -Dsnark_build_geometry=ON -Dsnark_build_point_cloud=ON -Dsnark_build_sensors_dc1394=ON -Dsnark_build_sensors_velodyne=ON -Dsnark_build_sensors_vimba=ON -Dsnark_build_web=ON -Dsnark_build_web_feeds=ON -Dsnark_build_imaging=ON -Dsnark_build_imaging_stereo=OFF"
+  - snark_cmake_options: "-DBUILD_TESTS=ON -DINSTALL_TESTS=ON -DINSTALL_BASH_COMPLETION=ON Dsnark_build_control=ON -Dsnark_build_graph=ON -Dsnark_build_graphics=ON -Dsnark_build_math_fft=ON -Dsnark_build_geometry=ON -Dsnark_build_point_cloud=ON Dsnark_build_python=ON -Dsnark_build_sensors_dc1394=ON -Dsnark_build_sensors_velodyne=ON -Dsnark_build_sensors_vimba=ON -Dsnark_build_web=ON -Dsnark_build_web_feeds=ON -Dsnark_build_imaging=ON -Dsnark_build_imaging_stereo=OFF"
 
   tasks:
   - name: "snark: dependencies: installing"
@@ -18,6 +16,7 @@
     apt: pkg={{ item }} state=present update_cache=yes
     with_items:
       - libeigen3-dev
+      - libfftw3-dev
       - libtbb-dev
       - zlib1g-dev
       - libbz2-dev
@@ -27,8 +26,15 @@
       - qtbase5-dev 
       - qt5-default 
       - qt3d5-dev
+      - libassimp-dev
       - python-opencv
       - libqt4-dev
+      - python-pip
+
+  - pip:
+        name: "pysolar"
+        executable: pip
+    become: true
 
   - name: "snark: dependencies: vimba: download"
     get_url:
@@ -99,3 +105,18 @@
     make:
         chdir: "{{ base }}/build/snark"
         target: "install"
+   
+#  - name: "snark: cmake"
+#    shell: "/usr/bin/cmake {{ snark_cmake_options }} {{ base }}/src/snark chdir={{ base }}/build/snark"
+#
+#  - name: "snark: make"
+#    make:
+#        chdir: "{{ base }}/build/snark"
+#        params:
+#            MAKEFLAGS: "-j {{ make_j }}"
+#
+#  - name: "snark: install"
+#    become: true
+#    make:
+#        chdir: "{{ base }}/build/snark"
+#        target: "install"
