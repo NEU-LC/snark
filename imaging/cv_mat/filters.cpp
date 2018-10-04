@@ -1431,19 +1431,12 @@ static typename impl::filters< H >::value_type invert_brightness_impl_( typename
 template < typename H >
 static typename impl::filters< H >::value_type equalize_histogram_impl_(typename impl::filters< H >::value_type m)
 {
-    if( single_channel_type(m.second.type()) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
+    if( single_channel_type( m.second.type() ) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected currently supported types: ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); } //cv::equalizeHist only supports 8-bit single channel
     int chs=m.second.channels();
-    //split
     std::vector<cv::Mat> planes;
     for( int i=0; i<chs; i++ ) { planes.push_back(cv::Mat(1,1,single_channel_type(m.second.type()))); }
     cv::split(m.second,planes);
-    //equalize
-    for(int i=0;i<chs;i++)
-    {
-        //cv::equalizeHist only supports 8-bit single channel
-        cv::equalizeHist(planes[i],planes[i]);
-    }
-    //merge
+    for(int i=0;i<chs;i++) { cv::equalizeHist( planes[i],planes[i] ); }
     cv::merge(planes,m.second);
     return m;
 }
@@ -3283,7 +3276,7 @@ static std::string usage_impl_()
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
     oss << "        encode=<format>[,<quality>]: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "                                     <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
-    oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
+    oss << "        equalize-histogram: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
     oss << "            options: inverse: do inverse fft" << std::endl;
     oss << "                     real: output real part only" << std::endl;
