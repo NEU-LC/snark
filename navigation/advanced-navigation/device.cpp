@@ -120,6 +120,9 @@ void device::process()
                 case messages::orientation_standard_deviation::id:
                     handle(reinterpret_cast<messages::orientation_standard_deviation*>(&buf[head+5]));
                     break;
+                case messages::acknowledgement::id:
+                    handle(reinterpret_cast<messages::acknowledgement*>(&buf[head+5]));
+                    break;
                 default:
 //                     comma::verbose<<"unhandled msg id: "<<int(msg_header->id())<<" len "<<msg_header->len()<<" "<<head<<" "<<index<<std::endl;
                     break;
@@ -158,6 +161,13 @@ void device::send_ntrip(std::vector<char> buf)
         std::size_t written=stream->write(msg.data(),to_write);
         if(written!=to_write) { std::cerr<<"writing ntrip msg failed (expected "<<to_write<<" actual "<<written<<" )"<<std::endl; }
     }
+}
+
+void device::send(const messages::command command)
+{
+    std::size_t to_write=command.header.len()+messages::header::size;
+    std::size_t written=stream->write(command.data(),to_write);
+    if(written!=to_write) { std::cerr<<"writing command msg failed (expected "<<to_write<<" actual "<<written<<" id "<<(unsigned)command.header.id()<<")"<<std::endl; }
 }
 
     

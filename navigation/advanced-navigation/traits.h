@@ -146,5 +146,31 @@ struct traits< messages::satellites >
     }
 };
 
+template <>
+struct traits< messages::magnetic_calibration_configuration >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const messages::magnetic_calibration_configuration& p, Visitor& v )
+    {
+        v.apply("action", p.action());
+    }
+    template < typename Key, class Visitor > static void visit( const Key&, messages::magnetic_calibration_configuration& p, Visitor& v )
+    {
+        auto a=p.action();
+        v.apply("action", a);
+        p.action=a;
+    }
+};
+
+template <>
+struct traits< messages::magnetic_calibration_status >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, const messages::magnetic_calibration_status& p, Visitor& v )
+    {
+        v.apply("status", p.status());
+        v.apply("progress", p.progress());
+        v.apply("error", p.error());
+    }
+};
+
 } } // namespace comma { namespace visiting {
     

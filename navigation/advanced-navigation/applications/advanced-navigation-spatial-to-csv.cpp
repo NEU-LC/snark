@@ -53,18 +53,17 @@
 
 using namespace snark::navigation::advanced_navigation;
 
-comma::signal_flag signaled;
 const unsigned default_baud_rate=115200;
 const unsigned default_sleep=10000;
 bool flush=true;
 
 void usage(bool detail)
 {
-    std::cerr<<"    connect to Advanced Navigation Spatial device and output GPS data" << std::endl;
+    std::cerr<<"connect to Advanced Navigation Spatial device and output GPS data" << std::endl;
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " <what> [<options>]" << std::endl;
-    std::cerr<< "    <port>: serial port" << std::endl;
     std::cerr<< "    <what>: select data packet to output, default: navigation"<< std::endl;
+    std::cerr<< "    or " << comma::verbose.app_name() << "--send <command> --device <port> [<options>]"<< std::endl;
     std::cerr << std::endl;
     std::cerr<< "what: " << std::endl;
     std::cerr<< "    all: combines system-state, raw-sensors and standard deviations into one record" << std::endl;
@@ -72,13 +71,29 @@ void usage(bool detail)
     std::cerr<< "    navigation: navigation data from system state packet" << std::endl;
     std::cerr<< "    raw-sensors" << std::endl;
     std::cerr<< "    satellites" << std::endl;
+    std::cerr<< "    magnetic-calibration: magnetic calibration status packet"<<std::endl;
     std::cerr<< "    system-state: full system state packet"<< std::endl;
+    std::cerr << std::endl;
+    std::cerr<< "send: read commands from stdin and write command message to device; csv options apply to input stream" << std::endl;
+    std::cerr<< "    output: acknowledgement result value, use -v or --verbose to see human readable message on stderr"<< std::endl;
+    std::cerr<< "    commands:"<< std::endl;
+    std::cerr<< "        magnetic-calibration: send magnetic calibration command"<< std::endl;
+    std::cerr<< "            fields: action"<< std::endl;
+    std::cerr<< "            action"<< std::endl;
+    std::cerr<< "                        0 Cancel magnetic calibration"<< std::endl;
+    std::cerr<< "                        2 Start 2D magnetic calibration"<< std::endl;
+    std::cerr<< "                        3 Start 3D magnetic calibration"<< std::endl;
+    std::cerr<< "                        4 Reset calibration to defaults"<< std::endl;
+    std::cerr<< "                "<< std::endl;
+    std::cerr<< "    --input-fields: print input command fields and exit"<<std::endl;
+    std::cerr<< "    --input-format: print input command format and exit"<<std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --baud-rate,--baud=<n>: baud rate for connection, default "<< default_baud_rate << std::endl;
     std::cerr << "    --device=<filename>; filename for serial port e.g. /dev/usb/ttyUSB0" << std::endl;
     std::cerr << "    --flush: flush output stream after each write" << std::endl;
     std::cerr << "    --help,-h:       show help" << std::endl;
+    std::cerr << "    --magnetic-calibration-description: print magnetic calibration status description table and exit"<< std::endl;
     std::cerr << "    --ntrip=<stream>: read ntrip data from stream and send it to device" << std::endl;
     std::cerr << "        stream can be \"-\" for stdin; or a filename or \"tcp:<host>:<port>\" etc" << std::endl;
     std::cerr << "    --output-fields: print output fields and exit" << std::endl;
@@ -107,8 +122,8 @@ void usage(bool detail)
     std::cerr << std::endl;
     std::cerr << "examples:" << std::endl;
     std::cerr << "    sudo mknod /dev/usb/ttyUSB0 c 188 0" << std::endl;
-    std::cerr << "    "<<comma::verbose.app_name()<<" \"/dev/usb/ttyUSB0\" " << std::endl;
-    std::cerr << "    "<<comma::verbose.app_name()<<" \"/dev/usb/ttyUSB0\" --raw-sensors" << std::endl;
+    std::cerr << "    "<<comma::verbose.app_name()<<" all --device \"/dev/usb/ttyUSB0\" " << std::endl;
+    std::cerr << "    "<<comma::verbose.app_name()<<" raw-sensors --device \"/dev/usb/ttyUSB0\" " << std::endl;
     std::cerr << std::endl;
     std::cerr << "  see description of system_status values" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/usb/ttyUSB0 | " << comma::verbose.app_name() << " --fields system_status --status system_status" << std::endl;
@@ -118,6 +133,11 @@ void usage(bool detail)
     std::cerr << "    " << comma::verbose.app_name() << " system-state --device /dev/usb/ttyUSB0 | " << comma::verbose.app_name() << " --fields ,filter_status --status filter_status" << std::endl;
     std::cerr << "    echo 1029 | " << comma::verbose.app_name() << " --status filter_status" << std::endl;
     std::cerr << "    " << comma::verbose.app_name() << " --status-description filter_status" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "  send 2D magnetic calibration command and see status" << std::endl;
+    std::cerr << "    echo 1 | " << comma::verbose.app_name() << " --send magnetic-calibration --device /dev/usb/ttyUSB0 -v"<< std::endl;
+    std::cerr << "    "<< comma::verbose.app_name() << " magnetic-calibration --device /dev/usb/ttyUSB0"<< std::endl;
+    std::cerr << "    "<< comma::verbose.app_name() << " --magnetic-calibration-description"<<std::endl;
     std::cerr << std::endl;
 }
 
@@ -287,6 +307,7 @@ struct app_base : protected device
 {
     unsigned us;
     comma::io::select select;
+    comma::signal_flag signaled;
 public:
     app_base(const std::string& port,const comma::command_line_options& options) : 
         device(port,options.value<unsigned>("--baud-rate,--baud",default_baud_rate)),
@@ -514,10 +535,72 @@ struct full_description
 static void bash_completion( int argc, char** argv )
 {
     std::cout << "--help --verbose" <<
-        " all navigation raw-sensors system-state satellites" <<
-        " --output-fields --output-format --raw --stdin --status --status-description --json"<< 
+        " all magnetic-calibration navigation raw-sensors system-state satellites " <<
+        " --magnetic-calibration-description --output-fields --output-format --raw --send --stdin --status --status-description --json"<< 
         std::endl;
 }
+
+struct send_factory_i
+{
+    virtual ~send_factory_i() { }
+    virtual void input_fields()=0;
+    virtual void input_format()=0;
+    virtual unsigned run(const comma::command_line_options& options)=0;
+};
+
+template<typename T>
+struct send_factory_t : public send_factory_i
+{
+    typedef T type;
+    void input_fields() { T::input_fields(); }
+    void input_format() { T::input_format(); }
+    unsigned run(const comma::command_line_options& options)
+    {
+
+        T app(options);
+        return app.process();
+    }
+};
+
+template <typename T>
+struct send_app : protected device 
+{
+    comma::csv::input_stream<T> is;
+    unsigned result;
+    send_app(const comma::command_line_options& options) : 
+        device(options.value<std::string>("--device"),options.value<unsigned>("--baud-rate,--baud",default_baud_rate)),
+        is( std::cin, comma::csv::options( options ) )
+    {
+        
+    }
+    virtual void handle(const messages::acknowledgement* msg)
+    {
+        result=msg->result();
+        std::cout<<result<<std::endl;
+        comma::verbose<<messages::acknowledgement::result_msg(result)<<std::endl;
+    }
+    unsigned process()
+    {
+        while(std::cin.good())
+        {
+            const T* pt=is.read();
+            if(!pt) 
+                break;
+            messages::command cmd=pt->get_command();
+            send(cmd);
+        }
+        return result;
+    }
+    static void input_fields()
+    {
+        std::cout<<comma::join( comma::csv::names<T>(true), ',' ) << std::endl; 
+    }
+    static void input_format()    //const std::string& fields
+    {
+        //std::cout<<comma::csv::format::value<output_t>(fields, true) << std::endl;
+        std::cout<<comma::csv::format::value<T>() << std::endl;
+    }
+};
 
 tbb::concurrent_bounded_queue<ntrip::item_t> ntrip::queue;
 
@@ -557,6 +640,20 @@ int main( int argc, char** argv )
             else { COMMA_THROW( comma::exception, "invalid field for --status-description. expected 'system_status' or 'filter_status' or 'gnss_fix', got " << *opt_status_description ); }
             return 0;
         }
+        if(options.exists("--magnetic-calibration-description")) { messages::magnetic_calibration_status::status_description(std::cout); return 0; }
+        
+        auto opt_send=options.optional<std::string>("--send");
+        if(opt_send)
+        {
+            std::unique_ptr<send_factory_i> sf;
+            if(*opt_send == "magnetic-calibration") { sf.reset(new send_factory_t<send_app<messages::magnetic_calibration_configuration>>()); }
+            else { COMMA_THROW(comma::exception,"invalid send command: "<<*opt_send); }
+            
+            if(options.exists("--input-fields")) { sf->input_fields(); return 0; }
+            if(options.exists("--input-format")) { sf->input_format(); return 0; }
+            
+            return sf->run(options);
+        }
         
         std::unique_ptr<factory_i> factory;
         if(options.exists("--raw"))
@@ -571,6 +668,7 @@ int main( int argc, char** argv )
             else if(unnamed[0]=="raw-sensors") { factory.reset(new factory_t<app_packet<messages::raw_sensors>>()); }
             else if(unnamed[0]=="system-state") { factory.reset(new factory_t<app_packet<messages::system_state>>()); }
             else if(unnamed[0]=="satellites") { factory.reset(new factory_t<app_packet<messages::satellites>>()); }
+            else if(unnamed[0]=="magnetic-calibration") { factory.reset(new factory_t<app_packet<messages::magnetic_calibration_status>>()); }
             else { COMMA_THROW( comma::exception,"expected <what>: navigation | raw-sensors | system-state | all; got "<<unnamed[0]);}
         }
 

@@ -53,6 +53,7 @@
 
 #if Qt3D_VERSION==2
 #include "view_points/traits.h"
+#include "../qt5.5/qopengl/labels.h"
 #endif
 #include "view_points/types.h"
 
@@ -723,7 +724,9 @@ int main( int argc, char** argv )
                                                                                  , options.exists( "--output-camera-config,--output-camera" ) ));
         
 #elif Qt3D_VERSION==2
-
+        auto font_size_option=options.optional<int>("--font-size");
+        if(font_size_option)
+            snark::graphics::qopengl::text_label::font_size=*font_size_option;
         double scene_radius=options.value<double>("--scene-radius,--radius",10);
         QVector3D scene_center(0,0,0);
         boost::optional< std::string > s = options.optional< std::string >("--scene-center,--center");
