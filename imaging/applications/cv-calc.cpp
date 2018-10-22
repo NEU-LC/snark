@@ -1267,6 +1267,12 @@ int main( int ac, char** av )
                 if( threshold )
                 {
                     cv::threshold(p.second, mask, *threshold, 255, cv::THRESH_BINARY);
+                    if(mask.type()!=CV_8U)
+                    {
+                        cv::Mat swap;
+                        mask.convertTo(swap,CV_8U);
+                        mask=swap;
+                    }
                     count = cv::countNonZero(mask);
                 }
 
