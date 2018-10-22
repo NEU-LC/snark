@@ -235,13 +235,13 @@ int main( int ac, char **av )
                 , snark::detail::MapGrid::MGA );
             std::string to = options.value< std::string >( "--to" );
             csv.full_xpath = false; // quick and dirty
+            comma::csv::options ocsv;
+            ocsv.flush = options.exists( "--flush" );
             if( to == "north-east-down" || to == "ned" )
             {
                 if( csv.fields.empty() ) { csv.fields = "latitude,longitude,z"; }
                 comma::csv::input_stream< convert_::coordinates_ > is( std::cin, csv );
-                comma::csv::options ocsv;
                 if( csv.binary() ) { ocsv.format( comma::csv::format::value< convert_::ned_ >() ); }
-                ocsv.flush = options.exists( "--flush" );
                 comma::csv::output_stream< convert_::ned_ > os( std::cout, ocsv );
                 comma::csv::tied< convert_::coordinates_, convert_::ned_ > tied( is, os );
                 while ( is.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -267,7 +267,8 @@ int main( int ac, char **av )
                 convert_::ned_ default_input;
                 if( !csv.has_field( "zone" ) ) { default_input.zone = options.value< unsigned int >( "--zone" ); }
                 comma::csv::input_stream< convert_::ned_ > is( std::cin, csv, default_input );
-                comma::csv::output_stream< convert_::coordinates_ > os( std::cout, csv.binary() );
+                if( csv.binary() ) { ocsv.format( comma::csv::format::value< convert_::coordinates_ >() ); }
+                comma::csv::output_stream< convert_::coordinates_ > os( std::cout, ocsv );
                 comma::csv::tied< convert_::ned_, convert_::coordinates_ > tied( is, os );
                 while ( is.ready() || ( std::cin.good() && !std::cin.eof() ) )
                 {
