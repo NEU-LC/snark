@@ -1273,11 +1273,15 @@ int main( int ac, char** av )
                 if( threshold )
                 {
                     cv::threshold(p.second, mask, *threshold, 255, cv::THRESH_BINARY);
+                    if( mask.type() != CV_8U )
+                    {
+                        cv::Mat swap;
+                        mask.convertTo( swap, CV_8U );
+                        mask=swap;
+                    }
                     count = cv::countNonZero(mask);
                 }
-
                 cv::Scalar mean = cv::mean( p.second, !threshold ? cv::noArray() : mask );
-
                 std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
                 for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); }
                 std::cout.flush();
