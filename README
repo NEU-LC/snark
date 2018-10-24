@@ -5,7 +5,7 @@ INSTALLATION
 Currently only building from source using CMake is available. (After building
 from source, you can generate deb package using CPack, though.)
 
-Quickest way:
+Quickest way (works on Ubuntu 18.04 or higher with ansible playbook version 2.5 or higher)
 
 > mkdir ~/src
 > cd ~/src
