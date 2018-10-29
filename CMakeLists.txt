@@ -426,7 +426,9 @@ SET( snark_PACKAGE_CMAKEFILES ${snark_PACKAGE_CMAKEFILES} ${PROJECT_BINARY_DIR}/
 INSTALL( FILES ${snark_PACKAGE_CMAKEFILES}
          DESTINATION ${snark_INSTALL_PACKAGE_DIR} )
 
-add_subdirectory( actuators )
+if( snark_build_actuators )
+    add_subdirectory( actuators )
+endif()
 
 IF( snark_build_graphics )
     add_subdirectory( graphics )
