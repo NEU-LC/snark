@@ -41,7 +41,7 @@ void check_ocular_error(::ocular::ocular_error_t status, const std::string& msg=
     }
 }
 
-device::device(std::string ip,bool home) : ::ocular::RobotEyeGrabber(ip)
+device::device( std::string ip, bool home ) : ::ocular::RobotEye( ip )
 {
     if(GetSerial(serial)) { check_ocular_error(GetLastBlockingError(), "cannot connect to ocular (GetSerial)"); }
     comma::verbose<< "connected to ocular ( serial number: " << serial <<")"<< std::endl;
@@ -65,7 +65,7 @@ scanner::~scanner()
     dev.Stop();
 }
 //***************************************************
-listener::listener(device& dev,bool highspeed_mode) : dev(dev), block(0)
+listener::listener( device& dev, bool highspeed_mode ) : dev(dev), block(0), target_port(4365)
 {
     unsigned short freq;
     unsigned short averaging;
@@ -83,7 +83,7 @@ listener::listener(device& dev,bool highspeed_mode) : dev(dev), block(0)
         averaging = 1;      // Up to 10-shot averaging available in standard mode.
         intensity = true;   // Intensity data available in standard mode.
     }
-    check_ocular_error(dev.StartLaser(freq,averaging,intensity,this));
+    check_ocular_error( dev.StartLaser( freq, averaging, intensity, target_port ));
 }
 listener::~listener()
 {

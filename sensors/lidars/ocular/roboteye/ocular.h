@@ -29,12 +29,8 @@
 
 #pragma once
 
+#include <RobotEye.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <Eigen/Core>
-#include <RobotEyeCallbacks.h>
-#include <RobotEyeGrabber.h>
-#include <memory>
-
 
 namespace snark { namespace ocular { namespace roboteye { 
     
@@ -58,7 +54,7 @@ struct region_scan
     unsigned short scan_lines;  //number of lines
 };
 
-class device : protected ::ocular::RobotEyeGrabber
+class device : protected ::ocular::RobotEye
 {
 public:
     std::string serial;
@@ -88,6 +84,7 @@ public:
 protected:
     device& dev;
     uint32_t block;
+    unsigned short target_port;
     void on_frame(const std::vector<point_t>& points) { }
     void LaserDataCallback(std::vector<::ocular::ocular_rbe_obs_t> observations, unsigned int timestamp);
 };

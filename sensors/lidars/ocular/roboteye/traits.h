@@ -44,14 +44,20 @@ template <> struct traits< ocular::ocular_rbe_obs_t >
         v.apply( "azimuth", p.azimuth );
         v.apply( "elevation", p.elevation );
         v.apply( "range", p.range );
-        v.apply( "intensity", p.intensity );
+        //v.apply( "timestamp", p.timestamp );
+        v.apply( "amplitude", p.amplitude );
+        v.apply( "reflectance", p.reflectance );
+        v.apply( "pulse_shape_deviation", p.pulseShapeDeviation );
     }
     template< typename K, typename V > static void visit( const K& k, const ocular::ocular_rbe_obs_t& p, V& v )
     {
         v.apply( "azimuth", p.azimuth );
         v.apply( "elevation", p.elevation );
         v.apply( "range", p.range );
-        v.apply( "intensity", p.intensity );
+        //v.apply( "timestamp", p.timestamp );
+        v.apply( "amplitude", p.amplitude );
+        v.apply( "reflectance", p.reflectance );
+        v.apply( "pulse_shape_deviation", p.pulseShapeDeviation );
     }
 };
 

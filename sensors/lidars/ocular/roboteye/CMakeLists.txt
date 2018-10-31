@@ -1,10 +1,12 @@
 set( PROJECT "ocular" )
 set( TARGET_NAME snark_${PROJECT} )
+
+if( BUILD_SHARED_LIBS )
+    message( FATAL_ERROR "\n${PROJECT} only builds against static libraries\ndisable BUILD_SHARED_LIBS or disable snark_build_sensors_ocular" )
+endif()
+
 file( GLOB includes *.h)
 file( GLOB sources *.cpp )
-
-# doesn't work: can't link with comma or boost
-# set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0" )
 
 ## from ocular example
 # Here you can point to a specific RobotEye library location if needed

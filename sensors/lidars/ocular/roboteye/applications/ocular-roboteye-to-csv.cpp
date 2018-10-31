@@ -31,13 +31,7 @@
 
 #include "../ocular.h"
 #include "../traits.h"
-#include <comma/application/command_line_options.h>
-#include <comma/application/verbose.h>
-#include <comma/csv/options.h>
-#include <comma/csv/ascii.h>
-#include <iostream>
 #include <comma/csv/stream.h>
-#include <comma/csv/ascii.h>
 
 using namespace snark::ocular::roboteye;
 
