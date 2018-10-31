@@ -19,7 +19,6 @@ find_package( RobotEye REQUIRED )
 # PUREGEV_ROOT is set by RobotEyeConfig.cmake
 set( OCULAR_ROBOTEYE_GENICAM_DIR ${PUREGEV_ROOT}/lib/genicam CACHE PATH "ocular roboteye genicam directory" )
 
-message( STATUS "RobotEye_LIBRARIES: " ${RobotEye_LIBRARIES} )
 message( STATUS "RobotEye_INCLUDE_DIR: " ${RobotEye_INCLUDE_DIR} )
 
 include_directories( ${RobotEye_INCLUDE_DIR} )
