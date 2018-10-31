@@ -1,8 +1,8 @@
-set( PROJECT "ocular" )
+set( PROJECT "roboteye" )
 set( TARGET_NAME snark_${PROJECT} )
 
 if( BUILD_SHARED_LIBS )
-    message( FATAL_ERROR "\n${PROJECT} only builds against static libraries\ndisable BUILD_SHARED_LIBS or disable snark_build_sensors_ocular" )
+    message( FATAL_ERROR "\n${PROJECT} only builds against static libraries\ndisable BUILD_SHARED_LIBS or disable snark_build_sensors_roboteye" )
 endif()
 
 file( GLOB includes *.h)

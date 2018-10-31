@@ -264,7 +264,7 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_gobi "build gobi components" OFF "sn
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_hokuyo "build hokuyo components" ON "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_jai "build jai components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_kinect "build kinect components" OFF "snark_build_sensors" OFF )
-cmake_dependent_option( snark_build_sensors_ocular "build Ocular components" OFF "snark_build_sensors" OFF )
+cmake_dependent_option( snark_build_sensors_roboteye "build RobotEye components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_realsense "build realsense components" OFF "snark_build_sensors" OFF )
 cmake_dependent_option( snark_build_sensors_realsense2 "build realsense2 components" OFF "snark_build_sensors" OFF )
 cmake_dependent_option( snark_build_sensors_robosense "build robosense components" OFF "snark_build_sensors" OFF )

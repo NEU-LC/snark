@@ -32,8 +32,8 @@
 #pragma once
 
 #include "ocular.h"
+#include "../../visiting/eigen.h"
 #include <comma/csv/traits.h>
-#include "../../../../visiting/eigen.h"
 
 namespace comma { namespace visiting {
    
