@@ -27,15 +27,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#define _GLIBCXX_USE_CXX11_ABI 0
-
+#include <cmath>
+#include <csignal>
 #include <iostream>
 #include <sstream>
+#include <string.h>
 #include <unistd.h>
-#include <RobotEyeCallbacks.h>
-#include <RobotEyeGrabber.h>
-#include <csignal>
-#include <cmath>
+#include <RobotEye.h>
 
 std::string app_name="ocular-roboteye-grab";
 
@@ -101,8 +99,8 @@ struct region_scan
 
 struct scanner
 {
-    ocular::RobotEyeGrabber& grabber;
-    scanner(ocular::RobotEyeGrabber& grabber,const region_scan& rs) : grabber(grabber)
+    ocular::RobotEye& grabber;
+    scanner(ocular::RobotEye& grabber,const region_scan& rs) : grabber(grabber)
     {
         check_ocular_error(grabber.StartRegionScan(rs.azimuth_rate,rs.azimuth_min,rs.azimuth_max,rs.elevation_min,rs.elevation_max,rs.scan_lines),"StartRegionScan");
         std::cerr<<"started region scan"<<std::endl;
@@ -122,25 +120,31 @@ struct output
     double bearing;
     double elevation;
     unsigned int timestamp;
-    unsigned short int intensity;
+    double amplitude;
+    double reflectance;
+    double pulse_shape_deviation;
     unsigned short frame;
     output() { }
-    output(unsigned int timestamp,const ocular::ocular_rbe_obs_t& p,unsigned short frame=0) : 
-        range(p.range),
-        bearing(deg2rad(p.azimuth)),
-        elevation(deg2rad(p.elevation)),
-        timestamp(timestamp),
-        intensity(p.intensity),
-        frame(frame)
+    output( unsigned int timestamp, const ocular::ocular_rbe_obs_t& p, unsigned short frame=0 )
+        : range( p.range )
+        , bearing( deg2rad( p.azimuth ))
+        , elevation( deg2rad( p.elevation ))
+        , timestamp( timestamp )
+        , amplitude( p.amplitude )
+        , reflectance( p.reflectance )
+        , pulse_shape_deviation( p.pulseShapeDeviation )
+        , frame( frame )
     {
     }
 };
 
 struct writer : public ocular::RobotEyeLaserDataCallbackClass
 {
-    ocular::RobotEyeGrabber& grabber;
+    ocular::RobotEye& grabber;
     unsigned short frame;
-    writer(ocular::RobotEyeGrabber& grabber,bool highspeed_mode) : grabber(grabber), frame(0)
+    unsigned int target_port;
+
+    writer(ocular::RobotEye& grabber,bool highspeed_mode) : grabber(grabber), frame(0), target_port(4365)
     {
         unsigned short freq;
         unsigned short averaging;
@@ -158,7 +162,7 @@ struct writer : public ocular::RobotEyeLaserDataCallbackClass
             averaging = 1;      // Up to 10-shot averaging available in standard mode.
             intensity = true;   // Intensity data available in standard mode.
         }
-        check_ocular_error(grabber.StartLaser(freq,averaging,intensity,this));
+        check_ocular_error( grabber.StartLaser( freq, averaging, intensity, target_port ));
         std::cerr<<"started laser "<<freq<<" "<<averaging<<" "<<intensity<<std::endl;
     }
     ~writer()
@@ -215,7 +219,7 @@ bool signaled::is_set=false;
 
 int main( int argc, char** argv )
 {
-    if(argc==1||(argc==2&&argv[1]=="-h")) { usage(); return 1; }
+    if( argc == 1 || ( argc == 2 && strncmp( argv[1], "-h", 2 ) == 0)) { usage(); return 1; }
     try
     {
         if(argc!=9) { throw std::runtime_error("expected 8 arguements"); }
@@ -235,7 +239,7 @@ int main( int argc, char** argv )
         
         signaled sig;
 
-        ocular::RobotEyeGrabber grabber(ip);
+        ocular::RobotEye grabber(ip);
         std::string serial;
         check_ocular_error(grabber.GetSerial(serial),"cannot connect to ocular (GetSerial)");
         std::cerr<< "connected to ocular, serial number: " << serial <<std::endl;

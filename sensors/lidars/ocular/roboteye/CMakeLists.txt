@@ -44,4 +44,5 @@ install(
     ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
 )
 
-add_subdirectory(applications)
+add_subdirectory( applications )
+add_subdirectory( examples )

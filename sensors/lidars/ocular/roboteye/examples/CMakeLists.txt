@@ -1,26 +1,26 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
-PROJECT(ocular)
+# CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+# PROJECT(ocular)
 
-# Here you can point to a specific RobotEye library location if needed
-# This directory must contain the RobotEyeConfig.cmake file
-# Just set RobotEye_DIR to the desired location before calling FIND_PACKAGE
-IF(WIN32)
-  if(${CMAKE_CL_64})
-    MESSAGE(STATUS "Architecture: x64")
-    set(RobotEye_DIR "C:/Program Files/RobotEye/cmake")
-  else()
-    MESSAGE(STATUS "Architecture: x86")
-    set(RobotEye_DIR "C:/Program Files (x86)/RobotEye/cmake")
-  endif(${CMAKE_CL_64})
-else()
-    set(RobotEye_DIR "/opt/RobotEye/cmake")
-endif(WIN32)
-FIND_PACKAGE( RobotEye REQUIRED )
+# # Here you can point to a specific RobotEye library location if needed
+# # This directory must contain the RobotEyeConfig.cmake file
+# # Just set RobotEye_DIR to the desired location before calling FIND_PACKAGE
+# IF(WIN32)
+#   if(${CMAKE_CL_64})
+#     MESSAGE(STATUS "Architecture: x64")
+#     set(RobotEye_DIR "C:/Program Files/RobotEye/cmake")
+#   else()
+#     MESSAGE(STATUS "Architecture: x86")
+#     set(RobotEye_DIR "C:/Program Files (x86)/RobotEye/cmake")
+#   endif(${CMAKE_CL_64})
+# else()
+#     set(RobotEye_DIR "/opt/RobotEye/cmake")
+# endif(WIN32)
+# FIND_PACKAGE( RobotEye REQUIRED )
 
-MESSAGE( STATUS "RobotEye_LIBRARIES: " ${RobotEye_LIBRARIES} )
-MESSAGE( STATUS "RobotEye_INCLUDE_DIR: " ${RobotEye_INCLUDE_DIR} )
+# MESSAGE( STATUS "RobotEye_LIBRARIES: " ${RobotEye_LIBRARIES} )
+# MESSAGE( STATUS "RobotEye_INCLUDE_DIR: " ${RobotEye_INCLUDE_DIR} )
 
-INCLUDE_DIRECTORIES( ${RobotEye_INCLUDE_DIR} )
+# INCLUDE_DIRECTORIES( ${RobotEye_INCLUDE_DIR} )
 
 # FILE(GLOB ALL_CPP_SRCS *.cpp)
 # FILE(GLOB ALL_H_SRCS *.h)
