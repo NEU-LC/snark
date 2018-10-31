@@ -1,6 +1,10 @@
 set( PROJECT "roboteye" )
 set( TARGET_NAME snark_${PROJECT} )
 
+if( WIN32 )
+    message( FATAL "not implemented" )
+endif()
+
 if( BUILD_SHARED_LIBS )
     message( FATAL_ERROR "\n${PROJECT} only builds against static libraries\ndisable BUILD_SHARED_LIBS or disable snark_build_sensors_roboteye" )
 endif()
@@ -8,30 +12,17 @@ endif()
 file( GLOB includes *.h)
 file( GLOB sources *.cpp )
 
-## from ocular example
-# Here you can point to a specific RobotEye library location if needed
-# This directory must contain the RobotEyeConfig.cmake file
-# Just set RobotEye_DIR to the desired location before calling #FIND_PACKAGE
-# IF(WIN32)
-#   if(${CMAKE_CL_64})
-# #     MESSAGE(STATUS "Architecture: x64")
-#     set(RobotEye_DIR "C:/Program Files/RobotEye/cmake")
-#   else()
-# #     MESSAGE(STATUS "Architecture: x86")
-#     set(RobotEye_DIR "C:/Program Files (x86)/RobotEye/cmake")
-#   endif(${CMAKE_CL_64})
-# else()
-#     set(RobotEye_DIR "/opt/RobotEye/cmake")
-# endif(WIN32)
+set( RobotEye_DIR "/opt/RobotEye/cmake" CACHE PATH "ocular roboteye cmake directory" )
+find_package( RobotEye REQUIRED )
 
-set( RobotEye_DIR "/opt/RobotEye/cmake" CACHE PATH "Ocular RobotEye cmake directory" )
-FIND_PACKAGE( RobotEye REQUIRED )
+# The RobotEye library requires the Pleora ebus SDK
+# PUREGEV_ROOT is set by RobotEyeConfig.cmake
+set( OCULAR_ROBOTEYE_GENICAM_DIR ${PUREGEV_ROOT}/lib/genicam CACHE PATH "ocular roboteye genicam directory" )
 
-MESSAGE( STATUS "RobotEye_LIBRARIES: " ${RobotEye_LIBRARIES} )
-MESSAGE( STATUS "RobotEye_INCLUDE_DIR: " ${RobotEye_INCLUDE_DIR} )
+message( STATUS "RobotEye_LIBRARIES: " ${RobotEye_LIBRARIES} )
+message( STATUS "RobotEye_INCLUDE_DIR: " ${RobotEye_INCLUDE_DIR} )
 
-INCLUDE_DIRECTORIES( ${RobotEye_INCLUDE_DIR} )
-##
+include_directories( ${RobotEye_INCLUDE_DIR} )
 
 source_group( ${TARGET_NAME} FILES ${sources} ${includes} )
 add_library( ${TARGET_NAME} ${sources} ${includes} )

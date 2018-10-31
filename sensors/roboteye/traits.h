@@ -76,6 +76,22 @@ template <> struct traits< snark::ocular::roboteye::point_t >
         v.apply( "point", p.point );
     }
 };
+
+template <> struct traits< snark::ocular::roboteye::position_t >
+{
+    template < typename K, typename V > static void visit( const K& key, snark::ocular::roboteye::position_t& t, V& v )
+    {
+        v.apply( "pan", t.pan );
+        v.apply( "tilt", t.tilt );
+    }
+
+    template < typename K, typename V > static void visit( const K& key, const snark::ocular::roboteye::position_t& t, V& v )
+    {
+        v.apply( "pan", t.pan );
+        v.apply( "tilt", t.tilt );
+    }
+};
+
 template <> struct traits< snark::ocular::roboteye::region_scan >
 {
     template< typename K, typename V > static void visit( const K& k, snark::ocular::roboteye::region_scan& p, V& v )
@@ -99,4 +115,3 @@ template <> struct traits< snark::ocular::roboteye::region_scan >
 };
 
 } } // namespace comma { namespace visiting {
-    

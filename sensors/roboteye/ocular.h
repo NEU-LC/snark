@@ -33,6 +33,14 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace snark { namespace ocular { namespace roboteye { 
+
+struct position_t
+{
+    double pan;
+    double tilt;
+    position_t() : pan( 0 ), tilt( 0 ) {}
+    position_t( double pan, double tilt ) : pan( pan ), tilt( tilt ) {}
+};
     
 /// lidar point for ocular
 struct point_t
