@@ -29,14 +29,18 @@
 
 /// @author Dave Jennings
 
-#include "../ocular.h"
+#include "../ocular-thermal.h"
 #include "../traits.h"
 #include <Image.h>
 #include <RobotEyeThermal.h>
 #include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
+#include <comma/io/select.h>
+#include <boost/thread.hpp>
+#include <opencv2/core/core.hpp>
 
 const unsigned int default_image_mode = 0;
+const double default_max_speed = 10;    // 10Hz = 36000 deg/second
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -57,15 +61,19 @@ void usage( bool )
     std::cerr << "\ncapture images from Ocular RobotEye thermal camera";
     std::cerr << "\noutput to stdout as serialized cv::Mat";
     std::cerr << "\n";
-    std::cerr << "\nusage: cat <x,y> | " << comma::verbose.app_name() << " <address> [<options>]";
+    std::cerr << "\nusage: cat <pan,tilt> | " << comma::verbose.app_name() << " <address> [<options>]";
     std::cerr << "\n    where <address> is ip address of ocular roboteye device";
+    std::cerr << "\n          <pan,tilt> is pan and tilt in radians";
     std::cerr << "\n";
     std::cerr << "\noptions";
-    std::cerr << "\n    --help,-h:    show help";
-    std::cerr << "\n    --verbose,-v: show detailed messages";
+    std::cerr << "\n    --help,-h:      show help";
+    std::cerr << "\n    --verbose,-v:   show detailed messages";
+    std::cerr << "\n    --home:         home at the start";
+    std::cerr << "\n    --image-mode=[<0-3>]: default=" << default_image_mode << "; set image mode";
     std::cerr << "\n    --input-fields: print input fields and exit";
     std::cerr << "\n    --input-format: print input format and exit";
-    std::cerr << "\n    --image-mode=[<0-3>]: default=" << default_image_mode << "; set image mode";
+    std::cerr << "\n    --speed=<Hz>:   default=" << default_max_speed << "; max speed (rotations/s)";
+    std::cerr << "\n    --track         track input positions";
     std::cerr << "\n";
     std::cerr << "\n    where image mode is one of: 0 for None";
     std::cerr << "\n                                1 for De-rorate";
@@ -76,74 +84,161 @@ void usage( bool )
     std::cerr << "\n$ export GENICAM_ROOT_V3_0=" << STRINGIZED( OCULAR_ROBOTEYE_GENICAM_DIR );
     std::cerr << "\n";
     std::cerr << "\nexample:";
-    std::cerr << "\n    echo 0,0 | " << comma::verbose.app_name() << " 169.254.111.102 > frames.bin";
+    std::cerr << "\n    io-console | control-from-console pantilt -a | " << comma::verbose.app_name() << " 192.168.1.150";
     std::cerr << "\n" << std::endl;
 }
 
 template< typename T > std::string field_names( bool full_xpath = false ) { return comma::join( comma::csv::names< T >( full_xpath ), ',' ); }
 template< typename T > std::string format( bool full_xpath = false, const std::string& fields = "" ) { return comma::csv::format::value< T >( !fields.empty() ? fields : field_names< T >( full_xpath ), full_xpath ); }
 
+using namespace snark::ocular::roboteye;
+
+typedef std::pair< boost::posix_time::ptime, cv::Mat > timestamped_frame;
+
+timestamped_frame image_to_timestamped_frame( const ::ocular::Image& image
+                                            , const boost::posix_time::ptime& current_time )
+{
+    cv::Mat cv_mat( image.GetHeight()
+                  , image.GetWidth()
+                  , pixel_type_to_opencv( image.GetPixelType() )
+                  , (void*)image.GetDataPointer() );
+
+    return std::make_pair( current_time, cv_mat );
+}
+
+void capture_frame( ocular::RobotEyeThermal& roboteye_thermal
+                  , ocular::Image_Modes_t image_mode )
+{
+    static unsigned int frame_num = 0;
+    ::ocular::Image image;
+    roboteye_thermal.GetImage( image, image_mode );
+    comma::verbose << "acquiring frame " << frame_num << std::endl;
+
+    //boost::posix_time::ptime current_time = boost::posix_time::microsec_clock::universal_time();
+
+    const std::string file_name = "./frame" + std::to_string( frame_num ) + ".png";
+    if( image.SaveFrame( file_name )) { comma::verbose << "frame " << frame_num << " saved successfully." << std::endl; }
+    frame_num++;
+}
+
+void move( ocular::RobotEye& roboteye
+         , const position_t& position
+         , double max_speed
+         , bool track )
+{
+    double pan_degrees = position.pan / M_PI * 180;
+    double tilt_degrees = position.tilt / M_PI * 180;
+    comma::verbose << "moving to " << pan_degrees << "," << tilt_degrees << " degrees" << std::endl;
+
+    if( track )
+    {
+        check_error( roboteye.StopStabilisation(), "StopStabilisation" );
+        check_error( roboteye.SetApertureAngles( pan_degrees, tilt_degrees, max_speed ), "SetApertureAngles" );
+        check_error( roboteye.StartStabilisation(), "StartStabilisation" );
+        double roll = 0;
+        check_error( roboteye.GetStabilisedRoll( roll ), "GetStabilisedRoll" );
+    }
+    else
+    {
+        check_error( roboteye.SetApertureAngles( pan_degrees, tilt_degrees, max_speed ), "SetApertureAngles" );
+    }
+}
+
 int main( int argc, char** argv )
 {
-    comma::verbose << "GENICAM_ROOT_V3_0 set to " << ::getenv( "GENICAM_ROOT_V3_0" ) << std::endl;
+    // normally we'd try to set GENICAM_ROOT_V3_0 here but it's not soon enough
+    // something static in the libraries requires it before we even get here
     try
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" )) bash_completion( argc, argv );
-        if( options.exists( "--input-fields" )) { std::cout << field_names< snark::ocular::roboteye::position_t >( true ) << std::endl; return 0; }
-        if( options.exists( "--input-format" )) { std::cout << format< snark::ocular::roboteye::position_t >() << std::endl; return 0; }
+        if( options.exists( "--input-fields" )) { std::cout << field_names< position_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--input-format" )) { std::cout << format< position_t >() << std::endl; return 0; }
 
-        std::vector< std::string > unnamed = options.unnamed( comma::csv::options::valueless_options() + ",--verbose,-v", "-.*" );
+        comma::verbose << "GENICAM_ROOT_V3_0 set to " << ::getenv( "GENICAM_ROOT_V3_0" ) << std::endl;
+
+        std::vector< std::string > unnamed = options.unnamed( comma::csv::options::valueless_options() + ",--verbose,-v,--track", "-.*" );
         if( unnamed.size() != 1 ) { COMMA_THROW( comma::exception, "require ip address" ); }
 
         std::string ip_address = unnamed[0];
         comma::verbose << "connecting to RobotEye at " << ip_address << std::endl;
+        double max_speed = options.value< double >( "--speed", default_max_speed );
+        bool track = options.exists( "--track" );
 
         ocular::Image_Modes_t image_mode = static_cast< ocular::Image_Modes_t >( options.value< unsigned int >( "--image-mode", default_image_mode ));
 
         ocular::RobotEyeThermal roboteye_thermal( ip_address );
-        roboteye_thermal.SetPixelType( ocular::thermal::PIXELTYPE_MONO_8 );
+        ocular::RobotEye& roboteye = roboteye_thermal.GetRobotEye();
 
-        const unsigned int num_frames = 5;
-        std::vector< ocular::Image > image_pool( num_frames );
-        unsigned long int i = 0;
-        roboteye_thermal.StartAcquisition();
-        while( i < num_frames )
+        std::string serial_no;
+        if( roboteye.GetSerial( serial_no ) == ocular::NO_ERR )
         {
-            roboteye_thermal.GetImage( image_pool[i], image_mode );
-            comma::verbose << "acquired frame " << i << std::endl;
-            ++i;
+            comma::verbose << "Connected to RobotEye with serial number: " << serial_no << std::endl;
+        }
+        else
+        {
+            std::cerr << "Error getting serial number: "
+                      << ocular::RobotEye::GetErrorString( roboteye.GetLastBlockingError() )
+                      << std::endl;
         }
 
-        roboteye_thermal.StopAcquisition();
-
-        i = 0;
-        unsigned int count = 0;
-        for( auto& image : image_pool )
+        ocular::ocular_error_t status;
+        double azimuth = 0;
+        double elevation = 0;
+        status = check_error( roboteye.GetApertureAngles( azimuth, elevation ), "GetApertureAngles" );
+        comma::verbose << "azimuth=" << azimuth << ", and elevation=" << elevation << std::endl;
+        if( status == ocular::ERR_NOT_HOMED )
         {
-            const std::string file_name = "./output/frame" + std::to_string(i) + ".png";
-            if( image.SaveFrame( file_name ))
+            comma::verbose << "not homed, homing now..." << std::endl;
+            status = roboteye.Home();
+            if( status )
             {
-                ++count;
+                std::cout << "Home returned " << ocular::RobotEye::GetErrorString( status ) << std::endl;
+                return 1;
             }
-            ++i;
         }
-        comma::verbose << count << " frames saved successfully." << std::endl;
+        if( options.exists( "--home" ))
+        {
+            comma::verbose << "homing..." << std::endl;
+            check_error( roboteye.Home(), "Home" );
+        }
 
-        /*
+        comma::verbose << "setting pixel type" << std::endl;
+        roboteye_thermal.SetPixelType( ocular::thermal::PIXELTYPE_MONO_8 );
+        comma::verbose << "set pixel type" << std::endl;
+
         comma::csv::options csv( options );
-        comma::csv::input_stream< snark::ocular::roboteye::position_t > istream( std::cin, csv );
+        comma::csv::input_stream< position_t > istream( std::cin, csv );
+        comma::io::select select;
+        select.read().add( comma::io::stdin_fd );
         comma::signal_flag is_shutdown;
+        bool acquiring = false;
 
         while( !is_shutdown && std::cin.good() )
         {
-            const position_t* position = istream.read();
-            if( position )
+            while( select.check() && select.read().ready( comma::io::stdin_fd ) && std::cin.good() )
             {
-                comma::verbose << "position: " << position->pan << "," << position->tilt << std::endl;
+                const position_t* position = istream.read();
+                if( position )
+                {
+                    if( acquiring )
+                    {
+                        comma::verbose << "stopping frame acquisition" << std::endl;
+                        roboteye_thermal.StopAcquisition();
+                        acquiring = false;
+                    }
+                    move( roboteye, *position, track, max_speed );
+                }
             }
+            if( !acquiring )
+            {
+                comma::verbose << "starting frame acquisition" << std::endl;
+                roboteye_thermal.StartAcquisition();
+                acquiring = true;
+            }
+            capture_frame( roboteye_thermal, image_mode );
         }
-        */
+        check_error( roboteye.Stop(), "Stop" );
         return 0;
     }
     catch( std::exception& ex )
