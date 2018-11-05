@@ -47,6 +47,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
     static const char* completion_options =
         " --help -h --verbose -v"
         " --input-fields --input-format"
+        " --home --no-capture --speed --track"
         ;
 
     std::cout << completion_options << std::endl;
