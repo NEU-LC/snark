@@ -72,6 +72,7 @@ void usage( bool )
     std::cerr << "\n    --image-mode=[<0-3>]: default=" << default_image_mode << "; set image mode";
     std::cerr << "\n    --input-fields: print input fields and exit";
     std::cerr << "\n    --input-format: print input format and exit";
+    std::cerr << "\n    --no-capture:   don't capture images";
     std::cerr << "\n    --speed=<Hz>:   default=" << default_max_speed << "; max speed (rotations/s)";
     std::cerr << "\n    --track         track input positions";
     std::cerr << "\n";
@@ -162,6 +163,7 @@ int main( int argc, char** argv )
 
         std::string ip_address = unnamed[0];
         comma::verbose << "connecting to RobotEye at " << ip_address << std::endl;
+        bool capture = !options.exists( "--no-capture" );
         double max_speed = options.value< double >( "--speed", default_max_speed );
         bool track = options.exists( "--track" );
 
@@ -203,9 +205,12 @@ int main( int argc, char** argv )
             check_status( roboteye.Home(), "Home" );
         }
 
-        comma::verbose << "setting pixel type" << std::endl;
-        roboteye_thermal.SetPixelType( ocular::thermal::PIXELTYPE_MONO_8 );
-        comma::verbose << "set pixel type" << std::endl;
+        if( capture )
+        {
+            comma::verbose << "setting pixel type" << std::endl;
+            check_dev_status( roboteye_thermal.SetPixelType( ocular::thermal::PIXELTYPE_MONO_8 ), "SetPixelType" );
+            comma::verbose << "set pixel type" << std::endl;
+        }
 
         comma::csv::options csv( options );
         comma::csv::input_stream< position_t > istream( std::cin, csv );
@@ -230,13 +235,13 @@ int main( int argc, char** argv )
                     move( roboteye, *position, max_speed, track );
                 }
             }
-            if( !acquiring )
+            if( capture && !acquiring )
             {
                 comma::verbose << "starting frame acquisition" << std::endl;
                 roboteye_thermal.StartAcquisition();
                 acquiring = true;
             }
-            capture_frame( roboteye_thermal, image_mode );
+            if( capture ) { capture_frame( roboteye_thermal, image_mode ); }
         }
         check_status( roboteye.Stop(), "Stop" );
         return 0;
