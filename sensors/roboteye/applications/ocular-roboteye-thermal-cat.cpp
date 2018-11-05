@@ -112,9 +112,10 @@ void capture_frame( ocular::RobotEyeThermal& roboteye_thermal
                   , ocular::Image_Modes_t image_mode )
 {
     static unsigned int frame_num = 0;
+    comma::verbose << "acquiring frame " << frame_num << std::endl;
+    boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::millisec( 1000 ));
     ::ocular::Image image;
     check_dev_status( roboteye_thermal.GetImage( image, image_mode ), "GetImage" );
-    comma::verbose << "acquiring frame " << frame_num << std::endl;
 
     //boost::posix_time::ptime current_time = boost::posix_time::microsec_clock::universal_time();
 
@@ -239,6 +240,7 @@ int main( int argc, char** argv )
             if( capture && !acquiring )
             {
                 comma::verbose << "starting frame acquisition" << std::endl;
+                boost::thread::sleep( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::millisec( 1000 ));
                 roboteye_thermal.StartAcquisition();
                 acquiring = true;
             }
