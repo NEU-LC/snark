@@ -35,7 +35,7 @@
 
 namespace snark { namespace ocular { namespace roboteye { 
 
-::ocular::ocular_error_t check_error( ::ocular::ocular_error_t status, const std::string& msg )
+::ocular::ocular_error_t check_status( ::ocular::ocular_error_t status, const std::string& msg )
 {
     if( status != ::ocular::NO_ERR )
     {

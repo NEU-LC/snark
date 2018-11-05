@@ -33,7 +33,7 @@
 
 namespace snark { namespace ocular { namespace roboteye { 
 
-::ocular::ocular_error_t check_error( ::ocular::ocular_error_t status, const std::string& msg="" );
+::ocular::ocular_error_t check_status( ::ocular::ocular_error_t status, const std::string& msg="" );
 ::ocular::dev_status_t check_dev_status( ::ocular::dev_status_t status, const std::string& msg="" );
 
 int pixel_type_to_opencv( uint8_t pixel_type );

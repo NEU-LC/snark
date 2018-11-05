@@ -132,15 +132,15 @@ void move( ocular::RobotEye& roboteye
 
     if( track )
     {
-        check_error( roboteye.StopStabilisation(), "StopStabilisation" );
-        check_error( roboteye.SetApertureAngles( pan_degrees, tilt_degrees, max_speed ), "SetApertureAngles" );
-        check_error( roboteye.StartStabilisation(), "StartStabilisation" );
+        check_status( roboteye.StopStabilisation(), "StopStabilisation" );
+        check_status( roboteye.SetApertureAngles( pan_degrees, tilt_degrees, max_speed ), "SetApertureAngles" );
+        check_status( roboteye.StartStabilisation(), "StartStabilisation" );
         double roll = 0;
-        check_error( roboteye.GetStabilisedRoll( roll ), "GetStabilisedRoll" );
+        check_status( roboteye.GetStabilisedRoll( roll ), "GetStabilisedRoll" );
     }
     else
     {
-        check_error( roboteye.SetApertureAngles( pan_degrees, tilt_degrees, max_speed ), "SetApertureAngles" );
+        check_status( roboteye.SetApertureAngles( pan_degrees, tilt_degrees, max_speed ), "SetApertureAngles" );
     }
 }
 
@@ -185,7 +185,7 @@ int main( int argc, char** argv )
         ocular::ocular_error_t status;
         double azimuth = 0;
         double elevation = 0;
-        status = check_error( roboteye.GetApertureAngles( azimuth, elevation ), "GetApertureAngles" );
+        status = check_status( roboteye.GetApertureAngles( azimuth, elevation ), "GetApertureAngles" );
         comma::verbose << "azimuth=" << azimuth << ", and elevation=" << elevation << std::endl;
         if( status == ocular::ERR_NOT_HOMED )
         {
@@ -200,7 +200,7 @@ int main( int argc, char** argv )
         if( options.exists( "--home" ))
         {
             comma::verbose << "homing..." << std::endl;
-            check_error( roboteye.Home(), "Home" );
+            check_status( roboteye.Home(), "Home" );
         }
 
         comma::verbose << "setting pixel type" << std::endl;
@@ -238,7 +238,7 @@ int main( int argc, char** argv )
             }
             capture_frame( roboteye_thermal, image_mode );
         }
-        check_error( roboteye.Stop(), "Stop" );
+        check_status( roboteye.Stop(), "Stop" );
         return 0;
     }
     catch( std::exception& ex )
