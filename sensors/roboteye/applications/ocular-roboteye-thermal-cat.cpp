@@ -227,7 +227,7 @@ int main( int argc, char** argv )
                         roboteye_thermal.StopAcquisition();
                         acquiring = false;
                     }
-                    move( roboteye, *position, track, max_speed );
+                    move( roboteye, *position, max_speed, track );
                 }
             }
             if( !acquiring )
