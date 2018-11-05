@@ -229,7 +229,7 @@ int main( int argc, char** argv )
                     if( acquiring )
                     {
                         comma::verbose << "stopping frame acquisition" << std::endl;
-                        roboteye_thermal.StopAcquisition();
+                        check_dev_status( roboteye_thermal.StopAcquisition(), "StopAcquisition" );
                         acquiring = false;
                     }
                     move( roboteye, *position, max_speed, track );
@@ -238,7 +238,7 @@ int main( int argc, char** argv )
             if( capture && !acquiring )
             {
                 comma::verbose << "starting frame acquisition" << std::endl;
-                roboteye_thermal.StartAcquisition();
+                check_dev_status( roboteye_thermal.StartAcquisition(), "StartAcquisition" );
                 acquiring = true;
             }
             if( capture ) { capture_frame( roboteye_thermal, image_mode ); }
