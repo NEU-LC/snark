@@ -45,6 +45,16 @@ namespace snark { namespace ocular { namespace roboteye {
     return status;
 }
 
+::ocular::dev_status_t check_dev_status( ::ocular::dev_status_t status, const std::string& msg )
+{
+    if( status.devCode != ::ocular::NO_ERR )
+    {
+        std::cerr << comma::verbose.app_name() << ": " << msg << ( msg.empty() ? "" : ": " )
+                  << ::ocular::RobotEyeThermal::GetErrorString( status ) << std::endl;
+    }
+    return status;
+}
+
 int pixel_type_to_opencv( uint8_t pixel_type )
 {
     switch( pixel_type )

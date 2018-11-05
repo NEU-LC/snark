@@ -111,7 +111,7 @@ void capture_frame( ocular::RobotEyeThermal& roboteye_thermal
 {
     static unsigned int frame_num = 0;
     ::ocular::Image image;
-    roboteye_thermal.GetImage( image, image_mode );
+    check_dev_status( roboteye_thermal.GetImage( image, image_mode ), "GetImage" );
     comma::verbose << "acquiring frame " << frame_num << std::endl;
 
     //boost::posix_time::ptime current_time = boost::posix_time::microsec_clock::universal_time();
