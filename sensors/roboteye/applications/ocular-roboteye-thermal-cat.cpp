@@ -42,7 +42,7 @@
 const unsigned int default_image_mode = 0;
 const double default_max_speed = 10;    // 10Hz = 36000 deg/second
 
-const boost::chrono::milliseconds sleep_between_frames( 1000 );
+const boost::chrono::milliseconds sleep_between_frames( 30 ); // 30fps
 const boost::chrono::milliseconds sleep_after_movement( 1000 );
 
 static void bash_completion( unsigned const ac, char const * const * av )
