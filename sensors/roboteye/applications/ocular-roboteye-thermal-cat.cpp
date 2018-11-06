@@ -42,6 +42,9 @@
 const unsigned int default_image_mode = 0;
 const double default_max_speed = 10;    // 10Hz = 36000 deg/second
 
+const boost::chrono::milliseconds sleep_between_frames( 1000 );
+const boost::chrono::milliseconds sleep_after_movement( 1000 );
+
 static void bash_completion( unsigned const ac, char const * const * av )
 {
     static const char* completion_options =
@@ -113,7 +116,7 @@ void capture_frame( ocular::RobotEyeThermal& roboteye_thermal
 {
     static unsigned int frame_num = 0;
     comma::verbose << "acquiring frame " << frame_num << std::endl;
-    boost::this_thread::sleep_for( boost::chrono::milliseconds( 1000 ));
+    boost::this_thread::sleep_for( sleep_between_frames );
     ::ocular::Image image;
     check_dev_status( roboteye_thermal.GetImage( image, image_mode ), "GetImage" );
 
@@ -240,7 +243,7 @@ int main( int argc, char** argv )
             if( capture && !acquiring )
             {
                 comma::verbose << "starting frame acquisition" << std::endl;
-                boost::this_thread::sleep_for( boost::chrono::milliseconds( 1000 ));
+                boost::this_thread::sleep_for( sleep_after_movement );
                 check_dev_status( roboteye_thermal.StartAcquisition(), "StartAcquisition" );
                 acquiring = true;
             }
