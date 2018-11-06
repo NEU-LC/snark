@@ -1278,7 +1278,7 @@ static void write( const chunk_pair_t& p )
     else
     {
         static const double factor = 8.0 / 1000; // 8ns per tick
-        header.counters.adjusted_timestamp = first_chunk_data.timestamp + boost::posix_time::microseconds( factor * first_chunk_data.ticks ); // todo: factor in network delay?
+        header.counters.adjusted_timestamp = first_chunk_data.timestamp + boost::posix_time::microseconds( static_cast< int >( factor * first_chunk_data.ticks ) ); // todo: factor in network delay?
     }
     header.counters.line_count += p.first.line_trigger_ignored + 1;
     header.counters.line = header.counters.line_count % encoder_ticks;

@@ -264,7 +264,7 @@ class gige::impl
                 if( PvAttrUint32Get( handle_, "TimeStampValueLo", &v ) != ePvErrSuccess) { close(); COMMA_THROW( comma::exception, "failed to get TimeStampValueLo from gige camera " << *id_ << ": " << pv_error_to_string_( result ) << " (" << result << ")" ); }
                 ticks += v;
                 double elapsed = ticks / timestamp_frequency_;
-                start_time_ -= ( boost::posix_time::seconds( comma::uint32( elapsed ) ) + boost::posix_time::microseconds( ( elapsed - comma::uint32( elapsed ) ) * 1000000 ) );
+                start_time_ -= ( boost::posix_time::seconds( comma::uint32( elapsed ) ) + boost::posix_time::microseconds( static_cast< long >( ( elapsed - comma::uint32( elapsed ) ) * 1000000 ) ) );
             }
             buffer_.resize( total_bytes_per_frame_ );
             frame_.ImageBuffer = &buffer_[0];

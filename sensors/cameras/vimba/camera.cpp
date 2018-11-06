@@ -190,7 +190,7 @@ camera::timestamped_frame camera::frame_to_timestamped_frame( const snark::vimba
     boost::posix_time::ptime timestamp =
         ( use_ptp
         ? boost::posix_time::ptime( boost::gregorian::date( 1970, 1, 1 ))
-              + boost::posix_time::microseconds( frame.timestamp() / 1000 )
+              + boost::posix_time::microseconds( static_cast< long >( frame.timestamp() / 1000 ) )
         : current_time );
 
     ptps_out.t=timestamp;

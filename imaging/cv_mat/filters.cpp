@@ -3111,7 +3111,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if (period)
             {
                 unsigned int seconds = static_cast< unsigned int >( *period );
-                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index, get_timestamp ), false ) );
+                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( static_cast< unsigned int >( ( *period - seconds ) * 1000000 ) ), index, get_timestamp ), false ) );
             }
             else if ( size )
             {

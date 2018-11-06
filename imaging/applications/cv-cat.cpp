@@ -52,7 +52,7 @@ using snark::tbb::bursty_reader;
 class rate_limit /// timer class, sleeping if faster than the specified fps
 {
     public:
-        rate_limit( double fps ) { if( fps > 1e-5 ) { m_period = boost::posix_time::microseconds( 1e6 / fps ); } }
+        rate_limit( double fps ) { if( fps > 1e-5 ) { m_period = boost::posix_time::microseconds( static_cast< unsigned int >( 1e6 / fps ) ); } }
 
         void wait()
         {

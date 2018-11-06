@@ -96,7 +96,7 @@ const char* proprietary_reader::read() // quick and dirty
     comma::uint32 nanoseconds;
     ::memcpy( &seconds, t, 8 );
     ::memcpy( &nanoseconds, t + 8, 4 );
-    m_timestamp = boost::posix_time::ptime( snark::timing::epoch, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( nanoseconds / 1000 ) );
+    m_timestamp = boost::posix_time::ptime( snark::timing::epoch, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( static_cast< long >( nanoseconds / 1000 ) ) );
     m_offset += packetSize;
     return t + timestampSize;
 }
