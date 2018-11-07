@@ -81,9 +81,9 @@ void usage( bool )
     std::cerr << "\n    --track         track input positions";
     std::cerr << "\n";
     std::cerr << "\n    where image mode is one of: 0 for None";
-    std::cerr << "\n                                1 for De-rorate";
+    std::cerr << "\n                                1 for Derotate";
     std::cerr << "\n                                2 for Circular Mask";
-    std::cerr << "\n                                3 for both De-rorate & Circular Mask";
+    std::cerr << "\n                                3 for both Derotate & Circular Mask";
     std::cerr << "\n";
     std::cerr << "\nNote that you have to set the environment variable GENICAM_ROOT_V3_0 first";
     std::cerr << "\n$ export GENICAM_ROOT_V3_0=" << STRINGIZED( OCULAR_ROBOTEYE_GENICAM_DIR );
