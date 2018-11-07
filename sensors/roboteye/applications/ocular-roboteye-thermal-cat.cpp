@@ -31,6 +31,7 @@
 
 #include "../ocular-thermal.h"
 #include "../traits.h"
+#include "../../../imaging/cv_mat/serialization.h"
 #include <Image.h>
 #include <RobotEyeThermal.h>
 #include <comma/application/signal_flag.h>
@@ -77,6 +78,7 @@ void usage( bool )
     std::cerr << "\n    --input-fields: print input fields and exit";
     std::cerr << "\n    --input-format: print input format and exit";
     std::cerr << "\n    --no-capture:   don't capture images";
+    std::cerr << "\n    --save=[<dir>]: save to <dir>, otherwise output to stdout";
     std::cerr << "\n    --speed=<Hz>:   default=" << default_max_speed << "; max speed (rotations/s)";
     std::cerr << "\n    --track         track input positions";
     std::cerr << "\n";
@@ -112,19 +114,34 @@ timestamped_frame image_to_timestamped_frame( const ::ocular::Image& image
 }
 
 void capture_frame( ocular::RobotEyeThermal& roboteye_thermal
-                  , ocular::Image_Modes_t image_mode )
+                  , ocular::Image_Modes_t image_mode
+                  , const boost::optional< std::string > save_dir
+                  , snark::cv_mat::serialization& serialization )
+
 {
     static unsigned int frame_num = 0;
     comma::verbose << "acquiring frame " << frame_num << std::endl;
     boost::this_thread::sleep_for( sleep_between_frames );
     ::ocular::Image image;
-    check_dev_status( roboteye_thermal.GetImage( image, image_mode ), "GetImage" );
+    if( check_dev_status( roboteye_thermal.GetImage( image, image_mode ), "GetImage" ).devCode == ::ocular::NO_ERR )
+    {
+        boost::posix_time::ptime current_time = boost::posix_time::microsec_clock::universal_time();
 
-    //boost::posix_time::ptime current_time = boost::posix_time::microsec_clock::universal_time();
-
-    const std::string file_name = "./frame" + std::to_string( frame_num ) + ".png";
-    if( image.SaveFrame( file_name )) { comma::verbose << "frame " << frame_num << " saved successfully." << std::endl; }
-    frame_num++;
+        if( save_dir )
+        {
+            const std::string file_name = *save_dir + "/frame" + std::to_string( frame_num ) + ".png";
+            if( image.SaveFrame( file_name )) { comma::verbose << "frame " << frame_num << " saved successfully." << std::endl; }
+        }
+        else
+        {
+            timestamped_frame timestamped_frame = image_to_timestamped_frame( image, current_time );
+            if( !timestamped_frame.first.is_not_a_date_time() )
+            {
+                serialization.write( std::cout, timestamped_frame );
+            }
+        }
+        frame_num++;
+    }
 }
 
 void move( ocular::RobotEye& roboteye
@@ -169,8 +186,13 @@ int main( int argc, char** argv )
         std::string ip_address = unnamed[0];
         comma::verbose << "connecting to RobotEye at " << ip_address << std::endl;
         bool capture = !options.exists( "--no-capture" );
+        boost::optional< std::string > save_dir;
+        if( options.exists( "--save" )) { save_dir = options.value< std::string >( "--save" ); }
         double max_speed = options.value< double >( "--speed", default_max_speed );
         bool track = options.exists( "--track" );
+
+        snark::cv_mat::serialization::options serialization_options;
+        snark::cv_mat::serialization serialization( serialization_options );
 
         ocular::Image_Modes_t image_mode = static_cast< ocular::Image_Modes_t >( options.value< unsigned int >( "--image-mode", default_image_mode ));
 
@@ -247,7 +269,7 @@ int main( int argc, char** argv )
                 check_dev_status( roboteye_thermal.StartAcquisition(), "StartAcquisition" );
                 acquiring = true;
             }
-            if( capture ) { capture_frame( roboteye_thermal, image_mode ); }
+            if( capture ) { capture_frame( roboteye_thermal, image_mode, save_dir, serialization ); }
         }
         check_status( roboteye.Stop(), "Stop" );
         return 0;
