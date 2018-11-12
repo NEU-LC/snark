@@ -1,0 +1,7 @@
+#!/bin/bash
+#
+# set up the envionrment variable then call ocular-roboteye-thermal-cat
+
+export GENICAM_ROOT_V3_0=@OCULAR_ROBOTEYE_GENICAM_DIR@
+
+ocular-roboteye-thermal-cat $@
