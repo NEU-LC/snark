@@ -42,7 +42,10 @@
 const unsigned int default_image_mode = 0;
 const double default_max_speed = 10;    // 10Hz = 36000 deg/second
 
-const boost::chrono::milliseconds sleep_between_frames( 30 ); // 30fps
+// Max frame rate is 7.5fps (133ms between frames) but unless the gap is
+// substantially longer every second frame fails
+const boost::chrono::milliseconds sleep_between_frames( 300 );
+// Probably a good idea also, but relatively untested
 const boost::chrono::milliseconds sleep_after_movement( 1000 );
 
 static void bash_completion( unsigned const ac, char const * const * av )
