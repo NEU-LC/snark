@@ -108,9 +108,12 @@ typedef std::pair< boost::posix_time::ptime, cv::Mat > timestamped_frame;
 timestamped_frame image_to_timestamped_frame( const ::ocular::Image& image
                                             , const boost::posix_time::ptime& current_time )
 {
+    uint8_t pixel_type = image.GetPixelType();
+    int opencv_pixel_type = pixel_type_to_opencv( image.GetPixelType() );
+    comma::verbose << "ocular pixel type is \"" << (int)pixel_type << "\", mapping to " << opencv_pixel_type << std::endl;
     cv::Mat cv_mat( image.GetHeight()
                   , image.GetWidth()
-                  , pixel_type_to_opencv( image.GetPixelType() )
+                  , CV_8UC1
                   , (void*)image.GetDataPointer() );
 
     return std::make_pair( current_time, cv_mat );
