@@ -98,6 +98,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "    chessboard-corners" << std::endl;
     std::cerr << "        --draw; outputs image with detected corners drawn" << std::endl;
+    std::cerr << "        --permissive; outputs corners when chessboard is not detected (default: only output corners when entire chessboard is found)" << std::endl;
     std::cerr << "        --select; filters images, only outputs images where chessboards were detected" << std::endl;
     std::cerr << "        --size=<rows,cols>; size of internal grid of corners in chessboard" << std::endl;
     std::cerr << std::endl;
@@ -1135,18 +1136,25 @@ int main( int ac, char** av )
                 }
                 else
                 {
-                    comma::csv::output_stream< chessboard_corner_t > output(std::cout, csv);
-                    chessboard_corner_t corner;
-                    corner.t = p.first;
-                    corner.block = block;
-                    for (comma::uint32 c = 0; int( c ) < out.rows; c++)
+                    if (found || options.exists("--permissive"))
                     {
-                        corner.row = c / rows;
-                        corner.col = c % rows;
-                        corner.position = Eigen::Vector2d(out.row(c).at<float>(0), out.row(c).at<float>(1));
-                        output.write(corner);
+                        comma::csv::output_stream< chessboard_corner_t > output(std::cout, csv);
+                        chessboard_corner_t corner;
+                        corner.t = p.first;
+                        corner.block = block;
+                        for (comma::uint32 c = 0; int( c ) < out.rows; c++)
+                        {
+                            corner.row = c / rows;
+                            corner.col = c % rows;
+                            corner.position = Eigen::Vector2d(out.row(c).at<float>(0), out.row(c).at<float>(1));
+                            output.write(corner);
+                        }
+                        ++block;
                     }
-                    ++block;
+                    else
+                    {
+                        if ( verbose ) { std::cerr << "chessboard not detected in frame " << boost::posix_time::to_iso_string(p.first) << ", found " << out.rows << " of " << rows * cols << " points" << std::endl; }
+                    }
                 }
             }
             return 0;

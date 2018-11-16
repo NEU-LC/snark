@@ -77,7 +77,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --help,-h:                         show this help, --help --verbose for more help" << std::endl;
     std::cerr << "    --dont-check-frames:               don't check if we've stop receiving frames" << std::endl;
     std::cerr << "    --fields=<fields>:                 header fields; default: " << default_fields << std::endl;
-    std::cerr << "    --frames-buffer-size,--num-frames; default=3; camera frame acquisition buffer size" << std::endl;
+    std::cerr << "    --frames-buffer-size,--num-frames: default=3; camera frame acquisition buffer size" << std::endl;
     std::cerr << "    --header:                          output header only" << std::endl;
     std::cerr << "    --id=<camera id>:                  camera id; default: use first available camera" << std::endl;
     std::cerr << "    --list-cameras:                    list all cameras and exit" << std::endl;
