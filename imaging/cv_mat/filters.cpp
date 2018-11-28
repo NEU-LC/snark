@@ -1461,10 +1461,10 @@ static typename impl::filters< H >::value_type equalize_histogram_impl_(typename
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type normalize_cv_impl_( typename impl::filters< H >::value_type m )
+static typename impl::filters< H >::value_type normalize_cv_impl_( typename impl::filters< H >::value_type m, int norm_type = cv::NORM_INF )
 {
     //std::cerr<<"my type: "<<m.second.type()<<" ,CV_8UC3: "<<int(CV_8UC3)<<" ,CV_32FC3: "<<int(CV_32FC3)<<" ,CV_8UC1: "<<CV_8UC1<<std::endl;
-    cv::normalize(m.second,m.second,1,0,cv::NORM_INF,CV_32FC(m.second.channels()));
+    cv::normalize( m.second, m.second, 1, 0, norm_type, CV_32FC( m.second.channels() ) );
     return m;
 }
 
@@ -2723,10 +2723,20 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if(e[0]=="normalize")
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify parameter: expected normalize=<how>" ); }
-        if(e[1]=="max") { return std::make_pair( normalize_max_impl_< H >, true ); }
-        else if(e[1]=="sum") { return std::make_pair( normalize_sum_impl_< H >, true ); }
-        else if(e[1]=="all") { return std::make_pair( normalize_cv_impl_< H >, true ); }
-        else { COMMA_THROW( comma::exception, "expected max or sum option for normalize, got" << e[1] ); }
+        const std::vector< std::string > w = comma::split( e[1], ',' );
+        int norm_type = cv::NORM_INF;
+        if( w.size() == 2 )
+        {
+            if( w[1] == "inf" || w[1] == "INF" || w[1] == "NORM_INF" ) { norm_type = cv::NORM_INF; }
+            else if( w[1] == "l1" || w[1] == "L1" || w[1] == "NORM_L1" ) { norm_type = cv::NORM_L1; }
+            else if( w[1] == "l2" || w[1] == "L2" || w[1] == "NORM_L2" ) { norm_type = cv::NORM_L2; }
+            else { COMMA_THROW( comma::exception, "expected norm type, got: \"" + w[1] + "\"" ); }
+            if( w[0] != "all" && norm_type != cv::NORM_INF ) { COMMA_THROW( comma::exception, "norm type \"" + w[1] + "\" implemented only for 'all'; todo" ); } // quick and dirty
+        }
+        if( w[0] == "max" ) { return std::make_pair( normalize_max_impl_< H >, true ); }
+        else if( w[0] == "sum" ) { return std::make_pair( normalize_sum_impl_< H >, true ); }
+        else if( w[0] == "all" ) { return std::make_pair( boost::bind( normalize_cv_impl_< H >, _1, norm_type ), true ); }
+        COMMA_THROW( comma::exception, "expected all, max, or sum option for normalize, got: \"" << w[0] << "\"" );
     }
     if( e[0]=="equalize-histogram" ) { return std::make_pair( equalize_histogram_impl_< H >, true ); }
     if( e[0] == "brightness" || e[0] == "scale" )
@@ -3334,10 +3344,16 @@ static std::string usage_impl_()
     oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
     oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
     oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
-    oss << "        normalize=<how>: normalize image and scale to 0 to 1 float (or double if input is CV_64F)" << std::endl;
-    oss << "            normalize=max: normalize each pixel channel by its max value" << std::endl;
-    oss << "            normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
-    oss << "            normalize=all: normalize each pixel by max of all channels (see cv::normalize with NORM_INF)" << std::endl;
+    oss << "        normalize=<how>[,<norm_type>]: normalize image and scale to 0 to 1 float (or double if input is CV_64F)" << std::endl;
+    oss << "            <how>" << std::endl;
+    oss << "                normalize=max: normalize each pixel channel by its max value" << std::endl;
+    oss << "                normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
+    oss << "                normalize=all: normalize each pixel by max of all channels (cv::normalize())" << std::endl;
+    oss << "            <norm_type>" << std::endl;
+    oss << "                inf: cv::NORM_INF" << std::endl;
+    oss << "                l1: cv::NORM_L1" << std::endl;
+    oss << "                l2: cv::NORM_L2" << std::endl;
+    oss << "                default: inf (for backward compatibility)" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        overlay=<image_file>[,x,y]: overlay image_file on top of current stream at optional x,y location; overlay image should have alpha channel" << std::endl;
     oss << "        pack=<bits>,<format>: pack pixel data in specified bits, example: pack=12,cd,hb,fg" << std::endl;
