@@ -2295,7 +2295,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what());
         }
     }
-    if( e[0] == "balance-white" ) { return std::make_pair( impl::balance_white< H >(), true ); }
+    if( e[0] == "balance-white" ) { return std::make_pair( impl::balance_white< H >(), false ); }
     if( e[0] == "canny" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "canny: please specify <threshold1>,<threshold2>[,<kernel_size>]" ); }
