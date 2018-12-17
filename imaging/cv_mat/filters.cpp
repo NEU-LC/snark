@@ -1440,7 +1440,18 @@ class clahe_impl_
         {
             value_type n;
             n.first = m.first;
-            clahe_->apply( m.second, n.second );
+            if( m.second.channels() == 1 )
+            {
+                clahe_->apply( m.second, n.second );
+            }
+            else
+            {
+                std::vector< cv::Mat > channels( m.second.channels() );
+                std::vector< cv::Mat > output_channels( m.second.channels() );
+                cv::split( m.second, channels );
+                for( int i = 0; i < m.second.channels(); ++i ) { clahe_->apply( channels[i], output_channels[i] ); }
+                cv::merge( output_channels, n.second );
+            }
             return n;
         }
     private:
@@ -2300,7 +2311,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         try
         {
             float clip_limit = boost::lexical_cast< float >( s[0] );
-            cv::Size tile_size( boost::lexical_cast< unsigned int >( s[1] ), boost::lexical_cast< unsigned int >( s[2] ) );
+            cv::Size tile_size( boost::lexical_cast< unsigned int >( s[1] ), boost::lexical_cast< unsigned int >( s[ s.size() == 2 ? 1 : 2 ] ) );
             return std::make_pair( clahe_impl_< H >( clip_limit, tile_size ), true );
         }
         catch( boost::bad_lexical_cast& bc )
@@ -3303,7 +3314,7 @@ static std::string usage_impl_()
     oss << "        canny=<threshold1>,<threshold2>[,<kernel_size>]: finds edges using the Canny86 algorithm (see cv::Canny)" << std::endl;
     oss << "                                                         generates a mask with bright lines representing the edges on a black background, requires single-channel 8-bit input image" << std::endl;
     oss << "                threshold1, threshold2: the smaller value is used for edge linking, the larger value is used to find initial segments of strong edges" << std::endl;
-    oss << "        clahe=<clip_limit>,<tile_size_x>,<tile_size_y>: CLAHE, contrast limited adaptive histogram equalization (see opencv documentation for more), e.g. try clahe=2.0,8,8" << std::endl;
+    oss << "        clahe=<clip_limit>,<tile_size_x>[,<tile_size_y>]: CLAHE, contrast limited adaptive histogram equalization (see opencv documentation for more), e.g. try clahe=2.0,8,8" << std::endl;
     oss << "                kernel_size: size of the extended Sobel kernel; it must be 1, 3, 5 or 7" << std::endl;
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
