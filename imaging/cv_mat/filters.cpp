@@ -2314,7 +2314,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         {
             float clip_limit = boost::lexical_cast< float >( s[0] );
             cv::Size tile_size( boost::lexical_cast< unsigned int >( s[1] ), boost::lexical_cast< unsigned int >( s[ s.size() == 2 ? 1 : 2 ] ) );
-            return std::make_pair( clahe_impl_< H >( clip_limit, tile_size ), true );
+            return std::make_pair( clahe_impl_< H >( clip_limit, tile_size ), false );
         }
         catch( boost::bad_lexical_cast& bc )
         {
