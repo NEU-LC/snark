@@ -271,7 +271,7 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_realsense "build realsense component
 cmake_dependent_option( snark_build_sensors_realsense2 "build realsense2 components" OFF "snark_build_sensors" OFF )
 cmake_dependent_option( snark_build_sensors_robosense "build robosense components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_sick "build sick components" ON "snark_build_sensors" OFF )
-CMAKE_DEPENDENT_OPTION( snark_build_sensors_velodyne "build velodyne components" ON "snark_build_sensors" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_sensors_velodyne "build velodyne components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_vimba "build vimba components" OFF "snark_build_sensors" OFF )
 
 CMAKE_DEPENDENT_OPTION( snark_build_actuators_quickset "build quickset components" OFF "snark_build_actuators" OFF )
