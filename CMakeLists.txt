@@ -42,6 +42,8 @@ IF(NOT CMAKE_BUILD_TYPE)
       FORCE)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
+find_package( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
+
 if( UNIX )
     INCLUDE( ${comma_DIR}/check.c++.standard.cmake REQUIRED )
 endif()
@@ -301,8 +303,6 @@ IF( snark_build_imaging )
 #         message( FATAL_ERROR  "OpenCV ${OpenCV_VERSION_MAJOR} not supported yet; if you still want to build snark, please disable imaging" )
 #     endif( ${OpenCV_VERSION_MAJOR} > 2 )
 ENDIF( snark_build_imaging )
-
-FIND_PACKAGE( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
 
 if( snark_build_graphics )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_graphics_qt3d-d
