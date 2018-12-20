@@ -432,8 +432,7 @@ int main( int ac, char** av )
                             mean( i ) = sample.row( i ).mean();
                             sample.row( i ).array() -= mean( i );
                         }
-                        auto svd = sample.jacobiSvd( Eigen::ComputeThinU | Eigen::ComputeThinV );
-                        Eigen::VectorXd normal = svd.matrixU().rightCols< 1 >();
+                        Eigen::VectorXd normal = sample.jacobiSvd( Eigen::ComputeThinU | Eigen::ComputeThinV ).matrixU().rightCols< 1 >();
                         snark::eigen::fit_plane_output_t output;
                         ::memcpy( &output.mean[0], &mean[0], *size * sizeof( double ) ); // quick and dirty
                         ::memcpy( &output.normal[0], &normal[0], *size * sizeof( double ) ); // quick and dirty
