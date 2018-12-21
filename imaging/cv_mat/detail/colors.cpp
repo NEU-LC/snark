@@ -34,6 +34,8 @@
 
 namespace snark { namespace cv_mat { namespace impl {
 
+#if CV_MAJOR_VERSION > 2
+    
 template < typename H > balance_white< H >::balance_white(): wb_( cv::xphoto::createSimpleWB() ) {}
 
 template < typename H > std::pair< H, cv::Mat > balance_white< H >::operator()( std::pair< H, cv::Mat > m )
@@ -43,6 +45,8 @@ template < typename H > std::pair< H, cv::Mat > balance_white< H >::operator()( 
     wb_->balanceWhite( m.second, n.second );
     return n;
 }
+
+#endif // CV_MAJOR_VERSION > 2
 
 template class balance_white< boost::posix_time::ptime >;
 template class balance_white< std::vector< char > >;

@@ -30,18 +30,30 @@
 #pragma once
 
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION > 2
 #include <opencv2/xphoto/white_balance.hpp>
+#else // CV_MAJOR_VERSION > 2
+#include <comma/base/exception.h>
+#endif // CV_MAJOR_VERSION > 2
 
 namespace snark{ namespace cv_mat { namespace impl {
 
-template < typename H >
-class balance_white
-{
-    public:
-        balance_white();
-        std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
-    private:
-        cv::Ptr< cv::xphoto::SimpleWB > wb_;
-};
+#if CV_MAJOR_VERSION > 2
+    template < typename H >
+    class balance_white
+    {
+        public:
+            balance_white();
+            std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
+        private:
+            cv::Ptr< cv::xphoto::SimpleWB > wb_;
+    };
+#else // CV_MAJOR_VERSION > 2
+    template < typename H >
+    struct balance_white
+    {
+        balance_white() { COMMA_THROW( comma::exception, "balance-white not implemented for opencv version " << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION << " that you have" ); }
+    };
+#endif // CV_MAJOR_VERSION > 2
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

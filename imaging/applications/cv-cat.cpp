@@ -190,6 +190,9 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << "usage: cv-cat [options] [<filters>]" << std::endl;
             std::cerr << std::endl;
+            std::cerr << "using opencv version " << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION << std::endl;
+            std::cerr << "some functionality may not be available depending on the version of your installed opencv" << std::endl;
+            std::cerr << std::endl;
             std::cerr << "image header" << std::endl;
             std::cerr << "    default header fields: t,rows,cols,type" << std::endl;
             std::cerr << "    default header format: t,3ui" << std::endl;
