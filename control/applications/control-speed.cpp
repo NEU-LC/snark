@@ -33,7 +33,7 @@
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
-#include <snark/visiting/traits.h>
+#include "../../visiting/traits.h"
 
 namespace {
 
