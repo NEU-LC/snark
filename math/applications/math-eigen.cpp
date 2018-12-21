@@ -29,8 +29,10 @@
 
 /// @author vsevolod vlaskine
 
+#include <algorithm>
 #include <cmath>
 #include <deque>
+#include <functional>
 #include <iostream>
 #include <vector>
 #include <boost/scoped_ptr.hpp>
@@ -70,6 +72,19 @@ void usage( bool verbose )
     std::cerr << "            --sort,-s,--ascending: output eigen vectors and values in ascending order of eigen values" << std::endl;
     std::cerr << "            --single-line-output,--single-line,--single: output eigen vectors and eigen values all as one line:" << std::endl;
     std::cerr << "                                                         vector[0],vector[1],...,value[0],value[1],...,block" << std::endl;
+    std::cerr << "            --size: a hint of number of elements in the data vector, ignored, if data indices" << std::endl;
+    std::cerr << "                    specified, e.g. data[0],data[1],data[2]" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    fit plane: fit plane to dataset, output its mean and normal" << std::endl;
+    std::cerr << "        fields" << std::endl;
+    std::cerr << "            block: block number; output eigen vectors and eigen values for each" << std::endl;
+    std::cerr << "                   contiguous block of samples with the same block id" << std::endl;
+    std::cerr << "            data: sample data" << std::endl;
+    std::cerr << "            default: data" << std::endl;
+    std::cerr << "        output" << std::endl;
+    std::cerr << "            output fields: mean,normal[,block]" << std::endl;
+    std::cerr << "            binary format: 32-bit unsigned integer for block, doubles for other output fields" << std::endl;
+    std::cerr << "        options" << std::endl;
     std::cerr << "            --size: a hint of number of elements in the data vector, ignored, if data indices" << std::endl;
     std::cerr << "                    specified, e.g. data[0],data[1],data[2]" << std::endl;
     std::cerr << std::endl;
@@ -132,6 +147,15 @@ struct single_line_output_t
     single_line_output_t(): vectors( *size * *size ), values( *size ), block( 0 ) {}
 };
 
+struct fit_plane_output_t
+{
+    std::vector< double > mean;
+    std::vector< double > normal;
+    comma::uint32 block;
+    
+    fit_plane_output_t(): mean( *size ), normal( *size ), block( 0 ) {}
+};
+
 } } // namespace snark { namespace eigen {
 
 namespace comma { namespace visiting {
@@ -167,6 +191,16 @@ template <> struct traits< snark::eigen::single_line_output_t >
     {
         v.apply( "vectors", p.vectors );
         v.apply( "values", p.values );
+        v.apply( "block", p.block );
+    }
+};
+
+template <> struct traits< snark::eigen::fit_plane_output_t >
+{
+    template < typename K, typename V > static void visit( const K&, const snark::eigen::fit_plane_output_t& p, V& v )
+    {
+        v.apply( "mean", p.mean );
+        v.apply( "normal", p.normal );
         v.apply( "block", p.block );
     }
 };
@@ -251,11 +285,10 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         const std::vector< std::string >& unnamed = options.unnamed( "--flush,--normalize,-n,--sort,-s,--ascending,--rsort,--descending,--single-line-output,--single-line,--single,--verbose,-v" );
         std::string operation = unnamed.empty() ? std::string( "eigen" ) : unnamed[0];
-        if( operation == "eigen" )
+        if( operation == "eigen" || operation == "fit-plane" )
         {
             comma::csv::options csv( options );
             size = options.optional< unsigned int >( "--size" );
-            bool single_line_output = options.exists( "--single-line-output,--single-line,--single" );
             if( csv.fields.empty() ) { csv.fields = "data"; }
             std::string first;
             if( !size )
@@ -286,90 +319,133 @@ int main( int ac, char** av )
                     size = max;
                 }
             }
-            bool normalize = options.exists( "--normalize,-n" );
-            bool sort = options.exists( "--sort,--ascending,-s,--descending,--rsort" );
-            bool ascending = sort && !options.exists( "--descending,--rsort" );
-            comma::csv::options output_csv;
+            
             bool has_block = csv.has_field( "block" );
-            output_csv.fields = single_line_output ? has_block ? "vectors,values,block" : "vectors,values"
-                                                   : has_block ? "vector,value,block" : "vector,value";
-            if( csv.binary() )
-            {
-                std::string s = boost::lexical_cast< std::string >( single_line_output ? *size * ( *size + 1 ) : ( *size + 1 ) );
-                output_csv.format( has_block ? s + "d,ui" : s + "d" );
-            }
             std::deque< snark::eigen::input_t > buffer;
             if( !first.empty() ) { buffer.push_back( comma::csv::ascii< snark::eigen::input_t >( csv ).get( first ) ); }
             comma::csv::input_stream< snark::eigen::input_t > istream( std::cin, csv );
-            boost::scoped_ptr< comma::csv::output_stream< snark::eigen::output_t > > ostream;
-            boost::scoped_ptr< comma::csv::output_stream< snark::eigen::single_line_output_t > > single_line_ostream;
-            if( single_line_output ) { single_line_ostream.reset( new comma::csv::output_stream< snark::eigen::single_line_output_t >( std::cout, output_csv ) ); }
-            else { ostream.reset( new comma::csv::output_stream< snark::eigen::output_t >( std::cout, output_csv ) ); }
-            typedef Eigen::Matrix< double, -1, -1, Eigen::RowMajor > matrix_t;
             std::vector< unsigned int > indices( *size ); // quick and dirty
             for( unsigned int i = 0; i < indices.size(); indices[i] = i, ++i );
-            while( true )
+            if( operation == "eigen" )
             {
-                const snark::eigen::input_t* p = istream.read();
-                if( !p || ( !buffer.empty() && buffer.front().block != p->block ) )
+                bool single_line_output = options.exists( "--single-line-output,--single-line,--single" );
+                bool normalize = options.exists( "--normalize,-n" );
+                bool sort = options.exists( "--sort,--ascending,-s,--descending,--rsort" );
+                bool ascending = sort && !options.exists( "--descending,--rsort" );
+                comma::csv::options output_csv;
+                output_csv.fields = single_line_output ? has_block ? "vectors,values,block" : "vectors,values"
+                                                       : has_block ? "vector,value,block" : "vector,value";
+                if( csv.binary() )
                 {
-                    //if( buffer.size() == 1 ) { std::cerr << "math-eigen: on block " << buffer.front().block << ": expected block with at least two entries, got only one" << std::endl; return 1; }
-                    matrix_t sample( buffer.size(), *size );
-                    for( std::size_t i = 0; i < buffer.size(); ++i ) // todo: hm... dodgy? use Eigen::Map instead?
+                    std::string s = boost::lexical_cast< std::string >( single_line_output ? *size * ( *size + 1 ) : ( *size + 1 ) );
+                    output_csv.format( has_block ? s + "d,ui" : s + "d" );
+                }
+                boost::scoped_ptr< comma::csv::output_stream< snark::eigen::output_t > > ostream;
+                boost::scoped_ptr< comma::csv::output_stream< snark::eigen::single_line_output_t > > single_line_ostream;
+                if( single_line_output ) { single_line_ostream.reset( new comma::csv::output_stream< snark::eigen::single_line_output_t >( std::cout, output_csv ) ); }
+                else { ostream.reset( new comma::csv::output_stream< snark::eigen::output_t >( std::cout, output_csv ) ); }
+                while( true )
+                {
+                    const snark::eigen::input_t* p = istream.read();
+                    if( !p || ( !buffer.empty() && buffer.front().block != p->block ) )
                     {
-                        ::memcpy( &sample( i, 0 ), &buffer[i].data[0], *size * sizeof( double ) );
-                    }
-                    matrix_t covariance = sample.adjoint() * sample;
-                    covariance = covariance / ( sample.rows() - 1 );                    
-                    Eigen::SelfAdjointEigenSolver< matrix_t > solver( covariance );
-                    Eigen::VectorXd values = solver.eigenvalues();
-                    if( normalize ) { values = values / solver.eigenvalues().sum(); }
-                    const matrix_t& vectors = solver.eigenvectors().transpose();
-                    if( sort )
-                    {
-                        std::map< double, unsigned int > m; // quick and dirty, watch performance
-                        for( unsigned int i = 0; i < indices.size(); m[ ascending ? values[i] : -values[i] ] = i, ++i );
-                        unsigned int i = 0;
-                        for( std::map< double, unsigned int >::const_iterator it = m.begin(); it != m.end(); indices[i] = it->second, ++it, ++i );
-                    }
-                    if( single_line_output )
-                    {
-                        snark::eigen::single_line_output_t output;
-                        output.block = buffer.front().block;
+                        typedef Eigen::Matrix< double, -1, -1, Eigen::RowMajor > matrix_t;
+                        matrix_t sample( buffer.size(), *size );
+                        for( std::size_t i = 0; i < buffer.size(); ++i ) { ::memcpy( &sample( i, 0 ), &buffer[i].data[0], *size * sizeof( double ) ); } // dodgy?
+                        //if( buffer.size() == 1 ) { std::cerr << "math-eigen: on block " << buffer.front().block << ": expected block with at least two entries, got only one" << std::endl; return 1; }
+                        matrix_t covariance = sample.adjoint() * sample;
+                        covariance = covariance / ( sample.rows() - 1 );                    
+                        Eigen::SelfAdjointEigenSolver< matrix_t > solver( covariance );
+                        Eigen::VectorXd values = solver.eigenvalues();
+                        if( normalize ) { values = values / solver.eigenvalues().sum(); }
+                        const matrix_t& vectors = solver.eigenvectors().transpose();
                         if( sort )
                         {
-                            for( unsigned int i = 0; i < indices.size(); ++i )
+                            std::map< double, unsigned int > m; // quick and dirty, watch performance
+                            for( unsigned int i = 0; i < indices.size(); m[ ascending ? values[i] : -values[i] ] = i, ++i );
+                            unsigned int i = 0;
+                            for( std::map< double, unsigned int >::const_iterator it = m.begin(); it != m.end(); indices[i] = it->second, ++it, ++i );
+                        }
+                        if( single_line_output )
+                        {
+                            snark::eigen::single_line_output_t output;
+                            output.block = buffer.front().block;
+                            if( sort )
                             {
-                                output.values[i] = values[ indices[i] ];
-                                ::memcpy( &output.vectors[ i * *size ], &vectors( indices[i], 0 ), *size * sizeof( double ) ); // quick and dirty
+                                for( unsigned int i = 0; i < indices.size(); ++i )
+                                {
+                                    output.values[i] = values[ indices[i] ];
+                                    ::memcpy( &output.vectors[ i * *size ], &vectors( indices[i], 0 ), *size * sizeof( double ) ); // quick and dirty
+                                }
                             }
+                            else
+                            {
+                                ::memcpy( &output.vectors[0], &vectors( 0, 0 ), *size * *size * sizeof( double ) ); // quick and dirty
+                                ::memcpy( &output.values[0], &values[0], *size * sizeof( double ) );
+                            }
+                            single_line_ostream->write( output );
+                            if( csv.flush ) { single_line_ostream->flush(); }
                         }
                         else
                         {
-                            ::memcpy( &output.vectors[0], &vectors( 0, 0 ), *size * *size * sizeof( double ) ); // quick and dirty
-                            ::memcpy( &output.values[0], &values[0], *size * sizeof( double ) );
+                            for( std::size_t i = 0; i < *size; ++i )
+                            {
+                                snark::eigen::output_t output;
+                                output.block = buffer.front().block;
+                                ::memcpy( &output.vector[0], &vectors( indices[i], 0 ), *size * sizeof( double ) );
+                                output.value = values[ indices[i] ];
+                                ostream->write( output );
+                                if( csv.flush ) { ostream->flush(); }
+                            }
                         }
-                        single_line_ostream->write( output );
-                        if( csv.flush ) { single_line_ostream->flush(); }
+                        buffer.clear();
                     }
-                    else
+                    if( !p ) { break; }
+                    buffer.push_back( *p );
+                }
+                return 0;
+            }
+            if( operation == "fit-plane" ) // see http://math.stackexchange.com/questions/99299/best-fitting-plane-given-a-set-of-points
+            {
+                comma::csv::options output_csv;
+                output_csv.fields = has_block ? "mean,normal,block" : "mean,normal";
+                if( csv.binary() )
+                {
+                    std::string s = boost::lexical_cast< std::string >( *size );
+                    output_csv.format( has_block ? s + "d," + s + "d,ui" : s + "d," + s + "d" );
+                }
+                comma::csv::output_stream< snark::eigen::fit_plane_output_t > ostream( std::cout, output_csv );
+                while( true )
+                {
+                    const snark::eigen::input_t* p = istream.read();
+                    if( !p || ( !buffer.empty() && buffer.front().block != p->block ) )
                     {
+                        typedef Eigen::Matrix< double, -1, -1 > matrix_t;
+                        matrix_t sample( *size, buffer.size() );
+                        for( std::size_t i = 0; i < buffer.size(); ++i ) // todo: watch performance, cache misses; use tbb::parallel_for?
+                        {
+                            for( std::size_t j = 0; j < *size; ++j ) { sample.row( j )[i] = buffer[i].data[j]; }
+                        }
+                        Eigen::VectorXd mean( *size );
                         for( std::size_t i = 0; i < *size; ++i )
                         {
-                            snark::eigen::output_t output;
-                            output.block = buffer.front().block;
-                            ::memcpy( &output.vector[0], &vectors( indices[i], 0 ), *size * sizeof( double ) );
-                            output.value = values[ indices[i] ];
-                            ostream->write( output );
-                            if( csv.flush ) { ostream->flush(); }
+                            mean( i ) = sample.row( i ).mean();
+                            sample.row( i ).array() -= mean( i );
                         }
+                        Eigen::VectorXd normal = sample.jacobiSvd( Eigen::ComputeThinU | Eigen::ComputeThinV ).matrixU().rightCols< 1 >();
+                        snark::eigen::fit_plane_output_t output;
+                        ::memcpy( &output.mean[0], &mean[0], *size * sizeof( double ) ); // quick and dirty
+                        ::memcpy( &output.normal[0], &normal[0], *size * sizeof( double ) ); // quick and dirty
+                        output.block = buffer.front().block;
+                        ostream.write( output );
+                        buffer.clear();
                     }
-                    buffer.clear();
+                    if( !p ) { break; }
+                    buffer.push_back( *p );
                 }
-                if( !p ) { break; }
-                buffer.push_back( *p );
+                return 0;
             }
-            return 0;
+                
         }
         if( operation == "rotation" )
         {

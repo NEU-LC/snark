@@ -48,12 +48,14 @@
 #include <boost/mpl/list.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <Eigen/Core>
-#include <opencv2/contrib/contrib.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
+#if CV_MAJOR_VERSION <= 2
+#include <opencv2/contrib/contrib.hpp>
+#endif // #if CV_MAJOR_VERSION <= 2
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_reduce.h>
@@ -80,6 +82,7 @@
 #include "detail/accumulated.h"
 #include "detail/arithmetic.h"
 #include "detail/bitwise.h"
+#include "detail/colors.h"
 #include "detail/load.h"
 #include "detail/morphology.h"
 #include "detail/ratio.h"
@@ -792,7 +795,7 @@ static typename impl::filters< H >::value_type blur_impl_( typename impl::filter
             cv::bilateralFilter(m.second, n.second, params.neighbourhood_size, params.sigma_colour, params.sigma_space);
             break;
         case blur_t::adaptive_bilateral:
-            cv::adaptiveBilateralFilter(m.second, n.second, params.kernel_size, params.sigma_colour, params.sigma_space);
+            //cv::adaptiveBilateralFilter(m.second, n.second, params.kernel_size, params.sigma_colour, params.sigma_space);
             break;
     }
     return n;
@@ -1247,6 +1250,7 @@ template < typename T > static T cv_read_( const std::string& filename = "", con
     return t;
 }
 
+#if CV_MAJOR_VERSION <= 2
 template < typename H >
 struct simple_blob_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
@@ -1264,6 +1268,7 @@ struct simple_blob_impl_ {
         return m;
     }
 };
+#endif // #if CV_MAJOR_VERSION <= 2
 
 template < typename H >
 struct grab_impl_ {
@@ -1342,6 +1347,54 @@ struct timestamp_impl_ {
 };
 
 template < typename H >
+class save_impl_
+{
+    public:
+        typedef typename impl::filters< H >::value_type value_type;
+
+        save_impl_( const std::string& filename, bool no_header, const boost::optional< int >& quality, bool do_index ) : filename_( filename ), index_( 0 ), quality_( quality ), do_index_( do_index )
+        {
+            snark::cv_mat::serialization::options options;
+            options.no_header = no_header;
+            serialization_ = snark::cv_mat::serialization( options );
+            const auto& v = comma::split( filename, '.' );
+            if( v.size() == 1 ) { COMMA_THROW( comma::exception, "save: expected filename with image type extension, got: \"" << filename << "\"" ); }
+            basename_ = comma::join( v, v.size() - 1, '.' );
+            type_ = v.back();
+        }
+
+        value_type operator()( value_type m )
+        {
+            if( m.second.empty() ) { return m; }
+            std::vector< int > params;
+            if( quality_ ) { params = imwrite_params( type_, *quality_ ); }
+            std::string filename = do_index_ ? basename_ + '.' + boost::lexical_cast< std::string  >( index_ ) + '.' + type_ : filename_;
+            if( type_ == "bin" )
+            {
+                std::ofstream ofs( filename );
+                if( !ofs.is_open() ) { COMMA_THROW( comma::exception, "" ); }
+                serialization_.write( ofs, m );
+            }
+            else
+            {
+                encode_impl_check_type< H >( m, type_ );
+                cv::imwrite( filename, m.second, params );
+            }
+            ++index_;
+            return m;
+        }
+        
+    private:
+        snark::cv_mat::serialization serialization_;
+        std::string filename_;
+        std::string basename_;
+        std::string type_;
+        unsigned int index_;
+        boost::optional< int > quality_;
+        bool do_index_;
+};
+
+template < typename H >
 struct count_impl_
 {
     count_impl_() : count( 0 ) {}
@@ -1361,7 +1414,7 @@ template < typename H >
 static typename impl::filters< H >::value_type invert_impl_( const typename impl::filters< H >::value_type& m )
 {
     if( m.second.type() != CV_8UC1 && m.second.type() != CV_8UC2 && m.second.type() != CV_8UC3 && m.second.type() != CV_8UC4 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
-    for( unsigned char* c = m.second.datastart; c < m.second.dataend; *c = 255 - *c, ++c );
+    for( unsigned char* c = const_cast< unsigned char* >( m.second.datastart ); c < m.second.dataend; *c = 255 - *c, ++c );
     return m;
 }
 
@@ -1371,37 +1424,59 @@ static typename impl::filters< H >::value_type invert_brightness_impl_( typename
     if( m.second.type() != CV_8UC3 ) { COMMA_THROW( comma::exception, "expected image type 3ub; got: " << type_as_string( m.second.type() ) ); }
     cv::Mat n;
     cv::cvtColor( m.second, n, CV_RGB2HSV );
-    for( unsigned char* c = n.datastart + 2; c < n.dataend; *c = 255 - *c, c += 3 );
+    for( unsigned char* c = const_cast< unsigned char* >( m.second.datastart ) + 2; c < n.dataend; *c = 255 - *c, c += 3 );
     cv::cvtColor( n, m.second, CV_HSV2RGB );
     return m;
 }
 
 template < typename H >
+class clahe_impl_
+{
+    public:
+        clahe_impl_( float clip_limit, const cv::Size& tile_size ) : clahe_( cv::createCLAHE( clip_limit, tile_size ) ) {}
+
+        typedef typename impl::filters< H >::value_type value_type;
+
+        value_type operator()( value_type m )
+        {
+            value_type n;
+            n.first = m.first;
+            if( m.second.channels() == 1 )
+            {
+                clahe_->apply( m.second, n.second );
+            }
+            else
+            {
+                std::vector< cv::Mat > channels( m.second.channels() );
+                std::vector< cv::Mat > output_channels( m.second.channels() );
+                cv::split( m.second, channels );
+                for( int i = 0; i < m.second.channels(); ++i ) { clahe_->apply( channels[i], output_channels[i] ); }
+                cv::merge( output_channels, n.second );
+            }
+            return n;
+        }
+    private:
+        cv::Ptr< cv::CLAHE > clahe_;
+};
+
+template < typename H >
 static typename impl::filters< H >::value_type equalize_histogram_impl_(typename impl::filters< H >::value_type m)
 {
-    if( single_channel_type(m.second.type()) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
+    if( single_channel_type( m.second.type() ) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected currently supported types: ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); } //cv::equalizeHist only supports 8-bit single channel
     int chs=m.second.channels();
-    //split
     std::vector<cv::Mat> planes;
-    for(int i=0;i<chs;i++)
-        planes.push_back(cv::Mat(1,1,single_channel_type(m.second.type())));
+    for( int i=0; i<chs; i++ ) { planes.push_back(cv::Mat(1,1,single_channel_type(m.second.type()))); }
     cv::split(m.second,planes);
-    //equalize
-    for(int i=0;i<chs;i++)
-    {
-        //cv::equalizeHist only supports 8-bit single channel
-        cv::equalizeHist(planes[i],planes[i]);
-    }
-    //merge
+    for(int i=0;i<chs;i++) { cv::equalizeHist( planes[i],planes[i] ); }
     cv::merge(planes,m.second);
     return m;
 }
 
 template < typename H >
-static typename impl::filters< H >::value_type normalize_cv_impl_( typename impl::filters< H >::value_type m )
+static typename impl::filters< H >::value_type normalize_cv_impl_( typename impl::filters< H >::value_type m, int norm_type = cv::NORM_INF )
 {
     //std::cerr<<"my type: "<<m.second.type()<<" ,CV_8UC3: "<<int(CV_8UC3)<<" ,CV_32FC3: "<<int(CV_32FC3)<<" ,CV_8UC1: "<<CV_8UC1<<std::endl;
-    cv::normalize(m.second,m.second,1,0,cv::NORM_INF,CV_32FC(m.second.channels()));
+    cv::normalize( m.second, m.second, 1, 0, norm_type, CV_32FC( m.second.channels() ) );
     return m;
 }
 
@@ -1653,12 +1728,12 @@ class max_impl_ // experimental, to debug
             value_type s( m.first, cv::Mat( m.second.rows, m.second.cols, m.second.type() ) );
             // For min, memset has to set max value
             // TODO: support other image types other than ub
-            ::memset( m.second.datastart, 0, m.second.rows * m.second.cols * m.second.channels() );
+            ::memset( const_cast< unsigned char* >( m.second.datastart ), 0, m.second.rows * m.second.cols * m.second.channels() );
             static unsigned int count = 0;
             for( unsigned int i = 0; i < deque_.size(); ++i )
             {
-                unsigned char* p = deque_[i].second.datastart;
-                for( unsigned char* q = s.second.datastart; q < s.second.dataend; *q = is_max_ ? std::max( *p, *q ) : std::min( *p, *q ), ++p, ++q );
+                unsigned char* p = const_cast< unsigned char* >( deque_[i].second.datastart );
+                for( unsigned char* q = const_cast< unsigned char* >( s.second.datastart ); q < s.second.dataend; *q = is_max_ ? std::max( *p, *q ) : std::min( *p, *q ), ++p, ++q );
             }
             ++count;
             return s;
@@ -1670,6 +1745,7 @@ class max_impl_ // experimental, to debug
         std::deque< value_type > deque_; // use vector?
 };
 
+#if CV_MAJOR_VERSION <= 2
 template < typename H >
 class map_impl_
 {
@@ -1764,6 +1840,7 @@ class map_impl_
             }
         }
 };
+#endif // #if CV_MAJOR_VERSION <= 2
 
 template < typename H >
 static typename impl::filters< H >::value_type magnitude_impl_( typename impl::filters< H >::value_type m )
@@ -2218,6 +2295,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what());
         }
     }
+    if( e[0] == "balance-white" ) { return std::make_pair( impl::balance_white< H >(), false ); }
     if( e[0] == "canny" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "canny: please specify <threshold1>,<threshold2>[,<kernel_size>]" ); }
@@ -2227,6 +2305,21 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         double threshold2 = boost::lexical_cast< double >( s[1] );
         int kernel_size = s.size() > 2 ? boost::lexical_cast< int >( s[2] ) : 3;
         return std::make_pair( boost::bind< value_type_t >( canny_impl_< H >(), _1, threshold1, threshold2, kernel_size ), true );
+    }
+    if( e[0] == "clahe" )
+    {
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        if( s.size() != 3 ) { COMMA_THROW( comma::exception, "clahe: please specify <clip_limit>,<tile_size_x>,<tile_size_y>" ); }
+        try
+        {
+            float clip_limit = boost::lexical_cast< float >( s[0] );
+            cv::Size tile_size( boost::lexical_cast< unsigned int >( s[1] ), boost::lexical_cast< unsigned int >( s[ s.size() == 2 ? 1 : 2 ] ) );
+            return std::make_pair( clahe_impl_< H >( clip_limit, tile_size ), false );
+        }
+        catch( boost::bad_lexical_cast& bc )
+        {
+            COMMA_THROW( comma::exception, "clahe=" << e[1] << ": failed to cast parameter: " << bc.what());
+        }
     }
     if( e[0] == "convert-color" || e[0] == "convert_color" )
     {
@@ -2491,6 +2584,21 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         }
         return std::make_pair( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false );
     }
+    if( e[0] == "save" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename" ); }
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        boost::optional< int > quality;
+        bool do_index = false;
+        bool no_header = false;
+        for( unsigned int i = 1; i < s.size(); ++i )
+        {
+            if( s[i] == "index" ) { do_index = true; }
+            else if( s[i] == "no-header" ) { no_header = true; }
+            else { quality = boost::lexical_cast< int >( s[i] ); }
+        }
+        return std::make_pair( boost::bind< value_type_t >( save_impl_< H >( s[0], no_header, quality, do_index ), _1 ), false );
+    }
     if( e[0] == "gamma" ) { return std::make_pair( boost::bind< value_type_t >( gamma_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ), true ); }
     if( e[0] == "pow" || e[0] == "power" ) { return std::make_pair( boost::bind< value_type_t >( pow_impl_< H >, _1, boost::lexical_cast< double >( e[1] ) ), true ); }
     if( e[0] == "remove-mean")
@@ -2534,16 +2642,16 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         std::vector< std::string > w = comma::split( e[1], ',' );
         cv::Point p( 10, 10 );
         if( w.size() >= 3 ) { p = cv::Point( boost::lexical_cast< unsigned int >( w[1] ), boost::lexical_cast< unsigned int >( w[2] ) ); }
-        cv::Scalar s( 0, 255, 255 );
+        cv::Scalar s( 0, 0xffff, 0xffff );
         if( w.size() >= 4 )
         {
-            if( w[3] == "red" ) { s = cv::Scalar( 0, 0, 255 ); }
-            else if( w[3] == "green" ) { s = cv::Scalar( 0, 255, 0 ); }
-            else if( w[3] == "blue" ) { s = cv::Scalar( 255, 0, 0 ); }
-            else if( w[3] == "white" ) { s = cv::Scalar( 255, 255, 255 ); }
+            if( w[3] == "red" ) { s = cv::Scalar( 0, 0, 0xffff ); }
+            else if( w[3] == "green" ) { s = cv::Scalar( 0, 0xffff, 0 ); }
+            else if( w[3] == "blue" ) { s = cv::Scalar( 0xffff, 0, 0 ); }
+            else if( w[3] == "white" ) { s = cv::Scalar( 0xffff, 0xffff, 0xffff ); }
             else if( w[3] == "black" ) { s = cv::Scalar( 0, 0, 0 ); }
-            else if( w[3] == "yellow" ) { s = cv::Scalar( 0, 255, 255 ); }
-            else { COMMA_THROW( comma::exception, "expected colour of text in \"" << comma::join( e, '=' ) << "\", got '" << w[3] << "'" ); }
+            else if( w[3] == "yellow" ) { s = cv::Scalar( 0, 0xffff, 0xffff ); }
+            else { COMMA_THROW( comma::exception, "expected colour of text, e.g. 'red', in \"" << comma::join( e, '=' ) << "\", got '" << w[3] << "'" ); }
         }
         return std::make_pair( boost::bind< value_type_t >( text_impl_< H >, _1, w[0], p, s ), true );
     }
@@ -2628,10 +2736,20 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if(e[0]=="normalize")
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify parameter: expected normalize=<how>" ); }
-        if(e[1]=="max") { return std::make_pair( normalize_max_impl_< H >, true ); }
-        else if(e[1]=="sum") { return std::make_pair( normalize_sum_impl_< H >, true ); }
-        else if(e[1]=="all") { return std::make_pair( normalize_cv_impl_< H >, true ); }
-        else { COMMA_THROW( comma::exception, "expected max or sum option for normalize, got" << e[1] ); }
+        const std::vector< std::string > w = comma::split( e[1], ',' );
+        int norm_type = cv::NORM_INF;
+        if( w.size() == 2 )
+        {
+            if( w[1] == "inf" || w[1] == "INF" || w[1] == "NORM_INF" ) { norm_type = cv::NORM_INF; }
+            else if( w[1] == "l1" || w[1] == "L1" || w[1] == "NORM_L1" ) { norm_type = cv::NORM_L1; }
+            else if( w[1] == "l2" || w[1] == "L2" || w[1] == "NORM_L2" ) { norm_type = cv::NORM_L2; }
+            else { COMMA_THROW( comma::exception, "expected norm type, got: \"" + w[1] + "\"" ); }
+            if( w[0] != "all" && norm_type != cv::NORM_INF ) { COMMA_THROW( comma::exception, "norm type \"" + w[1] + "\" implemented only for 'all'; todo" ); } // quick and dirty
+        }
+        if( w[0] == "max" ) { return std::make_pair( normalize_max_impl_< H >, true ); }
+        else if( w[0] == "sum" ) { return std::make_pair( normalize_sum_impl_< H >, true ); }
+        else if( w[0] == "all" ) { return std::make_pair( boost::bind( normalize_cv_impl_< H >, _1, norm_type ), true ); }
+        COMMA_THROW( comma::exception, "expected all, max, or sum option for normalize, got: \"" << w[0] << "\"" );
     }
     if( e[0]=="equalize-histogram" ) { return std::make_pair( equalize_histogram_impl_< H >, true ); }
     if( e[0] == "brightness" || e[0] == "scale" )
@@ -2708,12 +2826,16 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "map" ) // todo! refactor usage, especially csv option separators and equal sign; make optionally map for each channel separately
     {
+#if CV_MAJOR_VERSION <= 2
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
         std::stringstream s; s << e[1]; for( std::size_t i = 2; i < e.size(); ++i ) { s << "=" << e[i]; }
         std::string map_filter_options = s.str();
         std::vector< std::string > items = comma::split( map_filter_options, '&' );
         bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
         return std::make_pair( map_impl_ < H >( map_filter_options, permissive ), true );
+#else // #if CV_MAJOR_VERSION <= 2
+        COMMA_THROW( comma::exception, "map: opencv 3 support: todo" );
+#endif // #if CV_MAJOR_VERSION <= 2
     }
     if( e[0] == "inrange" )
     {
@@ -3012,7 +3134,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if (period)
             {
                 unsigned int seconds = static_cast< unsigned int >( *period );
-                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( *period - seconds ) * 1000000 ), index, get_timestamp ), false ) );
+                f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( static_cast< unsigned int >( ( *period - seconds ) * 1000000 ) ), index, get_timestamp ), false ) );
             }
             else if ( size )
             {
@@ -3076,6 +3198,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "simple-blob" )
         {
+#if CV_MAJOR_VERSION <= 2
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'simple-blob' as the last filter, got \"" << how << "\"" ); }
             std::vector< std::string > s;
             if( e.size() > 1 ) { s = comma::split( e[1], ',' ); }
@@ -3103,6 +3226,9 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             }
             f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >(get_timestamp), _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), is_binary ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
+#else // #if CV_MAJOR_VERSION <= 2
+            COMMA_THROW( comma::exception, "simple-blob: opencv 3 support: todo" );
+#endif // #if CV_MAJOR_VERSION <= 2
         }
         else if( e[0] == "null" )
         {
@@ -3155,6 +3281,9 @@ template < typename H >
 static std::string usage_impl_()
 {
     std::ostringstream oss;
+    oss << std::endl;
+    oss << "    OpenCV version: " << CV_MAJOR_VERSION << std::endl;
+    oss << std::endl;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>[,<how>]: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
@@ -3187,6 +3316,7 @@ static std::string usage_impl_()
     oss << "        canny=<threshold1>,<threshold2>[,<kernel_size>]: finds edges using the Canny86 algorithm (see cv::Canny)" << std::endl;
     oss << "                                                         generates a mask with bright lines representing the edges on a black background, requires single-channel 8-bit input image" << std::endl;
     oss << "                threshold1, threshold2: the smaller value is used for edge linking, the larger value is used to find initial segments of strong edges" << std::endl;
+    oss << "        clahe=<clip_limit>,<tile_size_x>[,<tile_size_y>]: CLAHE, contrast limited adaptive histogram equalization (see opencv documentation for more), e.g. try clahe=2.0,8,8" << std::endl;
     oss << "                kernel_size: size of the extended Sobel kernel; it must be 1, 3, 5 or 7" << std::endl;
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
@@ -3204,17 +3334,13 @@ static std::string usage_impl_()
     oss << "            deprecated: old syntax <i>,<j>,<ncols>,<nrows> is used for one tile if i < ncols and j < ncols" << std::endl;
     oss << "        encode=<format>[,<quality>]: encode images to the specified format. <format>: jpg|ppm|png|tiff..., make sure to use --no-header" << std::endl;
     oss << "                                     <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
-    oss << "        equalize-histogram: todo: equalize each channel by its histogram" << std::endl;
+    oss << "        equalize-histogram: equalize each channel by its histogram" << std::endl;
     oss << "        fft[=<options>]: do fft on a floating point image" << std::endl;
     oss << "            options: inverse: do inverse fft" << std::endl;
     oss << "                     real: output real part only" << std::endl;
     oss << "                     magnitude: output magnitude only" << std::endl;
     oss << "            examples: cv-cat --file image.jpg \"split;crop-tile=2,5,0,0,1,3;convert-to=f,0.0039;fft;fft=inverse,magnitude;view;null\"" << std::endl;
     oss << "                      cv-cat --file image.jpg \"split;crop-tile=2,5,0,0,1,3;convert-to=f,0.0039;fft=magnitude;convert-to=f,40000;view;null\"" << std::endl;
-    oss << "        file=<format>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
-    oss << "                                   <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
-    oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
-    oss << "                                   index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
     oss << "        flip: flip vertically" << std::endl;
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        grab=<format>[,<quality>]: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
@@ -3223,16 +3349,6 @@ static std::string usage_impl_()
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
     oss << "        kmeans=<k>[,<params>]: perform k-means clustering on image and replace each pixel with the mean of its cluster" << std::endl;
-    oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
-    oss << "                         supported file types by filename extension:" << std::endl;
-    oss << "                             - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
-    oss << "                             - otherwise whatever cv::imread supports" << std::endl;
-    oss << "        log=<options>: write images to files" << std::endl;
-    oss << "            log=<filename>: write images to a single file" << std::endl;
-    oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
-    oss << "            log=<dirname>,period:<seconds>: write images to files in a given directory, each file containing frames for a given period of time" << std::endl;
-    oss << "                                            e.g. for log=tmp,period:1.5 each file will contain 1.5 seconds worth of images" << std::endl;
-    oss << "            log=<options>,index: write index file, describing file number and offset of each frame" << std::endl;
     oss << "        magnitude: calculate magnitude for a 2-channel image; see cv::magnitude() for details" << std::endl;
     oss << "        map=<map file>[&<csv options>][&permissive]: map integer values to floating point values read from the map file" << std::endl;
     oss << "             <csv options>: usual csv options for map file, but &-separated (running out of separator characters)" << std::endl;
@@ -3241,10 +3357,16 @@ static std::string usage_impl_()
     oss << "             <permissive>: if present, integer values in the input are simply copied to the output unless they are in the map" << std::endl;
     oss << "                  default: filter fails with an error message if it encounters an integer value which is not in the map" << std::endl;
     oss << "             example: \"map=map.bin&fields=,key,value&binary=2ui,d\"" << std::endl;
-    oss << "        normalize=<how>: normalize image and scale to 0 to 1 float (or double if input is CV_64F)" << std::endl;
-    oss << "            normalize=max: normalize each pixel channel by its max value" << std::endl;
-    oss << "            normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
-    oss << "            normalize=all: normalize each pixel by max of all channels (see cv::normalize with NORM_INF)" << std::endl;
+    oss << "        normalize=<how>[,<norm_type>]: normalize image and scale to 0 to 1 float (or double if input is CV_64F)" << std::endl;
+    oss << "            <how>" << std::endl;
+    oss << "                normalize=max: normalize each pixel channel by its max value" << std::endl;
+    oss << "                normalize=sum: normalize each pixel channel by the sum of all channels" << std::endl;
+    oss << "                normalize=all: normalize each pixel by max of all channels (cv::normalize())" << std::endl;
+    oss << "            <norm_type>" << std::endl;
+    oss << "                inf: cv::NORM_INF" << std::endl;
+    oss << "                l1: cv::NORM_L1" << std::endl;
+    oss << "                l2: cv::NORM_L2" << std::endl;
+    oss << "                default: inf (for backward compatibility)" << std::endl;
     oss << "        null: same as linux /dev/null (since windows does not have it)" << std::endl;
     oss << "        overlay=<image_file>[,x,y]: overlay image_file on top of current stream at optional x,y location; overlay image should have alpha channel" << std::endl;
     oss << "        pack=<bits>,<format>: pack pixel data in specified bits, example: pack=12,cd,hb,fg" << std::endl;
@@ -3301,6 +3423,26 @@ static std::string usage_impl_()
     oss << "                       therefore, unfortunately:" << std::endl;
     oss << "                           instead of: cv-cat 'view;do-something;view'" << std::endl;
     oss << "                                  use: cv-cat 'view;do-something' | cv-cat 'view'" << std::endl;
+    oss << std::endl;
+    oss << "    file read/write operations" << std::endl;
+    oss << "        file=<format>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "            <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
+    oss << "            <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
+    oss << "            index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
+    oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
+    oss << "            supported file types by filename extension:" << std::endl;
+    oss << "                - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
+    oss << "                - otherwise whatever cv::imread supports" << std::endl;
+    oss << "        log=<options>: write images to files" << std::endl;
+    oss << "            log=<filename>: write images to a single file" << std::endl;
+    oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
+    oss << "            log=<dirname>,period:<seconds>: write images to files in a given directory, each file containing frames for a given period of time" << std::endl;
+    oss << "                                            e.g. for log=tmp,period:1.5 each file will contain 1.5 seconds worth of images" << std::endl;
+    oss << "            log=<options>,index: write index file, describing file number and offset of each frame" << std::endl;
+    oss << "        save=<filename>[,<quality>][,index][,no-header]: write images to files with timestamp as name in the specified format. <filename>: <base>.<format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
+    oss << "            <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
+    oss << "            <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
+    oss << "            index: if present, for each image, files will be named as: <base>.<index>.<extension>, e.g: my-file.0.png, my-file.1.png, etc" << std::endl;
     oss << std::endl;
     oss << "    operations on channels" << std::endl;
     oss << "        clone-channels=<n>: take 1-channel image, output n-channel image, with each channel a copy of the input" << std::endl;

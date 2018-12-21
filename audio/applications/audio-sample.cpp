@@ -187,7 +187,7 @@ int main( int ac, char** av )
                             else { std::cout << a << std::endl; }
                         }
                         
-                        select.wait( boost::posix_time::microseconds( microseconds_per_sample ) );
+                        select.wait( boost::posix_time::microseconds( static_cast< unsigned int >( microseconds_per_sample ) ) );
                         if( select.read().ready( 0 ) ) { v.clear(); break; }
                         boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
                         size = ( now - before ).total_microseconds() / microseconds_per_sample;

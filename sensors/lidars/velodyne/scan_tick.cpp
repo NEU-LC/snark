@@ -45,7 +45,7 @@ static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.
 template<typename P>
 static boost::posix_time::time_duration timestamp_threshold(const boost::optional<unsigned>& threshold_n)
 {
-    return boost::posix_time::microseconds( threshold_n ? packet_traits<P>::packet_duration * (1+*threshold_n) : 500000 / 20 );
+    return boost::posix_time::microseconds( static_cast< long >( threshold_n ? packet_traits<P>::packet_duration * ( 1 + *threshold_n ) : 500000 / 20 ) );
 }
 
 } // namespace detail {

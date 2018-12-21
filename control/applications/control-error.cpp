@@ -309,7 +309,7 @@ int main( int ac, char** av )
         feedback_t feedback;
         double feedback_init_timeout=options.value<double>("--feedback-init-timeout",1);
         if( feedback_csv.binary() ) { feedback.second.resize( feedback_csv.format().size() ); }
-        if( select.wait( boost::posix_time::seconds( feedback_init_timeout ) ) ) // TODO: consider using feedback timeout (when implemented) instead of the hardcoded 1 sec
+        if( select.wait( boost::posix_time::seconds( static_cast< unsigned int >( feedback_init_timeout ) ) ) ) // TODO: consider using feedback timeout (when implemented) instead of the hardcoded 1 sec
         {
             const snark::control::feedback_t* p = feedback_stream.read();
             if( !p ) { std::cerr << name << ": feedback stream error" << std::endl; return 1; }

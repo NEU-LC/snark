@@ -227,10 +227,16 @@ static void usage( bool verbose=false )
     std::cerr << "            --to-fps,--fps=<fps>; thin to a given <fps>, same as --rate=<to-fps>/<from-fps> --deterministic" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    unstride-positions" << std::endl;
-    std::cerr << "        --positions=<n>: number of positions in stride; fields: positions[i]/x,positions[i]/y, (default: 1)" << std::endl;
-    std::cerr << "        --shape,--kernel,--size=<x>,<y>; (tile) image size (see: stride operation)" << std::endl;
-    std::cerr << "        --strides=[<x>,<y>]; stride size; default: 1,1 (see: stride operation)" << std::endl;
-    std::cerr << "        --unstrided-size,--unstrided=<width>,<height>; original (unstrided) image size" << std::endl;
+    std::cerr << "        options" << std::endl;
+    std::cerr << "            --permissive: discard records with invalid stride id" << std::endl;
+    std::cerr << "            --positions=<n>: number of positions in stride; fields: positions[i]/x,positions[i]/y, (default: 1)" << std::endl;
+    std::cerr << "            --shape,--kernel,--size=<x>,<y>; (tile) image size (see: stride operation)" << std::endl;
+    std::cerr << "            --strides=[<x>,<y>]; stride size; default: 1,1 (see: stride operation)" << std::endl;
+    std::cerr << "            --unstrided-size,--unstrided=<width>,<height>; original (unstrided) image size" << std::endl;
+    std::cerr << "        fields" << std::endl;
+    std::cerr << "            index: stride index counting strides row by row" << std::endl;
+    std::cerr << "            x,y: todo: stride 2d index" << std::endl;
+    std::cerr << "            positions: pixel positions to unstride, e.g: positions[0]/x,positions[0]/y,positions[1]/x,positions[1]/y; also see --positions" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "    draw" << std::endl;
@@ -1273,17 +1279,15 @@ int main( int ac, char** av )
                 if( threshold )
                 {
                     cv::threshold(p.second, mask, *threshold, 255, cv::THRESH_BINARY);
-                    if(mask.type()!=CV_8U)
+                    if( mask.type() != CV_8U )
                     {
                         cv::Mat swap;
-                        mask.convertTo(swap,CV_8U);
+                        mask.convertTo( swap, CV_8U );
                         mask=swap;
                     }
                     count = cv::countNonZero(mask);
                 }
-
                 cv::Scalar mean = cv::mean( p.second, !threshold ? cv::noArray() : mask );
-
                 std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
                 for( int i = 0; i < p.second.channels(); ++i ) { std::cout.write( reinterpret_cast< char* >( &mean[i] ), sizeof( double ) ); std::cout.write( reinterpret_cast< char* >( &count ), sizeof( comma::uint32 ) ); }
                 std::cout.flush();
@@ -1403,7 +1407,7 @@ int main( int ac, char** av )
             unsigned int stride_rows = ( unstrided.y - shape.y ) / strides.y + 1;
             unsigned int stride_cols = ( unstrided.x - shape.x ) / strides.x + 1;
             unsigned int num_strides = stride_rows * stride_cols;
-            if( verbose ) { std::cerr << name << "unstride-positions: stride rows: " << stride_rows << ", stride cols: " << stride_cols << std::endl; }
+            if( verbose ) { std::cerr << name << "unstride-positions: stride rows: " << stride_rows << " stride cols: " << stride_cols << " number of strides: " << num_strides << std::endl; }
 
             comma::csv::options icsv( options );
             icsv.full_xpath = true;
@@ -1415,14 +1419,27 @@ int main( int ac, char** av )
             if( options.exists( "--binary" ) ) { ocsv.format( comma::csv::format::value< positions_t >( ocsv.fields, true, output ) ); }
             comma::csv::output_stream< positions_t > os( std::cout, ocsv, output );
             comma::csv::tied< stride_positions_t, positions_t > tied( is, os );
+            bool permissive = options.exists( "--permissive" );
 
             while( is.ready() || std::cin.good() )
             {
                 const stride_positions_t* p = is.read();
                 if( !p ) { break; }
-                if( p->index >= num_strides ) { COMMA_THROW( comma::exception, "invalid stride index: " << p->index << "; expected index < " << num_strides ); }
-                unsigned int stride_col = p->index % stride_rows;
-                unsigned int stride_row = p->index / stride_rows;
+                if( p->index >= num_strides )
+                { 
+                    if( permissive )
+                    { 
+                        if( verbose ) { std::cerr << "cv-calc: unstride-positions: expected stride index less than : " << num_strides << "; got: " << p->index << "; discarded" << std::endl; }
+                        continue;
+                    }
+                    else
+                    { 
+                        std::cerr << "cv-calc: unstride-positions: expected stride index less than : " << num_strides << "; got: " << p->index << "; use --permissive to discard" << std::endl;
+                        return 1;
+                    }
+                }
+                unsigned int stride_col = p->index % stride_cols;
+                unsigned int stride_row = p->index / stride_cols;
                 cv::Point2d offset( stride_col * strides.x, stride_row * strides.y );
                 for( unsigned int i = 0; i < p->positions.size(); ++i ) { output.positions[i] = p->positions[i] + offset; }
                 tied.append( output );

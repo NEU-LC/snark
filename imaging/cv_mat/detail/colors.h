@@ -1,4 +1,4 @@
-// This file is part of comma, a generic and flexible library
+// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //
@@ -27,24 +27,33 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-require.config({
-    baseUrl: '',
-    paths: {
-        jquery: 'lib/jquery/dist/jquery.min',
-        jquery_ui: 'lib/jquery-ui/jquery-ui.min',
-        handlebars: 'lib/handlebars.min-latest',
-        dat_gui: 'lib/dat-gui/build/dat.gui.snark',
-        ol: 'lib/OpenLayers/build/ol-debug',
-        Csv: 'js/Csv',
-        utils: 'js/utils',
-        MapApp: 'js/map/MapApp',
-        CsvLayer: 'js/map/CsvLayer',
-        ImageLayer: 'js/map/ImageLayer',
-    }
-});
+#pragma once
 
-var app;
+#include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION > 2
+#include <opencv2/xphoto/white_balance.hpp>
+#else // CV_MAJOR_VERSION > 2
+#include <comma/base/exception.h>
+#endif // CV_MAJOR_VERSION > 2
 
-require(['MapApp'], function(MapApp) {
-    app = new MapApp('map');
-});
+namespace snark{ namespace cv_mat { namespace impl {
+
+#if CV_MAJOR_VERSION > 2
+    template < typename H >
+    class balance_white
+    {
+        public:
+            balance_white();
+            std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
+        private:
+            cv::Ptr< cv::xphoto::SimpleWB > wb_;
+    };
+#else // CV_MAJOR_VERSION > 2
+    template < typename H >
+    struct balance_white
+    {
+        balance_white() { COMMA_THROW( comma::exception, "balance-white not implemented for opencv version " << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION << " that you have" ); }
+    };
+#endif // CV_MAJOR_VERSION > 2
+
+} } }  // namespace snark { namespace cv_mat { namespace impl {

@@ -52,7 +52,7 @@ using snark::tbb::bursty_reader;
 class rate_limit /// timer class, sleeping if faster than the specified fps
 {
     public:
-        rate_limit( double fps ) { if( fps > 1e-5 ) { m_period = boost::posix_time::microseconds( 1e6 / fps ); } }
+        rate_limit( double fps ) { if( fps > 1e-5 ) { m_period = boost::posix_time::microseconds( static_cast< unsigned int >( 1e6 / fps ) ); } }
 
         void wait()
         {
@@ -190,6 +190,9 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << "usage: cv-cat [options] [<filters>]" << std::endl;
             std::cerr << std::endl;
+            std::cerr << "using opencv version " << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION << std::endl;
+            std::cerr << "some functionality may not be available depending on the version of your installed opencv" << std::endl;
+            std::cerr << std::endl;
             std::cerr << "image header" << std::endl;
             std::cerr << "    default header fields: t,rows,cols,type" << std::endl;
             std::cerr << "    default header format: t,3ui" << std::endl;
@@ -227,6 +230,7 @@ int main( int argc, char** argv )
             std::cerr << "        gige-cat --output=\"header-only;fields=rows,cols,size,type\" | csv-from-bin 4ui | head" << std::endl;
             std::cerr << "    create a video ( -b: bitrate, -r: input/output framerate:" << std::endl;
             std::cerr << "        gige-cat | cv-cat \"encode=ppm\" --output=no-header | avconv -y -f image2pipe -vcodec ppm -r 25 -i pipe: -vcodec libx264  -threads 0 -b 2000k -r 25 video.mkv" << std::endl;
+            std::cerr << "        gige-cat encode=png --output=no-header | avconv -y -f image2pipe -r 5 -c:v png -i pipe: -c:v libx264 -threads 0 -b:v 2000k -r 5 -preset slow -crf 22 video.avi" << std::endl;
             std::cerr << std::endl;
             std::cerr << "    overlay a ruler on input stream to show scale (the overlay image can be created in a script using csv-to-svg)" << std::endl;
             std::cerr << std::endl;
@@ -282,12 +286,12 @@ int main( int argc, char** argv )
 
         if( vm.count( "file" ) )
         {
-            if( !vm.count( "video" ) ) { p.second = cv::imread( name ); }
+            if( !vm.count( "video" ) ) { p.second = cv::imread( name, cv::IMREAD_UNCHANGED ); }
             if( p.second.data )
             {
                 if( vm.count( "timestamped" ) )
                 {
-                    std::vector<std::string> time_strings = comma::split( comma::split( name, '/' ).back(), '.' );
+                    std::vector<std::string> time_strings = comma::split( comma::split( name, '/' ).back(), '.' ); // quick and dirty, use boost::filesystem
                     if ( time_strings.size() == 2 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] ); }
                     else if ( time_strings.size() == 3 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] + '.' + time_strings[1] ); }
                 }

@@ -1,4 +1,4 @@
-// This file is part of comma, a generic and flexible library
+// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //
@@ -27,24 +27,28 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-require.config({
-    baseUrl: '',
-    paths: {
-        jquery: 'lib/jquery/dist/jquery.min',
-        jquery_ui: 'lib/jquery-ui/jquery-ui.min',
-        handlebars: 'lib/handlebars.min-latest',
-        dat_gui: 'lib/dat-gui/build/dat.gui.snark',
-        ol: 'lib/OpenLayers/build/ol-debug',
-        Csv: 'js/Csv',
-        utils: 'js/utils',
-        MapApp: 'js/map/MapApp',
-        CsvLayer: 'js/map/CsvLayer',
-        ImageLayer: 'js/map/ImageLayer',
-    }
-});
+#include <memory>
+#include <vector>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include "colors.h"
 
-var app;
+namespace snark { namespace cv_mat { namespace impl {
 
-require(['MapApp'], function(MapApp) {
-    app = new MapApp('map');
-});
+#if CV_MAJOR_VERSION > 2
+    
+template < typename H > balance_white< H >::balance_white(): wb_( cv::xphoto::createSimpleWB() ) {}
+
+template < typename H > std::pair< H, cv::Mat > balance_white< H >::operator()( std::pair< H, cv::Mat > m )
+{
+    std::pair< H, cv::Mat > n;
+    n.first = m.first;
+    wb_->balanceWhite( m.second, n.second );
+    return n;
+}
+
+#endif // CV_MAJOR_VERSION > 2
+
+template class balance_white< boost::posix_time::ptime >;
+template class balance_white< std::vector< char > >;
+
+} } }  // namespace snark { namespace cv_mat { namespace impl {

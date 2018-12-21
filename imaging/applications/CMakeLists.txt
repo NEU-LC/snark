@@ -2,8 +2,13 @@ SET( dir ${SOURCE_CODE_BASE_DIR}/imaging/applications )
 FILE( GLOB source   ${dir}/*.cpp)
 FILE( GLOB includes ${dir}/*.h)
 
-FILE( GLOB stereo_source ${dir}/stereo/*.cpp )
-FILE( GLOB stereo_includes ${dir}/stereo/*.h )
+if( snark_build_imaging_stereo ) # todo: add proper cmake to stereo
+    file( GLOB stereo_source ${dir}/stereo/*.cpp )
+    file( GLOB stereo_includes ${dir}/stereo/*.h )
+    add_executable( stereo-to-points stereo-to-points.cpp ${stereo_source}  )
+    target_link_libraries( stereo-to-points snark_imaging snark_math ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
+    install( TARGETS stereo-to-points RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+endif( snark_build_imaging_stereo )
 
 SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
 
@@ -12,6 +17,10 @@ TARGET_LINK_LIBRARIES( cv-cat snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS
 
 ADD_EXECUTABLE( cv-calc cv-calc.cpp )
 TARGET_LINK_LIBRARIES( cv-calc snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
+
+ADD_EXECUTABLE( image-edit image-edit.cpp )
+TARGET_LINK_LIBRARIES( image-edit snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
+install( TARGETS image-edit RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 ADD_EXECUTABLE( image-color-calc image-color-calc.cpp )
 TARGET_LINK_LIBRARIES( image-color-calc snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
@@ -26,10 +35,7 @@ TARGET_LINK_LIBRARIES( image-to-csv snark_imaging ${comma_ALL_LIBRARIES} ${OpenC
 ADD_EXECUTABLE( image-accumulate image-accumulate.cpp )
 TARGET_LINK_LIBRARIES( image-accumulate snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} tbb )
 
-ADD_EXECUTABLE( stereo-to-points stereo-to-points.cpp ${stereo_source}  )
-TARGET_LINK_LIBRARIES( stereo-to-points snark_imaging snark_math ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
-
-INSTALL( TARGETS cv-cat cv-calc image-accumulate image-color-calc stereo-to-points image-to-csv
+INSTALL( TARGETS cv-cat cv-calc image-accumulate image-color-calc image-to-csv
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
          

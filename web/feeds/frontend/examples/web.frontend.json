@@ -15,11 +15,11 @@
                 "units": "%"
             }
         },
-        "novatel":
+        "navigation":
         {
             "type": "text"
         },
-        "ladybug-resize":
+        "camera":
         {
             "type": "stream"
         }
