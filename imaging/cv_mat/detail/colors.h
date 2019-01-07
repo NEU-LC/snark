@@ -53,6 +53,7 @@ namespace snark{ namespace cv_mat { namespace impl {
     struct balance_white
     {
         balance_white() { COMMA_THROW( comma::exception, "balance-white not implemented for opencv version " << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION << " that you have" ); }
+        std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m ) { COMMA_THROW( comma::exception, "balance-white not implemented for opencv version " << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION << " that you have" ); }
     };
 #endif // CV_MAJOR_VERSION > 2
 
