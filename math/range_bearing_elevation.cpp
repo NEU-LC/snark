@@ -104,6 +104,8 @@ double bearing_elevation::elevation( double t )
     return elevation_;
 }
 
+range_bearing_elevation::range_bearing_elevation() { range( 0 ); }
+
 range_bearing_elevation::range_bearing_elevation( double r, double b, double e )
 {
     bearing_elevation_.bearing( b );

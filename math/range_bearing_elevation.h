@@ -94,7 +94,7 @@ class range_bearing_elevation
 {
 public:
     /// constructors
-    range_bearing_elevation() {}
+    range_bearing_elevation();
     range_bearing_elevation( double r, double b, double e );
     range_bearing_elevation( const Eigen::Vector3d& xyz ) { from_cartesian( xyz ); }
 

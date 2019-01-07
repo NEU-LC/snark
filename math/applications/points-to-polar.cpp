@@ -36,7 +36,7 @@
 #include "../../math/range_bearing_elevation.h"
 #include "../../visiting/traits.h"
 
-static void usage()
+static void usage( bool )
 {
     std::cerr << std::endl;
     std::cerr << "take x,y,z, output range,bearing,elevation" << std::endl;
@@ -53,19 +53,18 @@ static void usage()
     std::cerr << "    cat xyz.csv | points-to-polar --fields=x,y,z > rbe.csv" << std::endl;
     std::cerr << "    cat xyz.bin | points-to-polar --fields=x,y --binary=3d > rb0.bin" << std::endl;
     std::cerr << std::endl;
-    exit( -1 );
+    exit( 0 );
 }
 
 int main( int ac, char** av )
 {
     try
     {
-        comma::command_line_options options( ac, av );
-        if( options.exists( "--help,-h" ) ) { usage(); }
+        comma::command_line_options options( ac, av, usage );
         comma::csv::options input_options( ac, av );
         comma::csv::options output_options( input_options );
         if( input_options.fields == "" ) { input_options.fields = comma::join( comma::csv::names< Eigen::Vector3d >(), ',' ); }
-        bool append = options.exists("--append");
+        bool append = options.exists( "--append" );
         if ( append )
         {
             output_options.fields=comma::join( comma::csv::names< snark::range_bearing_elevation >(), ',');
@@ -86,7 +85,7 @@ int main( int ac, char** av )
             input_options.fields = comma::join( fields, ',' );
             output_options.fields = comma::join( output_fields, ',' );
         }
-        comma::csv::input_stream< Eigen::Vector3d > is( std::cin, input_options );
+        comma::csv::input_stream< Eigen::Vector3d > is( std::cin, input_options, Eigen::Vector3d::Zero() );
         comma::csv::output_stream< snark::range_bearing_elevation > os( std::cout, output_options );
         comma::csv::tied < Eigen::Vector3d, snark::range_bearing_elevation > tied(is, os);
         comma::signal_flag is_shutdown;
