@@ -7,18 +7,29 @@ from source, you can generate deb package using CPack, though.)
 
 Quickest way (works on Ubuntu 18.04 or higher with ansible playbook version 2.5 or higher)
 
-> mkdir ~/src
-> cd ~/src
-> git clone https://gitlab.com/orthographic/snark.git
+> mkdir src
+> cd src
+> git clone <repo>
 > ansible-playbook snark/system/ansible/install.yml --ask-become-pass
 
-Read install.yml, if interested in tweaking build configuration or building manually
+Manual way:
+
+> mkdir -p src build/snark
+> cd src
+> git clone <repo>
+> cd ../build/snark
+> cmake ../../src/snark
+> make
+> sudo make install
+
+Read install.yml, if interested in tweaking build configuration.
 
 You could build a docker image (which will run ansible install.yml):
 
 > docker build snark/system/docker -t snark.ubuntu-18.04.image
 
-Not all snark components are turned install.yml, since you probably will not need them all.
+Not all snark components are turned on in install.yml, since you probably will
+not need them all.
 
 If you want to turn on/off various bits of snark, use snark/system/ansible/install.yml
 and snark/system/docker/Dockerfile to create your own playbook and docker image.
