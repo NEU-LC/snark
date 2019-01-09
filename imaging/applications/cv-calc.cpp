@@ -530,8 +530,6 @@ struct shapes
         {
             ::extents ext = *this;
             if( properties.normalized ) { ext.unnormalise( rows, cols ); }
-            if( ext.max.x < 0 || ext.min.x >= cols || ext.max.y < 0 || ext.min.y >= rows ) { return std::make_pair( status::ignore, cv::Rect() ); }
-
             if( permissive )
             {
                 ext.min.x = std::max( int( ext.min.x ), 0 );
