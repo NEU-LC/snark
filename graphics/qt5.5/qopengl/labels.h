@@ -42,10 +42,10 @@ class text_label : public label
     color_t color;
     int width;
     int height;
+    unsigned int font_size;
 public:
-    text_label(Eigen::Vector3d position, std::string text,color_t color);
+    text_label(Eigen::Vector3d position, std::string text,color_t color, unsigned int font_size );
     virtual void update();
-    static int font_size;
 protected:
     virtual void draw(QPainter& painter);
 };
