@@ -103,10 +103,7 @@ bool check_mode_clocked_else_periodic( std::string const& i_mode_string )
     return false;
 }
 
-long to_microseconds( double const i_seconds )
-{
-    return ( long )( i_seconds * 1000000 );
-}
+static long to_microseconds( double const i_seconds ) { return ( long )( i_seconds * 1000000 ); }
 
 int main( int ac, char** av )
 {

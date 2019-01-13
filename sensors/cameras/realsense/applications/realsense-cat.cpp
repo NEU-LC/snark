@@ -740,7 +740,7 @@ int main( int argc, char** argv )
                     if (w.size() != 2 ) { COMMA_THROW(comma::exception, "please specify period=<seconds>"); }
                     double period = boost::lexical_cast< double >( w[1] );
                     comma::uint32 seconds = static_cast<int>(period);
-                    time_duration = boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( ( period - seconds ) * 1000000 );
+                    time_duration = boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( static_cast< long >( period - seconds ) * 1000000 ) );
                 }
             }
             if (!time_duration) { COMMA_THROW(comma::exception, "please specify period=<seconds>"); }

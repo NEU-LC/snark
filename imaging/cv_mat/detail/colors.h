@@ -27,20 +27,33 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/**
- * Created by vrushali on 25/08/15.
- */
-require(['common'], function (common) {
+#pragma once
 
-    var page = window.location.pathname;
-    page = page.substring(page.lastIndexOf("/") + 1, page.indexOf(".php")).toLowerCase();
-    //alert(page);
-    //var require_page = pageMap[page];
+#include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION > 2
+#include <opencv2/xphoto/white_balance.hpp>
+#else // CV_MAJOR_VERSION > 2
+#include <comma/base/exception.h>
+#endif // CV_MAJOR_VERSION > 2
 
-    if (page == 'm_index') {
-        require(['js/m_controller']);
-    }
-    else {
-        require(['js/controller']);
-    }
-});
+namespace snark{ namespace cv_mat { namespace impl {
+
+#if CV_MAJOR_VERSION > 2
+    template < typename H >
+    class balance_white
+    {
+        public:
+            balance_white();
+            std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
+        private:
+            cv::Ptr< cv::xphoto::SimpleWB > wb_;
+    };
+#else // CV_MAJOR_VERSION > 2
+    template < typename H >
+    struct balance_white
+    {
+        balance_white() { COMMA_THROW( comma::exception, "balance-white not implemented for opencv version " << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION << " that you have" ); }
+    };
+#endif // CV_MAJOR_VERSION > 2
+
+} } }  // namespace snark { namespace cv_mat { namespace impl {

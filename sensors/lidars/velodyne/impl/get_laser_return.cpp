@@ -100,7 +100,7 @@ const double timestamps::ethernetOutputDuration( 0.0001 ); // Ethernet output du
 boost::posix_time::time_duration time_offset( unsigned int block, unsigned int laser )
 {
     double offset = timestamps::offsets[ block ] + timestamps::step * laser - timestamps::ethernetOutputDuration;
-    return boost::posix_time::microseconds( offset * 1000000 );
+    return boost::posix_time::microseconds( static_cast< long >( offset * 1000000 ) );
 }
 
 double azimuth( double rotation, unsigned int laser, double angularSpeed )

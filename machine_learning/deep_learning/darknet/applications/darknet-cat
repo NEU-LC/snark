@@ -234,7 +234,6 @@ def detect(net, meta, image, input_type, thresh=.25, hier_thresh=.5, nms=.45):
     num = c_int(0)
 
     pnum = pointer(num)
-
     predict_image(net, im)
 
     dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, None, 0, pnum)
@@ -274,7 +273,7 @@ if __name__ == '__main__':
     parser.add_argument( '--footer-size', type = int, default = 0, help = 'if a footer of given size in bytes is present, pass it to stdout with output tensor prepended' )    
     parser.add_argument( '--header-size', type = int, default = 0, help = 'if a header of given size in bytes is present, pass it to stdout with output tensor appended' )
     parser.add_argument( '--keep-input', action="store_true", help = 'append output to input' )
-    parser.add_argument( '--thresh', type=float, default=0.25, help='detector threshold' )
+    parser.add_argument( '--threshold', type=float, default=0.25, help='detector threshold' )
     parser.add_argument( '--verbose', '-v', action="store_true", help = 'more output' )
     parser.add_argument( '--save-images', action="store_true", help = 'save to labelled images' )
     parser.add_argument( '--config', help="configuration (cfg) file required by darknet", required=True)
@@ -295,12 +294,14 @@ if __name__ == '__main__':
     ntype=np.float32
 
     img_counter = 0
+    t0 = time()
     for header, data, footer in iterator( sys.stdin, input_shape, ntype, args.header_size, args.footer_size ):
         if args.verbose:
+            say("time per image: {}".format(time()-t0))
             t0=time()
 
         if data is None: break
-        results = detect(net, meta, data, ntype, thresh=args.thresh)
+        results = detect(net, meta, data, ntype, thresh=args.threshold)
 
         p1_list, p2_list = list(), list()
 
@@ -324,7 +325,8 @@ if __name__ == '__main__':
             img = img if img.shape[2] == 3 else np.repeat(img, 3, axis=2)
             for p1, p2 in zip(p1_list, p2_list):
                 cv2.rectangle(img, p1, p2, (0, 0, 255), 2)
-            cv2.imwrite("pred_%05d.png" % img_counter, img)
+            cv2.imwrite("%05d.png" % img_counter, img)
             img_counter += 1
 
-        args.verbose and say("processing time per image: {}".format(time()-t0))
+        if args.verbose:
+            say("processing time per image: {}".format(time()-t0))

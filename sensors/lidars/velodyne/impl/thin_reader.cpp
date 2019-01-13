@@ -54,7 +54,7 @@ const char* thin_reader::read()
     comma::int32 nanoseconds;
     ::memcpy( &seconds, m_buf, sizeof( comma::int64 ) );
     ::memcpy( &nanoseconds, m_buf + sizeof( comma::int64 ), sizeof( comma::int32 ) );
-    m_timestamp = boost::posix_time::ptime( snark::timing::epoch, boost::posix_time::seconds( static_cast< long >( seconds ) ) + boost::posix_time::microseconds( nanoseconds / 1000 ) );
+    m_timestamp = boost::posix_time::ptime( snark::timing::epoch, boost::posix_time::seconds( static_cast< long >( seconds ) ) + boost::posix_time::microseconds( static_cast< long >( nanoseconds / 1000 ) ) );
     comma::uint32 scan = velodyne::thin::deserialize( m_packet, m_buf + timeSize );
     is_new_scan_ = is_new_scan_ || !last_scan_ || *last_scan_ != scan; // quick and dirty; keep it set until we clear it in is_new_scan()
     last_scan_ = scan;

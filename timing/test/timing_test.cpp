@@ -118,8 +118,8 @@ TEST(time, NTP)
 
     EXPECT_TRUE( comma::math::less( 0, ntpCoeff ) ); // sanity check
     EXPECT_EQ( snark::timing::from_ntp_time( epochSec, 0 ), epoch );
-    EXPECT_EQ( snark::timing::from_ntp_time( epochSec, 1234 ), epoch + boost::posix_time::microseconds( 1234 * ntpCoeff ) );
-    EXPECT_EQ( snark::timing::from_ntp_time( epochSec - 1, 1234 ), epoch - boost::posix_time::seconds( 1 ) + boost::posix_time::microseconds( 1234 * ntpCoeff ) );
+    EXPECT_EQ( snark::timing::from_ntp_time( epochSec, 1234 ), epoch + boost::posix_time::microseconds( long( 1234 * ntpCoeff ) ) );
+    EXPECT_EQ( snark::timing::from_ntp_time( epochSec - 1, 1234 ), epoch - boost::posix_time::seconds( 1 ) + boost::posix_time::microseconds( long( 1234 * ntpCoeff ) ) );
     EXPECT_EQ( snark::timing::to_ntp_time( epoch ).first, epochSec );
     EXPECT_EQ( snark::timing::to_ntp_time( epoch ).second, 0u );
     boost::posix_time::ptime t = epoch + boost::posix_time::seconds( 1 );

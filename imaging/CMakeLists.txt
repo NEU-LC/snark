@@ -17,9 +17,11 @@ FILE( GLOB cvmat_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.h )
 FILE( GLOB cvmat_detail_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.h )
 FILE( GLOB cvmat_detail_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.cpp )
 
-FILE( GLOB stereo_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.cpp )
-FILE( GLOB stereo_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.h )
-
+if( snark_build_imaging_stereo ) # todo: add proper cmake to stereo
+    file( GLOB stereo_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.cpp )
+    file( GLOB stereo_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.h )
+endif( snark_build_imaging_stereo )
+    
 FILE( GLOB vegetation_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.cpp )
 FILE( GLOB vegetation_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.h )
 
@@ -38,7 +40,11 @@ INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
 INSTALL( FILES ${camera_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/camera )
 INSTALL( FILES ${color_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/color )
 INSTALL( FILES ${cvmat_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/cv_mat )
-INSTALL( FILES ${stereo_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/stereo )
+
+if( snark_build_imaging_stereo ) # todo: add proper cmake to stereo
+    install( FILES ${stereo_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/stereo )
+endif( snark_build_imaging_stereo )
+
 INSTALL( FILES ${vegetation_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/vegetation )
 
 INSTALL(

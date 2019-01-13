@@ -317,7 +317,7 @@ static void output_once_( const boost::posix_time::ptime& t )
         static unsigned int polar_size = ( row_size + offset_from_center ) * 2 + 1;
         static unsigned int type = output_options.get_header().type;
         static cv::Mat polar_image( polar_size, polar_size * ids.size(), type );
-        ::memset( polar_image.datastart, 0, polar_image.dataend - polar_image.datastart );
+        ::memset( const_cast< unsigned char* >( polar_image.datastart ), 0, polar_image.dataend - polar_image.datastart );
         for( unsigned int i = 0; i < ids.size(); ++i )
         {
             unsigned int offset = row_size * i;
@@ -332,7 +332,7 @@ static void output_once_( const boost::posix_time::ptime& t )
                 y += sin_cos[row].first * sign * offset_from_center;
                 for( unsigned int column = 0; column < row_size; ++column, x += x_step, y += y_step )
                 {
-                    ::memcpy( polar_image.datastart + ( int( y ) * ( polar_image.cols ) + int( x ) ) * pixel_size
+                    ::memcpy( const_cast< unsigned char* >( polar_image.datastart ) + ( int( y ) * ( polar_image.cols ) + int( x ) ) * pixel_size
                             , image.datastart + ( int( row ) * image.cols + offset + column ) * pixel_size
                             , pixel_size );
                 }
@@ -484,7 +484,7 @@ class channel
             comma::math::cyclic< unsigned int > end( begin + dial_size );
             for( comma::math::cyclic< unsigned int > row = begin; row != end; ++row )
             {
-                cv::line( image, cv::Point( index_ * row_size, row() ), cv::Point( ( index_ + 1 ) * row_size, row() ), dial_colour_ );
+                //cv::line( image, cv::Point( index_ * row_size, row() ), cv::Point( ( index_ + 1 ) * row_size, row() ), dial_colour_ );
             }
         }
         
@@ -495,7 +495,7 @@ class channel
             unsigned int offset = index_ * row_size * pixel_size;
             for( r += increment; row_() != to && r() != to; r += increment )
             {
-                ::memset( image.datastart + offset + image.cols * r() * pixel_size, 0, row_size * pixel_size );
+                ::memset( const_cast< unsigned char* >( image.datastart ) + offset + image.cols * r() * pixel_size, 0, row_size * pixel_size );
             }
         }
         
@@ -506,7 +506,7 @@ class channel
             {
                 for( unsigned int i = 0; i < row_size; ++i )
                 {
-                    *( image.datastart + offset + i ) = scaled_( p->values[i] );
+                    *( const_cast< unsigned char* >( image.datastart ) + offset + i ) = scaled_( p->values[i] );
                 }
             }
             else
@@ -514,7 +514,7 @@ class channel
                 for( unsigned int i = 0; i < row_size; ++i )
                 {
                     const boost::array< unsigned char, 3 >& colour = colourmap_[ scaled_( p->values[i] ) ];
-                    ::memcpy( image.datastart + offset + i * 3, &colour[0], 3 );   
+                    ::memcpy( const_cast< unsigned char* >( image.datastart ) + offset + i * 3, &colour[0], 3 );   
                 }
             }
         }

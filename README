@@ -1,27 +1,35 @@
-snark
-===
-
 generic c++ libraries and utilities for robotics
 
-Doxygen documentation:
-http://acfr.github.com/snark/
+INSTALLATION
 
-Wiki:
-http://github.com/acfr/snark/wiki
+Currently only building from source using CMake is available. (After building
+from source, you can generate deb package using CPack, though.)
 
-Installation:
+Quickest way (works on Ubuntu 18.04 or higher with ansible playbook version 2.5 or higher)
 
-Let's call this directory 'source_dir' (where this INSTALL file is).
-Before starting, create another directory which we will call 'build_dir'.
+> mkdir src
+> cd src
+> git clone <repo>
+> ansible-playbook snark/system/ansible/install.yml --ask-become-pass
 
-Do:
+Manual way:
 
-  cd build_dir
-  cmake source_dir
-  make install
+> mkdir -p src build/snark
+> cd src
+> git clone <repo>
+> cd ../build/snark
+> cmake ../../src/snark
+> make
+> sudo make install
 
-The "make install" step may require administrator privileges.
+Read install.yml, if interested in tweaking build configuration.
 
-You can adjust the installation destination (the "prefix")
-by passing the -DCMAKE_INSTALL_PREFIX=myprefix option to cmake
+You could build a docker image (which will run ansible install.yml):
 
+> docker build snark/system/docker -t snark.ubuntu-18.04.image
+
+Not all snark components are turned on in install.yml, since you probably will
+not need them all.
+
+If you want to turn on/off various bits of snark, use snark/system/ansible/install.yml
+and snark/system/docker/Dockerfile to create your own playbook and docker image.
