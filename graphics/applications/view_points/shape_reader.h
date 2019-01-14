@@ -120,13 +120,13 @@ void ShapeReader< S, How >::update_labels()
         if(!labels_.values()[i].text.empty())
         {
             label_shader->labels.push_back(std::shared_ptr<snark::graphics::qopengl::label>(
-                new snark::graphics::qopengl::text_label( labels_.values()[i].position - m_offset, labels_.values()[i].text, labels_.values()[i].color )));
+                new snark::graphics::qopengl::text_label( labels_.values()[i].position - m_offset, labels_.values()[i].text, labels_.values()[i].color, this->font_size )));
         }
     }
     if( !m_label.empty() )
     {
         label_shader->labels.push_back(std::shared_ptr<snark::graphics::qopengl::label>(
-                new snark::graphics::qopengl::text_label( m_translation - m_offset, m_label, m_color )));
+                new snark::graphics::qopengl::text_label( m_translation - m_offset, m_label, m_color, this->font_size )));
     }
     label_shader->update();
 }

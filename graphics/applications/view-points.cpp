@@ -65,6 +65,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --colour --color -c"
         " --exit-on-end-of-input"
         " --fill"
+        " --font-size"
         " --label"
         " --no-stdin"
         " --pass-through --pass"
@@ -156,7 +157,9 @@ static void usage()
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
         "\n    --fill: fill the shape; currently implemented only for triangles"
-        "\n    --label <label>: text label displayed next to the latest point"
+        "\n    --font-size=[<font-size>]: label font size; default: 16; also can be used with individual streams, e.g:"
+        "\n          e.g: view-points <( echo 0,0,hello )\";fields=x,y,label\" <( echo 1,1,world )\";fields=x,y,label;font-size=32\" --scene-radius 2"
+        "\n    --label=<label>: text label displayed next to the latest point"
         "\n    --no-stdin: do not read from stdin"
         "\n    --pass-through,--pass; pass input data to stdout"
         "\n    --point-size,--weight <point size>: default: 1"
@@ -428,9 +431,10 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )
                                                           , options.exists( "--fill" )
-                                                          ,options.value<std::string>("--labels","")
-                                                          ,options.value<double>("--length",1)
-                                                          ,options.exists("--colour,--color,-c"));
+                                                          , options.value<std::string>("--labels","")
+                                                          , options.value<double>("--length",1)
+                                                          , options.exists("--colour,--color,-c")
+                                                          , options.value< unsigned int>( "--font-size", 16 ) );
     std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" )
                       : options.exists( "--color" ) ? options.value< std::string >( "--color" )
                       : options.value< std::string >( "-c", "" );
@@ -456,6 +460,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         param.labels=m.value("labels",param.labels);
         param.length=m.value("length",param.length);
         if(param.options.has_field("id,scalar")) { param.has_color=true; }
+        param.font_size=m.value("font-size",param.font_size);
     }
     if( param.pass_through )
     {
@@ -724,10 +729,7 @@ int main( int argc, char** argv )
                                                                                  , options.exists( "--output-camera-config,--output-camera" ) ));
         
 #elif Qt3D_VERSION==2
-        auto font_size_option=options.optional<int>("--font-size");
-        if(font_size_option)
-            snark::graphics::qopengl::text_label::font_size=*font_size_option;
-        double scene_radius=options.value<double>("--scene-radius,--radius",10);
+        double scene_radius=options.value<double>( "--scene-radius,--radius", 10 );
         QVector3D scene_center(0,0,0);
         boost::optional< std::string > s = options.optional< std::string >("--scene-center,--center");
         if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
