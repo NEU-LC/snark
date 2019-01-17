@@ -27,6 +27,13 @@ dialog_test+="Do you see $expected?"
 zenity --question --text="$dialog_test"
 result=$?
 
+# zenity causes upstart to start an instance of dbus-launch, but this instance
+# has the process gid of the comma-timeout-group used to launch all the tests.
+# Which means that comma_execute_and_wait waits for it, and it takes a while to
+# go away, so we'll kill it explicitly.
+dbus_launch_pid=$( ps -o pid,comm | grep dbus-launch | cut -f1 -d' ' )
+[[ $dbus_launch_pid ]] && kill $dbus_launch_pid
+
 cat >&2 <<EOF
 dialog_test: $dialog_test
 result: $result
