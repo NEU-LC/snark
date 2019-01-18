@@ -476,14 +476,14 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         std::vector< std::string > v = comma::split( param.options.fields, ',' );
         bool has_orientation = false;
         for( unsigned int i = 0; !has_orientation && i < v.size(); ++i ) { has_orientation = v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw"; }
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( param, colored, label ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d >( param, colored, label, Eigen::Vector3d::Zero() ) );
         reader->show( show );
         return reader;
     }
     if( shape == "loop" )
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( param, colored, label ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::loop >( param, colored, label, Eigen::Vector3d::Zero() ) );
         reader->show( show );
         return reader;
     }
@@ -491,7 +491,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
 
-        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::lines >( param, colored, label ) );
+        std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::lines >( param, colored, label, Eigen::Vector3d::Zero() ) );
         reader->show( show );
         return reader;
     }
