@@ -1407,7 +1407,7 @@ int main( int ac, char** av )
                 if( p.second.rows != shape.y ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.y << "; got: " << p.second.rows << std::endl; exit( 1 ); }
                 if( p.second.cols != shape.x ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.x << "; got: " << p.second.cols << std::endl; exit( 1 ); }
                 if( ix == 0 && iy == 0 ) { output.first = p.first; }
-                cv::Mat tile( output.second, cv::Rect( ix * shape.x, iy * shape.y, shape.x, shape.y ) );
+                cv::Mat tile( output.second, cv::Rect( ix * strides.x, iy * strides.y, shape.x, shape.y ) );
                 p.second.copyTo( tile );
                 ++ix;
                 if( ix >= stride_cols )
