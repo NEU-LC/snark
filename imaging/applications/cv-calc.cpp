@@ -78,6 +78,7 @@ static void usage( bool verbose=false )
     std::cerr << "    roi: given cv image data associated with a region of interest, either set everything outside the region of interest to zero or crop it" << std::endl;
     std::cerr << "    stride: stride through the image, output images of kernel size for each pixel" << std::endl;
     std::cerr << "    thin: thin image stream by discarding some images" << std::endl;
+    std::cerr << "    unstride: take stride images, compose output image with a given overlap handling policy" << std::endl;
     std::cerr << "    unstride-positions: take stride index and positions within the stride, append positions in original (unstrided) image" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
@@ -225,6 +226,17 @@ static void usage( bool verbose=false )
     std::cerr << "        by frames per second" << std::endl;
     std::cerr << "            --from-fps,--input-fps=<fps>; input fps (since it is impossible to know it upfront)" << std::endl;
     std::cerr << "            --to-fps,--fps=<fps>; thin to a given <fps>, same as --rate=<to-fps>/<from-fps> --deterministic" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    unstride" << std::endl;
+    std::cerr << "        --how-to-handle-overlaps,--how=<how>; default: last; how to handle overlaps" << std::endl;
+    std::cerr << "            last: simply put the next tile on top on the previous one" << std::endl;
+    std::cerr << "            other policies: todo" << std::endl;
+    std::cerr << "        --input=[<options>]; input options; run cv-cat --help --verbose for details" << std::endl;
+    std::cerr << "        --output=[<options>]; output options; run cv-cat --help --verbose for details" << std::endl;
+    //std::cerr << "        --padding=[<padding>]; padding, 'same' or 'valid' (see e.g. tensorflow for the meaning); default: valid" << std::endl;
+    std::cerr << "        --shape,--kernel,--size=<x>,<y>; image size" << std::endl;
+    std::cerr << "        --strides=[<x>,<y>]; stride size; default: 1,1" << std::endl;
+    std::cerr << "        --unstrided-size,--unstrided=<width>,<height>; original (unstrided) image size" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    unstride-positions" << std::endl;
     std::cerr << "        options" << std::endl;
@@ -1362,6 +1374,49 @@ int main( int ac, char** av )
                         break;
                     }
                 }
+            }
+            return 0;
+        }
+        if( operation == "unstride" )
+        {
+            std::string how = options.value< std::string >( "--how-to-handle-overlaps,--how", "last" );
+            if( how != "last" ) { std::cerr << "cv-calc: unstride: expected policy to handle overlaps, got: '" << how << "' (only --how=last is implemented, more policies: todo)" << std::endl; exit( 1 ); }
+            snark::cv_mat::serialization input_serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
+            const std::vector< std::string >& unstrided_vector = comma::split( options.value< std::string >( "--unstrided-size,--unstrided" ), ',' );
+            if( unstrided_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected --unstrided-size as <width>,<height>, got: \"" << options.value< std::string >( "--unstrided-size,--unstrided" ) << std::endl; return 1; }
+            cv::Point2i unstrided( boost::lexical_cast< unsigned int >( unstrided_vector[0] ), boost::lexical_cast< unsigned int >( unstrided_vector[1] ) );
+            const std::vector< std::string >& strides_vector = comma::split( options.value< std::string >( "--strides", "1,1" ), ',' );
+            if( strides_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected strides as <x>,<y>, got: \"" << options.value< std::string >( "--strides" ) << std::endl; return 1; }
+            cv::Point2i strides( boost::lexical_cast< unsigned int >( strides_vector[0] ), boost::lexical_cast< unsigned int >( strides_vector[1] ) );
+            const std::vector< std::string >& shape_vector = comma::split( options.value< std::string >( "--shape,--size,--kernel" ), ',' );
+            if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
+            cv::Point2i shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
+            unsigned int stride_rows = ( unstrided.y - shape.y ) / strides.y + 1;
+            unsigned int stride_cols = ( unstrided.x - shape.x ) / strides.x + 1;
+            typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
+            pair_t output;
+            unsigned int ix = 0;
+            unsigned int iy = 0;
+            while( std::cin.good() && !std::cin.eof() )
+            {
+                pair_t p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                if( output.second.empty() ) { output.second = cv::Mat( unstrided.y, unstrided.x, p.second.type() ); }
+                if( output.second.type() != p.second.type() ) { std::cerr << "cv-calc: unstride: expected input image type " << output.second.type() << "; got: " << p.second.type() << std::endl; exit( 1 ); }
+                if( p.second.rows != shape.y ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.y << "; got: " << p.second.rows << std::endl; exit( 1 ); }
+                if( p.second.cols != shape.x ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.x << "; got: " << p.second.cols << std::endl; exit( 1 ); }
+                if( ix == 0 && iy == 0 ) { output.first = p.first; }
+                cv::Mat tile( output.second, cv::Rect( ix * shape.x, iy * shape.y, shape.x, shape.y ) );
+                p.second.copyTo( tile );
+                ++ix;
+                if( ix >= stride_cols )
+                {
+                    ix = 0;
+                    ++iy;
+                    if( iy >= stride_rows ) { iy = 0; }
+                }
+                if( ix == 0 && iy == 0 ) { output_serialization.write_to_stdout( output, true ); }
             }
             return 0;
         }
