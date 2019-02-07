@@ -83,6 +83,19 @@ examples
                 | tensor-cat --session session --dir mnist -i x -o h_pool1 \\
                 | math-array transpose --shape 14,14,32 --to 2,0,1 \\
                 | cv-cat --fps 1 --input "no-header;rows=$((32*14));cols=14;type=f" "untile=8,4;resize=4;view;null"
+                
+    output to files
+        the following command will output each channel of each layer to in subdirectories of current directory files (see below)
+            cat input.bin | tensor-cat ... --output layer1,layer2 --output-to-files
+        files would like like
+            0/layer1/0.bin
+            0/layer2/0.bin
+            0/layer2/1.bin
+            ...
+            1/layer1/0.bin
+            1/layer2/0.bin
+            1/layer2/1.bin
+            ...
 
 """
 
@@ -151,6 +164,7 @@ if __name__ == '__main__':
     parser.add_argument( '--input-shape', type = str, help = 'shape of a single input record as a comma-separated list' )
     parser.add_argument( '--min-log-level', '--log-level', type = str, default = "2", help = 'min log level (as os.environ[\'TF_CPP_MIN_LOG_LEVEL\']); default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
+    parser.add_argument( '--output-to-files', action = "store_true", help = 'for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples)' )
     parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename (without extension); default: %(default)s' )
     parser.add_argument( '--session-dir', '--dir', default = '.', type = str, help = 'saved session directory; default: %(default)s' )
     parser.add_argument( '--session-graph', type = str, help = 'path to saved graph file' ) #parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
@@ -217,15 +231,31 @@ if __name__ == '__main__':
             print >> sys.stderr, "tensor-cat: input '" + args.input + "':", input
             for i in range( len( output_names ) ): print >> sys.stderr, "tensor-cat: output '" + output_names[i] + "':", outputs[i]
         saymore( "running inference..." )
+        input_number=0
         for header, data, footer in iterator( sys.stdin, input, args.header_size, args.footer_size ):
             if data is None: break
             feeds[input] = data
             if not keep_prob is None: feeds[keep_prob] = 1.0
             values = session.run( outputs, feed_dict = feeds )
-            header.tofile( sys.stdout )
-            if args.keep_input: data.tofile( sys.stdout )
-            footer.tofile( sys.stdout )
-            for value in values: value.tofile( sys.stdout )
+            if args.output_to_files:
+                input_dir = str( input_number )
+                try: os.mkdir( input_dir )
+                except OSError as ex:
+                    if ex.errno != os.errno.EEXIST: raise
+                for i in range( len( values ) ):
+                    try: os.mkdir( input_dir + '/' + output_names[i] )
+                    except OSError as ex:
+                        if ex.errno != os.errno.EEXIST: raise
+                    if values[i].shape[0] != 1: die( "expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) )
+                    if len( values[i].shape ) > 4: die( "expected output tensor with no more than 4 dimensions; got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) )
+                    v = values[i] if len( values[i].shape ) <= 3 else np.transpose( values[i][0], axes = ( 2, 0, 1 ) ) # quick and dirty
+                    for j in range( v.shape[0] ): v[j].tofile( input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin' )
+                input_number += 1
+            else:
+                header.tofile( sys.stdout )
+                if args.keep_input: data.tofile( sys.stdout )
+                footer.tofile( sys.stdout )
+                for value in values: value.tofile( sys.stdout )
             sys.stdout.flush()
         session.close()
         saymore( "done" )
