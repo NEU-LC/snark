@@ -154,7 +154,7 @@ if __name__ == '__main__':
     parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename (without extension); default: %(default)s' )
     parser.add_argument( '--session-dir', '--dir', default = '.', type = str, help = 'saved session directory; default: %(default)s' )
     parser.add_argument( '--session-graph', type = str, help = 'path to saved graph file' ) #parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
-    parser.add_argument( '--tensor', type = str, help = 'tensor name, if using tensor options; e.g. "image_tensor:0"' )
+    parser.add_argument( '--tensors', '--tensor', type = str, help = 'comma-separated list of tensor names, if using tensor options; e.g. "image_tensor:0"' )
     parser.add_argument( '--tensor-shape', action = "store_true", help = 'print tensor shape and exit' )
     parser.add_argument( '--tensor-type', '--tensor-dtype', action = "store_true", help = 'print tensor type and exit' )
     parser.add_argument( '--variable', '--var', nargs = '*', type = str, help = 'variables to pass to the model as name-value pairs, e.g: "y:5", "dim:[3,4,5]", etc' )
@@ -192,8 +192,16 @@ if __name__ == '__main__':
                 tf.import_graph_def( graph_def, name = '' )
                 saymore( "loaded frozen graph from '" + args.frozen_graph + "'" )
     with tf.Session if args.frozen_graph is None else tf.Session( graph = graph ) as session: # #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
-        if args.tensor_shape: print get_tensor( args.tensor ).shape; sys.exit( 0 )
-        if args.tensor_type: print get_tensor( args.tensor ).dtype; sys.exit( 0 )
+        if args.tensor_shape and args.tensor_type:
+            for tensor in args.tensors.split( ',' ):
+                print get_tensor( tensor ).dtype.name + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) )
+            sys.exit( 0 )
+        if args.tensor_shape:
+            for tensor in args.tensors.split( ',' ): print get_tensor( tensor ).shape
+            sys.exit( 0 )
+        if args.tensor_type:
+            for tensor in args.tensors.split( ',' ): print get_tensor( tensor ).dtype.name
+            sys.exit( 0 )
         if args.get_operations:
             for o in session.graph.get_operations(): print o.name
             sys.exit( 0 )
