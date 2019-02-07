@@ -197,7 +197,7 @@ if __name__ == '__main__':
                 print get_tensor( tensor ).dtype.name + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) )
             sys.exit( 0 )
         if args.tensor_shape:
-            for tensor in args.tensors.split( ',' ): print get_tensor( tensor ).shape
+            for tensor in args.tensors.split( ',' ): print ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) )
             sys.exit( 0 )
         if args.tensor_type:
             for tensor in args.tensors.split( ',' ): print get_tensor( tensor ).dtype.name
