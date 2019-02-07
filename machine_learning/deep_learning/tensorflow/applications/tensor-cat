@@ -194,13 +194,13 @@ if __name__ == '__main__':
     with tf.Session if args.frozen_graph is None else tf.Session( graph = graph ) as session: # #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
         if args.tensor_shape and args.tensor_type:
             for tensor in args.tensors.split( ',' ):
-                print get_tensor( tensor ).dtype.name + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) )
+                print tensor + ',' + get_tensor( tensor ).dtype.name + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) )
             sys.exit( 0 )
         if args.tensor_shape:
-            for tensor in args.tensors.split( ',' ): print ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) )
+            for tensor in args.tensors.split( ',' ): print tensor + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) )
             sys.exit( 0 )
         if args.tensor_type:
-            for tensor in args.tensors.split( ',' ): print get_tensor( tensor ).dtype.name
+            for tensor in args.tensors.split( ',' ): print tensor + ',' + get_tensor( tensor ).dtype.name
             sys.exit( 0 )
         if args.get_operations:
             for o in session.graph.get_operations(): print o.name
