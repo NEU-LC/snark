@@ -164,7 +164,7 @@ if __name__ == '__main__':
     parser.add_argument( '--input-shape', type = str, help = 'shape of a single input record as a comma-separated list' )
     parser.add_argument( '--min-log-level', '--log-level', type = str, default = "2", help = 'min log level (as os.environ[\'TF_CPP_MIN_LOG_LEVEL\']); default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
-    parser.add_argument( '--output-to-files', action = "store_true", help = 'for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples); todo? move to tensor-calc?' )
+    parser.add_argument( '--output-to-files', action = "store_true", help = 'convenience option; for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples); todo? move to tensor-calc?' )
     parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename (without extension); default: %(default)s' )
     parser.add_argument( '--session-dir', '--dir', default = '.', type = str, help = 'saved session directory; default: %(default)s' )
     parser.add_argument( '--session-graph', type = str, help = 'path to saved graph file' ) #parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
