@@ -258,7 +258,7 @@ if __name__ == '__main__':
                         for j in range( v.shape[0] ):
                             n = np.min( v[j] ) if args.png_min is None else args.png_min
                             x = np.max( v[j] ) if args.png_max is None else args.png_max
-                            image = np.zeroes( v[j].shape, dtype = np.uchar8 ) if x == n else np.array( ( ( ( np.array( v[j], dtype = np.float32 ) - n ) / ( x - n ) ) * 256 ), dtype = np.uchar8 )
+                            image = np.zeroes( v[j].shape, dtype = np.uint8 ) if x == n else np.array( ( ( ( np.array( v[j], dtype = np.float32 ) - n ) / ( x - n ) ) * 256 ), dtype = np.uint8 )
                             import cv2
                             cv2.imwrite( input_dir + '/' + output_names[i] + '/' + str( j ) + '.png', image * 256 )
                 input_number += 1
