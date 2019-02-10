@@ -164,7 +164,10 @@ if __name__ == '__main__':
     parser.add_argument( '--input-shape', type = str, help = 'shape of a single input record as a comma-separated list' )
     parser.add_argument( '--min-log-level', '--log-level', type = str, default = "2", help = 'min log level (as os.environ[\'TF_CPP_MIN_LOG_LEVEL\']); default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
-    parser.add_argument( '--output-to-files', action = "store_true", help = 'convenience option; for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples); todo? move to tensor-calc?' )
+    parser.add_argument( '--output-to-files', action = "store_true", help = 'convenience option; for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples)' )
+    parser.add_argument( '--png', action = "store_true", help = 'convenience option; for each input, output each channel in human-viewable form to file ./<input-number>/<layer-name>/<channel-number>.png (see examples)' )
+    parser.add_argument( '--png-min', type=float, help = 'if --png, min value to use for normalizing tensor elements' )
+    parser.add_argument( '--png-max', type=float, help = 'if --png, min value to use for normalizing tensor elements' )
     parser.add_argument( '--session', default = 'session', type = str, help = 'saved session filename (without extension); default: %(default)s' )
     parser.add_argument( '--session-dir', '--dir', default = '.', type = str, help = 'saved session directory; default: %(default)s' )
     parser.add_argument( '--session-graph', type = str, help = 'path to saved graph file' ) #parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
@@ -237,7 +240,7 @@ if __name__ == '__main__':
             feeds[input] = data
             if not keep_prob is None: feeds[keep_prob] = 1.0
             values = session.run( outputs, feed_dict = feeds )
-            if args.output_to_files:
+            if args.output_to_files or args.png:
                 input_dir = str( input_number )
                 try: os.mkdir( input_dir )
                 except OSError as ex:
@@ -249,7 +252,15 @@ if __name__ == '__main__':
                     if values[i].shape[0] != 1: die( "expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) )
                     if len( values[i].shape ) > 4: die( "expected output tensor with no more than 4 dimensions; got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) )
                     v = values[i] if len( values[i].shape ) <= 3 else np.transpose( values[i][0], axes = ( 2, 0, 1 ) ) # quick and dirty
-                    for j in range( v.shape[0] ): v[j].tofile( input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin' )
+                    if args.output_to_files:
+                        for j in range( v.shape[0] ): v[j].tofile( input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin' )
+                    if args.output_to_png:
+                        for j in range( v.shape[0] ):
+                            n = np.min( v[j] ) if args.png_min is None else args.png_min
+                            x = np.max( v[j] ) if args.png_max is None else args.png_max
+                            image = np.zeroes( v[j].shape, dtype = np.float32 ) if x == n else ( np.array( v[j], dtype = np.float32 ) - n ) / ( x - n )
+                            import cv2
+                            cv2.imwrite( input_dir + '/' + output_names[i] + '/' + str( j ) + '.png', image * 256 )
                 input_number += 1
             else:
                 header.tofile( sys.stdout )
