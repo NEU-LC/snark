@@ -249,24 +249,25 @@ if __name__ == '__main__':
                     try: os.mkdir( input_dir + '/' + output_names[i] )
                     except OSError as ex:
                         if ex.errno != os.errno.EEXIST: raise
-                    if values[i].shape[0] != 1: die( "expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) )
-                    if len( values[i].shape ) > 4: die( "expected output tensor with no more than 4 dimensions; got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) )
+                    if values[i].shape[0] != 1: die( "expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
+                    if len( values[i].shape ) > 4: die( "expected output tensor with no more than 4 dimensions; got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
                     v = values[i] if len( values[i].shape ) <= 3 else np.transpose( values[i][0], axes = ( 2, 0, 1 ) ) # quick and dirty
                     if args.output_to_files:
                         for j in range( v.shape[0] ): v[j].tofile( input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin' )
+                        values[0].tofile( 'test.bin' )
                     if args.png:
                         for j in range( v.shape[0] ):
                             n = np.min( v[j] ) if args.png_min is None else args.png_min
                             x = np.max( v[j] ) if args.png_max is None else args.png_max
-                            image = np.zeroes( v[j].shape, dtype = np.uint8 ) if x == n else np.array( ( ( ( np.array( v[j], dtype = np.float32 ) - n ) / ( x - n ) ) * 256 ), dtype = np.uint8 )
-                            import cv2
-                            cv2.imwrite( input_dir + '/' + output_names[i] + '/' + str( j ) + '.png', image * 256 )
+                            image = np.zeroes( v[j].shape, dtype = np.uint8 ) if x == n else np.array( ( ( ( np.array( v[j], dtype = np.float32 ) - n ) / ( x - n ) ) * 255 ), dtype = np.uint8 )
+                            from PIL import Image
+                            Image.fromarray( image ).save( input_dir + '/' + output_names[i] + '/' + str( j ) + '.png' )
                 input_number += 1
             else:
                 header.tofile( sys.stdout )
                 if args.keep_input: data.tofile( sys.stdout )
                 footer.tofile( sys.stdout )
                 for value in values: value.tofile( sys.stdout )
-            sys.stdout.flush()
+                sys.stdout.flush()
         session.close()
         saymore( "done" )
