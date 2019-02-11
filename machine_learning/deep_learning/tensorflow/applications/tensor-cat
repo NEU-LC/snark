@@ -259,7 +259,7 @@ if __name__ == '__main__':
                         for j in range( v.shape[0] ):
                             n = np.min( v[j] ) if args.png_min is None else args.png_min
                             x = np.max( v[j] ) if args.png_max is None else args.png_max
-                            image = np.zeroes( v[j].shape, dtype = np.uint8 ) if x == n else np.array( ( ( ( np.array( v[j], dtype = np.float32 ) - n ) / ( x - n ) ) * 255 ), dtype = np.uint8 )
+                            image = np.zeros( v[j].shape, dtype = np.uint8 ) if x == n else np.array( ( ( ( np.array( v[j], dtype = np.float32 ) - n ) / ( x - n ) ) * 255 ), dtype = np.uint8 )
                             from PIL import Image
                             Image.fromarray( image ).save( input_dir + '/' + output_names[i] + '/' + str( j ) + '.png' )
                 input_number += 1
