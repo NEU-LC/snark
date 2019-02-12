@@ -259,8 +259,8 @@ int main( int ac, char** av )
         if( options.exists( "--output-format,--format" ) ) { std::cout << format.string() << std::endl; return 0; }
         bool output_invalid_points = options.exists( "--output-invalid-points" );
         bool discard_invalid_scans=options.exists("--discard-invalid-scans");
-        boost::optional< std::size_t > from;
-        boost::optional< std::size_t > to;
+        boost::optional< std::size_t > from = boost::make_optional< std::size_t >( false, 0 );
+        boost::optional< std::size_t > to = boost::make_optional< std::size_t >( false, 0 );
         if( options.exists( "--scans" ) )
         {
             std::string range = options.value< std::string >( "--scans" );

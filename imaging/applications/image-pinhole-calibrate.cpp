@@ -270,7 +270,7 @@ int main( int ac, char** av )
         std::vector< std::vector< cv::Point2f > > image_points;
         snark::cv_mat::serialization input( comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) ) );
         std::vector< cv::Point3f > pattern_corners = pattern_corners_( pattern, pattern_size, square_size );
-        boost::optional< cv::Size > image_size;
+        boost::optional< cv::Size > image_size = boost::make_optional< cv::Size >( false, cv::Size() );
         unsigned int count = 0;
         unsigned int count_not_found = 0;
         boost::optional< unsigned int > max_count = options.optional< unsigned int >( "--max-count" );

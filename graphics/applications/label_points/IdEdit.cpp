@@ -86,8 +86,8 @@ void IdEdit::handleReturnPressed()
     if( s == "" ) { return; }
     if( s == "new" || s == "min" || s == "max" )
     {
-        boost::optional< comma::uint32 > minId; // quick and dirty, max is a macro on windows
-        boost::optional< comma::uint32 > maxId;
+        boost::optional< comma::uint32 > minId = boost::make_optional< comma::uint32 >( false, 0 ); // quick and dirty, max is a macro on windows
+        boost::optional< comma::uint32 > maxId = boost::make_optional< comma::uint32 >( false, 0 );
         for( std::size_t i = 0; i < m_viewer->datasets().size(); ++i )
         {
             if( !m_viewer->datasets()[i]->visible() || m_viewer->datasets()[i]->partitions().empty() ) { continue; }

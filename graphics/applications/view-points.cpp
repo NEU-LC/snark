@@ -416,8 +416,8 @@ static std::vector< Options > make_image_options( const std::string& shape )
     {
         const std::vector< std::string >& w = comma::split( v[i], ',' );
         if( w.empty() || w[0].empty() ) { COMMA_THROW( comma::exception, "got empty image options in '" << shape << "'" ); }
-        boost::optional< double > p1;
-        boost::optional< double > p2;
+        boost::optional< double > p1 = boost::make_optional< double >( false, 0 );
+        boost::optional< double > p2 = boost::make_optional< double >( false, 0 );
         switch( w.size() ) // quick and dirty
         {
             case 1: break;
