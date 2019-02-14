@@ -211,6 +211,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "    stride" << std::endl;
     std::cerr << "        --filter,--filters=[<filters>]; see grep operation; added to stride for performance" << std::endl;
+    std::cerr << "        --fit-last; fit last stride exactly to the image size, i.e. last stride may be irregular" << std::endl;
     std::cerr << "        --input=[<options>]; input options; run cv-cat --help --verbose for details" << std::endl;
     std::cerr << "        --non-zero=[<what>]; see grep operation; added to stride for performance" << std::endl;
     std::cerr << "        --output=[<options>]; output options; run cv-cat --help --verbose for details" << std::endl;
@@ -228,6 +229,7 @@ static void usage( bool verbose=false )
     std::cerr << "            --to-fps,--fps=<fps>; thin to a given <fps>, same as --rate=<to-fps>/<from-fps> --deterministic" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    unstride" << std::endl;
+    std::cerr << "        --fit-last; last stride is fit exactly to the image size, i.e. last stride may be irregular" << std::endl;
     std::cerr << "        --how-to-handle-overlaps,--how=<how>; default: last; how to handle overlaps" << std::endl;
     std::cerr << "            last: simply put the next tile on top on the previous one" << std::endl;
     std::cerr << "            other policies: todo" << std::endl;
@@ -558,25 +560,13 @@ struct shapes
 
     };
 
-    struct header_shapes
-    {
-        std::vector< shapes::rectangle > rectangles;
-    };
-
-    struct stream_shapes
-    {
-        std::unique_ptr< region::join_filter< shapes::rectangle > > rectangles;
-    };
-
+    struct header_shapes { std::vector< shapes::rectangle > rectangles; };
+    struct stream_shapes { std::unique_ptr< region::join_filter< shapes::rectangle > > rectangles; };
     header_shapes hdr_shapes;
     stream_shapes strm_shapes;
 
     shapes() {}
-
-    shapes( const comma::command_line_options& options )
-    {
-        region::init_< rectangle, config >( hdr_shapes.rectangles, strm_shapes.rectangles, options, "--rectangles" );
-    }
+    shapes( const comma::command_line_options& options ) { region::init_< rectangle, config >( hdr_shapes.rectangles, strm_shapes.rectangles, options, "--rectangles" ); }
 };
 
 } // namespace roi {
@@ -1310,6 +1300,7 @@ int main( int ac, char** av )
         {
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
+            bool fit_last = options.exists( "--fit-last" );
             const std::vector< std::string >& strides_vector = comma::split( options.value< std::string >( "--strides", "1,1" ), ',' );
             if( strides_vector.size() != 2 ) { std::cerr << "cv-calc: stride: expected strides as <x>,<y>, got: \"" << options.value< std::string >( "--strides" ) << std::endl; return 1; }
             std::pair< unsigned int, unsigned int > strides( boost::lexical_cast< unsigned int >( strides_vector[0] ), boost::lexical_cast< unsigned int >( strides_vector[1] ) );
@@ -1357,10 +1348,14 @@ int main( int ac, char** av )
                         if( p.second.cols < int( shape.first ) || p.second.rows < int( shape.second ) ) { std::cerr << "cv-calc: stride: expected image greater than rows: " << shape.second << " cols: " << shape.first << "; got rows: " << p.second.rows << " cols: " << p.second.cols << std::endl; return 1; }
                         pair_t q;
                         q.first = p.first;
-                        for( unsigned int j = 0; j < ( p.second.rows + 1 - shape.second ); j += strides.second )
+                        for( unsigned int j = 0; ; j += strides.second )
                         {
-                            for( unsigned int i = 0; i < ( p.second.cols + 1 - shape.first ); i += strides.first )
+                            if( fit_last && int( j ) < p.second.rows ) { j = p.second.rows - shape.second; }
+                            if( j >= ( p.second.rows + 1 - shape.second ) ) { break; }
+                            for( unsigned int i = 0; ; i += strides.first )
                             {
+                                if( fit_last && int( j ) < p.second.cols ) { j = p.second.cols - shape.first; }
+                                if( i >= ( p.second.cols + 1 - shape.first ) ) { break; }
                                 if( !filtered.second.empty() )
                                 {
                                     filtered.second( cv::Rect( i, j, shape.first, shape.second ) ).copyTo( q.second );
@@ -1381,6 +1376,7 @@ int main( int ac, char** av )
         {
             std::string how = options.value< std::string >( "--how-to-handle-overlaps,--how", "last" );
             if( how != "last" ) { std::cerr << "cv-calc: unstride: expected policy to handle overlaps, got: '" << how << "' (only --how=last is implemented, more policies: todo)" << std::endl; exit( 1 ); }
+            bool fit_last = options.exists( "--fit-last" );
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
             const std::vector< std::string >& unstrided_vector = comma::split( options.value< std::string >( "--unstrided-size,--unstrided" ), ',' );
@@ -1394,6 +1390,11 @@ int main( int ac, char** av )
             cv::Point2i shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
             unsigned int stride_rows = ( unstrided.y - shape.y ) / strides.y + 1;
             unsigned int stride_cols = ( unstrided.x - shape.x ) / strides.x + 1;
+            if( fit_last )
+            {
+                if( int( stride_rows - 1 ) * strides.y + shape.y < unstrided.y ) { ++stride_rows; }
+                if( int( stride_cols - 1 ) * strides.x + shape.x < unstrided.x ) { ++stride_cols; }
+            }
             typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
             pair_t output;
             unsigned int ix = 0;
@@ -1407,7 +1408,14 @@ int main( int ac, char** av )
                 if( p.second.rows != shape.y ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.y << "; got: " << p.second.rows << std::endl; exit( 1 ); }
                 if( p.second.cols != shape.x ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.x << "; got: " << p.second.cols << std::endl; exit( 1 ); }
                 if( ix == 0 && iy == 0 ) { output.first = p.first; }
-                cv::Mat tile( output.second, cv::Rect( ix * strides.x, iy * strides.y, shape.x, shape.y ) );
+                unsigned int x = ix * strides.x;
+                unsigned int y = iy * strides.y;
+                if( fit_last )
+                {
+                    if( ix == stride_cols ) { x = unstrided.x - shape.x; }
+                    if( iy == stride_rows ) { y = unstrided.y - shape.y; }
+                }
+                cv::Mat tile( output.second, cv::Rect( x, y, shape.x, shape.y ) );
                 p.second.copyTo( tile );
                 ++ix;
                 if( ix >= stride_cols )
