@@ -254,7 +254,6 @@ if __name__ == '__main__':
                     v = values[i] if len( values[i].shape ) <= 3 else np.transpose( values[i][0], axes = ( 2, 0, 1 ) ) # quick and dirty
                     if args.output_to_files:
                         for j in range( v.shape[0] ): v[j].tofile( input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin' )
-                        values[0].tofile( 'test.bin' )
                     if args.png:
                         for j in range( v.shape[0] ):
                             n = np.min( v[j] ) if args.png_min is None else args.png_min
