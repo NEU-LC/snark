@@ -1349,13 +1349,17 @@ int main( int ac, char** av )
                         if( p.second.cols < int( shape.first ) || p.second.rows < int( shape.second ) ) { std::cerr << "cv-calc: stride: expected image greater than rows: " << shape.second << " cols: " << shape.first << "; got rows: " << p.second.rows << " cols: " << p.second.cols << std::endl; return 1; }
                         pair_t q;
                         q.first = p.first;
-                        for( unsigned int j = 0; ; j += strides.second )
+                        bool is_last_row = false;
+                        for( unsigned int j = 0; !is_last_row; j += strides.second )
                         {
-                            if( fit_last && int( j ) < p.second.rows ) { j = p.second.rows - shape.second; }
+                            if( fit_last && int( j ) < p.second.rows && int( j ) > p.second.rows - shape.second ) { j = p.second.rows - shape.second; is_last_row = true; }
+                            //std::cerr << "--> j: " << j << std::endl;
                             if( j >= ( p.second.rows + 1 - shape.second ) ) { break; }
-                            for( unsigned int i = 0; ; i += strides.first )
+                            bool is_last_col = false;
+                            for( unsigned int i = 0; !is_last_col; i += strides.first )
                             {
-                                if( fit_last && int( j ) < p.second.cols ) { j = p.second.cols - shape.first; }
+                                if( fit_last && int( i ) < p.second.cols && int( i ) > p.second.cols - shape.first ) { i = p.second.cols - shape.first; is_last_col = true; }
+                                //std::cerr << "--> i: " << i << " strides.first: " << strides.first << " p.second.cols: " << p.second.cols << " shape.first: " << shape.first << std::endl;
                                 if( i >= ( p.second.cols + 1 - shape.first ) ) { break; }
                                 if( !filtered.second.empty() )
                                 {
