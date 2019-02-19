@@ -1353,13 +1353,11 @@ int main( int ac, char** av )
                         for( unsigned int j = 0; !is_last_row; j += strides.second )
                         {
                             if( fit_last && int( j ) < p.second.rows && int( j ) > p.second.rows - shape.second ) { j = p.second.rows - shape.second; is_last_row = true; }
-                            //std::cerr << "--> j: " << j << std::endl;
                             if( j >= ( p.second.rows + 1 - shape.second ) ) { break; }
                             bool is_last_col = false;
                             for( unsigned int i = 0; !is_last_col; i += strides.first )
                             {
                                 if( fit_last && int( i ) < p.second.cols && int( i ) > p.second.cols - shape.first ) { i = p.second.cols - shape.first; is_last_col = true; }
-                                //std::cerr << "--> i: " << i << " strides.first: " << strides.first << " p.second.cols: " << p.second.cols << " shape.first: " << shape.first << std::endl;
                                 if( i >= ( p.second.cols + 1 - shape.first ) ) { break; }
                                 if( !filtered.second.empty() )
                                 {
@@ -1418,8 +1416,8 @@ int main( int ac, char** av )
                 unsigned int y = iy * strides.y;
                 if( fit_last )
                 {
-                    if( ix == stride_cols ) { x = unstrided.x - shape.x; }
-                    if( iy == stride_rows ) { y = unstrided.y - shape.y; }
+                    if( ix + 1 == stride_cols ) { x = unstrided.x - shape.x; }
+                    if( iy + 1 == stride_rows ) { y = unstrided.y - shape.y; }
                 }
                 cv::Mat tile( output.second, cv::Rect( x, y, shape.x, shape.y ) );
                 p.second.copyTo( tile );
