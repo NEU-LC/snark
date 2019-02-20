@@ -232,6 +232,7 @@ static void usage( bool verbose=false )
     std::cerr << "        --fit-last; last stride is fit exactly to the image size, i.e. last stride may be irregular" << std::endl;
     std::cerr << "        --how-to-handle-overlaps,--how=<how>; default: last; how to handle overlaps" << std::endl;
     std::cerr << "            last: simply put the next tile on top on the previous one" << std::endl;
+    std::cerr << "            linear: linearly interpolate across stride overlaps (todo)" << std::endl;
     std::cerr << "            other policies: todo" << std::endl;
     std::cerr << "        --input=[<options>]; input options; run cv-cat --help --verbose for details" << std::endl;
     std::cerr << "        --output=[<options>]; output options; run cv-cat --help --verbose for details" << std::endl;
@@ -1080,6 +1081,92 @@ static snark::cv_mat::serialization::options handle_fields_and_format( const com
     return input_options;
 }
 
+namespace snark { namespace unstride { namespace overlap {
+
+struct base
+{
+    virtual ~base() {}
+    
+    virtual void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) = 0;
+};
+    
+struct last: public overlap::base
+{
+    void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) { tile.copyTo( cv::Mat( image, cv::Rect( x, y, tile.cols, tile.rows ) ) ); }
+};
+    
+class linear: public overlap::base
+{
+    public:
+        linear(): x_( 0 ), y_( 0 ) {}
+        
+        void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
+        {
+            if( image.type() != CV_32F ) { std::cerr << "cv-calc: unstride: --how=linear: currently works only on images of type f (CV_32F, " << CV_32F << "); got: " << image.type() << std::endl; exit( 1 ); }
+            cv::Mat s = x == 0 ? tile : horizontal_( image, tile, x, y );
+            cv::Mat t = y == 0 ? s : vertical_( image, s, x, y );
+            t.copyTo( cv::Mat( image, cv::Rect( x, y, tile.cols, tile.rows ) ) );
+            x_ = x;
+            if( x == 0 ) { y_ = y; }
+        }
+        
+    private:
+        unsigned int x_;
+        unsigned int y_;
+        cv::Mat horizontal_( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
+        {
+            cv::Mat t;
+            tile.copyTo( t );
+            unsigned int overlap = x_ + tile.cols - x;
+            double ratio = 1. / overlap;
+            tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, tile.rows ), [&]( const tbb::blocked_range< std::size_t >& r )
+            {
+                for( unsigned int i = r.begin(); i < r.end(); ++i )
+                {
+                    for( unsigned int j = 0; j < overlap; ++j )
+                    {
+                        
+                        // todo: review and fix
+                        
+                        t.at< float >( j, i ) = t.at< float >( j, i ) * ratio + image.at< float >( x + j, y + i ) * ( 1 - ratio );
+                    }
+                }
+                return t;
+            } );
+        }
+        cv::Mat vertical_( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
+        {
+            cv::Mat t;
+            tile.copyTo( t );
+            unsigned int overlap = y_ + tile.rows - y;
+            double ratio = 1. / overlap;
+            tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, overlap ), [&]( const tbb::blocked_range< std::size_t >& r )
+            {
+                for( unsigned int i = r.begin(); i < r.end(); ++i )
+                {
+                    for( unsigned int j = 0; j < tile.cols; ++j )
+                    {
+                        
+                        // todo: review and fix
+                        
+                        t.at< float >( j, i ) = t.at< float >( j, i ) * ratio + image.at< float >( x + j, y + i ) * ( 1 - ratio );
+                    }
+                }
+                return t;
+            } );
+        }
+};
+
+base* make( const std::string& how )
+{
+    if( how == "last" ) { return new last; }
+    if( how == "linear" ) { return new linear; }
+    std::cerr << "cv-calc: unstride: expected policy to handle overlaps, got: '" << how << "' (more policies: todo)" << std::endl;
+    exit( 1 );
+}
+    
+} } } // namespace snark { namespace unstride { namespace overlap {
+
 int main( int ac, char** av )
 {
     try
@@ -1377,8 +1464,7 @@ int main( int ac, char** av )
         }
         if( operation == "unstride" )
         {
-            std::string how = options.value< std::string >( "--how-to-handle-overlaps,--how", "last" );
-            if( how != "last" ) { std::cerr << "cv-calc: unstride: expected policy to handle overlaps, got: '" << how << "' (only --how=last is implemented, more policies: todo)" << std::endl; exit( 1 ); }
+            boost::scoped_ptr< snark::unstride::overlap::base > overlap( snark::unstride::overlap::make( options.value< std::string >( "--how-to-handle-overlaps,--how", "last" ) ) );
             bool fit_last = options.exists( "--fit-last" );
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
@@ -1419,8 +1505,9 @@ int main( int ac, char** av )
                     if( ix + 1 == stride_cols ) { x = unstrided.x - shape.x; }
                     if( iy + 1 == stride_rows ) { y = unstrided.y - shape.y; }
                 }
-                cv::Mat tile( output.second, cv::Rect( x, y, shape.x, shape.y ) );
-                p.second.copyTo( tile );
+                //cv::Mat tile( output.second, cv::Rect( x, y, shape.x, shape.y ) );
+                //p.second.copyTo( tile );
+                overlap->append( output.second, p.second, x, y );
                 ++ix;
                 if( ix >= stride_cols )
                 {
