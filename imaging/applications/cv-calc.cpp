@@ -1103,8 +1103,8 @@ class linear: public overlap::base
         void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
         {
             if( image.type() != CV_32F ) { std::cerr << "cv-calc: unstride: --how=linear: currently works only on images of type f (CV_32F, " << CV_32F << "); got: " << image.type() << std::endl; exit( 1 ); }
-            cv::Mat s = x == 0 ? tile : horizontal_( image, tile, x, y );
-            cv::Mat t = y == 0 ? s : vertical_( image, s, x, y );
+            cv::Mat s = y == 0 ? tile : vertical_( image, tile, x, y );
+            cv::Mat t = x == 0 ? s : horizontal_( image, s, x, y );
             t.copyTo( cv::Mat( image, cv::Rect( x, y, tile.cols, tile.rows ) ) );
             x_ = x;
             if( x == 0 ) { y_ = y; }
@@ -1118,14 +1118,14 @@ class linear: public overlap::base
             cv::Mat t;
             tile.copyTo( t );
             unsigned int overlap = x_ + tile.cols - x;
-            double ratio = 1. / overlap;
             tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, tile.rows ), [&]( const tbb::blocked_range< std::size_t >& r )
             {
                 for( unsigned int i = r.begin(); i < r.end(); ++i )
                 {
                     for( unsigned int j = 0; j < overlap; ++j )
                     {
-                        t.at< float >( j, i ) = t.at< float >( j, i ) * ratio + image.at< float >( x + j, y + i ) * ( 1 - ratio );
+                        double ratio = double( j ) / overlap;
+                        t.at< float >( i, j ) = t.at< float >( i, j ) * ratio + image.at< float >( y + i, x + j ) * ( 1 - ratio );
                     }
                 }
             } );
@@ -1136,14 +1136,14 @@ class linear: public overlap::base
             cv::Mat t;
             tile.copyTo( t );
             unsigned int overlap = y_ + tile.rows - y;
-            double ratio = 1. / overlap;
             tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, overlap ), [&]( const tbb::blocked_range< std::size_t >& r )
             {
                 for( unsigned int i = r.begin(); i < r.end(); ++i )
                 {
+                    double ratio = double( i ) / overlap;
                     for( unsigned int j = 0; int( j ) < tile.cols; ++j )
                     {
-                        t.at< float >( j, i ) = t.at< float >( j, i ) * ratio + image.at< float >( x + j, y + i ) * ( 1 - ratio );
+                        t.at< float >( i, j ) = t.at< float >( i, j ) * ratio + image.at< float >( y + i, x + j ) * ( 1 - ratio );
                     }
                 }
             } );
