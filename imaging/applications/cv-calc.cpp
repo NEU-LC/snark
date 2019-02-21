@@ -1098,21 +1098,23 @@ struct last: public overlap::base
 class linear: public overlap::base
 {
     public:
-        linear(): x_( 0 ), y_( 0 ) {}
+        linear(): x_( 0 ), y_( 0 ), y_prev_( 0 ) {}
         
         void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
         {
             if( image.type() != CV_32F ) { std::cerr << "cv-calc: unstride: --how=linear: currently works only on images of type f (CV_32F, " << CV_32F << "); got: " << image.type() << std::endl; exit( 1 ); }
+            if( x == 0 ) { y_ = y_prev_; }
             cv::Mat s = y == 0 ? tile : vertical_( image, tile, x, y );
             cv::Mat t = x == 0 ? s : horizontal_( image, s, x, y );
             t.copyTo( cv::Mat( image, cv::Rect( x, y, tile.cols, tile.rows ) ) );
             x_ = x;
-            if( x == 0 ) { y_ = y; }
+            y_prev_ = y;
         }
         
     private:
         unsigned int x_;
         unsigned int y_;
+        unsigned int y_prev_;
         cv::Mat horizontal_( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) // todo: more reuse between horizontal_() and vertical_()
         {
             cv::Mat t;
@@ -1499,8 +1501,6 @@ int main( int ac, char** av )
                     if( ix + 1 == stride_cols ) { x = unstrided.x - shape.x; }
                     if( iy + 1 == stride_rows ) { y = unstrided.y - shape.y; }
                 }
-                //cv::Mat tile( output.second, cv::Rect( x, y, shape.x, shape.y ) );
-                //p.second.copyTo( tile );
                 overlap->append( output.second, p.second, x, y );
                 ++ix;
                 if( ix >= stride_cols )
