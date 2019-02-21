@@ -1113,7 +1113,7 @@ class linear: public overlap::base
     private:
         unsigned int x_;
         unsigned int y_;
-        cv::Mat horizontal_( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
+        cv::Mat horizontal_( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) // todo: more reuse between horizontal_() and vertical_()
         {
             cv::Mat t;
             tile.copyTo( t );
@@ -1125,14 +1125,11 @@ class linear: public overlap::base
                 {
                     for( unsigned int j = 0; j < overlap; ++j )
                     {
-                        
-                        // todo: review and fix
-                        
                         t.at< float >( j, i ) = t.at< float >( j, i ) * ratio + image.at< float >( x + j, y + i ) * ( 1 - ratio );
                     }
                 }
-                return t;
             } );
+            return t;
         }
         cv::Mat vertical_( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
         {
@@ -1144,16 +1141,13 @@ class linear: public overlap::base
             {
                 for( unsigned int i = r.begin(); i < r.end(); ++i )
                 {
-                    for( unsigned int j = 0; j < tile.cols; ++j )
+                    for( unsigned int j = 0; int( j ) < tile.cols; ++j )
                     {
-                        
-                        // todo: review and fix
-                        
                         t.at< float >( j, i ) = t.at< float >( j, i ) * ratio + image.at< float >( x + j, y + i ) * ( 1 - ratio );
                     }
                 }
-                return t;
             } );
+            return t;
         }
 };
 
@@ -1439,12 +1433,12 @@ int main( int ac, char** av )
                         bool is_last_row = false;
                         for( unsigned int j = 0; !is_last_row; j += strides.second )
                         {
-                            if( fit_last && int( j ) < p.second.rows && int( j ) > p.second.rows - shape.second ) { j = p.second.rows - shape.second; is_last_row = true; }
+                            if( fit_last && int( j ) < p.second.rows && j > p.second.rows - shape.second ) { j = p.second.rows - shape.second; is_last_row = true; }
                             if( j >= ( p.second.rows + 1 - shape.second ) ) { break; }
                             bool is_last_col = false;
                             for( unsigned int i = 0; !is_last_col; i += strides.first )
                             {
-                                if( fit_last && int( i ) < p.second.cols && int( i ) > p.second.cols - shape.first ) { i = p.second.cols - shape.first; is_last_col = true; }
+                                if( fit_last && int( i ) < p.second.cols && i > p.second.cols - shape.first ) { i = p.second.cols - shape.first; is_last_col = true; }
                                 if( i >= ( p.second.cols + 1 - shape.first ) ) { break; }
                                 if( !filtered.second.empty() )
                                 {
