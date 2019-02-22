@@ -165,6 +165,7 @@ if __name__ == '__main__':
     parser.add_argument( '--min-log-level', '--log-level', type = str, default = "2", help = 'min log level (as os.environ[\'TF_CPP_MIN_LOG_LEVEL\']); default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
     parser.add_argument( '--output-to-files', action = "store_true", help = 'convenience option; for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples)' )
+    parser.add_argument( '--output-max-channels', type = int, help = 'convenience option; if --output-to-files, output not more than a given number of layer channels' )
     parser.add_argument( '--png', action = "store_true", help = 'convenience option; for each input, output each channel in human-viewable form to file ./<input-number>/<layer-name>/<channel-number>.png (see examples)' )
     parser.add_argument( '--png-min', type=float, help = 'if --png, min value to use for normalizing tensor elements' )
     parser.add_argument( '--png-max', type=float, help = 'if --png, min value to use for normalizing tensor elements' )
@@ -252,10 +253,11 @@ if __name__ == '__main__':
                     if values[i].shape[0] != 1: die( "expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
                     if len( values[i].shape ) > 4: die( "expected output tensor with no more than 4 dimensions; got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
                     v = values[i] if len( values[i].shape ) <= 3 else np.transpose( values[i][0], axes = ( 2, 0, 1 ) ) # quick and dirty
+                    output_channels = v.shape[0] if args.output_max_channels is None else args.output_max_channels
                     if args.output_to_files:
-                        for j in range( v.shape[0] ): v[j].tofile( input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin' )
+                        for j in range( output_channels ): v[j].tofile( input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin' )
                     if args.png:
-                        for j in range( v.shape[0] ):
+                        for j in range( output_channels ):
                             n = np.min( v[j] ) if args.png_min is None else args.png_min
                             x = np.max( v[j] ) if args.png_max is None else args.png_max
                             image = np.zeros( v[j].shape, dtype = np.uint8 ) if x == n else np.array( ( ( ( np.array( v[j], dtype = np.float32 ) - n ) / ( x - n ) ) * 255 ), dtype = np.uint8 )
