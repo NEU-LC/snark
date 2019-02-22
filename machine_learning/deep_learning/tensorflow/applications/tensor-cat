@@ -165,7 +165,7 @@ if __name__ == '__main__':
     parser.add_argument( '--min-log-level', '--log-level', type = str, default = "2", help = 'min log level (as os.environ[\'TF_CPP_MIN_LOG_LEVEL\']); default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
     parser.add_argument( '--output-to-files', action = "store_true", help = 'convenience option; for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples)' )
-    parser.add_argument( '--output-max-channels', type = int, help = 'convenience option; if --output-to-files, output not more than a given number of layer channels' )
+    parser.add_argument( '--output-max-channels', type = int, help = 'convenience option; if --output-to-files, comma-separated list: output not more than a given number of layer channels' )
     parser.add_argument( '--png', action = "store_true", help = 'convenience option; for each input, output each channel in human-viewable form to file ./<input-number>/<layer-name>/<channel-number>.png (see examples)' )
     parser.add_argument( '--png-min', type=float, help = 'if --png, min value to use for normalizing tensor elements' )
     parser.add_argument( '--png-max', type=float, help = 'if --png, min value to use for normalizing tensor elements' )
@@ -231,6 +231,11 @@ if __name__ == '__main__':
         keep_prob = get_tensor( 'keep_prob', True ) # todo! quick and dirty
         outputs = [ get_tensor( name ) for name in output_names ]
         feeds = variables( args.variable )
+        output_max_channels = [ None ] * len( output_names )
+        if args.output_max_channels:
+            s = args.output_max_channels.split( ',' )
+            for i in range( len( s ) ):
+                if s[i] != "": output_max_channels[i] = int( s[i] )
         if args.verbose:
             print >> sys.stderr, "tensor-cat: input '" + args.input + "':", input
             for i in range( len( output_names ) ): print >> sys.stderr, "tensor-cat: output '" + output_names[i] + "':", outputs[i]
@@ -253,7 +258,7 @@ if __name__ == '__main__':
                     if values[i].shape[0] != 1: die( "expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
                     if len( values[i].shape ) > 4: die( "expected output tensor with no more than 4 dimensions; got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
                     v = values[i] if len( values[i].shape ) <= 3 else np.transpose( values[i][0], axes = ( 2, 0, 1 ) ) # quick and dirty
-                    output_channels = v.shape[0] if args.output_max_channels is None else args.output_max_channels
+                    output_channels = v.shape[0] if output_max_channels[i] is None else output_max_channels[i]
                     if args.output_to_files:
                         for j in range( output_channels ): v[j].tofile( input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin' )
                     if args.png:
