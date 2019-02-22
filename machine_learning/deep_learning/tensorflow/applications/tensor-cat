@@ -165,7 +165,7 @@ if __name__ == '__main__':
     parser.add_argument( '--min-log-level', '--log-level', type = str, default = "2", help = 'min log level (as os.environ[\'TF_CPP_MIN_LOG_LEVEL\']); default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
     parser.add_argument( '--output-to-files', action = "store_true", help = 'convenience option; for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples)' )
-    parser.add_argument( '--output-max-channels', type = int, help = 'convenience option; if --output-to-files, comma-separated list: output not more than a given number of layer channels' )
+    parser.add_argument( '--output-max-channels', type = str, help = 'convenience option; if --output-to-files, comma-separated list: output not more than a given number of layer channels' )
     parser.add_argument( '--png', action = "store_true", help = 'convenience option; for each input, output each channel in human-viewable form to file ./<input-number>/<layer-name>/<channel-number>.png (see examples)' )
     parser.add_argument( '--png-min', type=float, help = 'if --png, min value to use for normalizing tensor elements' )
     parser.add_argument( '--png-max', type=float, help = 'if --png, min value to use for normalizing tensor elements' )
