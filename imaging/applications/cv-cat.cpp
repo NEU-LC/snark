@@ -271,7 +271,7 @@ int main( int argc, char** argv )
         const std::vector< std::string >& filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;
         if( filterStrings.size() == 1 ) { filters = filterStrings[0]; }
-        if( filterStrings.size() > 1 ) { std::cerr << "please provide filters as a single name-value string" << std::endl; return 1; }
+        if( filterStrings.size() > 1 ) { std::cerr << "expected filters as a single name-value string; got: " << comma::join( filterStrings, ' ' ) << std::endl; return 1; }
         if( filters.find( "encode" ) != filters.npos && !output_options.no_header ) { std::cerr << "cv-cat: warning: encoding image and not using no-header, are you sure?" << std::endl; }
         if( vm.count( "camera" ) ) { device = 0; }
         rate_limit rate( fps );
