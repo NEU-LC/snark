@@ -73,6 +73,7 @@ static void usage( bool verbose=false )
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
     std::cerr << "    header: output header information in ascii csv" << std::endl;
+    std::cerr << "    histogram: output image histogram for all image channels appended to image header" << std::endl;
     std::cerr << "    life: take image on stdin, output game of life on each channel" << std::endl;
     std::cerr << "    mean: output image means for all image channels appended to image header" << std::endl;
     std::cerr << "    roi: given cv image data associated with a region of interest, either set everything outside the region of interest to zero or crop it" << std::endl;
@@ -1344,6 +1345,34 @@ int main( int ac, char** av )
             for( unsigned int i = 0; ( !iterations || i < *iterations ) && std::cout.good(); ++i )
             {
                 output_serialization.write_to_stdout( life( p ) ); // todo: decouple step from output
+                std::cout.flush();
+            }
+            return 0;
+        }
+        if( operation == "histogram" )
+        {
+            if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,histogram" << std::endl;  exit(0); }
+            if( options.exists("--output-format") ) { std::cout << "t,3ui,d,256ui" << std::endl;  exit(0); }
+            snark::cv_mat::serialization serialization( input_options );
+            while( std::cin.good() && !std::cin.eof() )
+            {
+                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
+                if( p.second.empty() ) { return 0; }
+                if( p.second.type() != CV_8UC1 && p.second.type() != CV_8UC2 && p.second.type() != CV_8UC3 && p.second.type() != CV_8UC4 ) { std::cerr << "cv-calc: histogram: expected an unsigned char image type; got type: " << p.second.type() << std::endl; exit( 1 ); }
+                typedef boost::array< comma::uint32, 256 > channel_t;
+                std::vector< channel_t > channels( p.second.channels() );
+                for( unsigned int i = 0; i < channels.size(); ++i ) { ::memset( ( char* )( &channels[i][0] ), 0, sizeof( comma::uint32 ) * 256 ); }
+                cv::Mat mat = p.second;
+                for( int r = 0; r < p.second.rows; ++r )
+                {
+                    const unsigned char* m = mat.ptr< unsigned char >( r );
+                    for( int c = 0; c < mat.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*m], ++i, ++m ); }
+                }
+                
+                std::cerr << "--> serialization.no_header(): " << serialization.no_header() << std::endl;
+                
+                if( !serialization.no_header() ) { std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() ); }
+                for( unsigned int i = 0; i < channels.size(); ++i ) { std::cout.write( ( char* )( &channels[i][0] ), sizeof( comma::uint32 ) * 256 ); }
                 std::cout.flush();
             }
             return 0;

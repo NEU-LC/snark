@@ -113,12 +113,13 @@ serialization::serialization( const serialization::options& options )
         std::string no_timestamp_fields = comma::join( v, ',' );
         if( !no_timestamp_fields.empty() ) { m_binary_no_timestamp.reset( comma::csv::binary< header >( format.string(), no_timestamp_fields, false, m_header ) ); }
     }
-    
     // make sure that the default timestamp (if not read from input) is not-a-date-time, and not 19700101T00000
-    ( !options.no_header ? *m_binary : comma::csv::binary< serialization::header >( format.string(), fields ) ).put( m_header, &m_buffer[0]);
+    ( options.no_header ? comma::csv::binary< serialization::header >( format.string(), fields ) : *m_binary ).put( m_header, &m_buffer[0]);
 }
 
 const comma::csv::binary< serialization::header >* serialization::header_binary() const { return m_binary ? &( *m_binary ) : NULL; }
+
+bool serialization::no_header() const { return !static_cast< bool >( m_binary ); }
 
 std::size_t serialization::put( const std::pair< boost::posix_time::ptime, cv::Mat >& p, char* buf ) const
 {

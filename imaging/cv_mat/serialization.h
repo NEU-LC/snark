@@ -113,6 +113,9 @@ class serialization
         /// deserialize header only
         header get_header( const char* buf ) const;
         
+        /// return true, if constructed with no-header option
+        bool no_header() const;
+        
         /// return usage
         static const std::string& usage();
 
