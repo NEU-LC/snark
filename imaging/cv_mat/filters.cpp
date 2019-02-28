@@ -1198,39 +1198,6 @@ static comma::csv::options make_header_csv()
     return csv;
 }
 
-template < typename H >
-struct histogram_impl_ {
-    typedef typename impl::filters< H >::value_type value_type;
-    typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-    const get_timestamp_functor get_timestamp_;
-
-    histogram_impl_( const get_timestamp_functor& gt ) : get_timestamp_(gt) {}
-
-    value_type operator()( value_type m )
-    {
-        static comma::csv::output_stream< serialization::header > os( std::cout, make_header_csv() ); // todo: quick and dirty; generalize imaging::serialization::pipeline
-        if( single_channel_type( m.second.type() ) != CV_8UC1 ) { std::cerr << "cv-cat: histogram: expected an unsigned char image type; got " << type_as_string( m.second.type() ) << std::endl; exit( 1 ); }
-        typedef boost::array< comma::uint32, 256 > channel_t;
-        std::vector< channel_t > channels( m.second.channels() );
-        for( unsigned int i = 0; i < channels.size(); ++i ) { ::memset( ( char* )( &channels[i][0] ), 0, sizeof( comma::uint32 ) * 256 ); }
-        cv::Mat mat = m.second;
-        for( int r = 0; r < m.second.rows; ++r )
-        {
-            const unsigned char* p = mat.ptr< unsigned char >( r );
-            for( int c = 0; c < mat.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*p], ++i, ++p ); }
-        }
-        serialization::header h;
-        h.timestamp = get_timestamp_( m.first );
-        h.rows = m.second.rows;
-        h.cols = m.second.cols;
-        h.type = m.second.type();
-        os.write( h );
-        os.flush();
-        for( unsigned int i = 0; i < channels.size(); ++i ) { std::cout.write( ( char* )( &channels[i][0] ), sizeof( comma::uint32 ) * 256 ); }
-        return m;
-    }
-};
-
 template < typename T > static comma::csv::options make_csv_options_( bool binary ) // quick and dirty
 {
     comma::csv::options csv;
@@ -3190,12 +3157,6 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
 //             }
 //             f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false ) );
 //         }
-        else if( e[0] == "histogram" )
-        {
-            if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'histogram' as the last filter, got \"" << how << "\"" ); }
-            f.push_back( filter_type( boost::bind< value_type_t >( histogram_impl_< H >( get_timestamp ), _1 ), false ) );
-            f.push_back( filter_type( NULL ) ); // quick and dirty
-        }
         else if( e[0] == "simple-blob" )
         {
 #if CV_MAJOR_VERSION <= 2
@@ -3597,7 +3558,6 @@ static std::string usage_impl_()
     oss << "        output of the ratio and linear-combination operations has floating point (CV_32F) precision unless the input is already in doubles (if so, precision is unchanged)" << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image operations" << std::endl;
-    oss << "        histogram: calculate image histogram and output in binary format: t,3ui,256ui for ub images; for 3ub images as b,g,r: t,3ui,256ui,256ui,256ui, etc" << std::endl;
     oss << "        simple-blob[=<parameters>]: wraps cv::SimpleBlobDetector, outputs as csv key points timestamped by image timestamp" << std::endl;
     oss << "            <parameters>" << std::endl;
     oss << "                output-binary: output key points as binary" << std::endl;

@@ -1368,9 +1368,6 @@ int main( int ac, char** av )
                     const unsigned char* m = mat.ptr< unsigned char >( r );
                     for( int c = 0; c < mat.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*m], ++i, ++m ); }
                 }
-                
-                std::cerr << "--> serialization.no_header(): " << serialization.no_header() << std::endl;
-                
                 if( !serialization.no_header() ) { std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() ); }
                 for( unsigned int i = 0; i < channels.size(); ++i ) { std::cout.write( ( char* )( &channels[i][0] ), sizeof( comma::uint32 ) * 256 ); }
                 std::cout.flush();
