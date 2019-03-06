@@ -38,8 +38,11 @@
 namespace snark { namespace cv_mat { namespace impl {
     
 template < typename H >
-file< H >::file( const typename file< H >::get_timestamp_functor& get_timestamp, bool no_header, const std::vector< std::string >& filenames )
-    : get_timestamp_( get_timestamp )
+file< H >::file( const get_timestamp_functor& get_timestamp, const std::string& type, bool no_header, const boost::optional< int >& quality, bool do_index, const std::vector< std::string >& filenames )
+    : type_( type )
+    , quality_( quality )
+    , do_index_( do_index )
+    , get_timestamp_( get_timestamp )
     , index_( 0 )
     , filenames_( filenames )
     , filename_( filenames.begin() )
@@ -50,15 +53,15 @@ file< H >::file( const typename file< H >::get_timestamp_functor& get_timestamp,
 }
 
 template < typename H >
-typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, cv::Mat > m, const std::string& type, const boost::optional< int >& quality, bool do_index )
+typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, cv::Mat > m )
 {
     if( m.second.empty() ) { return m; }
     boost::posix_time::ptime timestamp = get_timestamp_( m.first );
     index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
     previous_timestamp_ = timestamp;
-    const std::string& filename = make_filename_( timestamp, type, do_index );
+    const std::string& filename = make_filename_( timestamp );
     if( filename.empty() ) { return std::pair< H, cv::Mat >(); } // end of list of filenames
-    if( type == "bin" )
+    if( type_ == "bin" )
     {
         std::ofstream ofs( filename );
         if( !ofs.is_open() ) { COMMA_THROW( comma::exception, "failed to open " << filename ); }
@@ -66,16 +69,16 @@ typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, c
     }
     else
     {
-        check_image_type( m.second, type );
-        cv::imwrite( filename, m.second, quality ? imwrite_params( type, *quality ) : std::vector< int >() );
+        check_image_type( m.second, type_ );
+        cv::imwrite( filename, m.second, quality_ ? imwrite_params( type_, *quality_ ) : std::vector< int >() );
     }
     return m;
 }
 
 template < typename H >
-std::string file< H >::make_filename_( const boost::posix_time::ptime& t, const std::string& type, bool do_index )
+std::string file< H >::make_filename_( const boost::posix_time::ptime& t )
 {
-    if( filenames_.empty() ) { return make_filename( t, type, do_index ? boost::optional< unsigned int >( index_ ) : boost::none ); }
+    if( filenames_.empty() ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
     if( filename_ == filenames_.end() ) { return ""; }
     return *filename_++;
 }

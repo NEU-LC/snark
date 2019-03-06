@@ -45,18 +45,21 @@ class file
     public:
         typedef boost::function< boost::posix_time::ptime( const H& ) > get_timestamp_functor;
 
-        file( const get_timestamp_functor& get_timestamp, bool no_header, const std::vector< std::string >& filenames = std::vector< std::string >() );
+        file( const get_timestamp_functor& get_timestamp, const std::string& type, bool no_header, const boost::optional< int >& quality, bool do_index, const std::vector< std::string >& filenames = std::vector< std::string >() );
 
-        std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m, const std::string& type, const boost::optional< int >& quality, bool do_index );
+        std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
         
     private:
-        snark::cv_mat::serialization serialization_;
         const get_timestamp_functor get_timestamp_;
+        std::string type_;
+        boost::optional< int > quality_;
+        bool do_index_;
+        snark::cv_mat::serialization serialization_;
         boost::posix_time::ptime previous_timestamp_;
         unsigned int index_;
         std::vector< std::string > filenames_;
         std::vector< std::string >::const_iterator filename_;
-        std::string make_filename_( const boost::posix_time::ptime& t, const std::string& extension, bool do_index );
+        std::string make_filename_( const boost::posix_time::ptime& t );
 };
 
 } } } // namespace snark { namespace cv_mat { namespace impl {

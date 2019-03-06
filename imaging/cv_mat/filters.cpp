@@ -2457,22 +2457,45 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "file" )
     {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "file: expected file type like jpg, ppm, etc" ); }
         std::vector< std::string > s = comma::split( e[1], ',' );
         boost::optional< int > quality;
         bool do_index = false;
         bool no_header = false;
+        std::vector< std::string > filenames;
         for( unsigned int i = 1; i < s.size(); ++i )
         {
-            if( s[i] == "index" ) { do_index = true; }
-            else if( s[i] == "no-header" ) { no_header = true; }
-            else { quality = boost::lexical_cast< int >( s[i] ); }
+            if( s[i] == "index" )
+            {
+                do_index = true;
+            }
+            else if( s[i] == "no-header" )
+            { 
+                no_header = true;
+            }
+            else if( s[i].substr( 0, 10 ) == "filenames:" ) // quick and dirty
+            { 
+                std::ifstream ifs( s[i].substr( 11 ) );
+                if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 11 ) << "'" ); }
+                while( ifs.good() && !ifs.eof() )
+                {
+                    std::string g;
+                    std::getline( ifs, g );
+                    if( comma::strip( g, " \t" ).empty() ) { continue; }
+                    filenames.push_back( g );
+                }
+                ifs.close();
+            }
+            else
+            {
+                quality = boost::lexical_cast< int >( s[i] );
+            }
         }
-        return std::make_pair( boost::bind< value_type_t >( impl::file< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false );
+        return std::make_pair( boost::bind< value_type_t >( impl::file< H >( get_timestamp, s[0], no_header, quality, do_index, filenames ), _1 ), false );
     }
     if( e[0] == "save" )
     {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename" ); }
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "save: please specify filename" ); }
         std::vector< std::string > s = comma::split( e[1], ',' );
         boost::optional< int > quality;
         bool do_index = false;
@@ -3305,10 +3328,14 @@ static std::string usage_impl_()
     oss << "                                  use: cv-cat 'view;do-something' | cv-cat 'view'" << std::endl;
     oss << std::endl;
     oss << "    file read/write operations" << std::endl;
-    oss << "        file=<format>[,<quality>][,index]: write images to files with timestamp as name in the specified format. <format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
-    oss << "            <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
+    oss << "        file=<format>[,<quality>][,index][,no-header][,filenames:<filenames>]: write images to files with timestamp as name in the specified format; if input images have no timestamp, system time is used" << std::endl;
+    oss << "            <format>" << std::endl;
+    oss << "                - anything that opencv imwrite can take, e.g. jpg, ppm, png, tiff etc" << std::endl;
+    oss << "                - 'bin' to write image as binary in cv-cat format" << std::endl;
     oss << "            <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "            index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
+    oss << "            no-header: makes sense only for 'bin' format; if present, write image without header" << std::endl;
+//    oss << "            <filenames>: file containing filenames ..." << std::endl;
     oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
     oss << "            supported file types by filename extension:" << std::endl;
     oss << "                - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
