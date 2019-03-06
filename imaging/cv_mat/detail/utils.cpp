@@ -27,16 +27,18 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "utils.h"
-
 #include <string>
 #include <comma/base/exception.h>
 #include <boost/lexical_cast.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/types_c.h>
+#include "../../../timing/time.h"
+#include "utils.h"
 
 namespace snark{ namespace cv_mat { namespace impl {
 
-boost::unordered_map< std::string, int > fill_types_()
+boost::unordered_map< std::string, int > fill_types()
 {
     boost::unordered_map< std::string, int > types;
     types[ "CV_8UC1" ] = types[ "ub" ] = CV_8UC1;
@@ -155,6 +157,35 @@ std::string type_as_string( int t ) // to avoid compilation warning
     static const boost::unordered_map< int, std::string > types_as_string = impl::fill_types_as_string_();
     boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
+}
+
+std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension, boost::optional< unsigned int > index )
+{
+    std::ostringstream ss;
+    ss << snark::timing::to_iso_string_always_with_fractions( t );
+    if( index ) { ss << '.' << *index; }
+    ss << '.' << extension;
+    return ss.str();
+}
+
+std::vector< int > imwrite_params( const std::string& type, const int quality )
+{
+    std::vector< int > params;
+    if ( type == "jpg" ) { params.push_back( CV_IMWRITE_JPEG_QUALITY ); }
+    else { COMMA_THROW( comma::exception, "quality only supported for jpg images, not for \"" << type << "\" yet" ); }
+    params.push_back( quality );
+    return params;
+}
+    
+void check_image_type( const cv::Mat& m, const std::string& type )
+{
+    int channels = m.channels();
+    int size = m.elemSize() / channels;
+    int cv_type = m.type();
+    if( !( channels == 1 || channels == 3 ) ) { COMMA_THROW( comma::exception, "expected image with 1 or 3 channel, got " << channels << " channels" ); }
+    if( !( size == 1 || size == 2 ) ) { COMMA_THROW( comma::exception, "expected 8- or 16-bit image, got " << size*8 << "-bit image" ); }
+    if( size == 2 && !( cv_type == CV_16UC1 || cv_type == CV_16UC3 ) ) {  COMMA_THROW( comma::exception, "expected 16-bit image with unsigned elements, got image of type " << type_as_string( cv_type ) ); }
+    if( size == 2 && !( type == "tiff" || type == "tif" || type == "png" || type == "jp2" ) ) { COMMA_THROW( comma::exception, "cannot convert 16-bit image to type " << type << "; use tif or png instead" ); }
 }
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

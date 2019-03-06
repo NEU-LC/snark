@@ -83,6 +83,7 @@
 #include "detail/arithmetic.h"
 #include "detail/bitwise.h"
 #include "detail/colors.h"
+#include "detail/file.h"
 #include "detail/load.h"
 #include "detail/morphology.h"
 #include "detail/ratio.h"
@@ -171,16 +172,7 @@ template < > struct empty< std::vector< char > > { static bool is_empty( const s
 template < typename H >
 static bool is_empty( typename impl::filters< H >::value_type m, const typename impl::filters< H >::get_timestamp_functor& get_timestamp ) { return ( m.second.empty() && ( empty< H >::is_empty(m.first) || get_timestamp(m.first) == boost::posix_time::not_a_date_time ) ); }
 
-static std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension, boost::optional< unsigned int > index = boost::none )
-{
-    std::ostringstream ss;
-    ss << snark::timing::to_iso_string_always_with_fractions( t );
-    if( index ) { ss << '.' << *index; }
-    ss << '.' << extension;
-    return ss.str();
-}
-
-static const boost::unordered_map< std::string, int > types_ = impl::fill_types_();
+static const boost::unordered_map< std::string, int > types_ = impl::fill_types();
 
 std::string type_as_string( int t ) { return impl::type_as_string(t); }
 
@@ -957,7 +949,7 @@ class log_impl_ // quick and dirty; poor-man smart pointer, since boost::mutex i
                     update_on_time_( m );
                     if( !ofstream_ )
                     {
-                        std::string filename = directory_ + '/' + make_filename( get_timestamp_(m.first), "bin");
+                        std::string filename = directory_ + '/' + snark::cv_mat::impl::make_filename( get_timestamp_(m.first), "bin");
                         ofstream_.reset( new std::ofstream( &filename[0] ) );
                         if( !ofstream_->is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
                     }
@@ -1076,8 +1068,8 @@ public:
         cv::imshow( &name[0], m.second );
         char c = cv::waitKey( delay );
         if( c == 27 ) { return typename impl::filters< H >::value_type(); } // HACK to notify application to exit
-        if( c == ' ' ) { cv::imwrite( make_filename( get_timestamp( m.first ), suffix ), m.second ); }
-        if( c>='0' && c<='9') { cv::imwrite( make_filename( get_timestamp( m.first ), suffix, unsigned(c-'0') ), m.second ); }
+        if( c == ' ' ) { cv::imwrite( snark::cv_mat::impl::make_filename( get_timestamp( m.first ), suffix ), m.second ); }
+        if( c>='0' && c<='9') { cv::imwrite( snark::cv_mat::impl::make_filename( get_timestamp( m.first ), suffix, unsigned(c-'0') ), m.second ); }
         return m;
     }
     
@@ -1145,27 +1137,6 @@ template < typename H >
 static typename impl::filters< H >::value_type cross_impl_( typename impl::filters< H >::value_type m, const drawing::cross& cross ) { cross.draw( m.second ); return m; }
 
 template < typename H >
-static void encode_impl_check_type( const typename impl::filters< H >::value_type& m, const std::string& type )
-{
-    int channels = m.second.channels();
-    int size = m.second.elemSize() / channels;
-    int cv_type = m.second.type();
-    if( !( channels == 1 || channels == 3 ) ) { COMMA_THROW( comma::exception, "expected image with 1 or 3 channel, got " << channels << " channels" ); }
-    if( !( size == 1 || size == 2 ) ) { COMMA_THROW( comma::exception, "expected 8- or 16-bit image, got " << size*8 << "-bit image" ); }
-    if( size == 2 && !( cv_type == CV_16UC1 || cv_type == CV_16UC3 ) ) {  COMMA_THROW( comma::exception, "expected 16-bit image with unsigned elements, got image of type " << type_as_string( cv_type ) ); }
-    if( size == 2 && !( type == "tiff" || type == "tif" || type == "png" || type == "jp2" ) ) { COMMA_THROW( comma::exception, "cannot convert 16-bit image to type " << type << "; use tif or png instead" ); }
-}
-
-static std::vector<int> imwrite_params( const std::string& type, const int quality)
-{
-    std::vector<int> params;
-    if ( type == "jpg" ) { params.push_back(CV_IMWRITE_JPEG_QUALITY); }
-    else { COMMA_THROW( comma::exception, "quality only supported for jpg images, not for \"" << type << "\" yet" ); }
-    params.push_back(quality);
-    return params;
-}
-
-template < typename H >
 struct encode_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
     typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
@@ -1175,10 +1146,10 @@ struct encode_impl_ {
     value_type operator()( const value_type& m, const std::string& type, const boost::optional<int>& quality )
     {
         if( is_empty< H >( m, get_timestamp_ ) ) { return m; }
-        encode_impl_check_type< H >( m, type );
+        snark::cv_mat::impl::check_image_type( m.second, type );
         std::vector< unsigned char > buffer;
         std::vector<int> params;
-        if (quality) { params = imwrite_params(type, *quality); }
+        if (quality) { params = snark::cv_mat::impl::imwrite_params(type, *quality); }
         std::string format = "." + type;
         cv::imencode( format, m.second, buffer, params );
         typename impl::filters< H >::value_type p;
@@ -1189,14 +1160,6 @@ struct encode_impl_ {
     }
 
 };
-
-static comma::csv::options make_header_csv()
-{
-    comma::csv::options csv;
-    csv.fields = "t,rows,cols,type";
-    csv.format( "t,3ui" );
-    return csv;
-}
 
 template < typename T > static comma::csv::options make_csv_options_( bool binary ) // quick and dirty
 {
@@ -1247,54 +1210,10 @@ struct grab_impl_ {
     value_type operator()( value_type m, const std::string& type, const boost::optional<int>& quality )
     {
         std::vector<int> params;
-        if (quality) { params = imwrite_params(type, *quality); }
-        cv::imwrite( make_filename( get_timestamp_(m.first), type ), m.second, params );
+        if (quality) { params = snark::cv_mat::impl::imwrite_params(type, *quality); }
+        cv::imwrite( snark::cv_mat::impl::make_filename( get_timestamp_(m.first), type ), m.second, params );
         return typename impl::filters< H >::value_type(); // HACK to notify application to exit
     }
-};
-
-template < typename H >
-class file_impl_
-{
-    public:
-        typedef typename impl::filters< H >::value_type value_type;
-        typedef typename impl::filters< H >::get_timestamp_functor get_timestamp_functor;
-
-        file_impl_( const get_timestamp_functor& get_timestamp, bool no_header ) : get_timestamp_( get_timestamp ), index_( 0 )
-        {
-            snark::cv_mat::serialization::options options;
-            options.no_header = no_header;
-            serialization_ = snark::cv_mat::serialization( options );
-        }
-
-        value_type operator()( value_type m, const std::string& type, const boost::optional< int >& quality, bool do_index )
-        {
-            if( m.second.empty() ) { return m; }
-            std::vector< int > params;
-            if( quality ) { params = imwrite_params( type, *quality ); }
-            boost::posix_time::ptime timestamp = get_timestamp_( m.first );
-            index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
-            previous_timestamp_ = timestamp;
-            const std::string& filename = make_filename( timestamp, type, do_index ? boost::optional< unsigned int >( index_ ) : boost::none );
-            if( type == "bin" )
-            {
-                std::ofstream ofs( filename );
-                if( !ofs.is_open() ) { COMMA_THROW( comma::exception, "" ); }
-                serialization_.write( ofs, m );
-            }
-            else
-            {
-                encode_impl_check_type< H >( m, type );
-                cv::imwrite( filename, m.second, params );
-            }
-            return m;
-        }
-        
-    private:
-        snark::cv_mat::serialization serialization_;
-        const get_timestamp_functor get_timestamp_;
-        boost::posix_time::ptime previous_timestamp_;
-        unsigned int index_;
 };
 
 template < typename H >
@@ -1334,7 +1253,7 @@ class save_impl_
         {
             if( m.second.empty() ) { return m; }
             std::vector< int > params;
-            if( quality_ ) { params = imwrite_params( type_, *quality_ ); }
+            if( quality_ ) { params = snark::cv_mat::impl::imwrite_params( type_, *quality_ ); }
             std::string filename = do_index_ ? basename_ + '.' + boost::lexical_cast< std::string  >( index_ ) + '.' + type_ : filename_;
             if( type_ == "bin" )
             {
@@ -1344,7 +1263,7 @@ class save_impl_
             }
             else
             {
-                encode_impl_check_type< H >( m, type_ );
+                snark::cv_mat::impl::check_image_type( m.second, type_ );
                 cv::imwrite( filename, m.second, params );
             }
             ++index_;
@@ -2549,7 +2468,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             else if( s[i] == "no-header" ) { no_header = true; }
             else { quality = boost::lexical_cast< int >( s[i] ); }
         }
-        return std::make_pair( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false );
+        return std::make_pair( boost::bind< value_type_t >( impl::file< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false );
     }
     if( e[0] == "save" )
     {
@@ -3155,7 +3074,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
 //                 else if( s[i] == "no-header" ) { no_header = true; }
 //                 else { quality = boost::lexical_cast< int >( s[i] ); }
 //             }
-//             f.push_back( filter_type( boost::bind< value_type_t >( file_impl_< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false ) );
+//             f.push_back( filter_type( boost::bind< value_type_t >( impl::file< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false ) );
 //         }
         else if( e[0] == "simple-blob" )
         {

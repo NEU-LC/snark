@@ -1,5 +1,6 @@
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2019 Vsevolod Vlaskine
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -30,25 +31,32 @@
 #pragma once
 
 #include <string>
-#include <boost/optional.hpp>
-#include <boost/unordered_map.hpp>
+#include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
-#include <opencv2/core/core.hpp>
+#include <boost/function.hpp>
+#include <boost/optional.hpp>
+#include "../serialization.h"
 
 namespace snark { namespace cv_mat { namespace impl {
+    
+template < typename H >
+class file
+{
+    public:
+        typedef boost::function< boost::posix_time::ptime( const H& ) > get_timestamp_functor;
 
-boost::unordered_map< std::string, int > fill_types();
+        file( const get_timestamp_functor& get_timestamp, bool no_header, const std::vector< std::string >& filenames = std::vector< std::string >() );
 
-cv::Scalar scalar_from_strings( const std::string* begin, unsigned int size );
+        std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m, const std::string& type, const boost::optional< int >& quality, bool do_index );
+        
+    private:
+        snark::cv_mat::serialization serialization_;
+        const get_timestamp_functor get_timestamp_;
+        boost::posix_time::ptime previous_timestamp_;
+        unsigned int index_;
+        std::vector< std::string > filenames_;
+        std::vector< std::string >::const_iterator filename_;
+        std::string make_filename_( const boost::posix_time::ptime& t, const std::string& extension, bool do_index );
+};
 
-unsigned int cvt_color_type_from_string( const std::string& t );
-
-std::string type_as_string( int t );
-
-std::string make_filename( const boost::posix_time::ptime& t, const std::string& extension, boost::optional< unsigned int > index = boost::none );
-
-void check_image_type( const cv::Mat& m, const std::string& type );
-
-std::vector< int > imwrite_params( const std::string& type, const int quality );
-
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+} } } // namespace snark { namespace cv_mat { namespace impl {
