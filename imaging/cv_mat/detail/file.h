@@ -58,7 +58,7 @@ class file
         boost::posix_time::ptime previous_timestamp_;
         unsigned int index_;
         std::vector< std::string > filenames_;
-        std::vector< std::string >::const_iterator filename_;
+        unsigned int count_;
         std::string make_filename_( const boost::posix_time::ptime& t );
 };
 

@@ -45,7 +45,7 @@ file< H >::file( const get_timestamp_functor& get_timestamp, const std::string& 
     , get_timestamp_( get_timestamp )
     , index_( 0 )
     , filenames_( filenames )
-    , filename_( filenames.begin() )
+    , count_( 0 )
 {
     snark::cv_mat::serialization::options options;
     options.no_header = no_header;
@@ -59,7 +59,7 @@ typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, c
     boost::posix_time::ptime timestamp = get_timestamp_( m.first );
     index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
     previous_timestamp_ = timestamp;
-    const std::string& filename = make_filename_( timestamp );
+    std::string filename = make_filename_( timestamp );
     if( filename.empty() ) { return std::pair< H, cv::Mat >(); } // end of list of filenames
     if( type_ == "bin" )
     {
@@ -79,8 +79,8 @@ template < typename H >
 std::string file< H >::make_filename_( const boost::posix_time::ptime& t )
 {
     if( filenames_.empty() ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
-    if( filename_ == filenames_.end() ) { return ""; }
-    return *filename_++;
+    if( count_ >= filenames_.size() ) { return ""; }
+    return filenames_[count_++];
 }
     
 template class file< boost::posix_time::ptime >;
