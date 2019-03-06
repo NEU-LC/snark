@@ -2475,7 +2475,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             }
             else if( s[i].substr( 0, 10 ) == "filenames:" ) // quick and dirty
             { 
-                std::ifstream ifs( s[i].substr( 11 ) );
+                std::ifstream ifs( s[i].substr( 10 ) );
                 if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 11 ) << "'" ); }
                 while( ifs.good() && !ifs.eof() )
                 {
