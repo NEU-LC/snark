@@ -80,21 +80,29 @@ int traits::run( const comma::command_line_options& options )
     comma::csv::tied< lines_t, output_t > tied( istream, ostream );
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
     {
-        const lines_t* p = istream.read();
-        if( !p ) { break; }
+        const lines_t* r = istream.read();
+        if( !r ) { break; }
         COMMA_THROW( comma::exception, "implementing..." );
-        const Eigen::Vector3d& f = p->first.second - p->first.first;
-        const Eigen::Vector3d& s = p->second.second - p->second.first;
+        const Eigen::Vector3d& f = ( r->first.second - r->first.first ).normalized();
+        const Eigen::Vector3d& s = ( r->second.second - r->second.first ).normalized();
         if( comma::math::equal( f.dot( s ), f.norm() * s.norm() ) )
         {
             if( discard_collinear ) { continue; }
-            std::cerr << "points-calc: lines-nearest: got collinear lines (" << p->first.first.transpose() << "," << p->first.second.transpose() << ") and (" << p->second.first.transpose() << "," << p->second.second.transpose() << "), please use --discard collinear to discard" << std::endl;
+            std::cerr << "points-calc: lines-nearest: got collinear lines (" << r->first.first.transpose() << "," << r->first.second.transpose() << ") and (" << r->second.first.transpose() << "," << r->second.second.transpose() << "), please use --discard collinear to discard" << std::endl;
             return 1;
         }
         output_t output;
         const Eigen::Vector3d& m = f.cross( s );
         {
-            const Eigen::Vector3d& n = f.cross( m );
+            Eigen::Vector3d n = f.cross( m ).normalized();
+            Eigen::Vector3d p = n * f.dot( n ); // todo: sign?
+            Eigen::Vector3d d = f - p;
+            // todo: first point distance to the plane
+            // todo: first point distance to the intersection (scaled by dot)
+            // todo: first point + direction * distance
+        }
+        {
+            // todo: second
         }
         tied.append( output );
     }
