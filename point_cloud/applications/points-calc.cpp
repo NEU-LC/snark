@@ -46,6 +46,7 @@
 #include "../voxel_map.h"
 #include "../../visiting/eigen.h"
 #include "../../visiting/traits.h"
+#include "points-calc/lines_nearest.h"
 #include "points-calc/plane_intersection.h"
 #include "points-calc/plane_intersection_with_trajectory.h"
 #include "points-calc/project.h"
@@ -91,6 +92,7 @@ static void usage( bool verbose = false )
     std::cerr << "    discretise,discretize" << std::endl;
     std::cerr << "    find-outliers" << std::endl;
     std::cerr << "    integrate-frame" << std::endl;
+    std::cerr << "    lines-nearest: TODO" << std::endl;
     std::cerr << "    local-min" << std::endl;
     std::cerr << "    local-max" << std::endl;
     std::cerr << "    nearest-min,min-in-radius,min-in-range" << std::endl;
@@ -196,6 +198,7 @@ static void usage( bool verbose = false )
     std::cerr << "                echo 0,0,1,0,0,0 | points-frame --fields x,y,z,roll,pitch,yaw --from $( ( echo 0,0,0,0,1,0.5 ; echo 0,0,0,0,2,0 ) | points-calc integrate-frame --from | tail -n1 | cut -d, -f7-12 )" << std::endl;
     std::cerr << "                echo 0,0,1,0,0,0 | points-frame --from 0,0,0,0,1,0.5 --fields x,y,z,roll,pitch,yaw | points-frame --from 0,0,0,0,2,0 --fields x,y,z,roll,pitch,yaw" <<  std::endl;
     std::cerr << std::endl;
+    std::cerr << snark::points_calc::lines_nearest::traits::usage() << std::endl;
     std::cerr << "    local-min, local-max: deprecated, use nearest-min, nearest-max;" << std::endl;
     std::cerr << "        output local minimums or maximums inside of given radius" << std::endl;
     std::cerr << std::endl;
@@ -1503,6 +1506,7 @@ int main( int ac, char** av )
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "integrate-frame" ) { return run< snark::points_calc::integrate_frame::traits >( options ); }
+        if( operation == "lines-nearest" ) { return run< snark::points_calc::lines_nearest::traits >( options ); }
         if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
         if( operation == "project-onto-plane" ) { return run< snark::points_calc::project::onto_plane::traits >( options ); }
         if( operation == "plane-intersection-with-trajectory" ) { return run< snark::points_calc::plane_intersection_with_trajectory::traits >( options ); }
