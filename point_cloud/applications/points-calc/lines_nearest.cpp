@@ -63,7 +63,7 @@ std::string traits::usage()
 
 std::string traits::input_fields() { return comma::join( comma::csv::names< lines_t >( true ), ',' ); }
 
-std::string traits::input_format() { comma::csv::format::value< lines_t >(); }
+std::string traits::input_format() { return comma::csv::format::value< lines_t >(); }
     
 std::string traits::output_fields() { return comma::join( comma::csv::names< output_t >( true ), ',' ); }
 
@@ -82,7 +82,6 @@ int traits::run( const comma::command_line_options& options )
     {
         const lines_t* r = istream.read();
         if( !r ) { break; }
-        COMMA_THROW( comma::exception, "implementing..." );
         const Eigen::Vector3d& f = ( r->first.second - r->first.first ).normalized();
         const Eigen::Vector3d& s = ( r->second.second - r->second.first ).normalized();
         if( comma::math::equal( f.dot( s ), f.norm() * s.norm() ) )
@@ -92,17 +91,19 @@ int traits::run( const comma::command_line_options& options )
             return 1;
         }
         output_t output;
-        const Eigen::Vector3d& m = f.cross( s );
         {
+            const Eigen::Vector3d& m = f.cross( s ); // todo: move cross out after debugging
             Eigen::Vector3d n = f.cross( m ).normalized();
-            Eigen::Vector3d p = n * f.dot( n ); // todo: sign?
-            Eigen::Vector3d d = f - p;
-            // todo: first point distance to the plane
-            // todo: first point distance to the intersection (scaled by dot)
-            // todo: first point + direction * distance
+            double d = n.dot( r->second.first - r->first.first );
+            double p = f.dot( n );
+            output.first = r->first.second + ( f - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
         }
         {
-            // todo: second
+            const Eigen::Vector3d& m = s.cross( f );
+            Eigen::Vector3d n = s.cross( m ).normalized();
+            double d = n.dot( r->first.first - r->second.first );
+            double p = s.dot( n );
+            output.second = r->second.second + ( s - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
         }
         tied.append( output );
     }
