@@ -93,19 +93,19 @@ int traits::run( const comma::command_line_options& options )
         }
         output_t output;
         {
-            const Eigen::Vector3d& m = f.cross( s ); // todo: move cross out after debugging
-            Eigen::Vector3d n = f.cross( m ).normalized(); // Eigen::Vector3d n = f.cross( m ).normalized();
-            double d = n.dot( r->second.first - r->first.first );
-            double p = n.dot( f );
-            //std::cerr << "--> d: " << d << " p: " << p << " r->first.first: " << r->first.first.transpose() << " r->first.second: " << r->first.second.transpose() << " ( f - n * p ): " << ( f - n * p ).transpose() << std::endl;
-            output.first = r->first.first + ( f - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
-        }
-        {
             const Eigen::Vector3d& m = s.cross( f );
             Eigen::Vector3d n = s.cross( m ).normalized();
+            double d = n.dot( r->second.first - r->first.first );
+            double p = n.dot( f );
+            //std::cerr << "--> d: " << d << " p: " << p << " ( f - n * p ): " << ( f - n * p ).transpose() << std::endl;
+            output.first = r->first.first + f * ( d / p ); // output.first = r->first.first + ( f - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
+        }
+        {
+            const Eigen::Vector3d& m = f.cross( s ); // todo: move cross out after debugging
+            Eigen::Vector3d n = f.cross( m ).normalized(); // Eigen::Vector3d n = f.cross( m ).normalized();
             double d = n.dot( r->first.first - r->second.first );
             double p = n.dot( s );
-            output.second = r->second.first + ( s - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
+            output.second = r->second.first + s * ( d / p );
         }
         tied.append( output );
     }
