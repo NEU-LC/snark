@@ -72,6 +72,7 @@ std::string traits::output_format() { return comma::csv::format::value< output_t
 int traits::run( const comma::command_line_options& options )
 {
     comma::csv::options csv( options );
+    csv.full_xpath = true;
     bool discard_collinear = options.exists( "--discard-collinear" );
     line_t first_default = comma::csv::ascii< line_t >().get( options.value< std::string >( "--first", "0,0,0,0,0,0" ) );
     line_t second_default = comma::csv::ascii< line_t >().get( options.value< std::string >( "--second", "0,0,0,0,0,0" ) );
@@ -87,23 +88,24 @@ int traits::run( const comma::command_line_options& options )
         if( comma::math::equal( f.dot( s ), f.norm() * s.norm() ) )
         {
             if( discard_collinear ) { continue; }
-            std::cerr << "points-calc: lines-nearest: got collinear lines (" << r->first.first.transpose() << "," << r->first.second.transpose() << ") and (" << r->second.first.transpose() << "," << r->second.second.transpose() << "), please use --discard collinear to discard" << std::endl;
+            std::cerr << "points-calc: lines-nearest: got collinear lines (" << r->first.first.transpose() << " , " << r->first.second.transpose() << ") and (" << r->second.first.transpose() << " , " << r->second.second.transpose() << "), please use --discard collinear to discard" << std::endl;
             return 1;
         }
         output_t output;
         {
             const Eigen::Vector3d& m = f.cross( s ); // todo: move cross out after debugging
-            Eigen::Vector3d n = f.cross( m ).normalized();
+            Eigen::Vector3d n = f.cross( m ).normalized(); // Eigen::Vector3d n = f.cross( m ).normalized();
             double d = n.dot( r->second.first - r->first.first );
-            double p = f.dot( n );
-            output.first = r->first.second + ( f - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
+            double p = n.dot( f );
+            //std::cerr << "--> d: " << d << " p: " << p << " r->first.first: " << r->first.first.transpose() << " r->first.second: " << r->first.second.transpose() << " ( f - n * p ): " << ( f - n * p ).transpose() << std::endl;
+            output.first = r->first.first + ( f - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
         }
         {
             const Eigen::Vector3d& m = s.cross( f );
             Eigen::Vector3d n = s.cross( m ).normalized();
             double d = n.dot( r->first.first - r->second.first );
-            double p = s.dot( n );
-            output.second = r->second.second + ( s - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
+            double p = n.dot( s );
+            output.second = r->second.first + ( s - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
         }
         tied.append( output );
     }
