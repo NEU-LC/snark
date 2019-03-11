@@ -91,23 +91,12 @@ int traits::run( const comma::command_line_options& options )
             std::cerr << "points-calc: lines-nearest: got collinear lines (" << r->first.first.transpose() << " , " << r->first.second.transpose() << ") and (" << r->second.first.transpose() << " , " << r->second.second.transpose() << "), please use --discard collinear to discard" << std::endl;
             return 1;
         }
-        output_t output;
-        {
-            const Eigen::Vector3d& m = s.cross( f );
-            Eigen::Vector3d n = s.cross( m ).normalized();
-            double d = n.dot( r->second.first - r->first.first );
-            double p = n.dot( f );
-            //std::cerr << "--> d: " << d << " p: " << p << " ( f - n * p ): " << ( f - n * p ).transpose() << std::endl;
-            output.first = r->first.first + f * ( d / p ); // output.first = r->first.first + ( f - n * p ) * ( comma::math::equal( p, 0 ) ? 1 : ( d / p ) );
-        }
-        {
-            const Eigen::Vector3d& m = f.cross( s ); // todo: move cross out after debugging
-            Eigen::Vector3d n = f.cross( m ).normalized(); // Eigen::Vector3d n = f.cross( m ).normalized();
-            double d = n.dot( r->first.first - r->second.first );
-            double p = n.dot( s );
-            output.second = r->second.first + s * ( d / p );
-        }
-        tied.append( output );
+        const Eigen::Vector3d& m = s.cross( f ).normalized();
+        const Eigen::Vector3d& n = s.cross( m ).normalized();
+        const Eigen::Vector3d& d = r->second.first - r->first.first;
+        const Eigen::Vector3d& a = r->first.first + f * n.dot( d ) / n.dot( f );
+        const Eigen::Vector3d& b = a + m * m.dot( d );
+        tied.append( output_t( a, b ) );
     }
     return 0;
 }
