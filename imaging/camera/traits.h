@@ -33,6 +33,7 @@
 
 #include "../../visiting/eigen.h"
 #include "pinhole.h"
+#include "stereo.h"
 
 namespace comma { namespace visiting {
 
@@ -103,6 +104,21 @@ template <> struct traits< snark::camera::pinhole::config_t >
         v.apply( "focal_length", p.focal_length );
         v.apply( "principal_point", p.principal_point );
         v.apply( "distortion", p.distortion );
+    }
+};
+
+template <> struct traits< snark::camera::config >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, snark::camera::config& p, Visitor& v )
+    {
+        v.apply( "pinhole", p.pinhole );
+        v.apply( "pose", p.pose );
+    }
+    
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::camera::config& p, Visitor& v )
+    {
+        v.apply( "pinhole", p.pinhole );
+        v.apply( "pose", p.pose );
     }
 };
 

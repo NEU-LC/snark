@@ -29,14 +29,14 @@
 
 /// @authors vsevolod vlaskine, zhe xu
 
-#ifndef SNARK_IMAGING_CAMERA_PINHOLE_H
-#define SNARK_IMAGING_CAMERA_PINHOLE_H
+#pragma once
 
 #include <vector>
 #include <boost/optional.hpp>
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
 #include <comma/sync/lazy.h>
+#include "../../math/frame_transforms.h"
 
 namespace snark { namespace camera {
 
@@ -160,6 +160,15 @@ class pinhole
         comma::lazy< boost::optional< distortion_map_t > > distortion_map_; // since it's a slow operation, initialize on demand
 };
 
-} } // namespace snark { namespace camera {
+struct config
+{
+    camera::pinhole::config_t pinhole;
+    
+    snark::pose pose;
+    
+    config() {}
+    
+    config( const pinhole::config_t& p, const snark::pose& t ): pinhole( p ), pose( t ) {}
+};
 
-#endif // SNARK_IMAGING_CAMERA_PINHOLE_H
+} } // namespace snark { namespace camera {
