@@ -57,7 +57,7 @@ static ::Eigen::Affine3d affine_( const snark::pose& pose )
     return affine;
 }
 
-static ::Eigen::Affine3d ned_affine_ = affine_( snark::pose( Eigen::Vector3d::Zero(), snark::roll_pitch_yaw( -M_PI / 2, 0, -M_PI / 2 ) ) );
+static ::Eigen::Affine3d ned_affine_ = affine_( snark::pose( Eigen::Vector3d::Zero(), snark::roll_pitch_yaw( M_PI / 2, 0, M_PI / 2 ) ) );
 
 std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const Eigen::Vector2d& first, const Eigen::Vector2d& second ) const { return to_cartesian( first, second, first_.pose, second_.pose ); }
 
@@ -68,17 +68,9 @@ std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const Eigen::V
     const auto& first_affine = affine_( first_pose ); // todo! precalc affine! currently, performance sucks
     const Eigen::Vector3d& fp = first_affine * ( ned_affine_ * first_.pinhole.to_cartesian( first ) );
     const Eigen::Vector3d& fc = first_affine * Eigen::Vector3d::Zero();
-//     std::cerr << "========================================================================================" << first.transpose() << std::endl;
-//     std::cerr << "                                                    first: " << first.transpose() << std::endl;
-//     std::cerr << "                     first_.pinhole.to_cartesian( first ): " << first_.pinhole.to_cartesian( first ).transpose() << std::endl;
-//     std::cerr << "       ned_affine_ * first_.pinhole.to_cartesian( first ): " << ( ned_affine_ * first_.pinhole.to_cartesian( first ) ).transpose() << std::endl;
-//     std::cerr << "                                                       fp: " << fp.transpose() << std::endl;
-//     std::cerr << "                                                       fc: " << fc.transpose() << std::endl;
-    
     const auto& second_affine = affine_( second_pose ); // todo! precalc affine! currently, performance sucks
     const Eigen::Vector3d& sp = second_affine * ( ned_affine_ * first_.pinhole.to_cartesian( second ) );
     const Eigen::Vector3d& sc = second_affine * Eigen::Vector3d::Zero();
-    
     const Eigen::Vector3d& f = ( fp - fc ).normalized();
     const Eigen::Vector3d& s = ( sp - sc ).normalized();
     if( comma::math::equal( f.dot( s ), f.norm() * s.norm() ) ) { COMMA_THROW( comma::exception, "got collinear projection vectors on pixels: " << first.transpose() << " and " << second.transpose() ); }
@@ -87,6 +79,14 @@ std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const Eigen::V
     const Eigen::Vector3d& d = sp - fp;
     const Eigen::Vector3d& a = fp + f * n.dot( d ) / n.dot( f );
     const Eigen::Vector3d& b = a + m * m.dot( d );
+    //std::cerr << "========================================================================================" << first.transpose() << std::endl;
+    //std::cerr << "                                                    first: " << first.transpose() << std::endl;
+    //std::cerr << "                     first_.pinhole.to_cartesian( first ): " << first_.pinhole.to_cartesian( first ).transpose() << std::endl;
+    //std::cerr << "       ned_affine_ * first_.pinhole.to_cartesian( first ): " << ( ned_affine_ * first_.pinhole.to_cartesian( first ) ).transpose() << std::endl;
+    //std::cerr << "                                                       fp: " << fp.transpose() << std::endl;
+    //std::cerr << "                                                       fc: " << fc.transpose() << std::endl;
+    //std::cerr << "                                                        a: " << a.transpose() << std::endl;
+    //std::cerr << std::endl;
     return std::make_pair( a, b );
 }
 

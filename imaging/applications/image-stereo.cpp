@@ -46,6 +46,9 @@ void usage( bool verbose )
     std::cerr << "operations" << std::endl;
     std::cerr << "    to-cartesian: take on stdin pixels on stereo pair, undistort image, append pixel's cartesian coordinates in a given frame" << std::endl;
     std::cerr << "        fields: default: first/x,first/y,second/x,second/y" << std::endl;
+    std::cerr << "        examples" << std::endl;
+    std::cerr << "            basics" << std::endl;
+    std::cerr << "                echo 0,500,1000,500 | image-stereo to-cartesian --camera-config <( echo '{\"image_size\":{\"x\":1000,\"y\":1000},\"focal_length\":500}' ) --first-pose 0,-10,0,0,0,0 --second-pose 0,10,0,0,0,0" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --force,--permissive: discard invalid input instead of exiting with error" << std::endl;
