@@ -48,6 +48,7 @@ void usage( bool verbose )
     std::cerr << "        fields: default: first/x,first/y,second/x,second/y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
+    std::cerr << "    --force,--permissive: discard invalid input instead of exiting with error" << std::endl;
     std::cerr << "    --input-fields: output input fields to stdout and exit" << std::endl;
     std::cerr << "    --output-fields: output appended fields for given operation and exit" << std::endl;
     std::cerr << "    --output-format: output appended fields for given operation and exit" << std::endl;
@@ -111,6 +112,7 @@ static snark::camera::stereo::pair make_pair( const comma::command_line_options&
 {
     options.assert_mutually_exclusive( "--config,-c", "--camera-config,--first-camera-config,--first-config,--second-camera-config,--second-config" );
     options.assert_mutually_exclusive( "--camera-config", "--first-camera-config,--first-config,--second-camera-config,--second-config" );
+    if( options.exists( "--baseline" ) ) { std::cerr << "image-stereo: --baseline: not implemented" << std::endl; exit( 1 ); }
     snark::camera::stereo::pair::config_t config;
     if( options.exists( "--config,-c" ) )
     { 
@@ -127,7 +129,6 @@ static snark::camera::stereo::pair make_pair( const comma::command_line_options&
     }
     config.first.pinhole.validate();
     config.second.pinhole.validate();
-    if( options.exists( "--baseline" ) ) { std::cerr << "image-stereo: --baseline: not implemented" << std::endl; exit( 1 ); }
     auto first_pose = options.optional< std::string >( "--first-pose" );
     if( first_pose ) { config.first.pose = comma::csv::ascii< snark::pose >().get( first_pose ); }
     auto second_pose = options.optional< std::string >( "--second-pose" );
@@ -135,25 +136,28 @@ static snark::camera::stereo::pair make_pair( const comma::command_line_options&
     return snark::camera::stereo::pair( config );
 }
 
-struct input_t: public std::pair< Eigen::Vector2d, Eigen::Vector2d >
+struct point_t: public Eigen::Vector2d
 {
-    std::pair< snark::pose, snark::pose > poses;
+    snark::pose pose;
+    point_t(): Eigen::Vector2d( Eigen::Vector2d::Zero() ) {}
 };
+
+typedef std::pair< point_t, point_t > input_t;
 
 namespace comma { namespace visiting {
 
-template <> struct traits< input_t >
+template <> struct traits< point_t >
 {
-    template < typename Key, class Visitor > static void visit( const Key& k, input_t& t, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key& k, point_t& t, Visitor& v )
     {
-        comma::visiting::traits< std::pair< Eigen::Vector2d, Eigen::Vector2d > >::visit( k, t, v );
-        v.apply( "poses", t.poses );
+        comma::visiting::traits< Eigen::Vector2d >::visit( k, t, v );
+        v.apply( "pose", t.pose );
     }
 
-    template < typename Key, class Visitor > static void visit( const Key& k, const input_t& t, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key& k, const point_t& t, Visitor& v )
     {
-        comma::visiting::traits< std::pair< Eigen::Vector2d, Eigen::Vector2d > >::visit( k, t, v );
-        v.apply( "poses", t.poses );
+        comma::visiting::traits< Eigen::Vector2d >::visit( k, t, v );
+        v.apply( "pose", t.pose );
     }
 };
     
@@ -165,20 +169,19 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--config-fields" ) ) { std::cout << comma::join( comma::csv::names( true, make_sample_config() ), '\n' ) << std::endl; return 0; }
-        const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--flush", "-.*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--force,--permissive,--input-fields,--output-fields,--output-format,--flush", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-stereo: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         comma::csv::options csv( options );
+        bool force = options.exists( "--force,--permissive" );
         if( operation == "to-cartesian" )
         {
             if( csv.fields.empty() ) { csv.fields = "first/x,first/y,second/x,second/y"; }
             output_details< input_t, std::pair< Eigen::Vector3d, Eigen::Vector3d > >( options );
             auto pair = make_pair( options );
             input_t sample;
-            sample.first = Eigen::Vector2d::Zero();
-            sample.second = Eigen::Vector2d::Zero();
-            sample.poses.first = pair.first().pose;
-            sample.poses.second = pair.second().pose;
+            sample.first.pose = pair.first().pose;
+            sample.second.pose = pair.second().pose;
             comma::csv::input_stream< input_t > is( std::cin, csv, sample );
             comma::csv::output_stream< std::pair< Eigen::Vector3d, Eigen::Vector3d > > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< input_t, std::pair< Eigen::Vector3d, Eigen::Vector3d > > tied( is, os );
@@ -186,7 +189,12 @@ int main( int ac, char** av )
             {
                 const input_t* p = is.read();
                 if( !p ) { break; }
-                tied.append( pair.to_cartesian( p->first, p->second, p->poses.first, p->poses.second ) );
+                if( comma::math::equal( ( p->first.pose.translation - p->second.pose.translation ).norm(), 0.01 ) )
+                {
+                    if( force ) { std::cerr << "image-stereo: expected two camera positions with sufficient paralax; got first: " << p->first.pose.translation.transpose() << " second: " << p->second.pose.translation.transpose() << "; discarded" << std::endl; }
+                    else { std::cerr << "image-stereo: expected two camera positions with sufficient paralax; got first: " << p->first.pose.translation.transpose() << " second: " << p->second.pose.translation.transpose() << "; use --force to override" << std::endl; return 1; }
+                }
+                tied.append( pair.to_cartesian( p->first, p->second, p->first.pose, p->second.pose ) );
             }
             return 0;
         }
