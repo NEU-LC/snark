@@ -68,10 +68,6 @@ class pair
         
         std::pair< Eigen::Vector3d, Eigen::Vector3d > to_cartesian( const Eigen::Vector2d& first, const Eigen::Vector2d& second ) const;
         
-        std::pair< Eigen::Vector3d, Eigen::Vector3d > to_cartesian( const std::pair< Eigen::Vector2d, Eigen::Vector2d >& second ) const;
-        
-        std::pair< Eigen::Vector3d, Eigen::Vector3d > to_cartesian( const std::pair< Eigen::Vector2d, Eigen::Vector2d >& p, const snark::pose& pose ) const;
-        
         std::pair< Eigen::Vector3d, Eigen::Vector3d > to_cartesian( const Eigen::Vector2d& first, const Eigen::Vector2d& second, const snark::pose& pose ) const;
         
         std::pair< Eigen::Vector3d, Eigen::Vector3d > to_cartesian( const Eigen::Vector2d& first, const Eigen::Vector2d& second, const snark::pose& first_pose, const snark::pose& second_pose ) const;

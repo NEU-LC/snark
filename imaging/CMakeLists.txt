@@ -33,7 +33,7 @@ ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes}
                             ${stereo_source} ${stereo_includes}
                             ${vegetation_source} ${vegetation_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
-TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} snark_timing ${OpenCV_LIBS} tbb ${pgrey_libs} )
+TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} snark_timing snark_math ${OpenCV_LIBS} tbb ${pgrey_libs} )
 #TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} ${OpenCV_LIBS} tbb fftw3 ${pgrey_libs} )
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )

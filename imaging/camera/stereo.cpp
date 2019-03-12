@@ -59,10 +59,6 @@ static ::Eigen::Affine3d affine_( const snark::pose& pose )
 
 std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const Eigen::Vector2d& first, const Eigen::Vector2d& second ) const { return to_cartesian( first, second, first_.pose, second_.pose ); }
 
-std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const std::pair< Eigen::Vector2d, Eigen::Vector2d >& p ) const { return to_cartesian( p.first, p.second, first_.pose, second_.pose ); }
-
-std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const std::pair< Eigen::Vector2d, Eigen::Vector2d >& p, const snark::pose& pose ) const { return to_cartesian( p.first, p.second, snark::pose(), pose ); }
-
 std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const Eigen::Vector2d& first, const Eigen::Vector2d& second, const snark::pose& pose ) const  { return to_cartesian( first, second, snark::pose(), pose ); }
 
 std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const Eigen::Vector2d& first, const Eigen::Vector2d& second, const snark::pose& first_pose, const snark::pose& second_pose ) const
