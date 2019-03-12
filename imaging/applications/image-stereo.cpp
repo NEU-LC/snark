@@ -61,6 +61,7 @@ void usage( bool verbose )
     std::cerr << "    --config-fields: output config fields to stdout and exit" << std::endl;
     std::cerr << "    --first-camera-config,--first-config=<path>: first camera config; <path>: <filename> or <filename>:<path>" << std::endl;
     std::cerr << "    --first-pose=<x,y,z,roll,pitch,yaw>: pose of the first camera; default: whatever is in camera config" << std::endl;
+    std::cerr << "    --pose-frame,--pose-frame=<frame>; default=north-east-down; down-left-forward: todo" << std::endl;
     std::cerr << "    --second-camera-config,--second-config=<path>: second camera config; <path>: <filename> or <filename>:<path>" << std::endl;
     std::cerr << "    --second-pose=<x,y,z,roll,pitch,yaw>: pose of the second camera; default: whatever is in camera config" << std::endl;
     std::cerr << std::endl;
@@ -160,7 +161,7 @@ template <> struct traits< point_t >
         v.apply( "pose", t.pose );
     }
 };
-    
+
 } } // namespace comma { namespace visiting {
 
 int main( int ac, char** av )
@@ -185,6 +186,7 @@ int main( int ac, char** av )
             sample.second.pose = pair.second().pose;
             comma::csv::input_stream< input_t > is( std::cin, csv, sample );
             comma::csv::output_stream< std::pair< Eigen::Vector3d, Eigen::Vector3d > > os( std::cout, csv.binary(), false, csv.flush );
+            if( !csv.binary() ) { os.ascii().precision( csv.precision ); }
             comma::csv::tied< input_t, std::pair< Eigen::Vector3d, Eigen::Vector3d > > tied( is, os );
             while( is.ready() || std::cin.good() )
             {

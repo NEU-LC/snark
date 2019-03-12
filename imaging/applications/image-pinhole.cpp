@@ -80,8 +80,7 @@ void usage( bool verbose )
     if( verbose ) { std::cerr << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    config-to-normals:" << std::endl;
-    std::cerr << "        todo" << std::endl;
+    std::cerr << "    todo" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }

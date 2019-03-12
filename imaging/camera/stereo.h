@@ -43,22 +43,22 @@ class pair
         
         struct camera_t
         {
+            /// pinhole camera
             snark::camera::pinhole pinhole;
             
+            /// pose in north-east-down frame
             snark::pose pose;
             
+            /// constructor
             camera_t( const snark::camera::config& config ): pinhole( config.pinhole ), pose( config.pose ) {}
             
+            /// constructor
             camera_t( const snark::camera::pinhole::config_t& config, const snark::pose& pose ): pinhole( config ), pose( pose ) {}
         };
         
         pair( const config_t& config );
         
-        pair( const pinhole::config_t& first );
-        
-        pair( const pinhole::config_t& first, double baseline );
-        
-        pair( const pinhole::config_t& first, const pinhole::config_t& second );
+        pair( const pinhole::config_t& pinhole, double baseline );
         
         pair( const pinhole::config_t& first, const pinhole::config_t& second, double baseline );
         
