@@ -173,6 +173,7 @@ int main( int ac, char** av )
         if( unnamed.empty() ) { std::cerr << "image-stereo: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         comma::csv::options csv( options );
+        csv.full_xpath = true;
         bool force = options.exists( "--force,--permissive" );
         if( operation == "to-cartesian" )
         {
