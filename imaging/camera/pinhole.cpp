@@ -105,7 +105,7 @@ static double reverse_map( std::vector< float >::const_iterator first, unsigned 
     //std::cerr<<"extrapolate_reverse_map: left [" <<int(left - first)<<"]: " << *left<< " right ["<<int(right - first)<<"]:"<<*right<<" /"<<int(last-first)<<" value "<<value<<std::endl;
     double diff = *right - *left;
     //std::cerr << "==> value: " << value << " *left: " << *left << " right: " << *right << " diff: " << diff << " int( left - first ): " << int( left - first ) << std::endl;
-    if( diff > 0 ) { return double( value - *left ) / diff + int( left - first ); }
+    if( diff > 0 ) { return ( value - double( *left ) ) / diff + int( left - first ); }
     if( diff == 0 ) { return int( left - first ); }
     COMMA_THROW( comma::exception, "on pixel coordinate " << value << ": expected elements of undistort map ordered, got element " << int( left - first ) << " equal to " << *left << " element " << int( right - first ) << " equal to " << *right );
 }
