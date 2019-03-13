@@ -34,20 +34,6 @@
 #include <comma/csv/traits.h>
 #include "./std_msgs/traits.h"
 
-//#include <ros/ros.h>
-//#include <std_msgs/Float32MultiArray.h>
-//#include <std_msgs/Float64MultiArray.h>
-//#include <std_msgs/Int8MultiArray.h>
-//#include <std_msgs/Int16MultiArray.h>
-//#include <std_msgs/Int32MultiArray.h>
-//#include <std_msgs/Int64MultiArray.h>
-//#include <std_msgs/UInt8MultiArray.h>
-//#include <std_msgs/UInt16MultiArray.h>
-//#include <std_msgs/UInt32MultiArray.h>
-//#include <std_msgs/UInt64MultiArray.h>
-
-
-
 namespace {
 
 void bash_completion( unsigned const ac, char const * const * av )
@@ -111,7 +97,6 @@ public:
     ros_subscriber( comma::command_line_options const& options )
         : flush( options.exists( "--flush" ) )
         , output_format( options.exists( "--output-format" ) )
-        //, ofs_( "checkthis.csv", std::ofstream::out )
     {
         auto datagram = options.optional< int >( "--max-datagram-size" );
 
@@ -126,7 +111,6 @@ public:
     void process( typename snark::ros::type_to_std_msgs< T >::array_type::ConstPtr const msg )
     {
         if( output_format ) { std::cout << ros_layout_format< T >( msg->layout ) << std::endl; ros::shutdown(); return; }
-        //ofs_ << "Message: " << msg->data[ msg->layout.data_offset ] << ',' << msg->data[ msg->layout.data_offset ] << ',' << msg->data[ msg->layout.data_offset ] << std::endl;
         std::cout.write( reinterpret_cast< char const* >( msg->data.data() + msg->layout.data_offset ), sizeof( T ) * msg->layout.dim[ 0 ].stride );
         if( flush ) { std::cout.flush(); }
         if( !std::cout.good() ) { ros::shutdown(); }
@@ -137,7 +121,6 @@ private:
     bool output_format;
     ros::NodeHandle node_;
     ros::Subscriber subscriber_;
-    //std::ofstream ofs_;
 };
 
 
