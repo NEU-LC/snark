@@ -47,6 +47,10 @@ void usage( bool verbose )
     std::cerr << "usage: cat pixels.csv | image-pinhole <operation> <options> > points.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "operations" << std::endl;
+    std::cerr << "    distort: take on stdin undistorted pixels, append their distorted values (uses distortion map file)" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    distortion-map,undistort-rectify-map: build distortion map from camera parameters in config and write to stdout (binary image matrix of map x, map y)" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    to-cartesian: take on stdin pixels, undistort image, append pixel's cartesian coordinates in camera frame" << std::endl;
     std::cerr << "        --normalize: normalize cartesian coordinates in camera frame" << std::endl;
     std::cerr << "        --fields: x,y,z" << std::endl;
@@ -59,10 +63,6 @@ void usage( bool verbose )
     std::cerr << "        --fields: x,y,z; if z is given, the input points will be projected to the sensor plane; default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    distort: take on stdin undistorted pixels, append their distorted values (uses distortion map file)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    distortion-map,undistort-rectify-map: build distortion map from camera parameters in config and write to stdout (binary image matrix of map x, map y)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: print help; --help --verbose for more help" << std::endl;
@@ -126,7 +126,6 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        if( options.exists( "--deprecated" ) ) { std::cerr << "image-pinhole: --deprecated support has been removed" << std::endl; return 1; }
         if( options.exists( "--output-config,--sample-config,--config-sample" ) ) { comma::write_json( make_sample_config(), std::cout ); return 0; }
         if( options.exists( "--output-config-fields,--config-fields" ) ) { for( const auto& field: comma::csv::names( true, make_sample_config() ) ) { std::cout << field << std::endl; } return 0; }
         const std::vector< std::string >& unnamed = options.unnamed( "--input-fields,--output-fields,--output-format,--verbose,-v,--flush,--clip,--keep,--normalize", "-.*" );
@@ -160,7 +159,7 @@ int main( int ac, char** av )
             comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv, Eigen::Vector3d::Zero() );
             comma::csv::output_stream< Eigen::Vector2d > os( std::cout, csv.binary(), false, csv.flush );
             comma::csv::tied< Eigen::Vector3d, Eigen::Vector2d > tied( is, os );
-            bool clip = options.exists( "--clip,--discard" ) || ( options.exists( "--deprecated" ) && !options.exists( "--keep" ) );
+            bool clip = options.exists( "--clip,--discard" );
             bool has_z = csv.has_field( "z" );
             auto xy = [&]( const Eigen::Vector3d& v )->Eigen::Vector2d
             {

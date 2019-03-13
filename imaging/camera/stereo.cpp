@@ -69,7 +69,7 @@ std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const Eigen::V
     const Eigen::Vector3d& fp = first_affine * ( ned_affine_ * first_.pinhole.to_cartesian( first ) );
     const Eigen::Vector3d& fc = first_affine * Eigen::Vector3d::Zero();
     const auto& second_affine = affine_( second_pose ); // todo! precalc affine! currently, performance sucks
-    const Eigen::Vector3d& sp = second_affine * ( ned_affine_ * first_.pinhole.to_cartesian( second ) );
+    const Eigen::Vector3d& sp = second_affine * ( ned_affine_ * second_.pinhole.to_cartesian( second ) );
     const Eigen::Vector3d& sc = second_affine * Eigen::Vector3d::Zero();
     const Eigen::Vector3d& f = ( fp - fc ).normalized();
     const Eigen::Vector3d& s = ( sp - sc ).normalized();
@@ -79,14 +79,25 @@ std::pair< Eigen::Vector3d, Eigen::Vector3d > pair::to_cartesian( const Eigen::V
     const Eigen::Vector3d& d = sp - fp;
     const Eigen::Vector3d& a = fp + f * n.dot( d ) / n.dot( f );
     const Eigen::Vector3d& b = a + m * m.dot( d );
-    //std::cerr << "========================================================================================" << first.transpose() << std::endl;
-    //std::cerr << "                                                    first: " << first.transpose() << std::endl;
-    //std::cerr << "                     first_.pinhole.to_cartesian( first ): " << first_.pinhole.to_cartesian( first ).transpose() << std::endl;
-    //std::cerr << "       ned_affine_ * first_.pinhole.to_cartesian( first ): " << ( ned_affine_ * first_.pinhole.to_cartesian( first ) ).transpose() << std::endl;
-    //std::cerr << "                                                       fp: " << fp.transpose() << std::endl;
-    //std::cerr << "                                                       fc: " << fc.transpose() << std::endl;
-    //std::cerr << "                                                        a: " << a.transpose() << std::endl;
-    //std::cerr << std::endl;
+    
+//     std::cerr << "========================================================================================" << std::endl;
+//     std::cerr << "                                                    first: " << first.transpose() << std::endl;
+//     std::cerr << "                                               first pose: " << first_pose.translation.transpose() << " " << first_pose.rotation.roll() << " " << first_pose.rotation.pitch() << " " << first_pose.rotation.yaw() << std::endl;
+//     std::cerr << "                     first_.pinhole.to_cartesian( first ): " << first_.pinhole.to_cartesian( first ).transpose() << std::endl;
+//     std::cerr << "       ned_affine_ * first_.pinhole.to_cartesian( first ): " << ( ned_affine_ * first_.pinhole.to_cartesian( first ) ).transpose() << std::endl;
+//     std::cerr << "                                                       fp: " << fp.transpose() << std::endl;
+//     std::cerr << "                                                       fc: " << fc.transpose() << std::endl;
+//     std::cerr << "                                                        a: " << a.transpose() << std::endl;
+//     std::cerr << "========================================================================================" << std::endl;
+//     std::cerr << "                                                   second: " << second.transpose() << std::endl;
+//     std::cerr << "                                              second pose: " << second_pose.translation.transpose() << " " << second_pose.rotation.roll() << " " << second_pose.rotation.pitch() << " " << second_pose.rotation.yaw() << std::endl;
+//     std::cerr << "                   second_.pinhole.to_cartesian( second ): " << second_.pinhole.to_cartesian( second ).transpose() << std::endl;
+//     std::cerr << "     ned_affine_ * second_.pinhole.to_cartesian( second ): " << ( ned_affine_ * second_.pinhole.to_cartesian( second ) ).transpose() << std::endl;
+//     std::cerr << "                                                       sp: " << sp.transpose() << std::endl;
+//     std::cerr << "                                                       sc: " << sc.transpose() << std::endl;
+//     std::cerr << "                                                        b: " << b.transpose() << std::endl;
+//     std::cerr << std::endl;
+    
     return std::make_pair( a, b );
 }
 
