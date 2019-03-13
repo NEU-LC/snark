@@ -12,6 +12,8 @@ set( ros_libs roscpp roscpp_serialization rosbag rosbag_storage rostime rosconso
 
 set( GLOB stdmsgs_include ${dir}/std_msgs/*.h )
 
+SET( GLOB stdmsgs_include ${dir}/std_msgs/*.h )
+
 # source_group( points-to-ros FILES points-to-ros.cpp )
 add_executable( points-to-ros points-to-ros.cpp )
 target_link_libraries( points-to-ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
@@ -25,7 +27,10 @@ set_target_properties( points-from-ros PROPERTIES LINK_FLAGS_RELEASE -s )
 add_executable( ros-image ros-image.cpp )
 target_link_libraries( ros-image ${stdmsgs_include} ${ros_libs} snark_imaging ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
 
-install( TARGETS points-to-ros points-from-ros ros-image
+add_executable( ros-multi-array ros-multi-array.cpp )
+target_link_libraries( ros-multi-array ${stdmsgs_include} ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
+
+install( TARGETS points-to-ros points-from-ros ros-image ros-multi-array
          RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
 
