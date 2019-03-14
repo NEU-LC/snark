@@ -261,6 +261,7 @@ int main( int ac, char** av )
         #endif
         comma::command_line_options options( ac, av, usage );
         csv = comma::csv::options( options, "x,y,z" );
+        csv.full_xpath = false;
         min_points_per_voxel = options.value( "--min-points-per-voxel", 1u );
         min_voxels_per_partition = options.value( "--min-voxels-per-partition", 1u );
         min_points_per_partition = options.value( "--min-points-per-partition", 1u );

@@ -177,7 +177,6 @@ int main( int ac, char** av )
         if( unnamed.empty() ) { std::cerr << "image-stereo: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         comma::csv::options csv( options );
-        csv.full_xpath = true;
         bool force = options.exists( "--force,--permissive" );
         if( operation == "to-cartesian" )
         {
@@ -188,7 +187,7 @@ int main( int ac, char** av )
             sample.first.pose = pair.first().pose;
             sample.second.pose = pair.second().pose;
             comma::csv::input_stream< input_t > is( std::cin, csv, sample );
-            comma::csv::output_stream< std::pair< Eigen::Vector3d, Eigen::Vector3d > > os( std::cout, csv.binary(), false, csv.flush );
+            comma::csv::output_stream< std::pair< Eigen::Vector3d, Eigen::Vector3d > > os( std::cout, csv.binary(), true, csv.flush );
             if( !csv.binary() ) { os.ascii().precision( csv.precision ); }
             comma::csv::tied< input_t, std::pair< Eigen::Vector3d, Eigen::Vector3d > > tied( is, os );
             while( is.ready() || std::cin.good() )

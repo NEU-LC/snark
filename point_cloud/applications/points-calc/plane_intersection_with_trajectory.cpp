@@ -128,11 +128,9 @@ static Eigen::Vector3d vector_( const std::string& option, const comma::command_
 int traits::run( const comma::command_line_options& options )
 {
     comma::csv::options csv( options );
-    csv.full_xpath = true;
     if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
     comma::csv::input_stream< input > istream( std::cin, csv, input( vector_( "--v", options ), points_calc::plane( vector_( "--plane-normal,--normal", options ), vector_( "--plane-point,--point", options ) ) ) );
     comma::csv::options output_csv;
-    output_csv.full_xpath = true;
     output_csv.delimiter = csv.delimiter;
     if( csv.binary() ) { output_csv.format( output_format() ); }
     comma::csv::output_stream< output > ostream( std::cout, output_csv );

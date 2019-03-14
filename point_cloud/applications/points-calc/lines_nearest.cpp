@@ -72,7 +72,6 @@ std::string traits::output_format() { return comma::csv::format::value< output_t
 int traits::run( const comma::command_line_options& options )
 {
     comma::csv::options csv( options );
-    csv.full_xpath = true;
     bool discard_collinear = options.exists( "--discard-collinear" );
     line_t first_default = comma::csv::ascii< line_t >().get( options.value< std::string >( "--first", "0,0,0,0,0,0" ) );
     line_t second_default = comma::csv::ascii< line_t >().get( options.value< std::string >( "--second", "0,0,0,0,0,0" ) );

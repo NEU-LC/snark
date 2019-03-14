@@ -227,6 +227,7 @@ TEST( time, timestamped_read )
     std::stringstream s;
     s << iso_t << ',' << i;
     comma::csv::options csv;
+    csv.full_xpath = false;
     csv.fields = "t,i";
     comma::csv::input_stream< snark::timestamped< data_t > > istream( s, csv );
     const snark::timestamped< data_t >* p = istream.read();
@@ -243,6 +244,7 @@ TEST( time, timestamped_write )
     std::stringstream s;
     comma::csv::options csv;
     csv.fields = "t,i";
+    csv.full_xpath = false;
     comma::csv::output_stream< snark::timestamped< data_t > > ostream( s, csv );
     ostream.write( a );
     EXPECT_EQ( "21231121T112131.654321,12\n", s.str() );

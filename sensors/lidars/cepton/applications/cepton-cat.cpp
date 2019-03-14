@@ -95,7 +95,7 @@ struct list_app : public app_t<CeptonSensorInformation>
     comma::csv::output_stream<CeptonSensorInformation> os;
     snark::cepton::device device;
     list_app( const comma::command_line_options& options ) :
-        os( std::cout, comma::csv::options( options )),
+        os( std::cout, comma::csv::options( options, false )),
         device( options.optional< uint16_t >( "--port" ))
     {
     }

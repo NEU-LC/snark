@@ -104,6 +104,7 @@ class grid
         static comma::csv::options make_csv_options_( const comma::command_line_options& options )
         {
             comma::csv::options csv( options );
+            csv.full_xpath = false;
             if( csv.fields.empty() ) { csv.fields = "index"; }
             return csv;
         }

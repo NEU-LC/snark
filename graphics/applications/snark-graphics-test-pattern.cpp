@@ -206,6 +206,7 @@ int main( int argc, char** argv )
         unsigned seed=options.value<unsigned>("--seed",time(0));
         srand(seed);
         comma::csv::options output_csv;
+        output_csv.full_xpath = false;
         if( options.exists( "--binary,-b" )) { output_csv.format( comma::csv::format::value< vertex_t >() ); }
         comma::csv::output_stream< vertex_t > ostream( std::cout, output_csv );
 

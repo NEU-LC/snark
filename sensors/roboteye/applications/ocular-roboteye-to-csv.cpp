@@ -93,7 +93,7 @@ struct app : public app_t<point_t>
     region_scan scan;
     bool highspeed_mode;
     app(const std::string& address, const comma::command_line_options& options) : 
-        os(std::cout,comma::csv::options(options)),
+        os(std::cout,comma::csv::options(options, false)),
         dev(address,options.exists("--home")),
         scan(comma::csv::ascii<region_scan>().get(options.value<std::string>("--region-scan"))),
         highspeed_mode(options.exists("--highspeed-mode"))

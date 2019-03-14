@@ -129,6 +129,7 @@ int main( int ac, char** av )
         unsigned int rate = options.value< unsigned int >( "--rate,-r" );
         //double attenuation = options.value( "--attenuation", 1.0 );
         comma::csv::options csv( options );
+        csv.full_xpath = false;
         input default_input( options.value( "--frequency", 0.0 )
                            , options.value( "--amplitude,--volume", 0.0 )
                            , options.value( "--duration", 0.0 ) );

@@ -83,6 +83,7 @@ int main( int ac, char** av )
     if( unnamed.empty() )
     {
         comma::csv::options csv( options );
+        csv.full_xpath = false;
         if( csv.fields == "" ) { std::cerr << "math-rad2deg: please specify --fields (todo: handle default)" << std::endl; return 1; }
         std::vector< std::string > v = comma::split( csv.fields, ',' );
         if( v.size() > Line::size ) { std::cerr << "math-rad2deg: expected not more than 1024 --fields (todo: handle arbitrary number of fields)" << std::endl; return 1; }

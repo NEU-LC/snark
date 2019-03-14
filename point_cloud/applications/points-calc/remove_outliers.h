@@ -31,6 +31,7 @@
 #include <iostream>
 #include <vector>
 #include <deque>
+#include <comma/csv/options.h>
 #include "../../../visiting/eigen.h"
 
 namespace remove_outliers {

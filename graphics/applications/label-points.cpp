@@ -94,6 +94,7 @@ int main( int argc, char** argv )
         bool verbose = options.exists( "--verbose,-v" );
         if( argc == 1 || options.exists( "--help" ) || options.exists( "-h" ) ) { usage( verbose ); }
         comma::csv::options csvOptions( argc, argv );
+        csvOptions.full_xpath = false;
         QColor4ub backgroundcolour( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
         if( csvOptions.fields == "" ) { csvOptions.fields = "x,y,z,id"; }
         comma::csv::options csv_out( csvOptions );

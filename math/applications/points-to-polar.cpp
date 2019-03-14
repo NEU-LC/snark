@@ -62,6 +62,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_options( ac, av );
+        input_options.full_xpath = false;
         comma::csv::options output_options( input_options );
         if( input_options.fields == "" ) { input_options.fields = comma::join( comma::csv::names< Eigen::Vector3d >(), ',' ); }
         bool append = options.exists( "--append" );

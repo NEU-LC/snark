@@ -214,6 +214,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv( options );
+        csv.full_xpath = false;
         const std::vector< std::string >& unnamed = options.unnamed( "--verbose,-v" , "-.*" );
         if( unnamed.size() > 1 ) { std::cerr << "csv-to-kml: expected one operation name; got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         std::string what = "points";

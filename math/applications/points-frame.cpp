@@ -181,12 +181,12 @@ std::vector< boost::shared_ptr< snark::applications::frame > > parse_frames( con
             else
             {
                 comma::csv::options csv = comma::name_value::parser( "filename" ).get< comma::csv::options >( stripped );
+                csv.full_xpath = false;
                 if( csv.fields == "" )
                 {
                     csv.fields = "t,x,y,z,roll,pitch,yaw";
                     if( options.binary() ) { csv.format( "t,6d" ); }
                 }
-                csv.full_xpath = false;
                 outputframe = outputframe || comma::name_value::map( stripped, "filename" ).exists( "output-frame" );
                 timestamp_required = true;
                 frames.push_back( boost::shared_ptr< snark::applications::frame >( new snark::applications::frame( csv, discard_out_of_order, max_gap, outputframe, to[i], interpolate, rotation_present ) ) );
@@ -334,6 +334,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv( options );
+        csv.full_xpath = false;
         if( csv.fields == "" ) { csv.fields="t,x,y,z"; }
         std::vector< std::string > v = comma::split( csv.fields, ',' );
         bool stdin_has_frame = false;

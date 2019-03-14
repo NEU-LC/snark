@@ -125,6 +125,7 @@ static void usage(bool detail)
 static void read_header()
 {
     comma::csv::options csvh;
+    csvh.full_xpath = false;
     csvh.fields=input_options.fields;
     csvh.format(comma::csv::format::value< snark::cv_mat::serialization::header >(input_options.fields, false));
     comma::csv::input_stream<snark::cv_mat::serialization::header> is(std::cin, csvh);
@@ -228,6 +229,7 @@ int main( int ac, char** av )
         input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value<std::string>("--input", "") );
         if(input_options.fields.empty()) { input_options.fields = "t,rows,cols,type"; }
         csv=comma::csv::options(options);
+        csv.full_xpath = false;
         header=input_options.get_header();
         channels = options.value< int >( "--channels", CV_MAT_CN( header.type ) );
         depth = CV_MAT_DEPTH( header.type );

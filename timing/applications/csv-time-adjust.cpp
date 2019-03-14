@@ -132,6 +132,7 @@ int main( int ac, char** av )
         }
 
         comma::csv::options csv( options );
+        csv.full_xpath = false;
 #ifdef WIN32
         if( csv.binary() ) { _setmode( _fileno( stdin ), _O_BINARY ); _setmode( _fileno( stdout ), _O_BINARY ); }
 #endif

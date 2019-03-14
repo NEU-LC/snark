@@ -412,7 +412,9 @@ int main( int ac, char** av )
         protocol.reset( new quickset::ptcr::protocol( name ) );
         comma::verbose << "connected to " << name << std::endl;
         comma::csv::options input_csv( options );
+        input_csv.full_xpath = false;
         comma::csv::options output_csv;
+        output_csv.full_xpath = false;
         if( input_csv.fields == "" )
         {
             input_csv.fields = "pan,tilt";

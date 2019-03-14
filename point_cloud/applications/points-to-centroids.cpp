@@ -154,6 +154,7 @@ int main( int argc, char** argv )
         }
         outputsize=options.exists("--output-size");
         comma::csv::options csv( options );
+        csv.full_xpath = false;
         comma::csv::input_stream<point> istream(std::cin,csv);
         comma::csv::output_stream<point> ostream(std::cout,csv);
         comma::signal_flag is_shutdown;

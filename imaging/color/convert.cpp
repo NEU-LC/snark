@@ -201,6 +201,7 @@ namespace {
         pixel< double, inr > sample_in;
         comma::csv::input_stream< pixel< double, inr > > is( std::cin, csv, sample_in );
         comma::csv::options output_csv;
+        output_csv.full_xpath = false;
         output_csv.flush = csv.flush;
         if( csv.binary() ) { output_csv.format( comma::csv::format::value< pixel< outt, outr > >() ); }
         pixel< outt, outr > sample_out;

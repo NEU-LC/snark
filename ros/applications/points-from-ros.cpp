@@ -284,6 +284,7 @@ struct points
         write_header(options.exists("--header,--output-header")),
         discard(!options.exists("--no-discard"))
     {
+        csv.full_xpath = false;
         if( !output_fields && !output_format)
         {
             ascii= !csv.binary();

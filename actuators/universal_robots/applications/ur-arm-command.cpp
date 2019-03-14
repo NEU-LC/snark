@@ -167,6 +167,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv = comma::csv::options( options, "command,values" );
+        csv.full_xpath = false;
         if( !csv.has_field( "command" ) ) { std::cerr << name() << ": failed to find command in the input fields" << std::endl; }
         if( !csv.has_field( "values" ) && !csv.has_field( "values[0],values[1],values[2],values[3],values[4],values[5]" ) ) { std::cerr << name() << ": failed to find command in the input fields" << std::endl; }
         comma::csv::input_stream< input_t > istream( std::cin, csv );

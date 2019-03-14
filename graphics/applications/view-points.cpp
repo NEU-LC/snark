@@ -444,6 +444,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     {
         comma::name_value::parser nameValue( "filename", ';', '=', false );
         param.options = nameValue.get( properties, csv_options );
+        param.options.full_xpath = false;
         comma::name_value::map m( properties, "filename", ';', '=' );
         param.size = m.value( "size", param.size );
         param.point_size = m.value( "point-size", param.point_size );
@@ -643,14 +644,13 @@ int main( int argc, char** argv )
         if( options.exists( "--version" )) { version(); exit(0); }
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csv_options( argc, argv );
+        csv_options.full_xpath = false;
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill"
                 , "-[^;].*" );
-
         snark::graphics::view::color_t  background_color( QColor( QString( options.value< std::string >( "--background-colour,--background-color", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
         boost::optional< Eigen::Vector3d > cameraorientation;
-
         snark::graphics::qt3d::camera_options camera_options
             ( options.exists( "--orthographic" )
             , options.value< double >( "--fov", 45 )

@@ -131,6 +131,7 @@ int main( int argc, char** argv )
         permissive = vm.count( "permissive" );
         bool discard = vm.count( "discard" );
         comma::csv::options csv = comma::csv::program_options::get( vm );
+        csv.full_xpath = false;
         if( begin_string != "0,0,0" ) { origin_string = begin_string; } // quick and dirty
         Eigen::Vector3d origin = comma::csv::ascii< Eigen::Vector3d >().get( origin, origin_string );
         Eigen::Vector3d resolution;

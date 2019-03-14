@@ -296,6 +296,7 @@ int main( int argc, char** argv )
     try
     {
         comma::csv::options csv(options,"data");
+        csv.full_xpath = false;
         filter_input= ! options.exists("--no-filter");
         logarithmic_output= ! options.exists("--linear");
         input_size=options.value<std::size_t>("--size");

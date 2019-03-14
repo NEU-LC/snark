@@ -217,6 +217,7 @@ int main( int argc, char** argv )
         snark::imaging::camera_parser leftParameters( filename, xpath_to_camera + leftPath );
         snark::imaging::camera_parser rightParameters( filename, xpath_to_camera + rightPath );
         comma::csv::options csv = comma::csv::program_options::get( vm );
+        csv.full_xpath = false;
         if( vm.count( "disparity" ) || vm.count( "output-rectified" ) )
         {
             csv.fields = "t,rows,cols,type";
@@ -275,6 +276,7 @@ int main( int argc, char** argv )
             boost::array< unsigned int, 6 > roiArray;
             for( unsigned int i = 0; i < 6; roiArray[i] = boost::lexical_cast< unsigned int >( v[i] ), ++i );
             comma::csv::options input_csv;
+            input_csv.full_xpath = false;
             input_csv.fields = "t,rows,cols,type";
             input_csv.format( "t,3ui" );
             if( vm.count( "disparity" ) == 0 && vm.count( "output-rectified" ) == 0 )

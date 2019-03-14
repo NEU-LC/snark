@@ -343,6 +343,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av );
         if( options.exists( "--help,-h" ) ) { usage(); }
         csv = comma::csv::options( options, "r,b,e" );
+        csv.full_xpath = false;
         foreground_threshold = options.value( "--foreground-threshold", 1.0 );
         min_points_per_partition = options.value( "--min-points-per-partition", 1u );
         verbose = options.exists( "--verbose,-v" );

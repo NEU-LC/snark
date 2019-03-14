@@ -231,6 +231,7 @@ int main( int ac, char** av )
         bool output_all = options.exists( "--output-all,--all" );
         snark::trimble::bd9xx::input_stream is( std::cin );
         comma::csv::options csv( options );
+        csv.full_xpath = false;
         comma::csv::fieldwise fieldwise = make_fieldwise( csv ); // todo: plug in
         comma::csv::output_stream< output::type > os( std::cout, csv );
         std::string last;

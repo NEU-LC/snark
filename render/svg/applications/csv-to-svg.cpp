@@ -227,6 +227,7 @@ int main( int ac, char** av )
         if( unnamed.size() != 1 ) { std::cerr << "csv-to-svg: expected one operation name" << ( unnamed.size() ? "; got " + comma::join( unnamed, ' ' ) : "" ) << std::endl; return 1; }
         std::string what = unnamed[0];
         comma::csv::options csv( options );
+        csv.full_xpath = false;
         std::cout.precision( csv.precision );
         snark::render::colour_map colour_map;
         bool parse_colour = true;

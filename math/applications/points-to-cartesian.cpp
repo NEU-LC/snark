@@ -63,6 +63,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av );
         if( options.exists( "--help,-h" ) ) { usage(); }
         comma::csv::options input_options( ac, av );
+        input_options.full_xpath = false;
         comma::csv::options output_options( input_options );
         
         std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );

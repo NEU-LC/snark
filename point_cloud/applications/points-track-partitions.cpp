@@ -256,6 +256,7 @@ int main( int ac, char** av )
         double r = options.value< double >( "--resolution", 0.2 );
         resolution = Eigen::Vector3d( r, r, r );
         csv = comma::csv::options( options );
+        csv.full_xpath = false;
         if( csv.fields == "" ) { csv.fields = "x,y,z,block,id"; }
         if( !csv.has_field( "block" ) ) { std::cerr << "points-track-partitions: expected field 'block'" << std::endl; return 1; }
         if( !csv.has_field( "id" ) ) { std::cerr << "points-track-partitions: expected field 'id'" << std::endl; return 1; }

@@ -89,6 +89,7 @@ struct app
     static void run(const comma::command_line_options& options)
     {
         comma::csv::options csv(options);
+        csv.full_xpath = false;
         if(options.exists("--output-fields")) { std::cout<<comma::join(comma::csv::names<T>(), ',')<<std::endl; return;}
         if(options.exists("--output-format")) { std::cout<< comma::csv::format::value<T>(csv.fields,true)<<std::endl; return;}
         process(csv);

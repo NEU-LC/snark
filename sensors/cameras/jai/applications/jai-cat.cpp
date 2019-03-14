@@ -169,6 +169,7 @@ int main( int argc, char** argv )
             bool all = vm.count( "all" );
             bool unimplemented_only = vm.count( "unimplemented" );
             comma::csv::options csv;
+            csv.full_xpath = false;
             csv.quote.reset();
             comma::csv::output_stream< snark::jai::node > os( std::cout, csv );
             const std::vector< snark::jai::node >& nodes = snark::jai::nodes( *camera );
