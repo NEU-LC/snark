@@ -286,9 +286,10 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options );
+        input_csv.full_xpath = false;
         comma::csv::input_stream< target_block_t > input_stream( std::cin, input_csv, target_block_t( options.exists( "--heading-is-absolute" ) ) );
         comma::csv::output_stream< output_t > output_stream( std::cout, input_csv.binary(), true, input_csv.flush, output_t() );
-        if( options.exists( "--input-fields" ) ) { std::cout << field_names< target_block_t >( true ) << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << field_names< target_block_t >( false ) << std::endl; return 0; }
         if( options.exists( "--format,--input-format" ) ) { std::cout << format< target_block_t >() << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << field_names< output_t >( true ) << std::endl; return 0; }
         if( options.exists( "--output-format" ) ) { std::cout << format< output_t >( true ) << std::endl; return 0; }

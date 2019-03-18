@@ -134,7 +134,6 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options input_csv( options );
-        input_csv.full_xpath = true;
         comma::csv::input_stream< input_t > input_stream( std::cin, input_csv );
         comma::csv::options output_csv( options );
         if( options.exists( "--format,--input-format" ) ) { std::cout << format< input_t >( true ) << std::endl; return 0; }
