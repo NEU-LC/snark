@@ -33,6 +33,8 @@
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
 #include "./std_msgs/traits.h"
+//#include <rosbag/bag.h>
+//#include <rosbag/view.h>
 
 namespace {
 
@@ -94,33 +96,70 @@ template< typename T >
 class ros_subscriber
 {
 public:
+    using array_type = typename snark::ros::type_to_std_msgs< T >::array_type;
+    using message_type = typename array_type::ConstPtr;
+
     ros_subscriber( comma::command_line_options const& options )
         : flush( options.exists( "--flush" ) )
         , output_format( options.exists( "--output-format" ) )
+        , from_bag( options.exists( "--bag" ) )
     {
-        auto datagram = options.optional< int >( "--max-datagram-size" );
+        if( from_bag )
+        {
+            //bag_.open( options.value< std::string >( "--bag" ) );
+            //view_.addQuery( bag_, rosbag::TopicQuery( options.value< std::string >( "--from" ) ) );
+        }
+        else
+        {
+            auto datagram = options.optional< int >( "--max-datagram-size" );
 
-        ros::TransportHints hints;
-        if( datagram ) { hints = ros::TransportHints().maxDatagramSize( *datagram ); }
-        subscriber_ = node_.subscribe( options.value< std::string >( "--from" )
-                , options.value< unsigned >( "--queue-size", 1U )
-                , &ros_subscriber::process, this
-                , hints );
+            ros::TransportHints hints;
+            if( datagram ) { hints = ros::TransportHints().maxDatagramSize( *datagram ); }
+            subscriber_ = node_.subscribe( options.value< std::string >( "--from" )
+                    , options.value< unsigned >( "--queue-size", 1U )
+                    , &ros_subscriber::process, this
+                    , hints );
+        }
     }
 
-    void process( typename snark::ros::type_to_std_msgs< T >::array_type::ConstPtr const msg )
+    void write( message_type const msg )
     {
-        if( output_format ) { std::cout << ros_layout_format< T >( msg->layout ) << std::endl; ros::shutdown(); return; }
         std::cout.write( reinterpret_cast< char const* >( msg->data.data() + msg->layout.data_offset ), sizeof( T ) * msg->layout.dim[ 0 ].stride );
         if( flush ) { std::cout.flush(); }
+    }
+
+    void process( message_type const msg )
+    {
+        if( output_format ) { std::cout << ros_layout_format< T >( msg->layout ) << std::endl; ros::shutdown(); return; }
+        write( msg );
         if( !std::cout.good() ) { ros::shutdown(); }
     }
 
+    void subscribe( void )
+    {
+        if( from_bag )
+        {
+            //for( rosbag::MessageInstance const mi : view_ )
+            //{
+            //    message_type const msg = mi.instantiate< array_type >();
+            //    if( output_format ) { std::cout << ros_layout_format< T >( msg->layout ) << std::endl; return; }
+            //    write( msg );
+            //}
+        }
+        else
+        {
+            ros::spin();
+        }
+    }
+
 private:
-    bool flush;
-    bool output_format;
+    bool const flush;
+    bool const output_format;
+    bool const from_bag;
     ros::NodeHandle node_;
     ros::Subscriber subscriber_;
+    //rosbag::Bag bag_;
+    //rosbag::View view_;
 };
 
 
@@ -175,7 +214,7 @@ void ros_execute( char **av, comma::command_line_options const& options )
     {
         ros_init( av, options.optional< std::string >( "--node-name" ), "_subscriber" );
         ros_subscriber< T > subscriber( options );
-        ros::spin();
+        subscriber.subscribe();
     }
     else
     {
