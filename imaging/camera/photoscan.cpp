@@ -32,7 +32,7 @@
 #include <comma/base/exception.h>
 #include "photoscan.h"
 
-namespace snark { namespace photoscan {
+namespace snark { namespace photoscan { namespace camera {
 
 template < typename T > T photoscan::camera::pinhole::calibration_t::as() const { COMMA_THROW( comma::exception, "not implemented, just ask" ); }
 
@@ -51,4 +51,4 @@ template <> snark::camera::pinhole::config_t photoscan::camera::pinhole::calibra
     return config;
 }
 
-} } // namespace snark { namespace photoscan {
+} } } // namespace snark { namespace photoscan { namespace camera {
