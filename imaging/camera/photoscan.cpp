@@ -29,8 +29,6 @@
 
 /// @author vsevolod vlaskine
 
-#pragma once
-
 #include <comma/base/exception.h>
 #include "photoscan.h"
 
@@ -43,7 +41,7 @@ template <> snark::camera::pinhole::config_t photoscan::camera::pinhole::calibra
     snark::camera::pinhole::config_t config;
     config.image_size = Eigen::Vector2i( width, height );
     config.focal_length = f;
-    config.principal_point = Eigen::Vector2d( cx, cy );
+    config.principal_point = Eigen::Vector2d( width / 2. + cx, height / 2. + cy );
     config.distortion = snark::camera::pinhole::config_t::distortion_t();
     config.distortion->radial.k1 = k1;
     config.distortion->radial.k2 = k2;
