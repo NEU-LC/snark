@@ -82,6 +82,7 @@
 #include "detail/accumulated.h"
 #include "detail/arithmetic.h"
 #include "detail/bitwise.h"
+#include "detail/blank.h"
 #include "detail/colors.h"
 #include "detail/file.h"
 #include "detail/load.h"
@@ -173,8 +174,6 @@ template < typename H >
 static bool is_empty( typename impl::filters< H >::value_type m, const typename impl::filters< H >::get_timestamp_functor& get_timestamp ) { return ( m.second.empty() && ( empty< H >::is_empty(m.first) || get_timestamp(m.first) == boost::posix_time::not_a_date_time ) ); }
 
 static const boost::unordered_map< std::string, int > types_ = impl::fill_types();
-
-std::string type_as_string( int t ) { return impl::type_as_string(t); }
 
 template < typename H >
 struct canny_impl_ {
@@ -288,7 +287,7 @@ struct pixel_format_impl_
     pixel_format_impl_( const std::string& filter_name, const std::array< std::string, Out >& formats ) : filter_name( filter_name ) , table( generate_lookup_table( parse( formats ) ) ) {}
     value_type operator()( const value_type& m )
     {
-        if( m.second.type() != InType ) { COMMA_THROW( comma::exception, filter_name << ": expected type: " << type_as_string( InType ) << " (" << InType << "), got: " << type_as_string( m.second.type() ) << " (" << m.second.type() << ")" ); }
+        if( m.second.type() != InType ) { COMMA_THROW( comma::exception, filter_name << ": expected type: " << impl::type_as_string( InType ) << " (" << InType << "), got: " << impl::type_as_string( m.second.type() ) << " (" << m.second.type() << ")" ); }
         if( m.second.cols % In ) { COMMA_THROW( comma::exception, filter_name << ": columns: " << m.second.cols << " is not divisible by " << In ); }
         cv::Mat mat( m.second.rows, m.second.cols / In * Out, OutType, 0.0 );
         unsigned int bytes = m.second.cols * ElementSize;
@@ -470,7 +469,7 @@ struct bands_to_cols_impl_ {
         static std::set< int > good_input_depths = boost::assign::list_of( CV_8U )( CV_16U )( CV_16S )( CV_32F )( CV_64F );
         if ( good_input_depths.find( input.second.depth() ) == good_input_depths.end() )
         {
-            COMMA_THROW( comma::exception, "depth of the " << type_as_string( input.second.type() ) << " image type is not supported by cv::reduce; consider 'convert-to' before processing" );
+            COMMA_THROW( comma::exception, "depth of the " << impl::type_as_string( input.second.type() ) << " image type is not supported by cv::reduce; consider 'convert-to' before processing" );
         }
         unsigned int output_type = cv_reduce_dtype >= 0
                                  ? CV_MAKETYPE( CV_MAT_DEPTH( cv_reduce_dtype ), input.second.channels() )
@@ -659,7 +658,7 @@ static typename impl::filters< H >::value_type convert_to_impl_( typename impl::
     if ( !scale ) {
         static const normalization::map_t & map = normalization::create_map();
         normalization::map_t::const_iterator s = map.find( std::make_pair( m.second.depth(), CV_MAT_DEPTH( type ) ) );
-        if ( s == map.end() ) { COMMA_THROW( comma::exception, "cannot find normalization scaling from type " << type_as_string( m.second.type() ) << " to type " << type_as_string( type ) ); }
+        if ( s == map.end() ) { COMMA_THROW( comma::exception, "cannot find normalization scaling from type " << impl::type_as_string( m.second.type() ) << " to type " << impl::type_as_string( type ) ); }
         scale = s->second.first;
         offset = s->second.second;
     }
@@ -730,7 +729,7 @@ struct mask_impl_
         value_type n;
         n.first = m.first;
         const cv::Mat & f = mask( m ).second;
-        if ( f.depth() != CV_8U ) { COMMA_THROW( comma::exception, "the mask type is " << type_as_string( f.type() ) << ", must have CV_8U depth; use convert-to explicitly" ); }
+        if ( f.depth() != CV_8U ) { COMMA_THROW( comma::exception, "the mask type is " << impl::type_as_string( f.type() ) << ", must have CV_8U depth; use convert-to explicitly" ); }
         m.second.copyTo( n.second, f );
         return n;
     }
@@ -1299,7 +1298,7 @@ struct count_impl_
 template < typename H >
 static typename impl::filters< H >::value_type invert_impl_( const typename impl::filters< H >::value_type& m )
 {
-    if( m.second.type() != CV_8UC1 && m.second.type() != CV_8UC2 && m.second.type() != CV_8UC3 && m.second.type() != CV_8UC4 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); }
+    if( m.second.type() != CV_8UC1 && m.second.type() != CV_8UC2 && m.second.type() != CV_8UC3 && m.second.type() != CV_8UC4 ) { COMMA_THROW( comma::exception, "expected image type ub, 2ub, 3ub, 4ub; got: " << impl::type_as_string( m.second.type() ) ); }
     for( unsigned char* c = const_cast< unsigned char* >( m.second.datastart ); c < m.second.dataend; *c = 255 - *c, ++c );
     return m;
 }
@@ -1307,7 +1306,7 @@ static typename impl::filters< H >::value_type invert_impl_( const typename impl
 template < typename H >
 static typename impl::filters< H >::value_type invert_brightness_impl_( typename impl::filters< H >::value_type m )
 {
-    if( m.second.type() != CV_8UC3 ) { COMMA_THROW( comma::exception, "expected image type 3ub; got: " << type_as_string( m.second.type() ) ); }
+    if( m.second.type() != CV_8UC3 ) { COMMA_THROW( comma::exception, "expected image type 3ub; got: " << impl::type_as_string( m.second.type() ) ); }
     cv::Mat n;
     cv::cvtColor( m.second, n, CV_RGB2HSV );
     for( unsigned char* c = const_cast< unsigned char* >( m.second.datastart ) + 2; c < n.dataend; *c = 255 - *c, c += 3 );
@@ -1348,7 +1347,7 @@ class clahe_impl_
 template < typename H >
 static typename impl::filters< H >::value_type equalize_histogram_impl_(typename impl::filters< H >::value_type m)
 {
-    if( single_channel_type( m.second.type() ) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected currently supported types: ub, 2ub, 3ub, 4ub; got: " << type_as_string( m.second.type() ) ); } //cv::equalizeHist only supports 8-bit single channel
+    if( single_channel_type( m.second.type() ) != CV_8UC1 ) { COMMA_THROW( comma::exception, "expected currently supported types: ub, 2ub, 3ub, 4ub; got: " << impl::type_as_string( m.second.type() ) ); } //cv::equalizeHist only supports 8-bit single channel
     int chs=m.second.channels();
     std::vector<cv::Mat> planes;
     for( int i=0; i<chs; i++ ) { planes.push_back(cv::Mat(1,1,single_channel_type(m.second.type()))); }
@@ -1441,7 +1440,7 @@ struct filter_table_t
                 COMMA_THROW(comma::exception, "scale: in and out Matrix mismatch");
             }
             if(single_channel_type(out.type())!=CV_MAKETYPE(Output_depth,1))
-                COMMA_THROW(comma::exception, "scale: invalid output type: "<<type_as_string(out.type()) << " expected :"<<type_as_string(CV_MAKETYPE(Output_depth,1)));
+                COMMA_THROW(comma::exception, "scale: invalid output type: "<<impl::type_as_string(out.type()) << " expected :"<<impl::type_as_string(CV_MAKETYPE(Output_depth,1)));
             for(int i=r.begin();i<r.end();i++)
             {
                 const value_t* in=v.ptr<value_t>(i);
@@ -1462,7 +1461,7 @@ struct filter_table_t
                 COMMA_THROW(comma::exception, "normalize_sum: in and out Matrix mismatch");
             }
             if(single_channel_type(out.type())!=CV_MAKETYPE(Output_depth,1))
-                COMMA_THROW(comma::exception, "normalize_sum: invalid output type: "<<type_as_string(out.type()) << " expected :"<<type_as_string(CV_MAKETYPE(Output_depth,1)));
+                COMMA_THROW(comma::exception, "normalize_sum: invalid output type: "<<impl::type_as_string(out.type()) << " expected :"<<impl::type_as_string(CV_MAKETYPE(Output_depth,1)));
             for(int i=r.begin();i<r.end();i++)
             {
                 const value_t* in=v.ptr<value_t>(i);
@@ -1815,7 +1814,7 @@ typename impl::filters< H >::value_type fft_impl_( typename impl::filters< H >::
             return convert< H >( m, direct, complex, magnitude, log_scale, normalize );
         case CV_32FC3:
         case CV_32FC4:
-            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
+            std::cerr << "fft: multichannel image support: todo, got: " << impl::type_as_string( m.second.type() ) << std::endl;
             return typename impl::filters< H >::value_type();
         case CV_64FC1:
             //return convert< double, CV_64FC1 >( m, magnitude, log_scale, normalize, normalize );
@@ -1823,10 +1822,10 @@ typename impl::filters< H >::value_type fft_impl_( typename impl::filters< H >::
             return convert< H >( m, direct, complex, magnitude, log_scale, normalize );
         case CV_64FC3:
         case CV_64FC4:
-            std::cerr << "fft: multichannel image support: todo, got: " << type_as_string( m.second.type() ) << std::endl;
+            std::cerr << "fft: multichannel image support: todo, got: " << impl::type_as_string( m.second.type() ) << std::endl;
             return typename impl::filters< H >::value_type();
         default:
-            std::cerr << "fft: expected a floating-point image type, got: " << type_as_string( m.second.type() ) << std::endl;
+            std::cerr << "fft: expected a floating-point image type, got: " << impl::type_as_string( m.second.type() ) << std::endl;
             return typename impl::filters< H >::value_type();
     }
 }
@@ -1960,8 +1959,8 @@ struct overlay_impl_
     value_type operator()( value_type m )
     {
         cv::Mat& mat=m.second;
-//         comma::verbose<<"mat rows,cols,type;channels,depth "<<mat.rows<<","<<mat.cols<<","<<type_as_string(mat.type())<<";"<<mat.channels()<<","<<mat.depth()<<std::endl;
-//         comma::verbose<<"overlay rows,cols,type;channels,depth "<<overlay.rows<<","<<overlay.cols<<","<<type_as_string(overlay.type())<<";"<<overlay.channels()<<","<<overlay.depth()<<std::endl;
+//         comma::verbose<<"mat rows,cols,type;channels,depth "<<mat.rows<<","<<mat.cols<<","<<impl::type_as_string(mat.type())<<";"<<mat.channels()<<","<<mat.depth()<<std::endl;
+//         comma::verbose<<"overlay rows,cols,type;channels,depth "<<overlay.rows<<","<<overlay.cols<<","<<impl::type_as_string(overlay.type())<<";"<<overlay.channels()<<","<<overlay.depth()<<std::endl;
         if(mat.channels()!=overlay.channels()-1) { COMMA_THROW(comma::exception, "mat's channels ("<<mat.channels()<<") should be one less than overlay's channel: "<<overlay.channels()); }
         if(mat.depth() != overlay.depth())
         {
@@ -2733,6 +2732,13 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         // For the case where the file is just a file descriptor, no extenstion, use e[2]
         return std::make_pair( impl::load< H >( e[1] ), true );
     }
+    if( e[0] == "blank" )
+    {
+        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename make=<rows>,<cols>,<type>" ); }
+        const auto& s = comma::split( e[1], ',' );
+        if( s.size() < 3 ) { COMMA_THROW( comma::exception, "expected 3 parameters, got only " << s.size() << "; please specify filename make=<rows>,<cols>,<type>" ); }
+        return std::make_pair( impl::blank< H >( boost::lexical_cast< unsigned int >( s[0] ), boost::lexical_cast< unsigned int >( s[1] ), snark::cv_mat::type_from_string( s[2] ) ), true );
+    }
     if( e[0] == "map" ) // todo! refactor usage, especially csv option separators and equal sign; make optionally map for each channel separately
     {
 #if CV_MAJOR_VERSION <= 2
@@ -3327,7 +3333,8 @@ static std::string usage_impl_()
     oss << "                           instead of: cv-cat 'view;do-something;view'" << std::endl;
     oss << "                                  use: cv-cat 'view;do-something' | cv-cat 'view'" << std::endl;
     oss << std::endl;
-    oss << "    file read/write operations" << std::endl;
+    oss << "    file read/write operations or generating images" << std::endl;
+    oss << "        blank=<rows>,<cols>,<type>: create black image of a given size and type" << std::endl;
     oss << "        file=<format>[,<quality>][,index][,no-header][,filenames:<filenames>]: write images to files with timestamp as name in the specified format; if input images have no timestamp, system time is used" << std::endl;
     oss << "            <format>" << std::endl;
     oss << "                - anything that opencv imwrite can take, e.g. jpg, ppm, png, tiff etc" << std::endl;
