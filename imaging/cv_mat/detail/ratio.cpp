@@ -112,7 +112,6 @@ namespace ratios
     std::string combination::to_string( ) const
     {
         std::ostringstream o;
-        std::vector< term >::const_iterator i = terms.begin();
         size_t ncount = non_zero_term_count();
         bool previous = false;
         for ( std::vector< term >::const_iterator i = terms.begin(); i != terms.end(); ++i )

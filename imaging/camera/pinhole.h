@@ -86,6 +86,7 @@ class pinhole
             boost::optional< Eigen::Vector2d > sensor_size;
             
             /// image size in pixels
+            /// @todo should it be Eigen::Vector2d?
             Eigen::Vector2i image_size;
             
             /// principal point in pixels; if not defined, then image_size / 2

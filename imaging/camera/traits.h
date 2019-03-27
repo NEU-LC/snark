@@ -32,6 +32,7 @@
 #define SNARK_IMAGING_CAMERA_TRAITS_H_
 
 #include "../../visiting/eigen.h"
+#include "photoscan.h"
 #include "pinhole.h"
 #include "stereo.h"
 
@@ -119,6 +120,56 @@ template <> struct traits< snark::camera::config >
     {
         v.apply( "pinhole", p.pinhole );
         v.apply( "pose", p.pose );
+    }
+};
+
+template <> struct traits< snark::photoscan::camera::pinhole::calibration_t >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, snark::photoscan::camera::pinhole::calibration_t& p, Visitor& v )
+    {
+        v.apply( "width", p.width );
+        v.apply( "height", p.height );
+        v.apply( "f", p.f );
+        v.apply( "cx", p.cx );
+        v.apply( "cy", p.cy );
+        v.apply( "b1", p.b1 );
+        v.apply( "b2", p.b2 );
+        v.apply( "k1", p.k1 );
+        v.apply( "k2", p.k2 );
+        v.apply( "k3", p.k3 );
+        v.apply( "k4", p.k4 );
+        v.apply( "p1", p.p1 );
+        v.apply( "p2", p.p2 );
+    }
+    
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::photoscan::camera::pinhole::calibration_t& p, Visitor& v )
+    {
+        v.apply( "width", p.width );
+        v.apply( "height", p.height );
+        v.apply( "f", p.f );
+        v.apply( "cx", p.cx );
+        v.apply( "cy", p.cy );
+        v.apply( "b1", p.b1 );
+        v.apply( "b2", p.b2 );
+        v.apply( "k1", p.k1 );
+        v.apply( "k2", p.k2 );
+        v.apply( "k3", p.k3 );
+        v.apply( "k4", p.k4 );
+        v.apply( "p1", p.p1 );
+        v.apply( "p2", p.p2 );
+    }
+};
+
+template <> struct traits< snark::photoscan::camera::pinhole >
+{
+    template < typename Key, class Visitor > static void visit( const Key&, snark::photoscan::camera::pinhole& p, Visitor& v )
+    {
+        v.apply( "calibration", p.calibration );
+    }
+    
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::photoscan::camera::pinhole& p, Visitor& v )
+    {
+        v.apply( "calibration", p.calibration );
     }
 };
 

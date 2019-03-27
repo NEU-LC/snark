@@ -3,6 +3,7 @@ PROJECT( "snark"  )
 cmake_minimum_required(VERSION 2.6)
 
 ENABLE_TESTING()
+INCLUDE( CMakeDependentOption )
 
 IF (UNIX AND NOT APPLE)
   # May also fail on BSD as it assumes GNU date rather than BSD date command
@@ -155,7 +156,21 @@ SET(snark_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
 IF( NOT BUILD_SHARED_LIBS )
     SET( Boost_USE_STATIC_LIBS ON )
 ENDIF( NOT BUILD_SHARED_LIBS )
-FIND_PACKAGE( Boost COMPONENTS thread filesystem system serialization date_time program_options )
+
+option( snark_BUILD_PYTHON_PACKAGES "install snark python packages" OFF )
+CMAKE_DEPENDENT_OPTION( snark_BUILD_PYTHON_BINDINGS "build C++/Python bindings" OFF "snark_BUILD_PYTHON_PACKAGES" ON )
+
+IF( snark_BUILD_PYTHON_PACKAGES AND snark_BUILD_PYTHON_BINDINGS )
+    IF( NOT BUILD_SHARED_LIBS )
+        MESSAGE( WARNING "Linking C++/Python bindings with static libraries is requested. If linking fails, recompile required libraries with -fPIC or use shared libraries. Note that this feature has only been tested with shared libraries." )
+    ENDIF( NOT BUILD_SHARED_LIBS )
+    #SET( Python_ADDITIONAL_VERSIONS 2.7 )
+    FIND_PACKAGE( PythonLibs REQUIRED )
+    INCLUDE_DIRECTORIES( ${PYTHON_INCLUDE_DIRS} )
+    FIND_PACKAGE( Boost COMPONENTS thread filesystem system serialization date_time program_options python python3 )
+ELSE( snark_BUILD_PYTHON_PACKAGES AND snark_BUILD_PYTHON_BINDINGS )
+    FIND_PACKAGE( Boost COMPONENTS thread filesystem system serialization date_time program_options )
+ENDIF( snark_BUILD_PYTHON_PACKAGES AND snark_BUILD_PYTHON_BINDINGS )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIRS} )
 LINK_DIRECTORIES( ${Boost_LIBRARY_DIRS} )
 
@@ -237,8 +252,6 @@ ENDFOREACH (i)
 
 ENDIF( INSTALL_TESTS )
 ENDIF( snark_BUILD_TESTS )
-
-INCLUDE( CMakeDependentOption )
 
 OPTION( snark_build_actuators "build actuators" ON )
 OPTION( snark_build_batteries "build batteries" OFF )
