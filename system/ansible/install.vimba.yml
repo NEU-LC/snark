@@ -1,0 +1,77 @@
+---
+# sample ansible-playbook script to install snark dependencies and build snark from source; include it as it is or copy to your playbook
+
+# todo: install more dependencies and turn on corresponding cmake switches snark_build_... ON
+
+- hosts: localhost
+  connection: local
+  vars:
+  - make_j: 6
+  - base: "{{ ansible_env.HOME }}"
+  - snark_cmake_options: "-Dsnark_build_sensors_vimba=ON"
+
+  tasks:
+  - name: "snark: dependencies: vimba: download"
+    get_url:
+        url: "https://cdn.alliedvision.com/fileadmin/content/software/software/Vimba/Vimba_v2.1.3_Linux.tgz"
+        dest: "/tmp/Vimba_v2.1.3_Linux.tgz"
+
+  - name: "snark: dependencies: vimba: extract"
+    unarchive:
+        src: "/tmp/Vimba_v2.1.3_Linux.tgz"
+        dest: "/opt"
+    become: true
+
+  - name: "snark: dependencies: vimba: library symlink"
+    file:
+        dest: /opt/vimba
+        src: /opt/Vimba_2_1
+        state: link
+    become: true
+    
+  - name: "snark: dependencies: vimba: VimbaViever symlink"
+    file:
+        dest: /usr/local/bin/vimba-viewer
+        src: /opt/vimba/Tools/Viewer/Bin/x86_64bit/VimbaViewer
+        state: link
+    become: true
+
+  - name: "snark: dependencies: vimba: running install"
+    command: chdir=/opt/vimba/VimbaGigETL ./Install.sh
+    become: true
+      
+  - name: "snark: make source directory at {{ base }}"
+    file: path={{ base }}/{{ item }} state=directory
+    with_items:
+        - src
+        - build
+      
+  - name: "snark: cmake"
+    shell: "/usr/bin/cmake {{ snark_cmake_options }} {{ base }}/src/snark chdir={{ base }}/build/snark"
+
+  - name: "snark: make"
+    make:
+        chdir: "{{ base }}/build/snark"
+        params:
+            MAKEFLAGS: "-j {{ make_j }}"
+
+  - name: "snark: install"
+    become: true
+    make:
+        chdir: "{{ base }}/build/snark"
+        target: "install"
+   
+#  - name: "snark: cmake"
+#    shell: "/usr/bin/cmake {{ snark_cmake_options }} {{ base }}/src/snark chdir={{ base }}/build/snark"
+#
+#  - name: "snark: make"
+#    make:
+#        chdir: "{{ base }}/build/snark"
+#        params:
+#            MAKEFLAGS: "-j {{ make_j }}"
+#
+#  - name: "snark: install"
+#    become: true
+#    make:
+#        chdir: "{{ base }}/build/snark"
+#        target: "install"
