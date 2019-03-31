@@ -67,9 +67,9 @@ class stream : public boost::noncopyable, public velodyne::stream
         void close();
 
         /// return true if scan is valid
-        bool is_scan_valid();
+        bool is_scan_valid() const;
         
-        unsigned packet_duration() { return packet_traits<packet>::packet_duration; }
+        unsigned packet_duration() const { return packet_traits<packet>::packet_duration; }
         
     private:
         boost::scoped_ptr< S > stream_;
@@ -98,7 +98,7 @@ inline laser_return* stream< S >::read()
             buffer_ = impl::stream_traits< S >::read( *stream_, sizeof( packet ) );
             if( !buffer_ ) { closed_ = true; return NULL; }
             const packet* p = reinterpret_cast< const packet* >( buffer_ );
-            auto res=impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
+            auto res = impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
             is_scan_valid_=res.second;
             if( res.first ) { ++scan_; }
             puck_packet_iterator_ = packet::const_iterator( p );
@@ -126,7 +126,7 @@ template < typename S >
 inline void stream< S >::close() { closed_ = true; impl::stream_traits< S >::close( *stream_ ); }
 
 template < typename S >
-inline bool stream< S >::is_scan_valid() { return is_scan_valid_; }
+inline bool stream< S >::is_scan_valid() const { return is_scan_valid_; }
 
 template < typename S >
 inline void stream< S >::skip_scan()

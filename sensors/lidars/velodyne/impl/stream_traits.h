@@ -27,11 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#pragma once
 
-#ifndef SNARK_SENSORS_VELODYNE_IMPL_STREAMTRAITS_H_
-#define SNARK_SENSORS_VELODYNE_IMPL_STREAMTRAITS_H_
-
-#include <boost/optional.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "../scan_tick.h"
 #include "pcap_reader.h"
@@ -48,7 +45,7 @@ template < typename S > struct stream_traits
 
     static void close( S& s ) { s.close(); }
 
-    template < typename P > static std::pair<bool,bool> is_new_scan( scan_tick& tick, const S& s, const P& p ) { return tick.is_new_scan( p, timestamp(s) ); }
+    template < typename P > static std::pair< bool, bool > is_new_scan( scan_tick& tick, const S& s, const P& p ) { return tick.is_new_scan( p, timestamp(s) ); }
 };
 
 template <> struct stream_traits< proprietary_reader >
@@ -59,7 +56,7 @@ template <> struct stream_traits< proprietary_reader >
 
     static void close( proprietary_reader& s ) { s.close(); }
 
-    template < typename P > static std::pair<bool,bool> is_new_scan( scan_tick& tick, const proprietary_reader& s, const P& p ) { return tick.is_new_scan( p, timestamp(s) ); }
+    template < typename P > static std::pair< bool, bool > is_new_scan( scan_tick& tick, const proprietary_reader& s, const P& p ) { return tick.is_new_scan( p, timestamp(s) ); }
 };
 
 template <> struct stream_traits< pcap_reader >
@@ -75,7 +72,7 @@ template <> struct stream_traits< pcap_reader >
 
     static void close( pcap_reader& s ) { s.close(); }
 
-    template < typename P > static std::pair<bool,bool> is_new_scan( scan_tick& tick, const pcap_reader& s, const P& p ) { return tick.is_new_scan( p, timestamp(s) ); }
+    template < typename P > static std::pair< bool, bool > is_new_scan( scan_tick& tick, const pcap_reader& s, const P& p ) { return tick.is_new_scan( p, timestamp(s) ); }
 };
 
 template <> struct stream_traits< thin_reader >
@@ -86,9 +83,7 @@ template <> struct stream_traits< thin_reader >
 
     static void close( thin_reader& s ) { s.close(); }
 
-    template < typename P > static std::pair<bool,bool> is_new_scan( const scan_tick&, thin_reader& r, const P& ) { return std::pair<bool,bool>(r.is_new_scan(),true); }
+    template < typename P > static std::pair< bool, bool > is_new_scan( const scan_tick&, thin_reader& r, const P& ) { return std::pair< bool, bool >( r.is_new_scan(), true ); }
 };
 
 } } } // namespace snark {  namespace velodyne { namespace impl {
-
-#endif // SNARK_SENSORS_VELODYNE_IMPL_STREAMTRAITS_H_

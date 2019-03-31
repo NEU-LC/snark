@@ -85,7 +85,7 @@ class stream : public boost::noncopyable, public velodyne::stream
         stream( S* stream, bool output_invalid = false, const boost::optional< ntp_t >& ntp = boost::none );
 
         /// read point, return NULL, if end of stream
-        laser_return* read();
+        velodyne::laser_return* read();
 
         /// skip given number of scans including the current one
         /// @todo: the same for packets and points, once needed
@@ -98,18 +98,18 @@ class stream : public boost::noncopyable, public velodyne::stream
         void close();
 
         /// return true if scan is valid
-        bool is_scan_valid();
+        bool is_scan_valid() const;
         
-        unsigned packet_duration() { return packet_traits< packet >::packet_duration; }
+        unsigned int packet_duration() const { COMMA_THROW( comma::exception, "todo" ); } // { return packet_traits< packet >::packet_duration; }
         
     private:
         boost::scoped_ptr< S > stream_;
         boost::posix_time::ptime timestamp_;
         const char* buffer_;
-        packet::data_t::const_iterator packet_iterator_;
+        msop::packet::data_t::const_iterator packet_iterator_;
         unsigned int scan_;
         bool closed_;
-        laser_return laser_return_;
+        velodyne::laser_return laser_return_;
         bool output_invalid_;
         boost::optional<ntp_t> ntp_;
         bool is_scan_valid_;
@@ -120,23 +120,23 @@ template < typename S >
 inline stream< S >::stream( S* stream, bool output_invalid, const boost::optional< ntp_t >& ntp ) : stream_( stream ), buffer_( NULL ), scan_( 0 ), closed_( false ), output_invalid_( output_invalid ), ntp_(ntp), is_scan_valid_(true) {}
 
 template < typename S >
-inline laser_return* stream< S >::read()
+inline velodyne::laser_return* stream< S >::read()
 {
     while( !closed_ )
     {
         if( !buffer_ )
         {
-            buffer_ = impl::stream_traits< S >::read( *stream_, sizeof( packet ) );
+            buffer_ = velodyne::impl::stream_traits< S >::read( *stream_, sizeof( msop::packet::data_t ) );
             if( !buffer_ ) { closed_ = true; return NULL; }
-            const packet* p = reinterpret_cast< const packet* >( buffer_ );
-            auto res=impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
+            const msop::packet::data_t* p = reinterpret_cast< const msop::packet::data_t* >( buffer_ );
+            auto res=velodyne::impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
             is_scan_valid_=res.second;
             if( res.first ) { ++scan_; }
-            packet_iterator_ = packet::const_iterator( p );
-            timestamp_ = ntp_ ? ntp_->update_timestamp( impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() ) : impl::stream_traits< S >::timestamp( *stream_ );
+            packet_iterator_ = msop::packet::data_t::const_iterator( p );
+            timestamp_ = velodyne::impl::stream_traits< S >::timestamp( *stream_ ); //timestamp_ = ntp_ ? ntp_->update_timestamp( velodyne::impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() ) : velodyne::impl::stream_traits< S >::timestamp( *stream_ );
         }
-        if( timestamp_.is_not_a_date_time() ) { timestamp_ = impl::stream_traits< S >::timestamp( *stream_ ); }
-        const packet::const_iterator::value_type& v = *packet_iterator_;
+        if( timestamp_.is_not_a_date_time() ) { timestamp_ = velodyne::impl::stream_traits< S >::timestamp( *stream_ ); }
+        const msop::packet::data_t::const_iterator::value_type& v = *packet_iterator_;
         laser_return_.id = v.id; // todo? reuse laser_return type in puck?
         laser_return_.azimuth = v.azimuth;
         laser_return_.intensity = v.reflectivity;
@@ -154,20 +154,20 @@ template < typename S >
 inline unsigned int stream< S >::scan() const { return scan_; }
 
 template < typename S >
-inline void stream< S >::close() { closed_ = true; impl::stream_traits< S >::close( *stream_ ); }
+inline void stream< S >::close() { closed_ = true; velodyne::impl::stream_traits< S >::close( *stream_ ); }
 
 template < typename S >
-inline bool stream< S >::is_scan_valid() { return is_scan_valid_; }
+inline bool stream< S >::is_scan_valid() const { return is_scan_valid_; }
 
 template < typename S >
 inline void stream< S >::skip_scan()
 {
     while( !closed_ )
     {
-        const packet* p = reinterpret_cast< const packet* >( impl::stream_traits< S >::read( *stream_, sizeof( packet ) ) );
+        const msop::packet::data_t* p = reinterpret_cast< const msop::packet::data_t* >( velodyne::impl::stream_traits< S >::read( *stream_, sizeof( msop::packet::data_t ) ) );
         if( p == NULL ) { return; }
-        if( scan_tick_.is_new_scan( *p, impl::stream_traits< S >::timestamp( *stream_ ) ).first ) { ++scan_; return; }
-        if( impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p ).first ) { ++scan_; return; }
+        if( scan_tick_.is_new_scan( *p, velodyne::impl::stream_traits< S >::timestamp( *stream_ ) ).first ) { ++scan_; return; }
+        if( velodyne::impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p ).first ) { ++scan_; return; }
     }
 }
 

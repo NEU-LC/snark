@@ -70,9 +70,9 @@ class stream : public velodyne::stream, public boost::noncopyable
         void close();
         
         /// return true if scan is valid
-        bool is_scan_valid();
+        bool is_scan_valid() const;
         
-        unsigned packet_duration() { return packet_traits<packet>::packet_duration; }
+        unsigned packet_duration() const { return packet_traits<packet>::packet_duration; }
         
     private:
         boost::optional< double > m_angularSpeed;
@@ -183,7 +183,7 @@ inline unsigned int stream< S >::scan() const { return m_scan; }
 
 // static int debug=0;
 template < typename S >
-inline bool stream< S >::is_scan_valid() 
+inline bool stream< S >::is_scan_valid() const
 { 
 //     if(debug<400000)
 //     {

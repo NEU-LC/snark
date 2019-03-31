@@ -38,18 +38,25 @@ namespace snark { namespace velodyne {
 struct stream
 {
     virtual ~stream() {}
+    
     virtual laser_return* read() = 0;
+    
     virtual void skip_scan() = 0;
+    
     virtual unsigned int scan() const = 0;
+    
     virtual void close() = 0;
-    virtual bool is_scan_valid() { return true; }
+    
+    virtual bool is_scan_valid() const { return true; }
+    
+    virtual unsigned packet_duration() const = 0;
+    
+    double packet_angle( double rotation_per_second ) { return 360 / ( 1000000.0 / ( rotation_per_second *packet_duration() ) ); }
     
     /// set missing packets threshold in scan_tick
     /// @param threshold_n number of consecutive packets that is used in scan_tick to break into new scan and mark it as invalid
-    void set_missing_packets_threshold(const boost::optional<unsigned>& threshold_n) { scan_tick_.threshold_n = threshold_n; }
+    void set_missing_packets_threshold( const boost::optional<unsigned>& threshold_n ) { scan_tick_.threshold_n = threshold_n; }
     
-    virtual unsigned packet_duration() = 0;
-    double packet_angle(double rotation_per_second) { return 360 / ( 1000000.0 /(rotation_per_second *packet_duration())); }
 protected:
     scan_tick scan_tick_;
 };

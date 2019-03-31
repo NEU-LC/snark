@@ -27,11 +27,12 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "scan_tick.h"
+#include <comma/base/exception.h>
+#include "derivatives/robosense/packet.h"
 #include "hdl64/packet.h"
-#include "puck/packet.h"
-#include "comma/application/verbose.h"
 #include "packet_traits.h"
+#include "puck/packet.h"
+#include "scan_tick.h"
 
 namespace snark {  namespace velodyne {
 
@@ -41,41 +42,39 @@ static unsigned int packet_angle_( const velodyne::hdl64::packet& p ) { return p
 
 static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; } // quick and dirty: -90 degrees for now; see todo comments in puck/calculator.cpp
 
+static unsigned int packet_angle_( const robosense::msop::packet::data_t& p ) { COMMA_THROW( comma::exception, "todo" ); }
 
-template<typename P>
-static boost::posix_time::time_duration timestamp_threshold(const boost::optional<unsigned>& threshold_n)
+template< typename P >
+static boost::posix_time::time_duration timestamp_threshold( const boost::optional< unsigned >& threshold_n )
 {
-    return boost::posix_time::microseconds( static_cast< long >( threshold_n ? packet_traits<P>::packet_duration * ( 1 + *threshold_n ) : 500000 / 20 ) );
+    return boost::posix_time::microseconds( static_cast< comma::int64 >( threshold_n ? packet_traits< P >::packet_duration * ( 1 + *threshold_n ) : 500000 / 20 ) );
 }
 
 } // namespace detail {
 
-
-scan_tick::scan_tick() : valid_scan(true) { }
+scan_tick::scan_tick() : valid_scan( true ) {}
 
 template < typename P >
-std::pair<bool,bool> scan_tick::is_new_scan( const P& packet, boost::posix_time::ptime  timestamp )
+std::pair< bool, bool > scan_tick::is_new_scan( const P& packet, boost::posix_time::ptime  timestamp )
 {
     bool tick = false;
     unsigned int angle = detail::packet_angle_( packet );
     if( angle > 36000 ) { angle -= 36000; }
-    if( !last_angle_ || angle < *last_angle_ ) { tick = true; valid_scan=true; }
+    if( !last_angle_ || angle < *last_angle_ ) { tick = true; valid_scan = true; }
     last_angle_ = angle;
-    if(timestamp!=boost::posix_time::not_a_date_time && last_timestamp && timestamp-*last_timestamp > detail::timestamp_threshold<P>(threshold_n))
+    if( !timestamp.is_not_a_date_time() && last_timestamp && timestamp - *last_timestamp > detail::timestamp_threshold< P >( threshold_n ) )
     {
-        tick=true;
-        valid_scan=false;
+        tick = true;
+        valid_scan = false;
 //         boost::posix_time::time_duration dt=timestamp-*last_timestamp;
 //         comma::verbose<<"borken scan detected "<< dt.total_microseconds() << ","<<boost::posix_time::to_iso_string(timestamp)<<","<<boost::posix_time::to_iso_string(*last_timestamp)<<std::endl;
     }
-    if(timestamp!=boost::posix_time::not_a_date_time)
-    {
-        last_timestamp=timestamp;
-    }
-    return std::pair<bool,bool>(tick,valid_scan);
+    if( timestamp != boost::posix_time::not_a_date_time ) { last_timestamp = timestamp; }
+    return std::make_pair( tick, valid_scan );
 }
 
-template std::pair<bool,bool> scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet, boost::posix_time::ptime  timestamp );
-template std::pair<bool,bool> scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, boost::posix_time::ptime  timestamp );
+template std::pair< bool, bool > scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet, boost::posix_time::ptime  timestamp );
+template std::pair< bool, bool > scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, boost::posix_time::ptime  timestamp );
+template std::pair< bool, bool > scan_tick::is_new_scan< robosense::msop::packet::data_t >( const robosense::msop::packet::data_t& packet, boost::posix_time::ptime timestamp );
 
 } } // namespace snark {  namespace velodyne {
