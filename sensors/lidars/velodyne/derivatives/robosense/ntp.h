@@ -1,5 +1,6 @@
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2019 Vsevolod Vlaskine
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,35 +28,24 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author vsevolod vlaskine
+
 #pragma once
 
-#include "hdl64/packet.h"
-#include "puck/packet.h"
-#include "derivatives/robosense/packet.h"
+#include <boost/optional.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <comma/base/types.h>
+#include <comma/csv/impl/epoch.h>
 
-namespace snark { namespace velodyne {
+namespace snark { namespace robosense {
 
-template < typename P > struct packet_traits
-{
-//     boost::posix_time::time_duration packet_duration();
+struct ntp_t
+{   
+    ntp_t( double threshold = 1.0, bool permissive = false ) : threshold_(threshold), permissive_(permissive) {}
+    boost::posix_time::ptime update_timestamp(const boost::posix_time::ptime& t, comma::uint32 ntp);
+private:
+    double threshold_;
+    bool permissive_;
 };
 
-template <> struct packet_traits< hdl64::packet >
-{
-    /// packet duration in microseconds
-    static const unsigned packet_duration = 288;
-};
-
-template <> struct packet_traits< puck::packet >
-{
-    /// packet duration in microseconds
-    static const unsigned packet_duration = 1330;
-};
-
-template <> struct packet_traits< robosense::msop::packet::data_t >
-{
-    /// @todo packet duration in microseconds
-    static const unsigned packet_duration = 1234;
-};
-
-} } // namespace comma { namespace visiting {
+} } // namespace snark { namespace robosense {

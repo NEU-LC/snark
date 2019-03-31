@@ -1,5 +1,6 @@
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2019 Vsevolod Vlaskine
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -8,7 +9,7 @@
 //    notice, this list of conditions and the following disclaimer.
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
+//    documentation and/or other materials provided with the distribution.ll
 // 3. Neither the name of the University of Sydney nor the
 //    names of its contributors may be used to endorse or promote products
 //    derived from this software without specific prior written permission.
@@ -27,35 +28,81 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+/// @author vsevolod vlaskine
 
-#include "hdl64/packet.h"
-#include "puck/packet.h"
-#include "derivatives/robosense/packet.h"
+#include "laser_map.h"
 
-namespace snark { namespace velodyne {
+namespace snark { namespace robosense {
 
-template < typename P > struct packet_traits
+/*
+ * reference:
+ * 
+ * VLP-16 User's Manual
+ * Appendix F: Mechanical Drawing
+ * 63-9243 Rev B User Manual and Programming Guide,VLP-16.pdf
+ */
+laser_map::laser_map()
 {
-//     boost::posix_time::time_duration packet_duration();
-};
-
-template <> struct packet_traits< hdl64::packet >
+    map[0]=0;
+    map[2]=1;
+    map[4]=2;
+    map[6]=3;
+    map[8]=4;
+    map[10]=5;
+    map[12]=6;
+    map[14]=7;
+    map[1]=8;
+    map[3]=9;
+    map[5]=10;
+    map[7]=11;
+    map[9]=12;
+    map[11]=13;
+    map[13]=14;
+    map[15]=15;
+    
+    reverse_map[0]=0;
+    reverse_map[1]=2;
+    reverse_map[2]=4;
+    reverse_map[3]=6;
+    reverse_map[4]=8;
+    reverse_map[5]=10;
+    reverse_map[6]=12;
+    reverse_map[7]=14;
+    reverse_map[8]=1;
+    reverse_map[9]=3;
+    reverse_map[10]=5;
+    reverse_map[11]=7;
+    reverse_map[12]=9;
+    reverse_map[13]=11;
+    reverse_map[14]=13;
+    reverse_map[15]=15;
+}
+ 
+unsigned int laser_map::id_to_index( unsigned int id ) const
 {
-    /// packet duration in microseconds
-    static const unsigned packet_duration = 288;
-};
+//     if(id%2)
+//     {
+//         return (id/2)+8;
+//     }
+//     else
+//     {
+//         return id/2;
+//     }
+    return map[id];
+}
 
-template <> struct packet_traits< puck::packet >
+unsigned int laser_map::index_to_id( unsigned int index ) const
 {
-    /// packet duration in microseconds
-    static const unsigned packet_duration = 1330;
-};
-
-template <> struct packet_traits< robosense::msop::packet::data_t >
-{
-    /// @todo packet duration in microseconds
-    static const unsigned packet_duration = 1234;
-};
-
-} } // namespace comma { namespace visiting {
+//     if(index>7)
+//     {
+//         return (index-8)*2+1;
+//     }
+//     else
+//     {
+//         return index*2;
+//     }
+    return reverse_map[index];
+}
+    
+} } // namespace snark { namespace robosense {
+    

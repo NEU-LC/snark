@@ -1,5 +1,6 @@
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2019 Vsevolod Vlaskine
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,35 +28,25 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+/// @author vsevolod vlaskine
+
 #pragma once
 
-#include "hdl64/packet.h"
-#include "puck/packet.h"
-#include "derivatives/robosense/packet.h"
+#include "../../impl/calculator.h"
 
-namespace snark { namespace velodyne {
+namespace snark { namespace robosense {
 
-template < typename P > struct packet_traits
+struct calculator : public velodyne::calculator
 {
-//     boost::posix_time::time_duration packet_duration();
+    std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
+    
+    ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
+    
+    double range( unsigned int laser, double range ) const;
+    
+    double azimuth( unsigned int laser, double azimuth ) const;
+    
+    double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
 };
 
-template <> struct packet_traits< hdl64::packet >
-{
-    /// packet duration in microseconds
-    static const unsigned packet_duration = 288;
-};
-
-template <> struct packet_traits< puck::packet >
-{
-    /// packet duration in microseconds
-    static const unsigned packet_duration = 1330;
-};
-
-template <> struct packet_traits< robosense::msop::packet::data_t >
-{
-    /// @todo packet duration in microseconds
-    static const unsigned packet_duration = 1234;
-};
-
-} } // namespace comma { namespace visiting {
+} } // namespace snark { namespace robosense {

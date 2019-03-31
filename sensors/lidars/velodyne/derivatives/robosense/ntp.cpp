@@ -1,5 +1,6 @@
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2019 Vsevolod Vlaskine
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,35 +28,33 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+/// @author vsevolod vlaskine
 
-#include "hdl64/packet.h"
-#include "puck/packet.h"
-#include "derivatives/robosense/packet.h"
+#include <comma/base/exception.h>
+#include "ntp.h"
 
-namespace snark { namespace velodyne {
+namespace snark { namespace robosense {
+    
+    boost::posix_time::ptime ntp_t::update_timestamp(const boost::posix_time::ptime& t, comma::uint32 ntp)
+    {
+        const boost::posix_time::ptime base( comma::csv::impl::epoch );
+        const boost::posix_time::time_duration d = t - base;
+        // get system time: number of microseconds since start of the hour
+        comma::uint64 ms = d.total_microseconds() % ( 3600000000 );
+        // if system time has rolled over to 0 and ntp has not, add an hour
+        // ( system time is ahead of ntp )
+        if ( ms < ntp ) { ms += 3600000000; }
+        comma::int64 diff = ms - ntp;
+        if ( diff > threshold_ * 1000000.0 )
+        {
+            // the values are more than one second apart - time in packet wasn't set correctly.
+            if (!permissive_) 
+            { 
+                COMMA_THROW(comma::exception, "cannot match system time with ntp time, difference " << diff << " is greater than threshold " << threshold_ ); 
+            }
+            return boost::posix_time::not_a_date_time;
+        }
+        return t - boost::posix_time::microseconds(ms) + boost::posix_time::microseconds(ntp);
+    }
 
-template < typename P > struct packet_traits
-{
-//     boost::posix_time::time_duration packet_duration();
-};
-
-template <> struct packet_traits< hdl64::packet >
-{
-    /// packet duration in microseconds
-    static const unsigned packet_duration = 288;
-};
-
-template <> struct packet_traits< puck::packet >
-{
-    /// packet duration in microseconds
-    static const unsigned packet_duration = 1330;
-};
-
-template <> struct packet_traits< robosense::msop::packet::data_t >
-{
-    /// @todo packet duration in microseconds
-    static const unsigned packet_duration = 1234;
-};
-
-} } // namespace comma { namespace visiting {
+} } // namespace snark { namespace robosense {
