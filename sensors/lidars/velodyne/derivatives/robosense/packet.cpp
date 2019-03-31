@@ -62,8 +62,32 @@
 
 namespace snark { namespace robosense { namespace msop {
 
+std::pair< double, double > packet::data_t::azimuths( unsigned int block ) const // quick and dirty
+{
+    double t = blocks[ block ].azimuth_as_radians();
+    double r;
+    double d;
+    if( block + 1 == number_of_blocks ) // quick and dirty; watch precision
+    {
+        double s = blocks[ block - 1 ].azimuth_as_radians();
+        if( t < s ) { t += M_PI * 2; }
+        d = ( t - s ) / 2;
+    }
+    else
+    {
+        double s = blocks[ block + 1 ].azimuth_as_radians();
+        if( s < t ) { s += M_PI * 2; }
+        d = ( s - t ) / 2;
+    }
+    r = t + d;
+    if( r > M_PI * 2 ) { r -= M_PI * 2; }
+    return std::make_pair( t, r );
+}
+    
 namespace timing {
 
+static double block_firing_interval = 0.0001; // 100 microseconds, see 5.1.2.2
+    
 static double firing_interval = 2.304; // attention! microseconds
 
 static double recharge_interval = 18.43; // attention! microseconds
@@ -79,17 +103,18 @@ static std::pair< double, double > azimuth_step( double from, double to, unsigne
     return std::make_pair( diff * ( timing::firing_interval / period ) / packet::data_t::number_of_lasers, diff * timing::recharge_interval / period );
 }
 
-packet::data_t::const_iterator::const_iterator() : packet_( NULL ), done_( true ) {}
+packet::data_t::const_iterator::const_iterator() : packet_( NULL ), is_dual_return_( true ), done_( true ) {}
 
 packet::data_t::const_iterator::const_iterator( const packet::data_t* p )
     : packet_( p )
     , block_( 0 )
     , subblock_( 0 )
-    , is_dual_return_( false )
+    , is_dual_return_( true )
     , done_( false )
 {
     value_.azimuth = packet_->blocks[0].azimuth_as_radians();
-    update_azimuth_step_();
+    update_value_();
+    update_azimuth_step_(); // todo
 }
 
 void packet::data_t::const_iterator::update_value_( double step, double delay )
@@ -101,12 +126,14 @@ void packet::data_t::const_iterator::update_value_( double step, double delay )
     value_.delay += delay;
 }
 
+// todo
 void packet::data_t::const_iterator::update_azimuth_step_() // quick and dirty
 {
     double next_azimuth = packet_->blocks[ block_ + 1 ].azimuth_as_radians();
     boost::tie( firing_azimuth_step_, recharge_azimuth_step_ ) = azimuth_step( value_.azimuth, next_azimuth, is_dual_return_ ? 1 : 2 );
 }
 
+// todo
 void packet::data_t::const_iterator::operator++()
 {
     if( is_dual_return_ )
@@ -133,7 +160,5 @@ void packet::data_t::const_iterator::operator++()
     value_.azimuth = packet_->blocks[block_].azimuth_as_radians();
     if( block_ < ( packet::data_t::number_of_blocks - 1 ) ) { update_azimuth_step_(); }
 }
-
-bool packet::data_t::const_iterator::done() { return done_; }
 
 } } } // namespace snark { namespace robosense { namespace msop {

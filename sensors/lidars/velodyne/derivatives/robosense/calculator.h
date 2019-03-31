@@ -58,6 +58,7 @@
 
 #pragma once
 
+#include <Eigen/Core>
 #include "../../impl/calculator.h"
 
 namespace snark { namespace robosense {

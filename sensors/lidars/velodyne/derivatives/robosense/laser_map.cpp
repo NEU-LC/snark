@@ -60,75 +60,45 @@
 
 namespace snark { namespace robosense {
 
-/*
- * reference:
- * 
- * VLP-16 User's Manual
- * Appendix F: Mechanical Drawing
- * 63-9243 Rev B User Manual and Programming Guide,VLP-16.pdf
- */
-laser_map::laser_map()
+laser_map::laser_map() // see 9
 {
-    map[0]=0;
-    map[2]=1;
-    map[4]=2;
-    map[6]=3;
-    map[8]=4;
-    map[10]=5;
-    map[12]=6;
-    map[14]=7;
-    map[1]=8;
-    map[3]=9;
-    map[5]=10;
-    map[7]=11;
-    map[9]=12;
-    map[11]=13;
-    map[13]=14;
-    map[15]=15;
+    id_to_index_[0]=0;
+    id_to_index_[1]=1;
+    id_to_index_[2]=2;
+    id_to_index_[3]=3;
+    id_to_index_[4]=4;
+    id_to_index_[5]=5;
+    id_to_index_[6]=6;
+    id_to_index_[7]=7;
+    id_to_index_[8]=15;
+    id_to_index_[9]=14;
+    id_to_index_[10]=13;
+    id_to_index_[11]=12;
+    id_to_index_[12]=11;
+    id_to_index_[13]=10;
+    id_to_index_[14]=9;
+    id_to_index_[15]=8;
     
-    reverse_map[0]=0;
-    reverse_map[1]=2;
-    reverse_map[2]=4;
-    reverse_map[3]=6;
-    reverse_map[4]=8;
-    reverse_map[5]=10;
-    reverse_map[6]=12;
-    reverse_map[7]=14;
-    reverse_map[8]=1;
-    reverse_map[9]=3;
-    reverse_map[10]=5;
-    reverse_map[11]=7;
-    reverse_map[12]=9;
-    reverse_map[13]=11;
-    reverse_map[14]=13;
-    reverse_map[15]=15;
+    index_to_id_[0]=0;
+    index_to_id_[1]=1;
+    index_to_id_[2]=2;
+    index_to_id_[3]=3;
+    index_to_id_[4]=4;
+    index_to_id_[5]=5;
+    index_to_id_[6]=6;
+    index_to_id_[7]=7;
+    index_to_id_[8]=15;
+    index_to_id_[9]=14;
+    index_to_id_[10]=13;
+    index_to_id_[11]=12;
+    index_to_id_[12]=11;
+    index_to_id_[13]=10;
+    index_to_id_[14]=9;
+    index_to_id_[15]=8;
 }
  
-unsigned int laser_map::id_to_index( unsigned int id ) const
-{
-//     if(id%2)
-//     {
-//         return (id/2)+8;
-//     }
-//     else
-//     {
-//         return id/2;
-//     }
-    return map[id];
-}
+unsigned int laser_map::id_to_index( unsigned int id ) const { return id_to_index_[id]; }
 
-unsigned int laser_map::index_to_id( unsigned int index ) const
-{
-//     if(index>7)
-//     {
-//         return (index-8)*2+1;
-//     }
-//     else
-//     {
-//         return index*2;
-//     }
-    return reverse_map[index];
-}
+unsigned int laser_map::index_to_id( unsigned int index ) const { return index_to_id_[index]; }
     
 } } // namespace snark { namespace robosense {
-    

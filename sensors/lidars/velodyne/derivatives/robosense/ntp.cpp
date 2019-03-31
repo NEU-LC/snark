@@ -57,12 +57,15 @@
 /// @author vsevolod vlaskine
 
 #include <comma/base/exception.h>
+#include <comma/csv/impl/epoch.h>
 #include "ntp.h"
 
 namespace snark { namespace robosense {
     
     boost::posix_time::ptime ntp_t::update_timestamp(const boost::posix_time::ptime& t, comma::uint32 ntp)
     {
+        COMMA_THROW( comma::exception, "todo" );
+        
         const boost::posix_time::ptime base( comma::csv::impl::epoch );
         const boost::posix_time::time_duration d = t - base;
         // get system time: number of microseconds since start of the hour

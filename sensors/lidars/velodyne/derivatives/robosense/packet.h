@@ -77,19 +77,9 @@ struct packet : public comma::packed::packed_struct< packet, 1248 >
     {
         enum models { rs_lidar_16 = 0x01, rs_lidar_32 = 0x02 };
         
-        struct sentinel_t: public comma::packed::packed_struct< sentinel_t, 8 >
-        {
-            comma::packed::const_byte< 0x55 > byte_0;
-            comma::packed::const_byte< 0xaa > byte_1;
-            comma::packed::const_byte< 0x05 > byte_2;
-            comma::packed::const_byte< 0x0a > byte_3;
-            comma::packed::const_byte< 0x5a > byte_4;
-            comma::packed::const_byte< 0xa5 > byte_5;
-            comma::packed::const_byte< 0x50 > byte_6;
-            comma::packed::const_byte< 0xa0 > byte_7;
-        };
+        static const char* sentinel_value() { return "\x55\xAA\x05\x0a\x5a\xa5\x50\xA0"; }
         
-        sentinel_t sentinel;
+        comma::packed::string< 8 > sentinel;
         boost::array< char, 12 > reserved_0;
         comma::packed::byte model;
         boost::array< char, 10 > reserved_1;
@@ -104,18 +94,18 @@ struct packet : public comma::packed::packed_struct< packet, 1248 >
         
         struct laser_return: public comma::packed::packed_struct< laser_return, 3 >
         {
-            comma::packed::little_endian_uint16 range;
+            comma::packed::uint16 range; // comma::packed::little_endian_uint16 range; big endian, see 5.1.2.3
             comma::packed::byte reflectivity;
             
-            double range_as_meters() const { return 0.002 * range(); }
+            double range_as_meters() const { return 0.01 * range(); } // see 5.1.2.3
         };
         
         struct block: public comma::packed::packed_struct< block, 2 + 2 + number_of_lasers * number_of_subblocks * sizeof( laser_return ) >
         {
-            static const char* ffee() { return "\xFF\xEE"; }
+            static const char* sentinel_value() { return "\xFF\xEE"; }
             
-            comma::packed::string< 2 > flag;
-            comma::packed::little_endian_uint16 azimuth;
+            comma::packed::string< 2 > sentinel;
+            comma::packed::uint16 azimuth; // comma::packed::little_endian_uint16 azimuth; big endian, 0 is Y axis positive direction; see 5.1.2.1
             boost::array< boost::array< laser_return, number_of_lasers >, 2 > channels;
             
             double azimuth_as_radians() const { return ( double( azimuth() ) / 100 ) * M_PI / 180; }
@@ -123,13 +113,15 @@ struct packet : public comma::packed::packed_struct< packet, 1248 >
         
         struct tail_t: public comma::packed::packed_struct< tail_t, 4 >
         {
+            static const char* sentinel_value() { return "\x00\xFF"; }
             comma::packed::uint32 reserved;
-            comma::packed::const_byte< 0x00 > byte_00;
-            comma::packed::const_byte< 0xFF > byte_ff;
+            comma::packed::string< 2 > sentinel;
         };
 
         boost::array< block, number_of_blocks > blocks;
         tail_t tail;
+        
+        std::pair< double, double > azimuths( unsigned int block ) const; // see 5.1.2.2
         
         class const_iterator;
     };
@@ -162,7 +154,7 @@ class packet::data_t::const_iterator
 
         const value_type& operator*() const { return value_; }
 
-        bool done();
+        bool done() const { return done_; }
 
     private:
         const packet::data_t* packet_;

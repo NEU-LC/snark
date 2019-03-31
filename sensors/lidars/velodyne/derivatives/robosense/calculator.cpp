@@ -63,22 +63,23 @@
 
 namespace snark { namespace robosense {
 
-static boost::array< double, 16 > elevation_ = {{ -15.0 * M_PI / 180
-                                                , 1 * M_PI / 180
-                                                , -13 * M_PI / 180
-                                                , 3 * M_PI / 180
-                                                , -11 * M_PI / 180
-                                                , 5 * M_PI / 180
-                                                , -9 * M_PI / 180
-                                                , 7 * M_PI / 180
-                                                , -7 * M_PI / 180
-                                                , 9 * M_PI / 180
-                                                , -5 * M_PI / 180
-                                                , 11 * M_PI / 180
-                                                , -3 * M_PI / 180
-                                                , 13 * M_PI / 180
-                                                , -1 * M_PI / 180
-                                                , 15 * M_PI / 180 }};
+// todo
+static boost::array< double, 16 > elevation_ = {{ -15. * M_PI / 180
+                                                , -13. * M_PI / 180
+                                                , -11. * M_PI / 180
+                                                ,  -9. * M_PI / 180
+                                                ,  -7. * M_PI / 180
+                                                ,  -5. * M_PI / 180
+                                                ,  -3. * M_PI / 180
+                                                ,  -1. * M_PI / 180
+                                                ,  15. * M_PI / 180
+                                                ,  13. * M_PI / 180
+                                                ,  11. * M_PI / 180
+                                                ,   9. * M_PI / 180
+                                                ,   7. * M_PI / 180
+                                                ,   5. * M_PI / 180
+                                                ,   3. * M_PI / 180
+                                                ,   1. * M_PI / 180 }};
 
 struct laser
 {
@@ -90,6 +91,8 @@ struct laser
 };
 
 typedef boost::array< laser, robosense::msop::packet::data_t::number_of_lasers > lasers_t;
+
+// todo
 
 static lasers_t init_lasers()
 {

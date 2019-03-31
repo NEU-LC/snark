@@ -58,20 +58,20 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <comma/base/types.h>
-#include <comma/csv/impl/epoch.h>
 
 namespace snark { namespace robosense {
 
-struct ntp_t
-{   
-    ntp_t( double threshold = 1.0, bool permissive = false ) : threshold_(threshold), permissive_(permissive) {}
-    boost::posix_time::ptime update_timestamp(const boost::posix_time::ptime& t, comma::uint32 ntp);
-private:
-    double threshold_;
-    bool permissive_;
+class ntp_t // todo
+{
+    public:
+        ntp_t( double threshold = 1.0, bool permissive = false ) : threshold_( threshold ), permissive_( permissive ) {}
+        boost::posix_time::ptime update_timestamp( const boost::posix_time::ptime& t, comma::uint32 ntp );
+        
+    private:
+        double threshold_;
+        bool permissive_;
 };
 
 } } // namespace snark { namespace robosense {

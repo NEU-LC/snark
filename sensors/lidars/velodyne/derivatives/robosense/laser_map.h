@@ -64,18 +64,21 @@ namespace snark { namespace robosense {
     
 class laser_map : public velodyne::laser_map
 {
-    std::array<unsigned,16> map;
-    std::array<unsigned,16> reverse_map;
-public:
-    laser_map();
-    
-    /// take laser id, return index by elevation
-    unsigned int id_to_index( unsigned int i ) const;
+    public:
+        laser_map();
+        
+        /// take laser id, return index by elevation
+        unsigned int id_to_index( unsigned int i ) const;
 
-    /// take index by elevation, return laser id
-    unsigned int index_to_id( unsigned int i ) const;
-    
-    unsigned int size() const { return 16; }
+        /// take index by elevation, return laser id
+        unsigned int index_to_id( unsigned int i ) const;
+        
+        /// return size
+        unsigned int size() const { return 16; }
+
+    private:
+        std::array< unsigned, 16 > id_to_index_;
+        std::array< unsigned, 16 > index_to_id_;
 };
     
 } } // namespace snark { namespace robosense {

@@ -74,7 +74,9 @@
 
 namespace snark { namespace robosense {
 
-/// velodyne puck point stream
+// todo
+    
+/// point stream
 template < typename S >
 class stream : public boost::noncopyable, public velodyne::stream
 {
@@ -98,13 +100,13 @@ class stream : public boost::noncopyable, public velodyne::stream
         /// return true if scan is valid
         bool is_scan_valid();
         
-        unsigned packet_duration() { return packet_traits<packet>::packet_duration; }
+        unsigned packet_duration() { return packet_traits< packet >::packet_duration; }
         
     private:
         boost::scoped_ptr< S > stream_;
         boost::posix_time::ptime timestamp_;
         const char* buffer_;
-        packet::const_iterator puck_packet_iterator_;
+        packet::data_t::const_iterator packet_iterator_;
         unsigned int scan_;
         bool closed_;
         laser_return laser_return_;
@@ -130,18 +132,18 @@ inline laser_return* stream< S >::read()
             auto res=impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
             is_scan_valid_=res.second;
             if( res.first ) { ++scan_; }
-            puck_packet_iterator_ = packet::const_iterator( p );
+            packet_iterator_ = packet::const_iterator( p );
             timestamp_ = ntp_ ? ntp_->update_timestamp( impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() ) : impl::stream_traits< S >::timestamp( *stream_ );
         }
         if( timestamp_.is_not_a_date_time() ) { timestamp_ = impl::stream_traits< S >::timestamp( *stream_ ); }
-        const packet::const_iterator::value_type& v = *puck_packet_iterator_;
+        const packet::const_iterator::value_type& v = *packet_iterator_;
         laser_return_.id = v.id; // todo? reuse laser_return type in puck?
         laser_return_.azimuth = v.azimuth;
         laser_return_.intensity = v.reflectivity;
         laser_return_.range = v.range;
         laser_return_.timestamp = timestamp_ + boost::posix_time::microseconds( v.delay );
-        ++puck_packet_iterator_;
-        if( puck_packet_iterator_.done() ) { buffer_ = NULL; }
+        ++packet_iterator_;
+        if( packet_iterator_.done() ) { buffer_ = NULL; }
         bool valid = !comma::math::equal( laser_return_.range, 0 );
         if( valid || output_invalid_ ) { return &laser_return_; }
     }
