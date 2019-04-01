@@ -56,6 +56,8 @@
 
 /// @author vsevolod vlaskine
 
+#include <iostream>
+
 #include <cmath>
 #include <boost/tuple/tuple.hpp>
 #include "packet.h"
@@ -67,15 +69,22 @@ std::pair< double, double > packet::data_t::azimuths( unsigned int block ) const
     double t = blocks[ block ].azimuth_as_radians();
     double r;
     double d;
+    //std::cerr << "--> a: block: " << block << std::endl;
     if( block + 1 == number_of_blocks ) // quick and dirty; watch precision
     {
         double s = blocks[ block - 1 ].azimuth_as_radians();
+        
+        //std::cerr << "--> b: t: " << t << " s: " << s << std::endl;
+        
         if( t < s ) { t += M_PI * 2; }
         d = ( t - s ) / 2;
     }
     else
     {
         double s = blocks[ block + 1 ].azimuth_as_radians();
+        
+        //std::cerr << "--> c: t: " << t << " s: " << s << std::endl;
+        
         if( s < t ) { s += M_PI * 2; }
         d = ( s - t ) / 2;
     }
@@ -113,7 +122,7 @@ void packet::const_iterator::update_value_()
 void packet::const_iterator::update_value_( double azimuth )
 {
     update_value_();
-    value_.azimuth += azimuth;
+    value_.azimuth = azimuth;
 }
 
 void packet::const_iterator::operator++()

@@ -95,7 +95,7 @@ struct packet : public comma::packed::packed_struct< packet, 1248 >
         
         struct laser_return: public comma::packed::packed_struct< laser_return, 3 >
         {
-            comma::packed::big_endian_uint16 range; // comma::packed::little_endian_uint16 range; // see 5.1.2.3
+            comma::packed::big_endian_uint16 range; // see 5.1.2.3
             comma::packed::byte reflectivity;
             
             double range_as_meters() const { return 0.01 * range(); } // see 5.1.2.3
@@ -106,7 +106,7 @@ struct packet : public comma::packed::packed_struct< packet, 1248 >
             static const char* sentinel_value() { return "\xFF\xEE"; }
             
             comma::packed::string< 2 > sentinel;
-            comma::packed::big_endian_uint16 azimuth; // comma::packed::little_endian_uint16 azimuth; // 0 is Y axis positive direction; see 5.1.2.1
+            comma::packed::big_endian_uint16 azimuth; // 0 is Y axis positive direction; see 5.1.2.1
             boost::array< boost::array< laser_return, number_of_lasers >, 2 > channels;
             
             double azimuth_as_radians() const { return ( double( azimuth() ) / 100 ) * M_PI / 180; }
@@ -142,7 +142,7 @@ class packet::const_iterator
             double range;
             comma::uint32 reflectivity;
 
-            value_type() : id( 0 ), azimuth( 0 ), range( 0 ), reflectivity( 0 ) {}
+            value_type() : id( 0 ), delay( 0 ), azimuth( 0 ), range( 0 ), reflectivity( 0 ) {}
         };
 
         const_iterator();

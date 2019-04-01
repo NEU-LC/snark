@@ -135,7 +135,7 @@ inline velodyne::laser_return* stream< S >::read()
         }
         if( timestamp_.is_not_a_date_time() ) { timestamp_ = velodyne::impl::stream_traits< S >::timestamp( *stream_ ); }
         const msop::packet::const_iterator::value_type& v = *packet_iterator_;
-        laser_return_.id = v.id; // todo? reuse laser_return type in puck?
+        laser_return_.id = v.id;
         laser_return_.azimuth = v.azimuth;
         laser_return_.intensity = v.reflectivity;
         laser_return_.range = v.range;
