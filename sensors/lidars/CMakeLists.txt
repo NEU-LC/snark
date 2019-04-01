@@ -15,3 +15,5 @@ ENDIF( snark_build_sensors_hokuyo )
 if(snark_build_sensors_cepton)
     add_subdirectory(cepton)
 endif()
+
+add_subdirectory( robosense )

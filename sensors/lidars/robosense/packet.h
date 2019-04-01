@@ -110,7 +110,7 @@ struct packet : public comma::packed::packed_struct< packet, 1248 >
             comma::packed::big_endian_uint16 azimuth; // 0 is Y axis positive direction; see 5.1.2.1
             boost::array< boost::array< laser_return, number_of_lasers >, 2 > channels;
             
-            double azimuth_as_radians() const { return ( double( azimuth() ) / 100 ) * M_PI / 180; }
+            double azimuth_as_radians() const { return ( 0.01 * azimuth() ) * M_PI / 180; }
         };
         
         struct tail_t: public comma::packed::packed_struct< tail_t, 4 >
@@ -152,7 +152,7 @@ class packet::const_iterator
 
         void operator++();
 
-        const value_type& operator->() const { return value_; }
+        const value_type* operator->() const { return &value_; }
 
         const value_type& operator*() const { return value_; }
 

@@ -345,7 +345,7 @@ int main( int ac, char** av )
                 else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, ntp ); }
                 break;
             case models::rs16:
-                std::cerr << "velodyne-to-csv: --model rs-lidar-16: implementing... does not work, yet" << std::endl;
+                std::cerr << "velodyne-to-csv: --model rs-lidar-16: to be removed; use robosense-to-csv" << std::endl;
                 if( options.exists( "--ntp" ) ) { std::cerr << "velodyne-to-csv: rs-lidar-16: --ntp: not implemented" << std::endl; return 1; }
                 calculator = options.exists( "--angles" )
                            ? new snark::robosense::calculator( options.value< std::string >( "--angles" ) )
