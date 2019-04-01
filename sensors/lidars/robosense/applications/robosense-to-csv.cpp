@@ -71,6 +71,8 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "usage: cat robosense*.bin | robosense-to-csv [<options>]" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "only rs-lidar-16 currently supported" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --angles,--angle,-a=<filename>; default: as in spec" << std::endl;
     //std::cerr << "    --rotation-per-second=<rps>: specify rotation speed; default: 20" << std::endl;
@@ -122,16 +124,22 @@ template <> struct traits< output >
 
 } } // namespace comma { namespace visiting {
 
-static std::pair< boost::posix_time::ptime, snark::robosense::msop::packet* > read( std::istream& is, char* buffer )
+typedef std::pair< boost::posix_time::ptime, snark::robosense::msop::packet* > pair_t;
+
+static pair_t read( std::istream& is, char* buffer )
 {
     comma::uint64 microseconds;
+    pair_t p( boost::posix_time::not_a_date_time, NULL );
     is.read( reinterpret_cast< char* >( &microseconds ), sizeof( comma::uint64 ) );
+    if( is.bad() || is.eof() ) { return p; }
     is.read( buffer, snark::robosense::msop::packet::size );
-    if( is.bad() || is.eof() ) { return std::pair< boost::posix_time::ptime, snark::robosense::msop::packet* >( boost::posix_time::not_a_date_time, NULL ); }
+    if( is.bad() || is.eof() ) { return p; }
     comma::uint64 seconds = microseconds / 1000000; //to avoid time overflow on 32bit systems with boost::posix_time::microseconds( m_microseconds ), apparently due to a bug in boost
     microseconds = microseconds % 1000000;
     static boost::posix_time::ptime epoch( snark::timing::epoch );
-    return std::make_pair( epoch + boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( microseconds ), reinterpret_cast< snark::robosense::msop::packet* >( buffer ) );
+    p.first = epoch + boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( microseconds );
+    p.second = reinterpret_cast< snark::robosense::msop::packet* >( buffer );
+    return p;
 }
 
 int main( int ac, char** av )
@@ -155,13 +163,16 @@ int main( int ac, char** av )
             if( !p.second ) { break; }
             for( snark::robosense::msop::packet::const_iterator it( p.second ); !it.done() && std::cout.good(); ++it )
             {
-                if( !output_invalid_points && ( comma::math::equal( it->range, 0 ) || it->range > 150. ) ) { continue; } // quick and dirty, see 2 for max range
+                static double min_range = 0.2; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
+                static double max_range = 200.0; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
+                bool valid = it->range > min_range && it->range < max_range;
+                if( !valid && !output_invalid_points ) { continue; }
                 output o;
                 o.t = p.first + boost::posix_time::microseconds( it->delay * 1000000 );
                 o.id = it->id;
                 o.scan = scan;
-                o.range = it->range;
                 o.azimuth = it->azimuth;
+                o.range = it->range;
                 o.reflectivity = it->reflectivity;
                 o.coordinates = calculator.point( o.id, o.range, o.azimuth );
                 ostream.write( o );

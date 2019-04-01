@@ -115,8 +115,6 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int 
 
 ::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
 {
-    //std::cerr << "--> range: " << range << " angle: " << angle << " elevation: " << elevation_[laser] << std::endl;
-    //return ::Eigen::Vector3d( range, angle, elevation_[laser] );
     return ::Eigen::Vector3d( range * lasers_[laser].cos * std::sin( angle )
                             , range * lasers_[laser].cos * std::cos( angle )
                             , range * lasers_[laser].sin );
