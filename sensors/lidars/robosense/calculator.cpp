@@ -62,6 +62,7 @@
 #include <fstream>
 #include <boost/lexical_cast.hpp>
 #include <comma/base/exception.h>
+#include <comma/string/string.h>
 #include "calculator.h"
 
 namespace snark { namespace robosense {
@@ -101,8 +102,9 @@ calculator::calculator( const std::string& elevation )
     {
         std::string line;
         std::getline( ifs, line );
+        line = comma::strip( line );
         if( line.empty() ) { continue; }
-        elevation_[i] = boost::lexical_cast< double >( line );
+        elevation_[i] = boost::lexical_cast< double >( line ) * M_PI / 180;
         ++i;
     }
     if( i < 16 ) { COMMA_THROW( comma::exception, "expected 16 elevation angle values in '" << elevation << "'; got only " << i ); }
@@ -113,6 +115,8 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int 
 
 ::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
 {
+    //std::cerr << "--> range: " << range << " angle: " << angle << " elevation: " << elevation_[laser] << std::endl;
+    //return ::Eigen::Vector3d( range, angle, elevation_[laser] );
     return ::Eigen::Vector3d( range * lasers_[laser].cos * std::sin( angle )
                             , range * lasers_[laser].cos * std::cos( angle )
                             , range * lasers_[laser].sin );

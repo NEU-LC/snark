@@ -56,25 +56,15 @@
 
 /// @author vsevolod vlaskine
 
-#include <boost/optional.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/lexical_cast.hpp>
+#include <memory>
 #include <comma/application/command_line_options.h>
-#include <comma/application/signal_flag.h>
-#include <comma/base/exception.h>
 #include <comma/base/types.h>
-#include <comma/csv/format.h>
 #include <comma/csv/names.h>
 #include <comma/csv/stream.h>
-#include <comma/string/string.h>
-#include <comma/visiting/traits.h>
 #include "../../../../timing/time.h"
 #include "../../../../visiting/traits.h"
 #include "../calculator.h"
 #include "../packet.h"
-
-//#include <google/profiler.h>
 
 static void usage( bool verbose )
 {
@@ -82,15 +72,10 @@ static void usage( bool verbose )
     std::cerr << "usage: cat robosense*.bin | robosense-to-csv [<options>]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --angles=<filename>; default: as in spec; todo" << std::endl;
-    std::cerr << "    --rotation-per-second=<rps>: specify rotation speed, see --packet-angle; default: 20" << std::endl;
+    std::cerr << "    --angles,--angle,-a=<filename>; default: as in spec" << std::endl;
+    //std::cerr << "    --rotation-per-second=<rps>: specify rotation speed; default: 20" << std::endl;
     std::cerr << std::endl;
     std::cerr << "output options:" << std::endl;
-    
-    
-    
-    std::cerr << std::endl;
-    std::cerr << "packet options:" << std::endl;
     std::cerr << "    --binary,-b[=<format>]: output in binary equivalent of csv" << std::endl;
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
     std::cerr << "    --output-fields: todo: print output fields and exit" << std::endl;
@@ -162,6 +147,8 @@ int main( int ac, char** av )
         uint32_t scan = 0;
         std::vector< char > buffer( snark::robosense::msop::packet::size );
         snark::robosense::calculator calculator;
+        std::string angles = options.value< std::string >( "--angles", "" );
+        if( !angles.empty() ) { calculator = snark::robosense::calculator( angles ); }
         while( std::cin.good() && !std::cin.eof() )
         {
             auto p = read( std::cin, &buffer[0] );
