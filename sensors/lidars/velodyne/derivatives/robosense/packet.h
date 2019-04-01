@@ -122,15 +122,15 @@ struct packet : public comma::packed::packed_struct< packet, 1248 >
         tail_t tail;
         
         std::pair< double, double > azimuths( unsigned int block ) const; // see 5.1.2.2
-        
-        class const_iterator;
     };
     
     header_t header;
     data_t data;
+    
+    class const_iterator;
 };
 
-class packet::data_t::const_iterator
+class packet::const_iterator
 {
     public:
         struct value_type
@@ -146,7 +146,7 @@ class packet::data_t::const_iterator
 
         const_iterator();
 
-        const_iterator( const packet::data_t* p );
+        const_iterator( const packet* p );
 
         void operator++();
 
@@ -157,7 +157,7 @@ class packet::data_t::const_iterator
         bool done() const { return done_; }
 
     private:
-        const packet::data_t* packet_;
+        const packet* packet_;
         unsigned int block_;
         unsigned int subblock_;
         double firing_azimuth_step_;

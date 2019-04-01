@@ -52,10 +52,11 @@ template <> struct packet_traits< puck::packet >
     static const unsigned packet_duration = 1330;
 };
 
-template <> struct packet_traits< robosense::msop::packet::data_t >
+template <> struct packet_traits< robosense::msop::packet >
 {
-    /// @todo packet duration in microseconds
-    static const unsigned packet_duration = 1234;
+    /// packet duration in microseconds
+    /// @todo confirm value is correct
+    static const unsigned packet_duration = 100;
 };
 
 } } // namespace comma { namespace visiting {

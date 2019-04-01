@@ -103,23 +103,23 @@ static std::pair< double, double > azimuth_step( double from, double to, unsigne
     return std::make_pair( diff * ( timing::firing_interval / period ) / packet::data_t::number_of_lasers, diff * timing::recharge_interval / period );
 }
 
-packet::data_t::const_iterator::const_iterator() : packet_( NULL ), is_dual_return_( true ), done_( true ) {}
+packet::const_iterator::const_iterator() : packet_( NULL ), is_dual_return_( true ), done_( true ) {}
 
-packet::data_t::const_iterator::const_iterator( const packet::data_t* p )
+packet::const_iterator::const_iterator( const packet* p )
     : packet_( p )
     , block_( 0 )
     , subblock_( 0 )
     , is_dual_return_( true )
     , done_( false )
 {
-    value_.azimuth = packet_->blocks[0].azimuth_as_radians();
+    value_.azimuth = packet_->data.blocks[0].azimuth_as_radians();
     update_value_();
     update_azimuth_step_(); // todo
 }
 
-void packet::data_t::const_iterator::update_value_( double step, double delay )
+void packet::const_iterator::update_value_( double step, double delay )
 {
-    const packet::data_t::laser_return& r = packet_->blocks[block_].channels[subblock_][value_.id];
+    const packet::data_t::laser_return& r = packet_->data.blocks[block_].channels[subblock_][value_.id];
     value_.range = r.range_as_meters();
     value_.reflectivity = r.reflectivity();
     value_.azimuth += step;
@@ -127,14 +127,14 @@ void packet::data_t::const_iterator::update_value_( double step, double delay )
 }
 
 // todo
-void packet::data_t::const_iterator::update_azimuth_step_() // quick and dirty
+void packet::const_iterator::update_azimuth_step_() // quick and dirty
 {
-    double next_azimuth = packet_->blocks[ block_ + 1 ].azimuth_as_radians();
+    double next_azimuth = packet_->data.blocks[ block_ + 1 ].azimuth_as_radians();
     boost::tie( firing_azimuth_step_, recharge_azimuth_step_ ) = azimuth_step( value_.azimuth, next_azimuth, is_dual_return_ ? 1 : 2 );
 }
 
 // todo
-void packet::data_t::const_iterator::operator++()
+void packet::const_iterator::operator++()
 {
     if( is_dual_return_ )
     {
@@ -157,7 +157,7 @@ void packet::data_t::const_iterator::operator++()
     ++block_;
     if( block_ == packet::data_t::number_of_blocks ) { done_ = true; return; }
     update_value_( 0, timing::recharge_interval ); // quick and dirty
-    value_.azimuth = packet_->blocks[block_].azimuth_as_radians();
+    value_.azimuth = packet_->data.blocks[block_].azimuth_as_radians();
     if( block_ < ( packet::data_t::number_of_blocks - 1 ) ) { update_azimuth_step_(); }
 }
 

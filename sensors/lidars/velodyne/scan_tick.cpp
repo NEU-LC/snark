@@ -42,7 +42,7 @@ static unsigned int packet_angle_( const velodyne::hdl64::packet& p ) { return p
 
 static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; } // quick and dirty: -90 degrees for now; see todo comments in puck/calculator.cpp
 
-static unsigned int packet_angle_( const robosense::msop::packet::data_t& p ) { COMMA_THROW( comma::exception, "todo" ); }
+static unsigned int packet_angle_( const robosense::msop::packet& p ) { COMMA_THROW( comma::exception, "todo" ); }
 
 template< typename P >
 static boost::posix_time::time_duration timestamp_threshold( const boost::optional< unsigned >& threshold_n )
@@ -75,6 +75,6 @@ std::pair< bool, bool > scan_tick::is_new_scan( const P& packet, boost::posix_ti
 
 template std::pair< bool, bool > scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet, boost::posix_time::ptime  timestamp );
 template std::pair< bool, bool > scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, boost::posix_time::ptime  timestamp );
-template std::pair< bool, bool > scan_tick::is_new_scan< robosense::msop::packet::data_t >( const robosense::msop::packet::data_t& packet, boost::posix_time::ptime timestamp );
+template std::pair< bool, bool > scan_tick::is_new_scan< robosense::msop::packet >( const robosense::msop::packet& packet, boost::posix_time::ptime timestamp );
 
 } } // namespace snark {  namespace velodyne {

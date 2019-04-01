@@ -106,7 +106,7 @@ class stream : public boost::noncopyable, public velodyne::stream
         boost::scoped_ptr< S > stream_;
         boost::posix_time::ptime timestamp_;
         const char* buffer_;
-        msop::packet::data_t::const_iterator packet_iterator_;
+        msop::packet::const_iterator packet_iterator_;
         unsigned int scan_;
         bool closed_;
         velodyne::laser_return laser_return_;
@@ -126,17 +126,17 @@ inline velodyne::laser_return* stream< S >::read()
     {
         if( !buffer_ )
         {
-            buffer_ = velodyne::impl::stream_traits< S >::read( *stream_, sizeof( msop::packet::data_t ) );
+            buffer_ = velodyne::impl::stream_traits< S >::read( *stream_, sizeof( msop::packet ) );
             if( !buffer_ ) { closed_ = true; return NULL; }
-            const msop::packet::data_t* p = reinterpret_cast< const msop::packet::data_t* >( buffer_ );
+            const msop::packet* p = reinterpret_cast< const msop::packet* >( buffer_ );
             auto res=velodyne::impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
             is_scan_valid_=res.second;
             if( res.first ) { ++scan_; }
-            packet_iterator_ = msop::packet::data_t::const_iterator( p );
+            packet_iterator_ = msop::packet::const_iterator( p );
             timestamp_ = velodyne::impl::stream_traits< S >::timestamp( *stream_ ); //timestamp_ = ntp_ ? ntp_->update_timestamp( velodyne::impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() ) : velodyne::impl::stream_traits< S >::timestamp( *stream_ );
         }
         if( timestamp_.is_not_a_date_time() ) { timestamp_ = velodyne::impl::stream_traits< S >::timestamp( *stream_ ); }
-        const msop::packet::data_t::const_iterator::value_type& v = *packet_iterator_;
+        const msop::packet::const_iterator::value_type& v = *packet_iterator_;
         laser_return_.id = v.id; // todo? reuse laser_return type in puck?
         laser_return_.azimuth = v.azimuth;
         laser_return_.intensity = v.reflectivity;
@@ -164,7 +164,7 @@ inline void stream< S >::skip_scan()
 {
     while( !closed_ )
     {
-        const msop::packet::data_t* p = reinterpret_cast< const msop::packet::data_t* >( velodyne::impl::stream_traits< S >::read( *stream_, sizeof( msop::packet::data_t ) ) );
+        const msop::packet* p = reinterpret_cast< const msop::packet* >( velodyne::impl::stream_traits< S >::read( *stream_, sizeof( msop::packet ) ) );
         if( p == NULL ) { return; }
         if( scan_tick_.is_new_scan( *p, velodyne::impl::stream_traits< S >::timestamp( *stream_ ) ).first ) { ++scan_; return; }
         if( velodyne::impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p ).first ) { ++scan_; return; }
