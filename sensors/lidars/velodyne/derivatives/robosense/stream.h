@@ -74,8 +74,6 @@
 
 namespace snark { namespace robosense {
 
-// todo
-    
 /// point stream
 template < typename S >
 class stream : public boost::noncopyable, public velodyne::stream
@@ -126,10 +124,10 @@ inline velodyne::laser_return* stream< S >::read()
     {
         if( !buffer_ )
         {
-            buffer_ = velodyne::impl::stream_traits< S >::read( *stream_, sizeof( msop::packet ) );
+            buffer_ = velodyne::impl::stream_traits< S >::read( *stream_, msop::packet::size );
             if( !buffer_ ) { closed_ = true; return NULL; }
             const msop::packet* p = reinterpret_cast< const msop::packet* >( buffer_ );
-            auto res=velodyne::impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
+            auto res = velodyne::impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
             is_scan_valid_ = res.second;
             if( res.first ) { ++scan_; }
             packet_iterator_ = msop::packet::const_iterator( p );
@@ -164,7 +162,7 @@ inline void stream< S >::skip_scan()
 {
     while( !closed_ )
     {
-        const msop::packet* p = reinterpret_cast< const msop::packet* >( velodyne::impl::stream_traits< S >::read( *stream_, sizeof( msop::packet ) ) );
+        const msop::packet* p = reinterpret_cast< const msop::packet* >( velodyne::impl::stream_traits< S >::read( *stream_, msop::packet::size ) );
         if( p == NULL ) { return; }
         if( scan_tick_.is_new_scan( *p, velodyne::impl::stream_traits< S >::timestamp( *stream_ ) ).first ) { ++scan_; return; }
         if( velodyne::impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p ).first ) { ++scan_; return; }

@@ -56,7 +56,7 @@ template <> struct packet_traits< robosense::msop::packet >
 {
     /// packet duration in microseconds
     /// @todo confirm value is correct
-    static const unsigned packet_duration = 100;
+    static const unsigned packet_duration = 100 * robosense::msop::packet::data_t::number_of_blocks;
 };
 
 } } // namespace comma { namespace visiting {

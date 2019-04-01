@@ -42,8 +42,8 @@ static unsigned int packet_angle_( const velodyne::hdl64::packet& p ) { return p
 
 static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; } // quick and dirty: -90 degrees for now; see todo comments in puck/calculator.cpp
 
-static unsigned int packet_angle_( const robosense::msop::packet& p ) { COMMA_THROW( comma::exception, "todo" ); }
-//static unsigned int packet_angle_( const robosense::msop::packet& p ) { return p.data.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; }
+//static unsigned int packet_angle_( const robosense::msop::packet& p ) { COMMA_THROW( comma::exception, "todo" ); }
+static unsigned int packet_angle_( const robosense::msop::packet& p ) { return p.data.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; }
 
 template< typename P >
 static boost::posix_time::time_duration timestamp_threshold( const boost::optional< unsigned >& threshold_n )

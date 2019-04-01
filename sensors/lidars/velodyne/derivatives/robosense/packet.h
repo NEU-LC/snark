@@ -65,6 +65,7 @@
 #include <boost/optional.hpp>
 #include <comma/base/types.h>
 #include <comma/packed/byte.h>
+#include <comma/packed/big_endian.h>
 #include <comma/packed/little_endian.h>
 #include <comma/packed/string.h>
 #include <comma/packed/struct.h>
@@ -94,18 +95,18 @@ struct packet : public comma::packed::packed_struct< packet, 1248 >
         
         struct laser_return: public comma::packed::packed_struct< laser_return, 3 >
         {
-            comma::packed::uint16 range; // comma::packed::little_endian_uint16 range; big endian, see 5.1.2.3
+            comma::packed::big_endian_uint16 range; // comma::packed::little_endian_uint16 range; // see 5.1.2.3
             comma::packed::byte reflectivity;
             
             double range_as_meters() const { return 0.01 * range(); } // see 5.1.2.3
         };
         
-        struct block: public comma::packed::packed_struct< block, 2 + 2 + number_of_lasers * number_of_subblocks * sizeof( laser_return ) >
+        struct block: public comma::packed::packed_struct< block, 2 + 2 + number_of_lasers * number_of_subblocks * laser_return::size >
         {
             static const char* sentinel_value() { return "\xFF\xEE"; }
             
             comma::packed::string< 2 > sentinel;
-            comma::packed::uint16 azimuth; // comma::packed::little_endian_uint16 azimuth; big endian, 0 is Y axis positive direction; see 5.1.2.1
+            comma::packed::big_endian_uint16 azimuth; // comma::packed::little_endian_uint16 azimuth; // 0 is Y axis positive direction; see 5.1.2.1
             boost::array< boost::array< laser_return, number_of_lasers >, 2 > channels;
             
             double azimuth_as_radians() const { return ( double( azimuth() ) / 100 ) * M_PI / 180; }
@@ -141,7 +142,7 @@ class packet::const_iterator
             double range;
             comma::uint32 reflectivity;
 
-            value_type() : id( 0 ), delay( 0 ), azimuth( 0 ), range( 0 ), reflectivity( 0 ) {}
+            value_type() : id( 0 ), azimuth( 0 ), range( 0 ), reflectivity( 0 ) {}
         };
 
         const_iterator();
@@ -160,13 +161,49 @@ class packet::const_iterator
         const packet* packet_;
         unsigned int block_;
         unsigned int subblock_;
-        double firing_azimuth_step_;
-        double recharge_azimuth_step_;
         value_type value_;
-        bool is_dual_return_;
         bool done_;
-        void update_value_( double step = 0, double delay = 0 );
-        void update_azimuth_step_();
+        void update_value_();
+        void update_value_( double azimuth );
 };
+
+// class packet::const_iterator
+// {
+//     public:
+//         struct value_type
+//         {
+//             comma::uint32 id;
+//             double delay;
+//             double azimuth;
+//             double range;
+//             comma::uint32 reflectivity;
+// 
+//             value_type() : id( 0 ), delay( 0 ), azimuth( 0 ), range( 0 ), reflectivity( 0 ) {}
+//         };
+// 
+//         const_iterator();
+// 
+//         const_iterator( const packet* p );
+// 
+//         void operator++();
+// 
+//         const value_type& operator->() const { return value_; }
+// 
+//         const value_type& operator*() const { return value_; }
+// 
+//         bool done() const { return done_; }
+// 
+//     private:
+//         const packet* packet_;
+//         unsigned int block_;
+//         unsigned int subblock_;
+//         double firing_azimuth_step_;
+//         double recharge_azimuth_step_;
+//         value_type value_;
+//         bool is_dual_return_;
+//         bool done_;
+//         void update_value_( double step = 0, double delay = 0 );
+//         void update_azimuth_step_();
+// };
 
 } } } // namespace snark { namespace robosense { namespace msop {

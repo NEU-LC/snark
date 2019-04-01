@@ -337,7 +337,7 @@ int main( int ac, char** av )
                             break;
                     }
                 }
-                calculator= new snark::velodyne::puck::calculator;
+                calculator = new snark::velodyne::puck::calculator;
                 if( options.exists( "--pcap" ) ) { s = new snark::velodyne::puck::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points, ntp ); }
                 else if( options.exists( "--thin" ) ) { s = new snark::velodyne::puck::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points, ntp ); }
                 else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points, ntp ); }

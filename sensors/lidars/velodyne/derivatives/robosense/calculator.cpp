@@ -56,6 +56,8 @@
 
 /// @author vsevolod vlaskine
 
+#include <iostream>
+
 #include <cmath>
 #include <fstream>
 #include <boost/lexical_cast.hpp>
@@ -86,7 +88,7 @@ void calculator::init_lasers_()
     for( unsigned int j = 0; j < robosense::msop::packet::data_t::number_of_lasers; ++j ) { lasers_[j] = laser_( j, elevation_ ); }
 }
                                                       
-calculator::calculator(): elevation_( default_elevation_ ) {}
+calculator::calculator(): elevation_( default_elevation_ ) { init_lasers_(); }
 
 calculator::calculator( const std::array< double, 16 >& elevation ): elevation_( elevation ) { init_lasers_(); }
 
@@ -111,9 +113,9 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int 
 
 ::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
 {
-    // todo: once puck/packet.cpp is fixed, use the commented line below
-    // return ::Eigen::Vector3d( range * lasers[laser].cos * std::cos( angle ), range * lasers[laser].cos * std::sin( angle ), range * lasers[laser].sin );
-    return ::Eigen::Vector3d( range * lasers_[laser].cos * std::sin( angle ), range * lasers_[laser].cos * std::cos( angle ), range * lasers_[laser].sin );
+    return ::Eigen::Vector3d( range * lasers_[laser].cos * std::sin( angle )
+                            , range * lasers_[laser].cos * std::cos( angle )
+                            , range * lasers_[laser].sin );
 }
 
 double calculator::range( unsigned int, double range ) const { return range; }

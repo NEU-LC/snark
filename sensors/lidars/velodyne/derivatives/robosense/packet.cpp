@@ -83,82 +83,129 @@ std::pair< double, double > packet::data_t::azimuths( unsigned int block ) const
     if( r > M_PI * 2 ) { r -= M_PI * 2; }
     return std::make_pair( t, r );
 }
-    
+
 namespace timing {
 
 static double block_firing_interval = 0.0001; // 100 microseconds, see 5.1.2.2
-    
-static double firing_interval = 2.304; // attention! microseconds
 
-static double recharge_interval = 18.43; // attention! microseconds
-
-} // namespace timing {
-
-static std::pair< double, double > azimuth_step( double from, double to, unsigned int subblocks_per_block )
-{
-    double diff = to - from;
-    if( diff < 0 ) { diff += M_PI * 2; }
-    diff /= subblocks_per_block;
-    static double period = timing::firing_interval * packet::data_t::number_of_lasers + timing::recharge_interval;
-    return std::make_pair( diff * ( timing::firing_interval / period ) / packet::data_t::number_of_lasers, diff * timing::recharge_interval / period );
 }
 
-packet::const_iterator::const_iterator() : packet_( NULL ), is_dual_return_( true ), done_( true ) {}
+packet::const_iterator::const_iterator() : packet_( NULL ), done_( true ) {}
 
 packet::const_iterator::const_iterator( const packet* p )
     : packet_( p )
     , block_( 0 )
     , subblock_( 0 )
-    , is_dual_return_( true )
     , done_( false )
 {
-    value_.azimuth = packet_->data.blocks[0].azimuth_as_radians();
-    update_value_();
-    update_azimuth_step_(); // todo
+    update_value_( value_.azimuth = packet_->data.blocks[0].azimuth_as_radians() );
 }
 
-void packet::const_iterator::update_value_( double step, double delay )
+void packet::const_iterator::update_value_()
 {
     const packet::data_t::laser_return& r = packet_->data.blocks[block_].channels[subblock_][value_.id];
     value_.range = r.range_as_meters();
-    value_.reflectivity = r.reflectivity();
-    value_.azimuth += step;
-    value_.delay += delay;
+    value_.reflectivity = r.reflectivity(); // todo: apply curves
+    value_.delay = subblock_ == 0 ? 0.0 : timing::block_firing_interval / 2;
+    // value_.azimuth += ???; // todo!!! azimuth step for each point?
 }
 
-// todo
-void packet::const_iterator::update_azimuth_step_() // quick and dirty
+void packet::const_iterator::update_value_( double azimuth )
 {
-    double next_azimuth = packet_->data.blocks[ block_ + 1 ].azimuth_as_radians();
-    boost::tie( firing_azimuth_step_, recharge_azimuth_step_ ) = azimuth_step( value_.azimuth, next_azimuth, is_dual_return_ ? 1 : 2 );
+    update_value_();
+    value_.azimuth += azimuth;
 }
 
-// todo
 void packet::const_iterator::operator++()
 {
-    if( is_dual_return_ )
-    {
-        ++subblock_;
-        if( subblock_ < packet::data_t::number_of_subblocks ) { update_value_(); return; }
-        subblock_ = 0;
-        ++value_.id;
-        if( value_.id < packet::data_t::number_of_lasers ) { update_value_( firing_azimuth_step_, timing::firing_interval ); return; }
-        value_.id = 0;
-    }
-    else
-    {
-        ++value_.id;
-        if( value_.id < packet::data_t::number_of_lasers ) { update_value_( firing_azimuth_step_, timing::firing_interval ); return; }
-        value_.id = 0;
-        ++subblock_;
-        if( subblock_ < packet::data_t::number_of_subblocks ) { update_value_( recharge_azimuth_step_, timing::recharge_interval ); return; }
-        subblock_ = 0;
-    }
+    ++value_.id;
+    if( value_.id < packet::data_t::number_of_lasers ) { update_value_(); return; }
+    ++subblock_;
+    value_.id = 0;
+    if( subblock_ < packet::data_t::number_of_subblocks ) { update_value_( packet_->data.azimuths( block_ ).second ); return; }
+    subblock_ = 0;
     ++block_;
     if( block_ == packet::data_t::number_of_blocks ) { done_ = true; return; }
-    update_value_( 0, timing::recharge_interval ); // quick and dirty
-    value_.azimuth = packet_->data.blocks[block_].azimuth_as_radians();
-    if( block_ < ( packet::data_t::number_of_blocks - 1 ) ) { update_azimuth_step_(); }
+    update_value_( packet_->data.blocks[block_].azimuth_as_radians() );
 }
+
+// namespace timing {
+// 
+// static double block_firing_interval = 0.0001; // 100 microseconds, see 5.1.2.2
+//     
+// static double firing_interval = 2.304; // attention! microseconds
+// 
+// static double recharge_interval = 18.43; // attention! microseconds
+// 
+// } // namespace timing {
+// 
+// // todo!
+// 
+// static std::pair< double, double > azimuth_step( double from, double to, unsigned int subblocks_per_block )
+// {
+//     double diff = to - from;
+//     if( diff < 0 ) { diff += M_PI * 2; }
+//     diff /= subblocks_per_block;
+//     static double period = timing::firing_interval * packet::data_t::number_of_lasers + timing::recharge_interval;
+//     return std::make_pair( diff * ( timing::firing_interval / period ) / packet::data_t::number_of_lasers, diff * timing::recharge_interval / period );
+// }
+// 
+// packet::const_iterator::const_iterator() : packet_( NULL ), is_dual_return_( true ), done_( true ) {}
+// 
+// packet::const_iterator::const_iterator( const packet* p )
+//     : packet_( p )
+//     , block_( 0 )
+//     , subblock_( 0 )
+//     , is_dual_return_( true )
+//     , done_( false )
+// {
+//     value_.azimuth = packet_->data.blocks[0].azimuth_as_radians();
+//     update_value_();
+//     update_azimuth_step_(); // todo
+// }
+// 
+// void packet::const_iterator::update_value_( double step, double delay )
+// {
+//     const packet::data_t::laser_return& r = packet_->data.blocks[block_].channels[subblock_][value_.id];
+//     value_.range = r.range_as_meters();
+//     value_.reflectivity = r.reflectivity(); // todo: apply curves
+//     value_.azimuth += step;
+//     value_.delay += delay;
+// }
+// 
+// // todo
+// void packet::const_iterator::update_azimuth_step_() // quick and dirty
+// {
+//     double next_azimuth = packet_->data.blocks[ block_ + 1 ].azimuth_as_radians();
+//     boost::tie( firing_azimuth_step_, recharge_azimuth_step_ ) = azimuth_step( value_.azimuth, next_azimuth, is_dual_return_ ? 1 : 2 );
+// }
+// 
+// // todo
+// void packet::const_iterator::operator++()
+// {
+//     if( is_dual_return_ )
+//     {
+//         ++subblock_;
+//         if( subblock_ < packet::data_t::number_of_subblocks ) { update_value_(); return; }
+//         subblock_ = 0;
+//         ++value_.id;
+//         if( value_.id < packet::data_t::number_of_lasers ) { update_value_( firing_azimuth_step_, timing::firing_interval ); return; }
+//         value_.id = 0;
+//     }
+//     else
+//     {
+//         ++value_.id;
+//         if( value_.id < packet::data_t::number_of_lasers ) { update_value_( firing_azimuth_step_, timing::firing_interval ); return; }
+//         value_.id = 0;
+//         ++subblock_;
+//         if( subblock_ < packet::data_t::number_of_subblocks ) { update_value_( recharge_azimuth_step_, timing::recharge_interval ); return; }
+//         subblock_ = 0;
+//     }
+//     ++block_;
+//     if( block_ == packet::data_t::number_of_blocks ) { done_ = true; return; }
+//     update_value_( 0, timing::recharge_interval ); // quick and dirty
+//     value_.azimuth = packet_->data.blocks[block_].azimuth_as_radians();
+//     if( block_ < ( packet::data_t::number_of_blocks - 1 ) ) { update_azimuth_step_(); }
+// }
 
 } } } // namespace snark { namespace robosense { namespace msop {
