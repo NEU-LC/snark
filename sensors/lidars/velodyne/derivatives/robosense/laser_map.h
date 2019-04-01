@@ -62,6 +62,7 @@
 
 namespace snark { namespace robosense {
     
+/// @todo generalize to other numbers of lasers
 class laser_map : public velodyne::laser_map
 {
     public:

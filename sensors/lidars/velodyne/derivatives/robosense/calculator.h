@@ -58,22 +58,45 @@
 
 #pragma once
 
+#include <array>
 #include <Eigen/Core>
 #include "../../impl/calculator.h"
+#include "packet.h"
 
 namespace snark { namespace robosense {
 
-struct calculator : public velodyne::calculator
+class calculator : public velodyne::calculator
 {
-    std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
-    
-    ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
-    
-    double range( unsigned int laser, double range ) const;
-    
-    double azimuth( unsigned int laser, double azimuth ) const;
-    
-    double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
+    public:
+        calculator();
+        
+        calculator( const std::array< double, 16 >& elevation ); // todo: generalize to 32 beams
+        
+        calculator( const std::string& elevation ); // todo: generalize to 32 beams
+        
+        std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
+        
+        ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
+        
+        double range( unsigned int laser, double range ) const;
+        
+        double azimuth( unsigned int laser, double azimuth ) const;
+        
+        double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
+        
+    private:
+        std::array< double, 16 > elevation_;
+        struct laser_
+        {
+            double sin;
+            double cos;
+            
+            laser_(): sin( 0 ), cos( 0 ) {}
+            laser_( unsigned int index, const std::array< double, 16 >& elevation ) : sin( std::sin( elevation[ index ] ) ), cos( std::cos( elevation[ index ] ) ) {}
+        };
+        typedef std::array< laser_, robosense::msop::packet::data_t::number_of_lasers > lasers_t_;
+        lasers_t_ lasers_;
+        void init_lasers_();
 };
 
 } } // namespace snark { namespace robosense {

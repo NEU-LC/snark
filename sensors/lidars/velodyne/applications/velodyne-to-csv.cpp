@@ -109,8 +109,6 @@ static void usage( bool )
     std::cerr << "    --udp-port <port> : read velodyne data directly from udp port" << std::endl;
     std::cerr << std::endl;
     std::cerr << "input format options" << std::endl;
-    std::cerr << "    --db <db.xml file> ; default /usr/local/etc/db.xml" << std::endl;
-    std::cerr << "              if the file is a version 0 then the legacy option is used for timing and azimuth calculation" << std::endl;
     std::cerr << "    --model=<model>: velodyne model" << std::endl;
     std::cerr << "        <model>" << std::endl;
     std::cerr << "            hdl64,hdl-64,64: hdl-64" << std::endl;
@@ -122,6 +120,13 @@ static void usage( bool )
     std::cerr << "    --robosense: same as --model=rs16" << std::endl;
     std::cerr << "    --64,--hdl64 : same as --model=hdl64" << std::endl;
     std::cerr << "    default input format: <timestamp, 8 bytes><packet, 1206 bytes>" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "configuration options:" << std::endl;
+    std::cerr << "    hdl-64" << std::endl;
+    std::cerr << "        --db=<db.xml file>; default=/usr/local/etc/db.xml" << std::endl;
+    std::cerr << "            if the file is a version 0 then the legacy option is used for timing and azimuth calculation" << std::endl;
+    std::cerr << "    rs-lidar-16" << std::endl;
+    std::cerr << "        --angles=<filename>; default: as in spec" << std::endl;
     std::cerr << std::endl;
     std::cerr << "output options:" << std::endl;
     std::cerr << "    --binary,-b[=<format>]: if present, output in binary equivalent of csv" << std::endl;
@@ -342,7 +347,9 @@ int main( int ac, char** av )
             case models::rs16:
                 std::cerr << "velodyne-to-csv: --model rs-lidar-16: implementing... does not work, yet" << std::endl;
                 if( options.exists( "--ntp" ) ) { std::cerr << "velodyne-to-csv: rs-lidar-16: --ntp: not implemented" << std::endl; return 1; }
-                calculator= new snark::robosense::calculator;
+                calculator = options.exists( "--angles" )
+                           ? new snark::robosense::calculator( options.value< std::string >( "--angles" ) )
+                           : new snark::robosense::calculator;
                 if( options.exists( "--pcap" ) ) { s = new snark::robosense::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points, boost::none ); }
                 else if( options.exists( "--thin" ) ) { s = new snark::robosense::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points, boost::none ); }
                 else if( options.exists( "--udp-port" ) ) { s = new snark::robosense::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points, boost::none ); }

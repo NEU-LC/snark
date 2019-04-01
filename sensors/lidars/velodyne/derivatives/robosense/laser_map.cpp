@@ -96,7 +96,7 @@ laser_map::laser_map() // see 9
     index_to_id_[14]=9;
     index_to_id_[15]=8;
 }
- 
+
 unsigned int laser_map::id_to_index( unsigned int id ) const { return id_to_index_[id]; }
 
 unsigned int laser_map::index_to_id( unsigned int index ) const { return index_to_id_[index]; }

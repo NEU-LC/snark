@@ -57,51 +57,55 @@
 /// @author vsevolod vlaskine
 
 #include <cmath>
-#include <boost/array.hpp>
+#include <fstream>
+#include <boost/lexical_cast.hpp>
+#include <comma/base/exception.h>
 #include "calculator.h"
-#include "packet.h"
 
 namespace snark { namespace robosense {
 
-// todo
-static boost::array< double, 16 > elevation_ = {{ -15. * M_PI / 180
-                                                , -13. * M_PI / 180
-                                                , -11. * M_PI / 180
-                                                ,  -9. * M_PI / 180
-                                                ,  -7. * M_PI / 180
-                                                ,  -5. * M_PI / 180
-                                                ,  -3. * M_PI / 180
-                                                ,  -1. * M_PI / 180
-                                                ,  15. * M_PI / 180
-                                                ,  13. * M_PI / 180
-                                                ,  11. * M_PI / 180
-                                                ,   9. * M_PI / 180
-                                                ,   7. * M_PI / 180
-                                                ,   5. * M_PI / 180
-                                                ,   3. * M_PI / 180
-                                                ,   1. * M_PI / 180 }};
+static std::array< double, 16 > default_elevation_ = {{ -15. * M_PI / 180
+                                                      , -13. * M_PI / 180
+                                                      , -11. * M_PI / 180
+                                                      ,  -9. * M_PI / 180
+                                                      ,  -7. * M_PI / 180
+                                                      ,  -5. * M_PI / 180
+                                                      ,  -3. * M_PI / 180
+                                                      ,  -1. * M_PI / 180
+                                                      ,  15. * M_PI / 180
+                                                      ,  13. * M_PI / 180
+                                                      ,  11. * M_PI / 180
+                                                      ,   9. * M_PI / 180
+                                                      ,   7. * M_PI / 180
+                                                      ,   5. * M_PI / 180
+                                                      ,   3. * M_PI / 180
+                                                      ,   1. * M_PI / 180 }};
 
-struct laser
+void calculator::init_lasers_()
 {
-    double sin;
-    double cos;
-    
-    laser() {}
-    laser( unsigned int index ) : sin( std::sin( elevation_[ index ] ) ), cos( std::cos( elevation_[ index ] ) ) {}
-};
-
-typedef boost::array< laser, robosense::msop::packet::data_t::number_of_lasers > lasers_t;
-
-// todo
-
-static lasers_t init_lasers()
-{
-    lasers_t lasers;
-    for( unsigned int j = 0; j < robosense::msop::packet::data_t::number_of_lasers; ++j ) { lasers[j] = laser( j ); }
-    return lasers;
+    for( unsigned int j = 0; j < robosense::msop::packet::data_t::number_of_lasers; ++j ) { lasers_[j] = laser_( j, elevation_ ); }
 }
+                                                      
+calculator::calculator(): elevation_( default_elevation_ ) {}
 
-static lasers_t lasers = init_lasers();
+calculator::calculator( const std::array< double, 16 >& elevation ): elevation_( elevation ) { init_lasers_(); }
+
+calculator::calculator( const std::string& elevation )
+{
+    std::ifstream ifs( elevation );
+    if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open '" << elevation << "'" ); }
+    unsigned int i = 0;
+    for( ; !ifs.eof() && ifs.good() && i < 16; )
+    {
+        std::string line;
+        std::getline( ifs, line );
+        if( line.empty() ) { continue; }
+        elevation_[i] = boost::lexical_cast< double >( line );
+        ++i;
+    }
+    if( i < 16 ) { COMMA_THROW( comma::exception, "expected 16 elevation angle values in '" << elevation << "'; got only " << i ); }
+    init_lasers_();
+}
 
 std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int laser, double range, double angle ) const { return std::make_pair( ::Eigen::Vector3d::Zero(), point( laser, range, angle ) ); }
 
@@ -109,10 +113,12 @@ std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int 
 {
     // todo: once puck/packet.cpp is fixed, use the commented line below
     // return ::Eigen::Vector3d( range * lasers[laser].cos * std::cos( angle ), range * lasers[laser].cos * std::sin( angle ), range * lasers[laser].sin );
-    return ::Eigen::Vector3d( range * lasers[laser].cos * std::sin( angle ), range * lasers[laser].cos * std::cos( angle ), range * lasers[laser].sin );
+    return ::Eigen::Vector3d( range * lasers_[laser].cos * std::sin( angle ), range * lasers_[laser].cos * std::cos( angle ), range * lasers_[laser].sin );
 }
 
 double calculator::range( unsigned int, double range ) const { return range; }
+
+// todo!!! validate azimuth()
 
 // todo! super quick and dirty; by right the places to fix:
 //       - robosense/packet.cpp: fiddly part: fix azimuth and make sure step works correctly

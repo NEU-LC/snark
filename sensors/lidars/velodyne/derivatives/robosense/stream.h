@@ -100,7 +100,7 @@ class stream : public boost::noncopyable, public velodyne::stream
         /// return true if scan is valid
         bool is_scan_valid() const;
         
-        unsigned int packet_duration() const { COMMA_THROW( comma::exception, "todo" ); } // { return packet_traits< packet >::packet_duration; }
+        unsigned int packet_duration() const { return velodyne::packet_traits< msop::packet >::packet_duration; } // todo: confirm packet duration (currently assumed 100 microseconds)
         
     private:
         boost::scoped_ptr< S > stream_;
@@ -130,7 +130,7 @@ inline velodyne::laser_return* stream< S >::read()
             if( !buffer_ ) { closed_ = true; return NULL; }
             const msop::packet* p = reinterpret_cast< const msop::packet* >( buffer_ );
             auto res=velodyne::impl::stream_traits< S >::is_new_scan( scan_tick_, *stream_, *p );
-            is_scan_valid_=res.second;
+            is_scan_valid_ = res.second;
             if( res.first ) { ++scan_; }
             packet_iterator_ = msop::packet::const_iterator( p );
             timestamp_ = velodyne::impl::stream_traits< S >::timestamp( *stream_ ); //timestamp_ = ntp_ ? ntp_->update_timestamp( velodyne::impl::stream_traits< S >::timestamp( *stream_ ), p->timestamp() ) : velodyne::impl::stream_traits< S >::timestamp( *stream_ );
