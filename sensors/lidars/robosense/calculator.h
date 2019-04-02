@@ -59,6 +59,7 @@
 #pragma once
 
 #include <array>
+#include <string>
 #include <Eigen/Core>
 #include "packet.h"
 
@@ -73,15 +74,11 @@ class calculator
         
         calculator( const std::string& elevation ); // todo: generalize to 32 beams
         
-        std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > ray( unsigned int laser, double range, double angle ) const;
-        
         ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
         
-        double range( unsigned int laser, double range ) const;
+        double intensity( unsigned int laser, unsigned char intensity, double distance ) const; // todo
         
-        double azimuth( unsigned int laser, double azimuth ) const;
-        
-        double intensity( unsigned int laser, unsigned char intensity, double distance ) const;
+        const std::array< double, 16 >& elevation() const { return elevation_; }
         
     private:
         std::array< double, 16 > elevation_;

@@ -100,11 +100,12 @@ struct output
     comma::uint32 id;
     comma::uint32 scan;
     double range;
-    double azimuth;
+    double bearing;
+    double elevation;
     comma::uint32 reflectivity;
     Eigen::Vector3d coordinates;
     
-    output(): id( 0 ), scan( 0 ), range( 0 ), azimuth( 0 ), reflectivity( 0 ), coordinates( Eigen::Vector3d::Zero() ) {}
+    output(): id( 0 ), scan( 0 ), range( 0 ), bearing( 0 ), elevation( 0 ), reflectivity( 0 ), coordinates( Eigen::Vector3d::Zero() ) {}
 };
 
 namespace comma { namespace visiting {
@@ -117,7 +118,8 @@ template <> struct traits< output >
         v.apply( "id", p.id );
         v.apply( "scan", p.scan );
         v.apply( "range", p.range );
-        v.apply( "azimuth", p.azimuth );
+        v.apply( "bearing", p.bearing );
+        v.apply( "elevation", p.elevation );
         v.apply( "coordinates", p.coordinates );
     }
 };
@@ -171,14 +173,15 @@ int main( int ac, char** av )
                 o.t = p.first + boost::posix_time::microseconds( it->delay * 1000000 );
                 o.id = it->id;
                 o.scan = scan;
-                o.azimuth = it->azimuth;
                 o.range = it->range;
+                o.bearing = it->azimuth;
+                o.elevation = calculator.elevation()[ o.id ];
                 o.reflectivity = it->reflectivity;
-                o.coordinates = calculator.point( o.id, o.range, o.azimuth );
+                o.coordinates = calculator.point( o.id, o.range, o.bearing );
                 ostream.write( o );
             }
             // todo: update scan
-            // todo: adjust timestamp
+            // todo: timestamp by laser id (see https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc)
             // todo: discard invalid scans
         }        
         return 0;

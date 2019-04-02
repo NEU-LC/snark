@@ -111,26 +111,13 @@ calculator::calculator( const std::string& elevation )
     init_lasers_();
 }
 
-std::pair< ::Eigen::Vector3d, ::Eigen::Vector3d > calculator::ray( unsigned int laser, double range, double angle ) const { return std::make_pair( ::Eigen::Vector3d::Zero(), point( laser, range, angle ) ); }
-
 ::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
 {
+    //return ::Eigen::Vector3d( -range * lasers_[laser].cos * std::sin( angle )
     return ::Eigen::Vector3d( range * lasers_[laser].cos * std::sin( angle )
                             , range * lasers_[laser].cos * std::cos( angle )
                             , range * lasers_[laser].sin );
 }
-
-double calculator::range( unsigned int, double range ) const { return range; }
-
-// todo!!! validate azimuth()
-
-// todo! super quick and dirty; by right the places to fix:
-//       - robosense/packet.cpp: fiddly part: fix azimuth and make sure step works correctly
-//       - robosense/calculator.cpp: easy part: simply swap sin and cos in calculator::point()
-//       - scan_tick.cpp: packet_angle_( robosense::msop::packet::data_t ): hardcoded offset
-//       - if time permits, see why there is such a 90-degree discrepancy in robosense spec
-// double calculator::azimuth( unsigned int, double azimuth ) const { return azimuth; }
-double calculator::azimuth( unsigned int, double azimuth ) const { return M_PI / 2 - azimuth; }
 
 double calculator::intensity( unsigned int, unsigned char intensity, double ) const { return intensity; }
 

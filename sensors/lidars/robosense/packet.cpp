@@ -101,7 +101,6 @@ packet::const_iterator::const_iterator( const packet* p )
     , done_( false )
 {
     update_value_( packet_->data.blocks[block_].azimuth_as_radians() );
-    //std::cerr << "--> c: range: " << value_.range << " delay: " << value_.delay << " azimuth: " << value_.azimuth << std::endl;
 }
 
 void packet::const_iterator::update_value_()
@@ -111,14 +110,12 @@ void packet::const_iterator::update_value_()
     value_.reflectivity = r.reflectivity(); // todo: apply curves
     value_.delay = subblock_ == 0 ? 0.0 : timing::block_firing_interval / 2;
     // value_.azimuth += ???; // todo!!! azimuth step for each point?
-    //std::cerr << "--> a: range: " << value_.range << " delay: " << value_.delay << std::endl;
 }
 
 void packet::const_iterator::update_value_( double azimuth )
 {
     update_value_();
     value_.azimuth = azimuth;
-    //std::cerr << "--> b: range: " << value_.range << " delay: " << value_.delay << " azimuth: " << value_.azimuth << std::endl;
 }
 
 void packet::const_iterator::operator++()

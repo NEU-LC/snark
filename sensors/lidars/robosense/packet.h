@@ -139,11 +139,11 @@ class packet::const_iterator
         {
             comma::uint32 id;
             double delay;
-            double azimuth;
             double range;
+            double azimuth;
             comma::uint32 reflectivity;
 
-            value_type() : id( 0 ), delay( 0 ), azimuth( 0 ), range( 0 ), reflectivity( 0 ) {}
+            value_type() : id( 0 ), delay( 0 ), range( 0 ), azimuth( 0 ), reflectivity( 0 ) {}
         };
 
         const_iterator();
