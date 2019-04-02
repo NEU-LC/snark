@@ -70,18 +70,21 @@ class calculator
     public:
         calculator();
         
-        calculator( const std::array< double, 16 >& elevation ); // todo: generalize to 32 beams
+        calculator( const std::string& elevation, const std::string& channel_num ); // todo: generalize to 32 beams
         
-        calculator( const std::string& elevation ); // todo: generalize to 32 beams
+        //calculator( const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation ); // todo: generalize to 32 beams
+        
+        double range( unsigned int r, unsigned int laser, unsigned int temperature ) const;
         
         ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
         
         double intensity( unsigned int laser, unsigned char intensity, double distance ) const; // todo
         
-        const std::array< double, 16 >& elevation() const { return elevation_; }
+        const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation() const { return elevation_; }
         
     private:
-        std::array< double, 16 > elevation_;
+        std::array< double, robosense::msop::packet::data_t::number_of_lasers > elevation_;
+        std::array< std::array< double, 41 >, robosense::msop::packet::data_t::number_of_lasers > channel_num_;
         struct laser_
         {
             double sin;

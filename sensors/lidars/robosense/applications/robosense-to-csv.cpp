@@ -74,7 +74,9 @@ static void usage( bool verbose )
     std::cerr << "only rs-lidar-16 currently supported" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
-    std::cerr << "    --angles,--angle,-a=<filename>; default: as in spec" << std::endl;
+    std::cerr << "    --calibration,-c=<directory>; directory containing calibration files: angle.csv, ChannelNum.csv, curves.csv etc" << std::endl;
+    std::cerr << "    --calibration-angles,--angles,--angle,-a=<filename>; default: as in spec" << std::endl;
+    std::cerr << "    --calibration-channels,--channels=<filename>; default: 450 (i.e. 4.50cm) for all channels" << std::endl;
     //std::cerr << "    --rotation-per-second=<rps>: specify rotation speed; default: 20" << std::endl;
     std::cerr << std::endl;
     std::cerr << "output options:" << std::endl;
@@ -87,6 +89,7 @@ static void usage( bool verbose )
     std::cerr << "        if the data is missing more than <n> consecutive packets (calculated based on timestamp), then the next packet after the gap will be marked as the beginning of a new scan" << std::endl;
     std::cerr << "        use --discard-invalid-scans option together with this option to discard all the scans that have missing consecutive packets greater than <n>" << std::endl;
     std::cerr << "        by default (when --missing-packets-threshold is not specified) it will mark new/invalid scan if more than 25 millisecond of data is missing (half a circle at 20Hz)" << std::endl;
+    std::cerr << "    --temperature,-t=<celcius>; default=20; integer from 0 to 39" << std::endl;
     std::cerr << std::endl;
     std::cerr << "csv options" << std::endl;
     std::cerr << comma::csv::options::usage( verbose ) << std::endl;
@@ -97,8 +100,8 @@ static void usage( bool verbose )
 struct output
 {
     boost::posix_time::ptime t;
-    comma::uint32 id;
     comma::uint32 scan;
+    comma::uint32 id;
     double range;
     double bearing;
     double elevation;
@@ -115,8 +118,8 @@ template <> struct traits< output >
     template < typename Key, class Visitor > static void visit( const Key&, const output& p, Visitor& v )
     {
         v.apply( "t", p.t );
-        v.apply( "id", p.id );
         v.apply( "scan", p.scan );
+        v.apply( "id", p.id );
         v.apply( "range", p.range );
         v.apply( "bearing", p.bearing );
         v.apply( "elevation", p.elevation );
@@ -151,29 +154,36 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< output >( false ), ',' ) << std::endl; return 0; }
         bool output_invalid_points = options.exists( "--output-invalid-points" );
+        std::vector< char > buffer( snark::robosense::msop::packet::size );
+        options.assert_mutually_exclusive( "--calibration,-c", "--calibration-angles,--angles,--angle,-a" );
+        options.assert_mutually_exclusive( "--calibration,-c", "--calibration-channels,--channels" );
+        std::string calibration = options.value< std::string >( "--calibration,-c", "" );
+        std::string angles = options.value< std::string >( "--calibration-angles,--angles,--angle,-a", "" );
+        std::string channels = options.value< std::string >( "----calibration-channels,--channels", "" );
+        snark::robosense::calculator calculator = calibration.empty()
+                                                ? snark::robosense::calculator( angles, channels )
+                                                : snark::robosense::calculator( calibration + "/angle.csv", calibration + "/ChannelNum.csv" );
+        unsigned int temperature = options.value( "--temperature,-t", 20 );
+        if( temperature > 40 ) { std::cerr << "robosense-to-csv: expected temperature between 0 and 40; got: " << temperature << std::endl; return 1; }
         comma::csv::options csv( options );
         csv.full_xpath = false;
         comma::csv::output_stream< output > ostream( std::cout, csv );
         uint32_t scan = 0;
-        std::vector< char > buffer( snark::robosense::msop::packet::size );
-        snark::robosense::calculator calculator;
-        std::string angles = options.value< std::string >( "--angles", "" );
-        if( !angles.empty() ) { calculator = snark::robosense::calculator( angles ); }
         while( std::cin.good() && !std::cin.eof() )
         {
             auto p = read( std::cin, &buffer[0] );
             if( !p.second ) { break; }
             for( snark::robosense::msop::packet::const_iterator it( p.second ); !it.done() && std::cout.good(); ++it )
             {
-                static double min_range = 0.2; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
-                static double max_range = 200.0; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
+                static unsigned int min_range = 2; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
+                static unsigned int max_range = 20000; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
                 bool valid = it->range > min_range && it->range < max_range;
                 if( !valid && !output_invalid_points ) { continue; }
                 output o;
                 o.t = p.first + boost::posix_time::microseconds( it->delay * 1000000 );
-                o.id = it->id;
                 o.scan = scan;
-                o.range = it->range;
+                o.id = it->id;
+                o.range = calculator.range( it->range, o.id, temperature );
                 o.bearing = it->azimuth;
                 o.elevation = calculator.elevation()[ o.id ];
                 o.reflectivity = it->reflectivity;

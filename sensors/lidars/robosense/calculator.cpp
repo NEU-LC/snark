@@ -57,59 +57,122 @@
 /// @author vsevolod vlaskine
 
 #include <iostream>
-
+#include <array>
 #include <cmath>
 #include <fstream>
 #include <boost/lexical_cast.hpp>
 #include <comma/base/exception.h>
+#include <comma/csv/stream.h>
 #include <comma/string/string.h>
+#include <comma/visiting/traits.h>
 #include "calculator.h"
 
 namespace snark { namespace robosense {
 
-static std::array< double, 16 > default_elevation_ = {{ -15. * M_PI / 180
-                                                      , -13. * M_PI / 180
-                                                      , -11. * M_PI / 180
-                                                      ,  -9. * M_PI / 180
-                                                      ,  -7. * M_PI / 180
-                                                      ,  -5. * M_PI / 180
-                                                      ,  -3. * M_PI / 180
-                                                      ,  -1. * M_PI / 180
-                                                      ,  15. * M_PI / 180
-                                                      ,  13. * M_PI / 180
-                                                      ,  11. * M_PI / 180
-                                                      ,   9. * M_PI / 180
-                                                      ,   7. * M_PI / 180
-                                                      ,   5. * M_PI / 180
-                                                      ,   3. * M_PI / 180
-                                                      ,   1. * M_PI / 180 }};
+struct channel_num { std::array< double, 41 > data; };
 
+} } // namespace snark { namespace robosense {
+
+namespace comma { namespace visiting {
+
+template <> struct traits< snark::robosense::channel_num >
+{
+    template < typename K, typename V > static void visit( const K& k,       snark::robosense::channel_num& t, V& v ) { v.apply( "data", t.data ); }
+    template < typename K, typename V > static void visit( const K& k, const snark::robosense::channel_num& t, V& v ) { v.apply( "data", t.data ); }
+};
+    
+} } // namespace comma { namespace visiting {
+
+namespace snark { namespace robosense {
+
+static std::array< double, robosense::msop::packet::data_t::number_of_lasers > default_elevation_ = {{ -15. * M_PI / 180
+                                                                                                    , -13. * M_PI / 180
+                                                                                                    , -11. * M_PI / 180
+                                                                                                    ,  -9. * M_PI / 180
+                                                                                                    ,  -7. * M_PI / 180
+                                                                                                    ,  -5. * M_PI / 180
+                                                                                                    ,  -3. * M_PI / 180
+                                                                                                    ,  -1. * M_PI / 180
+                                                                                                    ,  15. * M_PI / 180
+                                                                                                    ,  13. * M_PI / 180
+                                                                                                    ,  11. * M_PI / 180
+                                                                                                    ,   9. * M_PI / 180
+                                                                                                    ,   7. * M_PI / 180
+                                                                                                    ,   5. * M_PI / 180
+                                                                                                    ,   3. * M_PI / 180
+                                                                                                    ,   1. * M_PI / 180 }};
+
+static std::array< std::array< double, 41 >, robosense::msop::packet::data_t::number_of_lasers > default_channel_num_ =
+{{
+    {{ 454,454,454,454,454,454,454,454,455,454,456,455,457,457,456,456,456,456,457,457,458,459,459,460,461,462,462,463,463,463,463,463,463,463,463,463,463,463,463,463,463 }},
+    {{ 459,459,459,459,459,459,459,459,459,459,460,459,461,460,460,460,460,460,461,462,463,463,464,465,465,466,467,467,467,467,467,467,467,467,467,467,467,467,467,467,467 }},
+    {{ 450,450,450,450,450,450,450,450,451,451,451,451,452,452,453,453,454,454,455,456,456,457,458,459,459,460,461,462,462,462,462,462,462,462,462,462,462,462,462,462,462 }},
+    {{ 451,451,451,451,451,451,451,451,452,451,452,452,452,453,453,453,454,454,455,456,457,458,459,460,460,461,462,463,463,463,463,463,463,463,463,463,463,463,463,463,463 }},
+    {{ 452,452,452,452,452,452,452,452,452,452,453,452,454,454,455,455,456,453,452,452,453,454,454,455,456,457,458,457,457,457,457,457,457,457,457,457,457,457,457,457,457 }},
+    {{ 451,451,451,451,451,451,451,451,451,451,452,451,453,452,453,453,454,452,451,451,452,452,453,454,455,456,456,456,456,456,456,456,456,456,456,456,456,456,456,456,456 }},
+    {{ 462,462,462,462,462,462,462,462,463,463,464,463,465,465,465,466,466,464,463,463,464,465,465,466,467,468,469,468,468,468,468,468,468,468,468,468,468,468,468,468,468 }},
+    {{ 461,461,461,461,461,461,461,461,462,461,462,462,464,463,464,464,465,463,462,462,463,464,465,466,467,467,468,467,467,467,467,467,467,467,467,467,467,467,467,467,467 }},
+    {{ 452,452,452,452,452,452,452,452,452,452,453,453,453,454,454,453,450,449,449,450,451,452,452,453,453,451,451,451,451,451,451,451,451,451,451,451,451,451,451,451,451 }},
+    {{ 467,467,467,467,467,467,467,467,468,467,468,468,469,469,470,468,466,465,465,466,467,468,468,468,469,467,467,468,468,468,468,468,468,468,468,468,468,468,468,468,468 }},
+    {{ 454,454,454,454,454,454,454,454,455,455,455,456,456,457,458,458,459,459,459,459,459,460,460,461,462,463,464,464,464,464,464,464,464,464,464,464,464,464,464,464,464 }},
+    {{ 461,461,461,461,461,461,461,461,461,461,462,462,463,463,464,464,465,466,466,466,466,467,467,468,469,469,470,471,471,471,471,471,471,471,471,471,471,471,471,471,471 }},
+    {{ 450,450,450,450,450,450,450,450,451,450,451,450,452,451,452,453,454,454,455,456,457,458,458,459,460,459,458,458,458,458,458,458,458,458,458,458,458,458,458,458,458 }},
+    {{ 455,455,455,455,455,455,455,455,455,455,456,455,457,457,457,458,459,459,460,462,463,464,463,464,465,465,464,463,463,463,463,463,463,463,463,463,463,463,463,463,463 }},
+    {{ 459,459,459,459,459,459,459,459,460,460,461,460,462,461,462,463,464,464,465,467,468,469,468,470,471,471,469,469,469,469,469,469,469,469,469,469,469,469,469,469,469 }},
+    {{ 450,450,450,450,450,450,450,450,451,451,452,452,453,453,454,454,455,455,456,458,459,460,460,461,462,461,460,459,459,459,459,459,459,459,459,459,459,459,459,459,459 }}
+}};
+                                                      
 void calculator::init_lasers_()
 {
     for( unsigned int j = 0; j < robosense::msop::packet::data_t::number_of_lasers; ++j ) { lasers_[j] = laser_( j, elevation_ ); }
 }
                                                       
-calculator::calculator(): elevation_( default_elevation_ ) { init_lasers_(); }
+calculator::calculator(): elevation_( default_elevation_ ), channel_num_( default_channel_num_ ) { init_lasers_(); }
 
-calculator::calculator( const std::array< double, 16 >& elevation ): elevation_( elevation ) { init_lasers_(); }
+//calculator::calculator( const std::array< double, 16 >& elevation ): elevation_( elevation ), channel_num_( default_channel_num_ ) { init_lasers_(); }
 
-calculator::calculator( const std::string& elevation )
+calculator::calculator( const std::string& elevation, const std::string& channel_num )
 {
-    std::ifstream ifs( elevation );
-    if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open '" << elevation << "'" ); }
-    unsigned int i = 0;
-    for( ; !ifs.eof() && ifs.good() && i < 16; )
+    if( elevation.empty() )
     {
-        std::string line;
-        std::getline( ifs, line );
-        line = comma::strip( line );
-        if( line.empty() ) { continue; }
-        elevation_[i] = boost::lexical_cast< double >( line ) * M_PI / 180;
-        ++i;
+        elevation_ = default_elevation_;
     }
-    if( i < 16 ) { COMMA_THROW( comma::exception, "expected 16 elevation angle values in '" << elevation << "'; got only " << i ); }
+    else
+    {
+        std::ifstream ifs( elevation );
+        if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open '" << elevation << "'" ); }
+        unsigned int i = 0;
+        for( ; !ifs.eof() && ifs.good() && i < 16; )
+        {
+            std::string line;
+            std::getline( ifs, line );
+            line = comma::strip( line );
+            if( line.empty() ) { continue; }
+            elevation_[i] = boost::lexical_cast< double >( line ) * M_PI / 180;
+            ++i;
+        }
+        if( i < 16 ) { COMMA_THROW( comma::exception, "expected 16 elevation angle values in '" << elevation << "'; got only " << i ); }
+    }
     init_lasers_();
+    if( channel_num.empty() )
+    {
+        channel_num_  = default_channel_num_; // uber quick and dirty
+    }
+    else
+    {
+        std::ifstream ifs( channel_num );
+        if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open '" << elevation << "'" ); }
+        comma::csv::input_stream< robosense::channel_num > is( ifs );
+        for( unsigned int i = 0; !ifs.eof() && ifs.good() && i < 16; ++i )
+        {
+            const auto* p = is.read();
+            if( !p ) { COMMA_THROW( comma::exception, "expected 16 channel num arrays in '" << channel_num << "'; got only " << i ); }
+            channel_num_[i] = p->data;
+        }
+    }
 }
+
+double calculator::range( unsigned int r, unsigned int laser, unsigned int temperature ) const { return 0.01 * ( r - channel_num_[laser][temperature] ); }
 
 ::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
 {

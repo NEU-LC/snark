@@ -98,10 +98,6 @@ struct packet : public comma::packed::packed_struct< packet, 1248 >
         {
             comma::packed::big_endian_uint16 range; // see 5.1.2.3
             comma::packed::byte reflectivity;
-            
-            //double range_as_meters() const { return 0.01 * range(); } // see 5.1.2.3
-            //double range_as_meters() const { return 0.005 * ( range() - 450 ); } // see 5.1.2.3, but the ros code says it's 0.5cm
-            double range_as_meters() const { return 0.01 * ( range() - 450 ); } // see 5.1.2.3, but the ros code says it's 0.5cm
         };
         
         struct block: public comma::packed::packed_struct< block, 2 + 2 + number_of_lasers * number_of_subblocks * laser_return::size >
@@ -141,7 +137,7 @@ class packet::const_iterator
         {
             comma::uint32 id;
             double delay;
-            double range;
+            unsigned int range;
             double azimuth;
             comma::uint32 reflectivity;
 

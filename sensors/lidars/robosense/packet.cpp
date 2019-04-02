@@ -106,7 +106,7 @@ packet::const_iterator::const_iterator( const packet* p )
 void packet::const_iterator::update_value_()
 {
     const packet::data_t::laser_return& r = packet_->data.blocks[block_].channels[subblock_][value_.id];
-    value_.range = r.range_as_meters();
+    value_.range = r.range();
     value_.reflectivity = r.reflectivity(); // todo: apply curves
     value_.delay = subblock_ == 0 ? 0.0 : timing::block_firing_interval / 2;
     // value_.azimuth += ???; // todo!!! azimuth step for each point?
