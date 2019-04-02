@@ -28,7 +28,6 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <comma/base/exception.h>
-#include "derivatives/robosense/packet.h"
 #include "hdl64/packet.h"
 #include "packet_traits.h"
 #include "puck/packet.h"
@@ -41,9 +40,6 @@ namespace detail {
 static unsigned int packet_angle_( const velodyne::hdl64::packet& p ) { return p.blocks[0].rotation() + 9000; } // 0 = behind the vehicle
 
 static unsigned int packet_angle_( const velodyne::puck::packet& p ) { return p.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; } // quick and dirty: -90 degrees for now; see todo comments in puck/calculator.cpp
-
-//static unsigned int packet_angle_( const robosense::msop::packet& p ) { COMMA_THROW( comma::exception, "todo" ); }
-static unsigned int packet_angle_( const robosense::msop::packet& p ) { return p.data.blocks[0].azimuth() + ( 36000 - 9000 ) + 9000; }
 
 template< typename P >
 static boost::posix_time::time_duration timestamp_threshold( const boost::optional< unsigned >& threshold_n )
@@ -76,6 +72,5 @@ std::pair< bool, bool > scan_tick::is_new_scan( const P& packet, boost::posix_ti
 
 template std::pair< bool, bool > scan_tick::is_new_scan< hdl64::packet >( const hdl64::packet& packet, boost::posix_time::ptime  timestamp );
 template std::pair< bool, bool > scan_tick::is_new_scan< puck::packet >( const puck::packet& packet, boost::posix_time::ptime  timestamp );
-template std::pair< bool, bool > scan_tick::is_new_scan< robosense::msop::packet >( const robosense::msop::packet& packet, boost::posix_time::ptime timestamp );
 
 } } // namespace snark {  namespace velodyne {

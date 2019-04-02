@@ -52,9 +52,6 @@
 #include "../puck/calculator.h"
 #include "../puck/packet.h"
 #include "../puck/stream.h"
-#include "../derivatives/robosense/calculator.h"
-#include "../derivatives/robosense/packet.h"
-#include "../derivatives/robosense/stream.h"
 
 //#include <google/profiler.h>
 
@@ -112,12 +109,10 @@ static void usage( bool )
     std::cerr << "    --model=<model>: velodyne model" << std::endl;
     std::cerr << "        <model>" << std::endl;
     std::cerr << "            hdl64,hdl-64,64: hdl-64" << std::endl;
-    std::cerr << "            rs16,rs-lidar-16: robosense rs-lidar-16" << std::endl;
     std::cerr << "            vlp16,vlp-16,puck: puck vlp-16" << std::endl;
     std::cerr << "    --proprietary,-q : read velodyne data directly from stdin using the proprietary protocol" << std::endl;
     std::cerr << "        <header, 16 bytes><timestamp, 12 bytes><packet, 1206 bytes><footer, 4 bytes>" << std::endl;
     std::cerr << "    --puck: same as --model=puck" << std::endl;
-    std::cerr << "    --robosense: same as --model=rs16" << std::endl;
     std::cerr << "    --64,--hdl64 : same as --model=hdl64" << std::endl;
     std::cerr << "    default input format: <timestamp, 8 bytes><packet, 1206 bytes>" << std::endl;
     std::cerr << std::endl;
@@ -179,12 +174,6 @@ static void usage( bool )
     std::cerr << "    just the command line would be longer)" << std::endl;
     std::cerr << "    raw/*.bin | velodyne-to-csv --db db.xml --binary | > velodyne.bin" << std::endl;
     std::cerr << "    cat velodyne.bin | view-points --fields \",id,,,,,x,y,z\" --binary $(velodyne-to-csv --output-format)" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "copyright (c) 2011 Australian Centre for Field Robotics" << std::endl;
-    std::cerr << "                   http://www.acfr.usyd.edu.au/" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "authors" << std::endl;
-    std::cerr << "    Vsevolod Vlaskine, v.vlaskine@acfr.usyd.edu.au" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -293,7 +282,7 @@ int main( int ac, char** av )
         if( options.exists( "--binary,-b" ) ) { csv.format( format ); }
         options.assert_mutually_exclusive( "--pcap,--thin,--udp-port,--proprietary,-q" );
         options.assert_mutually_exclusive( "--puck,--db" );
-        options.assert_mutually_exclusive( "--robosense,--puck,--model" );
+        options.assert_mutually_exclusive( "--puck,--model" );
         double min_range = options.value( "--min-range", 0.0 );
         boost::optional<double> max_range=options.optional<double>("--max-range");
         bool raw_intensity=options.exists( "--raw-intensity" );
@@ -304,13 +293,12 @@ int main( int ac, char** av )
         snark::velodyne::calculator* calculator = NULL;
         snark::velodyne::stream* s = NULL;
         boost::scoped_ptr< snark::velodyne::hdl64::db > db;
-        struct models { enum values { hdl64, puck, rs16 }; };
-        options.assert_mutually_exclusive( "--model,--puck,--hdl64,--64,--robosense" );
+        struct models { enum values { hdl64, puck }; };
+        options.assert_mutually_exclusive( "--model,--puck,--hdl64,--64" );
         models::values model;
         std::string model_string = options.value< std::string >( "--model", "" );
         if( options.exists( "--puck" ) || model_string == "puck" || model_string == "vlp16" || model_string == "vlp-16" ) { model = models::puck; }
         else if( options.exists( "--hdl64,--64" ) || model_string == "hdl64" || model_string == "hdl-64" || model_string == "64" ) { model = models::hdl64; }
-        else if( options.exists( "--robosense" ) || model_string == "rs16" || model_string == "rs-lidar-16" ) { model = models::rs16; }
         else if( model_string.empty() ) { std::cerr << "velodyne-to-csv: please specify --model" << std::endl; return 1; }
         else { std::cerr << "velodyne-to-csv: expected model, got: \"" << model_string << "\"" << std::endl; return 1; }
         boost::optional< snark::velodyne::puck::ntp_t > ntp;
@@ -322,19 +310,10 @@ int main( int ac, char** av )
                     std::vector<std::string> v = comma::split(options.value<std::string>("--ntp"), ',');
                     switch (v.size())
                     {
-                        case 0:
-                            ntp = snark::velodyne::puck::ntp_t();
-                            break;
-                        case 1:
-                            ntp = snark::velodyne::puck::ntp_t(boost::lexical_cast<double>(v[0]));
-                            break;
-                        case 2:
-                            ntp = snark::velodyne::puck::ntp_t(boost::lexical_cast<double>(v[0]), v[1] == "permissive");
-                            break;
-                        default:
-                            std::cerr << "velodyne-to-csv: expected --ntp=[<threshold>],[permissive]; got --ntp=" << options.value<std::string>("--ntp") << std::endl;
-                            return 1;
-                            break;
+                        case 0: ntp = snark::velodyne::puck::ntp_t(); break;
+                        case 1: ntp = snark::velodyne::puck::ntp_t(boost::lexical_cast<double>(v[0])); break;
+                        case 2: ntp = snark::velodyne::puck::ntp_t(boost::lexical_cast<double>(v[0]), v[1] == "permissive"); break;
+                        default: std::cerr << "velodyne-to-csv: expected --ntp=[<threshold>],[permissive]; got --ntp=" << options.value<std::string>("--ntp") << std::endl; return 1;
                     }
                 }
                 calculator = new snark::velodyne::puck::calculator;
@@ -343,18 +322,6 @@ int main( int ac, char** av )
                 else if( options.exists( "--udp-port" ) ) { s = new snark::velodyne::puck::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points, ntp ); }
                 else if( options.exists( "--proprietary,-q" ) ) { s = new snark::velodyne::puck::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points, ntp ); }
                 else { s = new snark::velodyne::puck::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, ntp ); }
-                break;
-            case models::rs16:
-                std::cerr << "velodyne-to-csv: --model rs-lidar-16: to be removed; use robosense-to-csv" << std::endl;
-                if( options.exists( "--ntp" ) ) { std::cerr << "velodyne-to-csv: rs-lidar-16: --ntp: not implemented" << std::endl; return 1; }
-                calculator = options.exists( "--angles" )
-                           ? new snark::robosense::calculator( options.value< std::string >( "--angles" ) )
-                           : new snark::robosense::calculator;
-                if( options.exists( "--pcap" ) ) { s = new snark::robosense::stream< snark::pcap_reader >( new snark::pcap_reader, output_invalid_points, boost::none ); }
-                else if( options.exists( "--thin" ) ) { s = new snark::robosense::stream< snark::thin_reader >( new snark::thin_reader, output_invalid_points, boost::none ); }
-                else if( options.exists( "--udp-port" ) ) { s = new snark::robosense::stream< snark::udp_reader >( new snark::udp_reader( options.value< unsigned short >( "--udp-port" ) ), output_invalid_points, boost::none ); }
-                else if( options.exists( "--proprietary,-q" ) ) { s = new snark::robosense::stream< snark::proprietary_reader >( new snark::proprietary_reader, output_invalid_points, boost::none ); }
-                else { s = new snark::robosense::stream< snark::stream_reader >( new snark::stream_reader, output_invalid_points, boost::none ); }
                 break;
             case models::hdl64:
                 db.reset( new snark::velodyne::hdl64::db( options.value< std::string >( "--db", "/usr/local/etc/db.xml" ) ) );

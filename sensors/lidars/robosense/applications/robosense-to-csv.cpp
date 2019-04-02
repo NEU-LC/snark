@@ -192,7 +192,9 @@ int main( int ac, char** av )
             }
             // todo: update scan
             // todo: timestamp by laser id (see https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc)
+            // todo: accurate azimuth
             // todo: discard invalid scans
+            // todo: difop
             // todo? --distance-resolution: 1cm, 0.5cm, etc.
         }        
         return 0;

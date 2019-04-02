@@ -31,7 +31,6 @@
 
 #include "hdl64/packet.h"
 #include "puck/packet.h"
-#include "derivatives/robosense/packet.h"
 
 namespace snark { namespace velodyne {
 
@@ -50,13 +49,6 @@ template <> struct packet_traits< puck::packet >
 {
     /// packet duration in microseconds
     static const unsigned packet_duration = 1330;
-};
-
-template <> struct packet_traits< robosense::msop::packet >
-{
-    /// packet duration in microseconds
-    /// @todo confirm value is correct
-    static const unsigned packet_duration = 100 * robosense::msop::packet::data_t::number_of_blocks;
 };
 
 } } // namespace comma { namespace visiting {
