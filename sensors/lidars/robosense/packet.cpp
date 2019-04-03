@@ -114,7 +114,7 @@ void msop::packet::const_iterator::update_value_()
     const msop::packet::data_t::laser_return& r = packet_->data.blocks[block_].channels[subblock_][value_.id];
     value_.range = r.range();
     value_.reflectivity = r.reflectivity(); // todo: apply curves
-    value_.delay = value_.id * timing::laser_firing_interval + subblock_ == 0 ? 0.0 : timing::block_firing_interval / 2;
+    value_.delay = timing::laser_firing_interval * value_.id + ( subblock_ == 0 ? 0.0 : timing::block_firing_interval / 2 );
     value_.azimuth += value_.azimuth_step;
 }
 
@@ -141,6 +141,13 @@ void msop::packet::const_iterator::operator++()
     ++block_;
     if( block_ == msop::packet::data_t::number_of_blocks ) { done_ = true; return; }
     update_value_( packet_->data.azimuths( block_ ) );
+}
+
+bool msop::packet::const_iterator::value_type::valid() const
+{
+    static unsigned int min_range = 2; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
+    static unsigned int max_range = 20000; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
+    return range > min_range && range < max_range;
 }
 
 } } // namespace snark { namespace robosense {

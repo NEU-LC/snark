@@ -97,25 +97,11 @@ static void usage( bool verbose )
     exit( 0 );
 }
 
-struct output
-{
-    boost::posix_time::ptime t;
-    comma::uint32 scan;
-    comma::uint32 id;
-    double range;
-    double bearing;
-    double elevation;
-    comma::uint32 reflectivity;
-    Eigen::Vector3d coordinates;
-    
-    output(): id( 0 ), scan( 0 ), range( 0 ), bearing( 0 ), elevation( 0 ), reflectivity( 0 ), coordinates( Eigen::Vector3d::Zero() ) {}
-};
-
 namespace comma { namespace visiting {
     
-template <> struct traits< output >
+template <> struct traits< snark::robosense::calculator::point >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const output& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::robosense::calculator::point& p, Visitor& v )
     {
         v.apply( "t", p.t );
         v.apply( "scan", p.scan );
@@ -147,12 +133,19 @@ static pair_t read( std::istream& is, char* buffer )
     return p;
 }
 
+// todo: axis directions; frame -> n-e-d
+// todo: update scan
+// todo: discard invalid scans
+// todo: config from difop
+// todo: move msop::packet::const_iterator to calculator?
+// todo? --distance-resolution: 1cm, 0.5cm, etc.
+
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
-        if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< output >( false ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::robosense::calculator::point >( false ), ',' ) << std::endl; return 0; }
         bool output_invalid_points = options.exists( "--output-invalid-points" );
         std::vector< char > buffer( snark::robosense::msop::packet::size );
         options.assert_mutually_exclusive( "--calibration,-c", "--calibration-angles,--angles,--angle,-a" );
@@ -167,35 +160,16 @@ int main( int ac, char** av )
         if( temperature > 40 ) { std::cerr << "robosense-to-csv: expected temperature between 0 and 40; got: " << temperature << std::endl; return 1; }
         comma::csv::options csv( options );
         csv.full_xpath = false;
-        comma::csv::output_stream< output > ostream( std::cout, csv );
-        uint32_t scan = 0;
+        comma::csv::output_stream< snark::robosense::calculator::point > ostream( std::cout, csv );
         while( std::cin.good() && !std::cin.eof() )
         {
             auto p = read( std::cin, &buffer[0] );
             if( !p.second ) { break; }
             for( snark::robosense::msop::packet::const_iterator it( p.second ); !it.done() && std::cout.good(); ++it )
             {
-                static unsigned int min_range = 2; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
-                static unsigned int max_range = 20000; // as in https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc
-                bool valid = it->range > min_range && it->range < max_range;
-                if( !valid && !output_invalid_points ) { continue; }
-                output o;
-                o.t = p.first + boost::posix_time::microseconds( it->delay * 1000000 );
-                o.scan = scan;
-                o.id = it->id;
-                o.range = calculator.range( it->range, o.id, temperature );
-                o.bearing = it->azimuth;
-                o.elevation = calculator.elevation()[ o.id ];
-                o.reflectivity = it->reflectivity;
-                o.coordinates = calculator.point( o.id, o.range, o.bearing );
-                ostream.write( o );
+                if( !it->valid() && !output_invalid_points ) { continue; }
+                ostream.write( calculator.make_point( p.first, it, temperature ) );
             }
-            // todo: update scan
-            // todo: timestamp by laser id (see https://github.com/RoboSense-LiDAR/ros_rslidar/blob/develop-curves-function/rslidar_pointcloud/src/rawdata.cc)
-            // todo: accurate azimuth
-            // todo: discard invalid scans
-            // todo: difop
-            // todo? --distance-resolution: 1cm, 0.5cm, etc.
         }        
         return 0;
     }

@@ -178,36 +178,30 @@ static void usage( bool )
     exit( 0 );
 }
 
-adjust_timestamp::mode::mode( std::string const& i_mode_string )
-: m_kind( adjust_timestamp::none )
+adjust_timestamp::mode::mode( std::string const& i_mode_string ): m_kind( adjust_timestamp::none )
 {
-    if( i_mode_string.empty() ) { m_kind = adjust_timestamp::none; }
-    
+    if( i_mode_string.empty() ) { m_kind = adjust_timestamp::none; }    
     else if( i_mode_string == "average" ) { m_kind = adjust_timestamp::average; }
-
     else if( i_mode_string == "hard" ) { m_kind = adjust_timestamp::hard; }
-
     else { COMMA_THROW(comma::exception, "invalid name for adjusted time: "<< i_mode_string <<" (valid values: average, hard)"); }
 }
 
 adjust_timestamp::adjust_timestamp( std::string const& i_mode_string, unsigned const i_adjusted_threshold, unsigned const i_adjusted_reset )
-: mode_( i_mode_string )
-, adjusted_timestamp_( boost::posix_time::microseconds( DEFAULT_PERIOD ) )
-, periodic_time_stamp_( boost::posix_time::microseconds( DEFAULT_PERIOD ), boost::posix_time::microseconds( i_adjusted_threshold ), boost::posix_time::seconds( i_adjusted_reset ) )
+    : mode_( i_mode_string )
+    , adjusted_timestamp_( boost::posix_time::microseconds( DEFAULT_PERIOD ) )
+    , periodic_time_stamp_( boost::posix_time::microseconds( DEFAULT_PERIOD ), boost::posix_time::microseconds( i_adjusted_threshold ), boost::posix_time::seconds( i_adjusted_reset ) )
 {
 }
 
 boost::posix_time::ptime adjust_timestamp::operator()( boost::posix_time::ptime timestamp )
 {
     if( adjust_timestamp::none == mode_.kind() ) { return timestamp; }
-
     if( !last_timestamp_.is_not_a_date_time() && ( timestamp - last_timestamp_ ) > periodic_time_stamp_.adjusted_threshold() )
     {
         adjusted_timestamp_.reset();
         //periodic_time_stamp_.reset();
     }
     last_timestamp_ = timestamp;
-
     switch( mode_.kind() )
     {
         case adjust_timestamp::average: return adjusted_timestamp_.adjusted( timestamp );

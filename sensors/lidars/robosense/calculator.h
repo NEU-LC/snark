@@ -61,6 +61,7 @@
 #include <array>
 #include <string>
 #include <Eigen/Core>
+#include <boost/date_time/posix_time/ptime.hpp>
 #include "packet.h"
 
 namespace snark { namespace robosense {
@@ -68,6 +69,22 @@ namespace snark { namespace robosense {
 class calculator
 {
     public:
+        struct point
+        {
+            boost::posix_time::ptime t;
+            comma::uint32 scan;
+            comma::uint32 id;
+            double range;
+            double bearing;
+            double elevation;
+            comma::uint32 reflectivity;
+            Eigen::Vector3d coordinates;
+            
+            point(): id( 0 ), scan( 0 ), range( 0 ), bearing( 0 ), elevation( 0 ), reflectivity( 0 ), coordinates( Eigen::Vector3d::Zero() ) {}
+            
+            bool valid() const;
+        };
+        
         calculator();
         
         calculator( const std::string& elevation, const std::string& channel_num ); // todo: generalize to 32 beams
@@ -76,11 +93,13 @@ class calculator
         
         double range( unsigned int r, unsigned int laser, unsigned int temperature ) const;
         
-        ::Eigen::Vector3d point( unsigned int laser, double range, double angle ) const;
+        ::Eigen::Vector3d to_cartesian( unsigned int laser, double range, double angle ) const;
         
         double intensity( unsigned int laser, unsigned char intensity, double distance ) const; // todo
         
         const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation() const { return elevation_; }
+        
+        point make_point( const boost::posix_time::ptime& t, const robosense::msop::packet::const_iterator& it, unsigned int temperature );
         
     private:
         std::array< double, robosense::msop::packet::data_t::number_of_lasers > elevation_;

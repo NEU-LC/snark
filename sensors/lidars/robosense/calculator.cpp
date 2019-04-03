@@ -174,14 +174,27 @@ calculator::calculator( const std::string& elevation, const std::string& channel
 
 double calculator::range( unsigned int r, unsigned int laser, unsigned int temperature ) const { return 0.01 * ( r - channel_num_[laser][temperature] ); }
 
-::Eigen::Vector3d calculator::point( unsigned int laser, double range, double angle ) const
+::Eigen::Vector3d calculator::to_cartesian( unsigned int laser, double range, double angle ) const
 {
-    //return ::Eigen::Vector3d( -range * lasers_[laser].cos * std::sin( angle )
     return ::Eigen::Vector3d( range * lasers_[laser].cos * std::sin( angle )
                             , range * lasers_[laser].cos * std::cos( angle )
                             , range * lasers_[laser].sin );
 }
 
 double calculator::intensity( unsigned int, unsigned char intensity, double ) const { return intensity; }
+
+calculator::point calculator::make_point( const boost::posix_time::ptime& t, const robosense::msop::packet::const_iterator& it, unsigned int temperature )
+{
+    calculator::point p;
+    p.scan = 0; // todo
+    p.t = t + boost::posix_time::microseconds( it->delay * 1000000 );
+    p.id = it->id;
+    p.range = range( it->range, it->id, temperature );
+    p.bearing = it->azimuth;
+    p.elevation = elevation()[ it->id ];
+    p.reflectivity = it->reflectivity;
+    p.coordinates = to_cartesian( it->id, p.range, p.bearing );
+    return p;
+}
 
 } } // namespace snark { namespace robosense {

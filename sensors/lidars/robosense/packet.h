@@ -146,6 +146,8 @@ class msop::packet::const_iterator
             comma::uint32 reflectivity;
 
             value_type() : id( 0 ), azimuth_step( 0 ), delay( 0 ), range( 0 ), azimuth( 0 ), reflectivity( 0 ) {}
+            
+            bool valid() const;
         };
 
         const_iterator();
@@ -171,7 +173,7 @@ class msop::packet::const_iterator
         void update_value_( const std::pair< double, double >& azimuths );
 };
 
-struct dfop
+struct difop
 {
     struct packet: public comma::packed::packed_struct< packet, 1248 >
     {
