@@ -29,13 +29,14 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__author__ = 'v.vlaskine'
-
+from __future__ import print_function
 import argparse
 import numpy as np
 import os
 import signal
 import sys
+
+__author__ = 'v.vlaskine'
 
 description = """
 
@@ -99,27 +100,27 @@ examples
 
 """
 
-def say( m ): print >> sys.stderr, "tensor-cat:", m
+def say( m ): print( "tensor-cat:", m, file = sys.stderr )
 
 def saymore( m ):
     if args.verbose: say( m )
 
-def warn( m ): print >> sys.stderr, "tensor-cat: warning:", m
+def warn( m ): print( "tensor-cat: warning:", m, file = sys.stderr )
 
-def die( m ): print >> sys.stderr, "tensor-cat:", m; sys.exit( 1 )
+def die( m ): print( "tensor-cat:", m, file = sys.stderr ); sys.exit( 1 )
 
 def iterator( file, input, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
     shape = ( input.get_shape() if tf_version[0] < 1 else input.shape ).as_list()
     if args.input_shape is None:
         shape = [ 1 if v is None else v for v in shape ] # quick and dirty
-        print >>sys.stderr, "tensor-cat: warning: input shape: --input-shape not defined, tried to deduce it as:", shape
+        print( "tensor-cat: warning: input shape: --input-shape not defined, tried to deduce it as:", shape, file = sys.stderr )
     else:
         input_shape = eval( "[" + args.input_shape + "]" )
         if len( shape ) != len( input_shape ): die( "expected input shape dimensions " + str( len( shape ) ) + ", got " + str( len( input_shape ) ) + " in --input-shape: [" + args.input_shape + "]" )
         for i in range( len( shape ) ):
             if shape[i] is None: shape[i] = input_shape[i]
             elif shape[i] != input_shape[i]: die( "expected input shape dimension " + str( i ) + ": " + str( shape[i] ) + ", got " + str( input_shape[i] ) + " in --input-shape: [" + args.input_shape + "]" )
-    print >>sys.stderr, "tensor-cat: using input shape:", shape
+    print( "tensor-cat: using input shape:", shape, file = sys.stderr )
     ntype = ( input._dtype if tf_version[0] < 1 else input.dtype ).as_numpy_dtype()
     size = np.prod( shape )
     while True:
@@ -149,7 +150,7 @@ def variables( v ):
     return d
 
 if __name__ == '__main__':
-    def handle_signal( s, f ): print >> sys.stderr, "tensor-cat: broken pipe, exit"; sys.exit( 0 )
+    def handle_signal( s, f ): print( "tensor-cat: broken pipe, exit", file = sys.stderr ); sys.exit( 0 )
     signal.signal( signal.SIGPIPE, handle_signal ) 
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
     parser.add_argument( '--batch-size', type = int, default = 1, help = 'todo: process input in batches of given size; default: %(default)i' )
@@ -212,16 +213,16 @@ if __name__ == '__main__':
     with tf.Session if args.frozen_graph is None else tf.Session( graph = graph ) as session: # #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
         if args.tensor_shape and args.tensor_type:
             for tensor in args.tensors.split( ',' ):
-                print tensor + ',' + get_tensor( tensor ).dtype.name + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) )
+                print( tensor + ',' + get_tensor( tensor ).dtype.name + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) ) )
             sys.exit( 0 )
         if args.tensor_shape:
-            for tensor in args.tensors.split( ',' ): print tensor + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) )
+            for tensor in args.tensors.split( ',' ): print( tensor + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) ) )
             sys.exit( 0 )
         if args.tensor_type:
-            for tensor in args.tensors.split( ',' ): print tensor + ',' + get_tensor( tensor ).dtype.name
+            for tensor in args.tensors.split( ',' ): print( tensor + ',' + get_tensor( tensor ).dtype.name )
             sys.exit( 0 )
         if args.get_operations:
-            for o in session.graph.get_operations(): print o.name
+            for o in session.graph.get_operations(): print( o.name )
             sys.exit( 0 )
         if args.frozen_graph is None:
             saymore( "restoring session from '" + session_file + "'..." )
@@ -237,8 +238,8 @@ if __name__ == '__main__':
             for i in range( len( s ) ):
                 if s[i] != "": output_max_channels[i] = int( s[i] )
         if args.verbose:
-            print >> sys.stderr, "tensor-cat: input '" + args.input + "':", input
-            for i in range( len( output_names ) ): print >> sys.stderr, "tensor-cat: output '" + output_names[i] + "':", outputs[i]
+            print( "tensor-cat: input '" + args.input + "':", input )
+            for i in range( len( output_names ) ): print( "tensor-cat: output '" + output_names[i] + "':", outputs[i] )
         saymore( "running inference..." )
         input_number=0
         for header, data, footer in iterator( sys.stdin, input, args.header_size, args.footer_size ):
