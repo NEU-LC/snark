@@ -92,9 +92,9 @@ struct msop
         struct data_t : public comma::packed::packed_struct< data_t, 1206 >
         {
             enum { number_of_lasers = 16
-                , number_of_blocks = 12
-                , number_of_subblocks = 2
-                , number_of_returns_per_packet = number_of_lasers * number_of_subblocks * number_of_blocks };
+                 , number_of_blocks = 12
+                 , number_of_subblocks = 2
+                 , number_of_returns_per_packet = number_of_lasers * number_of_subblocks * number_of_blocks };
             
             struct laser_return: public comma::packed::packed_struct< laser_return, 3 >
             {
@@ -139,12 +139,13 @@ class msop::packet::const_iterator
         struct value_type
         {
             comma::uint32 id;
+            double azimuth_step;
             double delay;
             unsigned int range;
             double azimuth;
             comma::uint32 reflectivity;
 
-            value_type() : id( 0 ), delay( 0 ), range( 0 ), azimuth( 0 ), reflectivity( 0 ) {}
+            value_type() : id( 0 ), azimuth_step( 0 ), delay( 0 ), range( 0 ), azimuth( 0 ), reflectivity( 0 ) {}
         };
 
         const_iterator();
@@ -167,6 +168,7 @@ class msop::packet::const_iterator
         bool done_;
         void update_value_();
         void update_value_( double azimuth );
+        void update_value_( const std::pair< double, double >& azimuths );
 };
 
 struct dfop
@@ -198,7 +200,7 @@ struct dfop
             std::array< char, 40 > fault_diagnosis;
             comma::packed::string< 86 >  gpsrmc;
             std::array< char, 697 > corrected_static;
-            std::array< char, 48 > corrected_vertical_angles; // todo
+            std::array< char, 48 > corrected_vertical_angles; // todo 16 3-byte big endian
             comma::packed::string< 33 > reserved_3;
         };
         

@@ -64,6 +64,13 @@
 
 namespace snark { namespace robosense {
 
+namespace timing {
+
+static double block_firing_interval = 0.0001; // 100 microseconds, see 5.1.2.2
+static double laser_firing_interval = 0.000003; // 3 microseconds, see Appendix A
+
+}
+
 std::pair< double, double > msop::packet::data_t::azimuths( unsigned int block ) const // quick and dirty
 {
     double t = blocks[ block ].azimuth_as_radians();
@@ -86,10 +93,9 @@ std::pair< double, double > msop::packet::data_t::azimuths( unsigned int block )
     return std::make_pair( t, r );
 }
 
-namespace timing {
-
-static double block_firing_interval = 0.0001; // 100 microseconds, see 5.1.2.2
-
+static double azimuth_step_( const std::pair< double, double >& azimuths )
+{ 
+    return ( ( azimuths.first > azimuths.second ? azimuths.second + M_PI * 2 : azimuths.second ) - azimuths.first ) * ( timing::laser_firing_interval / timing::block_firing_interval );
 }
 
 msop::packet::const_iterator::const_iterator() : packet_( NULL ), done_( true ) {}
@@ -100,7 +106,7 @@ msop::packet::const_iterator::const_iterator( const packet* p )
     , subblock_( 0 )
     , done_( false )
 {
-    update_value_( packet_->data.blocks[block_].azimuth_as_radians() );
+    update_value_( packet_->data.azimuths( block_ ) );
 }
 
 void msop::packet::const_iterator::update_value_()
@@ -108,14 +114,20 @@ void msop::packet::const_iterator::update_value_()
     const msop::packet::data_t::laser_return& r = packet_->data.blocks[block_].channels[subblock_][value_.id];
     value_.range = r.range();
     value_.reflectivity = r.reflectivity(); // todo: apply curves
-    value_.delay = subblock_ == 0 ? 0.0 : timing::block_firing_interval / 2;
-    // value_.azimuth += ???; // todo!!! azimuth step for each point?
+    value_.delay = value_.id * timing::laser_firing_interval + subblock_ == 0 ? 0.0 : timing::block_firing_interval / 2;
+    value_.azimuth += value_.azimuth_step;
 }
 
 void msop::packet::const_iterator::update_value_( double azimuth )
 {
     update_value_();
     value_.azimuth = azimuth;
+}
+
+void msop::packet::const_iterator::update_value_( const std::pair< double, double >& azimuths )
+{
+    update_value_( azimuths.first );
+    value_.azimuth_step = robosense::azimuth_step_( azimuths );
 }
 
 void msop::packet::const_iterator::operator++()
@@ -128,7 +140,7 @@ void msop::packet::const_iterator::operator++()
     subblock_ = 0;
     ++block_;
     if( block_ == msop::packet::data_t::number_of_blocks ) { done_ = true; return; }
-    update_value_( packet_->data.blocks[block_].azimuth_as_radians() );
+    update_value_( packet_->data.azimuths( block_ ) );
 }
 
 } } // namespace snark { namespace robosense {
