@@ -62,9 +62,9 @@
 #include <boost/tuple/tuple.hpp>
 #include "packet.h"
 
-namespace snark { namespace robosense { namespace msop {
+namespace snark { namespace robosense {
 
-std::pair< double, double > packet::data_t::azimuths( unsigned int block ) const // quick and dirty
+std::pair< double, double > msop::packet::data_t::azimuths( unsigned int block ) const // quick and dirty
 {
     double t = blocks[ block ].azimuth_as_radians();
     double r;
@@ -92,9 +92,9 @@ static double block_firing_interval = 0.0001; // 100 microseconds, see 5.1.2.2
 
 }
 
-packet::const_iterator::const_iterator() : packet_( NULL ), done_( true ) {}
+msop::packet::const_iterator::const_iterator() : packet_( NULL ), done_( true ) {}
 
-packet::const_iterator::const_iterator( const packet* p )
+msop::packet::const_iterator::const_iterator( const packet* p )
     : packet_( p )
     , block_( 0 )
     , subblock_( 0 )
@@ -103,32 +103,32 @@ packet::const_iterator::const_iterator( const packet* p )
     update_value_( packet_->data.blocks[block_].azimuth_as_radians() );
 }
 
-void packet::const_iterator::update_value_()
+void msop::packet::const_iterator::update_value_()
 {
-    const packet::data_t::laser_return& r = packet_->data.blocks[block_].channels[subblock_][value_.id];
+    const msop::packet::data_t::laser_return& r = packet_->data.blocks[block_].channels[subblock_][value_.id];
     value_.range = r.range();
     value_.reflectivity = r.reflectivity(); // todo: apply curves
     value_.delay = subblock_ == 0 ? 0.0 : timing::block_firing_interval / 2;
     // value_.azimuth += ???; // todo!!! azimuth step for each point?
 }
 
-void packet::const_iterator::update_value_( double azimuth )
+void msop::packet::const_iterator::update_value_( double azimuth )
 {
     update_value_();
     value_.azimuth = azimuth;
 }
 
-void packet::const_iterator::operator++()
+void msop::packet::const_iterator::operator++()
 {
     ++value_.id;
-    if( value_.id < packet::data_t::number_of_lasers ) { update_value_(); return; }
+    if( value_.id < msop::packet::data_t::number_of_lasers ) { update_value_(); return; }
     ++subblock_;
     value_.id = 0;
-    if( subblock_ < packet::data_t::number_of_subblocks ) { update_value_( packet_->data.azimuths( block_ ).second ); return; }
+    if( subblock_ < msop::packet::data_t::number_of_subblocks ) { update_value_( packet_->data.azimuths( block_ ).second ); return; }
     subblock_ = 0;
     ++block_;
-    if( block_ == packet::data_t::number_of_blocks ) { done_ = true; return; }
+    if( block_ == msop::packet::data_t::number_of_blocks ) { done_ = true; return; }
     update_value_( packet_->data.blocks[block_].azimuth_as_radians() );
 }
 
-} } } // namespace snark { namespace robosense { namespace msop {
+} } // namespace snark { namespace robosense {
