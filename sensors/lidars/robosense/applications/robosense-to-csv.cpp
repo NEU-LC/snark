@@ -133,7 +133,6 @@ static pair_t read( std::istream& is, char* buffer )
 
 // todo! what is the packet with azimuth: 65535?!
 // todo? axis directions; frame -> n-e-d
-// todo: update scan
 // todo: discard invalid scans
 // todo? config from difop
 // todo? temperature from difop
