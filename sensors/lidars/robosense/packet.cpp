@@ -56,20 +56,12 @@
 
 /// @author vsevolod vlaskine
 
-#include <iostream>
-
+#include <memory.h>
 #include <cmath>
 #include <boost/tuple/tuple.hpp>
 #include "packet.h"
 
 namespace snark { namespace robosense {
-
-namespace timing {
-
-static double block_firing_interval = 0.0001; // 100 microseconds, see 5.1.2.2
-static double laser_firing_interval = 0.000003; // 3 microseconds, see Appendix A
-
-}
 
 std::pair< double, double > msop::packet::data_t::azimuths( unsigned int block ) const // quick and dirty
 {
@@ -95,7 +87,7 @@ std::pair< double, double > msop::packet::data_t::azimuths( unsigned int block )
 
 static double azimuth_step_( const std::pair< double, double >& azimuths )
 { 
-    return ( ( azimuths.first > azimuths.second ? azimuths.second + M_PI * 2 : azimuths.second ) - azimuths.first ) * ( timing::laser_firing_interval / timing::block_firing_interval );
+    return ( ( azimuths.first > azimuths.second ? azimuths.second + M_PI * 2 : azimuths.second ) - azimuths.first ) * ( msop::packet::data_t::laser_return::firing_interval() / msop::packet::data_t::block::firing_interval() );
 }
 
 msop::packet::const_iterator::const_iterator() : packet_( NULL ), done_( true ) {}
@@ -114,7 +106,7 @@ void msop::packet::const_iterator::update_value_()
     const msop::packet::data_t::laser_return& r = packet_->data.blocks[block_].channels[subblock_][value_.id];
     value_.range = r.range();
     value_.reflectivity = r.reflectivity(); // todo: apply curves
-    value_.delay = timing::laser_firing_interval * value_.id + ( subblock_ == 0 ? 0.0 : timing::block_firing_interval / 2 );
+    value_.delay = msop::packet::data_t::laser_return::firing_interval() * value_.id + ( subblock_ == 0 ? 0.0 : msop::packet::data_t::block::firing_interval() / 2 );
     value_.azimuth += value_.azimuth_step;
 }
 
@@ -141,6 +133,11 @@ void msop::packet::const_iterator::operator++()
     ++block_;
     if( block_ == msop::packet::data_t::number_of_blocks ) { done_ = true; return; }
     update_value_( packet_->data.azimuths( block_ ) );
+}
+
+bool msop::packet::valid() const // quick and dirty; what is azimuth 0xffff?
+{
+    return data.blocks[0].azimuth() <= 36000;
 }
 
 bool msop::packet::const_iterator::value_type::valid() const

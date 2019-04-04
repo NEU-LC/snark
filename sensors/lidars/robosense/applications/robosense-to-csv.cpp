@@ -84,11 +84,8 @@ static void usage( bool verbose )
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
     std::cerr << "    --output-fields: todo: print output fields and exit" << std::endl;
     std::cerr << "    --output-invalid-points: output invalid points" << std::endl;
-    std::cerr << "    --scans-discard-invalid,--discard-invalid-scans: todo: don't output scans with missing packets" << std::endl;
-    std::cerr << "    --scans-missing-packets-threshold,--missing-packets-threshold=<n>: number of consecutive missing packets for new/invalid scan" << std::endl;
-    std::cerr << "        if the data is missing more than <n> consecutive packets (calculated based on timestamp), then the next packet after the gap will be marked as the beginning of a new scan" << std::endl;
-    std::cerr << "        use --discard-invalid-scans option together with this option to discard all the scans that have missing consecutive packets greater than <n>" << std::endl;
-    std::cerr << "        by default (when --missing-packets-threshold is not specified) it will mark new/invalid scan if more than 25 millisecond of data is missing (half a circle at 20Hz)" << std::endl;
+    std::cerr << "    --scan-discard-invalid,--discard-invalid-scans: todo: don't output scans with missing packets" << std::endl;
+    std::cerr << "    --scan-max-missing-packets,--missing-packets=<n>; default 100; (arbitrary) number of consecutive missing packets for new/invalid scan" << std::endl;
     std::cerr << "    --temperature,-t=<celcius>; default=20; integer from 0 to 39" << std::endl;
     std::cerr << std::endl;
     std::cerr << "csv options" << std::endl;
@@ -109,6 +106,7 @@ template <> struct traits< snark::robosense::calculator::point >
         v.apply( "range", p.range );
         v.apply( "bearing", p.bearing );
         v.apply( "elevation", p.elevation );
+        v.apply( "reflectivity", p.reflectivity );
         v.apply( "coordinates", p.coordinates );
     }
 };
@@ -133,11 +131,13 @@ static pair_t read( std::istream& is, char* buffer )
     return p;
 }
 
-// todo: axis directions; frame -> n-e-d
-// todo: update scan
+// todo! what is the packet with azimuth: 65535?!
+// todo? axis directions; frame -> n-e-d
 // todo: discard invalid scans
-// todo: config from difop
-// todo: move msop::packet::const_iterator to calculator?
+// todo? config from difop
+// todo? temperature from difop
+// todo? move msop::packet::const_iterator to calculator
+// todo? call scan_tick() in calculator?
 // todo? --distance-resolution: 1cm, 0.5cm, etc.
 
 int main( int ac, char** av )
@@ -158,17 +158,25 @@ int main( int ac, char** av )
                                                 : snark::robosense::calculator( calibration + "/angle.csv", calibration + "/ChannelNum.csv" );
         unsigned int temperature = options.value( "--temperature,-t", 20 );
         if( temperature > 40 ) { std::cerr << "robosense-to-csv: expected temperature between 0 and 40; got: " << temperature << std::endl; return 1; }
+        snark::robosense::calculator::scan_tick scan_tick( options.value( "--scan-max-missing-packets,--missing-packets", 100 ) );
         comma::csv::options csv( options );
         csv.full_xpath = false;
         comma::csv::output_stream< snark::robosense::calculator::point > ostream( std::cout, csv );
+        unsigned int scan = 0;
+        unsigned int count = 0;
         while( std::cin.good() && !std::cin.eof() )
         {
             auto p = read( std::cin, &buffer[0] );
             if( !p.second ) { break; }
+            if( !p.second->valid() ) { continue; }
+            std::pair< bool, bool > tick = scan_tick.is_new_scan( p.first, *p.second );
+            if( tick.first ) { ++scan; count = 0; }
             for( snark::robosense::msop::packet::const_iterator it( p.second ); !it.done() && std::cout.good(); ++it )
             {
                 if( !it->valid() && !output_invalid_points ) { continue; }
-                ostream.write( calculator.make_point( p.first, it, temperature ) );
+                auto ppp = calculator.make_point( scan, p.first, it, temperature );
+                //std::cerr << "--> a: scan: " << ppp.scan << " count: " << count++ << " azimuth: " << p.second->data.blocks[0].azimuth() << " bearing: " << ppp.bearing << std::endl;
+                ostream.write( calculator.make_point( scan, p.first, it, temperature ) );
             }
         }        
         return 0;

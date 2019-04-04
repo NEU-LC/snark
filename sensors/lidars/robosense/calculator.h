@@ -85,11 +85,23 @@ class calculator
             bool valid() const;
         };
         
+        class scan_tick
+        {
+            public:
+                scan_tick( unsigned int max_number_of_missing_packets = 100 ); // todo: arbitrary: 10 missing packets by default will trigger a new scan and detect the current scan as incomplete
+                
+                std::pair< bool, bool > is_new_scan( const boost::posix_time::ptime& timestamp, const msop::packet& packet );
+
+            private:
+                boost::posix_time::time_duration max_gap_;
+                boost::optional< unsigned int > last_angle_;
+                boost::posix_time::ptime last_timestamp_;
+                bool valid_scan_;
+        };
+        
         calculator();
         
         calculator( const std::string& elevation, const std::string& channel_num ); // todo: generalize to 32 beams
-        
-        //calculator( const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation ); // todo: generalize to 32 beams
         
         double range( unsigned int r, unsigned int laser, unsigned int temperature ) const;
         
@@ -99,7 +111,7 @@ class calculator
         
         const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation() const { return elevation_; }
         
-        point make_point( const boost::posix_time::ptime& t, const robosense::msop::packet::const_iterator& it, unsigned int temperature );
+        point make_point( unsigned int scan, const boost::posix_time::ptime& t, const robosense::msop::packet::const_iterator& it, unsigned int temperature );
         
     private:
         std::array< double, robosense::msop::packet::data_t::number_of_lasers > elevation_;

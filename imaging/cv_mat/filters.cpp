@@ -88,7 +88,7 @@
 #include "detail/load.h"
 #include "detail/morphology.h"
 #include "detail/ratio.h"
-#include "detail/spherical.h"
+//#include "detail/spherical.h"
 #include "detail/utils.h"
 
 namespace {
@@ -2990,9 +2990,9 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "spherical: please specify <what>"); }
             const std::vector< std::string >& s = comma::split( e[1], ',' );
-            if( s[0] == "warp" ) { f.push_back( filter_type( snark::cv_mat::impl::spherical::warp< H  >() ) ); }
-            if( s[0] == "unwarp" ) { f.push_back( filter_type( snark::cv_mat::impl::spherical::unwarp< H  >() ) ); }
-            else { COMMA_THROW( comma::exception, "spherical: expected <what>; got: '" << s[0] << "'" ); }
+            //if( s[0] == "warp" ) { f.push_back( filter_type( snark::cv_mat::impl::spherical::warp< H  >() ) ); }
+            //if( s[0] == "unwarp" ) { f.push_back( filter_type( snark::cv_mat::impl::spherical::unwarp< H  >() ) ); }
+            //else { COMMA_THROW( comma::exception, "spherical: expected <what>; got: '" << s[0] << "'" ); }
         }
         else if( e[0] == "pack" )
         {
