@@ -98,12 +98,16 @@ struct msop
             
             struct laser_return: public comma::packed::packed_struct< laser_return, 3 >
             {
+                static double firing_interval() { return 0.000003; } // 3 microseconds, see Appendix A
+                
                 comma::packed::big_endian_uint16 range; // see 5.1.2.3
                 comma::packed::byte reflectivity;
             };
             
             struct block: public comma::packed::packed_struct< block, 2 + 2 + number_of_lasers * number_of_subblocks * laser_return::size >
             {
+                static double firing_interval() { return 0.0001; } // 100 microseconds, see 5.1.2.2
+        
                 static const char* sentinel_value() { return "\xFF\xEE"; }
                 
                 comma::packed::string< 2 > sentinel;
@@ -130,6 +134,8 @@ struct msop
         data_t data;
         
         class const_iterator;
+        
+        bool valid() const;
     };
 };
 

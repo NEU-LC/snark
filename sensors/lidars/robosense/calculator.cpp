@@ -84,6 +84,19 @@ template <> struct traits< snark::robosense::channel_num >
 } } // namespace comma { namespace visiting {
 
 namespace snark { namespace robosense {
+    
+calculator::scan_tick::scan_tick( unsigned int max_number_of_missing_packets ): valid_scan_( true ), max_gap_( boost::posix_time::microseconds( msop::packet::data_t::block::firing_interval() * 1000000 ) * max_number_of_missing_packets ) {}
+
+std::pair< bool, bool > calculator::scan_tick::is_new_scan( const boost::posix_time::ptime& timestamp, const msop::packet& packet )
+{
+    bool tick = false;
+    unsigned int angle = packet.data.blocks[0].azimuth(); // ( ... + ( 36000 - 9000 ) + 9000 ) % 36000;
+    if( last_angle_ && angle < *last_angle_ ) { tick = true; valid_scan_ = true; }
+    last_angle_ = angle;
+    if( !timestamp.is_not_a_date_time() && !last_timestamp_.is_not_a_date_time() && timestamp - last_timestamp_ > max_gap_ ) { tick = true; valid_scan_ = false; }
+    if( !timestamp.is_not_a_date_time() ) { last_timestamp_ = timestamp; }
+    return std::make_pair( tick, valid_scan_ );
+}
 
 static std::array< double, robosense::msop::packet::data_t::number_of_lasers > default_elevation_ = {{ -15. * M_PI / 180
                                                                                                     , -13. * M_PI / 180
@@ -183,10 +196,10 @@ double calculator::range( unsigned int r, unsigned int laser, unsigned int tempe
 
 double calculator::intensity( unsigned int, unsigned char intensity, double ) const { return intensity; }
 
-calculator::point calculator::make_point( const boost::posix_time::ptime& t, const robosense::msop::packet::const_iterator& it, unsigned int temperature )
+calculator::point calculator::make_point( unsigned int scan, const boost::posix_time::ptime& t, const robosense::msop::packet::const_iterator& it, unsigned int temperature )
 {
     calculator::point p;
-    p.scan = 0; // todo
+    p.scan = scan;
     p.t = t + boost::posix_time::microseconds( it->delay * 1000000 );
     p.id = it->id;
     p.range = range( it->range, it->id, temperature );
