@@ -168,6 +168,14 @@ struct status_data
 
 namespace comma { namespace visiting {
 
+template < unsigned int S, bool P, bool F, std::size_t N > struct traits< boost::array< comma::packed::detail::endian< comma::packed::detail::big, S, P, F >, N > >
+{
+    template< typename K, typename V > static void visit( const K& k, const boost::array< comma::packed::detail::endian< comma::packed::detail::big, S, P, F >, N >& t, V& v )
+    {
+        for( std::size_t i = 0; i < t.size(); i++ ) { v.apply( i, t[i]() ); }
+    }
+};
+    
 template <>
 struct traits< output >
 {
