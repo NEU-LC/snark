@@ -115,7 +115,8 @@ class calculator
         
     private:
         std::array< double, robosense::msop::packet::data_t::number_of_lasers > elevation_;
-        std::array< std::array< double, 41 >, robosense::msop::packet::data_t::number_of_lasers > channel_num_;
+        typedef std::array< std::array< double, 41 >, robosense::msop::packet::data_t::number_of_lasers > channel_num_t_;
+        boost::optional< channel_num_t_ > channel_num_;
         struct laser_
         {
             double sin;
