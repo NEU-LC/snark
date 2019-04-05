@@ -33,7 +33,6 @@
 
 #include "messages.h"
 #include <comma/visiting/traits.h>
-#include <comma/packed/traits.h>
 #include <string>
 #include "../../math/spherical_geometry/traits.h"
 

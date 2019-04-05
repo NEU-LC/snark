@@ -31,7 +31,6 @@
 
 #include <string>
 #include <comma/visiting/traits.h>
-#include <comma/packed/traits.h>
 #include "../../../math/spherical_geometry/traits.h"
 #include "../../../timing/timestamped.h"
 #include "../messages.h"
