@@ -142,6 +142,8 @@ void calculator::init_lasers_()
                                                       
 calculator::calculator(): elevation_( default_elevation_ ) { init_lasers_(); }
 
+calculator::calculator( const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation ): elevation_( elevation ) { init_lasers_(); }
+
 calculator::calculator( const std::string& elevation, const std::string& channel_num = "" )
 {
     if( elevation.empty() )

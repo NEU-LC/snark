@@ -101,6 +101,8 @@ class calculator
         
         calculator();
         
+        calculator( const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation );
+        
         calculator( const std::string& elevation, const std::string& channel_num ); // todo: generalize to 32 beams
         
         double range( unsigned int r, unsigned int laser, unsigned int temperature ) const;

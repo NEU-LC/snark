@@ -120,7 +120,7 @@ struct msop
             struct tail_t: public comma::packed::packed_struct< tail_t, 4 >
             {
                 static const char* sentinel_value() { return "\x00\xFF"; }
-                comma::packed::little_endian::uint32 reserved;
+                comma::packed::big_endian::uint32 reserved;
                 comma::packed::string< 2 > sentinel;
             };
 
@@ -208,7 +208,12 @@ struct difop
             std::array< char, 40 > fault_diagnosis;
             comma::packed::string< 86 >  gpsrmc;
             std::array< char, 697 > corrected_static;
-            std::array< char, 48 > corrected_vertical_angles; // todo 16 3-byte big endian
+            struct corrected_vertical_angle: public comma::packed::packed_struct< corrected_vertical_angle, 3 >
+            {
+                comma::packed::big_endian::int24 value;
+                double as_radians() const { value() * 0.0001 * M_PI / 180; }
+            };
+            std::array< corrected_vertical_angle, msop::packet::data_t::number_of_lasers > corrected_vertical_angles;
             comma::packed::string< 33 > reserved_3;
         };
         
