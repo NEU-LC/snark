@@ -56,20 +56,20 @@ const char* scan_packet::encoders_info_t::end() const
 }
 
 // channel16_t
-const comma::packed::net_uint16* scan_packet::channel16_t::data_begin() const
+const comma::packed::big_endian::uint16* scan_packet::channel16_t::data_begin() const
 {
     if ( data_size() == 0 ) { COMMA_THROW( comma::exception, "no channel data in 16-bit channel " << channel_content() ); }
-    return reinterpret_cast< const comma::packed::net_uint16* >( reinterpret_cast< const char* >( this ) + size );
+    return reinterpret_cast< const comma::packed::big_endian::uint16* >( reinterpret_cast< const char* >( this ) + size );
 }
 
-const comma::packed::net_uint16* scan_packet::channel16_t::data_end() const
+const comma::packed::big_endian::uint16* scan_packet::channel16_t::data_end() const
 {
-    return reinterpret_cast< const comma::packed::net_uint16* >( end() );
+    return reinterpret_cast< const comma::packed::big_endian::uint16* >( end() );
 }
 
 const char* scan_packet::channel16_t::end() const
 {
-    return reinterpret_cast< const char* >( this ) + size + data_size() * sizeof( comma::packed::net_uint16 );
+    return reinterpret_cast< const char* >( this ) + size + data_size() * sizeof( comma::packed::big_endian::uint16 );
 }
 
 // channels16_t
@@ -114,20 +114,20 @@ const char* scan_packet::channels16_t::end() const
 }
 
 // channel8_t
-const comma::packed::net_uint16* scan_packet::channel8_t::data_begin() const
+const comma::packed::big_endian::uint16* scan_packet::channel8_t::data_begin() const
 {
     if ( data_size() == 0 ) { COMMA_THROW( comma::exception, "no channel data in 8-bit channel " << channel_content() ); }
-    return reinterpret_cast< const comma::packed::net_uint16* >( reinterpret_cast< const char* >( this ) + size );
+    return reinterpret_cast< const comma::packed::big_endian::uint16* >( reinterpret_cast< const char* >( this ) + size );
 }
 
-const comma::packed::net_uint16* scan_packet::channel8_t::data_end() const
+const comma::packed::big_endian::uint16* scan_packet::channel8_t::data_end() const
 {
-    return reinterpret_cast< const comma::packed::net_uint16* >( end() );
+    return reinterpret_cast< const comma::packed::big_endian::uint16* >( end() );
 }
 
 const char* scan_packet::channel8_t::end() const
 {
-    return reinterpret_cast< const char* >( this ) + size + data_size() * sizeof( comma::packed::net_uint16 );
+    return reinterpret_cast< const char* >( this ) + size + data_size() * sizeof( comma::packed::big_endian::uint16 );
 }
 
 // channels8_t

@@ -48,7 +48,7 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     
     struct laser_return : public comma::packed::packed_struct< laser_return, 3 >
     {
-        comma::packed::little_endian_uint16 range;
+        comma::packed::little_endian::uint16 range;
         comma::packed::byte reflectivity;
         
         double range_as_meters() const { return 0.002 * range(); }
@@ -59,7 +59,7 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
         static const char* ffee() { return "\xFF\xEE"; }
         
         comma::packed::string< 2 > flag;
-        comma::packed::little_endian_uint16 azimuth;
+        comma::packed::little_endian::uint16 azimuth;
         boost::array< boost::array< laser_return, number_of_lasers >, 2 > channels;
         
         double azimuth_as_radians() const { return ( double( azimuth() ) / 100 ) * M_PI / 180; }
@@ -75,8 +75,8 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     };
 
     boost::array< block, number_of_blocks > blocks;
-    comma::packed::uint32 timestamp; // time of first shot of the first block (firing sequence), microseconds since past the hour
-    comma::packed::uint32 something;
+    comma::packed::little_endian::uint32 timestamp; // time of first shot of the first block (firing sequence), microseconds since past the hour
+    comma::packed::little_endian::uint32 something;
     factory_t factory;
     
     class const_iterator;

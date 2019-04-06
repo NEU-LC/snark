@@ -40,7 +40,7 @@ namespace snark { namespace terrain { namespace dem { namespace srtm {
 /// @todo template on size and use size from header (currently hard-coded)
 struct data : comma::packed::packed_struct< data, 2 >
 {
-    comma::packed::big_endian_int16 height;
+    comma::packed::big_endian::int16 height;
 };
 
 } } } } // namespace snark { namespace terrain { namespace dem { namespace srtm {

@@ -49,14 +49,14 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
     
     struct laser_return : public comma::packed::packed_struct< laser_return, 3 >
     {
-        comma::packed::uint16 range;
+        comma::packed::little_endian::uint16 range;
         comma::packed::byte intensity;
     };
     
     struct laser_block : public comma::packed::packed_struct< laser_block, 2 + 2 + returns_per_block * sizeof( laser_return ) >
     {
         comma::packed::string< 2 > id;
-        comma::packed::uint16 rotation;
+        comma::packed::little_endian::uint16 rotation;
         boost::array< laser_return, returns_per_block > lasers;
     };
     
@@ -73,8 +73,8 @@ struct packet : public comma::packed::packed_struct< packet, 1206 >
         struct version : public comma::packed::packed_struct< version, 6 >
         {
             comma::packed::string< 2 > padding;
-            comma::packed::uint16 counter;
-            comma::packed::uint16 number;
+            comma::packed::little_endian::uint16 counter;
+            comma::packed::little_endian::uint16 number;
             bool valid() const { return ::memcmp( data() + 2, "DegC", 4 ) != 0; }
         };
     

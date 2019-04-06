@@ -47,15 +47,15 @@ namespace snark {  namespace sick { namespace ibeo {
 /// NTP timestamp
 struct timestamp : public comma::packed::packed_struct< timestamp, 8 >
 {
-    comma::packed::net_uint32 seconds;
-    comma::packed::net_uint32 fractions;
+    comma::packed::big_endian::uint32 seconds;
+    comma::packed::big_endian::uint32 fractions;
 };
 
 /// NTP timestamp for scan header... sigh...
 struct little_endian_timestamp : public comma::packed::packed_struct< little_endian_timestamp, 8 >
 {
-    comma::packed::uint32 fractions;
-    comma::packed::uint32 seconds;
+    comma::packed::little_endian::uint32 fractions;
+    comma::packed::little_endian::uint32 seconds;
 };
 
 /// Ibeo LD-MRS packet header
@@ -69,13 +69,13 @@ struct header : public comma::packed::packed_struct< header, 24 >
    static boost::array< unsigned char, 4 > sentinel_value;
 
     /// sentinel (see the value below)
-    comma::packed::net_uint32 sentinel;
+    comma::packed::big_endian::uint32 sentinel;
 
     /// previous message size; ignore, if in measuring mode
-    comma::packed::net_uint32 previous_size;
+    comma::packed::big_endian::uint32 previous_size;
 
     /// message size without header
-    comma::packed::net_uint32 payload_size;
+    comma::packed::big_endian::uint32 payload_size;
 
     /// padding
     comma::packed::byte padding;
@@ -84,7 +84,7 @@ struct header : public comma::packed::packed_struct< header, 24 >
     comma::packed::byte device_id;
 
     /// message type
-    comma::packed::net_uint16 type;
+    comma::packed::big_endian::uint16 type;
 
     /// message timestamp
     timestamp t;
@@ -100,11 +100,11 @@ struct header : public comma::packed::packed_struct< header, 24 >
 /// @todo define fault and warning bits
 struct fault : public comma::packed::packed_struct< fault, 16 >
 {
-    comma::packed::uint16 faultRegister1;
-    comma::packed::uint16 faultRegister2;
-    comma::packed::uint16 warningRegister1;
-    comma::packed::uint16 warningRegister2;
-    boost::array< comma::packed::uint16, 4 > reserved;
+    comma::packed::little_endian::uint16 faultRegister1;
+    comma::packed::little_endian::uint16 faultRegister2;
+    comma::packed::little_endian::uint16 warningRegister1;
+    comma::packed::little_endian::uint16 warningRegister2;
+    boost::array< comma::packed::little_endian::uint16, 4 > reserved;
     bool fatal() const;
 };
 
@@ -121,13 +121,13 @@ struct scan : public comma::packed::packed_struct< scan, 44 >
         enum Statuses { measurementFrequencyReached = 0x0008, externalSyncDetected = 0x0010, synced = 0x0020, syncMaster = 0x0040 };
 
         /// measurement number
-        comma::packed::uint16 measurement_number;
+        comma::packed::little_endian::uint16 measurement_number;
 
         /// sensor status
-        comma::packed::uint16 status;
+        comma::packed::little_endian::uint16 status;
 
         /// synchronisation phase offset
-        comma::packed::uint16 sync_phase_offset;
+        comma::packed::little_endian::uint16 sync_phase_offset;
 
         /// start time of measurement
         little_endian_timestamp start; //timestamp start;
@@ -136,21 +136,21 @@ struct scan : public comma::packed::packed_struct< scan, 44 >
         little_endian_timestamp finish; //timestamp finish;
 
         /// number of angular steps per scanner rotation
-        comma::packed::uint16 steps;
+        comma::packed::little_endian::uint16 steps;
 
         /// begin angle in angular steps
         /// @todo can be signed, but no signed net int! fix!
-        comma::packed::uint16 start_angle;
+        comma::packed::little_endian::uint16 start_angle;
 
         /// end angle in angular steps
         /// @todo can be signed, but no signed net int! fix!
-        comma::packed::uint16 finish_angle;
+        comma::packed::little_endian::uint16 finish_angle;
 
         /// number of laser returns
-        comma::packed::uint16 points_count;
+        comma::packed::little_endian::uint16 points_count;
 
         /// reserved fields
-        boost::array< comma::packed::uint16, 7 > padding;
+        boost::array< comma::packed::little_endian::uint16, 7 > padding;
     };
 
     /// Ibeo LD-MRS data point
@@ -180,16 +180,16 @@ struct scan : public comma::packed::packed_struct< scan, 44 >
 
         /// azymuth in angular steps (sic, little endian)
         /// @todo can be signed, but no little endian int! fix!
-        comma::packed::uint16 angle;
+        comma::packed::little_endian::uint16 angle;
 
         /// range in cm
-        comma::packed::uint16 range;
+        comma::packed::little_endian::uint16 range;
 
         /// echo pulse width in cm
-        comma::packed::uint16 echo_pulse_width;
+        comma::packed::little_endian::uint16 echo_pulse_width;
 
         /// padding
-        comma::packed::uint16 padding;
+        comma::packed::little_endian::uint16 padding;
 
         /// return elevation in radians from layer()
         double elevation() const;
@@ -239,14 +239,14 @@ struct commands
     /// command header
     struct header : public comma::packed::packed_struct< header, 4 >
     {
-        comma::packed::uint16 id;
-        comma::packed::net_uint16 padding;
+        comma::packed::little_endian::uint16 id;
+        comma::packed::big_endian::uint16 padding;
     };
 
     /// response header
     struct response_header : public comma::packed::packed_struct< response_header, 2 >
     {
-        comma::packed::uint16 id;
+        comma::packed::little_endian::uint16 id;
         std::size_t payload_size() const;
     };
 
@@ -298,16 +298,16 @@ struct commands
 
         struct response : public commands::response< get_status, 30 >
         {
-            comma::packed::uint16 firmwareVersion; // e.g. 0x1230 = version 1.2.3, 0x123B = version 1.2.3b
-            comma::packed::uint16 fpgaVersion; // e.g. 0x1230 = version 1.2.3, 0x123B = version 1.2.3b
-            comma::packed::uint16 status; // todo: define status enum
-            comma::packed::uint32 reserved0;
-            comma::packed::uint16 temperature; // -( Temperature - 579.2364 ) / 3.63
-            comma::packed::uint16 serialNumber0; // YY CW (e. g. YY CW = 0x0740 = year '07, calendar week 40)
-            comma::packed::uint16 serialNumber1; // serial number counter
-            comma::packed::uint16 reserved1;
-            boost::array< comma::packed::uint16, 3 > fpgaVersionDate; // cryptic: YYYY MM DD HH MM FPGA S
-            boost::array< comma::packed::uint16, 3 > dspVersionDate; // cryptic: YYYY MM DD HH MM
+            comma::packed::little_endian::uint16 firmwareVersion; // e.g. 0x1230 = version 1.2.3, 0x123B = version 1.2.3b
+            comma::packed::little_endian::uint16 fpgaVersion; // e.g. 0x1230 = version 1.2.3, 0x123B = version 1.2.3b
+            comma::packed::little_endian::uint16 status; // todo: define status enum
+            comma::packed::little_endian::uint32 reserved0;
+            comma::packed::little_endian::uint16 temperature; // -( Temperature - 579.2364 ) / 3.63
+            comma::packed::little_endian::uint16 serialNumber0; // YY CW (e. g. YY CW = 0x0740 = year '07, calendar week 40)
+            comma::packed::little_endian::uint16 serialNumber1; // serial number counter
+            comma::packed::little_endian::uint16 reserved1;
+            boost::array< comma::packed::little_endian::uint16, 3 > fpgaVersionDate; // cryptic: YYYY MM DD HH MM FPGA S
+            boost::array< comma::packed::little_endian::uint16, 3 > dspVersionDate; // cryptic: YYYY MM DD HH MM
         };
     };
 
@@ -324,8 +324,8 @@ struct commands
     {
         enum { id = set_type };
         enum IndexValues { ip_address = 0x1000, tcp_port = 0x1001, subnet_mask = 0x1002, gateway = 0x1003, data_output_flag = 0x1012  }; // data output flag: 16 bit, see documentation for meaning, if we need it at all
-        comma::packed::uint16 index;
-        comma::packed::uint32 value; // todo: since it is little endian, it's really unclear what on the earth their documentation means
+        comma::packed::little_endian::uint16 index;
+        comma::packed::little_endian::uint32 value; // todo: since it is little endian, it's really unclear what on the earth their documentation means
 
         struct response : public commands::response< set, 0 > {};
     };
@@ -334,12 +334,12 @@ struct commands
     struct get : public command< get, 2 >
     {
         enum { id = get_type };
-        comma::packed::uint16 index;
+        comma::packed::little_endian::uint16 index;
 
         struct response : public commands::response< get, 6 >
         {
-            comma::packed::uint16 index;
-            comma::packed::uint32 value; // todo: since it is little endian, it's really unclear what on the earth their documentation means
+            comma::packed::little_endian::uint16 index;
+            comma::packed::little_endian::uint32 value; // todo: since it is little endian, it's really unclear what on the earth their documentation means
         };
     };
 
@@ -371,8 +371,8 @@ struct commands
     struct set_ntp_seconds : public command< set_ntp_seconds, 6 >
     {
         enum { id = set_ntp_seconds_type };
-        comma::packed::uint16 reserved; // field missed in the sick documentation
-        comma::packed::uint32 seconds;
+        comma::packed::little_endian::uint16 reserved; // field missed in the sick documentation
+        comma::packed::little_endian::uint32 seconds;
 
         set_ntp_seconds();
         set_ntp_seconds( comma::uint32 seconds );
@@ -384,8 +384,8 @@ struct commands
     struct set_ntp_fractions : public command< set_ntp_fractions, 6 >
     {
         enum { id = set_ntp_fractions_type };
-        comma::packed::uint16 reserved; // field missed in the sick documentation
-        comma::packed::uint32 fractions;
+        comma::packed::little_endian::uint16 reserved; // field missed in the sick documentation
+        comma::packed::little_endian::uint32 fractions;
 
         set_ntp_fractions();
         set_ntp_fractions( comma::uint32 fractions );

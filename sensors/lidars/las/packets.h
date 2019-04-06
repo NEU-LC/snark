@@ -61,24 +61,24 @@ struct xyz : public comma::packed::packed_struct< xyz< T >, sizeof( T ) * 3 >
 struct header: public comma::packed::packed_struct< header, 227 >
 {
     comma::packed::string< 4 > signature;
-    comma::packed::little_endian_uint16 source_id;
-    comma::packed::little_endian_uint16 global_encoding; // todo: do bit decoding
-    comma::packed::little_endian_uint32 guid_1;
-    comma::packed::little_endian_uint16 guid_2;
-    comma::packed::little_endian_uint16 guid_3;
+    comma::packed::little_endian::uint16 source_id;
+    comma::packed::little_endian::uint16 global_encoding; // todo: do bit decoding
+    comma::packed::little_endian::uint32 guid_1;
+    comma::packed::little_endian::uint16 guid_2;
+    comma::packed::little_endian::uint16 guid_3;
     comma::packed::string< 8 > guid_4;
     las::version version;
     comma::packed::string< 32 > system_id; // todo: do bit decoding
     comma::packed::string< 32 > generating_software;
-    comma::packed::little_endian_uint16 file_creation_day_of_year;
-    comma::packed::little_endian_uint16 file_creation_year;
-    comma::packed::little_endian_uint16 header_size;
-    comma::packed::little_endian_uint32 offset_to_point_data;
-    comma::packed::little_endian_uint32 number_of_variable_length_records;
+    comma::packed::little_endian::uint16 file_creation_day_of_year;
+    comma::packed::little_endian::uint16 file_creation_year;
+    comma::packed::little_endian::uint16 header_size;
+    comma::packed::little_endian::uint32 offset_to_point_data;
+    comma::packed::little_endian::uint32 number_of_variable_length_records;
     comma::packed::byte point_data_format; // 0-99
-    comma::packed::little_endian_uint16 point_data_record_length;
-    comma::packed::little_endian_uint32 number_of_point_records;
-    boost::array< comma::packed::little_endian_uint32, 5 > number_of_points_by_return;
+    comma::packed::little_endian::uint16 point_data_record_length;
+    comma::packed::little_endian::uint32 number_of_point_records;
+    boost::array< comma::packed::little_endian::uint32, 5 > number_of_points_by_return;
     las::xyz< comma::packed::float64 > scale_factor;
     las::xyz< comma::packed::float64 > offset;
     comma::packed::float64 max_x;
@@ -100,44 +100,44 @@ template <> struct point< 0 > : public comma::packed::packed_struct< point< 0 >,
 {
     typedef las::returns returns_t;
     las::xyz< comma::packed::little_endian32 > coordinates;
-    comma::packed::little_endian_uint16 intensity;
+    comma::packed::little_endian::uint16 intensity;
     comma::packed::bits< returns_t > returns;
     comma::packed::byte classification;
     comma::packed::byte scan_angle; // -90 to 90
     comma::packed::byte user_data;
-    comma::packed::little_endian_uint16 point_source_id;
+    comma::packed::little_endian::uint16 point_source_id;
 };
 
 template <> struct point< 1 > : public comma::packed::packed_struct< point< 1 >, 28 >
 {
     typedef las::returns returns_t;
     las::xyz< comma::packed::little_endian32 > coordinates;
-    comma::packed::little_endian_uint16 intensity;
+    comma::packed::little_endian::uint16 intensity;
     comma::packed::bits< returns_t > returns;
     comma::packed::byte classification;
     comma::packed::byte scan_angle; // -90 to 90
     comma::packed::byte user_data;
-    comma::packed::little_endian_uint16 point_source_id;
+    comma::packed::little_endian::uint16 point_source_id;
     comma::packed::float64 gps_time;
 };
 
 struct colour : public comma::packed::packed_struct< colour, 6 >
 {
-    comma::packed::little_endian_uint16 red;
-    comma::packed::little_endian_uint16 green;
-    comma::packed::little_endian_uint16 blue;
+    comma::packed::little_endian::uint16 red;
+    comma::packed::little_endian::uint16 green;
+    comma::packed::little_endian::uint16 blue;
 };
 
 template <> struct point< 2 > : public comma::packed::packed_struct< point< 2 >, 26 >
 {
     typedef las::returns returns_t;
     las::xyz< comma::packed::little_endian32 > coordinates;
-    comma::packed::little_endian_uint16 intensity;
+    comma::packed::little_endian::uint16 intensity;
     comma::packed::bits< returns_t > returns;
     comma::packed::byte classification;
     comma::packed::byte scan_angle; // -90 to 90
     comma::packed::byte user_data;
-    comma::packed::little_endian_uint16 point_source_id;
+    comma::packed::little_endian::uint16 point_source_id;
     las::colour colour;
 };
 
@@ -145,12 +145,12 @@ template <> struct point< 3 > : public comma::packed::packed_struct< point< 3 >,
 {
     typedef las::returns returns_t;
     las::xyz< comma::packed::little_endian32 > coordinates;
-    comma::packed::little_endian_uint16 intensity;
+    comma::packed::little_endian::uint16 intensity;
     comma::packed::bits< returns_t > returns;
     comma::packed::byte classification;
     comma::packed::byte scan_angle; // -90 to 90
     comma::packed::byte user_data;
-    comma::packed::little_endian_uint16 point_source_id;
+    comma::packed::little_endian::uint16 point_source_id;
     comma::packed::float64 gps_time; // todo? order of gps_time and colour: las spec says: colour, gps_time, but shows in the table gps_time, colour
     las::colour colour;
 };

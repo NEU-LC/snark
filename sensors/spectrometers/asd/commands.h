@@ -37,14 +37,14 @@ enum { flash_count = 200 };
     
 struct reply_header : public comma::packed::packed_struct< reply_header, 8 >
 {
-    comma::packed::big_endian_int32 header;
-    comma::packed::big_endian_int32 error;
+    comma::packed::big_endian::int32 header;
+    comma::packed::big_endian::int32 error;
 };
 
 struct name_value : public comma::packed::packed_struct< name_value, 38 >
 {
     comma::packed::string<30> name;
-    comma::packed::big_endian_float64 value;
+    comma::packed::big_endian::float64 value;
     //comma::packed::float64 value;
 };
 
@@ -56,7 +56,7 @@ struct version
     {
         reply_header header;
         name_value entry;
-        comma::packed::big_endian_int32 type;
+        comma::packed::big_endian::int32 type;
         static std::string type_description(int type)
         {
             switch(type)
@@ -82,7 +82,7 @@ struct abort
     {
         reply_header header;
         name_value entry;
-        comma::packed::big_endian_int32 count;
+        comma::packed::big_endian::int32 count;
     };
 };
 
@@ -93,9 +93,9 @@ struct optimize
     struct reply:public comma::packed::packed_struct<reply,28>
     {
         reply_header header;
-        comma::packed::big_endian_int32 itime;
-        boost::array<comma::packed::big_endian_int32,2> gain;
-        boost::array<comma::packed::big_endian_int32,2> offset;
+        comma::packed::big_endian::int32 itime;
+        boost::array<comma::packed::big_endian::int32,2> gain;
+        boost::array<comma::packed::big_endian::int32,2> offset;
     };
 };
 
@@ -107,9 +107,9 @@ struct restore
     {
         reply_header header;
         boost::array<comma::packed::string<30>,flash_count> names;
-        boost::array<comma::packed::big_endian_float64, flash_count> values;
-        comma::packed::big_endian_int32 count;
-        comma::packed::big_endian_int32 verify;
+        boost::array<comma::packed::big_endian::float64, flash_count> values;
+        comma::packed::big_endian::int32 count;
+        comma::packed::big_endian::int32 verify;
     };
 };
 
@@ -121,7 +121,7 @@ struct init
     {
         reply_header header;
         name_value entry;
-        comma::packed::big_endian_int32 count;
+        comma::packed::big_endian::int32 count;
     };
 };
 
@@ -133,9 +133,9 @@ struct save
     {
         reply_header header;
         boost::array<comma::packed::string<30>,flash_count> names;
-        boost::array<comma::packed::big_endian_float64, flash_count> values;
-        comma::packed::big_endian_int32 count;
-        comma::packed::big_endian_int32 verify;
+        boost::array<comma::packed::big_endian::float64, flash_count> values;
+        comma::packed::big_endian::int32 count;
+        comma::packed::big_endian::int32 verify;
     };
 };
 
@@ -147,9 +147,9 @@ struct erase
     {
         reply_header header;
         boost::array<comma::packed::string<30>,flash_count> names;
-        boost::array<comma::packed::big_endian_float64, flash_count> values;
-        comma::packed::big_endian_int32 count;
-        comma::packed::big_endian_int32 verify;
+        boost::array<comma::packed::big_endian::float64, flash_count> values;
+        comma::packed::big_endian::int32 count;
+        comma::packed::big_endian::int32 verify;
     };
 };
 
@@ -160,9 +160,9 @@ struct instrument_gain_control
     struct reply:public comma::packed::packed_struct<reply,reply_header::size + 12>
     {
         reply_header header;
-        comma::packed::big_endian_int32 detector;
-        comma::packed::big_endian_int32 command_type;
-        comma::packed::big_endian_int32 value;
+        comma::packed::big_endian::int32 detector;
+        comma::packed::big_endian::int32 command_type;
+        comma::packed::big_endian::int32 value;
     };
 };
 
@@ -172,44 +172,44 @@ struct acquire_data
     static const char* name() { return "acquire data"; }
     struct vnir_header : public comma::packed::packed_struct<vnir_header, 16 * 4>
     {
-        comma::packed::big_endian_int32 integration_time;   //IT
-        comma::packed::big_endian_int32 scans;
-        comma::packed::big_endian_int32 max_channel;
-        comma::packed::big_endian_int32 min_channel;
-        comma::packed::big_endian_int32 saturation;
-        comma::packed::big_endian_int32 shutter;
-        boost::array<comma::packed::big_endian_int32,10> reserved;
+        comma::packed::big_endian::int32 integration_time;   //IT
+        comma::packed::big_endian::int32 scans;
+        comma::packed::big_endian::int32 max_channel;
+        comma::packed::big_endian::int32 min_channel;
+        comma::packed::big_endian::int32 saturation;
+        comma::packed::big_endian::int32 shutter;
+        boost::array<comma::packed::big_endian::int32,10> reserved;
     };
     struct swir_header : public comma::packed::packed_struct<swir_header, 16 * 4>
     {
-        comma::packed::big_endian_int32 tec_status;
-        comma::packed::big_endian_int32 tec_current;
-        comma::packed::big_endian_int32 max_channel;
-        comma::packed::big_endian_int32 min_channel;
-        comma::packed::big_endian_int32 saturation;
-        comma::packed::big_endian_int32 a_scans;    //A scan
-        comma::packed::big_endian_int32 b_scans;    //B scan
-        comma::packed::big_endian_int32 dark_current;
-        comma::packed::big_endian_int32 gain;
-        comma::packed::big_endian_int32 offset;
-        comma::packed::big_endian_int32 scan_size_1;
-        comma::packed::big_endian_int32 scan_size_2;
-        boost::array<comma::packed::big_endian_int32,4> reserved;
+        comma::packed::big_endian::int32 tec_status;
+        comma::packed::big_endian::int32 tec_current;
+        comma::packed::big_endian::int32 max_channel;
+        comma::packed::big_endian::int32 min_channel;
+        comma::packed::big_endian::int32 saturation;
+        comma::packed::big_endian::int32 a_scans;    //A scan
+        comma::packed::big_endian::int32 b_scans;    //B scan
+        comma::packed::big_endian::int32 dark_current;
+        comma::packed::big_endian::int32 gain;
+        comma::packed::big_endian::int32 offset;
+        comma::packed::big_endian::int32 scan_size_1;
+        comma::packed::big_endian::int32 scan_size_2;
+        boost::array<comma::packed::big_endian::int32,4> reserved;
     };
     struct spectrum_header : public comma::packed::packed_struct<spectrum_header, reply_header::size + vnir_header::size + ( 2 * swir_header::size ) + 14*4 >
     {
         reply_header header;
-        comma::packed::big_endian_int32 sample_count;
-        comma::packed::big_endian_int32 trigger;
-        comma::packed::big_endian_int32 voltage;
-        comma::packed::big_endian_int32 current;
-        comma::packed::big_endian_int32 temprature;
-        comma::packed::big_endian_int32 motor_current;
-        comma::packed::big_endian_int32 instrument_hours;
-        comma::packed::big_endian_int32 instrument_minutes;
-        comma::packed::big_endian_int32 instrument_type;
-        comma::packed::big_endian_int32 ab; //AB
-        boost::array<comma::packed::big_endian_int32,4> reserved;
+        comma::packed::big_endian::int32 sample_count;
+        comma::packed::big_endian::int32 trigger;
+        comma::packed::big_endian::int32 voltage;
+        comma::packed::big_endian::int32 current;
+        comma::packed::big_endian::int32 temprature;
+        comma::packed::big_endian::int32 motor_current;
+        comma::packed::big_endian::int32 instrument_hours;
+        comma::packed::big_endian::int32 instrument_minutes;
+        comma::packed::big_endian::int32 instrument_type;
+        comma::packed::big_endian::int32 ab; //AB
+        boost::array<comma::packed::big_endian::int32,4> reserved;
         vnir_header v_header;
         swir_header s1_header;
         swir_header s2_header;
@@ -219,7 +219,7 @@ struct acquire_data
     struct spectrum_data : public comma::packed::packed_struct<spectrum_data, spectrum_header::size + data_count * 4>
     {
         spectrum_header header;
-        boost::array<comma::packed::big_endian_float32, data_count> values;
+        boost::array<comma::packed::big_endian::float32, data_count> values;
     };
 };
 

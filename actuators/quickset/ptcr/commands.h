@@ -112,8 +112,8 @@ struct get_status : public comma::packed::packed_struct< get_status, 7 >
     {
         typedef get_status command;
         enum { id = command::id }; // static const unsigned char id = command::id;
-        comma::packed::int24 pan;
-        comma::packed::int24 tilt;
+        comma::packed::little_endian::int24 pan;
+        comma::packed::little_endian::int24 tilt;
         pan_status response_pan_status;
         tilt_status response_tilt_status;
         general_status status;
@@ -135,15 +135,15 @@ struct move_to : public comma::packed::packed_struct< move_to, 6 >
 {
     static const char* const name;
     enum { id = 0x33 }; // static const unsigned char id = 0x33;
-    comma::packed::int24 pan;
-    comma::packed::int24 tilt;
+    comma::packed::little_endian::int24 pan;
+    comma::packed::little_endian::int24 tilt;
 
     struct response : public comma::packed::packed_struct< move_to::response, 13 >
     {
         typedef move_to command;
         enum { id = command::id }; // static const unsigned char id = command::id;
-        comma::packed::int24 pan;
-        comma::packed::int24 tilt;
+        comma::packed::little_endian::int24 pan;
+        comma::packed::little_endian::int24 tilt;
         pan_status response_pan_status;
         tilt_status response_tilt_status;
         general_status status;
@@ -158,15 +158,15 @@ struct move_to_delta : public comma::packed::packed_struct< move_to_delta, 6 >
 {
     static const char* const name;
     enum { id = 0x34 }; // static const unsigned char id = 0x34;
-    comma::packed::int24 pan;
-    comma::packed::int24 tilt;
+    comma::packed::little_endian::int24 pan;
+    comma::packed::little_endian::int24 tilt;
 
     struct response : public comma::packed::packed_struct< move_to_delta::response, 13 >
     {
         typedef move_to_delta command;
         enum { id = command::id }; // static const unsigned char id = command::id;
-        comma::packed::int24 pan;
-        comma::packed::int24 tilt;
+        comma::packed::little_endian::int24 pan;
+        comma::packed::little_endian::int24 tilt;
         pan_status response_pan_status;
         tilt_status response_tilt_status;
         general_status status;
@@ -192,7 +192,7 @@ struct get_limits : public comma::packed::packed_struct< get_limits, 1 >
         typedef get_limits command;
         enum { id = command::id }; // static const unsigned char id = command::id;
         comma::packed::byte direction;
-        comma::packed::int24 value;
+        comma::packed::little_endian::int24 value;
     };
 };
 
@@ -202,7 +202,7 @@ struct set_limits : public comma::packed::packed_struct< set_limits, 4 >
     enum { id = get_limits::id }; // static const unsigned char id = get_limits::id;
     typedef get_limits::direction direction;
     comma::packed::byte direction_byte;
-    comma::packed::int24 value;
+    comma::packed::little_endian::int24 value;
     set_limits() {}
     set_limits( direction::values a, int v ) { direction_byte = a; value = v; }
 
@@ -211,7 +211,7 @@ struct set_limits : public comma::packed::packed_struct< set_limits, 4 >
         typedef set_limits command;
         enum { id = command::id }; // static const unsigned char id = command::id;
         comma::packed::byte direction;
-        comma::packed::int24 value;
+        comma::packed::little_endian::int24 value;
     };
 };
 

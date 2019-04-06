@@ -72,8 +72,8 @@ struct record : public comma::packed::packed_struct< record< T >, header::size +
 
 struct gps_time : public comma::packed::packed_struct< gps_time, 6 >
 {
-    comma::packed::big_endian_int32 milliseconds; // milliseconds of gps week
-    comma::packed::big_endian_int16 week_number;
+    comma::packed::big_endian::int32 milliseconds; // milliseconds of gps week
+    comma::packed::big_endian::int16 week_number;
 
     /// @todo dodgy, since it does not take care about leap seconds
     boost::posix_time::ptime as_time() const { return boost::posix_time::ptime( boost::gregorian::date( 1980, boost::gregorian::Jan, 1 ), boost::posix_time::hours( week_number() * 7 ) + boost::posix_time::milliseconds( milliseconds() ) ); }
@@ -82,7 +82,7 @@ struct gps_time : public comma::packed::packed_struct< gps_time, 6 >
 struct gps_time_with_offset : public comma::packed::packed_struct< gps_time_with_offset, 8 >
 {
     gsof::gps_time time;
-    comma::packed::big_endian_int16 utc_offset; // seconds
+    comma::packed::big_endian::int16 utc_offset; // seconds
     
     /// @todo do we need to handle gps weeks rollover?
     /// @todo is utc offset applied correctly?
@@ -91,14 +91,14 @@ struct gps_time_with_offset : public comma::packed::packed_struct< gps_time_with
 
 struct coordinates : public comma::packed::packed_struct< coordinates, 16 >
 {
-    comma::packed::big_endian_double latitude;
-    comma::packed::big_endian_double longitude;
+    comma::packed::big_endian::float64 latitude;
+    comma::packed::big_endian::float64 longitude;
 };
 
 struct position : public comma::packed::packed_struct< position, 24 >
 {
     gsof::coordinates coordinates;
-    comma::packed::big_endian_double height;
+    comma::packed::big_endian::float64 height;
 };
 
 struct quality
@@ -135,20 +135,20 @@ struct altitude
     
     struct data : public comma::packed::packed_struct< data, 70 >
     {
-        comma::packed::big_endian_int32 milliseconds; // milliseconds of gps week
+        comma::packed::big_endian::int32 milliseconds; // milliseconds of gps week
         comma::packed::bits< altitude::flags > flags;
         comma::packed::uint8 number_of_satellites_used;
         comma::packed::bits< altitude::calculation_flags > calculation_flags;
         comma::packed::byte reserved;
-        comma::packed::big_endian_double pitch;
-        comma::packed::big_endian_double yaw;
-        comma::packed::big_endian_double roll;
-        comma::packed::big_endian_double master_slave_range;
-        comma::packed::big_endian_int16 position_dilution_of_precision;
-        comma::packed::big_endian_float32 pitch_variance;
-        comma::packed::big_endian_float32 yaw_variance;
-        comma::packed::big_endian_float32 roll_variance;
-        comma::packed::big_endian_float32 master_slave_range_variance;
+        comma::packed::big_endian::float64 pitch;
+        comma::packed::big_endian::float64 yaw;
+        comma::packed::big_endian::float64 roll;
+        comma::packed::big_endian::float64 master_slave_range;
+        comma::packed::big_endian::int16 position_dilution_of_precision;
+        comma::packed::big_endian::float32 pitch_variance;
+        comma::packed::big_endian::float32 yaw_variance;
+        comma::packed::big_endian::float32 roll_variance;
+        comma::packed::big_endian::float32 master_slave_range_variance;
     };
 };
 
@@ -201,16 +201,16 @@ struct position_sigma
     
     struct data : public comma::packed::packed_struct< data, 38 >
     {
-        comma::packed::big_endian_float32 position_rms;
-        comma::packed::big_endian_float32 sigma_east; // meters
-        comma::packed::big_endian_float32 sigma_north; // meters
-        comma::packed::big_endian_float32 covariance_east_north;
-        comma::packed::big_endian_float32 sigma_up; // meters
-        comma::packed::big_endian_float32 semi_major_axis; // meters
-        comma::packed::big_endian_float32 semi_minor_axis; // meters
-        comma::packed::big_endian_float32 orientation;
-        comma::packed::big_endian_float32 unit_variance;
-        comma::packed::big_endian_uint16 number_of_epochs; // meters
+        comma::packed::big_endian::float32 position_rms;
+        comma::packed::big_endian::float32 sigma_east; // meters
+        comma::packed::big_endian::float32 sigma_north; // meters
+        comma::packed::big_endian::float32 covariance_east_north;
+        comma::packed::big_endian::float32 sigma_up; // meters
+        comma::packed::big_endian::float32 semi_major_axis; // meters
+        comma::packed::big_endian::float32 semi_minor_axis; // meters
+        comma::packed::big_endian::float32 orientation;
+        comma::packed::big_endian::float32 unit_variance;
+        comma::packed::big_endian::uint16 number_of_epochs; // meters
     };
 };
 
@@ -269,10 +269,10 @@ struct velocity
     struct data : public comma::packed::packed_struct< data, 17 >
     {
         comma::packed::bits< velocity::flags > flags;
-        comma::packed::big_endian_float32 speed;
-        comma::packed::big_endian_float32 heading;
-        comma::packed::big_endian_float32 vertical_velocity;
-        comma::packed::big_endian_float32 local_heading;
+        comma::packed::big_endian::float32 speed;
+        comma::packed::big_endian::float32 heading;
+        comma::packed::big_endian::float32 vertical_velocity;
+        comma::packed::big_endian::float32 local_heading;
     };
 };
 
@@ -282,9 +282,9 @@ struct ecef_position
     
     struct data : public comma::packed::packed_struct< data, 24 >
     {
-        comma::packed::big_endian_double x;
-        comma::packed::big_endian_double y;
-        comma::packed::big_endian_double z;
+        comma::packed::big_endian::float64 x;
+        comma::packed::big_endian::float64 y;
+        comma::packed::big_endian::float64 z;
     };
 };
 

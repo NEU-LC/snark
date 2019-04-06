@@ -82,7 +82,7 @@ struct tool_t
     pose_t< coordinates_t< type > > force;
 };
 
-struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint_values_t, 48 >, joint_values_t< comma::packed::net_float64 > 
+struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint_values_t, 48 >, joint_values_t< comma::packed::big_endian::float64 > 
 {
     template < typename T >
     void export_to( joint_values_t< T >& v ) const
@@ -96,7 +96,7 @@ struct packed_joint_values_t : public comma::packed::packed_struct< packed_joint
     }
 };
 
-struct packed_coordinates_t : public comma::packed::packed_struct< packed_coordinates_t, 24 >, coordinates_t< comma::packed::net_float64 >
+struct packed_coordinates_t : public comma::packed::packed_struct< packed_coordinates_t, 24 >, coordinates_t< comma::packed::big_endian::float64 >
 {
     template < typename T >
     void export_to( coordinates_t< T >& c ) const 
@@ -119,12 +119,12 @@ struct packed_pose_t : public comma::packed::packed_struct< packed_pose_t, 48 >,
 
 struct header_t : public comma::packed::packed_struct< header_t, 4  >
 {
-    comma::packed::net_uint32 length;
+    comma::packed::big_endian::uint32 length;
 };
 
 struct body_t : public comma::packed::packed_struct< body_t, 808  >
 {
-    comma::packed::net_float64 time_since_boot;
+    comma::packed::big_endian::float64 time_since_boot;
     comma::packed::string< 240 > dummy1;
     packed_joint_values_t actual_joint_angles;
     packed_joint_values_t actual_joint_speeds;
@@ -136,7 +136,7 @@ struct body_t : public comma::packed::packed_struct< body_t, 808  >
     comma::packed::string< 8 > dummy3;
     packed_joint_values_t joint_temperatures;
     comma::packed::string< 16 > dummy4;
-    comma::packed::net_float64 mode;
+    comma::packed::big_endian::float64 mode;
     packed_joint_values_t joint_modes;
     
     void export_to( arm_t& arm ) const

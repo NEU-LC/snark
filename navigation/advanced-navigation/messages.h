@@ -49,7 +49,7 @@ struct header : public comma::packed::packed_struct<header,5>
 private:
     comma::packed::uint8 length;
 public:
-    comma::packed::little_endian_uint16 msg_crc;
+    comma::packed::little_endian::uint16 msg_crc;
     bool is_valid() const;
     //The CRC is a CRC16-CCITT. The starting value is 0xFFFF. The CRC covers only the packet data.
     bool check_crc(const char* data) const;   //length is from header
@@ -64,19 +64,19 @@ struct system_state : public comma::packed::packed_struct<system_state,100>
     enum { id = 20 };
     boost::posix_time::ptime t() const;
 
-    comma::packed::little_endian_uint16 system_status;
-    comma::packed::little_endian_uint16 filter_status;
-    comma::packed::little_endian_uint32 unix_time_seconds;
-    comma::packed::little_endian_uint32 microseconds;
-    comma::packed::little_endian_float64 latitude;  //rad
-    comma::packed::little_endian_float64 longitude; //rad
-    comma::packed::little_endian_float64 height;    //m
-    boost::array<comma::packed::little_endian_float32,3> velocity;  // north, east, down m/s
-    boost::array<comma::packed::little_endian_float32,3> body_acceleration; //x,y,z m/s/s
-    comma::packed::little_endian_float32 g_force;   //g
-    boost::array<comma::packed::little_endian_float32,3> orientation;   //roll,pitch,heading radians
-    boost::array<comma::packed::little_endian_float32,3> angular_velocity;  //x,y,z rad/s
-    boost::array<comma::packed::little_endian_float32,3> position_stddev;    //latitude,longitude,height m
+    comma::packed::little_endian::uint16 system_status;
+    comma::packed::little_endian::uint16 filter_status;
+    comma::packed::little_endian::uint32 unix_time_seconds;
+    comma::packed::little_endian::uint32 microseconds;
+    comma::packed::little_endian::float64 latitude;  //rad
+    comma::packed::little_endian::float64 longitude; //rad
+    comma::packed::little_endian::float64 height;    //m
+    boost::array<comma::packed::little_endian::float32,3> velocity;  // north, east, down m/s
+    boost::array<comma::packed::little_endian::float32,3> body_acceleration; //x,y,z m/s/s
+    comma::packed::little_endian::float32 g_force;   //g
+    boost::array<comma::packed::little_endian::float32,3> orientation;   //roll,pitch,heading radians
+    boost::array<comma::packed::little_endian::float32,3> angular_velocity;  //x,y,z rad/s
+    boost::array<comma::packed::little_endian::float32,3> position_stddev;    //latitude,longitude,height m
     snark::spherical::coordinates coordinates() const;
 };
 
@@ -136,19 +136,19 @@ struct filter_status_description
 struct raw_sensors : public comma::packed::packed_struct<raw_sensors,48>
 {
     enum { id = 28 };
-    boost::array<comma::packed::little_endian_float32,3> accelerometer; //x,y,z m/s/s
-    boost::array<comma::packed::little_endian_float32,3> gyroscope; //x,y,z rad/s
-    boost::array<comma::packed::little_endian_float32,3> magnetometer;  //x,y,z mG
-    comma::packed::little_endian_float32 imu_temperature;   //deg C
-    comma::packed::little_endian_float32 pressure;  //Pascals
-    comma::packed::little_endian_float32 pressure_temperature;  //deg C
+    boost::array<comma::packed::little_endian::float32,3> accelerometer; //x,y,z m/s/s
+    boost::array<comma::packed::little_endian::float32,3> gyroscope; //x,y,z rad/s
+    boost::array<comma::packed::little_endian::float32,3> magnetometer;  //x,y,z mG
+    comma::packed::little_endian::float32 imu_temperature;   //deg C
+    comma::packed::little_endian::float32 pressure;  //Pascals
+    comma::packed::little_endian::float32 pressure_temperature;  //deg C
 };
 
 struct satellites : public comma::packed::packed_struct<satellites,13>
 {
     enum { id = 30 };
-    comma::packed::little_endian_float32 hdop;
-    comma::packed::little_endian_float32 vdop;
+    comma::packed::little_endian::float32 hdop;
+    comma::packed::little_endian::float32 vdop;
     comma::packed::uint8 gps_satellites;
     comma::packed::uint8 glonass_satellites;
     comma::packed::uint8 beidou_satellites;
@@ -168,27 +168,27 @@ struct rtcm_corrections : public comma::packed::packed_struct<rtcm_corrections,2
 struct position_standard_deviation : public comma::packed::packed_struct<position_standard_deviation,12>
 {
     enum { id = 24 };
-    boost::array<comma::packed::little_endian_float32,3> stddev;
+    boost::array<comma::packed::little_endian::float32,3> stddev;
 };
 
 struct velocity_standard_deviation : public comma::packed::packed_struct<velocity_standard_deviation,12>
 {
     enum { id = 25 };
-    boost::array<comma::packed::little_endian_float32,3> stddev;
+    boost::array<comma::packed::little_endian::float32,3> stddev;
 };
 
 //euler_orientation_standard_deviation_packet_t
 struct orientation_standard_deviation : public comma::packed::packed_struct<velocity_standard_deviation,12>
 {
     enum { id = 26 };
-    boost::array<comma::packed::little_endian_float32,3> stddev;
+    boost::array<comma::packed::little_endian::float32,3> stddev;
 };
 
 struct acknowledgement : public comma::packed::packed_struct<acknowledgement,4>
 {
     enum { id = 0 };
     comma::packed::uint8 packet_id;
-    comma::packed::uint16 crc;
+    comma::packed::little_endian::uint16 crc;
     comma::packed::uint8 result;
     static const char* result_msg(unsigned result);
 };

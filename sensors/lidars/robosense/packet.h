@@ -100,7 +100,7 @@ struct msop
             {
                 static double firing_interval() { return 0.000003; } // 3 microseconds, see Appendix A
                 
-                comma::packed::big_endian_uint16 range; // see 5.1.2.3
+                comma::packed::big_endian::uint16 range; // see 5.1.2.3
                 comma::packed::byte reflectivity;
             };
             
@@ -111,7 +111,7 @@ struct msop
                 static const char* sentinel_value() { return "\xFF\xEE"; }
                 
                 comma::packed::string< 2 > sentinel;
-                comma::packed::big_endian_uint16 azimuth; // 0 is Y axis positive direction; see 5.1.2.1
+                comma::packed::big_endian::uint16 azimuth; // 0 is Y axis positive direction; see 5.1.2.1
                 boost::array< boost::array< laser_return, number_of_lasers >, 2 > channels;
                 
                 double azimuth_as_radians() const { return ( 0.01 * azimuth() ) * M_PI / 180; }
@@ -120,7 +120,7 @@ struct msop
             struct tail_t: public comma::packed::packed_struct< tail_t, 4 >
             {
                 static const char* sentinel_value() { return "\x00\xFF"; }
-                comma::packed::uint32 reserved;
+                comma::packed::little_endian::uint32 reserved;
                 comma::packed::string< 2 > sentinel;
             };
 
@@ -191,10 +191,10 @@ struct difop
         
         struct data_t: public comma::packed::packed_struct< data_t, 1238 >
         {
-            comma::packed::big_endian_uint16 motor_rotation_speed;
+            comma::packed::big_endian::uint16 motor_rotation_speed;
             comma::packed::string< 26 > ethernet;
-            comma::packed::big_endian_uint16 corrected_static_base;
-            comma::packed::big_endian_uint16 motor_phase_lock;
+            comma::packed::big_endian::uint16 corrected_static_base;
+            comma::packed::big_endian::uint16 motor_phase_lock;
             comma::packed::string< 5 > top_board_firmware_version;
             comma::packed::string< 5 > bottom_board_firmware_version;
             std::array< char, 240 > corrected_intensity_curves_coefficient;
