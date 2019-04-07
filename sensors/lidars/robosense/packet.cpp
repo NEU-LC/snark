@@ -147,4 +147,14 @@ bool msop::packet::const_iterator::value_type::valid() const
     return range > min_range && range < max_range;
 }
 
+template < unsigned int Size >
+static std::array< char, Size > make_zeroes() { std::array< char, Size > a; ::memset( &a[0], 0, a.size() ); return a; }
+
+bool difop::packet::data_t::corrected_vertical_angles_empty() const
+{
+    enum { size_in_bytes = msop::packet::data_t::number_of_lasers * difop::packet::data_t::corrected_vertical_angle::size };
+    static std::array< char, size_in_bytes > zeroes = make_zeroes< size_in_bytes >();
+    return ::memcmp( corrected_vertical_angles.data(), &zeroes[0], size_in_bytes ) == 0;
+}
+
 } } // namespace snark { namespace robosense {

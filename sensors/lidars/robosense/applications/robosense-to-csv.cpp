@@ -83,6 +83,7 @@ static void usage( bool verbose )
     std::cerr << "    --calibration-channels,--channels=<filename>; default: 450 (i.e. 4.50cm) for all channels" << std::endl;
     std::cerr << "    --difop=[<path>]; file containing timestamped difop packets; if present, calibration data will taken from difop packets" << std::endl;
     std::cerr << "                      currently only calibrated vertical angles are supported" << std::endl;
+    std::cerr << "    --force; use if robosense-to-csv suggests it" << std::endl;
     std::cerr << std::endl;
     std::cerr << "output options:" << std::endl;
     std::cerr << "    --binary,-b[=<format>]: output in binary equivalent of csv" << std::endl;
@@ -118,17 +119,15 @@ template <> struct traits< snark::robosense::calculator::point >
 
 } } // namespace comma { namespace visiting {
 
-typedef std::pair< boost::posix_time::ptime, snark::robosense::msop::packet* > pair_t;
-
 template < typename P >
 static std::pair< boost::posix_time::ptime, P* > read( std::istream& is, char* buffer )
 {
     comma::uint64 microseconds;
     std::pair< boost::posix_time::ptime, P* > p( boost::posix_time::not_a_date_time, NULL );
     is.read( reinterpret_cast< char* >( &microseconds ), sizeof( comma::uint64 ) );
-    if( is.bad() || is.eof() ) { return p; }
+    if( is.gcount() < int( sizeof( comma::uint64 ) ) || is.bad() || is.eof() ) { return p; }
     is.read( buffer, P::size );
-    if( is.bad() || is.eof() ) { return p; }
+    if( is.gcount() < int( P::size ) || is.bad() || is.eof() ) { return p; }
     comma::uint64 seconds = microseconds / 1000000; //to avoid time overflow on 32bit systems with boost::posix_time::microseconds( m_microseconds ), apparently due to a bug in boost
     microseconds = microseconds % 1000000;
     static boost::posix_time::ptime epoch( snark::timing::epoch );
@@ -171,10 +170,37 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
         return snark::robosense::calculator( calibration + "/angle.csv", calibration + "/ChannelNum.csv" );
     }
     std::cerr << "robosense-to-csv: config from difop" << std::endl;
+    typedef std::pair< boost::posix_time::ptime, snark::robosense::difop::packet* > pair_t;
     std::ifstream ifs( difop );
     if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open '" << difop << "'" ); }
     std::vector< char > buffer( snark::robosense::difop::packet::size );
-    auto p = read< snark::robosense::difop::packet >( std::cin, &buffer[0] );
+    unsigned int count = 0;
+    unsigned int difop_count = 0;
+    pair_t p( boost::posix_time::ptime(), NULL );
+    for( count = 0; ifs.good() && !ifs.eof(); ++count )
+    {
+        pair_t q = read< snark::robosense::difop::packet >( ifs, &buffer[0] );
+        if( !q.second ) { break; }
+        if( q.second->header.valid() )
+        {
+            ++difop_count;
+            if( q.second->data.corrected_vertical_angles_empty() ) { continue; }
+            p = q;
+            break;
+        }
+    }
+    if( !p.second )
+    { 
+        std::cerr << "robosense-to-csv: got no non-zero corrected vertical angles in " << difop_count << " DIFOP packet(s) (total packet count: " << count << ") in " << difop << std::endl;
+        if( options.exists( "--force" ) )
+        {
+            std::cerr << "robosense-to-csv: using defaults for corrected vertical angles" << std::endl;
+            return snark::robosense::calculator();
+        }
+        std::cerr << "robosense-to-csv: use --force to override (defaults will be used)" << std::endl;
+        exit( 1 );
+    }
+    std::cerr << "robosense-to-csv: got DIFOP data in packet " << count << " in '" << difop << "'" << std::endl;
     std::array< double, snark::robosense::msop::packet::data_t::number_of_lasers > elevation;
     for( unsigned int i = 0; i < elevation.size(); ++i ) { elevation[i] = p.second->data.corrected_vertical_angles[i].as_radians(); }
     return snark::robosense::calculator( elevation );
@@ -207,7 +233,6 @@ int main( int ac, char** av )
             for( snark::robosense::msop::packet::const_iterator it( p.second ); !it.done() && std::cout.good(); ++it )
             {
                 if( !it->valid() && !output_invalid_points ) { continue; }
-                auto ppp = calculator.make_point( scan, p.first, it, temperature );
                 ostream.write( calculator.make_point( scan, p.first, it, temperature ) );
             }
         }        

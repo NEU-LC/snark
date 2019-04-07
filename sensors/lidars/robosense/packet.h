@@ -185,8 +185,9 @@ struct difop
     {
         struct header_t: public comma::packed::packed_struct< header_t, 8 >
         {
-            static const char* sentinel_value() { return "\xA5\xFF\x00\x5a\x11\x11\x55\x55"; }
-            comma::packed::string< 8 > sentinel;
+            std::array< char, 8 > sentinel;
+            static const char* sentinel_value() { return "\xA5\xFF\x00\x5A\x11\x11\x55\x55"; }
+            bool valid() const { return ::memcmp( sentinel.data(), sentinel_value(), 8 ) == 0; } // todo: quick and dirty; implement packed::bytes
         };
         
         struct data_t: public comma::packed::packed_struct< data_t, 1238 >
@@ -211,8 +212,9 @@ struct difop
             struct corrected_vertical_angle: public comma::packed::packed_struct< corrected_vertical_angle, 3 >
             {
                 comma::packed::big_endian::int24 value;
-                double as_radians() const { value() * 0.0001 * M_PI / 180; }
+                double as_radians() const { return value() * 0.0001 * M_PI / 180; }
             };
+            bool corrected_vertical_angles_empty() const;
             std::array< corrected_vertical_angle, msop::packet::data_t::number_of_lasers > corrected_vertical_angles;
             comma::packed::string< 33 > reserved_3;
         };
