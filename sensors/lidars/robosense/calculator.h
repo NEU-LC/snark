@@ -85,18 +85,28 @@ class calculator
             bool valid() const;
         };
         
-        class scan_tick
+        class scan
         {
             public:
-                scan_tick( unsigned int max_number_of_missing_packets = 100 ); // todo: arbitrary: 10 missing packets by default will trigger a new scan and detect the current scan as incomplete
+                scan( unsigned int max_number_of_missing_packets = 100 ); // todo: arbitrary: 10 missing packets by default will trigger a new scan and detect the current scan as incomplete
                 
-                std::pair< bool, bool > is_new_scan( const boost::posix_time::ptime& timestamp, const msop::packet& packet );
+                void update( const boost::posix_time::ptime& timestamp, const msop::packet& packet );
+                
+                bool is_valid() const { return is_new_; }
+                
+                bool is_new() const { return is_valid_; }
+                
+                comma::uint32 id() const { return id_; }
 
             private:
                 boost::posix_time::time_duration max_gap_;
-                boost::optional< unsigned int > last_angle_;
                 boost::posix_time::ptime last_timestamp_;
-                bool valid_scan_;
+                boost::optional< unsigned int > last_angle_;
+                boost::optional< unsigned int > start_angle_;
+                boost::optional< unsigned int > end_angle_;
+                bool is_new_;
+                bool is_valid_;
+                comma::uint32 id_;
         };
         
         calculator();
@@ -113,7 +123,7 @@ class calculator
         
         const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation() const { return elevation_; }
         
-        point make_point( unsigned int scan, const boost::posix_time::ptime& t, const robosense::msop::packet::const_iterator& it, unsigned int temperature );
+        point make_point( comma::uint32 scan, const boost::posix_time::ptime& t, const robosense::msop::packet::const_iterator& it, unsigned int temperature );
         
     private:
         std::array< double, robosense::msop::packet::data_t::number_of_lasers > elevation_;

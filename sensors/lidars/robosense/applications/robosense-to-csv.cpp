@@ -218,22 +218,20 @@ int main( int ac, char** av )
         if( options.exists( "--calibration-angles-output,--output-calibration-angles,--output-angles" ) ) { for( auto a: calculator.elevation() ) { std::cout << a << std::endl; } return 0; }
         unsigned int temperature = options.value( "--temperature,-t", 20 );
         if( temperature > 40 ) { std::cerr << "robosense-to-csv: expected temperature between 0 and 40; got: " << temperature << std::endl; return 1; }
-        snark::robosense::calculator::scan_tick scan_tick( options.value( "--scan-max-missing-packets,--missing-packets", 100 ) );
+        snark::robosense::calculator::scan scan( options.value( "--scan-max-missing-packets,--missing-packets", 100 ) );
         comma::csv::options csv( options );
         csv.full_xpath = false;
         comma::csv::output_stream< snark::robosense::calculator::point > ostream( std::cout, csv );
-        unsigned int scan = 0;
         while( std::cin.good() && !std::cin.eof() )
         {
             auto p = read< snark::robosense::msop::packet >( std::cin, &buffer[0] );
             if( !p.second ) { break; }
             if( !p.second->valid() ) { continue; }
-            std::pair< bool, bool > tick = scan_tick.is_new_scan( p.first, *p.second );
-            if( tick.first ) { ++scan; }
+            scan.update( p.first, *p.second );
             for( snark::robosense::msop::packet::const_iterator it( p.second ); !it.done() && std::cout.good(); ++it )
             {
                 if( !it->valid() && !output_invalid_points ) { continue; }
-                ostream.write( calculator.make_point( scan, p.first, it, temperature ) );
+                ostream.write( calculator.make_point( scan.id(), p.first, it, temperature ) );
             }
         }        
         return 0;
