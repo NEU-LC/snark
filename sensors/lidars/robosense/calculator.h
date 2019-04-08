@@ -80,7 +80,7 @@ class calculator
             comma::uint32 reflectivity;
             Eigen::Vector3d coordinates;
             
-            point(): id( 0 ), scan( 0 ), range( 0 ), bearing( 0 ), elevation( 0 ), reflectivity( 0 ), coordinates( Eigen::Vector3d::Zero() ) {}
+            point(): scan( 0 ), id( 0 ), range( 0 ), bearing( 0 ), elevation( 0 ), reflectivity( 0 ), coordinates( Eigen::Vector3d::Zero() ) {}
             
             bool valid() const;
         };
@@ -92,20 +92,21 @@ class calculator
                 
                 void update( const boost::posix_time::ptime& timestamp, const msop::packet& packet );
                 
-                bool is_valid() const { return is_new_; }
+                bool is_full() const { return is_full_; }
                 
-                bool is_new() const { return is_valid_; }
+                bool is_new() const { return is_new_; }
                 
                 comma::uint32 id() const { return id_; }
 
             private:
-                boost::posix_time::time_duration max_gap_;
+                unsigned int max_number_of_missing_packets_;
+                boost::posix_time::time_duration max_time_gap_;
                 boost::posix_time::ptime last_timestamp_;
                 boost::optional< unsigned int > last_angle_;
                 boost::optional< unsigned int > start_angle_;
                 boost::optional< unsigned int > end_angle_;
                 bool is_new_;
-                bool is_valid_;
+                bool is_full_;
                 comma::uint32 id_;
         };
         

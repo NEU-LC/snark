@@ -90,7 +90,7 @@ static void usage( bool verbose )
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
     std::cerr << "    --output-fields: todo: print output fields and exit" << std::endl;
     std::cerr << "    --output-invalid-points: output invalid points" << std::endl;
-    std::cerr << "    --scan-discard-invalid,--discard-invalid-scans: todo: don't output scans with missing packets" << std::endl;
+    std::cerr << "    --scan-discard-incomplete,--discard-incomplete-scans: todo: don't output scans with missing packets" << std::endl;
     std::cerr << "    --scan-max-missing-packets,--missing-packets=<n>; default 100; (arbitrary) number of consecutive missing packets for new/invalid scan" << std::endl;
     std::cerr << "    --temperature,-t=<celcius>; default=20; integer from 0 to 39" << std::endl;
     std::cerr << std::endl;
@@ -219,9 +219,12 @@ int main( int ac, char** av )
         unsigned int temperature = options.value( "--temperature,-t", 20 );
         if( temperature > 40 ) { std::cerr << "robosense-to-csv: expected temperature between 0 and 40; got: " << temperature << std::endl; return 1; }
         snark::robosense::calculator::scan scan( options.value( "--scan-max-missing-packets,--missing-packets", 100 ) );
+        bool discard_incomplete_scans = options.exists( "--scan-discard-incomplete,--discard-incomplete-scans" );
         comma::csv::options csv( options );
         csv.full_xpath = false;
         comma::csv::output_stream< snark::robosense::calculator::point > ostream( std::cout, csv );
+        std::vector< snark::robosense::calculator::point > points;
+        if( discard_incomplete_scans ) { points.reserve( 50000 ); } // quick and dirty
         while( std::cin.good() && !std::cin.eof() )
         {
             auto p = read< snark::robosense::msop::packet >( std::cin, &buffer[0] );
@@ -231,9 +234,16 @@ int main( int ac, char** av )
             for( snark::robosense::msop::packet::const_iterator it( p.second ); !it.done() && std::cout.good(); ++it )
             {
                 if( !it->valid() && !output_invalid_points ) { continue; }
-                ostream.write( calculator.make_point( scan.id(), p.first, it, temperature ) );
+                if( discard_incomplete_scans )
+                {
+                    std::cerr << "robosense-to-csv: --discard-incomplete-scans: todo" << std::endl;
+                }
+                else
+                {
+                    ostream.write( calculator.make_point( scan.id(), p.first, it, temperature ) );
+                }
             }
-        }        
+        }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "robosense-to-csv: " << ex.what() << std::endl; }

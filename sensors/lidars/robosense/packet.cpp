@@ -152,9 +152,13 @@ static std::array< char, Size > make_zeroes() { std::array< char, Size > a; ::me
 
 bool difop::packet::data_t::corrected_vertical_angles_empty() const
 {
-    enum { size_in_bytes = msop::packet::data_t::number_of_lasers * difop::packet::data_t::corrected_vertical_angle::size };
-    static std::array< char, size_in_bytes > zeroes = make_zeroes< size_in_bytes >();
-    return ::memcmp( corrected_vertical_angles.data(), &zeroes[0], size_in_bytes ) == 0;
+    const char* p = corrected_vertical_angles.data(); // as in ros driver
+    for( unsigned int i = 0; i < 4; ++i ) { if( p[i] != 0x00 && p[i] != 0xff ) { return false; } } // as in ros driver
+    return true;
+    
+    //enum { size_in_bytes = msop::packet::data_t::number_of_lasers * difop::packet::data_t::corrected_vertical_angle::size };
+    //static std::array< char, size_in_bytes > zeroes = make_zeroes< size_in_bytes >();
+    //return ::memcmp( corrected_vertical_angles.data(), &zeroes[0], size_in_bytes ) == 0;
 }
 
 } } // namespace snark { namespace robosense {
