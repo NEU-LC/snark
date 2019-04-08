@@ -94,7 +94,7 @@ static void usage( bool verbose )
     std::cerr << "    --output-fields: todo: print output fields and exit" << std::endl;
     std::cerr << "    --output-invalid-points: output invalid points" << std::endl;
     std::cerr << "    --scan-discard-incomplete,--discard-incomplete-scans: todo: don't output scans with missing packets" << std::endl;
-    std::cerr << "    --scan-max-missing-packets,--missing-packets=<n>; default 100; (arbitrary) number of consecutive missing packets for new/invalid scan" << std::endl;
+    std::cerr << "    --scan-max-missing-packets,--missing-packets=<n>; default 5; number of consecutive missing packets for new/invalid scan (as a rule of thumb: roughly at 20rpm 50 packets per revolution)" << std::endl;
     std::cerr << "    --temperature,-t=<celcius>; default=20; integer from 0 to 39" << std::endl;
     std::cerr << std::endl;
     std::cerr << "csv options" << std::endl;
@@ -211,7 +211,7 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
     }
     if( !p.second )
     { 
-        std::cerr << "robosense-to-csv: got no non-zero corrected vertical angles in " << difop_count << " DIFOP packet(s) (total packet count: " << count << ") in " << difop << std::endl;
+        std::cerr << "robosense-to-csv: got no non-zero corrected vertical angles in " << difop_count << " DIFOP packet(s) (total packet count: " << count << ") in '" << difop << "'" << std::endl;
         if( options.exists( "--force" ) )
         {
             std::cerr << "robosense-to-csv: using defaults for corrected vertical angles" << std::endl;
@@ -238,13 +238,13 @@ int main( int ac, char** av )
         if( options.exists( "--calibration-angles-output,--output-calibration-angles,--output-angles" ) ) { for( auto a: calculator.elevation() ) { std::cout << a << std::endl; } return 0; }
         unsigned int temperature = options.value( "--temperature,-t", 20 );
         if( temperature > 40 ) { std::cerr << "robosense-to-csv: expected temperature between 0 and 40; got: " << temperature << std::endl; return 1; }
-        snark::robosense::calculator::scan scan( options.value( "--scan-max-missing-packets,--missing-packets", 100 ) );
+        snark::robosense::calculator::scan scan( options.value( "--scan-max-missing-packets,--missing-packets", 10 ) );
         bool discard_incomplete_scans = options.exists( "--scan-discard-incomplete,--discard-incomplete-scans" );
         comma::csv::options csv( options );
         csv.full_xpath = false;
         comma::csv::output_stream< snark::robosense::calculator::point > ostream( std::cout, csv );
-        std::vector< snark::robosense::calculator::point > points;
-        if( discard_incomplete_scans ) { points.reserve( 50000 ); } // quick and dirty
+        //std::vector< std::pair< boost::posix_time::ptime, msop::packet > > buffer; // todo
+        //if( discard_incomplete_scans ) { buffer.reserve( 50 ); } // todo
         while( std::cin.good() && !std::cin.eof() )
         {
             auto p = read< snark::robosense::msop::packet >( std::cin, &buffer[0] );
@@ -260,7 +260,7 @@ int main( int ac, char** av )
                 }
                 else
                 {
-                    ostream.write( calculator.make_point( scan.id(), p.first, it, temperature ) );
+                    ostream.write( calculator.make_point( scan.current().id, p.first, it, temperature ) );
                 }
             }
         }

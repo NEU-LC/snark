@@ -88,26 +88,36 @@ class calculator
         class scan
         {
             public:
-                scan( unsigned int max_number_of_missing_packets = 100 ); // todo: arbitrary: 10 missing packets by default will trigger a new scan and detect the current scan as incomplete
+                struct data
+                {
+                    comma::uint32 id;
+                    comma::uint32 begin;
+                    comma::uint32 end;
+                    comma::uint32 size;
+                    
+                    data(): id( 0 ), begin( 0 ), end( 0 ), size( 0 ) {}
+                    
+                    bool is_new() const { return size == 1; }
+                };
+                
+                scan( unsigned int max_number_of_missing_packets = 100, bool accumulate = false ); // todo: arbitrary: 10 missing packets by default will trigger a new scan and detect the current scan as incomplete
                 
                 void update( const boost::posix_time::ptime& timestamp, const msop::packet& packet );
                 
-                bool is_full() const { return is_full_; }
+                bool is_complete( const data& d ) const;
                 
-                bool is_new() const { return is_new_; }
+                const data& current() const { return scans_[current_]; }
                 
-                comma::uint32 id() const { return id_; }
+                const data& last() const { return scans_[ 1 - current_ ]; }
 
             private:
                 unsigned int max_number_of_missing_packets_;
                 boost::posix_time::time_duration max_time_gap_;
+                comma::uint32 estimated_max_angle_gap_;
+                bool accumulate_;
+                std::array< scan::data, 2 > scans_;
+                unsigned int current_;
                 boost::posix_time::ptime last_timestamp_;
-                boost::optional< unsigned int > last_angle_;
-                boost::optional< unsigned int > start_angle_;
-                boost::optional< unsigned int > end_angle_;
-                bool is_new_;
-                bool is_full_;
-                comma::uint32 id_;
         };
         
         calculator();

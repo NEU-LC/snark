@@ -85,50 +85,50 @@ template <> struct traits< snark::robosense::channel_num >
 
 namespace snark { namespace robosense {
     
-calculator::scan::scan( unsigned int max_number_of_missing_packets )
+calculator::scan::scan( unsigned int max_number_of_missing_packets, bool accumulate )
     : max_number_of_missing_packets_( max_number_of_missing_packets )
-    , max_time_gap_( boost::posix_time::microseconds( msop::packet::data_t::block::firing_interval() * 1000000 ) * max_number_of_missing_packets )
-    , is_new_( true )
-    , is_full_( true )
-    , id_( 0 )
+    , max_time_gap_( boost::posix_time::microseconds( msop::packet::data_t::block::firing_interval() * msop::packet::data_t::number_of_blocks * 1000000 ) * max_number_of_missing_packets )
+    , estimated_max_angle_gap_( 0 )
+    , accumulate_( accumulate )
+    , current_( 0 )
 {
 }
 
 void calculator::scan::update( const boost::posix_time::ptime& timestamp, const msop::packet& packet )
 {
-    unsigned int angle = packet.data.blocks[0].azimuth(); // ( ... + ( 36000 - 9000 ) + 9000 ) % 36000;
-    if( is_new_ )
+    comma::uint32 angle = packet.data.blocks[0].azimuth();
+    comma::uint32 end_angle = packet.data.blocks[ msop::packet::data_t::number_of_blocks - 1 ].azimuth();
+    if( end_angle < angle ) { end_angle += 36000; }
+    estimated_max_angle_gap_ = ( ( end_angle - angle ) * msop::packet::data_t::number_of_blocks / ( msop::packet::data_t::number_of_blocks - 1 ) ) * max_number_of_missing_packets_; // todo: quick and dirty, watch performance
+    if( scans_[current_].size == 0 )
     {
-        is_new_ = false;
-        comma::uint32 end_angle = packet.data.blocks[ msop::packet::data_t::number_of_blocks - 1 ].azimuth();
-        if( end_angle < angle ) { end_angle += 36000; }
-        comma::uint32 max_diff = ( end_angle - angle ) * max_number_of_missing_packets_;
-        is_full_ = angle < max_diff;
+        scans_[current_].begin = angle;
+        scans_[current_].end = angle;
+        scans_[current_].size = 1;
     }
-    
-    
-    // todo! keep previous and current scans!
-    // todo! check the angle of the very first point, mark scan as incomplete, if the first point is too far from zero
-    
-    
-    if( last_angle_ && angle < *last_angle_ )
-    { 
-        is_new_ = true;
-        ++id_;
-        comma::uint32 end_angle = packet.data.blocks[ msop::packet::data_t::number_of_blocks - 1 ].azimuth();
-        if( end_angle < angle ) { end_angle += 36000; }
-        comma::uint32 max_diff = ( end_angle - angle ) * max_number_of_missing_packets_;
-        is_full_ = *last_angle_ + max_diff > 36000;
+    else if( ( !last_timestamp_.is_not_a_date_time() && !timestamp.is_not_a_date_time() && timestamp - last_timestamp_ > max_time_gap_ )
+        || angle - scans_[current_].end > estimated_max_angle_gap_ )
+    {
+        current_ = 1 - current_;
+        scans_[current_].id = scans_[ 1 - current_ ].id + 1;
+        scans_[current_].begin = angle;
+        scans_[current_].end = angle;
+        scans_[current_].size = 1;
     }
-    last_angle_ = angle;
-    if( !timestamp.is_not_a_date_time() && !last_timestamp_.is_not_a_date_time() && timestamp - last_timestamp_ > max_time_gap_ )
-    { 
-        is_new_ = true;
-        ++id_;
-        is_full_ = false;
+    else
+    {
+        scans_[current_].end = angle;
+        ++scans_[current_].size;
     }
     if( !timestamp.is_not_a_date_time() ) { last_timestamp_ = timestamp; }
 }
+
+bool calculator::scan::is_complete( const data& d ) const
+{
+    if( !estimated_max_angle_gap_ ) { COMMA_THROW( comma::exception, "uninitialized" ); }
+    return 36000 - ( d.end - d.begin ) < estimated_max_angle_gap_;
+}
+
 
 static std::array< double, robosense::msop::packet::data_t::number_of_lasers > default_elevation_ = {{ -15. * M_PI / 180
                                                                                                     , -13. * M_PI / 180
