@@ -117,7 +117,7 @@ struct msop
                 double azimuth_as_radians() const { return ( 0.01 * azimuth() ) * M_PI / 180; }
             };
             
-            struct tail_t: public comma::packed::packed_struct< tail_t, 4 >
+            struct tail_t: public comma::packed::packed_struct< tail_t, 6 >
             {
                 static const char* sentinel_value() { return "\x00\xFF"; }
                 comma::packed::big_endian::uint32 reserved;

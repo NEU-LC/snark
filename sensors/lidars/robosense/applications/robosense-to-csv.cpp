@@ -77,11 +77,13 @@ static void usage( bool verbose )
     std::cerr << "    only rs-lidar-16 currently supported" << std::endl;
     std::cerr << "    reflectivity curves not implemented yet" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "options" << std::endl;
+    std::cerr << "calibration options" << std::endl;
     std::cerr << "    --calibration,-c=<directory>; directory containing calibration files: angle.csv, ChannelNum.csv, curves.csv etc" << std::endl;
     std::cerr << "    --calibration-angles,--angles,--angle,-a=<filename>; default: as in spec" << std::endl;
     std::cerr << "    --calibration-angles-output,--output-calibration-angles,--output-angles: output vertical angles to stdout; if --difop present, take vertical angles from difop packet" << std::endl;
     std::cerr << "    --calibration-channels,--channels=<filename>; default: 450 (i.e. 4.50cm) for all channels" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "difop options" << std::endl;
     std::cerr << "    --difop=[<path>]; file or stream containing timestamped difop packets; if present, calibration data will taken from difop packets" << std::endl;
     std::cerr << "                      currently only calibrated vertical angles are supported" << std::endl;
     std::cerr << "                      '-' means difop packets are on stdin (makes sense only with --output-angles or alike" << std::endl;
@@ -93,7 +95,7 @@ static void usage( bool verbose )
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
     std::cerr << "    --output-fields: todo: print output fields and exit" << std::endl;
     std::cerr << "    --output-invalid-points: output invalid points" << std::endl;
-    std::cerr << "    --scan-discard-incomplete,--discard-incomplete-scans: todo: don't output scans with missing packets" << std::endl;
+    std::cerr << "    --scan-discard-incomplete,--discard-incomplete-scans,--discard-incomplete: don't output scans with missing packets" << std::endl;
     std::cerr << "    --scan-max-missing-packets,--missing-packets=<n>; default 5; number of consecutive missing packets for new/invalid scan (as a rule of thumb: roughly at 20rpm 50 packets per revolution)" << std::endl;
     std::cerr << "    --temperature,-t=<celcius>; default=20; integer from 0 to 39" << std::endl;
     std::cerr << std::endl;
@@ -156,11 +158,9 @@ static std::pair< boost::posix_time::ptime, P* > read( std::istream& is, char* b
     return p;
 }
 
-// todo! what is the packet with azimuth: 65535?!
 // todo? axis directions; frame -> n-e-d
-// todo: discard invalid scans
-// todo? config from difop
 // todo? temperature from difop
+// todo? curves from difop
 // todo? move msop::packet::const_iterator to calculator
 // todo? --distance-resolution: 1cm, 0.5cm, etc.
 // todo? 32-beam support?
@@ -226,43 +226,65 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
     return snark::robosense::calculator( elevation );
 }
 
+static comma::csv::options csv;
+static snark::robosense::calculator calculator;
+static unsigned int temperature;
+static bool output_invalid_points;
+
+void write( const boost::posix_time::ptime& t, const snark::robosense::msop::packet* p, comma::uint32 id )
+{
+    static comma::csv::output_stream< snark::robosense::calculator::point > ostream( std::cout, csv );
+    for( snark::robosense::msop::packet::const_iterator it( p ); !it.done() && std::cout.good(); ++it )
+    { 
+        if( it->valid() || output_invalid_points ) { ostream.write( calculator.make_point( id, t, it, temperature ) ); }
+    }
+}
+
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::robosense::calculator::point >( false ), ',' ) << std::endl; return 0; }
-        bool output_invalid_points = options.exists( "--output-invalid-points" );
+        output_invalid_points = options.exists( "--output-invalid-points" );
         std::vector< char > buffer( snark::robosense::msop::packet::size );
-        snark::robosense::calculator calculator = make_calculator( options );
+        calculator = make_calculator( options );
         if( options.exists( "--calibration-angles-output,--output-calibration-angles,--output-angles" ) ) { for( auto a: calculator.elevation() ) { std::cout << a << std::endl; } return 0; }
-        unsigned int temperature = options.value( "--temperature,-t", 20 );
+        temperature = options.value( "--temperature,-t", 20 );
         if( temperature > 40 ) { std::cerr << "robosense-to-csv: expected temperature between 0 and 40; got: " << temperature << std::endl; return 1; }
         snark::robosense::calculator::scan scan( options.value( "--scan-max-missing-packets,--missing-packets", 10 ) );
-        bool discard_incomplete_scans = options.exists( "--scan-discard-incomplete,--discard-incomplete-scans" );
-        comma::csv::options csv( options );
+        bool discard_incomplete_scans = options.exists( "--scan-discard-incomplete,--discard-incomplete-scans,--discard-incomplete" );
+        csv = comma::csv::options( options );
         csv.full_xpath = false;
-        comma::csv::output_stream< snark::robosense::calculator::point > ostream( std::cout, csv );
-        //std::vector< std::pair< boost::posix_time::ptime, msop::packet > > buffer; // todo
-        //if( discard_incomplete_scans ) { buffer.reserve( 50 ); } // todo
+        //std::vector< std::pair< boost::posix_time::ptime, std::array< char, snark::robosense::msop::packet::size > > > scan_buffer;
+        std::vector< std::pair< boost::posix_time::ptime, snark::robosense::msop::packet > > scan_buffer;
+        if( discard_incomplete_scans ) { scan_buffer.reserve( 120 ); } // quick and dirty
         while( std::cin.good() && !std::cin.eof() )
         {
             auto p = read< snark::robosense::msop::packet >( std::cin, &buffer[0] );
             if( !p.second ) { break; }
             if( !p.second->valid() ) { continue; }
             scan.update( p.first, *p.second );
-            for( snark::robosense::msop::packet::const_iterator it( p.second ); !it.done() && std::cout.good(); ++it )
+            if( discard_incomplete_scans )
             {
-                if( !it->valid() && !output_invalid_points ) { continue; }
-                if( discard_incomplete_scans )
+                if( scan.current().is_new() )
                 {
-                    std::cerr << "robosense-to-csv: --discard-incomplete-scans: todo" << std::endl;
+                    if( scan.is_complete( scan.last() ) ) { for( const auto& b: scan_buffer ) { write( b.first, &b.second, scan.last().id ); } }
+                    scan_buffer.clear();
                 }
-                else
-                {
-                    ostream.write( calculator.make_point( scan.current().id, p.first, it, temperature ) );
-                }
+                scan_buffer.push_back( std::pair< boost::posix_time::ptime, snark::robosense::msop::packet >() );
+                scan_buffer.back().first = p.first;
+                scan_buffer.back().second = *p.second;
             }
+            else
+            {
+                write( p.first, p.second, scan.current().id );
+            }
+        }
+        if( discard_incomplete_scans )
+        {
+            if( scan.is_complete( scan.current() ) ) { for( const auto& b: scan_buffer ) { write( b.first, &b.second, scan.last().id ); } }
+            scan_buffer.clear();
         }
         return 0;
     }
