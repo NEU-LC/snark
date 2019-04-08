@@ -152,7 +152,7 @@ static std::array< char, Size > make_zeroes() { std::array< char, Size > a; ::me
 
 bool difop::packet::data_t::corrected_vertical_angles_empty() const
 {
-    const char* p = corrected_vertical_angles.data(); // as in ros driver
+    const char* p = corrected_vertical_angles[0].data(); // as in ros driver
     for( unsigned int i = 0; i < 4; ++i ) { if( p[i] != 0x00 && p[i] != 0xff ) { return false; } } // as in ros driver
     return true;
     
