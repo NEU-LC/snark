@@ -62,6 +62,7 @@
 #include <comma/base/types.h>
 #include <comma/csv/names.h>
 #include <comma/csv/stream.h>
+#include <comma/io/stream.h>
 #include "../../../../timing/time.h"
 #include "../../../../visiting/traits.h"
 #include "../calculator.h"
@@ -81,8 +82,10 @@ static void usage( bool verbose )
     std::cerr << "    --calibration-angles,--angles,--angle,-a=<filename>; default: as in spec" << std::endl;
     std::cerr << "    --calibration-angles-output,--output-calibration-angles,--output-angles: output vertical angles to stdout; if --difop present, take vertical angles from difop packet" << std::endl;
     std::cerr << "    --calibration-channels,--channels=<filename>; default: 450 (i.e. 4.50cm) for all channels" << std::endl;
-    std::cerr << "    --difop=[<path>]; file containing timestamped difop packets; if present, calibration data will taken from difop packets" << std::endl;
+    std::cerr << "    --difop=[<path>]; file or stream containing timestamped difop packets; if present, calibration data will taken from difop packets" << std::endl;
     std::cerr << "                      currently only calibrated vertical angles are supported" << std::endl;
+    std::cerr << "                      '-' means difop packets are on stdin (makes sense only with --output-angles or alike" << std::endl;
+    std::cerr << "    --difop-max-number-of-packets,--difop-max=<num>; max number of difop packets to read; if not specified, read till the end of file/stream" << std::endl;
     std::cerr << "    --force; use if robosense-to-csv suggests it" << std::endl;
     std::cerr << std::endl;
     std::cerr << "output options:" << std::endl;
@@ -96,6 +99,23 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "csv options" << std::endl;
     std::cerr << comma::csv::options::usage( verbose ) << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "examples" << std::endl;
+    std::cerr << "    data" << std::endl;
+    std::cerr << "        default config" << std::endl;
+    std::cerr << "            cat timestamped-msop.bin | robosense-to-csv" << std::endl;
+    std::cerr << "        config from difop" << std::endl;
+    std::cerr << "            cat timestamped-msop.bin | robosense-to-csv --difop timestamped-difop.bin" << std::endl;
+    std::cerr << "        config from calibration directory" << std::endl;
+    std::cerr << "            cat timestamped-msop.bin | robosense-to-csv --calibration my-calibration-dir" << std::endl;
+    std::cerr << "        configure vertical pitch only" << std::endl;
+    std::cerr << "            cat timestamped-msop.bin | robosense-to-csv --calibration-angles angles.csv" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    difop" << std::endl;
+    std::cerr << "        output angles, if present in difop" << std::endl;
+    std::cerr << "            cat timestamped-difop.bin | robosense-to-csv --difop - --output-angles > angles.csv" << std::endl;
+    std::cerr << "        output angles, if present in difop, otherwise default angles" << std::endl;
+    std::cerr << "            cat timestamped-difop.bin  | robosense-to-csv --difop - --output-angles --force > angles.csv" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -170,16 +190,16 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
         return snark::robosense::calculator( calibration + "/angle.csv", calibration + "/ChannelNum.csv" );
     }
     std::cerr << "robosense-to-csv: config from difop" << std::endl;
+    unsigned int difop_max_number_of_packets = options.value( "--difop-max-number-of-packets,--difop-max", 0 );
     typedef std::pair< boost::posix_time::ptime, snark::robosense::difop::packet* > pair_t;
-    std::ifstream ifs( difop );
-    if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open '" << difop << "'" ); }
+    comma::io::istream is( difop );
     std::vector< char > buffer( snark::robosense::difop::packet::size );
     unsigned int count = 0;
     unsigned int difop_count = 0;
     pair_t p( boost::posix_time::ptime(), NULL );
-    for( count = 0; ifs.good() && !ifs.eof(); ++count )
+    for( count = 0; is->good() && !is->eof() && ( difop_max_number_of_packets == 0 || count < difop_max_number_of_packets ); ++count )
     {
-        pair_t q = read< snark::robosense::difop::packet >( ifs, &buffer[0] );
+        pair_t q = read< snark::robosense::difop::packet >( *is, &buffer[0] );
         if( !q.second ) { break; }
         if( q.second->header.valid() )
         {
