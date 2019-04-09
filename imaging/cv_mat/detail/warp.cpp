@@ -54,32 +54,47 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @authors kent hu, vsevolod vlaskine
+/// @author vsevolod vlaskine
 
-#pragma once
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <comma/base/exception.h>
+#include "warp.h"
 
-#include <opencv2/core/core.hpp>
-
-namespace snark { namespace cv_mat { namespace impl { namespace spherical {
-    
-template < typename H >
-struct warp
-{
-    typedef std::pair< H, cv::Mat > value_type;
-
-    warp(); // todo: pass parameters how
-
-    value_type operator()( value_type ) const;
-};
+namespace snark { namespace cv_mat { namespace impl {
 
 template < typename H >
-struct unwarp
+warp< H >::warp()
 {
-    typedef std::pair< H, cv::Mat > value_type;
-    
-    unwarp(); // todo: pass parameters how
+    // todo: any initialization?
+}
 
-    value_type operator()( value_type ) const;
-};
+template < typename H >
+typename warp< H >::value_type warp< H >::operator()( value_type n ) const
+{ 
+    std::pair< H, cv::Mat > m;
+    m.first = n.first;
+    COMMA_THROW( comma::exception, "warp: todo" );
+    return m;
+}
 
-} } } }  // namespace snark { namespace cv_mat { namespace impl { namespace spherical {
+template < typename H >
+unwarp< H >::unwarp()
+{
+    // todo: any initialization?
+}
+
+template < typename H >
+typename unwarp< H >::value_type unwarp< H >::operator()( value_type n ) const
+{ 
+    std::pair< H, cv::Mat > m;
+    m.first = n.first;
+    COMMA_THROW( comma::exception, "unwarp: todo" );
+    return m;
+}
+
+template class snark::cv_mat::impl::warp< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::warp< std::vector< char > >;
+template class snark::cv_mat::impl::unwarp< boost::posix_time::ptime >;
+template class snark::cv_mat::impl::unwarp< std::vector< char > >;
+
+} } }  // namespace snark { namespace cv_mat { namespace impl {

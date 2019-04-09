@@ -54,47 +54,32 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @authors kent hu, vsevolod vlaskine
+/// @author vsevolod vlaskine
 
-#include <boost/date_time/posix_time/ptime.hpp>
-#include <comma/base/exception.h>
-#include "spherical.h"
+#pragma once
 
-namespace snark { namespace cv_mat { namespace impl { namespace spherical {
+#include <opencv2/core/core.hpp>
 
+namespace snark { namespace cv_mat { namespace impl {
+    
 template < typename H >
-warp< H >::warp()
+struct warp
 {
-    // todo: any initialization?
-}
+    typedef std::pair< H, cv::Mat > value_type;
+
+    warp(); // todo: pass parameters how
+
+    value_type operator()( value_type ) const;
+};
 
 template < typename H >
-typename warp< H >::value_type warp< H >::operator()( value_type n ) const
-{ 
-    std::pair< H, cv::Mat > m;
-    m.first = n.first;
-    COMMA_THROW( comma::exception, "warp: todo" );
-    return m;
-}
-
-template < typename H >
-unwarp< H >::unwarp()
+struct unwarp
 {
-    // todo: any initialization?
-}
+    typedef std::pair< H, cv::Mat > value_type;
+    
+    unwarp(); // todo: pass parameters how
 
-template < typename H >
-typename unwarp< H >::value_type unwarp< H >::operator()( value_type n ) const
-{ 
-    std::pair< H, cv::Mat > m;
-    m.first = n.first;
-    COMMA_THROW( comma::exception, "unwarp: todo" );
-    return m;
-}
+    value_type operator()( value_type ) const;
+};
 
-template class snark::cv_mat::impl::spherical::warp< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::spherical::warp< std::vector< char > >;
-template class snark::cv_mat::impl::spherical::unwarp< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::spherical::unwarp< std::vector< char > >;
-
-} } } }  // namespace snark { namespace cv_mat { namespace impl { namespace spherical {
+} } }  // namespace snark { namespace cv_mat { namespace impl {
