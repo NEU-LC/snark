@@ -249,7 +249,7 @@ if __name__ == '__main__':
             values = session.run( outputs, feed_dict = feeds )
             if args.output_to_files or args.png:
                 input_dir = str( input_number )
-                try: os.mkdir( input_dir )
+                try: os.makedirs( input_dir ) #try: os.mkdir( input_dir )
                 except OSError as ex:
                     if ex.errno != os.errno.EEXIST: raise
                 for i in range( len( values ) ):
