@@ -94,6 +94,7 @@ void usage( bool verbose )
     std::cerr << "    --pose-frame,--pose-frame=<frame>; default=north-east-down; down-left-forward: todo" << std::endl;
     std::cerr << "    --second-camera-config,--second-config=<path>: second camera config; <path>: <filename> or <filename>:<path>" << std::endl;
     std::cerr << "    --second-pose=<x,y,z,roll,pitch,yaw>: pose of the second camera; default: whatever is in camera config" << std::endl;
+    std::cerr << "    --verbose,-v; more verbose output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "csv options" << std::endl;
     std::cerr << comma::csv::options::usage( verbose ) << std::endl;
@@ -103,6 +104,8 @@ void usage( bool verbose )
     std::cerr << std::endl;
     exit( 0 );
 }
+
+static bool verbose;
 
 template < typename S, typename T > static void output_details( const comma::command_line_options& options )
 {
@@ -146,17 +149,24 @@ static snark::camera::stereo::pair make_pair( const comma::command_line_options&
     if( options.exists( "--baseline" ) ) { std::cerr << "image-stereo: --baseline: not implemented" << std::endl; exit( 1 ); }
     snark::camera::stereo::pair::config_t config;
     if( options.exists( "--config,-c" ) )
-    { 
-        config = read_config< snark::camera::stereo::pair::config_t >( options.value< std::string >( "--config,-c" ) );
+    {
+        const auto& c = options.value< std::string >( "--config,-c" );
+        if( verbose ) { std::cerr << "image-stereo: using config: " << c << std::endl; }
+        config = read_config< snark::camera::stereo::pair::config_t >( c );
     }
     else if( options.exists( "--camera-config" ) )
     {
-        config.first.pinhole = config.second.pinhole = read_config< snark::camera::pinhole::config_t >( options.value< std::string >( "--camera-config" ) );
+        const auto& c = options.value< std::string >( "--camera-config" );
+        if( verbose ) { std::cerr << "image-stereo: using same config for both cameras: " << c << std::endl; }
+        config.first.pinhole = config.second.pinhole = read_config< snark::camera::pinhole::config_t >( c );
     }
     else if( options.exists( "--first-camera-config,--first-config" ) )
     {
-        config.first.pinhole = read_config< snark::camera::pinhole::config_t >( options.value< std::string >( "--first-camera-config,--first-config" ) );
-        config.second.pinhole = read_config< snark::camera::pinhole::config_t >( options.value< std::string >( "--second-camera-config,--second-config" ) );
+        const auto& f = options.value< std::string >( "--first-camera-config,--first-config" );
+        const auto& s = options.value< std::string >( "--second-camera-config,--second-config" );
+        if( verbose ) { std::cerr << "image-stereo: using first camera config: " << f << " and second camera config: " << s << std::endl; }
+        config.first.pinhole = read_config< snark::camera::pinhole::config_t >( f );
+        config.second.pinhole = read_config< snark::camera::pinhole::config_t >( s );
     }
     config.first.pinhole.validate();
     config.second.pinhole.validate();
@@ -200,6 +210,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--config-fields" ) ) { std::cout << comma::join( comma::csv::names( true, make_sample_config() ), '\n' ) << std::endl; return 0; }
+        verbose = options.exists( "--verbose,-v" );
         const std::vector< std::string >& unnamed = options.unnamed( "--force,--permissive,--input-fields,--output-fields,--output-format,--flush", "-.*" );
         if( unnamed.empty() ) { std::cerr << "image-stereo: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
