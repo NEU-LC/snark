@@ -2986,18 +2986,18 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             unsigned int which = boost::lexical_cast< unsigned int >( e[1] ) + 45u; // HACK, bayer as unsigned int, but I don't find enum { BG2RGB, GB2BGR ... } more usefull
             f.push_back( filter_type( boost::bind< value_type_t >( cvt_color_impl_< H >(), _1, which ) ) );
         }
-        else if( e[0] == "warp" )
-        {
-            //if( e.size() < 2 ) { COMMA_THROW( comma::exception, "spherical: please specify <what>"); }
-            //const std::vector< std::string >& s = comma::split( e[1], ',' );
-            f.push_back( filter_type( snark::cv_mat::impl::warp< H  >() ) );
-        }
-        else if( e[0] == "unwarp" )
-        {
-            //if( e.size() < 2 ) { COMMA_THROW( comma::exception, "spherical: please specify <what>"); }
-            //const std::vector< std::string >& s = comma::split( e[1], ',' );
-            f.push_back( filter_type( snark::cv_mat::impl::unwarp< H  >() ) );
-        }
+//         else if( e[0] == "warp" )
+//         {
+//             //if( e.size() < 2 ) { COMMA_THROW( comma::exception, "spherical: please specify <what>"); }
+//             //const std::vector< std::string >& s = comma::split( e[1], ',' );
+//             f.push_back( filter_type( snark::cv_mat::impl::warp< H  >() ) );
+//         }
+//         else if( e[0] == "unwarp" )
+//         {
+//             //if( e.size() < 2 ) { COMMA_THROW( comma::exception, "spherical: please specify <what>"); }
+//             //const std::vector< std::string >& s = comma::split( e[1], ',' );
+//             f.push_back( filter_type( snark::cv_mat::impl::unwarp< H  >() ) );
+//         }
         else if( e[0] == "pack" )
         {
             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "pack: missing arguments" ); }
@@ -3309,9 +3309,9 @@ static std::string usage_impl_()
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
     oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
-    oss << "        warp=<how>: todo: warp image" << std::endl;
-    oss << "        unwarp=<how>: todo: unwarp image" << std::endl;
-    oss << "            <how>: todo" << std::endl;
+    //oss << "        warp=<how>: todo: warp image" << std::endl;
+    //oss << "        unwarp=<how>: todo: unwarp image" << std::endl;
+    //oss << "            <how>: todo" << std::endl;
     oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
