@@ -67,6 +67,7 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
+    std::cerr << "    --blocks-ordered: stdin and filter blocks are ordered and therefore missing filter blocks can be handled correctly" << std::endl;
     std::cerr << "    --input-fields: output input fields and exit" << std::endl;
     std::cerr << "    --matching: output only points that have a match, do not append nearest point; a convenience option" << std::endl;
     std::cerr << "    --not-matching: output only points that do not have a match, i.e. opposite of --matching" << std::endl;
@@ -450,9 +451,7 @@ template < typename V > struct join_impl_
         return read_filter_block( ifstream );
     }
     
-    static void handle_record( const typename traits< Eigen::Vector3d >::input_t& r )
-    {
-    }
+    static void handle_record( const typename traits< Eigen::Vector3d >::input_t& r ) {}
 
     static int run( const comma::command_line_options& options )
     {
@@ -460,6 +459,7 @@ template < typename V > struct join_impl_
         unsigned int size = options.value( "--size,--number-of-points,--number-of-nearest-points", 1 );
         strict = options.exists( "--strict" );
         permissive = options.exists( "--permissive" );
+        bool blocks_ordered = options.exists( "--blocks-ordered" );
         bool all = options.exists( "--all" );
         #ifdef SNARK_USE_CUDA
         use_cuda = options.exists( "--use-cuda,--cuda" );
@@ -486,9 +486,23 @@ template < typename V > struct join_impl_
             if( !p ) { break; }
             double current_squared_radius = get_squared_radius( *p );
             if( verbose && comma::math::less( squared_radius, current_squared_radius ) ) { std::cerr << "points-join: expected point-specific radius not exceeding --radius " << std::sqrt( squared_radius ) << "; got: " << p->radius << std::endl; }
-            // todo: if blocks don't match, which input to wait for?
-            if ( use_block && *block != p->block ) { grid = read_filter_block(); }
-            if ( use_block && *block != p->block ) { COMMA_THROW( comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block );}
+            if( use_block )
+            {
+                if( blocks_ordered )
+                {
+                    while( *block < p->block ) { grid = read_filter_block(); }
+                    if( *block > p->block )
+                    {
+                        if( matching ) { ++discarded; ++count; } else { output_last( istream ); }
+                        continue;
+                    }
+                }
+                else
+                {
+                    if( *block != p->block ) { grid = read_filter_block(); }
+                    if( *block != p->block ) { COMMA_THROW( comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block << "; make sure block ids are in ascending order and use --blocks-ordered" );}
+                }
+            }
             typename grid_t::index_type index = grid.index_of( p->value );
             typename grid_t::index_type i;
             if( all )
@@ -588,7 +602,7 @@ template < typename V > struct join_impl_
             }
             ++count;
         }
-        std::cerr << "points-join: processed " << count << " records; discarded " << discarded << " record" << ( count == 1 ? "" : "s" ) << " with " << ( matching ? "" : "no" ) << " matches" << std::endl;
+        std::cerr << "points-join: processed " << count << " record(s); discarded " << discarded << " record(s)" << ( count == 1 ? "" : "s" ) << " with " << ( matching ? "no " : "" ) << "matches" << std::endl;
         #ifdef SNARK_USE_CUDA
         cuda_deallocate();
         #endif
@@ -596,11 +610,7 @@ template < typename V > struct join_impl_
     }
 };
 
-static int self_join( const comma::command_line_options& options )
-{
-    std::cerr << "points-join: self-join: todo" << std::endl;
-    return 1;
-}
+static int self_join( const comma::command_line_options& options ) { std::cerr << "points-join: self-join: todo" << std::endl; return 1; }
 
 bool find_in_fields( const std::vector< std::string >& fields, const std::vector< std::string >& strings )
 {
@@ -614,7 +624,6 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< point_input >( true ), ',' ) << std::endl; return 0; }
-
         verbose = options.exists( "--verbose,-v" );
         stdin_csv = comma::csv::options( options );
         options.assert_mutually_exclusive( "--matching,--not-matching" );
@@ -622,7 +631,7 @@ int main( int ac, char** av )
         append_nearest = !options.exists( "--matching" ) && matching;
         if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
         stdin_csv.full_xpath = true;
-        std::vector< std::string > unnamed = options.unnamed( "--all,--matching,--not-matching,--strict,--permissive,--use-cuda,--cuda,--flush,--full-xpath,--verbose,-v", "-.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--all,--blocks-ordered,--matching,--not-matching,--strict,--permissive,--use-cuda,--cuda,--flush,--full-xpath,--verbose,-v", "-.*" );
         if( unnamed.size() != 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
