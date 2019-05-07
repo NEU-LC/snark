@@ -1,0 +1,2 @@
+range[0]="echo 500,500,10 | image-pinhole to-cartesian --fields x,y,range --config config.json | csv-eval --fields ,,,x,y,z 'x=round(x,4);y=round(y,4);z=round(z,4)'"
+range[1]="echo 0,0,10 | image-pinhole to-cartesian --fields x,y,range --config config.json | csv-eval --fields ,,,x,y,z 'x=round(x,4);y=round(y,4);z=round(z,4)'"

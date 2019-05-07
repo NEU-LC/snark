@@ -1,0 +1,18 @@
+#!/bin/bash
+
+source $( type -p comma-application-util )
+
+# quick and dirty; too hard to unscramble --fields management below in all tests; just copy-pasted here for now
+
+read params
+fields="x,y,z"
+output_fields="$( image-pinhole $params --output-fields | csv-fields prefix --path output )"
+image-pinhole $params | csv-paste line-number - > output/out
+comma_status_ok || { echo "image-pinhole exited non-zero status: $result" >&2; exit 1; }
+cat output/out \
+    | csv-shuffle --fields="line_number,$fields,$output_fields" \
+                  --output-fields="line_number,$output_fields" \
+    | name-value-from-csv --prefix=out --line-number \
+                          --fields="line_number,$( echo $output_fields | csv-fields strip --path output )" \
+    | csv-quote --unquote --delimiter='='
+echo "count=$( cat output/out | wc -l )"

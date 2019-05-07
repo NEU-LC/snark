@@ -58,14 +58,16 @@ void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "    to-cartesian: take on stdin pixels, undistort image, append pixel's cartesian coordinates in camera frame" << std::endl;
     std::cerr << "        --normalize: normalize cartesian coordinates in camera frame" << std::endl;
-    std::cerr << "        --fields: x,y,z" << std::endl;
+    std::cerr << "        --fields: x,y,z,range" << std::endl;
     std::cerr << "            x,y: pixel coordinates" << std::endl;
+    std::cerr << "            range: if present, the point in sensor plane will point out of image plane with a given range" << std::endl;
     std::cerr << "            z: if present, the point in sensor plane will be projected to the plane parallel to sensor plane with a given z coordinate (it may be confusing, i know)" << std::endl;
     std::cerr << "            default: x,y" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    to-pixels: take on stdin cartesian coordinates in camera frame, append their coordinates in pixels" << std::endl;
     std::cerr << "        --clip,--discard: discard pixels outside of image and behind camera" << std::endl;
     std::cerr << "        --fields: x,y,z; if z is given, the input points will be projected to the sensor plane; default: x,y" << std::endl;
+    std::cerr << "            range field support: todo, just ask" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    undistort: take on stdin pixels, append their undistorted values" << std::endl;
     std::cerr << std::endl;
@@ -89,6 +91,31 @@ void usage( bool verbose )
     std::cerr << std::endl;
     exit( 0 );
 }
+
+struct input_t : public Eigen::Vector3d
+{
+    double range;
+    input_t(): Eigen::Vector3d( Eigen::Vector3d::Zero() ), range( 0 ) {}
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< input_t >
+{
+    template < typename Key, class Visitor > static void visit( const Key& k, input_t& t, Visitor& v )
+    {
+        comma::visiting::traits< Eigen::Vector3d >::visit( k, t, v );
+        v.apply( "range", t.range );
+    }
+    
+    template < typename Key, class Visitor > static void visit( const Key& k, const input_t& t, Visitor& v )
+    {
+        comma::visiting::traits< Eigen::Vector3d >::visit( k, t, v );
+        v.apply( "range", t.range );
+    }
+};
+    
+} } // namespace comma { namespace visiting {
 
 template < typename S, typename T > static void output_details( const comma::command_line_options& options )
 {
@@ -157,19 +184,24 @@ int main( int ac, char** av )
         if( operation == "to-cartesian" )
         {
             if( csv.fields.empty() ) { csv.fields = "x,y"; }
-            output_details< Eigen::Vector3d, Eigen::Vector3d >( options );
+            output_details< input_t, Eigen::Vector3d >( options );
             snark::camera::pinhole pinhole( make_config( options.value< std::string >( "--camera-config,--camera,--config,-c" ) ) );
             bool normalize = options.exists( "--normalize" );
             bool has_z = csv.has_field( "z" );
-            comma::csv::input_stream< Eigen::Vector3d > is( std::cin, csv, Eigen::Vector3d::Zero() );
+            bool has_range = csv.has_field( "range" );
+            if( has_z && has_range ) { std::cerr << "image-pinhole: to-cartesian: expected either z or range field; got both" << std::endl; return 1; }
+            comma::csv::input_stream< input_t > is( std::cin, csv );
             comma::csv::output_stream< Eigen::Vector3d > os( std::cout, csv.binary(), false, csv.flush );
-            comma::csv::tied< Eigen::Vector3d, Eigen::Vector3d > tied( is, os );
+            comma::csv::tied< input_t, Eigen::Vector3d > tied( is, os );
             while( is.ready() || std::cin.good() )
             {
-                const Eigen::Vector3d* p = is.read();
+                const input_t* p = is.read();
                 if( !p ) { break; }
                 const Eigen::Vector3d& q = pinhole.to_cartesian( Eigen::Vector2d( p->x(), p->y() ) );
-                tied.append( normalize ? q.normalized() : has_z ? Eigen::Vector3d( q * ( p->z() / -pinhole.config().focal_length )) : q );
+                tied.append( normalize ? q.normalized()
+                           : has_z ? Eigen::Vector3d( q * ( p->z() / -pinhole.config().focal_length ) )
+                           : has_range ? Eigen::Vector3d( q.normalized() * -p->range )
+                           : q );
             }
             return 0;
         }
