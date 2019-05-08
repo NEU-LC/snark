@@ -240,6 +240,8 @@ static void usage( bool verbose=false )
     std::cerr << "        --how-to-handle-overlaps,--how=<how>; default: last; how to handle overlaps" << std::endl;
     std::cerr << "            last: simply put the next tile on top on the previous one" << std::endl;
     std::cerr << "            linear: linearly interpolate across stride overlaps (todo)" << std::endl;
+    std::cerr << "            min: take min pixel value: todo" << std::endl;
+    std::cerr << "            max: take max pixel value" << std::endl;
     std::cerr << "            other policies: todo" << std::endl;
     std::cerr << "        --input=[<options>]; input options; run cv-cat --help --verbose for details" << std::endl;
     std::cerr << "        --output=[<options>]; output options; run cv-cat --help --verbose for details" << std::endl;
@@ -1101,6 +1103,20 @@ struct last: public overlap::base
 {
     void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) { tile.copyTo( cv::Mat( image, cv::Rect( x, y, tile.cols, tile.rows ) ) ); }
 };
+
+struct min: public overlap::base
+{
+    void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) { COMMA_THROW( comma::exception, "todo" ); }
+};
+
+struct max: public overlap::base
+{
+    void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
+    {
+        cv::Mat m( image, cv::Rect( x, y, tile.cols, tile.rows ) );
+        cv::max( m, tile, m );
+    }
+};
     
 class linear: public overlap::base
 {
@@ -1162,8 +1178,10 @@ class linear: public overlap::base
 
 base* make( const std::string& how )
 {
-    if( how == "last" ) { return new last; }
-    if( how == "linear" ) { return new linear; }
+    if( how == "last" ) { return new overlap::last; }
+    if( how == "linear" ) { return new overlap::linear; }
+    if( how == "min" ) { return new overlap::min; }
+    if( how == "max" ) { return new overlap::max; }
     std::cerr << "cv-calc: unstride: expected policy to handle overlaps, got: '" << how << "' (more policies: todo)" << std::endl;
     exit( 1 );
 }
