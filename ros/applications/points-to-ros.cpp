@@ -229,7 +229,7 @@ struct points
             offset+=data_size;
         }
         //send
-        comma::verbose<<"publishing msg "<<records.size()<<std::endl;
+        comma::verbose << "publishing " << records.size() << " bytes" << std::endl;
         publisher.publish(msg);
         ros::spinOnce();
         records.clear();
