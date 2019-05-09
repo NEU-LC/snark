@@ -37,7 +37,6 @@ general ROS bag hints
         rostopic echo <topic> -b <file> | less -S
         rostopic echo /mavros/global_position/global -b input.bag | head -n 32
 """
-#        ros-to-csv --bag="input.bag" --set-length "header/frame_id=15;data/string=10"
 
 class message_handler:
     """create a csv output stream from a sample message, write messages to it"""
@@ -96,7 +95,6 @@ def main():
     parser.add_argument( '--index-output-fields', '--index-fields', '--index', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--output-fields', help='print output fields and exit', action='store_true' )
     parser.add_argument( '--output-format', '--output-types', help='print output format for binary and exit', action='store_true' )
-    #parser.add_argument( '--set-length', metavar='DICT', help='set length of listed string fields; by default, take from first input', type=str, action=comma.application.set_dictionary_action, value_type=int, delimiter=',', default={} )
     parser.add_argument( '--topic', nargs='?', help='topic', type=str )
     parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
     comma.csv.add_options( parser )
