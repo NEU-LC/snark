@@ -127,11 +127,10 @@ def iterator( file, input, header_size, footer_size ): # todo: quick and dirty; 
         header = np.fromfile( file, np.uint8, header_size )
         data = np.fromfile( file, ntype, size )
         footer = np.fromfile( file, np.uint8, footer_size )
-        
-        #header = np.frombuffer( stdin.buffer.read( header_size ), dtype = np.uint8 )
-        #data = np.frombuffer( stdin.buffer.read( size * 4 ), dtype = ntype )
-        #footer = np.frombuffer( stdin.buffer.read( footer_size ), dtype = np.uint8 )
-        
+        # how a hell to read from stdin in python3?
+        #header = np.frombuffer( file.read( header_size ), dtype = np.uint8 )
+        #data = np.frombuffer( file.read( size * 4 ), dtype = ntype )
+        #footer = np.frombuffer( file.read( footer_size ), dtype = np.uint8 )
         if data.shape[0] == size: yield header, data.reshape( shape ), footer
         else: yield None, None, None
 
@@ -249,7 +248,7 @@ if __name__ == '__main__':
         input_number=0
         with os.fdopen( sys.stdout.fileno(), "wb" ) as stdout:
             with os.fdopen( sys.stdin.fileno(), "rb" ) as stdin:
-                for header, data, footer in iterator( sys.stdin, input, args.header_size, args.footer_size ):
+                for header, data, footer in iterator( stdin, input, args.header_size, args.footer_size ):
                     if data is None: break
                     feeds[input] = data
                     if not keep_prob is None: feeds[keep_prob] = 1.0
