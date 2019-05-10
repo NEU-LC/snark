@@ -204,7 +204,7 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
         if( q.second->header.valid() )
         {
             ++difop_count;
-            if( q.second->data.corrected_vertical_angles_empty() ) { continue; }
+            if( q.second->data.corrected_vertical_angles.empty() ) { continue; }
             p = q;
             break;
         }
@@ -222,7 +222,7 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
     }
     std::cerr << "robosense-to-csv: got DIFOP data in packet " << count << " in '" << difop << "'" << std::endl;
     std::array< double, snark::robosense::msop::packet::data_t::number_of_lasers > elevation;
-    for( unsigned int i = 0; i < elevation.size(); ++i ) { elevation[i] = p.second->data.corrected_vertical_angles[i].as_radians(); }
+    for( unsigned int i = 0; i < elevation.size(); ++i ) { elevation[i] = p.second->data.corrected_vertical_angles.as_radians( i ); }
     return snark::robosense::calculator( elevation );
 }
 

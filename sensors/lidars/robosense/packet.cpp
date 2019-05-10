@@ -150,9 +150,9 @@ bool msop::packet::const_iterator::value_type::valid() const
 template < unsigned int Size >
 static std::array< char, Size > make_zeroes() { std::array< char, Size > a; ::memset( &a[0], 0, a.size() ); return a; }
 
-bool difop::packet::data_t::corrected_vertical_angles_empty() const
+bool difop::packet::data_t::corrected_vertical_angles_t::empty() const
 {
-    const char* p = corrected_vertical_angles[0].data(); // as in ros driver
+    const char* p = values[0].data(); // as in ros driver
     for( unsigned int i = 0; i < 4; ++i ) { if( p[i] != 0x00 && p[i] != 0xff ) { return false; } } // as in ros driver
     return true;
     
