@@ -123,16 +123,16 @@ def iterator( file, input, header_size, footer_size ): # todo: quick and dirty; 
     print( "tensor-cat: using input shape:", shape, file = sys.stderr )
     ntype = ( input._dtype if tf_version[0] < 1 else input.dtype ).as_numpy_dtype()
     size = np.prod( shape )
+    itemsize = np.array( [0], dtype = ntype ).itemsize # quick and dirty
+    header = np.zeros( ( header_size ), dtype = np.uint8 )
+    buf = np.zeros( ( size ), dtype = ntype )
+    data = np.zeros( shape, dtype = ntype )
+    footer = np.zeros( ( footer_size ), dtype = np.uint8 )
     while True:
-        header = np.fromfile( file, np.uint8, header_size )
-        data = np.fromfile( file, ntype, size )
-        footer = np.fromfile( file, np.uint8, footer_size )
-        # how a hell to read from stdin in python3?
-        #header = np.frombuffer( file.read( header_size ), dtype = np.uint8 )
-        #data = np.frombuffer( file.read( size * 4 ), dtype = ntype )
-        #footer = np.frombuffer( file.read( footer_size ), dtype = np.uint8 )
-        if data.shape[0] == size: yield header, data.reshape( shape ), footer
-        else: yield None, None, None
+        if file.readinto( header ) != header_size: yield None, None, None
+        if file.readinto( data ) != size: yield None, None, None
+        if file.readinto( footer ) != footer_size: yield None, None, None
+        yield header, data, footer
 
 def get_tensor( name, permissive = False ):
     try:
