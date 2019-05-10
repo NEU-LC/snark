@@ -28,6 +28,8 @@ complete -F _snark_bash_completion innovusion-cat
 complete -F _snark_bash_completion mat-convert
 complete -F _snark_bash_completion ocular-roboteye-thermal-cat
 complete -F _snark_bash_completion points-align
+complete -F _snark_bash_completion points-from-ros
+complete -F _snark_bash_completion points-to-ros
 complete -F _snark_bash_completion quickset-pantilt-web-control
 complete -F _snark_bash_completion test-pattern
 complete -F _snark_bash_completion vantage-command

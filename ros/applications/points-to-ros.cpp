@@ -42,6 +42,24 @@
 #include "std_msgs/String.h"
 #include "sensor_msgs/PointCloud2.h"
 
+void bash_completion( unsigned const ac, char const * const * av )
+{
+    static const char* completion_options =
+        " --all"
+        " --hang-on --stay"
+        " --help -h"
+        " --frame"
+        " --latch"
+        " --node-name"
+        " --pass-through --pass"
+        " --queue-size"
+        " --topic"
+        " --verbose -v"
+        ;
+    std::cout << completion_options << std::endl;
+    exit( 0 );
+}
+
 void usage( bool detail )
 {
     std::cerr << "\npublish csv to ROS PointCloud2";
@@ -256,6 +274,7 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv, usage );
+        if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
         comma::csv::options csv(options);
         if( !csv.binary() && !options.exists( "--format" )) { COMMA_THROW( comma::exception, "please specify --binary=<format>, or --format=<format> for ascii"); }
         csv.full_xpath=true;
