@@ -183,7 +183,7 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
         if( calibration.empty() )
         {
             if( !angles.empty() ) { std::cerr << "robosense-to-csv: config: angles from --angles" << std::endl; }
-            if( !channels.empty() ) { std::cerr << "robosense-to-csv: config: channels from --angles" << std::endl; }
+            if( !channels.empty() ) { std::cerr << "robosense-to-csv: config: channels from --calibration-channels" << std::endl; }
             return snark::robosense::calculator( angles, channels );
         }
         std::cerr << "robosense-to-csv: config from calibration directory: " << calibration << std::endl;
