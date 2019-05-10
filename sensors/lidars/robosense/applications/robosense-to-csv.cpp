@@ -80,7 +80,7 @@ static void usage( bool verbose )
     std::cerr << "calibration options" << std::endl;
     std::cerr << "    --calibration,-c=<directory>; directory containing calibration files: angle.csv, ChannelNum.csv, curves.csv etc" << std::endl;
     std::cerr << "    --calibration-angles,--angles,--angle,-a=<filename>; default: as in spec" << std::endl;
-    std::cerr << "    --calibration-angles-output,--output-calibration-angles,--output-angles: output vertical angles to stdout; if --difop present, take vertical angles from difop packet" << std::endl;
+    std::cerr << "    --calibration-angles-output,--output-calibration-angles,--output-angles=<how>; output vertical angles to stdout; if --difop present, take vertical angles from difop packet" << std::endl;
     std::cerr << "    --calibration-channels,--channels=<filename>; default: 450 (i.e. 4.50cm) for all channels" << std::endl;
     std::cerr << std::endl;
     std::cerr << "difop options" << std::endl;
@@ -249,7 +249,21 @@ int main( int ac, char** av )
         output_invalid_points = options.exists( "--output-invalid-points" );
         std::vector< char > buffer( snark::robosense::msop::packet::size );
         calculator = make_calculator( options );
-        if( options.exists( "--calibration-angles-output,--output-calibration-angles,--output-angles" ) ) { for( auto a: calculator.elevation() ) { std::cout << a << std::endl; } return 0; }
+        if( options.exists( "--calibration-angles-output,--output-calibration-angles,--output-angles" ) )
+        {
+            const auto& how = options.value< std::string >( "--calibration-angles-output,--output-calibration-angles,--output-angles" );
+            double factor = 0;
+            if( how == "radians" ) { factor = 1; }
+            else if( how == "degrees" ) { factor = 180. / M_PI; }
+            else
+            { 
+                std::cerr << "robosense-to-csv: please specify --calibration-angles-output=degrees or --calibration-angles-output=radians"  << std::endl;
+                std::cerr << "robosense-to-csv: ATTENTION: angles in the configuration file (e.g. angle.csv) should be in DEGREES"  << std::endl;
+                return 1;
+            }
+            for( auto a: calculator.elevation() ) { std::cout << ( a * factor ) << std::endl; }
+            return 0;
+        }
         temperature = options.value( "--temperature,-t", 20 );
         if( temperature > 40 ) { std::cerr << "robosense-to-csv: expected temperature between 0 and 40; got: " << temperature << std::endl; return 1; }
         snark::robosense::calculator::scan scan( options.value( "--scan-max-missing-packets,--missing-packets", 10 ) );
