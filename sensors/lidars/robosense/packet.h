@@ -209,13 +209,16 @@ struct difop
             std::array< char, 40 > fault_diagnosis;
             comma::packed::string< 86 >  gpsrmc;
             std::array< char, 697 > corrected_static;
-            struct corrected_vertical_angle: public comma::packed::packed_struct< corrected_vertical_angle, 3 >
+            struct corrected_vertical_angles_t: public comma::packed::packed_struct< corrected_vertical_angles_t, 3 * msop::packet::data_t::number_of_lasers >
             {
-                comma::packed::big_endian::int24 value;
-                double as_radians() const { return value() * 0.0001 * M_PI / 180; }
+                /// rs-lidar-16 user's manual, section b6: The value of the pitch is unsigned integer.
+                ///                                        Channel 1 to Channel 8 pitches downwards,
+                ///                                        channel 9 to channel 16 pitches upwards.
+                std::array< comma::packed::big_endian::uint24, msop::packet::data_t::number_of_lasers > values;
+                double as_radians( unsigned int i ) const { return values[i]() * 0.0001 * M_PI / 180 * ( i < msop::packet::data_t::number_of_lasers / 2 ? -1 : 1 ); }
+                bool empty() const;
             };
-            bool corrected_vertical_angles_empty() const;
-            std::array< corrected_vertical_angle, msop::packet::data_t::number_of_lasers > corrected_vertical_angles;
+            corrected_vertical_angles_t corrected_vertical_angles;
             comma::packed::string< 33 > reserved_3;
         };
         
