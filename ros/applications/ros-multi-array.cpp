@@ -262,10 +262,9 @@ int main( int ac, char* av[] )
             }
         }
         std::cerr << comma::verbose.app_name() << ": unknown --type: " << type << std::endl;
-        return 1;
     }
     catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl; }
-    return 0;
+    return 1;
 }
 
