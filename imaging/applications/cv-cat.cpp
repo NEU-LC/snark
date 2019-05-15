@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <io.h>
 #endif
+#include <fstream>
 #include <iostream>
 #include <boost/program_options.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -86,6 +87,38 @@ static pair capture( cv::VideoCapture& capture, rate_limit& rate )
     default_binary.put( h, &buffer[0] );
 
     return std::make_pair( buffer , image );
+}
+
+static pair read_image_files( const std::string& images, rate_limit& rate, bool timestamped ) // todo? refactor that it can mix of images and videos, too?
+{
+    static bool done = false;
+    static std::ifstream ifs( images ); // todo? use csv stream or at least io::stream?
+    if( done ) { return pair(); }
+    if( !ifs.is_open() ) { std::cerr << "cv-cat: failed to open '" << images << "'" << std::endl; exit( 1 ); }
+    rate.wait();
+    std::string line;
+    while( true )
+    {
+        if( !ifs.good() || ifs.eof() ) { done = true; return pair(); }
+        std::getline( ifs, line );
+        line = comma::strip( line );
+        if( !line.empty() && line[0] != '#' ) { break; }
+    }
+    std::pair< boost::posix_time::ptime, cv::Mat > p;
+    p.second = cv::imread( line, cv::IMREAD_UNCHANGED );
+    if( !p.second.data ) { std::cerr << "cv-cat: failed to read image '" << images << "'" << std::endl; exit( 1 ); }
+    if( timestamped )
+    {
+        std::vector< std::string > time_strings = comma::split( comma::split( line, '/' ).back(), '.' ); // quick and dirty, use boost::filesystem
+        if( time_strings.size() == 2 ) { p.first = boost::posix_time::from_iso_string( time_strings[0] ); }
+        else if ( time_strings.size() == 3 ) { p.first = boost::posix_time::from_iso_string( time_strings[0] + '.' + time_strings[1] ); }
+    }
+    static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
+    static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
+    snark::cv_mat::serialization::header h( p.second );
+    h.timestamp = p.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : p.first;
+    default_binary.put( h, &buffer[0] );
+    return std::make_pair( buffer, p.second );
 }
 
 static pair output_single_image( const std::pair< boost::posix_time::ptime, cv::Mat >& p )
@@ -141,6 +174,7 @@ int main( int argc, char** argv )
         #endif
 
         std::string name;
+        std::string files;
         int device;
         unsigned int discard;
         double fps;
@@ -161,7 +195,8 @@ int main( int argc, char** argv )
             ( "image-types", "get all image type enumerations" )
             ( "discard,d", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "camera", "use first available opencv-supported camera" )
-            ( "file", boost::program_options::value< std::string >( &name ), "video file name" )
+            ( "file", boost::program_options::value< std::string >( &name ), "image or video file name" )
+            ( "files", boost::program_options::value< std::string >( &files ), "file with list of image filenames (videos not supported, yet)" )
             ( "id", boost::program_options::value< int >( &device ), "specify specific device by id ( OpenCV-supported camera )" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "fps", boost::program_options::value< double >( &fps )->default_value( 0 ), "specify max fps ( useful for files, may block if used with cameras ) " )
@@ -303,6 +338,10 @@ int main( int argc, char** argv )
                 skip( number_of_frames_to_skip, video_capture, rate );
                 reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
             }
+        }
+        else if( vm.count( "files" ) )
+        {
+            reader.reset( new bursty_reader< pair >( boost::bind( &read_image_files, boost::cref( files ), boost::ref( rate ), vm.count( "timestamped" ) > 0 ), discard, capacity ) );
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
