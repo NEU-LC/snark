@@ -83,7 +83,7 @@ void ros_init( char **av, boost::optional< std::string > node_name, std::string 
     int rac = 1;
     if( !node_name )
     {
-        node_name = "ros_multi_array" + suffix;
+        node_name = "ros_cv_image" + suffix;
         node_options = ::ros::InitOption::AnonymousName;
     }
     ros::init( rac, av, *node_name, node_options );
@@ -102,11 +102,11 @@ protected:
 
 private:
     using bimap_t = boost::bimap< std::string, unsigned >;
-    static bimap_t init_map();
-    static bimap_t const& format_bimap() { static bimap_t const bimap = init_map(); return bimap; }
+    static bimap_t init_bimap();
+    static bimap_t const& format_bimap() { static bimap_t const bimap = init_bimap(); return bimap; }
 };
 
-cv_io::bimap_t cv_io::init_map( void )
+cv_io::bimap_t cv_io::init_bimap( void )
 {
     boost::bimap< std::string, unsigned > map;
     map.insert( bimap_t::value_type( "rgb8", CV_8UC3 ) ); 
@@ -293,7 +293,6 @@ int main( int ac, char* av[] )
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--bash-completion" ) ) bash_completion( ac, av );
         options.assert_mutually_exclusive( "--from,--flush,--output-fields", "--to,--dimensions,--dim,--input-fields" );
-        comma::csv::options csv( options );
 
         auto const type = options.value< std::string >( "--type" );
         ros_execute( av, options );
