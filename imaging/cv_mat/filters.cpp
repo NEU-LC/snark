@@ -2521,7 +2521,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             else if( r[3] == "lanczos4" ) { interpolation = cv::INTER_LANCZOS4; }
             else { COMMA_THROW( comma::exception, "remap: expected interpolation type, got: '" << r[1] << "'" ); }
         }
-        return std::make_pair( snark::cv_mat::impl::remap< H >( map, width, height, interpolation ), false );
+        return std::make_pair( snark::cv_mat::impl::remap< H >( map, width, height, interpolation ), true );
     }
     if( e[0] == "resize" )
     {
