@@ -58,28 +58,44 @@
 
 #pragma once
 
+#include <string>
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 namespace snark { namespace cv_mat { namespace impl {
 
 template < typename H >
-struct warp
+class remap
 {
-    typedef std::pair< H, cv::Mat > value_type;
+    public:
+        typedef std::pair< H, cv::Mat > value_type;
 
-    warp(); // todo: pass parameters how
+        remap( const std::string& map, unsigned int width, unsigned int height, int interpolation );
 
-    value_type operator()( value_type ) const;
+        value_type operator()( value_type ) const;
+        
+    private:
+        int interpolation_;
+        cv::Mat x_;
+        cv::Mat y_;
 };
 
 template < typename H >
-struct unwarp
+class undistort
 {
-    typedef std::pair< H, cv::Mat > value_type;
-    
-    unwarp(); // todo: pass parameters how
+    public:
+        typedef std::pair< H, cv::Mat > value_type;
+        
+        undistort( const std::string& filename, bool do_remap = false, int interpolation = cv::INTER_LINEAR );
 
-    value_type operator()( value_type ) const;
+        value_type operator()( value_type m );
+
+    private:
+        cv::Mat camera_matrix_;
+        cv::Vec< double, 5 > distortion_coefficients_;
+        int interpolation_;
+        std::string filename_;
+        boost::optional< remap< H > > remap_;
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

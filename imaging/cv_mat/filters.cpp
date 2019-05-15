@@ -69,8 +69,6 @@
 #include <comma/name_value/parser.h>
 #include <comma/name_value/serialize.h>
 #include <comma/application/verbose.h>
-#include "../camera/pinhole.h"
-#include "../camera/traits.h"
 #include "../../timing/time.h"
 #include "../../timing/timestamped.h"
 #include "../../timing/traits.h"
@@ -88,6 +86,7 @@
 #include "detail/load.h"
 #include "detail/morphology.h"
 #include "detail/ratio.h"
+#include "detail/remap.h"
 #include "detail/utils.h"
 #include "detail/warp.h"
 
@@ -1521,85 +1520,6 @@ static typename impl::filters< H >::value_type text_impl_( typename impl::filter
 }
 
 template < typename H >
-class undistort_impl_
-{
-    public:
-        typedef typename impl::filters< H >::value_type value_type;
-        undistort_impl_( const std::string& filename ) : distortion_coefficients_( 0, 0, 0, 0, 0 )
-        {
-            try
-            {
-                const std::vector< std::string >& v = comma::split( filename, ':' );
-                snark::camera::pinhole::config_t config;
-                switch( v.size() )
-                {
-                    case 1: comma::read( config, filename ); break;
-                    case 2: comma::read( config, v[0], v[1] ); break;
-                    default: COMMA_THROW( comma::exception, "undistort: expected <filename>[:<path>]; got: \"" << filename << "\"" );
-                }
-                if( config.distortion )
-                {
-                    if( config.distortion->map_filename.empty() )
-                    {
-                        distortion_coefficients_ = config.distortion->as< cv::Vec< double, 5 > >();
-                        camera_matrix_ = config.camera_matrix();
-                    }
-                    else
-                    {
-                        filename_ = config.distortion->map_filename;
-                    }
-                }
-            }
-            catch( ... )
-            {
-                filename_ = filename;
-            }
-        }
-
-        value_type operator()( value_type m )
-        {
-            value_type n( m.first, cv::Mat( m.second.size(), m.second.type(), cv::Scalar::all(0) ) );
-            if( filename_.empty() )
-            {
-                if( camera_matrix_.empty() ) { n.second = m.second.clone(); }
-                else { cv::undistort( m.second, n.second, camera_matrix_, distortion_coefficients_ ); }
-            }
-            else
-            {
-                init_map_( m.second.rows, m.second.cols );
-                cv::remap( m.second, n.second, x_, y_, cv::INTER_LINEAR, cv::BORDER_TRANSPARENT );
-            }
-            return n;
-        }
-
-    private:
-        cv::Mat camera_matrix_;
-        cv::Vec< double, 5 > distortion_coefficients_;
-        std::string filename_;
-        std::vector< char > xbuf_;
-        std::vector< char > ybuf_;
-        cv::Mat x_;
-        cv::Mat y_;
-        void init_map_( unsigned int rows, unsigned int cols )
-        {
-            if( !x_.empty() ) { return; }
-            std::ifstream stream( &filename_[0] );
-            if( !stream ) { COMMA_THROW( comma::exception, "failed to open undistort map in \"" << filename_ << "\"" ); }
-            std::size_t size = rows * cols * 4;
-            xbuf_.resize( size );
-            stream.read( &xbuf_[0], size );
-            if( stream.gcount() < 0 || std::size_t( stream.gcount() ) != size ) { COMMA_THROW( comma::exception, "failed to read \"" << filename_ << "\"" ); }
-            ybuf_.resize( size );
-            stream.read( &ybuf_[0], size );
-            if( stream.gcount() < 0 || std::size_t( stream.gcount() ) != size ) { COMMA_THROW( comma::exception, "failed to read \"" << filename_ << "\"" ); }
-            stream.peek(); // quick and dirty
-            if( !stream.eof() ) { COMMA_THROW( comma::exception, "expected " << ( size * 2 ) << " bytes in \"" << filename_ << "\", got more" ); }
-            x_ = cv::Mat( rows, cols, CV_32FC1, &xbuf_[0] );
-            y_ = cv::Mat( rows, cols, CV_32FC1, &ybuf_[0] );
-        }
-};
-
-template < typename H >
 class max_impl_ // experimental, to debug
 {
     public:
@@ -2584,6 +2504,25 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if ( w.size() > 2 ) { offset = boost::lexical_cast< double >( w[2] ); }
         return std::make_pair( boost::bind< value_type_t >( convert_to_impl_< H >, _1, it->second, scale, offset ), true );
     }
+    if( e[0] == "remap" )
+    {
+        const std::vector< std::string >& r = comma::split( e[1], ',' );
+        if( r.size() < 3 ) { COMMA_THROW( comma::exception, "remap: expected remap=<map-filename>,<width>,<height>[,<interpolation>], got: '" << e[1] << "'" ); }
+        std::string map = r[0];
+        unsigned int width = boost::lexical_cast< unsigned int >( r[1] );
+        unsigned int height = boost::lexical_cast< unsigned int >( r[2] );
+        int interpolation = cv::INTER_LINEAR;
+        if( r.size() > 3 )
+        {
+            if( r[3] == "nearest" ) { interpolation = cv::INTER_NEAREST; }
+            else if( r[3] == "linear" ) { interpolation = cv::INTER_LINEAR; }
+            else if( r[3] == "area" ) { interpolation = cv::INTER_AREA; }
+            else if( r[3] == "cubic" ) { interpolation = cv::INTER_CUBIC; }
+            else if( r[3] == "lanczos4" ) { interpolation = cv::INTER_LANCZOS4; }
+            else { COMMA_THROW( comma::exception, "remap: expected interpolation type, got: '" << r[1] << "'" ); }
+        }
+        return std::make_pair( snark::cv_mat::impl::remap< H >( map, width, height, interpolation ), false );
+    }
     if( e[0] == "resize" )
     {
         unsigned int width = 0;
@@ -2636,7 +2575,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "clone-channels: please specify number of channels" ); }
         return std::make_pair( boost::bind< value_type_t >( clone_channels_impl_< H >, _1, boost::lexical_cast< unsigned int >( e[1] ) ), true );
     }
-    if( e[0] == "undistort" ) { return std::make_pair( undistort_impl_< H >( e[1] ), true ); }
+    if( e[0] == "undistort" ) { return std::make_pair( snark::cv_mat::impl::undistort< H >( e[1] ), false ); }
     if( e[0] == "invert" )
     {
         if( e.size() == 1 ) { return std::make_pair( invert_impl_< H >, true ); }
@@ -3296,6 +3235,8 @@ static std::string usage_impl_()
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
     oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << "        pow,power=<value>; each image channel power, currently plain wrapper of opencv pow(), thus may be slow; todo? parallelize and/or implement mapping with interpolation" << std::endl;
+    oss << "        remap=<map-filename>[,<interpolation>]: remap, input image dimensions expected to match map dimentions; see cv::remap() for details" << std::endl;
+    oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
     oss << "        resize=<factor>[,<interpolation>]; resize=<width>,<height>[,<interpolation>]" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
     oss << "                             in format <width>,<height>,<interpolation> corresponding numeric values can be used: " << cv::INTER_NEAREST << ", " << cv::INTER_LINEAR << ", " << cv::INTER_AREA << ", " << cv::INTER_CUBIC << ", " << cv::INTER_LANCZOS4 << std::endl;
