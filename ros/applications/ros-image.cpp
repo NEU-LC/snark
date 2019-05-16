@@ -294,9 +294,7 @@ int main( int ac, char* av[] )
         if( options.exists( "--bash-completion" ) ) bash_completion( ac, av );
         options.assert_mutually_exclusive( "--from,--flush,--output-fields", "--to,--dimensions,--dim,--input-fields" );
 
-        auto const type = options.value< std::string >( "--type" );
         ros_execute( av, options );
-        std::cerr << comma::verbose.app_name() << ": unknown --type: " << type << std::endl;
     }
     catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl; }
