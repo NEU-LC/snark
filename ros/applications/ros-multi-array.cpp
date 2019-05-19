@@ -33,8 +33,8 @@
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
 #include "./std_msgs/traits.h"
-//#include <rosbag/bag.h>
-//#include <rosbag/view.h>
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
 
 namespace {
 
@@ -64,12 +64,13 @@ void usage( bool const verbose )
     std::cerr << "    --queue-size=[<n>]; default=1; ROS Subscriber queue size." << std::endl;
     std::cerr << "    --type=<data_type>; csv format types. One of b,ub,w,uw,i,ui,l,ul,f or d" << std::endl;
     std::cerr << "    --from=<topic>; ros topic, mutually exclusive with --to." << std::endl;
-    std::cerr << "        --flush; default=,. flush stream after each stride." << std::endl;
+    std::cerr << "        --bag=[<bagfile>]; read from ros bag file." << std::endl;
+    std::cerr << "        --flush; flush stream after each stride." << std::endl;
     std::cerr << "        --output-format; print output format and exit." << std::endl;
     std::cerr << "    --to=<topic>; ros topic, mutually exclusive with --from." << std::endl;
     std::cerr << "        --dimension,--dim=<attr>; dimension attributes label,size,stride. For example --dim=rows,3,9." << std::endl;
     std::cerr << "        --input-format; print format according to given dimension attributes and exit." << std::endl;
-    std::cerr << "        --max-datagram-size: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)." << std::endl;
+    std::cerr << "        --max-datagram-size=[<size>]; If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)." << std::endl;
     std::cerr << "        --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
     std::cerr << std::endl;
 }
@@ -106,8 +107,8 @@ public:
     {
         if( from_bag )
         {
-            //bag_.open( options.value< std::string >( "--bag" ) );
-            //view_.addQuery( bag_, rosbag::TopicQuery( options.value< std::string >( "--from" ) ) );
+            bag_.open( options.value< std::string >( "--bag" ) );
+            view_.addQuery( bag_, rosbag::TopicQuery( options.value< std::string >( "--from" ) ) );
         }
         else
         {
@@ -139,12 +140,12 @@ public:
     {
         if( from_bag )
         {
-            //for( rosbag::MessageInstance const mi : view_ )
-            //{
-            //    message_type const msg = mi.instantiate< array_type >();
-            //    if( output_format ) { std::cout << ros_layout_format< T >( msg->layout ) << std::endl; return; }
-            //    write( msg );
-            //}
+            for( rosbag::MessageInstance const mi : view_ )
+            {
+                message_type const msg = mi.instantiate< array_type >();
+                if( output_format ) { std::cout << ros_layout_format< T >( msg->layout ) << std::endl; return; }
+                write( msg );
+            }
         }
         else
         {
@@ -158,8 +159,8 @@ private:
     bool const from_bag;
     ros::NodeHandle node_;
     ros::Subscriber subscriber_;
-    //rosbag::Bag bag_;
-    //rosbag::View view_;
+    rosbag::Bag bag_;
+    rosbag::View view_;
 };
 
 
