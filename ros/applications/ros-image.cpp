@@ -29,6 +29,7 @@
 
 #include <vector>
 #include <fstream>
+#include <unordered_map>
 #include <boost/bimap.hpp>
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
@@ -37,9 +38,8 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/fill_image.h>
 #include "../../imaging/cv_mat/serialization.h"
-
-//#include <rosbag/bag.h>
-//#include <rosbag/view.h>
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
 
 namespace {
 
@@ -69,10 +69,11 @@ void usage( bool const verbose )
     std::cerr << "    --node-name=<name>; node name for this process, when not specified uses ros::init_options::AnonymousName flag." << std::endl;
     std::cerr << "    --queue-size=[<n>]; default=1; ROS Subscriber queue size." << std::endl;
     std::cerr << "    --from=<topic>; ros topic, mutually exclusive with --to." << std::endl;
-    std::cerr << "        --flush; default=,. flush stream after each stride." << std::endl;
+    std::cerr << "        --bag=[<bagfile>]; read from ros bag file." << std::endl;
+    std::cerr << "        --flush; flush stream after each stride." << std::endl;
     std::cerr << "    --to=<topic>; ros topic, mutually exclusive with --from." << std::endl;
-    std::cerr << "        --frame-id: ros header frame id." << std::endl;
-    std::cerr << "        --max-datagram-size: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)." << std::endl;
+    std::cerr << "        --frame-id=[<frame_id>]: ros header frame id." << std::endl;
+    std::cerr << "        --max-datagram-size=[<size>]: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)." << std::endl;
     std::cerr << "        --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
     std::cerr << std::endl;
 }
@@ -92,71 +93,119 @@ void ros_init( char **av, boost::optional< std::string > node_name, std::string 
 class cv_io
 {
 protected:
-    static unsigned cv_format( std::string const& ros_encoding ) { return format_bimap().left.at( ros_encoding ); }
-    static std::string ros_format( unsigned const cv_encoding ) { return format_bimap().right.at( cv_encoding ); }
+    static unsigned cv_format( std::string const& ros_encoding );
+    static std::string ros_format( unsigned const cv_encoding );
 
     snark::cv_mat::serialization::options cv_opt;
     snark::cv_mat::serialization cv_strm;
 
     cv_io() : cv_strm( cv_opt ) {}
-
-private:
-    using bimap_t = boost::bimap< std::string, unsigned >;
-    static bimap_t init_bimap();
-    static bimap_t const& format_bimap() { static bimap_t const bimap = init_bimap(); return bimap; }
 };
 
-cv_io::bimap_t cv_io::init_bimap( void )
+unsigned cv_io::cv_format( std::string const& ros_encoding )
 {
-    boost::bimap< std::string, unsigned > map;
-    map.insert( bimap_t::value_type( "rgb8", CV_8UC3 ) ); 
-    map.insert( bimap_t::value_type( "rgba8", CV_8UC4 ) );
-    map.insert( bimap_t::value_type( "rgb16", CV_16UC3 ) );
-    map.insert( bimap_t::value_type( "rgba16", CV_16UC4 ) );
-    map.insert( bimap_t::value_type( "bgr8", CV_8UC3 ) );
-    map.insert( bimap_t::value_type( "bgra8", CV_8UC4 ) );
-    map.insert( bimap_t::value_type( "bgr16", CV_16UC3 ) );
-    map.insert( bimap_t::value_type( "bgra16", CV_16UC4 ) );
-    map.insert( bimap_t::value_type( "mono8", CV_8UC1 ) );
-    map.insert( bimap_t::value_type( "mono16", CV_16UC1 ) );
-    map.insert( bimap_t::value_type( "8UC1", CV_8UC1 ) );
-    map.insert( bimap_t::value_type( "8UC2", CV_8UC2 ) );
-    map.insert( bimap_t::value_type( "8UC3", CV_8UC3 ) );
-    map.insert( bimap_t::value_type( "8UC4", CV_8UC4 ) );
-    map.insert( bimap_t::value_type( "8SC1", CV_8SC1 ) );
-    map.insert( bimap_t::value_type( "8SC2", CV_8SC2 ) );
-    map.insert( bimap_t::value_type( "8SC3", CV_8SC3 ) );
-    map.insert( bimap_t::value_type( "8SC4", CV_8SC4 ) );
-    map.insert( bimap_t::value_type( "16UC1", CV_16UC1 ) );
-    map.insert( bimap_t::value_type( "16UC2", CV_16UC2 ) );
-    map.insert( bimap_t::value_type( "16UC3", CV_16UC3 ) );
-    map.insert( bimap_t::value_type( "16UC4", CV_16UC4 ) );
-    map.insert( bimap_t::value_type( "16SC1", CV_16SC1 ) );
-    map.insert( bimap_t::value_type( "16SC2", CV_16SC2 ) );
-    map.insert( bimap_t::value_type( "16SC3", CV_16SC3 ) );
-    map.insert( bimap_t::value_type( "16SC4", CV_16SC4 ) );
-    map.insert( bimap_t::value_type( "32SC1", CV_32SC1 ) );
-    map.insert( bimap_t::value_type( "32SC2", CV_32SC2 ) );
-    map.insert( bimap_t::value_type( "32SC3", CV_32SC3 ) );
-    map.insert( bimap_t::value_type( "32SC4", CV_32SC4 ) );
-    map.insert( bimap_t::value_type( "32FC1", CV_32FC1 ) );
-    map.insert( bimap_t::value_type( "32FC2", CV_32FC2 ) );
-    map.insert( bimap_t::value_type( "32FC3", CV_32FC3 ) );
-    map.insert( bimap_t::value_type( "32FC4", CV_32FC4 ) );
-    map.insert( bimap_t::value_type( "64FC1", CV_64FC1 ) );
-    map.insert( bimap_t::value_type( "64FC2", CV_64FC2 ) );
-    map.insert( bimap_t::value_type( "64FC3", CV_64FC3 ) );
-    map.insert( bimap_t::value_type( "64FC4", CV_64FC4 ) );
-    map.insert( bimap_t::value_type( "bayer_rggb8", CV_8UC4 ) );
-    map.insert( bimap_t::value_type( "bayer_bggr8", CV_8UC4 ) );
-    map.insert( bimap_t::value_type( "bayer_gbrg8", CV_8UC4 ) );
-    map.insert( bimap_t::value_type( "bayer_grbg8", CV_8UC4 ) );
-    map.insert( bimap_t::value_type( "bayer_rggb16", CV_16UC4 ) );
-    map.insert( bimap_t::value_type( "bayer_bggr16", CV_16UC4 ) );
-    map.insert( bimap_t::value_type( "bayer_gbrg16", CV_16UC4 ) );
-    map.insert( bimap_t::value_type( "bayer_grbg16", CV_16UC4 ) );
+    static const std::unordered_map< std::string, unsigned > map = {
+        { "rgb8", CV_8UC3 },
+        { "rgba8", CV_8UC4 },
+        { "rgb16", CV_16UC3 },
+        { "rgba16", CV_16UC4 },
+        { "bgr8", CV_8UC3 },
+        { "bgra8", CV_8UC4 },
+        { "bgr16", CV_16UC3 },
+        { "bgra16", CV_16UC4 },
+        { "mono8", CV_8UC1 },
+        { "mono16", CV_16UC1 },
+        { "8UC1", CV_8UC1 },
+        { "8UC2", CV_8UC2 },
+        { "8UC3", CV_8UC3 },
+        { "8UC4", CV_8UC4 },
+        { "8SC1", CV_8SC1 },
+        { "8SC2", CV_8SC2 },
+        { "8SC3", CV_8SC3 },
+        { "8SC4", CV_8SC4 },
+        { "16UC1", CV_16UC1 },
+        { "16UC2", CV_16UC2 },
+        { "16UC3", CV_16UC3 },
+        { "16UC4", CV_16UC4 },
+        { "16SC1", CV_16SC1 },
+        { "16SC2", CV_16SC2 },
+        { "16SC3", CV_16SC3 },
+        { "16SC4", CV_16SC4 },
+        { "32SC1", CV_32SC1 },
+        { "32SC2", CV_32SC2 },
+        { "32SC3", CV_32SC3 },
+        { "32SC4", CV_32SC4 },
+        { "32FC1", CV_32FC1 },
+        { "32FC2", CV_32FC2 },
+        { "32FC3", CV_32FC3 },
+        { "32FC4", CV_32FC4 },
+        { "64FC1", CV_64FC1 },
+        { "64FC2", CV_64FC2 },
+        { "64FC3", CV_64FC3 },
+        { "64FC4", CV_64FC4 },
+        { "bayer_rggb8", CV_8UC4 },
+        { "bayer_bggr8", CV_8UC4 },
+        { "bayer_gbrg8", CV_8UC4 },
+        { "bayer_grbg8", CV_8UC4 },
+        { "bayer_rggb16", CV_16UC4 },
+        { "bayer_bggr16", CV_16UC4 },
+        { "bayer_gbrg16", CV_16UC4 },
+        { "bayer_grbg16", CV_16UC4 },
+    };
+    return map.at( ros_encoding );
+}
 
-    return map;
+std::string cv_io::ros_format( unsigned const cv_encoding )
+{
+    static const std::unordered_map< unsigned, std::string > map = {
+        { CV_8UC3, "rgb8" },
+        { CV_8UC4, "rgba8" },
+        { CV_16UC3, "rgb16" },
+        { CV_16UC4, "rgba16" },
+        { CV_8UC3, "bgr8" },
+        { CV_8UC4, "bgra8" },
+        { CV_16UC3, "bgr16" },
+        { CV_16UC4, "bgra16" },
+        { CV_8UC1, "mono8" },
+        { CV_16UC1, "mono16" },
+        { CV_8UC1, "8UC1" },
+        { CV_8UC2, "8UC2" },
+        { CV_8UC3, "8UC3" },
+        { CV_8UC4, "8UC4" },
+        { CV_8SC1, "8SC1" },
+        { CV_8SC2, "8SC2" },
+        { CV_8SC3, "8SC3" },
+        { CV_8SC4, "8SC4" },
+        { CV_16UC1, "16UC1" },
+        { CV_16UC2, "16UC2" },
+        { CV_16UC3, "16UC3" },
+        { CV_16UC4, "16UC4" },
+        { CV_16SC1, "16SC1" },
+        { CV_16SC2, "16SC2" },
+        { CV_16SC3, "16SC3" },
+        { CV_16SC4, "16SC4" },
+        { CV_32SC1, "32SC1" },
+        { CV_32SC2, "32SC2" },
+        { CV_32SC3, "32SC3" },
+        { CV_32SC4, "32SC4" },
+        { CV_32FC1, "32FC1" },
+        { CV_32FC2, "32FC2" },
+        { CV_32FC3, "32FC3" },
+        { CV_32FC4, "32FC4" },
+        { CV_64FC1, "64FC1" },
+        { CV_64FC2, "64FC2" },
+        { CV_64FC3, "64FC3" },
+        { CV_64FC4, "64FC4" },
+        { CV_8UC4, "bayer_rggb8" },
+        { CV_8UC4, "bayer_bggr8" },
+        { CV_8UC4, "bayer_gbrg8" },
+        { CV_8UC4, "bayer_grbg8" },
+        { CV_16UC4, "bayer_rggb16" },
+        { CV_16UC4, "bayer_bggr16" },
+        { CV_16UC4, "bayer_gbrg16" },
+        { CV_16UC4, "bayer_grbg16" },
+    };
+    return map.at( cv_encoding );
 }
 
 class ros_subscriber : public cv_io
@@ -171,8 +220,8 @@ public:
     {
         if( from_bag )
         {
-            //bag_.open( options.value< std::string >( "--bag" ) );
-            //view_.addQuery( bag_, rosbag::TopicQuery( options.value< std::string >( "--from" ) ) );
+            bag_.open( options.value< std::string >( "--bag" ) );
+            view_.addQuery( bag_, rosbag::TopicQuery( options.value< std::string >( "--from" ) ) );
         }
         else
         {
@@ -204,12 +253,11 @@ public:
     {
         if( from_bag )
         {
-            //for( rosbag::MessageInstance const mi : view_ )
-            //{
-            //    message_type const msg = mi.instantiate< array_type >();
-            //    if( output_format ) { std::cout << ros_layout_format< T >( msg->layout ) << std::endl; return; }
-            //    write( msg );
-            //}
+            for( rosbag::MessageInstance const mi : view_ )
+            {
+                message_type const msg = mi.instantiate< sensor_msgs::Image >();
+                write( msg );
+            }
         }
         else
         {
@@ -223,8 +271,8 @@ private:
     bool const from_bag;
     ros::NodeHandle node_;
     ros::Subscriber subscriber_;
-    //rosbag::Bag bag_;
-    //rosbag::View view_;
+    rosbag::Bag bag_;
+    rosbag::View view_;
 };
 
 
