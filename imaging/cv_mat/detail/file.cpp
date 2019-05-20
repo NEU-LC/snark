@@ -63,13 +63,13 @@ typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, c
     if( type_ == "bin" )
     {
         std::ofstream ofs( filename );
-        if( !ofs.is_open() ) { COMMA_THROW( comma::exception, "failed to open " << filename ); }
+        if( !ofs.is_open() ) { COMMA_THROW( comma::exception, "failed to open '" << filename << "'" ); }
         serialization_.write( ofs, m );
     }
     else
     {
         check_image_type( m.second, type_ );
-        cv::imwrite( filename, m.second, quality_ ? imwrite_params( type_, *quality_ ) : std::vector< int >() );
+        if( !cv::imwrite( filename, m.second, quality_ ? imwrite_params( type_, *quality_ ) : std::vector< int >() ) ) { COMMA_THROW( comma::exception, "failed to write image to '" << filename << "'" ); }
     }
     return m;
 }
