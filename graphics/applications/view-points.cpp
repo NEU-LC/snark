@@ -232,7 +232,7 @@ static void usage()
         "\n"
         "\nmore options"
         "\n    --background-colour,--background-color=<colour> : default: black"
-        "\n    --output-camera-config,--output-camera: output camera position as t,x,y,z,r,p,y to stdout"
+        "\n    --output-camera-config,--output-camera: output camera config to stdout as stream of json structures"
         "\n    --scene-center,--center=<value>: fixed scene center as \"x,y,z\""
         "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
         "\n                            scene size from the dataset (e.g. for streams)"
