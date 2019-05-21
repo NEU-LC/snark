@@ -271,7 +271,8 @@ if __name__ == '__main__':
                             if args.output_to_files:
                                 for j in range( output_channels ):
                                     n = input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin'
-                                    with gzip.open( n + '.gz', 'wb' ) if args.output_as_gzip else open( n, 'wb' ) as f: f.write( v[j].tobytes() )
+                                    with gzip.open( n + '.gz', 'wb' ) if args.output_as_gzip else open( n, 'wb' ) as f: f.write( v[j].tobytes() ); f.close()
+                                    #with open( n if args.output_as_gzip else n + '.gz', 'wb' ) as f: f.write( gzip.compress( v[j].tobytes() ) if args.output_as_gzip else v[j].tobytes() )
                             if args.png:
                                 for j in range( output_channels ):
                                     n = np.min( v[j] ) if args.png_min is None else args.png_min
