@@ -229,7 +229,8 @@ public:
 
             ros::TransportHints hints;
             if( datagram ) { hints = ros::TransportHints().maxDatagramSize( *datagram ); }
-            subscriber_ = node_.subscribe( options.value< std::string >( "--from" )
+            node_.reset( new ros::NodeHandle() );
+            subscriber_ = node_->subscribe( options.value< std::string >( "--from" )
                     , options.value< unsigned >( "--queue-size", 1U )
                     , &ros_subscriber::process, this
                     , hints );
@@ -269,7 +270,7 @@ private:
     bool const flush;
     bool const output_format;
     bool const from_bag;
-    ros::NodeHandle node_;
+    std::unique_ptr< ros::NodeHandle > node_;
     ros::Subscriber subscriber_;
     rosbag::Bag bag_;
     rosbag::View view_;
