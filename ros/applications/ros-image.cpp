@@ -45,11 +45,11 @@ namespace {
 
 void bash_completion( unsigned const ac, char const * const * av )
 {
-    static char const * const arguments[] = {
-        " --help -h --node-name --queue-size",
-        " --from --flush",
+    static char const * const arguments =
+        " --help -h --node-name --queue-size"
+        " --from --bags --flush"
         " --to --max-datagram-size --latch --frame-id"
-    };
+        ;
     std::cout << arguments << std::endl;
     exit( 0 );
 }
