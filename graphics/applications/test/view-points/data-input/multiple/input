@@ -1,5 +1,5 @@
 instruction=
 expected="two cubes"
 input=
-files="<( snark-graphics-test-pattern cube 10000 0.5 0.01 | points-frame --fields x,y,z --from -1,0,0 ) <( snark-graphics-test-pattern cube 10000 0.5 0.01 | points-frame --fields x,y,z --from 1,0,0 )"
+files="<( snark-graphics-test-pattern cube -n 10000 --width 0.5 --thickness 0.01 | points-frame --fields x,y,z --from -1,0,0 ) <( snark-graphics-test-pattern cube -n 10000 --width 0.5 --thickness 0.01 | points-frame --fields x,y,z --from 1,0,0 )"
 args="--no-stdin"
