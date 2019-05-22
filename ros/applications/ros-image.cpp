@@ -30,6 +30,7 @@
 #include <vector>
 #include <fstream>
 #include <unordered_map>
+#include <glob.h>
 #include <boost/bimap.hpp>
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
@@ -208,6 +209,23 @@ std::string cv_io::ros_format( unsigned const cv_encoding )
     return map.at( cv_encoding );
 }
 
+static std::vector< std::string > glob( const std::string& path )
+{
+    glob_t globbuf;
+    int return_val = glob( path.c_str(), GLOB_TILDE, NULL, &globbuf );
+    std::vector< std::string > path_names;
+    if( return_val == 0)
+    {
+        for( std::size_t i = 0; i < globbuf.gl_pathc; ++i )
+        {
+            path_names.push_back( std::string( globbuf.gl_pathv[i] ));
+        }
+    }
+    else { std::cerr << comma::verbose.app_name() << ": couldn't find " << path << std::endl; }
+    globfree( &globbuf );
+    return path_names;
+}
+
 class ros_subscriber : public cv_io
 {
 public:
@@ -217,11 +235,15 @@ public:
         : flush( options.exists( "--flush" ) )
         , output_format( options.exists( "--output-format" ) )
         , from_bag( options.exists( "--bags" ) )
+        , topic( options.value< std::string >( "--from" ))
     {
         if( from_bag )
         {
-            bag_.open( options.value< std::string >( "--bags" ) );
-            view_.addQuery( bag_, rosbag::TopicQuery( options.value< std::string >( "--from" ) ) );
+            for( auto name: comma::split( options.value< std::string >( "--bags", "" ), ',' ))
+            {
+                std::vector< std::string > expansion = glob( name );
+                bag_names.insert( bag_names.end(), expansion.begin(), expansion.end() );
+            }
         }
         else
         {
@@ -230,7 +252,7 @@ public:
             ros::TransportHints hints;
             if( datagram ) { hints = ros::TransportHints().maxDatagramSize( *datagram ); }
             node_.reset( new ros::NodeHandle() );
-            subscriber_ = node_->subscribe( options.value< std::string >( "--from" )
+            subscriber_ = node_->subscribe( topic
                     , options.value< unsigned >( "--queue-size", 1U )
                     , &ros_subscriber::process, this
                     , hints );
@@ -254,10 +276,20 @@ public:
     {
         if( from_bag )
         {
-            for( rosbag::MessageInstance const mi : view_ )
+            rosbag::Bag bag;
+            std::vector< std::string > topics;
+            topics.push_back( topic );
+            for( auto bag_name: bag_names )
             {
-                message_type const msg = mi.instantiate< sensor_msgs::Image >();
-                write( msg );
+                comma::verbose << "opening " << bag_name << std::endl;
+                rosbag::View view_;
+                bag.open( bag_name );
+                for( rosbag::MessageInstance const mi : rosbag::View( bag, rosbag::TopicQuery( topics )))
+                {
+                    message_type const msg = mi.instantiate< sensor_msgs::Image >();
+                    write( msg );
+                }
+                bag.close();
             }
         }
         else
@@ -272,8 +304,8 @@ private:
     bool const from_bag;
     std::unique_ptr< ros::NodeHandle > node_;
     ros::Subscriber subscriber_;
-    rosbag::Bag bag_;
-    rosbag::View view_;
+    std::vector< std::string > bag_names;
+    std::string topic;
 };
 
 
