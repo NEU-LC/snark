@@ -69,7 +69,7 @@ void usage( bool const verbose )
     std::cerr << "    --node-name=<name>; node name for this process, when not specified uses ros::init_options::AnonymousName flag." << std::endl;
     std::cerr << "    --queue-size=[<n>]; default=1; ROS Subscriber queue size." << std::endl;
     std::cerr << "    --from=<topic>; ros topic, mutually exclusive with --to." << std::endl;
-    std::cerr << "        --bag=[<bagfile>]; read from ros bag file." << std::endl;
+    std::cerr << "        --bags=[<bagfile>]; read from ros bag file." << std::endl;
     std::cerr << "        --flush; flush stream after each stride." << std::endl;
     std::cerr << "    --to=<topic>; ros topic, mutually exclusive with --from." << std::endl;
     std::cerr << "        --frame-id=[<frame_id>]: ros header frame id." << std::endl;
@@ -216,11 +216,11 @@ public:
     ros_subscriber( comma::command_line_options const& options )
         : flush( options.exists( "--flush" ) )
         , output_format( options.exists( "--output-format" ) )
-        , from_bag( options.exists( "--bag" ) )
+        , from_bag( options.exists( "--bags" ) )
     {
         if( from_bag )
         {
-            bag_.open( options.value< std::string >( "--bag" ) );
+            bag_.open( options.value< std::string >( "--bags" ) );
             view_.addQuery( bag_, rosbag::TopicQuery( options.value< std::string >( "--from" ) ) );
         }
         else
