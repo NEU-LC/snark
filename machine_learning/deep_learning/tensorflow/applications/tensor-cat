@@ -171,6 +171,7 @@ if __name__ == '__main__':
     parser.add_argument( '--min-log-level', '--log-level', type = str, default = "2", help = 'min log level (as os.environ[\'TF_CPP_MIN_LOG_LEVEL\']); default: %(default)s' )
     parser.add_argument( '--output', '-o', nargs='+', type = str, default = 'output', help = 'output layer name; multiple space- or comma-separated outputs accepted; default: %(default)s' )
     parser.add_argument( '--output-as-gzip', '--gzip', action = "store_true", help = 'if --output-to-files, then gzip each channel to file ./<input-number>/<layer-name>/<channel-number>.bin.gz' )
+    parser.add_argument( '--output-dirs', '--dirs', type = str, help = 'list of output directories, one for each input instead of ./<input-number>/... (see --output-to-files)' )
     parser.add_argument( '--output-to-files', action = "store_true", help = 'convenience option; for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples)' )
     parser.add_argument( '--output-max-channels', type = str, help = 'convenience option; if --output-to-files, comma-separated list: output not more than a given number of layer channels' )
     parser.add_argument( '--png', action = "store_true", help = 'convenience option; for each input, output each channel in human-viewable form to file ./<input-number>/<layer-name>/<channel-number>.png (see examples)' )
@@ -248,6 +249,13 @@ if __name__ == '__main__':
             for i in range( len( output_names ) ): print( "tensor-cat: output '" + output_names[i] + "':", outputs[i] )
         saymore( "running inference..." )
         input_number=0
+        if ( args.output_to_files or args.png ) and not args.output_dirs is None:
+            def output_dirs_iterator( filename ):
+                f = open( filename, 'r' )
+                for line in f:
+                    line = line.strip()
+                    if len( line ) > 0: yield line
+            output_dirs = output_dirs_iterator( args.output_dirs )
         with os.fdopen( sys.stdout.fileno(), "wb" ) as stdout:
             with os.fdopen( sys.stdin.fileno(), "rb" ) as stdin:
                 for header, data, footer in iterator( stdin, input, args.header_size, args.footer_size ):
@@ -256,12 +264,13 @@ if __name__ == '__main__':
                     if not keep_prob is None: feeds[keep_prob] = 1.0
                     values = session.run( outputs, feed_dict = feeds )
                     if args.output_to_files or args.png:
-                        input_dir = str( input_number )
-                        try: os.makedirs( input_dir ) #try: os.mkdir( input_dir )
+                        try: output_dir = str( input_number ) if args.output_dirs is None else next( output_dirs )
+                        except StopIteration: die( "got input record " + str( input_number + 1 ) + " but only " + str( input_number ) + " entries in '" + args.output_dirs + "'" )
+                        try: os.makedirs( output_dir ) #try: os.mkdir( output_dir )
                         except OSError as ex:
                             if ex.errno != os.errno.EEXIST: raise
                         for i in range( len( values ) ):
-                            try: os.mkdir( input_dir + '/' + output_names[i] )
+                            try: os.mkdir( output_dir + '/' + output_names[i] )
                             except OSError as ex:
                                 if ex.errno != os.errno.EEXIST: raise
                             if values[i].shape[0] != 1: die( "expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
@@ -270,7 +279,7 @@ if __name__ == '__main__':
                             output_channels = v.shape[0] if output_max_channels[i] is None else output_max_channels[i]
                             if args.output_to_files:
                                 for j in range( output_channels ):
-                                    n = input_dir + '/' + output_names[i] + '/' + str( j ) + '.bin'
+                                    n = output_dir + '/' + output_names[i] + '/' + str( j ) + '.bin'
                                     with gzip.open( n + '.gz', 'wb' ) if args.output_as_gzip else open( n, 'wb' ) as f: f.write( v[j].tobytes() ); f.close()
                                     #with open( n if args.output_as_gzip else n + '.gz', 'wb' ) as f: f.write( gzip.compress( v[j].tobytes() ) if args.output_as_gzip else v[j].tobytes() )
                             if args.png:
@@ -279,13 +288,9 @@ if __name__ == '__main__':
                                     x = np.max( v[j] ) if args.png_max is None else args.png_max
                                     image = np.zeros( v[j].shape, dtype = np.uint8 ) if x == n else np.array( ( ( ( np.array( v[j], dtype = np.float32 ) - n ) / ( x - n ) ) * 255 ), dtype = np.uint8 )
                                     from PIL import Image
-                                    Image.fromarray( image ).save( input_dir + '/' + output_names[i] + '/' + str( j ) + '.png' )
+                                    Image.fromarray( image ).save( output_dir + '/' + output_names[i] + '/' + str( j ) + '.png' )
                         input_number += 1
                     else:
-                        #header.tofile( sys.stdout )
-                        #if args.keep_input: data.tofile( sys.stdout )
-                        #footer.tofile( sys.stdout )
-                        #for value in values: value.tofile( sys.stdout )
                         stdout.write( header.tobytes() )
                         if args.keep_input: stdout.write( data.tobytes() )
                         stdout.write( footer.tobytes() )
