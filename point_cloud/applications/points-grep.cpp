@@ -117,11 +117,12 @@ static void usage( bool verbose = false )
     std::cerr << "             --filter-format: show --filter format" << std::endl;
     std::cerr << "             --output-all,--all: output all input with matching flag(s) appended for each filter point rather than filtering input" << std::endl;
     std::cerr << "             --or: match with 'or' operation, default: 'and'" << std::endl;
-    std::cerr << "             --negate: negate matching" << std::endl;
+    std::cerr << "             --not-matching,--negate: negate matching" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --input-fields: print input fields and exit; default input fields: x,y,z" << std::endl;
     std::cerr << "    --input-format: print input format and exit" << std::endl;
+    std::cerr << "    --not-matching,--negate: output points outside of the given shape (i.e. inverted output logic)" << std::endl;
     std::cerr << "    --output-all,--all: output all input points, append 1, if point is inside the shape, 0 otherwise" << std::endl;
     std::cerr << "    --output-fields: if --output-all given, print appended output fields and exit" << std::endl;
     std::cerr << "    --output-format: if --output-all given, print appended output format and exit" << std::endl;
@@ -183,6 +184,7 @@ static void usage( bool verbose = false )
 }
 
 static bool verbose;
+static bool matching;
 
 namespace snark { namespace operations {
     
@@ -521,9 +523,9 @@ template < typename Species, typename Genus > static int run( const boost::optio
     {
         const input_t< Species >* p = istream.read();
         if( !p ) { break; }
-        bool keep = transformed ? transformed->has( *p ) : transform( shape ? *shape : shape_traits< Species, Genus >::make( p->filter, inflate_by ), p->filter ).has( *p );
-        if( output_all ) { tied.append( output_t( keep ) ); }
-        else if( keep ) { passed.write(); }
+        bool has = transformed ? transformed->has( *p ) : transform( shape ? *shape : shape_traits< Species, Genus >::make( p->filter, inflate_by ), p->filter ).has( *p );
+        bool keep = has == matching;
+        if( output_all ) { tied.append( output_t( keep ) ); } else if( keep ) { passed.write(); }
         if( csv.flush ) { std::cout.flush(); }
     }
     return 0;
@@ -678,7 +680,7 @@ static int run( const comma::command_line_options& options )
 {
     const bool output_all = options.exists( "--output-all,--all" );
     const bool or_mode = options.exists( "--or" );
-    const bool negate = options.exists( "--negate" );
+    const bool negate = options.exists( "--not-matching,--negate" );
     const bool require_all_matches = or_mode == negate;
     const auto& filter = snark::operations::points::read_filter( options );
     if( filter.empty() ) { std::cerr << "points-grep points: warning: empty --filter" << std::endl; }
@@ -721,7 +723,8 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv, usage );
         verbose = options.exists( "--verbose,-v" );
         bool output_all = options.exists( "--output-all,--all" );
-        const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--or,--verbose,-v,--flush","-.*");
+        matching = !options.exists( "--not-matching,--negate" );
+        const std::vector< std::string >& unnamed = options.unnamed("--output-all,--all,--or,--not-matching,--negate,--verbose,-v,--flush","-.*");
         if(!unnamed.size()) { std::cerr << "points-grep: expected filter name, got nothing"<< std::endl; return 1; }
         std::string what = unnamed[0];
         if( what == "polytope" || what == "planes" || what == "prism" || what == "box" ) 
