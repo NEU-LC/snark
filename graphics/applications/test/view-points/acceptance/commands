@@ -2,7 +2,7 @@
 
 # --exit-on-end-of-input
 # takes about 9 s; then exits
-snark-graphics-test-pattern cube -n 1000000 --width 5 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --exit-on-end-of-input
+snark-graphics-test-pattern cube-points -n 1000000 --width 5 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --exit-on-end-of-input
 
 # --fill
 # triangle
@@ -52,15 +52,15 @@ echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0
 # --fov
 echo 0,0,0 | view-points --shape "$(ls /usr/share/backgrounds/*.jpg | tail -1),0.01" --fov 30
 
-snark-graphics-test-pattern cube -n 10000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --camera "fov=45;orthographic"
-snark-graphics-test-pattern cube -n 10000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --camera "fov=45;perspective"
-snark-graphics-test-pattern cube -n 10000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --orthographic
+snark-graphics-test-pattern cube-points -n 10000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --camera "fov=45;orthographic"
+snark-graphics-test-pattern cube-points -n 10000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --camera "fov=45;perspective"
+snark-graphics-test-pattern cube-points -n 10000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --orthographic
 
-snark-graphics-test-pattern cube -n 1000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --scene-center 1,4,0
-snark-graphics-test-pattern cube -n 1000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --scene-radius 25
+snark-graphics-test-pattern cube-points -n 1000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --scene-center 1,4,0
+snark-graphics-test-pattern cube-points -n 1000 --width 1 --thickness 0.1 | view-points --fields=x,y,z,r,g,b,a --scene-radius 25
 
 # size
-for i in {0..1000}; do snark-graphics-test-pattern cube -n 10000 --width 1 --thickness 0.1 | csv-eval --fields x,y,z,r,g,b,a "z2=z+($i/100.0)"; done | view-points --fields x,y,,r,g,b,a,z --size 25000
+for i in {0..1000}; do snark-graphics-test-pattern cube-points -n 10000 --width 1 --thickness 0.1 | csv-eval --fields x,y,z,r,g,b,a "z2=z+($i/100.0)"; done | view-points --fields x,y,,r,g,b,a,z --size 25000
 
 # stream
 # cat ~/data/snark/view-points/bigData/12*.bin | view-points --binary t,3d,2ui --fields t,x,y,z,block,id

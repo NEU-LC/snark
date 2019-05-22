@@ -72,7 +72,7 @@ static void usage( bool )
         "\nUnsupported features are shown in dimmed text in this help"
         "\n"
         "\nFor an example of current functionality try:"
-        "\n    snark-graphics-test-pattern cube | view-points --fields=x,y,z,r,g,b,a"
+        "\n    snark-graphics-test-pattern cube-points | view-points --fields=x,y,z,r,g,b,a"
         "\n"
         "\n----------------------------------------------"
         "\n";
