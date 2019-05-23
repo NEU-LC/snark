@@ -30,6 +30,7 @@
 #include "file-util.h"
 #include <comma/application/verbose.h>
 #include <iostream>
+#include <glob.h>
 
 namespace snark { namespace ros {
 

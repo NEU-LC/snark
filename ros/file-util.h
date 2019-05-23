@@ -31,7 +31,6 @@
 
 #include <string>
 #include <vector>
-#include <glob.h>
 
 namespace snark { namespace ros {
 
