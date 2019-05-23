@@ -1418,7 +1418,7 @@ int main( int ac, char** av )
             bool cubes = options.exists( "--cubes" );
             if( cubes ) { map_width = map_height = options.value< unsigned int >( "--cubes" ); }
             else { boost::tie( map_width, map_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--map-size,--size" ) ); }
-            boost::tie( spherical_width, spherical_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--spherical-size", "0,0,0" ) );
+            boost::tie( spherical_width, spherical_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--spherical-size" ) );
             if( !focal_length )
             {
                 if( map_width != map_height ) { std::cerr << "cv-calc: equirectangular-map: please specify --focal-length" << std::endl; return 1; }
@@ -1427,7 +1427,7 @@ int main( int ac, char** av )
             cv::Mat camera = ( cv::Mat_< double >( 3, 3 ) << *focal_length,             0,  map_width / 2,
                                                                          0, *focal_length, map_height / 2,
                                                                          0,             0,              1 );
-            auto orientation = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--orientation" ) );
+            auto orientation = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--orientation", "0,0,0" ) );
             auto make_map = [&]( const Eigen::Vector3d& o ) -> std::pair< cv::Mat, cv::Mat >
             {
                 cv::Mat x( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
@@ -1445,22 +1445,33 @@ int main( int ac, char** av )
                 } );
                 return std::make_pair( x, y );
             };
+            auto face = make_map( orientation );
             if( !cubes )
             {
-                auto p = make_map( orientation );
-                std::cout.write( reinterpret_cast< const char* >( p.first.datastart ), p.first.dataend - p.first.datastart );
-                std::cout.write( reinterpret_cast< const char* >( p.second.datastart ), p.second.dataend - p.second.datastart );
+                std::cout.write( reinterpret_cast< const char* >( face.first.datastart ), face.first.dataend - face.first.datastart );
+                std::cout.write( reinterpret_cast< const char* >( face.second.datastart ), face.second.dataend - face.second.datastart );
                 std::cout.flush();
                 return 0;
             }
-            if( !comma::math::equal( orientation.x(), 0, 0.000001 ) || !comma::math::equal( orientation.y(), 0, 0.000001 ) ) { std::cerr << "cv-calc: equirectangular-map: for cubes, expected roll and pitch 0; got: " << options.value< std::string >( "--orientation" ) << " (not supported)" << std::endl; return 1; }
+            if( orientation != Eigen::Vector3d::Zero() ) { std::cerr << "cv-calc: equirectangular-map: for cubes, expected --orientation 0,0,0; got: " << options.value< std::string >( "--orientation" ) << " (not supported)" << std::endl; return 1; }
             auto top = make_map( Eigen::Vector3d( 0, M_PI / 2, orientation.z() ) );
             auto bottom = make_map( Eigen::Vector3d( 0, -M_PI / 2, orientation.z() ) );
             std::cout.write( reinterpret_cast< const char* >( top.first.datastart ), top.first.dataend - top.first.datastart );
+            int width = spherical_width / 4;
+            
+            // todo! handle back face!
+            
+            for( int i = -2; i < 2; ++i )
+            {
+                cv::Mat f = face.first + width * i; // todo? quick and dirty, is copy necessary? 
+                std::cout.write( reinterpret_cast< const char* >( f.datastart ), f.dataend - f.datastart );
+            }
             std::cout.write( reinterpret_cast< const char* >( bottom.first.datastart ), bottom.first.dataend - bottom.first.datastart );
             std::cout.write( reinterpret_cast< const char* >( top.second.datastart ), top.second.dataend - top.second.datastart );
+            for( unsigned int i = 0; i < 4; ++i ) { std::cout.write( reinterpret_cast< const char* >( face.second.datastart ), face.second.dataend - face.second.datastart ); }
             std::cout.write( reinterpret_cast< const char* >( bottom.second.datastart ), bottom.second.dataend - bottom.second.datastart );
             std::cout.flush();
+            return 0;
         }
         if( operation == "grep" )
         {
