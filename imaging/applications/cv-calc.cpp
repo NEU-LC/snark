@@ -1239,6 +1239,7 @@ struct calculator
         double zp = ray3d.at< double >( 0, 2 );    
         double phi = std::atan2( xp, zp );
         double sx = ( phi / ( M_PI * 2 ) + 0.5 ) * w;
+        if( sx >= w - 0.00001 ) { sx = 0; }
         double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
         double sy = ( theta / M_PI + 0.5 ) * h;
         return std::make_pair( sx, sy );
