@@ -1458,12 +1458,10 @@ int main( int ac, char** av )
             auto bottom = make_map( Eigen::Vector3d( 0, -M_PI / 2, orientation.z() ) );
             std::cout.write( reinterpret_cast< const char* >( top.first.datastart ), top.first.dataend - top.first.datastart );
             int width = spherical_width / 4;
-            
-            // todo! handle back face!
-            
             for( int i = -2; i < 2; ++i )
             {
-                cv::Mat f = face.first + width * i; // todo? quick and dirty, is copy necessary? 
+                cv::Mat f = face.first + width * i; // todo? waste to allocate it each time (currently, the only reason for it is the back face
+                if( i == -2 ) { cv::Mat( f, cv::Rect( 0, 0, f.cols / 2, f.rows ) ) += spherical_width; }
                 std::cout.write( reinterpret_cast< const char* >( f.datastart ), f.dataend - f.datastart );
             }
             std::cout.write( reinterpret_cast< const char* >( bottom.first.datastart ), bottom.first.dataend - bottom.first.datastart );
