@@ -31,6 +31,7 @@
 #include <memory>
 #include <numeric>
 #include <random>
+#include <boost/static_assert.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -40,6 +41,7 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/tuple/tuple.hpp>
 #include <comma/base/exception.h>
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
@@ -71,6 +73,7 @@ static void usage( bool verbose=false )
     std::cerr << "    chessboard-corners: detect and output corners of a chessboard calibration image" << std::endl;
     std::cerr << "    crop-random,roi-random,random-crop,random-roi: output random patches of given size, e.g. to create a machine learning test dataset" << std::endl;
     std::cerr << "    draw: draw on the image primitives defined in the image header; skip a primitive if its dimensions are zero" << std::endl;
+    std::cerr << "    equirectangular-map: output equirectangular-to-rectilinear map for one direction" << std::endl;
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
     std::cerr << "    header: output header information in ascii csv" << std::endl;
@@ -155,6 +158,12 @@ static void usage( bool verbose=false )
     std::cerr << "                --circles=\"circles.csv;fields=t,index,centre/x,centre/y,radius;weight=3;normalized\"" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        fields: t,rows,cols,type,circles,labels,rectangles" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    equirectangular-map" << std::endl;
+    std::cerr << "        --focal-length=<pixels>; camera focal length" << std::endl;
+    std::cerr << "        --map-size,--size=<width>,<height>; output map size" << std::endl;
+    std::cerr << "        --orientation=<roll>,<pitch>,<yaw>; orientation in radians" << std::endl;
+    std::cerr << "        --spherical-size=<width>,<height>; input spherical size" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    grep" << std::endl;
     std::cerr << "        --filter,--filters=[<filters>]; apply --non-zero logic to the image with filters applied, not to image itself" << std::endl;
@@ -1188,6 +1197,50 @@ base* make( const std::string& how )
     
 } } } // namespace snark { namespace unstride { namespace overlap {
 
+namespace snark { namespace equirectangular_map {
+    
+// see: inverse formula for spherical projection, Szeliski, "Computer Vision: Algorithms and Applications" p439.
+static std::pair< double, double > projected_pixel( unsigned int x
+                                                  , unsigned int y
+                                                  , cv::Mat Rot
+                                                  , cv::Mat K
+                                                  , unsigned int sw
+                                                  , unsigned int sh )
+{
+    static cv::Mat K_inv = K.inv(); // quick and dirty
+    static cv::Mat RK = Rot * K_inv; // quick and dirty
+    static cv::Mat xyz = ( cv::Mat_< double >( 3, 1 ) << 0, 0, 1 ); // quick and dirty
+    xyz.at< double >( 0, 0 ) = x;
+    xyz.at< double >( 1, 0 ) = y;
+    cv::Mat ray3d = RK * ( xyz / cv::norm( xyz ) ); 
+    double xp = ray3d.at< double >( 0, 0 );
+    double yp = ray3d.at< double >( 0, 1 );
+    double zp = ray3d.at< double >( 0, 2 );
+    double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
+    double phi = std::atan2( xp, zp );
+    return std::make_pair( ( ( phi * sw ) / M_PI + sw ) / 2,  ( theta + M_PI / 2 ) * sh / M_PI );
+};
+
+cv::Mat rotation_matrix( double x,double y,double z ) // quick and dirty
+{
+
+    cv::Mat r_x = ( cv::Mat_<double>(3,3) <<
+        1,       0,              0,
+        0,       cos(x),   -sin(x),
+        0,       sin(x),   cos(x) );
+    cv::Mat r_y = ( cv::Mat_<double>(3,3) <<
+        cos(y),    0,      sin(y),
+        0,               1,      0,
+        -sin(y),   0,      cos(y) );
+    cv::Mat r_z = ( cv::Mat_<double>(3,3) <<
+        cos(z),    -sin(z),      0,
+        sin(z),    cos(z),       0,
+        0,         0,            1);
+    return r_z * r_y * r_x;
+}
+
+} } // namespace snark { namespace equirectangular_map {
+
 int main( int ac, char** av )
 {
     try
@@ -1344,6 +1397,42 @@ int main( int ac, char** av )
                 sample.strm_shapes.draw( p.second, input_serialization.get_header( &input_serialization.header_buffer()[0] ).timestamp );
                 output_serialization.write_to_stdout( p, csv.flush );
             }
+            return 0;
+        }
+        if( operation == "equirectangular-map" )
+        {
+            BOOST_STATIC_ASSERT( sizeof( float ) == 4 );
+            auto focal_length = options.optional< double >( "--focal-length" );
+            unsigned int spherical_width, spherical_height, map_width, map_height;
+            boost::tie( map_width, map_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--map-size,--size" ) );
+            boost::tie( spherical_width, spherical_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--spherical-size" ) );
+            if( !focal_length )
+            {
+                if( map_width != map_height ) { std::cerr << "cv-calc: equirectangular-map: please specify --focal-length" << std::endl; return 1; }
+                focal_length = map_width / 2;
+            }
+            cv::Mat camera = ( cv::Mat_< double >( 3, 3 ) << *focal_length,             0,  map_width / 2,
+                                                                         0, *focal_length, map_height / 2,
+                                                                         0,             0,          1 );
+            auto orientation = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--orientation" ) );
+            auto rotation = snark::equirectangular_map::rotation_matrix( orientation.y(), orientation.z(), orientation.x() ); // todo: validate order
+            cv::Mat x( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
+            cv::Mat y( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
+            tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, map_height ), [&]( const tbb::blocked_range< std::size_t >& r )
+            {
+                for( unsigned int v = r.begin(); v < r.end(); ++v )
+                {
+                    for( unsigned int u = 0; u < map_width; ++u )
+                    {
+                        auto p = snark::equirectangular_map::projected_pixel( u, v, rotation, camera, spherical_width, spherical_height );
+                        x.at< float >( v, u ) = p.first;
+                        y.at< float >( v, u ) = p.second;
+                    }
+                }
+            } );
+            std::cout.write( reinterpret_cast< const char* >( x.datastart ), x.dataend - x.datastart );
+            std::cout.write( reinterpret_cast< const char* >( y.datastart ), y.dataend - y.datastart );
+            std::cout.flush();
             return 0;
         }
         if( operation == "grep" )
@@ -1740,7 +1829,6 @@ int main( int ac, char** av )
                     for( auto& ext : hdr_shapes.rectangles )
                     {
                         auto result = ext.validate( mat.rows, mat.cols, permissive );
-
                         if( roi::status::error == result.first )
                         {
                             std::cerr << name << "roi's width and height can not be negative; failed on image/frame number " << count
@@ -1748,7 +1836,6 @@ int main( int ac, char** av )
                             return 1;
                         }
                         if( roi::status::ignore == result.first ) { continue; }
-
                         if( crop )
                         {
                             cv::Mat cropped;
@@ -1760,7 +1847,6 @@ int main( int ac, char** av )
                             do_discard = false;
                             mask( result.second ) = cv::Scalar(0);
                         }
-
                     }
                     if( !crop )
                     {

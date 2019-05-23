@@ -50,3 +50,7 @@ install( TARGETS image-pinhole-calibrate RUNTIME DESTINATION ${snark_INSTALL_BIN
 add_executable( image-stereo image-stereo.cpp )
 target_link_libraries( image-stereo snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ) #target_link_libraries( image-pinhole snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} tbb )
 install( TARGETS image-stereo RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+
+#add_executable( equirectangular-to-rectilinear equirectangular-to-rectilinear.cpp )
+#target_link_libraries( equirectangular-to-rectilinear ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
+#install( TARGETS equirectangular-to-rectilinear RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
