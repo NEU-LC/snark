@@ -27,7 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <glob.h>
+#include "../file-util.h"
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
@@ -115,19 +115,6 @@ void usage(bool detail)
 static bool status = 0; // quick and dirty
 
 namespace snark { namespace ros {
-
-static std::vector< std::string > glob_( const std::string& path )
-{
-    std::vector< std::string > paths;
-    // paths.push_back( path );
-    glob_t globbuf;
-    if( ::glob( &path[0], GLOB_TILDE, NULL, &globbuf ) != 0 ) { std::cerr << "points-from-ros: not found: '" << path << "'" << std::endl; exit( 1 ); }
-    for( std::size_t i = 0; i < globbuf.gl_pathc; ++i ) { paths.push_back( std::string( globbuf.gl_pathv[i] ) ); }
-    globfree( &globbuf );
-    comma::verbose << "processing bags: " << std::endl;
-    for( const auto& p: paths ) { comma::verbose << p << std::endl; }
-    return paths;
-}
     
 /// utility functions for ros sensor_msgs::PointCloud2
 struct point_cloud
@@ -507,7 +494,7 @@ int main( int argc, char** argv )
             std::vector< std::string > bag_names;
             for( auto name: comma::split( bags_option, ',' ))
             {
-                std::vector< std::string > expansion = snark::ros::glob_( name );
+                std::vector< std::string > expansion = snark::ros::glob( name );
                 bag_names.insert( bag_names.end(), expansion.begin(), expansion.end() );
             }
             for( auto bag_name: bag_names )

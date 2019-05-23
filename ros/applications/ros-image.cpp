@@ -30,7 +30,6 @@
 #include <vector>
 #include <fstream>
 #include <unordered_map>
-#include <glob.h>
 #include <boost/bimap.hpp>
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
@@ -41,6 +40,7 @@
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
 #include "../../imaging/cv_mat/serialization.h"
+#include "../file-util.h"
 
 namespace {
 
@@ -227,7 +227,7 @@ public:
         {
             for( auto name: comma::split( options.value< std::string >( "--bags", "" ), ',' ))
             {
-                std::vector< std::string > expansion = glob( name );
+                std::vector< std::string > expansion = snark::ros::glob( name );
                 bag_names.insert( bag_names.end(), expansion.begin(), expansion.end() );
             }
         }
@@ -243,26 +243,6 @@ public:
                     , &ros_subscriber::process, this
                     , hints );
         }
-    }
-    
-    static std::vector< std::string > glob( const std::string& path )
-    {
-        glob_t globbuf;
-        int return_val = ::glob( &path[0], GLOB_TILDE, NULL, &globbuf );
-        std::vector< std::string > path_names;
-        if( return_val == 0 )
-        {
-            for( std::size_t i = 0; i < globbuf.gl_pathc; ++i )
-            {
-                path_names.push_back( std::string( globbuf.gl_pathv[i] ));
-            }
-        }
-        else
-        {
-            std::cerr << comma::verbose.app_name() << ": couldn't find: \"" << path << "\"" << std::endl;
-        }
-        globfree( &globbuf );
-        return path_names;
     }
 
     void write( message_type const msg )
