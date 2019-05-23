@@ -163,8 +163,9 @@ static void usage( bool verbose=false )
     std::cerr << "    equirectangular-map" << std::endl;
     std::cerr << "        --focal-length=<pixels>; camera focal length" << std::endl;
     std::cerr << "        --map-size,--size=<width>,<height>; output map size" << std::endl;
-    std::cerr << "        --orientation=<roll>,<pitch>,<yaw>; orientation in radians" << std::endl;
+    std::cerr << "        --orientation=<roll>,<pitch>,<yaw>; default=0,0,0; orientation in radians" << std::endl;
     std::cerr << "        --spherical-size=<width>,<height>; input spherical size" << std::endl;
+    std::cerr << "        --cubes=<width>; output map for top,back,left,front,right,bottom cubes with a given original orientation" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    grep" << std::endl;
     std::cerr << "        --filter,--filters=[<filters>]; apply --non-zero logic to the image with filters applied, not to image itself" << std::endl;
@@ -1200,73 +1201,44 @@ base* make( const std::string& how )
 
 namespace snark { namespace equirectangular_map {
 
-static std::vector< double > ys_( cv::Mat RK, unsigned int sh, bool yaw_only )
-{
-    if( !yaw_only ) { return std::vector< double >(); }
-    std::vector< double > ys( sh );
-    static cv::Mat xyz = ( cv::Mat_< double >( 3, 1 ) << 0, 0, 1 ); // quick and dirty
-    for( unsigned int y = 0; y < sh; ++y )
-    {
-        xyz.at< double >( 1, 0 ) = y;
-        cv::Mat ray3d = RK * ( xyz / cv::norm( xyz ) ); 
-        double xp = ray3d.at< double >( 0, 0 );
-        double yp = ray3d.at< double >( 0, 1 );
-        double zp = ray3d.at< double >( 0, 2 );
-        double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
-        ys[y] = ( theta / M_PI + 0.5 ) * sh;
-    }
-    return ys;
-}
-    
 // see: inverse formula for spherical projection, Szeliski, "Computer Vision: Algorithms and Applications" p439.
 static std::pair< double, double > projected_pixel( unsigned int x
                                                   , unsigned int y
                                                   , cv::Mat Rot
                                                   , cv::Mat K
                                                   , unsigned int sw
-                                                  , unsigned int sh
-                                                  , bool yaw_only = false )
+                                                  , unsigned int sh )
 {
     static cv::Mat K_inv = K.inv(); // quick and dirty
     static cv::Mat RK = Rot * K_inv; // quick and dirty
-    static auto ys = ys_( RK, sh, yaw_only );    
     static cv::Mat xyz = ( cv::Mat_< double >( 3, 1 ) << 0, 0, 1 ); // quick and dirty
     xyz.at< double >( 0, 0 ) = x;
     xyz.at< double >( 1, 0 ) = y;
     cv::Mat ray3d = RK * ( xyz / cv::norm( xyz ) ); 
     double xp = ray3d.at< double >( 0, 0 );
     double yp = ray3d.at< double >( 0, 1 );
-    double zp = ray3d.at< double >( 0, 2 );
+    double zp = ray3d.at< double >( 0, 2 );    
     double phi = std::atan2( xp, zp );
     double sx = ( phi / ( M_PI * 2 ) + 0.5 ) * sw;
-    double sy;
-    if( yaw_only ) // todo? does not seem to save performance; remove to simplify code?
-    {
-        sy = ys[y];
-    }
-    else
-    {
-        double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
-        sy = ( theta / M_PI + 0.5 ) * sh;
-    }
+    double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
+    double sy = ( theta / M_PI + 0.5 ) * sh;
     return std::make_pair( sx, sy );
 };
 
 cv::Mat rotation_matrix( double x,double y,double z ) // quick and dirty
 {
-
     cv::Mat r_x = ( cv::Mat_<double>(3,3) <<
-        1,       0,              0,
-        0,       cos(x),   -sin(x),
-        0,       sin(x),   cos(x) );
+        1,            0,            0,
+        0,  std::cos(x), -std::sin(x),
+        0,  std::sin(x),  std::cos(x) );
     cv::Mat r_y = ( cv::Mat_<double>(3,3) <<
-        cos(y),    0,      sin(y),
-        0,               1,      0,
-        -sin(y),   0,      cos(y) );
+        std::cos(y),    0,  std::sin(y),
+                  0,    1,            0,
+       -std::sin(y),    0,  std::cos(y) );
     cv::Mat r_z = ( cv::Mat_<double>(3,3) <<
-        cos(z),    -sin(z),      0,
-        sin(z),    cos(z),       0,
-        0,         0,            1);
+        std::cos(z), -std::sin(z),      0,
+        std::sin(z),  std::cos(z),      0,
+                  0,            0,      1 );
     return r_z * r_y * r_x;
 }
 
@@ -1435,8 +1407,10 @@ int main( int ac, char** av )
             BOOST_STATIC_ASSERT( sizeof( float ) == 4 );
             auto focal_length = options.optional< double >( "--focal-length" );
             unsigned int spherical_width, spherical_height, map_width, map_height;
-            boost::tie( map_width, map_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--map-size,--size" ) );
-            boost::tie( spherical_width, spherical_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--spherical-size" ) );
+            bool cubes = options.exists( "--cubes" );
+            if( cubes ) { map_width = map_height = options.value< unsigned int >( "--cubes" ); }
+            else { boost::tie( map_width, map_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--map-size,--size" ) ); }
+            boost::tie( spherical_width, spherical_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--spherical-size", "0,0,0" ) );
             if( !focal_length )
             {
                 if( map_width != map_height ) { std::cerr << "cv-calc: equirectangular-map: please specify --focal-length" << std::endl; return 1; }
@@ -1444,28 +1418,43 @@ int main( int ac, char** av )
             }
             cv::Mat camera = ( cv::Mat_< double >( 3, 3 ) << *focal_length,             0,  map_width / 2,
                                                                          0, *focal_length, map_height / 2,
-                                                                         0,             0,          1 );
+                                                                         0,             0,              1 );
             auto orientation = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--orientation" ) );
-            auto rotation = snark::equirectangular_map::rotation_matrix( orientation.y(), orientation.z(), orientation.x() ); // todo: validate order
-            bool yaw_only = comma::math::equal( orientation.x(), 0, 0.000001 ) && comma::math::equal( orientation.y(), 0, 0.000001 );
-            cv::Mat x( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
-            cv::Mat y( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
-            tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, map_height ), [&]( const tbb::blocked_range< std::size_t >& r )
+            auto make_map = [&]( const Eigen::Vector3d& o ) -> std::pair< cv::Mat, cv::Mat >
             {
-                for( unsigned int v = r.begin(); v < r.end(); ++v )
+                auto rotation = snark::equirectangular_map::rotation_matrix( o.y(), o.z(), o.x() ); // todo: validate order
+                cv::Mat x( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
+                cv::Mat y( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
+                tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, map_height ), [&]( const tbb::blocked_range< std::size_t >& r )
                 {
-                    for( unsigned int u = 0; u < map_width; ++u )
+                    for( unsigned int v = r.begin(); v < r.end(); ++v )
                     {
-                        auto p = snark::equirectangular_map::projected_pixel( u, v, rotation, camera, spherical_width, spherical_height, yaw_only );
-                        x.at< float >( v, u ) = p.first;
-                        y.at< float >( v, u ) = p.second;
+                        for( unsigned int u = 0; u < map_width; ++u )
+                        {
+                            auto c = snark::equirectangular_map::projected_pixel( u, v, rotation, camera, spherical_width, spherical_height );
+                            x.at< float >( v, u ) = c.first;
+                            y.at< float >( v, u ) = c.second;
+                        }
                     }
-                }
-            } );
-            std::cout.write( reinterpret_cast< const char* >( x.datastart ), x.dataend - x.datastart );
-            std::cout.write( reinterpret_cast< const char* >( y.datastart ), y.dataend - y.datastart );
+                } );
+                return std::make_pair( x, y );
+            };
+            if( !cubes )
+            {
+                auto p = make_map( orientation );
+                std::cout.write( reinterpret_cast< const char* >( p.first.datastart ), p.first.dataend - p.first.datastart );
+                std::cout.write( reinterpret_cast< const char* >( p.second.datastart ), p.second.dataend - p.second.datastart );
+                std::cout.flush();
+                return 0;
+            }
+            if( !comma::math::equal( orientation.x(), 0, 0.000001 ) || !comma::math::equal( orientation.y(), 0, 0.000001 ) ) { std::cerr << "cv-calc: equirectangular-map: for cubes, expected roll and pitch 0; got: " << options.value< std::string >( "--orientation" ) << " (not supported)" << std::endl; return 1; }
+            auto top = make_map( Eigen::Vector3d( 0, M_PI / 2, orientation.z() ) );
+            auto bottom = make_map( Eigen::Vector3d( 0, -M_PI / 2, orientation.z() ) );
+            std::cout.write( reinterpret_cast< const char* >( top.first.datastart ), top.first.dataend - top.first.datastart );
+            std::cout.write( reinterpret_cast< const char* >( bottom.first.datastart ), bottom.first.dataend - bottom.first.datastart );
+            std::cout.write( reinterpret_cast< const char* >( top.second.datastart ), top.second.dataend - top.second.datastart );
+            std::cout.write( reinterpret_cast< const char* >( bottom.second.datastart ), bottom.second.dataend - bottom.second.datastart );
             std::cout.flush();
-            return 0;
         }
         if( operation == "grep" )
         {
