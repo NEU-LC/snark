@@ -43,8 +43,9 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <comma/base/exception.h>
-#include <comma/io/stream.h>
 #include <comma/csv/stream.h>
+#include <comma/io/stream.h>
+#include <comma/math/compare.h>
 #include <comma/math/interval.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
@@ -1198,6 +1199,24 @@ base* make( const std::string& how )
 } } } // namespace snark { namespace unstride { namespace overlap {
 
 namespace snark { namespace equirectangular_map {
+
+static std::vector< double > ys_( cv::Mat RK, unsigned int sh, bool yaw_only )
+{
+    if( !yaw_only ) { return std::vector< double >(); }
+    std::vector< double > ys( sh );
+    static cv::Mat xyz = ( cv::Mat_< double >( 3, 1 ) << 0, 0, 1 ); // quick and dirty
+    for( unsigned int y = 0; y < sh; ++y )
+    {
+        xyz.at< double >( 1, 0 ) = y;
+        cv::Mat ray3d = RK * ( xyz / cv::norm( xyz ) ); 
+        double xp = ray3d.at< double >( 0, 0 );
+        double yp = ray3d.at< double >( 0, 1 );
+        double zp = ray3d.at< double >( 0, 2 );
+        double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
+        ys[y] = ( theta / M_PI + 0.5 ) * sh;
+    }
+    return ys;
+}
     
 // see: inverse formula for spherical projection, Szeliski, "Computer Vision: Algorithms and Applications" p439.
 static std::pair< double, double > projected_pixel( unsigned int x
@@ -1205,10 +1224,12 @@ static std::pair< double, double > projected_pixel( unsigned int x
                                                   , cv::Mat Rot
                                                   , cv::Mat K
                                                   , unsigned int sw
-                                                  , unsigned int sh )
+                                                  , unsigned int sh
+                                                  , bool yaw_only = false )
 {
     static cv::Mat K_inv = K.inv(); // quick and dirty
     static cv::Mat RK = Rot * K_inv; // quick and dirty
+    static auto ys = ys_( RK, sh, yaw_only );    
     static cv::Mat xyz = ( cv::Mat_< double >( 3, 1 ) << 0, 0, 1 ); // quick and dirty
     xyz.at< double >( 0, 0 ) = x;
     xyz.at< double >( 1, 0 ) = y;
@@ -1216,9 +1237,19 @@ static std::pair< double, double > projected_pixel( unsigned int x
     double xp = ray3d.at< double >( 0, 0 );
     double yp = ray3d.at< double >( 0, 1 );
     double zp = ray3d.at< double >( 0, 2 );
-    double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
     double phi = std::atan2( xp, zp );
-    return std::make_pair( ( ( phi * sw ) / M_PI + sw ) / 2,  ( theta + M_PI / 2 ) * sh / M_PI );
+    double sx = ( phi / ( M_PI * 2 ) + 0.5 ) * sw;
+    double sy;
+    if( yaw_only ) // todo? does not seem to save performance; remove to simplify code?
+    {
+        sy = ys[y];
+    }
+    else
+    {
+        double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
+        sy = ( theta / M_PI + 0.5 ) * sh;
+    }
+    return std::make_pair( sx, sy );
 };
 
 cv::Mat rotation_matrix( double x,double y,double z ) // quick and dirty
@@ -1416,6 +1447,7 @@ int main( int ac, char** av )
                                                                          0,             0,          1 );
             auto orientation = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--orientation" ) );
             auto rotation = snark::equirectangular_map::rotation_matrix( orientation.y(), orientation.z(), orientation.x() ); // todo: validate order
+            bool yaw_only = comma::math::equal( orientation.x(), 0, 0.000001 ) && comma::math::equal( orientation.y(), 0, 0.000001 );
             cv::Mat x( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
             cv::Mat y( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
             tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, map_height ), [&]( const tbb::blocked_range< std::size_t >& r )
@@ -1424,7 +1456,7 @@ int main( int ac, char** av )
                 {
                     for( unsigned int u = 0; u < map_width; ++u )
                     {
-                        auto p = snark::equirectangular_map::projected_pixel( u, v, rotation, camera, spherical_width, spherical_height );
+                        auto p = snark::equirectangular_map::projected_pixel( u, v, rotation, camera, spherical_width, spherical_height, yaw_only );
                         x.at< float >( v, u ) = p.first;
                         y.at< float >( v, u ) = p.second;
                     }
