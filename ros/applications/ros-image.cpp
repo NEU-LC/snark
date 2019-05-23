@@ -263,14 +263,12 @@ public:
         if( from_bag )
         {
             rosbag::Bag bag;
-            std::vector< std::string > topics;
-            topics.push_back( topic );
             for( auto bag_name: bag_names )
             {
                 comma::verbose << "opening " << bag_name << std::endl;
                 rosbag::View view_;
                 bag.open( bag_name );
-                for( rosbag::MessageInstance const mi : rosbag::View( bag, rosbag::TopicQuery( topics )))
+                for( rosbag::MessageInstance const mi : rosbag::View( bag, rosbag::TopicQuery( topic )))
                 {
                     message_type const msg = mi.instantiate< sensor_msgs::Image >();
                     write( msg );
