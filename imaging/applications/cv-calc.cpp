@@ -1201,31 +1201,7 @@ base* make( const std::string& how )
 
 namespace snark { namespace equirectangular_map {
 
-// see: inverse formula for spherical projection, Szeliski, "Computer Vision: Algorithms and Applications" p439.
-static std::pair< double, double > projected_pixel( unsigned int x
-                                                  , unsigned int y
-                                                  , cv::Mat Rot
-                                                  , cv::Mat K
-                                                  , unsigned int sw
-                                                  , unsigned int sh )
-{
-    static cv::Mat K_inv = K.inv(); // quick and dirty
-    static cv::Mat RK = Rot * K_inv; // quick and dirty
-    static cv::Mat xyz = ( cv::Mat_< double >( 3, 1 ) << 0, 0, 1 ); // quick and dirty
-    xyz.at< double >( 0, 0 ) = x;
-    xyz.at< double >( 1, 0 ) = y;
-    cv::Mat ray3d = RK * ( xyz / cv::norm( xyz ) ); 
-    double xp = ray3d.at< double >( 0, 0 );
-    double yp = ray3d.at< double >( 0, 1 );
-    double zp = ray3d.at< double >( 0, 2 );    
-    double phi = std::atan2( xp, zp );
-    double sx = ( phi / ( M_PI * 2 ) + 0.5 ) * sw;
-    double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
-    double sy = ( theta / M_PI + 0.5 ) * sh;
-    return std::make_pair( sx, sy );
-};
-
-cv::Mat rotation_matrix( double x,double y,double z ) // quick and dirty
+static cv::Mat rotation_matrix( double x,double y,double z ) // quick and dirty
 {
     cv::Mat r_x = ( cv::Mat_<double>(3,3) <<
         1,            0,            0,
@@ -1241,6 +1217,38 @@ cv::Mat rotation_matrix( double x,double y,double z ) // quick and dirty
                   0,            0,      1 );
     return r_z * r_y * r_x;
 }
+    
+// see: inverse formula for spherical projection, Szeliski, "Computer Vision: Algorithms and Applications" p439.
+struct calculator
+{
+    calculator( const Eigen::Vector3d& orientation, cv::Mat K, unsigned int w, unsigned int h )
+        : RK( rotation_matrix( orientation.y(), orientation.z(), orientation.x() ) * K.inv() ) // todo: validate euler angle order
+        , w( w )
+        , h( h )
+    {
+        xyz = ( cv::Mat_< double >( 3, 1 ) << 0, 0, 1 );
+    }
+
+    std::pair< double, double > projected_pixel( unsigned int x, unsigned int y )
+    {
+        xyz.at< double >( 0, 0 ) = x;
+        xyz.at< double >( 1, 0 ) = y;
+        cv::Mat ray3d = RK * ( xyz / cv::norm( xyz ) ); 
+        double xp = ray3d.at< double >( 0, 0 );
+        double yp = ray3d.at< double >( 0, 1 );
+        double zp = ray3d.at< double >( 0, 2 );    
+        double phi = std::atan2( xp, zp );
+        double sx = ( phi / ( M_PI * 2 ) + 0.5 ) * w;
+        double theta = std::atan2( yp, std::sqrt( xp * xp + zp * zp ) );
+        double sy = ( theta / M_PI + 0.5 ) * h;
+        return std::make_pair( sx, sy );
+    };
+    
+    cv::Mat RK;
+    cv::Mat xyz;
+    unsigned int w;
+    unsigned int h;
+};
 
 } } // namespace snark { namespace equirectangular_map {
 
@@ -1422,18 +1430,16 @@ int main( int ac, char** av )
             auto orientation = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--orientation" ) );
             auto make_map = [&]( const Eigen::Vector3d& o ) -> std::pair< cv::Mat, cv::Mat >
             {
-                auto rotation = snark::equirectangular_map::rotation_matrix( o.y(), o.z(), o.x() ); // todo: validate order
                 cv::Mat x( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
                 cv::Mat y( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
                 tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, map_height ), [&]( const tbb::blocked_range< std::size_t >& r )
                 {
+                    snark::equirectangular_map::calculator calculator( o, camera, spherical_width, spherical_height );
                     for( unsigned int v = r.begin(); v < r.end(); ++v )
                     {
                         for( unsigned int u = 0; u < map_width; ++u )
                         {
-                            auto c = snark::equirectangular_map::projected_pixel( u, v, rotation, camera, spherical_width, spherical_height );
-                            x.at< float >( v, u ) = c.first;
-                            y.at< float >( v, u ) = c.second;
+                            boost::tie( x.at< float >( v, u ), y.at< float >( v, u ) ) = calculator.projected_pixel( u, v );
                         }
                     }
                 } );
