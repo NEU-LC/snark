@@ -146,11 +146,20 @@ class linear: public overlap::base
 class most_central: public overlap::base
 {
     public:
-        most_central() { COMMA_THROW( comma::exception, "todo" ); }
+        most_central()
+        {
+            // todo: get resulting image size, striding size, step, and fit last
+            // todo: make cv::mat: each pixel: coordinates of tile centre to which this pixel belongs
+            COMMA_THROW( comma::exception, "todo" );
+        }
         
         void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
         {
-            // todo
+            // todo: get tile centre
+            // todo: in parallel for, for each pixel
+            //       ? check if pixel is set; if it is, continue
+            //       - find corresponding tile centre coordinates
+            //       - if given tile centre is same as target tile centre, update pixel
         }
         
     private:
