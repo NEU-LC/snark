@@ -143,8 +143,23 @@ class linear: public overlap::base
         }
 };
 
+class most_central: public overlap::base
+{
+    public:
+        most_central() { COMMA_THROW( comma::exception, "todo" ); }
+        
+        void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
+        {
+            // todo
+        }
+        
+    private:
+        
+};
+
 base* make( const std::string& how )
 {
+    if( how == "most-central" ) { return new overlap::most_central; }
     if( how == "last" ) { return new overlap::last; }
     if( how == "linear" ) { return new overlap::linear; }
     if( how == "min" ) { return new overlap::min; }
