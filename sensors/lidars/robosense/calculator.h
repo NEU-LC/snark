@@ -136,6 +136,8 @@ class calculator
         
         point make_point( comma::uint32 scan, const boost::posix_time::ptime& t, const robosense::msop::packet::const_iterator& it, unsigned int temperature );
         
+        double range_resolution() const { return range_resolution_; }
+        
     private:
         std::array< double, robosense::msop::packet::data_t::number_of_lasers > elevation_;
         typedef std::array< std::array< double, 41 >, robosense::msop::packet::data_t::number_of_lasers > channel_num_t_;

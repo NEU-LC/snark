@@ -83,6 +83,7 @@ static void usage( bool verbose )
     std::cerr << "    --calibration-angles-output,--output-calibration-angles,--output-angles=<how>; output vertical angles to stdout; if --difop present, take vertical angles from difop packet" << std::endl;
     std::cerr << "    --calibration-channels,--channels=<filename>; default: 450 (i.e. 4.50cm) for all channels" << std::endl;
     std::cerr << "    --range-resolution,--resolution=<metres>; default=0.01, but you most likely will want 0.005 (alternatively, --difop will contain range resolution" << std::endl;
+    std::cerr << "    --output-range-resolution; if --difop present, output resolution as difop says; otherwise output default resolution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "difop options" << std::endl;
     std::cerr << "    --difop=[<path>]; file or stream containing timestamped difop packets; if present, calibration data will taken from difop packets" << std::endl;
@@ -251,6 +252,7 @@ int main( int ac, char** av )
         output_invalid_points = options.exists( "--output-invalid-points" );
         std::vector< char > buffer( snark::robosense::msop::packet::size );
         calculator = make_calculator( options );
+        if( options.exists( "--output-range-resolution" ) ) { std::cout << calculator.range_resolution() << std::endl; return 0; }
         if( options.exists( "--calibration-angles-output,--output-calibration-angles,--output-angles" ) )
         {
             const auto& how = options.value< std::string >( "--calibration-angles-output,--output-calibration-angles,--output-angles" );
