@@ -122,9 +122,9 @@ class calculator
         
         calculator();
         
-        calculator( const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation );
+        calculator( const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation, double range_resolution );
         
-        calculator( const std::string& elevation, const std::string& channel_num ); // todo: generalize to 32 beams
+        calculator( const std::string& elevation, const std::string& channel_num, double range_resolution ); // todo: generalize to 32 beams
         
         double range( unsigned int r, unsigned int laser, unsigned int temperature ) const;
         
@@ -140,6 +140,7 @@ class calculator
         std::array< double, robosense::msop::packet::data_t::number_of_lasers > elevation_;
         typedef std::array< std::array< double, 41 >, robosense::msop::packet::data_t::number_of_lasers > channel_num_t_;
         boost::optional< channel_num_t_ > channel_num_;
+        double range_resolution_;
         struct laser_
         {
             double sin;

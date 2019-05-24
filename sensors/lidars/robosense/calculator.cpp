@@ -172,11 +172,12 @@ void calculator::init_lasers_()
     for( unsigned int j = 0; j < robosense::msop::packet::data_t::number_of_lasers; ++j ) { lasers_[j] = laser_( j, elevation_ ); }
 }
                                                       
-calculator::calculator(): elevation_( default_elevation_ ) { init_lasers_(); }
+calculator::calculator(): elevation_( default_elevation_ ), range_resolution_( 0.01 ) { init_lasers_(); }
 
-calculator::calculator( const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation ): elevation_( elevation ) { init_lasers_(); }
+calculator::calculator( const std::array< double, robosense::msop::packet::data_t::number_of_lasers >& elevation, double range_resolution ): elevation_( elevation ), range_resolution_( range_resolution ) { init_lasers_(); }
 
-calculator::calculator( const std::string& elevation, const std::string& channel_num = "" )
+calculator::calculator( const std::string& elevation, const std::string& channel_num, double range_resolution )
+    : range_resolution_( range_resolution )
 {
     if( elevation.empty() )
     {
@@ -214,7 +215,7 @@ calculator::calculator( const std::string& elevation, const std::string& channel
     }
 }
 
-double calculator::range( unsigned int r, unsigned int laser, unsigned int temperature ) const { return 0.01 * ( channel_num_ ? r - ( *channel_num_ )[laser][temperature] : r ); }
+double calculator::range( unsigned int r, unsigned int laser, unsigned int temperature ) const { return range_resolution_ * ( channel_num_ ? r - ( *channel_num_ )[laser][temperature] : r ); }
 
 ::Eigen::Vector3d calculator::to_cartesian( unsigned int laser, double range, double angle ) const
 {

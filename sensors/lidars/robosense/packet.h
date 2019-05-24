@@ -196,8 +196,17 @@ struct difop
             comma::packed::string< 26 > ethernet;
             comma::packed::big_endian::uint16 corrected_static_base;
             comma::packed::big_endian::uint16 motor_phase_lock;
-            comma::packed::string< 5 > top_board_firmware_version;
-            comma::packed::string< 5 > bottom_board_firmware_version;
+            struct top_board_firmware_version_t: public comma::packed::packed_struct< top_board_firmware_version_t, 5 >
+            {
+                comma::packed::string< 5 > value;
+                double range_resolution() const;
+            };
+            struct bottom_board_firmware_version_t: public comma::packed::packed_struct< bottom_board_firmware_version_t, 5 >
+            {
+                comma::packed::string< 5 > value;
+            };
+            top_board_firmware_version_t top_board_firmware_version;
+            bottom_board_firmware_version_t bottom_board_firmware_version;
             std::array< char, 240 > corrected_intensity_curves_coefficient;
             comma::packed::string< 2 > reserved_0;
             comma::packed::string< 6 > serial_number;

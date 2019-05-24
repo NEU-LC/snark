@@ -82,6 +82,7 @@ static void usage( bool verbose )
     std::cerr << "    --calibration-angles,--angles,--angle,-a=<filename>; default: as in spec" << std::endl;
     std::cerr << "    --calibration-angles-output,--output-calibration-angles,--output-angles=<how>; output vertical angles to stdout; if --difop present, take vertical angles from difop packet" << std::endl;
     std::cerr << "    --calibration-channels,--channels=<filename>; default: 450 (i.e. 4.50cm) for all channels" << std::endl;
+    std::cerr << "    --range-resolution,--resolution=<metres>; default=0.01, but you most likely will want 0.005 (alternatively, --difop will contain range resolution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "difop options" << std::endl;
     std::cerr << "    --difop=[<path>]; file or stream containing timestamped difop packets; if present, calibration data will taken from difop packets" << std::endl;
@@ -180,14 +181,15 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
     options.assert_mutually_exclusive( "" );
     if( difop.empty() )
     {
+        double range_resolution = options.value( "--range-resolution,--resolution", 0.01 );
         if( calibration.empty() )
         {
             if( !angles.empty() ) { std::cerr << "robosense-to-csv: config: angles from --angles" << std::endl; }
             if( !channels.empty() ) { std::cerr << "robosense-to-csv: config: channels from --calibration-channels" << std::endl; }
-            return snark::robosense::calculator( angles, channels );
+            return snark::robosense::calculator( angles, channels, range_resolution );
         }
         std::cerr << "robosense-to-csv: config from calibration directory: " << calibration << std::endl;
-        return snark::robosense::calculator( calibration + "/angle.csv", calibration + "/ChannelNum.csv" );
+        return snark::robosense::calculator( calibration + "/angle.csv", calibration + "/ChannelNum.csv", range_resolution );
     }
     std::cerr << "robosense-to-csv: config from difop" << std::endl;
     unsigned int difop_max_number_of_packets = options.value( "--difop-max-number-of-packets,--difop-max", 0 );
@@ -223,7 +225,7 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
     std::cerr << "robosense-to-csv: got DIFOP data in packet " << count << " in '" << difop << "'" << std::endl;
     std::array< double, snark::robosense::msop::packet::data_t::number_of_lasers > elevation;
     for( unsigned int i = 0; i < elevation.size(); ++i ) { elevation[i] = p.second->data.corrected_vertical_angles.as_radians( i ); }
-    return snark::robosense::calculator( elevation );
+    return snark::robosense::calculator( elevation, p.second->data.top_board_firmware_version.range_resolution() );
 }
 
 static comma::csv::options csv;

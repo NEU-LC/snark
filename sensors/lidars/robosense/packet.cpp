@@ -161,4 +161,10 @@ bool difop::packet::data_t::corrected_vertical_angles_t::empty() const
     //return ::memcmp( corrected_vertical_angles.data(), &zeroes[0], size_in_bytes ) == 0;
 }
 
+double difop::packet::data_t::top_board_firmware_version_t::range_resolution() const
+{
+    auto d = value.data();
+    return ( d[1] == 0x00 && d[2] == 0x00 && d[3] == 0x00 ) || ( d[1] == 0xff && d[2] == 0xff && d[3] == 0xff ) || ( d[1] == 0x55 && d[2] == 0xaa && d[3] == 0x5a ) ? 0.01 : 0.005;
+}
+
 } } // namespace snark { namespace robosense {
