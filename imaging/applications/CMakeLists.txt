@@ -1,6 +1,8 @@
-SET( dir ${SOURCE_CODE_BASE_DIR}/imaging/applications )
-FILE( GLOB source   ${dir}/*.cpp)
-FILE( GLOB includes ${dir}/*.h)
+set( dir ${SOURCE_CODE_BASE_DIR}/imaging/applications )
+file( GLOB source   ${dir}/*.cpp )
+file( GLOB includes ${dir}/*.h )
+file( GLOB cv_calc_source ${dir}/cv_calc/*.cpp )
+file( GLOB cv_calc_include ${dir}/cv_calc/*.h )
 
 if( snark_build_imaging_stereo ) # todo: add proper cmake to stereo
     file( GLOB stereo_source ${dir}/stereo/*.cpp )
@@ -10,12 +12,12 @@ if( snark_build_imaging_stereo ) # todo: add proper cmake to stereo
     install( TARGETS stereo-to-points RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 endif( snark_build_imaging_stereo )
 
-SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} )
+SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} ${cv_calc_source} ${cv_calc_include} )
 
 ADD_EXECUTABLE( cv-cat cv-cat.cpp )
 TARGET_LINK_LIBRARIES( cv-cat snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} tbb )
 
-ADD_EXECUTABLE( cv-calc cv-calc.cpp )
+ADD_EXECUTABLE( cv-calc cv-calc.cpp ${cv_calc_source} ${cv_calc_includes} )
 TARGET_LINK_LIBRARIES( cv-calc snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
 
 ADD_EXECUTABLE( image-edit image-edit.cpp )
