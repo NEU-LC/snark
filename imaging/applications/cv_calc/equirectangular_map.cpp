@@ -40,6 +40,7 @@
 #include <comma/csv/ascii.h>
 #include <comma/visiting/traits.h>
 #include "../../../visiting/eigen.h"
+#include "equirectangular_map.h"
 
 namespace snark { namespace cv_calc { namespace equirectangular_map {
     

@@ -55,6 +55,7 @@
 #include "../../imaging/cv_mat/detail/life.h"
 #include "../../visiting/eigen.h"
 #include "cv_calc/equirectangular_map.h"
+#include "cv_calc/unstride.h"
 
 const char* name = "cv-calc: ";
 static bool verbose = false;
@@ -244,32 +245,7 @@ static void usage( bool verbose=false )
     std::cerr << "            --to-fps,--fps=<fps>; thin to a given <fps>, same as --rate=<to-fps>/<from-fps> --deterministic" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    unstride" << std::endl;
-    std::cerr << "        --fit-last; last stride is fit exactly to the image size, i.e. last stride may be irregular" << std::endl;
-    std::cerr << "        --how-to-handle-overlaps,--how=<how>; default: last; how to handle overlaps" << std::endl;
-    std::cerr << "            last: simply put the next tile on top on the previous one" << std::endl;
-    std::cerr << "            linear: linearly interpolate across stride overlaps (todo)" << std::endl;
-    std::cerr << "            min: take min pixel value: todo" << std::endl;
-    std::cerr << "            max: take max pixel value" << std::endl;
-    std::cerr << "            other policies: todo" << std::endl;
-    std::cerr << "        --input=[<options>]; input options; run cv-cat --help --verbose for details" << std::endl;
-    std::cerr << "        --output=[<options>]; output options; run cv-cat --help --verbose for details" << std::endl;
-    std::cerr << "        --output-number-of-strides,--number-of-strides: output number of strides as <x>,<y> to stdout and exit" << std::endl;
-    //std::cerr << "        --padding=[<padding>]; padding, 'same' or 'valid' (see e.g. tensorflow for the meaning); default: valid" << std::endl;
-    std::cerr << "        --shape,--kernel,--size=<x>,<y>; image size" << std::endl;
-    std::cerr << "        --strides=[<x>,<y>]; stride size; default: 1,1" << std::endl;
-    std::cerr << "        --unstrided-size,--unstrided=<width>,<height>; original (unstrided) image size" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    unstride-positions" << std::endl;
-    std::cerr << "        options" << std::endl;
-    std::cerr << "            --permissive: discard records with invalid stride id" << std::endl;
-    std::cerr << "            --positions=<n>: number of positions in stride; fields: positions[i]/x,positions[i]/y, (default: 1)" << std::endl;
-    std::cerr << "            --shape,--kernel,--size=<x>,<y>; (tile) image size (see: stride operation)" << std::endl;
-    std::cerr << "            --strides=[<x>,<y>]; stride size; default: 1,1 (see: stride operation)" << std::endl;
-    std::cerr << "            --unstrided-size,--unstrided=<width>,<height>; original (unstrided) image size" << std::endl;
-    std::cerr << "        fields" << std::endl;
-    std::cerr << "            index: stride index counting strides row by row" << std::endl;
-    std::cerr << "            x,y: todo: stride 2d index" << std::endl;
-    std::cerr << "            positions: pixel positions to unstride, e.g: positions[0]/x,positions[0]/y,positions[1]/x,positions[1]/y; also see --positions" << std::endl;
+    std::cerr << snark::cv_calc::unstride::options() << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "    draw" << std::endl;
@@ -1098,104 +1074,6 @@ static snark::cv_mat::serialization::options handle_fields_and_format( const com
     return input_options;
 }
 
-namespace snark { namespace unstride { namespace overlap {
-
-struct base
-{
-    virtual ~base() {}
-    
-    virtual void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) = 0;
-};
-    
-struct last: public overlap::base
-{
-    void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) { tile.copyTo( cv::Mat( image, cv::Rect( x, y, tile.cols, tile.rows ) ) ); }
-};
-
-struct min: public overlap::base
-{
-    void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) { COMMA_THROW( comma::exception, "todo" ); }
-};
-
-struct max: public overlap::base
-{
-    void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
-    {
-        cv::Mat m( image, cv::Rect( x, y, tile.cols, tile.rows ) );
-        cv::max( m, tile, m );
-    }
-};
-    
-class linear: public overlap::base
-{
-    public:
-        linear(): x_( 0 ), y_( 0 ), y_prev_( 0 ) {}
-        
-        void append( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
-        {
-            if( image.type() != CV_32F ) { std::cerr << "cv-calc: unstride: --how=linear: currently works only on images of type f (CV_32F, " << CV_32F << "); got: " << image.type() << std::endl; exit( 1 ); }
-            if( x == 0 ) { y_ = y_prev_; }
-            cv::Mat s = y == 0 ? tile : vertical_( image, tile, x, y );
-            cv::Mat t = x == 0 ? s : horizontal_( image, s, x, y );
-            t.copyTo( cv::Mat( image, cv::Rect( x, y, tile.cols, tile.rows ) ) );
-            x_ = x;
-            y_prev_ = y;
-        }
-        
-    private:
-        unsigned int x_;
-        unsigned int y_;
-        unsigned int y_prev_;
-        cv::Mat horizontal_( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y ) // todo: more reuse between horizontal_() and vertical_()
-        {
-            cv::Mat t;
-            tile.copyTo( t );
-            unsigned int overlap = x_ + tile.cols - x;
-            tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, tile.rows ), [&]( const tbb::blocked_range< std::size_t >& r )
-            {
-                for( unsigned int i = r.begin(); i < r.end(); ++i )
-                {
-                    for( unsigned int j = 0; j < overlap; ++j )
-                    {
-                        double ratio = double( j ) / overlap;
-                        t.at< float >( i, j ) = t.at< float >( i, j ) * ratio + image.at< float >( y + i, x + j ) * ( 1 - ratio );
-                    }
-                }
-            } );
-            return t;
-        }
-        cv::Mat vertical_( cv::Mat image, cv::Mat tile, unsigned int x, unsigned int y )
-        {
-            cv::Mat t;
-            tile.copyTo( t );
-            unsigned int overlap = y_ + tile.rows - y;
-            tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, overlap ), [&]( const tbb::blocked_range< std::size_t >& r )
-            {
-                for( unsigned int i = r.begin(); i < r.end(); ++i )
-                {
-                    double ratio = double( i ) / overlap;
-                    for( unsigned int j = 0; int( j ) < tile.cols; ++j )
-                    {
-                        t.at< float >( i, j ) = t.at< float >( i, j ) * ratio + image.at< float >( y + i, x + j ) * ( 1 - ratio );
-                    }
-                }
-            } );
-            return t;
-        }
-};
-
-base* make( const std::string& how )
-{
-    if( how == "last" ) { return new overlap::last; }
-    if( how == "linear" ) { return new overlap::linear; }
-    if( how == "min" ) { return new overlap::min; }
-    if( how == "max" ) { return new overlap::max; }
-    std::cerr << "cv-calc: unstride: expected policy to handle overlaps, got: '" << how << "' (more policies: todo)" << std::endl;
-    exit( 1 );
-}
-
-} } } // namespace snark { namespace unstride { namespace overlap {
-
 int main( int ac, char** av )
 {
     try
@@ -1530,61 +1408,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if( operation == "unstride" )
-        {
-            boost::scoped_ptr< snark::unstride::overlap::base > overlap( snark::unstride::overlap::make( options.value< std::string >( "--how-to-handle-overlaps,--how", "last" ) ) );
-            bool fit_last = options.exists( "--fit-last" );
-            snark::cv_mat::serialization input_serialization( input_options );
-            snark::cv_mat::serialization output_serialization( output_options );
-            const std::vector< std::string >& unstrided_vector = comma::split( options.value< std::string >( "--unstrided-size,--unstrided" ), ',' );
-            if( unstrided_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected --unstrided-size as <width>,<height>, got: \"" << options.value< std::string >( "--unstrided-size,--unstrided" ) << std::endl; return 1; }
-            cv::Point2i unstrided( boost::lexical_cast< unsigned int >( unstrided_vector[0] ), boost::lexical_cast< unsigned int >( unstrided_vector[1] ) );
-            const std::vector< std::string >& strides_vector = comma::split( options.value< std::string >( "--strides", "1,1" ), ',' );
-            if( strides_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected strides as <x>,<y>, got: \"" << options.value< std::string >( "--strides" ) << std::endl; return 1; }
-            cv::Point2i strides( boost::lexical_cast< unsigned int >( strides_vector[0] ), boost::lexical_cast< unsigned int >( strides_vector[1] ) );
-            const std::vector< std::string >& shape_vector = comma::split( options.value< std::string >( "--shape,--size,--kernel" ), ',' );
-            if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
-            cv::Point2i shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
-            unsigned int stride_rows = ( unstrided.y - shape.y ) / strides.y + 1;
-            unsigned int stride_cols = ( unstrided.x - shape.x ) / strides.x + 1;
-            if( fit_last )
-            {
-                if( int( stride_rows - 1 ) * strides.y + shape.y < unstrided.y ) { ++stride_rows; }
-                if( int( stride_cols - 1 ) * strides.x + shape.x < unstrided.x ) { ++stride_cols; }
-            }
-            if( options.exists( "--output-number-of-strides,--number-of-strides" ) ) { std::cout << stride_cols << "," << stride_rows << std::endl; exit( 0 ); }
-            typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
-            pair_t output;
-            unsigned int ix = 0;
-            unsigned int iy = 0;
-            while( std::cin.good() && !std::cin.eof() )
-            {
-                pair_t p = input_serialization.read< boost::posix_time::ptime >( std::cin );
-                if( p.second.empty() ) { return 0; }
-                if( output.second.empty() ) { output.second = cv::Mat( unstrided.y, unstrided.x, p.second.type() ); }
-                if( output.second.type() != p.second.type() ) { std::cerr << "cv-calc: unstride: expected input image type " << output.second.type() << "; got: " << p.second.type() << std::endl; exit( 1 ); }
-                if( p.second.rows != shape.y ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.y << "; got: " << p.second.rows << std::endl; exit( 1 ); }
-                if( p.second.cols != shape.x ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.x << "; got: " << p.second.cols << std::endl; exit( 1 ); }
-                if( ix == 0 && iy == 0 ) { output.first = p.first; }
-                unsigned int x = ix * strides.x;
-                unsigned int y = iy * strides.y;
-                if( fit_last )
-                {
-                    if( ix + 1 == stride_cols ) { x = unstrided.x - shape.x; }
-                    if( iy + 1 == stride_rows ) { y = unstrided.y - shape.y; }
-                }
-                overlap->append( output.second, p.second, x, y );
-                ++ix;
-                if( ix >= stride_cols )
-                {
-                    ix = 0;
-                    ++iy;
-                    if( iy >= stride_rows ) { iy = 0; }
-                }
-                if( ix == 0 && iy == 0 ) { output_serialization.write_to_stdout( output, true ); }
-            }
-            return 0;
-        }
+        if( operation == "unstride" ) { return snark::cv_calc::unstride::run( options, input_options, output_options ); }
         if( operation == "thin" )
         {
             snark::cv_mat::serialization input_serialization( input_options );
