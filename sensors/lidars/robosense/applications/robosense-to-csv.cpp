@@ -82,7 +82,7 @@ static void usage( bool verbose )
     std::cerr << "    --calibration-angles,--angles,--angle,-a=<filename>; default: as in spec" << std::endl;
     std::cerr << "    --calibration-angles-output,--output-calibration-angles,--output-angles=<how>; output vertical angles to stdout; if --difop present, take vertical angles from difop packet" << std::endl;
     std::cerr << "    --calibration-channels,--channels=<filename>; default: 450 (i.e. 4.50cm) for all channels" << std::endl;
-    std::cerr << "    --range-resolution,--resolution=<metres>; default=0.01, but you most likely will want 0.005 (alternatively, --difop will contain range resolution" << std::endl;
+    std::cerr << "    --range-resolution,--resolution=<metres>; default=0.005, but you most likely will want 0.005 (alternatively, --difop will contain range resolution" << std::endl;
     std::cerr << "    --output-range-resolution; if --difop present, output resolution as difop says; otherwise output default resolution" << std::endl;
     std::cerr << std::endl;
     std::cerr << "difop options" << std::endl;
@@ -182,7 +182,7 @@ snark::robosense::calculator make_calculator( const comma::command_line_options&
     options.assert_mutually_exclusive( "" );
     if( difop.empty() )
     {
-        double range_resolution = options.value( "--range-resolution,--resolution", 0.01 );
+        double range_resolution = options.value( "--range-resolution,--resolution", 0.005 );
         if( calibration.empty() )
         {
             if( !angles.empty() ) { std::cerr << "robosense-to-csv: config: angles from --angles" << std::endl; }
