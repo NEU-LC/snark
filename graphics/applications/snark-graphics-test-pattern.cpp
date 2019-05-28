@@ -36,14 +36,6 @@
 #include <comma/csv/stream.h>
 #include "../../visiting/eigen.h"
 
-const unsigned int default_cube_num_points = 100000;
-const float default_cube_width = 1.0f;
-const float default_cube_thickness = 0.01f;
-
-const float default_grid_width = 6.0f;
-const float default_grid_spacing = 1.0f;
-const float default_grid_z_offset = 0.0f;
-
 namespace snark { namespace test_pattern {
 
 struct color_t
@@ -88,13 +80,17 @@ struct mode_t
 
 struct cube_points : public mode_t< vertex_t >
 {
+    static const unsigned int default_num_points = 100000;
+    static constexpr float default_width = 1.0f;
+    static constexpr float default_thickness = 0.01f;
+
     static void usage()
     {
         std::cerr << "\n";
         std::cerr << "\n  cube-points mode";
-        std::cerr << "\n    --num,-n=<val>:     number of points in cube (default: " << default_cube_num_points << ")";
-        std::cerr << "\n    --width,-w=<val>:   cube width (default: " << default_cube_width << ")";
-        std::cerr << "\n    --thickness=<val>:  cube thickness (default: " << default_cube_thickness << ")";
+        std::cerr << "\n    --num,-n=<val>:     number of points in cube (default: " << default_num_points << ")";
+        std::cerr << "\n    --width,-w=<val>:   cube width (default: " << default_width << ")";
+        std::cerr << "\n    --thickness=<val>:  cube thickness (default: " << default_thickness << ")";
     }
 
     static void examples()
@@ -106,9 +102,9 @@ struct cube_points : public mode_t< vertex_t >
 
     static int run( const comma::command_line_options& options )
     {
-        unsigned int num_points = options.value< unsigned int >( "--num,-n", default_cube_num_points );
-        float width = options.value< float >( "--width,-w", default_cube_width );
-        float thickness = options.value< float >( "--thickness", default_cube_thickness );
+        unsigned int num_points = options.value< unsigned int >( "--num,-n", default_num_points );
+        float width = options.value< float >( "--width,-w", default_width );
+        float thickness = options.value< float >( "--thickness", default_thickness );
 
         comma::csv::options output_csv( options );
         output_csv.full_xpath = false;
@@ -165,13 +161,17 @@ private:
 
 struct grid : public mode_t< Eigen::Vector3f >
 {
+    static constexpr float default_width = 6.0f;
+    static constexpr float default_spacing = 1.0f;
+    static constexpr float default_z_offset = 0.0f;
+
     static void usage()
     {
         std::cerr << "\n";
         std::cerr << "\n  grid mode";
-        std::cerr << "\n    --width,-w=<val>:   grid width (default: " << default_grid_width << ")";
-        std::cerr << "\n    --spacing,-s=<val>: grid spacing (default: " << default_grid_spacing << ")";
-        std::cerr << "\n    --z-offset=<val>:   grid z offset (default: " << default_grid_z_offset << ")";
+        std::cerr << "\n    --width,-w=<val>:   grid width (default: " << default_width << ")";
+        std::cerr << "\n    --spacing,-s=<val>: grid spacing (default: " << default_spacing << ")";
+        std::cerr << "\n    --z-offset=<val>:   grid z offset (default: " << default_z_offset << ")";
     }
 
     static void examples()
@@ -183,9 +183,9 @@ struct grid : public mode_t< Eigen::Vector3f >
 
     static int run( const comma::command_line_options& options )
     {
-        float width = options.value< float >( "--width,-w", default_grid_width );
-        float spacing = options.value< float >( "--spacing,-s", default_grid_spacing );
-        float z_offset = options.value< float >( "--z-offset", default_grid_z_offset );
+        float width = options.value< float >( "--width,-w", default_width );
+        float spacing = options.value< float >( "--spacing,-s", default_spacing );
+        float z_offset = options.value< float >( "--z-offset", default_z_offset );
 
         comma::csv::options output_csv( options );
         output_csv.full_xpath = false;
