@@ -2,6 +2,7 @@ cube_points[0]="snark-graphics-test-pattern cube-points -n 3 --seed 0"
 
 binary[0]="snark-graphics-test-pattern cube-points -n 3 --seed 0 --binary | csv-from-bin $( snark-graphics-test-pattern cube-points --output-format )"
 
-grid_width[0]="snark-graphics-test-pattern grid --width 2 --spacing 1 --z-offset 0"
-grid_spacing[0]="snark-graphics-test-pattern grid --width 6 --spacing 3 --z-offset 0"
-grid_z_offset[0]="snark-graphics-test-pattern grid --width 2 --spacing 1 --z-offset 1"
+grid[0]="snark-graphics-test-pattern grid"
+grid[1]="snark-graphics-test-pattern grid --width 2 --spacing 1 --z-offset 0"
+grid[2]="snark-graphics-test-pattern grid --width 6 --spacing 3 --z-offset 0"
+grid[3]="snark-graphics-test-pattern grid --width 2 --spacing 1 --z-offset 1"
