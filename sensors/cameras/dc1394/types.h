@@ -28,8 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_SENSORS_DC1394_TYPES_H_
-#define SNARK_SENSORS_DC1394_TYPES_H_
+#pragma once
 
 #include <dc1394/dc1394.h>
 #include <string>
@@ -57,6 +56,3 @@ void print_frame_rates();
 void print_color_coding();
 
 } } // namespace snark { namespace camera {
-
-
-#endif // SNARK_SENSORS_DC1394_TYPES_H_

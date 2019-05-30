@@ -27,9 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_SENSORS_DC1394_H_
-#define SNARK_SENSORS_DC1394_H_
+#pragma once
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/optional.hpp>
@@ -257,4 +255,3 @@ template <> struct traits< snark::camera::dc1394::strobe >
 
 } } // namespace comma { namespace visiting {
 
-#endif // SNARK_SENSORS_DC1394_H_

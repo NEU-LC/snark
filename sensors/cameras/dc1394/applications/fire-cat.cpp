@@ -27,20 +27,19 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#include "../../../../imaging/cv_mat/pipeline.h"
-#include "../dc1394.h"
+#include <boost/optional.hpp>
+#include <boost/property_tree/ini_parser.hpp>
 #include <boost/program_options.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <boost/property_tree/ini_parser.hpp>
-#include <boost/optional.hpp>
+#include <comma/application/signal_flag.h>
 #include <comma/base/exception.h>
 #include <comma/csv/format.h>
-#include <comma/name_value/ptree.h>
 #include <comma/name_value/parser.h>
+#include <comma/name_value/ptree.h>
 #include <comma/name_value/serialize.h>
-#include <comma/application/signal_flag.h>
 #include <comma/string/string.h>
+#include "../../../../imaging/cv_mat/pipeline.h"
+#include "../dc1394.h"
 
 typedef std::pair< boost::posix_time::ptime, cv::Mat > Pair;
 static const char* name() { return "fire-cat"; }
@@ -207,13 +206,7 @@ int main( int argc, char** argv )
         pipeline.run();
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << argv[0] << ": " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << argv[0] << ": unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << argv[0] << ": " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << argv[0] << ": unknown exception" << std::endl; }
     return 1;
 }
