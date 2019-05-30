@@ -1321,7 +1321,7 @@ int main( int ac, char** av )
                         mask.convertTo( swap, CV_8U );
                         mask=swap;
                     }
-                    count = cv::countNonZero(mask);
+                    count = cv::countNonZero( mask );
                 }
                 cv::Scalar mean = cv::mean( p.second, !threshold ? cv::noArray() : mask );
                 std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() );
