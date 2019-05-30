@@ -53,22 +53,19 @@ using snark::tbb::bursty_reader;
 class rate_limit /// timer class, sleeping if faster than the specified fps
 {
     public:
-        rate_limit( double fps ) { if( fps > 1e-5 ) { m_period = boost::posix_time::microseconds( static_cast< unsigned int >( 1e6 / fps ) ); } }
+        rate_limit( double fps ) { if( fps > 1e-5 ) { period_ = boost::posix_time::microseconds( static_cast< unsigned int >( 1e6 / fps ) ); } }
 
         void wait()
         {
-            if( m_period.is_not_a_date_time() ) { return; }
+            if( period_.is_not_a_date_time() ) { return; }
             boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-            if( !m_lastOutput.is_not_a_date_time() && ( now < m_lastOutput + m_period ) )
-            {
-                boost::this_thread::sleep( m_lastOutput + m_period );
-            }
-            m_lastOutput = now;
+            if( !last_.is_not_a_date_time() && ( now < last_ + period_ ) ) { boost::this_thread::sleep( last_ + period_ ); }
+            last_ = now;
         }
 
     private:
-        boost::posix_time::time_duration m_period;
-        boost::posix_time::ptime m_lastOutput;
+        boost::posix_time::time_duration period_;
+        boost::posix_time::ptime last_;
 };
 
 static comma::signal_flag is_shutdown( comma::signal_flag::hard );
@@ -78,14 +75,11 @@ static pair capture( cv::VideoCapture& capture, rate_limit& rate )
     cv::Mat image;
     capture >> image;
     rate.wait();
-
     static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
-
     snark::cv_mat::serialization::header h(image);
     h.timestamp = boost::posix_time::microsec_clock::universal_time();
     default_binary.put( h, &buffer[0] );
-
     return std::make_pair( buffer , image );
 }
 
