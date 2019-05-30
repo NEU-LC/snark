@@ -3042,21 +3042,6 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             if (s.size() == 1) { quality = boost::lexical_cast<int>(s[1]); }
             f.push_back( filter_type( boost::bind< value_type_t >( grab_impl_< H >(get_timestamp), _1, s[0], quality ) ) );
         }
-//         else if( e[0] == "file" )
-//         {
-//             if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file type like jpg, ppm, etc" ); }
-//             std::vector< std::string > s = comma::split( e[1], ',' );
-//             boost::optional< int > quality;
-//             bool do_index = false;
-//             bool no_header = false;
-//             for( unsigned int i = 1; i < s.size(); ++i )
-//             {
-//                 if( s[i] == "index" ) { do_index = true; }
-//                 else if( s[i] == "no-header" ) { no_header = true; }
-//                 else { quality = boost::lexical_cast< int >( s[i] ); }
-//             }
-//             f.push_back( filter_type( boost::bind< value_type_t >( impl::file< H >( get_timestamp, no_header ), _1, s[0], quality, do_index ), false ) );
-//         }
         else if( e[0] == "simple-blob" )
         {
 #if CV_MAJOR_VERSION <= 2
@@ -3296,7 +3281,8 @@ static std::string usage_impl_()
     oss << "            <format>" << std::endl;
     oss << "                - anything that opencv imwrite can take, e.g. jpg, ppm, png, tiff etc" << std::endl;
     oss << "                - 'bin' to write image as binary in cv-cat format" << std::endl;
-    oss << "            <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
+    oss << "                - 'gz' to write image as compressed binary" << std::endl;
+    oss << "            <quality>: for jpg files only, compression quality from 0 (smallest) to 100 (best)" << std::endl;
     oss << "            index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
     oss << "            no-header: makes sense only for 'bin' format; if present, write image without header" << std::endl;
 //    oss << "            <filenames>: file containing filenames ..." << std::endl;
