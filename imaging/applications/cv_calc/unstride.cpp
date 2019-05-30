@@ -230,7 +230,7 @@ int run( const comma::command_line_options& options, const snark::cv_mat::serial
             ++iy;
             if( iy >= stride_rows ) { iy = 0; }
         }
-        if( ix == 0 && iy == 0 ) { output_serialization.write_to_stdout( output, true ); output.second = cv::Mat(); }
+        if( ix == 0 && iy == 0 ) { output_serialization.write_to_stdout( output, true ); output.second.setTo( 0 ); }
     }
     return 0;
 }
