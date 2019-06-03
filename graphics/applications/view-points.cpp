@@ -224,10 +224,12 @@ static void usage()
         "\n              default: perspective"
         "\n    --fov=<fov>: set camera field of view in degrees"
         "\n    --camera-config=<filename>: camera config in json; to see an example, run --output-camera-config"
-        "\n    --camera-position=\"<options>\""
+        qt55_unsupported_marker_start
+        "\n    --camera-position=\"<options>\": todo: fix: broken for qt5.5 and higher"
         "\n          <options>: <position>|<stream>"
         "\n          <position>: <x>,<y>,<z>,<roll>,<pitch>,<yaw>"
         "\n          <stream>: position csv stream with options; default fields: x,y,z,roll,pitch,yaw"
+        qt55_unsupported_marker_end
         "\n    --orthographic: use orthographic projection instead of perspective"
         "\n"
         "\nmore options"
