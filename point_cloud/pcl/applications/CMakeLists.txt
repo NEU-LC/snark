@@ -1,3 +1,5 @@
+message( WARNING, "PCL utilities most likely won't work correctly; todo: update or remove" )
+
 set( dir ${SOURCE_CODE_BASE_DIR}/point_cloud/pcl/detail )
 file( GLOB source   ${dir}/*.cpp)
 file( GLOB includes ${dir}/*.h)
