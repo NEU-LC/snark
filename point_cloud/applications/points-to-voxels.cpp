@@ -47,7 +47,7 @@ struct input_point
     Eigen::Vector3d point;
     comma::uint32 block;
     
-    input_point() : block( 0 ) {}
+    input_point() : block( 0 ), point( 0, 0, 0 ) {}
 };
 
 struct centroid
@@ -57,7 +57,7 @@ struct centroid
     comma::uint32 size;
     comma::uint32 block;
     
-    centroid() : size( 0 ), block( 0 ) {}
+    centroid() : mean( 0, 0, 0 ), size( 0 ), block( 0 ) {}
     
     void operator+=( const Eigen::Vector3d& point )
     {
@@ -126,6 +126,8 @@ int main( int argc, char** argv )
             ( "help,h", "display help message" )
             ( "resolution", boost::program_options::value< std::string >( &resolution_string ), "voxel map resolution, e.g. \"0.2\" or \"0.2,0.2,0.5\"" )
             ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
+            ( "output-fields", "print output fields to stdout and exit" )
+            ( "output-format", "print binary output format to stdout and exit" )
             ( "neighbourhood-radius,r", boost::program_options::value< comma::uint32 >( &neighbourhood_radius )->default_value( 0 ), "calculate count of neighbours at given radius" );
         description.add( comma::csv::program_options::description( "x,y,z,block" ) );
         boost::program_options::variables_map vm;
@@ -143,28 +145,32 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << description << std::endl;
             std::cerr << std::endl;
-            return 1;
+            return 0;
         }
-        if( vm.count( "resolution" ) == 0 ) { COMMA_THROW( comma::exception, "please specify --resolution" ); }        
         comma::csv::options csv = comma::csv::program_options::get( vm );
-        Eigen::Vector3d origin;
-        Eigen::Vector3d resolution;
-        comma::csv::ascii< Eigen::Vector3d >().get( origin, origin_string );
-        if( resolution_string.find_first_of( ',' ) == std::string::npos ) { resolution_string = resolution_string + ',' + resolution_string + ',' + resolution_string; }
-        comma::csv::ascii< Eigen::Vector3d >().get( resolution, resolution_string );
+        csv.full_xpath = false;
         comma::csv::input_stream< input_point > istream( std::cin, csv );
         comma::csv::options output_csv = csv;
-        output_csv.full_xpath = true;
         if( csv.has_field( "block" ) ) // todo: quick and dirty, make output fields configurable?
         {
+            if( vm.count( "output-fields" ) > 0 ) { std::cout << "index/x,index/y,index/z,mean/x,mean/y,mean/z,size,block" << std::endl; return 0; }
+            if( vm.count( "output-format" ) > 0 ) { std::cout << "3ui,3d,ui,ui" << std::endl; return 0; }
             output_csv.fields = "index,mean,size,block";
             if( csv.binary() ) { output_csv.format( "3ui,3d,ui,ui" ); }
         }
         else
         {
+            if( vm.count( "output-fields" ) > 0 ) { std::cout << "index/x,index/y,index/z,mean/x,mean/y,mean/z,size" << std::endl; return 0; }
+            if( vm.count( "output-format" ) > 0 ) { std::cout << "3ui,3d,ui" << std::endl; return 0; }
             output_csv.fields = "index,mean,size";
             if( csv.binary() ) { output_csv.format( "3ui,3d,ui" ); }
         }
+        if( vm.count( "resolution" ) == 0 ) { COMMA_THROW( comma::exception, "please specify --resolution" ); }        
+        Eigen::Vector3d origin;
+        Eigen::Vector3d resolution;
+        comma::csv::ascii< Eigen::Vector3d >().get( origin, origin_string );
+        if( resolution_string.find_first_of( ',' ) == std::string::npos ) { resolution_string = resolution_string + ',' + resolution_string + ',' + resolution_string; }
+        comma::csv::ascii< Eigen::Vector3d >().get( resolution, resolution_string );
         comma::csv::output_stream< centroid > ostream( std::cout, output_csv );
         comma::signal_flag is_shutdown;
         unsigned int block = 0;
@@ -250,13 +256,7 @@ int main( int argc, char** argv )
         if( is_shutdown ) { std::cerr << "points-to-voxels: caught signal" << std::endl; return 1; }
         return 0;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << argv[0] << ": " << ex.what() << std::endl;
-    }
-    catch( ... )
-    {
-        std::cerr << argv[0] << ": unknown exception" << std::endl;
-    }
+    catch( std::exception& ex ) { std::cerr << "points-to-voxels: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "points-to-voxels: unknown exception" << std::endl; }
     return 1;
 }
