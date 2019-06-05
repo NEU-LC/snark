@@ -40,13 +40,24 @@
 namespace snark { namespace cv_mat { namespace impl {
     
 template < typename H >
-file< H >::file( const get_timestamp_functor& get_timestamp, const std::string& type, bool no_header, const boost::optional< int >& quality, bool do_index, const std::vector< std::string >& filenames )
+file< H >::file( const get_timestamp_functor& get_timestamp
+               , const std::string& type
+               , bool no_header
+               , const boost::optional< int >& quality
+               , bool do_index
+               , bool numbered
+               , const std::vector< std::string >& filenames
+               , const std::vector< std::pair< unsigned int, unsigned int > >& ranges )
     : get_timestamp_( get_timestamp )
     , type_( type )
     , quality_( quality )
     , do_index_( do_index )
+    , numbered_( numbered )
     , index_( 0 )
     , filenames_( filenames )
+    , filename_index_( 0 )
+    , ranges_( ranges )
+    , range_index_( 0 )
     , count_( 0 )
 {
     snark::cv_mat::serialization::options options;
@@ -58,11 +69,17 @@ template < typename H >
 typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, cv::Mat > m )
 {
     if( m.second.empty() ) { return m; }
+    if( !ranges_.empty() )
+    {
+        for( ; range_index_ < ranges_.size() && count_ >= ranges_[range_index_].second; ++range_index_ );
+        if( range_index_ == ranges_.size() ) { return std::pair< H, cv::Mat >(); } // end of desired ranges; todo? simply continue?
+        if( count_ < ranges_[range_index_].first ) { ++count_; return m; }
+    }
     boost::posix_time::ptime timestamp = get_timestamp_( m.first );
     index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
     previous_timestamp_ = timestamp;
     std::string filename = make_filename_( timestamp );
-    if( filename.empty() ) { return std::pair< H, cv::Mat >(); } // end of list of filenames
+    if( filename.empty() ) { return std::pair< H, cv::Mat >(); } // end of list of filenames; todo? simply continue?
     if( type_ == "bin" )
     {
         std::ofstream ofs( filename );
@@ -86,17 +103,18 @@ typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, c
         check_image_type( m.second, type_ );
         if( !cv::imwrite( filename, m.second, quality_ ? imwrite_params( type_, *quality_ ) : std::vector< int >() ) ) { COMMA_THROW( comma::exception, "failed to write image to '" << filename << "'" ); }
     }
+    ++count_;
     return m;
 }
 
 template < typename H >
 std::string file< H >::make_filename_( const boost::posix_time::ptime& t )
 {
+    if( numbered_ ) { return boost::lexical_cast< std::string >( count_ ) + '.' + type_; }
     if( filenames_.empty() ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
-    if( count_ >= filenames_.size() ) { return ""; }
-    return filenames_[count_++];
+    return filename_index_ < filenames_.size() ? filenames_[filename_index_++] : "";
 }
-    
+
 template class file< boost::posix_time::ptime >;
 template class file< std::vector< char > >;
 

@@ -44,7 +44,14 @@ class file
     public:
         typedef boost::function< boost::posix_time::ptime( const H& ) > get_timestamp_functor;
 
-        file( const get_timestamp_functor& get_timestamp, const std::string& type, bool no_header, const boost::optional< int >& quality, bool do_index, const std::vector< std::string >& filenames = std::vector< std::string >() );
+        file( const get_timestamp_functor& get_timestamp
+            , const std::string& type
+            , bool no_header
+            , const boost::optional< int >& quality
+            , bool do_index
+            , bool numbered
+            , const std::vector< std::string >& filenames = std::vector< std::string >()
+            , const std::vector< std::pair< unsigned int, unsigned int > >& ranges = std::vector< std::pair< unsigned int, unsigned int > >() );
 
         std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
         
@@ -53,10 +60,14 @@ class file
         std::string type_;
         boost::optional< int > quality_;
         bool do_index_;
+        bool numbered_;
         snark::cv_mat::serialization serialization_;
         boost::posix_time::ptime previous_timestamp_;
         unsigned int index_;
         std::vector< std::string > filenames_;
+        unsigned int filename_index_;
+        std::vector< std::pair< unsigned int, unsigned int > > ranges_;
+        unsigned int range_index_;
         unsigned int count_;
         std::string make_filename_( const boost::posix_time::ptime& t );
 };

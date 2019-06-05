@@ -1058,7 +1058,7 @@ public:
         : get_timestamp( get_timestamp )
         , name( make_name_( name ) )
         , delay( delay )
-        ,suffix(suffix)
+        , suffix( suffix )
     {
     }
     
@@ -2382,12 +2382,18 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         boost::optional< int > quality;
         bool do_index = false;
         bool no_header = false;
+        bool numbered = false;
         std::vector< std::string > filenames;
+        std::vector< std::pair< unsigned int, unsigned int > > ranges;
         for( unsigned int i = 1; i < s.size(); ++i )
         {
             if( s[i] == "index" )
             {
                 do_index = true;
+            }
+            else if( s[i] == "numbered" )
+            {
+                numbered = true;
             }
             else if( s[i] == "no-header" )
             { 
@@ -2396,7 +2402,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             else if( s[i].substr( 0, 10 ) == "filenames:" ) // quick and dirty
             { 
                 std::ifstream ifs( s[i].substr( 10 ) );
-                if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 11 ) << "'" ); }
+                if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 10 ) << "'" ); }
                 while( ifs.good() && !ifs.eof() )
                 {
                     std::string g;
@@ -2406,12 +2412,42 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
                 }
                 ifs.close();
             }
+            else if( s[i].substr( 0, 7 ) == "frames:" ) // quick and dirty
+            { 
+                std::ifstream ifs( s[i].substr( 7 ) );
+                if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 7 ) << "'" ); }
+                while( ifs.good() && !ifs.eof() )
+                {
+                    std::string g;
+                    std::getline( ifs, g );
+                    if( comma::strip( g, " \t" ).empty() ) { continue; }
+                    auto f = boost::lexical_cast< unsigned int >( g );
+                    ranges.push_back( std::make_pair( f, f + 1 ) );
+                }
+                ifs.close();
+            }
+            else if( s[i].substr( 0, 7 ) == "ranges:" ) // quick and dirty
+            { 
+                std::ifstream ifs( s[i].substr( 7 ) );
+                if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 7 ) << "'" ); }
+                while( ifs.good() && !ifs.eof() )
+                {
+                    std::string g;
+                    std::getline( ifs, g );
+                    if( comma::strip( g, " \t" ).empty() ) { continue; }
+                    ranges.push_back( comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( g ) );
+                }
+                ifs.close();
+            }
             else
             {
                 quality = boost::lexical_cast< int >( s[i] );
             }
         }
-        return std::make_pair( boost::bind< value_type_t >( impl::file< H >( get_timestamp, s[0], no_header, quality, do_index, filenames ), _1 ), false );
+        if( numbered && do_index ) { COMMA_THROW( comma::exception, "numbered and index are mutually exclusive in 'file=" << e[1] << "'" ); }
+        if( numbered && !filenames.empty() ) { COMMA_THROW( comma::exception, "numbered and filenames:... are mutually exclusive in 'file=" << e[1] << "'" ); }
+        if( do_index && !filenames.empty() ) { COMMA_THROW( comma::exception, "index and filenames:... are mutually exclusive in 'file=" << e[1] << "'" ); }
+        return std::make_pair( boost::bind< value_type_t >( impl::file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, filenames, ranges ), _1 ), false );
     }
     if( e[0] == "save" )
     {
@@ -3277,15 +3313,18 @@ static std::string usage_impl_()
     oss << std::endl;
     oss << "    file read/write operations or generating images" << std::endl;
     oss << "        blank=<rows>,<cols>,<type>: create black image of a given size and type" << std::endl;
-    oss << "        file=<format>[,<quality>][,index][,no-header][,filenames:<filenames>]: write images to files with timestamp as name in the specified format; if input images have no timestamp, system time is used" << std::endl;
+    oss << "        file=<format>[,<quality>][,index][,numbered][,no-header][,filenames:<filenames>][,frames:<filename>][,ranges:<filename>]: write images to files with timestamp as name in the specified format; if input images have no timestamp, system time is used" << std::endl;
     oss << "            <format>" << std::endl;
     oss << "                - anything that opencv imwrite can take, e.g. jpg, ppm, png, tiff etc" << std::endl;
     oss << "                - 'bin' to write image as binary in cv-cat format" << std::endl;
     oss << "                - 'gz' to write image as compressed binary" << std::endl;
     oss << "            <quality>: for jpg files only, compression quality from 0 (smallest) to 100 (best)" << std::endl;
-    oss << "            index: if present, for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
+    oss << "            index: for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
+    oss << "            numbered: output filenames will look like 0.png, 1.png, etc, i.e. <filename>: <frame-number>.<extension>" << std::endl;
     oss << "            no-header: makes sense only for 'bin' format; if present, write image without header" << std::endl;
-//    oss << "            <filenames>: file containing filenames ..." << std::endl;
+    oss << "            filenames:<filenames>: file containing list of filenames" << std::endl;
+    oss << "            frames:<filename>: file containing sorted list of desired frame numbers to save" << std::endl;
+    oss << "            ranges:<filename>: file containing sorted list of non-intersecting desired ranges of frame numbers to save as <begin>,<end> pairs, where <end> is not included" << std::endl;
     oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
     oss << "            supported file types by filename extension:" << std::endl;
     oss << "                - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
