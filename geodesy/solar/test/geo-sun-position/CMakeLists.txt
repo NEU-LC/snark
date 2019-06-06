@@ -24,6 +24,7 @@ ENDMACRO( check_python_module )
 
 IF( NOT snark_build_python )
     disable_testing()
+    return()
 ENDIF()
 
 FIND_PROGRAM( PYTHON "python" )
