@@ -8,7 +8,7 @@ ENDMACRO( enable_python_testing )
 MACRO( disable_python_testing )
     IF( NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/disabled )
         EXECUTE_PROCESS( COMMAND touch ${CMAKE_CURRENT_SOURCE_DIR}/disabled RESULT_VARIABLE result )
-        MESSAGE( WARNING "disabled file has been dropped in ${CMAKE_CURRENT_SOURCE_DIR} (result code: ${result}): testing python modules and applications is disabled" )
+        MESSAGE( STATUS "disabled file has been dropped in ${CMAKE_CURRENT_SOURCE_DIR} (result code: ${result}): testing python modules and applications is disabled" )
     ENDIF()
 ENDMACRO( disable_python_testing )
 
