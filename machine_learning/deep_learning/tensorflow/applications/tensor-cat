@@ -125,13 +125,14 @@ def iterator( file, input, header_size, footer_size ): # todo: quick and dirty; 
     ntype = ( input._dtype if tf_version[0] < 1 else input.dtype ).as_numpy_dtype()
     size = np.prod( shape )
     itemsize = np.array( [0], dtype = ntype ).itemsize # quick and dirty
+    data_bytes = size * itemsize
     header = np.zeros( ( header_size ), dtype = np.uint8 )
     buf = np.zeros( ( size ), dtype = ntype )
     data = np.zeros( shape, dtype = ntype )
     footer = np.zeros( ( footer_size ), dtype = np.uint8 )
     while True:
         if file.readinto( header ) != header_size: yield None, None, None
-        if file.readinto( data ) != size: yield None, None, None
+        if file.readinto( data ) != data_bytes: yield None, None, None
         if file.readinto( footer ) != footer_size: yield None, None, None
         yield header, data, footer
 
