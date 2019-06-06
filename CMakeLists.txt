@@ -345,7 +345,7 @@ IF( snark_build_imaging )
         if( snark_build_imaging_stereo )
             message( "imaging/stereo with OpenCV ${OpenCV_VERSION_MAJOR} not supported yet; will not build imaging/stereo" )
         endif( snark_build_imaging_stereo )
-        set( snark_build_imaging_stereo OFF )
+        set( snark_build_imaging_stereo OFF CACHE BOOL "" FORCE )
     endif( ${OpenCV_VERSION_MAJOR} GREATER 2 )
 ENDIF( snark_build_imaging )
 
