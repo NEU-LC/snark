@@ -296,6 +296,6 @@ if __name__ == '__main__':
                         if args.keep_input: stdout.write( data.tobytes() )
                         stdout.write( footer.tobytes() )
                         for value in values: stdout.write( value.tobytes() )
-                        sys.stdout.flush()
+                        stdout.flush()
         session.close()
         saymore( "done" )
