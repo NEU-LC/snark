@@ -3277,6 +3277,7 @@ static std::string usage_impl_()
     oss << "            note: if no decimal dot '.', size is in pixels; if decimal dot present, size as a fraction" << std::endl;
     oss << "                  i.e. 5 means 5 pixels; 5.0 means 5 times" << std::endl;
     oss << "        remove-mean=<kernel_size>,<ratio>: simple high-pass filter removing <ratio> times the mean component on <kernel_size> scale" << std::endl;
+    oss << "        remove-speckles=<x>,<y>: simple speckle remover: if kernel of size <x>,<y> and single solid colour fully covers speckle of another color, fill the speckle with surrounding color" << std::endl;
     oss << "        rotate90[=n]: rotate image 90 degrees clockwise n times (default: 1); sign denotes direction (convenience wrapper around { tranpose, flip, flop })" << std::endl;
     //oss << "        warp=<how>: todo: warp image" << std::endl;
     //oss << "        unwarp=<how>: todo: unwarp image" << std::endl;
