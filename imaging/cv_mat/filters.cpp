@@ -86,6 +86,7 @@
 #include "detail/load.h"
 #include "detail/morphology.h"
 #include "detail/ratio.h"
+#include "detail/remove_speckles.h"
 #include "detail/remap.h"
 #include "detail/utils.h"
 #include "detail/warp.h"
@@ -2374,6 +2375,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         const std::vector< std::string > v = comma::split( e[1], ',' );
         for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
         return std::make_pair( boost::bind< value_type_t >( rectangle_impl_< H >, _1, drawing::rectangle( cv::Point( p[0], p[1] ), cv::Point( p[2], p[3] ), cv::Scalar( p[6], p[5], p[4] ), p[7], p[8], p[9] ) ), true );
+    }
+    if( e[0] == "remove-speckles" )
+    {
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        if( s.size() != 2 ) { COMMA_THROW( comma::exception, "expected remove-speckles=<width>,<height>; got \"remove-speckles=" << e[1] << "\"" ); }
+        return std::make_pair( boost::bind< value_type_t >( impl::remove_speckles< H >, _1, cv::Size2i( boost::lexical_cast< unsigned int >( s[0] ), boost::lexical_cast< unsigned int >( s[1] ) ) ), true );
     }
     if( e[0] == "file" )
     {
