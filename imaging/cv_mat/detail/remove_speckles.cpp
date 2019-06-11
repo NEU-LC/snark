@@ -59,6 +59,8 @@
 #include <memory>
 #include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/optional.hpp>
+#include <tbb/parallel_for.h>
 #include "remove_speckles.h"
 
 namespace snark { namespace cv_mat { namespace impl {
@@ -68,10 +70,9 @@ std::pair< H, cv::Mat > remove_speckles( std::pair< H, cv::Mat > m, cv::Size2i s
 {
     int wback = s.width - 1;
     int hback = s.height - 1;
-    int last_j = 0; // poor man's optimisation
-    for( int j = 0; j < m.second.rows - s.height; ++j ) // todo: super quick and dirty, use tbb and better operations on cv::mat
+    auto handle_row = [&]( int j )
     {
-        int last_i = 0;
+        boost::optional< int > last_i = 0;
         for( int i = 0; i < m.second.cols - s.width; ++i )
         {
             cv::Mat r( m.second, cv::Rect( i, j, s.width, s.height ) );
@@ -80,7 +81,7 @@ std::pair< H, cv::Mat > remove_speckles( std::pair< H, cv::Mat > m, cv::Size2i s
             for( int k = 0; k < s.width && same; ++k ) { same = std::memcmp( c, r.ptr( 0, k ), r.elemSize() ) == 0 && std::memcmp( c, r.ptr( hback, k ), r.elemSize() ) == 0; }
             for( int k = 1; k < hback && same; ++k ) { same = std::memcmp( c, r.ptr( k, 0 ), r.elemSize() ) == 0 && std::memcmp( c, r.ptr( k, wback ), r.elemSize() ) == 0; }
             if( !same ) { continue; }
-            int from = last_j == j && i - last_i < wback ? wback - ( i - last_i ) : 1;
+            int from = last_i && i - *last_i < wback ? wback - ( i - *last_i ) : 1;
             for( int k = 1; k < hback; ++k )
             {
                 for( int l = from; l < wback; ++l )
@@ -89,8 +90,16 @@ std::pair< H, cv::Mat > remove_speckles( std::pair< H, cv::Mat > m, cv::Size2i s
                 }
             }
             last_i = i;
-            last_j = j; 
         }
+    };
+    //for( int j = 0; j < m.second.rows - s.height; ++j ) { handle_row( j ); }
+    for( int n = 0; n < m.second.rows / s.height; ++n )
+    {
+        tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, n ), [&]( const tbb::blocked_range< std::size_t >& r )
+        {
+            for( unsigned int i = r.begin(); i < r.end(); ++i ) { handle_row( i * s.height ); }
+        } );
+        if( m.second.rows % s.height != 0 ) { handle_row( m.second.rows - s.height - 1 ); }
     }
     return m;
 }
