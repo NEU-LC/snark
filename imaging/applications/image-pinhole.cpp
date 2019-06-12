@@ -37,7 +37,7 @@
 #include <comma/name_value/ptree.h>
 #include <comma/name_value/serialize.h>
 #include "../camera/pinhole.h"
-#include "../camera/photoscan.h"
+#include "../camera/metashape.h"
 #include "../camera/traits.h"
 
 void usage( bool verbose )
@@ -50,8 +50,8 @@ void usage( bool verbose )
     std::cerr << "operations" << std::endl;
     std::cerr << "    config: config operations" << std::endl;
     std::cerr << "        options" << std::endl;
-    std::cerr << "            --from <what>; default=pinhole; what: pinhole, photoscan" << std::endl;
-    std::cerr << "            --to <what>; default=pinhole; what: pinhole, photoscan" << std::endl;
+    std::cerr << "            --from <what>; default=pinhole; what: pinhole, metashape, photoscan (same as metashape)" << std::endl;
+    std::cerr << "            --to <what>; default=pinhole; what: pinhole, metashape, photoscan (same as metashape)" << std::endl;
     std::cerr << "    distort: take on stdin undistorted pixels, append their distorted values (uses distortion map file)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distortion-map,undistort-rectify-map: build distortion map from camera parameters in config and write to stdout (binary image matrix of map x, map y)" << std::endl;
@@ -172,9 +172,9 @@ int main( int ac, char** av )
                 const auto& source = comma::read< snark::camera::pinhole::config_t >( std::cin );
                 if( to == "pinhole" ) { comma::write_json( source, std::cout ); return 0; }
             }
-            if( from == "photoscan" )
+            if( from == "metashape" || from == "photoscan" )
             {
-                const auto& source = comma::read< snark::photoscan::camera::pinhole >( std::cin );
+                const auto& source = comma::read< snark::metashape::camera::pinhole >( std::cin );
                 if( to == "pinhole" ) { comma::write_json( source.calibration.as< snark::camera::pinhole::config_t >(), std::cout ); return 0; }
             }
             std::cerr << "image-pinhole: --from " << from << " --to " << to << ": not implemented, just ask..." << std::endl;

@@ -60,8 +60,8 @@
 
 #include "pinhole.h"
 
-namespace snark { namespace photoscan { namespace camera {
-
+namespace snark { namespace metashape { namespace camera {
+    
 struct pinhole
 {
     struct calibration_t
@@ -86,4 +86,10 @@ struct pinhole
     calibration_t calibration;
 };
 
-} } } // namespace snark { namespace photoscan { namespace camera {
+} } } // namespace snark { namespace metashape { namespace camera {
+
+namespace snark {
+
+namespace photoscan = snark::metashape;
+
+} // namespace snark {

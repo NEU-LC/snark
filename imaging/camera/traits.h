@@ -32,7 +32,7 @@
 #define SNARK_IMAGING_CAMERA_TRAITS_H_
 
 #include "../../visiting/eigen.h"
-#include "photoscan.h"
+#include "metashape.h"
 #include "pinhole.h"
 #include "stereo.h"
 
@@ -123,9 +123,9 @@ template <> struct traits< snark::camera::config >
     }
 };
 
-template <> struct traits< snark::photoscan::camera::pinhole::calibration_t >
+template <> struct traits< snark::metashape::camera::pinhole::calibration_t >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, snark::photoscan::camera::pinhole::calibration_t& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::metashape::camera::pinhole::calibration_t& p, Visitor& v )
     {
         v.apply( "width", p.width );
         v.apply( "height", p.height );
@@ -142,7 +142,7 @@ template <> struct traits< snark::photoscan::camera::pinhole::calibration_t >
         v.apply( "p2", p.p2 );
     }
     
-    template < typename Key, class Visitor > static void visit( const Key&, const snark::photoscan::camera::pinhole::calibration_t& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::metashape::camera::pinhole::calibration_t& p, Visitor& v )
     {
         v.apply( "width", p.width );
         v.apply( "height", p.height );
@@ -160,14 +160,14 @@ template <> struct traits< snark::photoscan::camera::pinhole::calibration_t >
     }
 };
 
-template <> struct traits< snark::photoscan::camera::pinhole >
+template <> struct traits< snark::metashape::camera::pinhole >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, snark::photoscan::camera::pinhole& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::metashape::camera::pinhole& p, Visitor& v )
     {
         v.apply( "calibration", p.calibration );
     }
     
-    template < typename Key, class Visitor > static void visit( const Key&, const snark::photoscan::camera::pinhole& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::metashape::camera::pinhole& p, Visitor& v )
     {
         v.apply( "calibration", p.calibration );
     }

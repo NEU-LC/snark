@@ -57,13 +57,13 @@
 /// @author vsevolod vlaskine
 
 #include <comma/base/exception.h>
-#include "photoscan.h"
+#include "metashape.h"
 
-namespace snark { namespace photoscan { namespace camera {
+namespace snark { namespace metashape { namespace camera {
 
-template < typename T > T photoscan::camera::pinhole::calibration_t::as() const { COMMA_THROW( comma::exception, "not implemented, just ask" ); }
+template < typename T > T metashape::camera::pinhole::calibration_t::as() const { COMMA_THROW( comma::exception, "not implemented, just ask" ); }
 
-template <> snark::camera::pinhole::config_t photoscan::camera::pinhole::calibration_t::as< snark::camera::pinhole::config_t >() const
+template <> snark::camera::pinhole::config_t metashape::camera::pinhole::calibration_t::as< snark::camera::pinhole::config_t >() const
 {
     snark::camera::pinhole::config_t config;
     config.image_size = Eigen::Vector2i( width, height );
@@ -78,4 +78,4 @@ template <> snark::camera::pinhole::config_t photoscan::camera::pinhole::calibra
     return config;
 }
 
-} } } // namespace snark { namespace photoscan { namespace camera {
+} } } // namespace snark { namespace metashape { namespace camera {
