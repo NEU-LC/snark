@@ -28,6 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <fstream>
+#include <boost/filesystem/operations.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
@@ -78,7 +79,7 @@ typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, c
     boost::posix_time::ptime timestamp = get_timestamp_( m.first );
     index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
     previous_timestamp_ = timestamp;
-    std::string filename = make_filename_( timestamp );
+    const std::string& filename = make_filename_( timestamp );
     if( filename.empty() ) { return std::pair< H, cv::Mat >(); } // end of list of filenames; todo? simply continue?
     if( type_ == "bin" )
     {
@@ -112,7 +113,11 @@ std::string file< H >::make_filename_( const boost::posix_time::ptime& t )
 {
     if( numbered_ ) { return boost::lexical_cast< std::string >( count_ ) + '.' + type_; }
     if( filenames_.empty() ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
-    return filename_index_ < filenames_.size() ? filenames_[filename_index_++] : "";
+    if( filename_index_ >= filenames_.size() ) { return ""; }
+    const std::string& filename = filenames_[filename_index_++];
+    const auto& dirname = boost::filesystem::path( filename ).parent_path();
+    if( dirname.empty() || boost::filesystem::is_directory( dirname ) || boost::filesystem::create_directories( dirname ) ) { return filename; }
+    COMMA_THROW( comma::exception, "failed to create directory '" << dirname << "' for file: '" << filename << "'" );
 }
 
 template class file< boost::posix_time::ptime >;
