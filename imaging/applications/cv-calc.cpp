@@ -184,7 +184,7 @@ static void usage( bool verbose=false )
     std::cerr << "    life" << std::endl;
     std::cerr << "        --exit-on-stability: exit, if no change" << std::endl;
     std::cerr << "        --procreation-treshold,--procreation=[<threshold>]: todo: document; default: 3.0" << std::endl;
-    std::cerr << "        --stability-treshold,--stability=[<threshold>]: todo: document; default: 4.0" << std::endl;
+    std::cerr << "        --stability-treshold,--stability,--extinction-threshold,--extinction=[<threshold>]: todo: document; default: 4.0" << std::endl;
     std::cerr << "        --step=[<step>]: todo: document; default: 1.0" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    mean" << std::endl;
@@ -1259,7 +1259,7 @@ int main( int ac, char** av )
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
             double procreation_threshold = options.value( "--procreation-threshold,--procreation", 3.0 );
-            double stability_threshold = options.value( "--stability-threshold,--stability", 4.0 );
+            double stability_threshold = options.value( "--stability-threshold,--stability,--extinction-threshold,--extinction", 4.0 );
             double step = options.value( "--step", 1.0 );
             bool exit_on_stability = options.exists( "--exit-on-stability" );
             snark::cv_mat::impl::life< boost::posix_time::ptime > life( procreation_threshold, stability_threshold, step, exit_on_stability );
