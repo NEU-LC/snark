@@ -105,20 +105,21 @@ std::pair< H, cv::Mat > partition( std::pair< H, cv::Mat > m, boost::optional< c
         {
             if( partitions.template at< comma::int32 >( i, j ) != none ) { continue; }
             if( do_not_visit_value && std::memcmp( m.second.ptr( i, j ), &( *do_not_visit_value ), m.second.elemSize() ) == 0 ) { continue; }
-            std::unordered_set< std::pair< int, int >, pair_hash< int > > neighbours; // quick and dirty; performance should suck
             neighbours.insert( std::make_pair( i, j ) );
             while( !neighbours.empty() )
             {
+                int ci = neighbours.begin()->first;
+                int cj = neighbours.begin()->second;
                 partitions.template at< comma::int32 >( neighbours.begin()->first, neighbours.begin()->second ) = id;
                 neighbours.erase( neighbours.begin() );
-                insert_neighbour( i, j, -1, -1 );
-                insert_neighbour( i, j, -1,  0 );
-                insert_neighbour( i, j, -1,  1 );
-                insert_neighbour( i, j,  0, -1 );
-                insert_neighbour( i, j,  0,  1 );
-                insert_neighbour( i, j,  1, -1 );
-                insert_neighbour( i, j,  1,  0 );
-                insert_neighbour( i, j,  1,  1 );
+                insert_neighbour( ci, cj, -1, -1 );
+                insert_neighbour( ci, cj, -1,  0 );
+                insert_neighbour( ci, cj, -1,  1 );
+                insert_neighbour( ci, cj,  0, -1 );
+                insert_neighbour( ci, cj,  0,  1 );
+                insert_neighbour( ci, cj,  1, -1 );
+                insert_neighbour( ci, cj,  1,  0 );
+                insert_neighbour( ci, cj,  1,  1 );
             }
             ++id;
         }
