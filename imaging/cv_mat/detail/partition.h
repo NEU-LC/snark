@@ -56,57 +56,15 @@
 
 /// @author vsevolod vlaskine
 
-#include <memory>
-#include <vector>
-#include <boost/date_time/posix_time/ptime.hpp>
+#pragma once
+
 #include <boost/optional.hpp>
-#include <tbb/parallel_for.h>
-#include "remove_speckles.h"
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 namespace snark { namespace cv_mat { namespace impl {
-    
-template < typename H >
-std::pair< H, cv::Mat > remove_speckles( std::pair< H, cv::Mat > m, cv::Size2i s )
-{
-    int wback = s.width - 1;
-    int hback = s.height - 1;
-    auto handle_row = [&]( int j )
-    {
-        boost::optional< int > last_i = 0;
-        for( int i = 0; i < m.second.cols - s.width; ++i )
-        {
-            cv::Mat r( m.second, cv::Rect( i, j, s.width, s.height ) );
-            auto c = r.ptr( i > 0 ? 0 : wback, j > 0 ? 0 : hback );
-            bool same = true;
-            if( j > 0 ) { for( int k = 0; k < s.width && same; ++k ) { same = std::memcmp( c, r.ptr( 0, k ), r.elemSize() ) == 0; } }
-            if( j < m.second.rows - s.height - 1 ) { for( int k = 0; k < s.width && same; ++k ) { same = std::memcmp( c, r.ptr( hback, k ), r.elemSize() ) == 0; } }
-            if( i > 0 ) { for( int k = 1; k < hback && same; ++k ) { same = std::memcmp( c, r.ptr( k, 0 ), r.elemSize() ) == 0; } }
-            if( i < m.second.cols - s.width - 1 ) { for( int k = 1; k < hback && same; ++k ) { same = std::memcmp( c, r.ptr( k, wback ), r.elemSize() ) == 0; } }
-            if( !same ) { continue; }
-            int from = last_i && i - *last_i < wback ? wback - ( i - *last_i ) : 1;
-            for( int k = 1; k < hback; ++k )
-            {
-                for( int l = from; l < wback; ++l )
-                {
-                    std::memcpy( r.ptr( k, l ), c, r.elemSize() );
-                }
-            }
-            last_i = i;
-        }
-    };
-    //for( int j = 0; j < m.second.rows - s.height; ++j ) { handle_row( j ); }
-    for( int n = 0; n < s.height; ++n )
-    {
-        tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, m.second.rows / s.height ), [&]( const tbb::blocked_range< std::size_t >& r )
-        {
-            int j = r.begin() * s.height + n;
-            for( unsigned int t = r.begin(); t < r.end() && j < m.second.rows - s.height; ++t, j += s.height ) { handle_row( j ); }
-        } );
-    }
-    return m;
-}
 
-template std::pair< boost::posix_time::ptime, cv::Mat > remove_speckles< boost::posix_time::ptime >( std::pair< boost::posix_time::ptime, cv::Mat >, cv::Size2i );
-template std::pair< std::vector< char >, cv::Mat > remove_speckles< std::vector< char > >( std::pair< std::vector< char >, cv::Mat >, cv::Size2i );
+template < typename H >
+std::pair< H, cv::Mat > partition( std::pair< H, cv::Mat > m, boost::optional< cv::Scalar > do_not_visit_value = boost::optional< cv::Scalar >(), comma::int32 none = -1, bool merge = false );
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

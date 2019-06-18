@@ -25,7 +25,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file is part of snark, a generic and flexible library for robotics research
+// snark is a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
 //

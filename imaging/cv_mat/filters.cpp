@@ -85,6 +85,7 @@
 #include "detail/file.h"
 #include "detail/load.h"
 #include "detail/morphology.h"
+#include "detail/partition.h"
 #include "detail/ratio.h"
 #include "detail/remove_speckles.h"
 #include "detail/remap.h"
@@ -2369,6 +2370,18 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
         return std::make_pair( boost::bind< value_type_t >( circle_impl_< H >, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) ), true );
     }
+    if( e[0] == "partition" )
+    {
+        std::vector< std::string > s = comma::split( e[1], ',' );
+        boost::optional< cv::Scalar > do_not_visit_value;
+        comma::int32 none = -1;
+        bool merge = false;
+        if( !s[0].empty() ) { do_not_visit_value = boost::lexical_cast< int >( s[0] ); }
+        if( s.size() >= 2 && !s[1].empty() ) { none = boost::lexical_cast< int >( s[1] ); }
+        if( s.size() == 3 ) { merge = s[2] == "merge"; }
+        if( s.size() > 3 ) { COMMA_THROW( comma::exception, "expected partition=[<do-not-visit-value>][,<none>][,merge]; got \"partition=" << e[1] << "\"" ); }
+        return std::make_pair( boost::bind< value_type_t >( impl::partition< H >, _1, do_not_visit_value, none, merge ), true );
+    }
     if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
     {
         boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
@@ -3262,6 +3275,10 @@ static std::string usage_impl_()
     oss << "            <bits>: number of bits, currently only 12-bit packing from 16-bit is supported (pack 2 pixels into 3 bytes)" << std::endl;
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
     oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
+    oss << "        partition=[<do-not-visit-value>][,<none-value>][,merge]" << std::endl;
+    oss << "            <do-not-visit-value>: value that does not represent any class; e.g. 0: do not partition black pixels" << std::endl;
+    oss << "            <none-value>: value for non-partition; default: -1" << std::endl;
+    oss << "            merge: if present and image is of type i (32-bit int), output two-channel image: first channel: original image, second: partition ids" << std::endl;
     oss << "        pow,power=<value>; each image channel power, currently plain wrapper of opencv pow(), thus may be slow; todo? parallelize and/or implement mapping with interpolation" << std::endl;
     oss << "        remap=<map-filename>[,<interpolation>]: remap, input image dimensions expected to match map dimentions; see cv::remap() for details" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
