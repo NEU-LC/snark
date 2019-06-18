@@ -17,11 +17,6 @@ FILE( GLOB cvmat_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.h )
 FILE( GLOB cvmat_detail_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.h )
 FILE( GLOB cvmat_detail_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.cpp )
 
-if( snark_build_imaging_stereo ) # todo: add proper cmake to stereo
-    file( GLOB stereo_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.cpp )
-    file( GLOB stereo_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/stereo/*.h )
-endif( snark_build_imaging_stereo )
-    
 FILE( GLOB vegetation_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.cpp )
 FILE( GLOB vegetation_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.h )
 
@@ -30,7 +25,6 @@ ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes}
                             ${color_source} ${color_includes}
                             ${cvmat_source} ${cvmat_includes}
                             ${cvmat_detail_source} ${cvmat_detail_includes}
-                            ${stereo_source} ${stereo_includes}
                             ${vegetation_source} ${vegetation_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} snark_timing snark_math ${ZLIB_LIBRARIES} ${OpenCV_LIBS} tbb ${pgrey_libs} )
@@ -40,10 +34,6 @@ INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
 INSTALL( FILES ${camera_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/camera )
 INSTALL( FILES ${color_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/color )
 INSTALL( FILES ${cvmat_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/cv_mat )
-
-if( snark_build_imaging_stereo ) # todo: add proper cmake to stereo
-    install( FILES ${stereo_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/stereo )
-endif( snark_build_imaging_stereo )
 
 INSTALL( FILES ${vegetation_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/vegetation )
 

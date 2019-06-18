@@ -27,15 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#include "../stereo/point_cloud.h"
-#include "../stereo/rectify_map.h"
 #include <iostream>
-
 #include <opencv2/highgui/highgui.hpp>
 #include "../../math/rotation_matrix.h"
-
-
+#include "stereo/point_cloud.h"
+#include "stereo/rectify_map.h"
 
 // convert bumblebee images to point cloud
 int main( int ac, char** av )
