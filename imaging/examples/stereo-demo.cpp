@@ -30,8 +30,8 @@
 #include <iostream>
 #include <opencv2/highgui/highgui.hpp>
 #include "../../math/rotation_matrix.h"
-#include "stereo/point_cloud.h"
-#include "stereo/rectify_map.h"
+#include "../applications/stereo/point_cloud.h" // quick and dirty
+#include "../applications/stereo/rectify_map.h" // quick and dirty
 
 // convert bumblebee images to point cloud
 int main( int ac, char** av )

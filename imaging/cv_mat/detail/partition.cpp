@@ -58,12 +58,15 @@
 
 #include <limits>
 #include <memory>
+#include <sstream>
 #include <unordered_set>
 #include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/lexical_cast.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
+#include <comma/string/split.h>
 #include "partition.h"
 
 namespace snark { namespace cv_mat { namespace impl {
@@ -81,12 +84,27 @@ struct pair_hash
 };
 
 template < typename H >
-std::pair< H, cv::Mat > partition( std::pair< H, cv::Mat > m, boost::optional< cv::Scalar > do_not_visit_value, comma::int32 none, bool merge )
+partition< H >::partition( boost::optional< cv::Scalar > do_not_visit_value
+                         , comma::int32 none
+                         , bool merge
+                         , bool keep_id
+                         , comma::int32 start_from )
+    : do_not_visit_value_( do_not_visit_value )
+    , none_( none )
+    , merge_( merge )
+    , keep_id_( keep_id )
+    , start_from_( start_from )
+    , id_( start_from )
+{
+}
+
+template < typename H >
+std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
 {
     if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "partition: currently support only single-channel images; got " << m.second.channels() << " channels" ); }
-    if( merge && m.second.type() != CV_32SC1 ) { COMMA_THROW( comma::exception, "partition: asked to merge, expected image of type i (CV_32SC1), got: " << m.second.type() ); }
-    cv::Mat partitions( m.second.rows, m.second.cols, CV_32SC1, cv::Scalar( none ) );
-    comma::int32 id = 0;
+    if( merge_ && m.second.type() != CV_32SC1 ) { COMMA_THROW( comma::exception, "partition: asked to merge, expected image of type i (CV_32SC1), got: " << m.second.type() ); }
+    cv::Mat partitions( m.second.rows, m.second.cols, CV_32SC1, cv::Scalar( none_ ) );
+    if( !keep_id_ ) { id_ = start_from_; }
     std::unordered_set< std::pair< int, int >, pair_hash< int > > neighbours;
     auto insert_neighbour = [&]( int i, int j, int io, int jo )
     {
@@ -94,8 +112,8 @@ std::pair< H, cv::Mat > partition( std::pair< H, cv::Mat > m, boost::optional< c
         if( ni < 0 || ni >= m.second.rows ) { return; }
         int nj = j + jo;
         if( nj < 0 || nj >= m.second.cols ) { return; }
-        if( partitions.template at< comma::int32 >( ni, nj ) != none ) { return; }
-        if( do_not_visit_value && std::memcmp( m.second.ptr( ni, nj ), &( *do_not_visit_value ), m.second.elemSize() ) == 0 ) { return; }
+        if( partitions.template at< comma::int32 >( ni, nj ) != none_ ) { return; }
+        if( do_not_visit_value_ && std::memcmp( m.second.ptr( ni, nj ), &( *do_not_visit_value_ ), m.second.elemSize() ) == 0 ) { return; }
         if( std::memcmp( m.second.ptr( ni, nj ), m.second.ptr( i, j ), m.second.elemSize() ) != 0 ) { return; }
         neighbours.insert( std::make_pair( ni, nj ) );
     };
@@ -103,14 +121,14 @@ std::pair< H, cv::Mat > partition( std::pair< H, cv::Mat > m, boost::optional< c
     {
         for( int j = 0; j < m.second.cols; ++j )
         {
-            if( partitions.template at< comma::int32 >( i, j ) != none ) { continue; }
-            if( do_not_visit_value && std::memcmp( m.second.ptr( i, j ), &( *do_not_visit_value ), m.second.elemSize() ) == 0 ) { continue; }
+            if( partitions.template at< comma::int32 >( i, j ) != none_ ) { continue; }
+            if( do_not_visit_value_ && std::memcmp( m.second.ptr( i, j ), &( *do_not_visit_value_ ), m.second.elemSize() ) == 0 ) { continue; }
             neighbours.insert( std::make_pair( i, j ) );
             while( !neighbours.empty() )
             {
                 int ci = neighbours.begin()->first;
                 int cj = neighbours.begin()->second;
-                partitions.template at< comma::int32 >( neighbours.begin()->first, neighbours.begin()->second ) = id;
+                partitions.template at< comma::int32 >( neighbours.begin()->first, neighbours.begin()->second ) = id_;
                 neighbours.erase( neighbours.begin() );
                 insert_neighbour( ci, cj, -1, -1 );
                 insert_neighbour( ci, cj, -1,  0 );
@@ -121,12 +139,12 @@ std::pair< H, cv::Mat > partition( std::pair< H, cv::Mat > m, boost::optional< c
                 insert_neighbour( ci, cj,  1,  0 );
                 insert_neighbour( ci, cj,  1,  1 );
             }
-            ++id;
+            ++id_;
         }
     }
     std::pair< H, cv::Mat > n;
     n.first = m.first;
-    if( merge )
+    if( merge_ )
     {
         std::vector< cv::Mat > channels( 2 );
         channels[0] = m.second;
@@ -140,7 +158,48 @@ std::pair< H, cv::Mat > partition( std::pair< H, cv::Mat > m, boost::optional< c
     return n;
 }
 
-template std::pair< boost::posix_time::ptime, cv::Mat > partition< boost::posix_time::ptime >( std::pair< boost::posix_time::ptime, cv::Mat >, boost::optional< cv::Scalar > do_not_visit_value, comma::int32 none, bool merge );
-template std::pair< std::vector< char >, cv::Mat > partition< std::vector< char > >( std::pair< std::vector< char >, cv::Mat >, boost::optional< cv::Scalar > do_not_visit_value, comma::int32 none, bool merge );
+template < typename H >
+std::pair< typename partition< H >::functor_t, bool > partition< H >::make( const std::string& options )
+{
+    boost::optional< cv::Scalar > do_not_visit;
+    comma::int32 none = -1;
+    bool merge = false;
+    bool keep_id = false;
+    comma::int32 start_from = 0;
+    if( !options.empty() )
+    {
+        std::vector< std::string > s = comma::split( options, ',' );
+        for( unsigned int i = 0; i < s.size(); ++i ) // todo: quick and dirty, use visiting
+        {
+            if( s[i] == "merge" ) { merge = true; }
+            else if( s[i] == "keep-id" ) { keep_id = true; }
+            else if( s[i].substr( 0, 5 ) == "none:" ) { start_from = boost::lexical_cast< comma::int32 >( s[i].substr( 5 ) ); }
+            else if( s[i].substr( 0, 13 ) == "do-not-visit:" ) { do_not_visit = boost::lexical_cast< comma::int32 >( s[i].substr( 13 ) ); }
+            else if( s[i].substr( 0, 11 ) == "start-from:" ) { start_from = boost::lexical_cast< comma::int32 >( s[i].substr( 11 ) ); }
+            else { COMMA_THROW( comma::exception, "partition: expected an option, got: '" << s[i] << "'" ); }
+        }
+    }
+    return std::make_pair( partition< H >( do_not_visit, none, merge, keep_id, start_from ), !keep_id );
+}
+
+template < typename H >
+typename std::string partition< H >::usage( unsigned int indent )
+{
+    std::string offset( indent, ' ' );
+    std::ostringstream oss;
+    oss << offset << "partition=[do-not-visit:<value>][,keep-id][,merge][,none:<value>][,start-with:<id>]" << std::endl;
+    oss << offset << "    do-not-visit:<value>: value that does not represent any class; e.g. 0: do not" << std::endl;
+    oss << offset << "                          partition black pixels" << std::endl;
+    oss << offset << "    keep-id: keep incrementing id from image to image; otherwise, for each image, " << std::endl;
+    oss << offset << "             start id with the value of start-with option" << std::endl;
+    oss << offset << "    merge: if present and image is of type i (32-bit int), output two-channel image:" << std::endl;
+    oss << offset << "           first channel: original image, second: partition ids" << std::endl;
+    oss << offset << "    none:<id>: id that does not represent any class in output; default: -1" << std::endl;
+    oss << offset << "    start-with:<id>: start id numbers from <id>; default: 0" << std::endl;
+    return oss.str();
+}
+
+template class partition< boost::posix_time::ptime >;
+template class partition< std::vector< char > >;
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

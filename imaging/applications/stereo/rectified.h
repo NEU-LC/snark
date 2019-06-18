@@ -19,8 +19,8 @@
 #ifndef SNARK_IMAGING_APPLICATIONS_STEREO_RECTIFIED_H
 #define SNARK_IMAGING_APPLICATIONS_STEREO_RECTIFIED_H
 
-#include "../../stereo/rectify_map.h"
-#include "../../stereo/point_cloud.h"
+#include "rectify_map.h"
+#include "point_cloud.h"
 #include "../../../imaging/cv_mat/serialization.h"
 #include "parameters.h"
 

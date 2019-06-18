@@ -58,6 +58,7 @@
 
 #pragma once
 
+#include <boost/function.hpp>
 #include <boost/optional.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -65,6 +66,32 @@
 namespace snark { namespace cv_mat { namespace impl {
 
 template < typename H >
-std::pair< H, cv::Mat > partition( std::pair< H, cv::Mat > m, boost::optional< cv::Scalar > do_not_visit_value = boost::optional< cv::Scalar >(), comma::int32 none = -1, bool merge = false );
+class partition
+{
+    public:
+        partition( boost::optional< cv::Scalar > do_not_visit_value = boost::optional< cv::Scalar >()
+                 , comma::int32 none = -1
+                 , bool merge = false
+                 , bool keep_id = false
+                 , comma::int32 start_from = 0 );
+
+        std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
+        
+        typedef boost::function< std::pair< H, cv::Mat >( std::pair< H, cv::Mat > ) > functor_t;
+        
+        /// return partition functor and boolean flag that indicates whether functor is safely re-entrant in multithread context
+        /// functor is re-entrant, if keep_id is set to false
+        static std::pair< functor_t, bool > make( const std::string& options );
+        
+        static std::string usage( unsigned int indent = 0 );
+        
+    private:
+        boost::optional< cv::Scalar > do_not_visit_value_;
+        comma::int32 none_;
+        bool merge_;
+        bool keep_id_;
+        comma::int32 start_from_;
+        comma::int32 id_;
+};
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
