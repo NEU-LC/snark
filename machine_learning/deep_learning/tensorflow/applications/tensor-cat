@@ -225,10 +225,13 @@ if __name__ == '__main__':
                 saymore( "loaded frozen graph from '" + args.frozen_graph + "'" )
     elif not args.keras_model is None: 
         saymore( "loading model from '" + args.keras_model + "'..." )
-        if args.keras_weights is None: die( "got --keras-model, please specify --keras-weights" )
-        with open( args.keras_model, 'r' ) as f: keras_model = tf.keras.models.model_from_json( f.read() )
-        saymore( "loading weights from '" + args.keras_weights + "'..." )
-        keras_model.load_weights( args.keras_weights )
+        if args.keras_model.split( '.' )[-1] == 'h5':
+            keras_model = tf.keras.models.load_model( args.keras_model )
+        else:
+            if args.keras_weights is None: die( "got model definition in --keras-model, please specify --keras-weights" )
+            with open( args.keras_model, 'r' ) as f: keras_model = tf.keras.models.model_from_json( f.read() )
+            saymore( "loading weights from '" + args.keras_weights + "'..." )
+            keras_model.load_weights( args.keras_weights )
     else: # todo! there is an intermittent problem that prevents this branch from working; looking into it, but any help is welcome...
         say( "warning: if loading with --session does not work, use tensor-calc graph-freeze to freeze the graph and run tensor-cat --frozen-graph ...; loading from checkpoint: todo" )
         tf.reset_default_graph() # voodoo?
