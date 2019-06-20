@@ -83,6 +83,7 @@
 #include "detail/blank.h"
 #include "detail/colors.h"
 #include "detail/file.h"
+#include "detail/hard_edge.h"
 #include "detail/load.h"
 #include "detail/morphology.h"
 #include "detail/partition.h"
@@ -2370,6 +2371,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
         return std::make_pair( boost::bind< value_type_t >( circle_impl_< H >, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) ), true );
     }
+    if( e[0] == "hard-edge" ) { return impl::hard_edge< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "partition" ) { return impl::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
     {

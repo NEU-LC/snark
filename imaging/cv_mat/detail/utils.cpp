@@ -27,12 +27,14 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <memory>
 #include <string>
 #include <comma/base/exception.h>
 #include <boost/lexical_cast.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/types_c.h>
+#include <comma/base/types.h>
 #include "../../../timing/time.h"
 #include "utils.h"
 
@@ -187,5 +189,35 @@ void check_image_type( const cv::Mat& m, const std::string& type )
     if( size == 2 && !( cv_type == CV_16UC1 || cv_type == CV_16UC3 ) ) {  COMMA_THROW( comma::exception, "expected 16-bit image with unsigned elements, got image of type " << type_as_string( cv_type ) ); }
     if( size == 2 && !( type == "tiff" || type == "tif" || type == "png" || type == "jp2" ) ) { COMMA_THROW( comma::exception, "cannot convert 16-bit image to type " << type << "; use tif or png instead" ); }
 }
+
+template < typename S, typename T >
+static void assign_( unsigned char* channel, T value ) { *( reinterpret_cast< S* >( channel ) ) = static_cast< S >( value ); }
+
+template < typename T >
+void set_channel( unsigned char* channel, T value, int depth )
+{
+    switch( depth )
+    {
+        case CV_8U: assign_< unsigned char >( channel, value ); break;
+        case CV_8S: assign_< char >( channel, value ); break;
+        case CV_16U: assign_< comma::uint16 >( channel, value ); break;
+        case CV_16S: assign_< comma::int16 >( channel, value ); break;
+        case CV_32S: assign_< comma::int32 >( channel, value ); break;
+        case CV_32F: assign_< float >( channel, value ); break;
+        case CV_64F: assign_< double >( channel, value ); break;
+        default: break; // never here
+    }
+}
+
+template void set_channel< char >( unsigned char*, char, int );
+template void set_channel< unsigned char >( unsigned char*, unsigned char, int );
+template void set_channel< comma::int16 >( unsigned char*, comma::int16, int );
+template void set_channel< comma::uint16 >( unsigned char*, comma::uint16, int );
+template void set_channel< comma::int32 >( unsigned char*, comma::int32, int );
+template void set_channel< comma::uint32 >( unsigned char*, comma::uint32, int );
+template void set_channel< comma::int64 >( unsigned char*, comma::int64, int );
+template void set_channel< comma::uint64 >( unsigned char*, comma::uint64, int );
+template void set_channel< float >( unsigned char*, float, int );
+template void set_channel< double >( unsigned char*, double, int );
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

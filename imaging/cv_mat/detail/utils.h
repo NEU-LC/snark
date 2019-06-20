@@ -51,4 +51,7 @@ void check_image_type( const cv::Mat& m, const std::string& type );
 
 std::vector< int > imwrite_params( const std::string& type, const int quality );
 
+template < typename T >
+void set_channel( unsigned char* channel, T value, int depth );
+
 } } }  // namespace snark { namespace cv_mat { namespace impl {
