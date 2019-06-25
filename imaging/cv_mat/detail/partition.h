@@ -74,7 +74,8 @@ class partition
                  , bool merge = false
                  , bool keep_id = false
                  , comma::int32 start_from = 0
-                 , unsigned int min_partition_size = 0 );
+                 , unsigned int min_partition_size = 0
+                 , unsigned int degrees = 8 );
 
         std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
         
@@ -94,6 +95,7 @@ class partition
         comma::int32 start_from_;
         comma::int32 id_;
         unsigned int min_partition_size_;
+        unsigned int degrees_;
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

@@ -69,8 +69,6 @@
 #include <comma/string/split.h>
 #include "partition.h"
 
-#include <iostream>
-
 namespace snark { namespace cv_mat { namespace impl {
 
 template < typename S, typename T = S >
@@ -91,7 +89,8 @@ partition< H >::partition( boost::optional< cv::Scalar > do_not_visit_value
                          , bool merge
                          , bool keep_id
                          , comma::int32 start_from
-                         , unsigned int min_partition_size )
+                         , unsigned int min_partition_size
+                         , unsigned int degrees )
     : do_not_visit_value_( do_not_visit_value )
     , none_( none )
     , merge_( merge )
@@ -99,6 +98,7 @@ partition< H >::partition( boost::optional< cv::Scalar > do_not_visit_value
     , start_from_( start_from )
     , id_( start_from )
     , min_partition_size_( min_partition_size )
+    , degrees_( degrees )
 {
 }
 
@@ -134,14 +134,17 @@ std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
             partitions.template at< comma::int32 >( ci, cj ) = id;
             ++size;
             neighbours.erase( neighbours.begin() );
-            insert_neighbour( ci, cj, -1, -1, none );
             insert_neighbour( ci, cj, -1,  0, none );
-            insert_neighbour( ci, cj, -1,  1, none );
             insert_neighbour( ci, cj,  0, -1, none );
             insert_neighbour( ci, cj,  0,  1, none );
-            insert_neighbour( ci, cj,  1, -1, none );
             insert_neighbour( ci, cj,  1,  0, none );
-            insert_neighbour( ci, cj,  1,  1, none );
+            if( degrees_ == 8 )
+            {
+                insert_neighbour( ci, cj, -1, -1, none );
+                insert_neighbour( ci, cj, -1,  1, none );
+                insert_neighbour( ci, cj,  1, -1, none );
+                insert_neighbour( ci, cj,  1,  1, none );
+            }
         }
         return size;
     };
@@ -182,6 +185,7 @@ std::pair< typename partition< H >::functor_t, bool > partition< H >::make( cons
     bool keep_id = false;
     comma::int32 start_from = 0;
     unsigned int min_partition_size = 0;
+    unsigned int degrees = 8;
     if( !options.empty() )
     {
         std::vector< std::string > s = comma::split( options, ',' );
@@ -190,14 +194,16 @@ std::pair< typename partition< H >::functor_t, bool > partition< H >::make( cons
             if( s[i] == "merge" ) { merge = true; }
             else if( s[i] == "keep-id" ) { keep_id = true; }
             else if( s[i].substr( 0, 5 ) == "none:" ) { start_from = boost::lexical_cast< comma::int32 >( s[i].substr( 5 ) ); }
+            else if( s[i].substr( 0, 8 ) == "degrees:" ) { degrees = boost::lexical_cast< comma::uint32 >( s[i].substr( 8 ) ); }
             else if( s[i].substr( 0, 13 ) == "do-not-visit:" ) { do_not_visit = boost::lexical_cast< comma::int32 >( s[i].substr( 13 ) ); }
             else if( s[i].substr( 0, 11 ) == "start-from:" ) { start_from = boost::lexical_cast< comma::int32 >( s[i].substr( 11 ) ); }
             else if( s[i].substr( 0, 9 ) == "min-size:" ) { min_partition_size = boost::lexical_cast< comma::int32 >( s[i].substr( 9 ) ); }
             else { COMMA_THROW( comma::exception, "partition: expected an option, got: '" << s[i] << "'" ); }
         }
     }
+    if( degrees != 4 && degrees != 8 ) { COMMA_THROW( comma::exception, "partition: degrees:4 or degrees:8, got: degrees:" << degrees ); }
     if( start_from <= none ) { COMMA_THROW( comma::exception, "partition: expected start-from > none, got: start-from: " << start_from << " none: " << none ); }
-    return std::make_pair( partition< H >( do_not_visit, none, merge, keep_id, start_from, min_partition_size ), !keep_id );
+    return std::make_pair( partition< H >( do_not_visit, none, merge, keep_id, start_from, min_partition_size, degrees ), !keep_id );
 }
 
 template < typename H >
@@ -207,6 +213,7 @@ typename std::string partition< H >::usage( unsigned int indent )
     std::ostringstream oss;
     oss << offset << "partition=<options>" << std::endl;
     oss << offset << "    <options>" << std::endl;
+    oss << offset << "        degrees:<value>: 4: pixels connected top/down, left/right; 8: pixels connected through diagonals, too; default: 8" << std::endl;
     oss << offset << "        do-not-visit:<value>: value that does not represent any class; e.g. 0: do not" << std::endl;
     oss << offset << "                              partition black pixels" << std::endl;
     oss << offset << "        keep-id: keep incrementing id from image to image; otherwise, for each image, " << std::endl;
