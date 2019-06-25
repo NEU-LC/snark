@@ -32,7 +32,6 @@
 #include <iostream>
 #include <sstream>
 #include <comma/application/command_line_options.h>
-#include <comma/application/contact_info.h>
 #include <comma/csv/stream.h>
 #include <comma/name_value/parser.h>
 #include <comma/name_value/to_xml.h>
@@ -93,8 +92,6 @@ void usage( bool verbose = false )
     std::cerr << "    apply styles: " << std::endl;
     std::cerr << std::endl;
     std::cerr << "    echo -e \"0,0\\n0,1\" | csv-to-kml trajectory --style='url=#my_style;line-color=ff00ff00;line-width=3'" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << comma::contact_info << std::endl;
     std::cerr << std::endl;
 }
 

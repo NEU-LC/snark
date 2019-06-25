@@ -30,7 +30,6 @@
 #include <iostream>
 #include <sstream>
 #include <comma/application/command_line_options.h>
-#include <comma/application/contact_info.h>
 #include <comma/csv/stream.h>
 #include <comma/visiting/traits.h>
 #include "../svg.h"
@@ -123,10 +122,8 @@ void usage( bool verbose = false )
     }
     else
     {
-        std::cerr << "examples: csv-to-svg --help --verbose..." << std::endl;
+        std::cerr << "examples: csv-to-svg --help --verbose for more..." << std::endl;
     }
-    std::cerr << std::endl;
-    std::cerr << comma::contact_info << std::endl;
     std::cerr << std::endl;
 }
 
