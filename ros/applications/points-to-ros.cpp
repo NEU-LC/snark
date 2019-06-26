@@ -234,7 +234,8 @@ struct points
         , ascii( !csv.binary() )
     {}
 
-    void send( ros::Publisher* publisher, rosbag::Bag* bag, const std::string& topic, const std::string& frame_id )
+    void send( const std::function< void( sensor_msgs::PointCloud2 ) >& publisher_fn
+             , const std::string& frame_id )
     {
         //create msg
         sensor_msgs::PointCloud2 msg=u.create_msg(records.size());
@@ -248,14 +249,7 @@ struct points
             std::memcpy(&msg.data[offset],&i.data[0],data_size);
             offset+=data_size;
         }
-        //send
-        if( publisher )
-        {
-            publisher->publish(msg);
-            ros::spinOnce();
-        }
-        // save to bag
-        if( bag ) { bag->write( topic, msg.header.stamp, msg ); }
+        publisher_fn( msg );
         records.clear();
     }
 
@@ -300,6 +294,7 @@ int main( int argc, char** argv )
         std::unique_ptr< ros::NodeHandle > ros_node;
         std::unique_ptr< ros::Publisher > publisher;
         std::unique_ptr< rosbag::Bag > bag;
+        std::unique_ptr< std::function< void( sensor_msgs::PointCloud2 ) > > publish_fn;
 
         if( publishing )
         {
@@ -314,11 +309,23 @@ int main( int argc, char** argv )
             ros_node.reset( new ros::NodeHandle );
             publisher.reset( new ros::Publisher( ros_node->advertise< sensor_msgs::PointCloud2 >( topic, queue_size, options.exists( "--latch" ))));
             ros::spinOnce();
+            publish_fn.reset( new std::function< void( sensor_msgs::PointCloud2 ) >(
+                                  [&]( sensor_msgs::PointCloud2 msg )
+                                  {
+                                      publisher->publish( msg );
+                                      ros::spinOnce();
+                                  } ));
         }
         else
         {
             bag.reset( new rosbag::Bag );
             bag->open( output_option, rosbag::bagmode::Write );
+            publish_fn.reset( new std::function< void( sensor_msgs::PointCloud2 ) >(
+                                  [&]( sensor_msgs::PointCloud2 msg )
+                                  {
+                                      bag->write( topic, msg.header.stamp, msg );
+                                  } ));
+
         }
         comma::csv::input_stream<record> is(std::cin, csv);
         comma::csv::passed<record> passed(is,std::cout,csv.flush);
@@ -330,14 +337,13 @@ int main( int argc, char** argv )
             const record* p=is.read();
             if ( ( !p || block != p->block) && !points.records.empty())
             {
-                //send the message
-                points.send( publisher.get(), bag.get(), topic, frame_id );
+                points.send( *publish_fn.get(), frame_id );
             }
             if( !p ) { break; }
             if(pass_through) { passed.write(); }
             block=p->block;
             points.push_back(is,*p);
-            if( !has_block && !all ) { points.send( publisher.get(), bag.get(), topic, frame_id ); }
+            if( !has_block && !all ) { points.send( *publish_fn.get(), frame_id ); }
         }
         if( publishing && options.exists( "--hang-on,--stay" ))
         {
