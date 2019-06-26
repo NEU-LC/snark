@@ -225,6 +225,9 @@ if __name__ == '__main__':
                 saymore( "loaded frozen graph from '" + args.frozen_graph + "'" )
     elif not args.keras_model is None: 
         saymore( "loading model from '" + args.keras_model + "'..." )
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True # todo? parametrize with command line option?
+        tf.keras.backend.set_session( tf.Session( config = config ) ) # quick and dirty, just to make it working
         if args.keras_model.split( '.' )[-1] == 'h5':
             keras_model = tf.keras.models.load_model( args.keras_model )
         else:
