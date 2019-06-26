@@ -143,7 +143,7 @@ struct point_cloud
             case comma::csv::format::int64:
             case comma::csv::format::uint64:
             case comma::csv::format::time:
-                std::cerr<<"warning: ROS PointCloud2 doesn't support data type '"<<comma::csv::format::to_format(t)<<"', using FLOAT64 instead"<<std::endl;
+                comma::verbose << "warning: ROS PointCloud2 doesn't support data type '" << comma::csv::format::to_format(t) << "', using FLOAT64 instead" << std::endl;
                 return sensor_msgs::PointField::FLOAT64;
             default:
 //                 comma::csv::format::
