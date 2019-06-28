@@ -224,16 +224,16 @@ template <> struct traits< record >
     
 struct points
 {
-    std::vector<record> records;
+    std::vector< record > records;
     comma::csv::format format;
-    snark::ros::point_cloud u;
+    snark::ros::point_cloud point_cloud;
     std::size_t data_size;
     bool ascii;
     //const comma::command_line_options& options
 
     points( const comma::csv::options& csv, const comma::csv::format& format )
         : format( format )
-        , u( csv.fields, format.expanded_string() )
+        , point_cloud( csv.fields, format.expanded_string() )
         , data_size( format.size() )
         , ascii( !csv.binary() )
     {}
@@ -242,34 +242,35 @@ struct points
              , const std::string& frame_id )
     {
         //create msg
-        sensor_msgs::PointCloud2 msg=u.create_msg(records.size());
+        sensor_msgs::PointCloud2 msg = point_cloud.create_msg( records.size() );
         //fill in
-        msg.header.stamp=::ros::Time::fromBoost(records[0].t);
-        msg.header.seq=records[0].block;
-        msg.header.frame_id=frame_id;
-        std::size_t offset=0;
-        for(const auto& i : records)
+        msg.header.stamp = ::ros::Time::fromBoost( records[0].t );
+        msg.header.seq = records[0].block;
+        msg.header.frame_id = frame_id;
+
+        std::size_t offset = 0;
+        for( const auto& record : records )
         {
-            std::memcpy(&msg.data[offset],&i.data[0],data_size);
-            offset+=data_size;
+            std::memcpy( &msg.data[offset], &record.data[0], data_size );
+            offset += data_size;
         }
         publisher_fn( msg );
         records.clear();
     }
 
-    void push_back(const comma::csv::input_stream<record>& is, const record& p)
+    void push_back( const comma::csv::input_stream<record>& is, const record& record )
     {
-        records.push_back(p);
-        records.back().data.resize(data_size);
-        if(ascii)
+        records.push_back( record );
+        records.back().data.resize( data_size );
+        if( ascii )
         {
-            std::string buf=format.csv_to_bin(is.ascii().last());
-            if(buf.size()!=data_size) { COMMA_THROW(comma::exception,"csv_to_bin size mismatch "<<buf.size()<<"; "<<data_size);} 
-            std::memcpy(&records.back().data[0],buf.data(),data_size);
+            std::string buf = format.csv_to_bin( is.ascii().last() );
+            if( buf.size() != data_size ) { COMMA_THROW( comma::exception, "csv_to_bin size mismatch " << buf.size() << "; " << data_size ); } 
+            std::memcpy( &records.back().data[0], buf.data(), data_size );
         }
         else
         {
-            std::memcpy(&records.back().data[0],is.binary().last(),data_size);
+            std::memcpy( &records.back().data[0], is.binary().last(), data_size );
         }
     }
 };
@@ -333,30 +334,33 @@ int main( int argc, char** argv )
                                   } ));
 
         }
-        comma::csv::input_stream<record> is(std::cin, csv);
-        comma::csv::passed<record> passed(is,std::cout,csv.flush);
+
+        comma::csv::input_stream< record > is( std::cin, csv );
+        comma::csv::passed< record > passed( is, std::cout, csv.flush );
         unsigned int block = 0;
         points points( csv, format );
-        while(std::cin.good())
+
+        while( std::cin.good() )
         {
             //read binary from input
-            const record* p=is.read();
-            if ( ( !p || block != p->block) && !points.records.empty())
+            const record* p = is.read();
+            if (( !p || block != p->block ) && !points.records.empty() )
             {
                 points.send( *publish_fn.get(), frame_id );
             }
             if( !p ) { break; }
-            if(pass_through) { passed.write(); }
-            block=p->block;
-            points.push_back(is,*p);
+            if( pass_through ) { passed.write(); }
+            block = p->block;
+            points.push_back( is, *p );
             if( !has_block && !all ) { points.send( *publish_fn.get(), frame_id ); }
         }
+
         if( publishing && options.exists( "--hang-on,--stay" ))
         {
-            for(int i=0;i<3;i++)
+            for( int i = 0; i < 3; i++ )
             {
                 ros::spinOnce();
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for( std::chrono::milliseconds(1000) );
             }
         }
         return 0;
