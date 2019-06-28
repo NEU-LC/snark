@@ -116,14 +116,53 @@ void usage( bool detail )
 
 namespace snark { namespace ros {
 
-struct point_cloud
+class point_cloud
 {
-    std::vector<sensor_msgs::PointField> point_fields;
-    static unsigned map_data_type(comma::csv::format::types_enum t)
+public:
+    point_cloud() {}
+
+    point_cloud( const std::string& fields, const std::string& format_str )
+    {
+        comma::csv::format format( format_str );
+        auto vf = comma::split( fields, ',' );
+        data_size = format.size();
+        comma::verbose << "data_size: " << data_size << std::endl;
+        const auto& elements = format.elements();
+        if( vf.size() != elements.size() ) { COMMA_THROW( comma::exception, "size of fields and binary mismatch: " << vf.size() << " vs " << elements.size() ); }
+        point_fields.reserve( vf.size() );
+        for( unsigned i = 0; i < vf.size(); i++ )
+        {
+            sensor_msgs::PointField pf;
+            pf.name = vf[i];
+            pf.offset = elements[i].offset;
+            pf.datatype = map_data_type( elements[i].type );
+            pf.count = elements[i].count;
+            point_fields.push_back( pf );
+            //update offset
+//             comma::verbose<<"point field:  "<<pf<<std::endl;
+        }
+    }
+
+    /// allocate an empty message
+    /// @param count number of records in one frame/block
+    sensor_msgs::PointCloud2 create_msg( unsigned count )
+    {
+        sensor_msgs::PointCloud2 msg;
+        msg.height = 1;
+        msg.width = count;
+        msg.point_step = data_size;
+        msg.row_step = data_size * count;
+        msg.fields = point_fields;
+        msg.data.resize( count * data_size );
+        return msg;
+    }
+
+private:
+    static unsigned map_data_type( comma::csv::format::types_enum t )
     {
         switch(t)
         {
-            case comma::csv::format::char_t: 
+            case comma::csv::format::char_t:
             case comma::csv::format::int8:
                 return sensor_msgs::PointField::INT8;
             case comma::csv::format::uint8:
@@ -146,47 +185,12 @@ struct point_cloud
                 comma::verbose << "warning: ROS PointCloud2 doesn't support data type '" << comma::csv::format::to_format(t) << "', using FLOAT64 instead" << std::endl;
                 return sensor_msgs::PointField::FLOAT64;
             default:
-//                 comma::csv::format::
-//                 , long_time, fixed_string };
-            { COMMA_THROW( comma::exception, "data type not supported: "<<comma::csv::format::to_format(t)); }
+                { COMMA_THROW( comma::exception, "data type not supported: " << comma::csv::format::to_format(t) ); }
         }
     }
+
+    std::vector<sensor_msgs::PointField> point_fields;
     std::size_t data_size;
-    point_cloud() { }
-    point_cloud(const std::string& fields, const std::string& format_str)
-    {
-        comma::csv::format format(format_str);
-        auto vf=comma::split(fields,',');
-        data_size=format.size();
-        comma::verbose<<"data_size: "<<data_size<<std::endl;
-        const auto& elements=format.elements();
-        if(vf.size()!=elements.size()) { COMMA_THROW( comma::exception, "size of fields and binary mismatch: "<<vf.size()<< " vs "<<elements.size()); }
-        point_fields.reserve(vf.size());
-        for(unsigned i=0;i<vf.size();i++)
-        {
-            sensor_msgs::PointField pf;
-            pf.name=vf[i];
-            pf.offset=elements[i].offset;
-            pf.datatype=map_data_type(elements[i].type);
-            pf.count=elements[i].count;
-            point_fields.push_back(pf);
-            //update offset
-//             comma::verbose<<"point field:  "<<pf<<std::endl;
-        }
-    }
-    /// allocate an empty message
-    /// @param count number of records in one frame/block
-    sensor_msgs::PointCloud2 create_msg(unsigned count)
-    {
-        sensor_msgs::PointCloud2 msg;
-        msg.height=1;
-        msg.width=count;
-        msg.point_step=data_size;
-        msg.row_step=data_size*count;
-        msg.fields=point_fields;
-        msg.data.resize(count*data_size);
-        return msg;
-    }
 };
 
 } } // namespace snark { namespace ros {
