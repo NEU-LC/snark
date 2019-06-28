@@ -43,7 +43,7 @@
 #include "std_msgs/String.h"
 #include "sensor_msgs/PointCloud2.h"
 
-void bash_completion( unsigned const ac, char const * const * av )
+void bash_completion( unsigned int const ac, char const * const * av )
 {
     static const char* completion_options =
         " --all"
@@ -130,7 +130,7 @@ public:
         const auto& elements = format.elements();
         if( vf.size() != elements.size() ) { COMMA_THROW( comma::exception, "size of fields and binary mismatch: " << vf.size() << " vs " << elements.size() ); }
         point_fields.reserve( vf.size() );
-        for( unsigned i = 0; i < vf.size(); i++ )
+        for( unsigned int i = 0; i < vf.size(); i++ )
         {
             sensor_msgs::PointField pf;
             pf.name = vf[i];
@@ -145,7 +145,7 @@ public:
 
     /// allocate an empty message
     /// @param count number of records in one frame/block
-    sensor_msgs::PointCloud2 create_msg( unsigned count )
+    sensor_msgs::PointCloud2 create_msg( unsigned int count )
     {
         sensor_msgs::PointCloud2 msg;
         msg.height = 1;
@@ -158,7 +158,7 @@ public:
     }
 
 private:
-    static unsigned map_data_type( comma::csv::format::types_enum t )
+    static unsigned int map_data_type( comma::csv::format::types_enum t )
     {
         switch(t)
         {
@@ -284,7 +284,7 @@ int main( int argc, char** argv )
         if( !csv.binary() && !options.exists( "--format" )) { COMMA_THROW( comma::exception, "please specify --binary=<format>, or --format=<format> for ascii"); }
         csv.full_xpath=true;
         std::string topic=options.value<std::string>("--topic");
-        unsigned queue_size=options.value<unsigned>("--queue-size",1);
+        unsigned int queue_size = options.value< unsigned int >( "--queue-size", 1 );
 //         comma::csv::format format(csv.binary() ? csv.format() : options.value<std::string>("--format"));
         if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
         bool has_block=csv.has_field("block");
@@ -333,7 +333,7 @@ int main( int argc, char** argv )
         }
         comma::csv::input_stream<record> is(std::cin, csv);
         comma::csv::passed<record> passed(is,std::cout,csv.flush);
-        unsigned block=0;
+        unsigned int block = 0;
         points points(csv,csv.binary() ? csv.format().string() : options.value<std::string>("--format"));
         while(std::cin.good())
         {
