@@ -231,8 +231,8 @@ struct points
     bool ascii;
     //const comma::command_line_options& options
 
-    points( const comma::csv::options& csv, const std::string& format_str )
-        : format( format_str )
+    points( const comma::csv::options& csv, const comma::csv::format& format )
+        : format( format )
         , u( csv.fields, format.expanded_string() )
         , data_size( format.size() )
         , ascii( !csv.binary() )
@@ -285,8 +285,10 @@ int main( int argc, char** argv )
         csv.full_xpath=true;
         std::string topic=options.value<std::string>("--topic");
         unsigned int queue_size = options.value< unsigned int >( "--queue-size", 1 );
-//         comma::csv::format format(csv.binary() ? csv.format() : options.value<std::string>("--format"));
         if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+        comma::csv::format format = ( csv.binary()
+                                    ? csv.format()
+                                    : comma::csv::format( options.value< std::string >( "--format" )));
         bool has_block=csv.has_field("block");
         bool all=options.exists("--all");
         std::string frame_id=options.value<std::string>("--frame","");
@@ -334,7 +336,7 @@ int main( int argc, char** argv )
         comma::csv::input_stream<record> is(std::cin, csv);
         comma::csv::passed<record> passed(is,std::cout,csv.flush);
         unsigned int block = 0;
-        points points(csv,csv.binary() ? csv.format().string() : options.value<std::string>("--format"));
+        points points( csv, format );
         while(std::cin.good())
         {
             //read binary from input
