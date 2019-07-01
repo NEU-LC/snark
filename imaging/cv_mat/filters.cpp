@@ -90,6 +90,7 @@
 #include "detail/ratio.h"
 #include "detail/remove_speckles.h"
 #include "detail/remap.h"
+#include "detail/text.h"
 #include "detail/utils.h"
 #include "detail/warp.h"
 
@@ -1508,20 +1509,6 @@ static typename impl::filters< H >::value_type normalize_sum_impl_( typename imp
     return typename impl::filters< H >::value_type(m.first, filter.normalize_sum(m.second));
 }
 
-static float colour_scale_factor( int const depth )
-{
-    static auto const factors = std::unordered_map< int, float > { { CV_8S, 0.5 }, { CV_16U, 256.0 }, { CV_16S, 128.0 }, { CV_32S, 8388608.0 }, { CV_32F, 1.0 / 255.0 } };
-    auto found = factors.find( depth );
-    return ( factors.cend() != found ? found->second : 1.0 );
-}
-
-template < typename H >
-static typename impl::filters< H >::value_type text_impl_( typename impl::filters< H >::value_type m, const std::string& s, const cv::Point& origin, const cv::Scalar& colour )
-{
-    cv::putText( m.second, s, origin, cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar( colour * colour_scale_factor( m.second.depth() ) ), 1, CV_AA );
-    return m;
-}
-
 template < typename H >
 class max_impl_ // experimental, to debug
 {
@@ -2512,25 +2499,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if( e[0] == "flip" ) { return std::make_pair( boost::bind< value_type_t >( flip_impl_< H >, _1, 0 ), true ); }
     if( e[0] == "flop" ) { return std::make_pair( boost::bind< value_type_t >( flip_impl_< H >, _1, 1 ), true ); }
     if( e[0] == "magnitude" ) { return std::make_pair( boost::bind< value_type_t >( magnitude_impl_< H >, _1 ), true ); }
-    if( e[0] == "text" )
-    {
-        if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "text: expected text value" ); }
-        std::vector< std::string > w = comma::split( e[1], ',' );
-        cv::Point p( 10, 10 );
-        if( w.size() >= 3 ) { p = cv::Point( boost::lexical_cast< unsigned int >( w[1] ), boost::lexical_cast< unsigned int >( w[2] ) ); }
-        cv::Scalar s( 0, 0xffff, 0xffff );
-        if( w.size() >= 4 )
-        {
-            if( w[3] == "red" ) { s = cv::Scalar( 0, 0, 0xffff ); }
-            else if( w[3] == "green" ) { s = cv::Scalar( 0, 0xffff, 0 ); }
-            else if( w[3] == "blue" ) { s = cv::Scalar( 0xffff, 0, 0 ); }
-            else if( w[3] == "white" ) { s = cv::Scalar( 0xffff, 0xffff, 0xffff ); }
-            else if( w[3] == "black" ) { s = cv::Scalar( 0, 0, 0 ); }
-            else if( w[3] == "yellow" ) { s = cv::Scalar( 0, 0xffff, 0xffff ); }
-            else { COMMA_THROW( comma::exception, "expected colour of text, e.g. 'red', in \"" << comma::join( e, '=' ) << "\", got '" << w[3] << "'" ); }
-        }
-        return std::make_pair( boost::bind< value_type_t >( text_impl_< H >, _1, w[0], p, s ), true );
-    }
+    if( e[0] == "text" ) { return impl::text< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "convert-to" || e[0] == "convert_to" )
     {
         if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "convert-to: expected options, got none" ); }
@@ -3287,7 +3256,7 @@ static std::string usage_impl_()
     //oss << "        warp=<how>: todo: warp image" << std::endl;
     //oss << "        unwarp=<how>: todo: unwarp image" << std::endl;
     //oss << "            <how>: todo" << std::endl;
-    oss << "        text=<text>[,x,y][,colour]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
+    oss << impl::text< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
     oss << "            <maxval>: maximum value to use with the binary and binary_inv thresholding types (default:255)" << std::endl;
