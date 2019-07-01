@@ -81,6 +81,7 @@ void usage( bool detail )
     std::cerr << "\n    --latch:               last message will be saved for future subscribers";
     std::cerr << "\n    --node-name:           default=ros::init_options::AnonymousName flag";
     std::cerr << "\n    --output,-o=[<bag>]:   write to bag rather than publish";
+    std::cerr << "\n    --output-fields=[<fields>]: fields to output; default: all input fields";
     std::cerr << "\n    --pass-through,--pass: pass input data to stdout";
     std::cerr << "\n    --queue-size=[<n>]:    ROS publisher queue size, default=1";
     std::cerr << "\n    --topic=<topic>:       name of topic to publish to";
@@ -114,46 +115,117 @@ void usage( bool detail )
     std::cerr << "\n" << std::endl;
 }
 
+struct record
+{
+    boost::posix_time::ptime t;
+    comma::uint32 block;
+    std::vector< char > data;
+    record() : block( 0 ) {}
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< record >
+{
+    template< typename K, typename V > static void visit( const K&, const record& r, V& v )
+    {
+        v.apply( "t", r.t );
+        v.apply( "block", r.block );
+    }
+
+    template< typename K, typename V > static void visit( const K&, record& r, V& v )
+    {
+        v.apply( "t", r.t );
+        v.apply( "block", r.block );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
 namespace snark { namespace ros {
 
 class point_cloud
 {
-public:
-    point_cloud() {}
+    struct field_desc
+    {
+        sensor_msgs::PointField point_field;
+        std::size_t input_offset;
+        std::size_t size;
+        field_desc( sensor_msgs::PointField point_field, std::size_t input_offset, std::size_t size )
+            : point_field( point_field )
+            , input_offset( input_offset )
+            , size( size )
+        {}
+    };
 
-    point_cloud( const std::string& fields, const std::string& format_str )
+public:
+    point_cloud( const std::string& fields_str
+               , const std::string& format_str
+               , const std::string& output_fields_str
+               , const std::string& frame_id )
+        : frame_id( frame_id )
     {
         comma::csv::format format( format_str );
-        auto vf = comma::split( fields, ',' );
-        data_size = format.size();
-        comma::verbose << "data_size: " << data_size << std::endl;
+        std::vector< std::string > fields = comma::split( fields_str, ',' );
+        std::vector< std::string > output_fields = comma::split( output_fields_str, ',' );
         const auto& elements = format.elements();
-        if( vf.size() != elements.size() ) { COMMA_THROW( comma::exception, "size of fields and binary mismatch: " << vf.size() << " vs " << elements.size() ); }
-        point_fields.reserve( vf.size() );
-        for( unsigned int i = 0; i < vf.size(); i++ )
+        if( fields.size() != elements.size() ) { COMMA_THROW( comma::exception, "size of fields and binary mismatch: " << fields.size() << " vs " << elements.size() ); }
+        field_descs.reserve( fields.size() );
+        std::size_t output_offset = 0;
+        for( auto& output_field : output_fields )
         {
-            sensor_msgs::PointField pf;
-            pf.name = vf[i];
-            pf.offset = elements[i].offset;
-            pf.datatype = map_data_type( elements[i].type );
-            pf.count = elements[i].count;
-            point_fields.push_back( pf );
-            //update offset
-//             comma::verbose<<"point field:  "<<pf<<std::endl;
+            auto it = std::find( fields.begin(), fields.end(), output_field );
+            if( it != fields.end() )
+            {
+                auto i = std::distance( fields.begin(), it );
+                sensor_msgs::PointField point_field;
+                point_field.name = fields[i];
+                point_field.offset = output_offset;
+                point_field.datatype = map_data_type( elements[i].type );
+                point_field.count = elements[i].count;
+                std::size_t total_size = sizeof_datatype( point_field.datatype ) * point_field.count;
+                field_descs.push_back( field_desc( point_field, elements[i].offset, total_size ));
+                output_offset += total_size;
+                comma::verbose << "added " << point_field.name
+                               << "(" << comma::csv::format::to_format( elements[i].type )
+                               << ") to point fields" << std::endl;
+            }
         }
+        output_data_size = output_offset;
+        comma::verbose << "output_data_size: " << output_data_size << std::endl;
     }
 
-    /// allocate an empty message
-    /// @param count number of records in one frame/block
-    sensor_msgs::PointCloud2 create_msg( unsigned int count )
+    sensor_msgs::PointCloud2 create_msg( const std::vector< record >& records )
     {
+        unsigned int count = records.size();
         sensor_msgs::PointCloud2 msg;
+
+        std::vector< sensor_msgs::PointField > point_fields;
+        for( const auto& field_desc : field_descs ) { point_fields.push_back( field_desc.point_field ); }
+
+        msg.header.stamp = ::ros::Time::fromBoost( records[0].t );
+        msg.header.seq = records[0].block;
+        msg.header.frame_id = frame_id;
         msg.height = 1;
         msg.width = count;
-        msg.point_step = data_size;
-        msg.row_step = data_size * count;
+        msg.point_step = output_data_size;
+        msg.row_step = output_data_size * count;
         msg.fields = point_fields;
-        msg.data.resize( count * data_size );
+        msg.data.resize( output_data_size * count );
+
+        std::size_t msg_data_offset = 0;
+        for( const auto& record : records )
+        {
+            size_t field_offset = 0;
+            for( const auto& field_desc : field_descs )
+            {
+                std::memcpy( &msg.data[msg_data_offset] + field_offset
+                           , &record.data[0] + field_desc.input_offset
+                           , field_desc.size );
+                field_offset += field_desc.size;
+            }
+            msg_data_offset += output_data_size;
+        }
         return msg;
     }
 
@@ -189,78 +261,50 @@ private:
         }
     }
 
-    std::vector<sensor_msgs::PointField> point_fields;
-    std::size_t data_size;
+    static std::size_t sizeof_datatype( std::size_t datatype )
+    {
+        switch( datatype )
+        {
+            case sensor_msgs::PointField::INT8:
+            case sensor_msgs::PointField::UINT8:
+                return 1;
+            case sensor_msgs::PointField::INT16:
+            case sensor_msgs::PointField::UINT16:
+                return 2;
+            case sensor_msgs::PointField::INT32:
+            case sensor_msgs::PointField::UINT32:
+            case sensor_msgs::PointField::FLOAT32:
+                return 4;
+            case sensor_msgs::PointField::FLOAT64:
+                return 8;
+            default:
+                { COMMA_THROW( comma::exception, "unknown data type: " << datatype ); }
+        }
+    }
+
+    std::vector< field_desc > field_descs;
+    std::size_t output_data_size;
+    std::string frame_id;
 };
 
 } } // namespace snark { namespace ros {
-
-struct record
-{
-    boost::posix_time::ptime t;
-    comma::uint32 block;
-    std::vector<char> data;
-    record() : block(0) { }
-};
-
-namespace comma { namespace visiting {
-
-template <> struct traits< record >
-{
-    template< typename K, typename V > static void visit( const K&, const record& r, V& v )
-    {
-        v.apply( "t", r.t );
-        v.apply( "block", r.block );
-    }
     
-    template< typename K, typename V > static void visit( const K&, record& r, V& v )
-    {
-        v.apply( "t", r.t );
-        v.apply( "block", r.block );
-    }
-};
-
-} } // namespace comma { namespace visiting {
-    
-struct points
+class points
 {
-    std::vector< record > records;
-    comma::csv::format format;
-    snark::ros::point_cloud point_cloud;
-    std::size_t data_size;
-    bool ascii;
-    //const comma::command_line_options& options
-
-    points( const comma::csv::options& csv, const comma::csv::format& format )
+public:
+    points( const comma::csv::options& csv
+          , const comma::csv::format& format
+          , const std::string& output_fields
+          , const std::string& frame_id )
         : format( format )
-        , point_cloud( csv.fields, format.expanded_string() )
+        , point_cloud( csv.fields, format.expanded_string(), output_fields, frame_id )
         , data_size( format.size() )
         , ascii( !csv.binary() )
     {}
 
-    void send( const std::function< void( sensor_msgs::PointCloud2 ) >& publisher_fn
-             , const std::string& frame_id )
+    void add_record( const record& r, const comma::csv::input_stream<record>& is )
     {
-        //create msg
-        sensor_msgs::PointCloud2 msg = point_cloud.create_msg( records.size() );
-        //fill in
-        msg.header.stamp = ::ros::Time::fromBoost( records[0].t );
-        msg.header.seq = records[0].block;
-        msg.header.frame_id = frame_id;
-
-        std::size_t offset = 0;
-        for( const auto& record : records )
-        {
-            std::memcpy( &msg.data[offset], &record.data[0], data_size );
-            offset += data_size;
-        }
-        publisher_fn( msg );
-        records.clear();
-    }
-
-    void push_back( const comma::csv::input_stream<record>& is, const record& record )
-    {
-        records.push_back( record );
+        records.push_back( r );
         records.back().data.resize( data_size );
         if( ascii )
         {
@@ -273,6 +317,23 @@ struct points
             std::memcpy( &records.back().data[0], is.binary().last(), data_size );
         }
     }
+
+    void send( const std::function< void( sensor_msgs::PointCloud2 ) >& publisher_fn )
+    {
+        //create msg
+        sensor_msgs::PointCloud2 msg = point_cloud.create_msg( records );
+        publisher_fn( msg );
+        records.clear();
+    }
+
+    bool empty() { return records.empty(); }
+
+private:
+    std::vector< record > records;
+    comma::csv::format format;
+    snark::ros::point_cloud point_cloud;
+    std::size_t data_size;
+    bool ascii;
 };
     
 int main( int argc, char** argv )
@@ -290,6 +351,8 @@ int main( int argc, char** argv )
         comma::csv::format format = ( csv.binary()
                                     ? csv.format()
                                     : comma::csv::format( options.value< std::string >( "--format" )));
+        std::string output_fields = options.value< std::string >( "--output-fields", csv.fields );
+        comma::verbose << "outputting " << output_fields << std::endl;
         bool has_block=csv.has_field("block");
         bool all=options.exists("--all");
         std::string frame_id=options.value<std::string>("--frame","");
@@ -338,21 +401,21 @@ int main( int argc, char** argv )
         comma::csv::input_stream< record > is( std::cin, csv );
         comma::csv::passed< record > passed( is, std::cout, csv.flush );
         unsigned int block = 0;
-        points points( csv, format );
+        points points( csv, format, output_fields, frame_id );
 
         while( std::cin.good() )
         {
             //read binary from input
             const record* p = is.read();
-            if (( !p || block != p->block ) && !points.records.empty() )
+            if (( !p || block != p->block ) && !points.empty() )
             {
-                points.send( *publish_fn.get(), frame_id );
+                points.send( *publish_fn.get() );
             }
             if( !p ) { break; }
             if( pass_through ) { passed.write(); }
             block = p->block;
-            points.push_back( is, *p );
-            if( !has_block && !all ) { points.send( *publish_fn.get(), frame_id ); }
+            points.add_record( *p, is );
+            if( !has_block && !all ) { points.send( *publish_fn.get() ); }
         }
 
         if( publishing && options.exists( "--hang-on,--stay" ))
