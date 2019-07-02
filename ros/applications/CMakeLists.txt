@@ -1,3 +1,5 @@
+set( dir ${SOURCE_CODE_BASE_DIR}/ros/applications )
+
 set( ros_path "/opt/ros/kinetic" CACHE STRING "path to ros, something like /opt/ros/kinetic" )
 if( NOT EXISTS "${ros_path}")
     message( "${ros_path} not found; please specify ros path as something like /opt/ros/kinetic on your computer or set snark_build_ros to OFF" )
@@ -6,7 +8,9 @@ endif( NOT EXISTS "${ros_path}")
 link_directories( "${ros_path}/lib" )
 include_directories( "${ros_path}/include" )
 
-set( ros_libs roscpp roscpp_serialization rostime rosconsole )
+set( ros_libs roscpp roscpp_serialization rosbag rosbag_storage rostime rosconsole console_bridge cpp_common )
+
+SET( GLOB stdmsgs_include ${dir}/std_msgs/*.h )
 
 # source_group( points-to-ros FILES points-to-ros.cpp )
 add_executable( points-to-ros points-to-ros.cpp )
