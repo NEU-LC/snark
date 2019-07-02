@@ -117,11 +117,13 @@ namespace snark { namespace ros {
 static std::vector< std::string > glob_( const std::string& path )
 {
     std::vector< std::string > paths;
-    paths.push_back( path );
+    // paths.push_back( path );
     glob_t globbuf;
     if( ::glob( &path[0], GLOB_TILDE, NULL, &globbuf ) != 0 ) { std::cerr << "points-from-ros: not found: '" << path << "'" << std::endl; exit( 1 ); }
     for( std::size_t i = 0; i < globbuf.gl_pathc; ++i ) { paths.push_back( std::string( globbuf.gl_pathv[i] ) ); }
     globfree( &globbuf );
+    comma::verbose << "processing bags: " << std::endl;
+    for( const auto& p: paths ) { comma::verbose << p << std::endl; }
     return paths;
 }
     
