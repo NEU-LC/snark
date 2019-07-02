@@ -112,6 +112,8 @@ void usage(bool detail)
     std::cerr << std::endl;
 }
 
+static bool status = 0; // quick and dirty
+
 namespace snark { namespace ros {
 
 static std::vector< std::string > glob_( const std::string& path )
@@ -373,7 +375,57 @@ struct points
         if( fields.size() == 1 && fields[0].empty() ) { fields.clear(); } // comma::split quirk
     }
 
-    void process(const sensor_msgs::PointCloud2ConstPtr input);
+    void process(const sensor_msgs::PointCloud2ConstPtr input)
+    {
+        try
+        {
+            if( output_fields )
+            { 
+                if( write_header ) { std::cout << comma::join( comma::csv::names< header >(), ',') << ","; }
+                std::cout << snark::ros::point_cloud::msg_fields_names( input->fields, fields ) << std::endl;
+                ros::shutdown();
+                return;
+            }
+            if( output_format )
+            { 
+                if( write_header ) { std::cout << comma::csv::format::value< header >() << ","; }
+                std::cout << snark::ros::point_cloud::msg_fields_format( input->fields, fields ) << std::endl;
+                ros::shutdown();
+                return;
+            }
+            if( format.count() == 0 )
+            {
+                format = comma::csv::format( snark::ros::point_cloud::msg_fields_format( input->fields, fields ));
+                comma::verbose << "setting format to " << format.string() << std::endl;
+            }
+            unsigned count=input->width*input->height;
+            unsigned record_size=input->point_step;
+            ::header header(input->header.stamp,input->header.seq);
+            
+            std::unique_ptr<snark::ros::point_cloud::bin_base> bin;
+            if(csv.fields.empty()) { bin.reset(new snark::ros::point_cloud::bin_cat(record_size)); }
+            else { bin.reset(new snark::ros::point_cloud::bin_shuffle(csv.fields,input->fields)); }
+
+            bin_writer writer;
+            
+            std::unique_ptr<filter_base> filter;
+            if(discard) { filter.reset(new float_filter(format)); }
+            
+            for(unsigned i=0;i<count;i++)
+            {
+                const char* buf=bin->get(reinterpret_cast<const char*>(&input->data[i*record_size]));
+                if(!filter || filter->valid(buf,bin->size()))
+                {
+                    if(write_header) { writer.write_header(header); }
+                    writer.write(buf,bin->size());
+                    if(flush) { std::cout.flush(); }
+                }
+                if( !std::cout.good() ) { ros::shutdown(); break; }
+            }
+        }
+        catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; status = 1; ros::shutdown(); }
+        catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; status = 1; ros::shutdown(); }
+    }
 
 private:
     struct bin_writer
@@ -426,59 +478,6 @@ private:
         }
     };
 };
-
-void points::process(const sensor_msgs::PointCloud2ConstPtr input)
-{
-    try
-    {
-        if( output_fields )
-        { 
-            if( write_header ) { std::cout << comma::join( comma::csv::names< header >(), ',') << ","; }
-            std::cout << snark::ros::point_cloud::msg_fields_names( input->fields, fields ) << std::endl;
-            ros::shutdown();
-            return;
-        }
-        if( output_format )
-        { 
-            if( write_header ) { std::cout << comma::csv::format::value< header >() << ","; }
-            std::cout << snark::ros::point_cloud::msg_fields_format( input->fields, fields ) << std::endl;
-            ros::shutdown();
-            return;
-        }
-        if( format.count() == 0 )
-        {
-            format = comma::csv::format( snark::ros::point_cloud::msg_fields_format( input->fields, fields ));
-            comma::verbose << "setting format to " << format.string() << std::endl;
-        }
-        unsigned count=input->width*input->height;
-        unsigned record_size=input->point_step;
-        ::header header(input->header.stamp,input->header.seq);
-        
-        std::unique_ptr<snark::ros::point_cloud::bin_base> bin;
-        if(csv.fields.empty()) { bin.reset(new snark::ros::point_cloud::bin_cat(record_size)); }
-        else { bin.reset(new snark::ros::point_cloud::bin_shuffle(csv.fields,input->fields)); }
-
-        bin_writer writer;
-        
-        std::unique_ptr<filter_base> filter;
-        if(discard) { filter.reset(new float_filter(format)); }
-        
-        for(unsigned i=0;i<count;i++)
-        {
-            const char* buf=bin->get(reinterpret_cast<const char*>(&input->data[i*record_size]));
-            if(!filter || filter->valid(buf,bin->size()))
-            {
-                if(write_header) { writer.write_header(header); }
-                writer.write(buf,bin->size());
-                if(flush) { std::cout.flush(); }
-            }
-            if( !std::cout.good() ) { ros::shutdown(); break; }
-        }
-        return;
-    }
-    catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; ros::shutdown(); }
-    catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; ros::shutdown(); }
-}
 
 int main( int argc, char** argv )
 {
@@ -534,7 +533,7 @@ int main( int argc, char** argv )
             ros::Subscriber subsriber=ros_node.subscribe(topic,queue_size,&points::process,&points,transport_hints);
             ros::spin();
         }
-        return 0;
+        return status;
     }
     catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": exception: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << comma::verbose.app_name() << ": " << "unknown exception" << std::endl; }
