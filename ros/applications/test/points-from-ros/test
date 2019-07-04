@@ -2,6 +2,8 @@
 
 source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
 
+type -p points-from-ros > /dev/null || { echo "$0: not running as points-from-ros is not installed" >&2; exit 0; }
+
 export ROS_MASTER_URI=http://localhost:11311
 
 comma_test_commands
