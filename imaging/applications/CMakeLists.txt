@@ -25,17 +25,17 @@ TARGET_LINK_LIBRARIES( image-edit snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_
 install( TARGETS image-edit RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 ADD_EXECUTABLE( image-color-calc image-color-calc.cpp )
-TARGET_LINK_LIBRARIES( image-color-calc snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} ${Boost_LIBRARIES} )
+TARGET_LINK_LIBRARIES( image-color-calc snark_imaging ${comma_ALL_LIBRARIES} ${Boost_LIBRARIES} )
 
 add_executable( image-from-csv image-from-csv.cpp )
-target_link_libraries( image-from-csv snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
+target_link_libraries( image-from-csv snark_imaging ${comma_ALL_LIBRARIES} )
 install( TARGETS image-from-csv RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 ADD_EXECUTABLE( image-to-csv image-to-csv.cpp )
-TARGET_LINK_LIBRARIES( image-to-csv snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} )
+TARGET_LINK_LIBRARIES( image-to-csv snark_imaging ${comma_ALL_LIBRARIES} )
 
 ADD_EXECUTABLE( image-accumulate image-accumulate.cpp )
-TARGET_LINK_LIBRARIES( image-accumulate snark_imaging ${comma_ALL_LIBRARIES} ${OpenCV_LIBS} tbb )
+TARGET_LINK_LIBRARIES( image-accumulate snark_imaging ${comma_ALL_LIBRARIES} tbb )
 
 INSTALL( TARGETS cv-cat cv-calc image-accumulate image-color-calc image-to-csv
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
