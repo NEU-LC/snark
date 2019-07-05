@@ -1,5 +1,5 @@
 // This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2013 The University of Sydney
+// Copyright (c) 2019 The University of Sydney
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -27,37 +27,50 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "../rotation_matrix.h"
+#include <comma/math/compare.h>
 #include <gtest/gtest.h>
-#include "../frame_transforms.h"
-#include <boost/math/constants/constants.hpp>
+#include <cmath>
 
-using namespace snark::frame_transforms;
+namespace snark { namespace test {
 
-TEST(transforms, dh_to_matrix)
+double deg2rad( double degrees ) { return degrees * M_PI / 180; }
+
+// Test conversion to and from roll, pitch, yaw format.
+// To test we run through both conversions and compare results.
+
+::testing::AssertionResult test_rpy( double roll, double pitch, double yaw )
 {
-    dh_transform T_dh;
-    T_dh.alpha=1;
-    T_dh.r=1;
-    T_dh.theta=boost::math::constants::pi<double>()/6;
-    T_dh.alpha=-boost::math::constants::pi<double>()/2;
-    EXPECT_LT((dh_to_matrix(T_dh)-(Eigen::Matrix4d()<<0.866025,0,-0.5,0.866025,0.5,0,0.866025,0.5,0,-1,0,0,0,0,0,1).finished()).norm(),1e-2);
+    Eigen::Vector3d rpy( deg2rad( roll ), deg2rad( pitch ), deg2rad( yaw ));
+    rotation_matrix m( rpy );
+    Eigen::Quaterniond input_q = m.quaternion();
 
+    Eigen::Vector3d rpy_after_conversions = m.roll_pitch_yaw();
+    Eigen::Quaterniond result_q = rotation_matrix( rpy_after_conversions ).quaternion();
+
+    // Quaternions might not be identical but if they represent equivalent
+    // rotations then their dot product will be 1 or -1
+    if( comma::math::equal( std::fabs( input_q.dot( result_q )), 1, 1e-12 ))
+        return ::testing::AssertionSuccess();
+    else
+        return ::testing::AssertionFailure() << "\nin:\n" << rpy << "\nout:\n" << rpy_after_conversions
+                                             << "\nquaternion dot product: " << input_q.dot( result_q );
 }
 
-TEST(transforms, dh_to_tr)
+TEST( rotation_matrix, roll_pitch_yaw )
 {
-    dh_transform T_dh;
-    T_dh.alpha=1;
-    T_dh.r=1;
-    T_dh.theta=boost::math::constants::pi<double>()/6;
-    T_dh.alpha=-boost::math::constants::pi<double>()/2;
-    tr_transform T_tr=dh_to_tr(T_dh);
-    EXPECT_LT((homogeneous_transform(T_tr.rotation.toRotationMatrix(),T_tr.translation)-(Eigen::Matrix4d()<<0.866025,0,-0.5,0.866025,0.5,0,0.866025,0.5,0,-1,0,0,0,0,0,1).finished()).norm(),1e-2);
+    std::vector< double > angles{ -180, -120, -90, -30, 0, 30, 90, 120, 180 };
 
+    for( auto roll : angles )
+    {
+        for( auto pitch : angles )
+        {
+            for( auto yaw : angles )
+            {
+                EXPECT_TRUE( test_rpy( roll, pitch, yaw ));
+            }
+        }
+    }
 }
 
-int main(int argc, char *argv[])
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
+} } // namespace snark { namespace test {
