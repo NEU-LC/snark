@@ -100,7 +100,7 @@ static pair read_image_files( const std::string& images, rate_limit& rate, bool 
     }
     std::pair< boost::posix_time::ptime, cv::Mat > p;
     p.second = cv::imread( line, cv::IMREAD_UNCHANGED );
-    if( !p.second.data ) { std::cerr << "cv-cat: failed to read image '" << images << "'" << std::endl; exit( 1 ); }
+    if( !p.second.data ) { std::cerr << "cv-cat: failed to read image '" << line << "'" << std::endl; exit( 1 ); }
     if( timestamped )
     {
         std::vector< std::string > time_strings = comma::split( comma::split( line, '/' ).back(), '.' ); // quick and dirty, use boost::filesystem
