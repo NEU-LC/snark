@@ -41,7 +41,7 @@ template < typename T > struct traits< snark::detail::optional< T > >
 {
     template < typename K, typename V > static void visit( const K&, snark::detail::optional< T >& n, V& v )
     { // quick and dirty
-        T t;
+        T t = T();
         if( n ) { t = *n; }
         bool b = n;
         v.apply( "is_set", b );
