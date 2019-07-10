@@ -90,14 +90,14 @@ int main( int argc, char** argv )
         std::string origin_string;
         std::string resolution_string;
         boost::program_options::options_description description( "options" );
-        comma::uint32 neighbourhood_radius;
+        comma::int32 neighbourhood_radius;
         description.add_options()
             ( "help,h", "display help message" )
             ( "resolution", boost::program_options::value< std::string >( &resolution_string ), "voxel map resolution, e.g. \"0.2\" or \"0.2,0.2,0.5\"" )
             ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
             ( "output-fields", "print output fields to stdout and exit" )
             ( "output-format", "print binary output format to stdout and exit" )
-            ( "neighbourhood-radius,r", boost::program_options::value< comma::uint32 >( &neighbourhood_radius )->default_value( 0 ), "calculate count of neighbours at given radius" );
+            ( "neighbourhood-radius,r", boost::program_options::value< comma::int32 >( &neighbourhood_radius )->default_value( 0 ), "calculate count of neighbours at given radius" );
         description.add( comma::csv::program_options::description( "x,y,z,block" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
