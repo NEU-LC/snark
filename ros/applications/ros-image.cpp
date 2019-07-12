@@ -4,6 +4,7 @@
 #include "detail/file-util.h"
 #include "../../imaging/cv_mat/serialization.h"
 #include <comma/io/stream.h>
+#include <comma/application/signal_flag.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
 #include <boost/bimap.hpp>
@@ -255,6 +256,7 @@ public:
                 bag.open( bag_name );
                 for( rosbag::MessageInstance const mi : rosbag::View( bag, rosbag::TopicQuery( topic )))
                 {
+                    if( is_shutdown ) { break; }
                     message_type const msg = mi.instantiate< sensor_msgs::Image >();
                     write( msg );
                 }
@@ -275,6 +277,7 @@ private:
     ros::Subscriber subscriber_;
     std::vector< std::string > bag_names;
     std::string topic;
+    comma::signal_flag is_shutdown;
 };
 
 class ros_publisher : public cv_io
