@@ -38,7 +38,7 @@ ENDIF()
 # set compiler and linker flags and variables
 
 if( NOT CMAKE_BUILD_TYPE )
-  set( CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE )
+  set( CMAKE_BUILD_TYPE Release CACHE STRING "options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE )
 endif( NOT CMAKE_BUILD_TYPE )
 
 find_package( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
