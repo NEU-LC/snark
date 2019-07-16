@@ -234,7 +234,12 @@ public:
     void write( message_type const msg )
     {
         auto time = msg->header.stamp.toBoost();
-        cv_strm.write( std::cout, std::make_pair( time, cv::Mat( cv::Size( msg->width, msg->height ), cv_format( msg->encoding ), ( void* )msg->data.data(), cv::Mat::AUTO_STEP ) ) );
+        cv_strm.write( std::cout
+                     , std::make_pair( time
+                                     , cv::Mat( cv::Size( msg->width, msg->height )
+                                              , cv_format( msg->encoding )
+                                              , ( void* )msg->data.data()
+                                              , cv::Mat::AUTO_STEP ) ) );
         if( flush ) { std::cout.flush(); }
     }
 
