@@ -27,7 +27,9 @@
 
 /// @author vsevolod vlaskine
 
+#include <memory>
 #include <sstream>
+#include <boost/ptr_container/ptr_vector.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -179,58 +181,109 @@ base* make( const std::string& how )
 
 } // namespace overlap {
 
+class unstrided
+{
+    public:
+        typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
+        
+        unstrided( const cv::Point2i& size
+                 , const cv::Point2i& shape
+                 , const cv::Point2i& strides
+                 , const cv::Point2i& strides_count
+                 , bool fit_last
+                 , overlap::base* overlap )
+           : size_( size )
+           , shape_( shape )
+           , strides_( strides )
+           , strides_count_( strides_count )
+           , fit_last_( fit_last )
+           , overlap_( overlap )
+           , ix_( 0 )
+           , iy_( 0 )
+        {
+        }
+        
+        void append( const pair_t& p )
+        {
+            if( output_.second.empty() ) { output_.first = p.first; output_.second = cv::Mat( size_.y, size_.x, p.second.type() ); }
+            if( output_.second.type() != p.second.type() ) { std::cerr << "cv-calc: unstride: expected input image type " << output_.second.type() << "; got: " << p.second.type() << std::endl; exit( 1 ); }
+            if( p.second.rows != shape_.y ) { std::cerr << "cv-calc: unstride: expected input image with " << shape_.y << "; got: " << p.second.rows << std::endl; exit( 1 ); }
+            if( p.second.cols != shape_.x ) { std::cerr << "cv-calc: unstride: expected input image with " << shape_.x << "; got: " << p.second.cols << std::endl; exit( 1 ); }
+            if( ix_ == 0 && iy_ == 0 ) { output_.first = p.first; }
+            unsigned int x = ix_ * strides_.x;
+            unsigned int y = iy_ * strides_.y;
+            if( fit_last_ )
+            {
+                if( ix_ + 1 == strides_count_.x ) { x = size_.x - shape_.x; }
+                if( iy_ + 1 == strides_count_.y ) { y = size_.y - shape_.y; }
+            }
+            overlap_->append( output_.second, p.second, x, y );
+            ++ix_;
+            if( ix_ >= strides_count_.x )
+            {
+                ix_ = 0;
+                ++iy_;
+                if( iy_ >= strides_count_.y ) { iy_ = 0; }
+            }
+        }
+        
+        bool ready() const { return ix_ == 0 && iy_ == 0 && !output_.second.empty(); }
+        
+        const pair_t& operator()() const { return output_; }
+        
+        void reset() { output_.second.setTo( 0 ); }
+        
+    private:
+        cv::Point2i size_;
+        cv::Point2i shape_;
+        cv::Point2i strides_;
+        cv::Point2i strides_count_;
+        bool fit_last_;
+        std::unique_ptr< overlap::base > overlap_;
+        unsigned int ix_;
+        unsigned int iy_;
+        pair_t output_;
+};
+
 int run( const comma::command_line_options& options, const snark::cv_mat::serialization& input_options, const snark::cv_mat::serialization& output_options )
 {
-    boost::scoped_ptr< overlap::base > overlap( overlap::make( options.value< std::string >( "--how-to-handle-overlaps,--how", "last" ) ) );
-    bool fit_last = options.exists( "--fit-last" );
     snark::cv_mat::serialization input_serialization( input_options );
     snark::cv_mat::serialization output_serialization( output_options );
-    const std::vector< std::string >& unstrided_vector = comma::split( options.value< std::string >( "--unstrided-size,--unstrided" ), ',' );
-    if( unstrided_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected --unstrided-size as <width>,<height>, got: \"" << options.value< std::string >( "--unstrided-size,--unstrided" ) << std::endl; return 1; }
-    cv::Point2i unstrided( boost::lexical_cast< unsigned int >( unstrided_vector[0] ), boost::lexical_cast< unsigned int >( unstrided_vector[1] ) );
+    const std::vector< std::string >& unstrided_size_vector = comma::split( options.value< std::string >( "--unstrided-size,--unstrided" ), ',' );
+    if( unstrided_size_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected --unstrided-size as <width>,<height>, got: \"" << options.value< std::string >( "--unstrided-size,--unstrided" ) << std::endl; return 1; }
+    cv::Point2i unstrided_size( boost::lexical_cast< unsigned int >( unstrided_size_vector[0] ), boost::lexical_cast< unsigned int >( unstrided_size_vector[1] ) );
     const std::vector< std::string >& strides_vector = comma::split( options.value< std::string >( "--strides", "1,1" ), ',' );
     if( strides_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected strides as <x>,<y>, got: \"" << options.value< std::string >( "--strides" ) << std::endl; return 1; }
     cv::Point2i strides( boost::lexical_cast< unsigned int >( strides_vector[0] ), boost::lexical_cast< unsigned int >( strides_vector[1] ) );
     const std::vector< std::string >& shape_vector = comma::split( options.value< std::string >( "--shape,--size,--kernel" ), ',' );
     if( shape_vector.size() != 2 ) { std::cerr << "cv-calc: unstride-positions: expected shape as <x>,<y>, got: \"" << options.value< std::string >( "--shape,--size,--kernel" ) << std::endl; return 1; }
     cv::Point2i shape( boost::lexical_cast< unsigned int >( shape_vector[0] ), boost::lexical_cast< unsigned int >( shape_vector[1] ) );
-    unsigned int stride_rows = ( unstrided.y - shape.y ) / strides.y + 1;
-    unsigned int stride_cols = ( unstrided.x - shape.x ) / strides.x + 1;
+    cv::Point2i strides_count;
+    strides_count.x = ( unstrided_size.x - shape.x ) / strides.x + 1;
+    strides_count.y = ( unstrided_size.y - shape.y ) / strides.y + 1;
+    bool fit_last = options.exists( "--fit-last" );
     if( fit_last )
     {
-        if( int( stride_rows - 1 ) * strides.y + shape.y < unstrided.y ) { ++stride_rows; }
-        if( int( stride_cols - 1 ) * strides.x + shape.x < unstrided.x ) { ++stride_cols; }
+        if( int( strides_count.x - 1 ) * strides.x + shape.x < unstrided_size.x ) { ++strides_count.x; }
+        if( int( strides_count.y - 1 ) * strides.y + shape.y < unstrided_size.y ) { ++strides_count.y; }
     }
-    if( options.exists( "--output-number-of-strides,--number-of-strides" ) ) { std::cout << stride_cols << "," << stride_rows << std::endl; exit( 0 ); }
+    if( options.exists( "--output-number-of-strides,--number-of-strides" ) ) { std::cout << strides_count.x << "," << strides_count.y << std::endl; exit( 0 ); }
     typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
-    pair_t output;
-    unsigned int ix = 0;
-    unsigned int iy = 0;
-    while( std::cin.good() && !std::cin.eof() )
+    unsigned int interleaving_size = options.value( "--interleaving-size,--interleaving", 1 );
+    std::vector< unstrided > outputs;
+    auto how = options.value< std::string >( "--how-to-handle-overlaps,--how", "last" );
+    for( unsigned int i = 0; i < interleaving_size; ++i ) { outputs.push_back( unstrided( unstrided_size, shape, strides, strides_count, fit_last, overlap::make( how ) ) ); }
+    while( std::cin.good() )
     {
-        pair_t p = input_serialization.read< boost::posix_time::ptime >( std::cin );
-        if( p.second.empty() ) { return 0; }
-        if( output.second.empty() ) { output.second = cv::Mat( unstrided.y, unstrided.x, p.second.type() ); }
-        if( output.second.type() != p.second.type() ) { std::cerr << "cv-calc: unstride: expected input image type " << output.second.type() << "; got: " << p.second.type() << std::endl; exit( 1 ); }
-        if( p.second.rows != shape.y ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.y << "; got: " << p.second.rows << std::endl; exit( 1 ); }
-        if( p.second.cols != shape.x ) { std::cerr << "cv-calc: unstride: expected input image with " << shape.x << "; got: " << p.second.cols << std::endl; exit( 1 ); }
-        if( ix == 0 && iy == 0 ) { output.first = p.first; }
-        unsigned int x = ix * strides.x;
-        unsigned int y = iy * strides.y;
-        if( fit_last )
+        for( unsigned int i = 0; i < interleaving_size && std::cin.good(); ++i )
         {
-            if( ix + 1 == stride_cols ) { x = unstrided.x - shape.x; }
-            if( iy + 1 == stride_rows ) { y = unstrided.y - shape.y; }
+            pair_t p = input_serialization.read< boost::posix_time::ptime >( std::cin );
+            if( p.second.empty() ) { return 0; }
+            outputs[i].append( p );
+            if( !outputs[i].ready() ) { continue; }
+            output_serialization.write_to_stdout( outputs[i](), true );
+            outputs[i].reset();
         }
-        overlap->append( output.second, p.second, x, y );
-        ++ix;
-        if( ix >= stride_cols )
-        {
-            ix = 0;
-            ++iy;
-            if( iy >= stride_rows ) { iy = 0; }
-        }
-        if( ix == 0 && iy == 0 ) { output_serialization.write_to_stdout( output, true ); output.second.setTo( 0 ); }
     }
     return 0;
 }
