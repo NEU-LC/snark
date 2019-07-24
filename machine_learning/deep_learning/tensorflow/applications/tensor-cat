@@ -184,7 +184,8 @@ if __name__ == '__main__':
     output_options.add_argument( '--output-as-gzip', '--gzip', action = "store_true", help = 'if --output-to-files, then gzip each channel to file ./<input-number>/<layer-name>/<channel-number>.bin.gz' )
     output_options.add_argument( '--output-dirs', '--dirs', type = str, help = 'list of output directories, one for each input instead of ./<input-number>/... (see --output-to-files)' )
     output_options.add_argument( '--output-to-files', action = "store_true", help = 'convenience option; for each input, output each channel to file ./<input-number>/<layer-name>/<channel-number>.bin (see examples)' )
-    output_options.add_argument( '--output-max-channels', type = str, help = 'convenience option; if --output-to-files, comma-separated list: output not more than a given number of layer channels' )
+    output_options.add_argument( '--output-channels-max', type = str, help = 'convenience option; if --output-to-files, comma-separated list: output not more than a given number of layer channels' )
+    output_options.add_argument( '--output-channels-transpose', '--transpose', action = "store_true", help = 'convenience option; output 3D tensors transposed as 2,1,0' )
     output_options.add_argument( '--png', action = "store_true", help = 'convenience option; for each input, output each channel in human-viewable form to file ./<input-number>/<layer-name>/<channel-number>.png (see examples)' )
     output_options.add_argument( '--png-min', type=float, help = 'if --png, min value to use for normalizing tensor elements' )
     output_options.add_argument( '--png-max', type=float, help = 'if --png, min value to use for normalizing tensor elements' )    
@@ -267,11 +268,11 @@ if __name__ == '__main__':
         keep_prob = get_tensor( 'keep_prob', True ) # todo! quick and dirty
         outputs = [ get_tensor( name ) for name in output_names ]
         feeds = variables( args.variable )
-        output_max_channels = [ None ] * len( output_names )
-        if args.output_max_channels:
-            s = args.output_max_channels.split( ',' )
+        output_channels_max = [ None ] * len( output_names )
+        if args.output_channels_max:
+            s = args.output_channels_max.split( ',' )
             for i in range( len( s ) ):
-                if s[i] != "": output_max_channels[i] = int( s[i] )
+                if s[i] != "": output_channels_max[i] = int( s[i] )
         if args.verbose:
             print( "tensor-cat: input '" + args.input + "':", input )
             for i in range( len( output_names ) ): print( "tensor-cat: output '" + output_names[i] + "':", outputs[i] )
@@ -301,10 +302,10 @@ if __name__ == '__main__':
                             try: os.mkdir( output_dir + '/' + output_names[i] )
                             except OSError as ex:
                                 if ex.errno != os.errno.EEXIST: raise
-                            if values[i].shape[0] != 1: die( "expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
-                            if len( values[i].shape ) > 4: die( "expected output tensor with no more than 4 dimensions; got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
+                            if values[i].shape[0] != 1: die( "output to files: expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
+                            if len( values[i].shape ) > 4: die( "output to files: expected output tensor with no more than 4 dimensions; got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
                             v = values[i] if len( values[i].shape ) <= 3 else np.transpose( values[i][0], axes = ( 2, 0, 1 ) ) # quick and dirty
-                            output_channels = v.shape[0] if output_max_channels[i] is None else output_max_channels[i]
+                            output_channels = v.shape[0] if output_channels_max[i] is None else output_channels_max[i]
                             if args.output_to_files:
                                 for j in range( output_channels ):
                                     n = output_dir + '/' + output_names[i] + '/' + str( j ) + '.bin'
@@ -322,7 +323,13 @@ if __name__ == '__main__':
                         stdout.write( header.tobytes() )
                         if args.keep_input: stdout.write( data.tobytes() )
                         stdout.write( footer.tobytes() )
-                        for value in values: stdout.write( value.tobytes() )
+                        if args.output_channels_transpose:
+                            for i in range( len( values ) ):
+                                if values[i].shape[0] != 1: die( "transpose channels: expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
+                                v = np.transpose( values[i][0], axes = ( 2, 0, 1 ) ) if len( values[i].shape ) == 4 else values[i] # quick and dirty
+                                stdout.write( v.tobytes() )
+                        else:
+                            for value in values: stdout.write( value.tobytes() )
                         stdout.flush()
         session.close()
         saymore( "done" )
