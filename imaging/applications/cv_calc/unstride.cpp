@@ -50,7 +50,7 @@ std::string options()
     oss << "            max: take max pixel value" << std::endl;
     oss << "            other policies: todo" << std::endl;
     oss << "        --input=[<options>]; input options; run cv-cat --help --verbose for details" << std::endl;
-    oss << "        --input-interleaving-size;--interleaving=<number>; default=1; <number> of input strides interleave" << std::endl;
+    oss << "        --input-interleaving-size,--interleaving=<number>; default=1; <number> of input strides interleave" << std::endl;
     oss << "        --output=[<options>]; output options; run cv-cat --help --verbose for details" << std::endl;
     oss << "        --output-number-of-strides,--number-of-strides: output number of strides as <x>,<y> to stdout and exit" << std::endl;
     //oss << "        --padding=[<padding>]; padding, 'same' or 'valid' (see e.g. tensorflow for the meaning); default: valid" << std::endl;
@@ -270,7 +270,7 @@ int run( const comma::command_line_options& options, const snark::cv_mat::serial
     }
     if( options.exists( "--output-number-of-strides,--number-of-strides" ) ) { std::cout << strides_count.x << "," << strides_count.y << std::endl; exit( 0 ); }
     typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
-    unsigned int interleaving_size = options.value( "--input-interleaving-size;--interleaving", 1 );
+    unsigned int interleaving_size = options.value( "--input-interleaving-size,--interleaving", 1 );
     std::vector< unstrided > outputs;
     auto how = options.value< std::string >( "--how-to-handle-overlaps,--how", "last" );
     for( unsigned int i = 0; i < interleaving_size; ++i ) { outputs.push_back( unstrided( unstrided_size, shape, strides, strides_count, fit_last, overlap::make( how ) ) ); }
