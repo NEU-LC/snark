@@ -1,0 +1,4 @@
+basic[0]="echo 20190101T000000,2,3,0,1,2,3,4,5,6 | csv-to-bin t,3ui,6ub | image-to-csv"
+basic[1]="echo 1,2,3,4,5,6 | csv-to-bin 6ub | image-to-csv --input 'rows=2;cols=3;no-header;type=ub'"
+fields[0]="echo 1,2,3,4,5,6 | csv-to-bin 6ub | image-to-csv --input 'rows=2;cols=3;no-header;type=ub' --fields x,y,channels,block"
+fields[1]="echo 1,2,3,4,5,6 | csv-to-bin 6ub | image-to-csv --input 'rows=1;cols=3;no-header;type=ub' --fields x,y,channels,block"

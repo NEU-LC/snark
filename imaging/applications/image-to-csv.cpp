@@ -62,10 +62,11 @@ template< typename T >
 struct output_t: public app_t
 {
     boost::posix_time::ptime t;
-    unsigned int x;
-    unsigned int y;
+    comma::uint32 block;
+    comma::uint32 x;
+    comma::uint32 y;
     std::vector< T > channels;
-    output_t() : x(0), y(0), channels( ::channels ) {}
+    output_t() : block( 0 ), x( 0 ), y( 0 ), channels( ::channels ) {}
     virtual void output_fields();
     virtual void output_format();
     virtual bool process_image();
@@ -78,6 +79,7 @@ template < typename T > struct traits< output_t< T > >
     template < typename K, typename V > static void visit( const K&, const output_t< T >& r, V& v )
     {
         v.apply( "t", r.t );
+        v.apply( "block", r.block );
         v.apply( "x", r.x );
         v.apply( "y", r.y );
         v.apply( "channels", r.channels );
@@ -93,6 +95,13 @@ static void usage( bool detail )
     if( !detail ) { std::cerr << "see --help --verbose for more details" << std::endl; }
     std::cerr << std::endl;
     std::cerr<< "usage: " << app_name << " <options>" << std::endl
+                    << std::endl
+                    << "output fields" << std::endl
+                    << "    t: input image timestamp" << std::endl
+                    << "    x,y: pixel coordinates" << std::endl
+                    << "    channels: image channels; can be defined individually, e.g. as channels[0],channels[1],channels[2]" << std::endl
+                    << "    block: image number" << std::endl
+                    << "    default: t,x,y,channels" << std::endl
                     << std::endl
                     << "options" << std::endl
                     << "    --help,-h: show help" << std::endl
@@ -111,18 +120,19 @@ static void usage( bool detail )
                     << "        new usage: --input=\"no-header;type=3ub\"" << std::endl
                     << "    " << std::endl
                     << std::endl;
+    std::cerr << "serialization and csv options" << std::endl;
     if(detail)
     {
-        std::cerr<< snark::cv_mat::serialization::options::usage() << std::endl
-                        << std::endl;
-        std::cerr<< "output stream csv options:" << std::endl
-                        << csv.usage() << std::endl
-                        << std::endl;
+        std::cerr<< snark::cv_mat::serialization::options::usage() << std::endl << std::endl;
+        std::cerr<< "output stream csv options:" << std::endl << csv.usage() << std::endl << std::endl;
     }
-    std::cerr<< "example" << std::endl
-                    << "      cv-cat --file image.jpg | " << app_name << " > pixels.csv" << std::endl
-                    << std::endl;
-    exit(0);
+    else
+    {
+        std::cerr << "    run image-to-csv --help --verbose for more..." << std::endl;
+    }
+    std::cerr << std::endl;
+    std::cerr<< "example" << std::endl << "      cv-cat --file image.jpg | " << app_name << " > pixels.csv" << std::endl << std::endl;
+    exit( 0 );
 }
 
 static void read_header()
@@ -137,9 +147,9 @@ static void read_header()
     header = *p;
 }
 
-template< typename T > void output_t<T>::output_fields() { std::cout<<comma::join( comma::csv::names< output_t<T> >(), ','  ) << std::endl; }
+template< typename T > void output_t<T>::output_fields() { std::cout<<comma::join( comma::csv::names< output_t< T > >( csv.fields ), ','  ) << std::endl; }
 
-template< typename T > void output_t<T>::output_format() { std::cout<<comma::csv::format::value< output_t<T> >(csv.fields, false) << std::endl; }
+template< typename T > void output_t<T>::output_format() { std::cout<<comma::csv::format::value< output_t< T > >( csv.fields, false ) << std::endl; }
 
 template< typename T >
 static void set_discard_pixel()
@@ -155,8 +165,8 @@ static bool keep( char* p ) { return discard.empty() || std::memcmp( p, &discard
 template< typename T >
 bool output_t< T >::process_image()
 {
-    comma::csv::output_stream< output_t< T > > os( std::cout, csv );
-    output_t< T > out;
+    static comma::csv::output_stream< output_t< T > > os( std::cout, csv );
+    static output_t< T > out;
     out.channels.resize( ::channels );
     out.t = header.timestamp;
     std::size_t size = ::channels * sizeof( T );
@@ -178,6 +188,7 @@ bool output_t< T >::process_image()
         }
     }
     if( csv.flush ) { os.flush(); }
+    ++out.block;
     return true;
 }
 struct get_app
@@ -229,7 +240,8 @@ int main( int ac, char** av )
         cverbose =  options.exists( "--verbose,-v" ) ? &std::cerr : &nullstream;
         input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value<std::string>("--input", "") );
         if(input_options.fields.empty()) { input_options.fields = "t,rows,cols,type"; }
-        csv=comma::csv::options(options);
+        csv = comma::csv::options( options );
+        if( csv.fields.empty() ) { csv.fields = "t,x,y,channels"; }
         csv.full_xpath = false;
         header=input_options.get_header();
         channels = options.value< int >( "--channels", CV_MAT_CN( header.type ) );
