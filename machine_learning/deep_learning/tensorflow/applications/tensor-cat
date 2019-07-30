@@ -274,8 +274,8 @@ if __name__ == '__main__':
             for i in range( len( s ) ):
                 if s[i] != "": output_channels_max[i] = int( s[i] )
         if args.verbose:
-            print( "tensor-cat: input '" + args.input + "':", input )
-            for i in range( len( output_names ) ): print( "tensor-cat: output '" + output_names[i] + "':", outputs[i] )
+            print( "tensor-cat: input '" + args.input + "':", input, file = sys.stderr )
+            for i in range( len( output_names ) ): print( "tensor-cat: output '" + output_names[i] + "':", outputs[i], file = sys.stderr )
         saymore( "running inference..." )
         input_number=0
         if ( args.output_to_files or args.png ) and not args.output_dirs is None:
