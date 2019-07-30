@@ -36,6 +36,10 @@
 #endif
 #include <fstream>
 #include <iostream>
+#include <boost/filesystem.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/program_options.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -83,7 +87,7 @@ static pair capture( cv::VideoCapture& capture, rate_limit& rate )
     return std::make_pair( buffer , image );
 }
 
-static pair read_image_files( const std::string& images, rate_limit& rate, bool timestamped ) // todo? refactor that it can mix of images and videos, too?
+static pair read_image_files( const std::string& images, rate_limit& rate, bool timestamped, snark::cv_mat::serialization& input ) // todo? refactor that it can mix of images and videos, too?
 {
     static bool done = false;
     static std::ifstream ifs( images ); // todo? use csv stream or at least io::stream?
@@ -98,8 +102,32 @@ static pair read_image_files( const std::string& images, rate_limit& rate, bool 
         line = comma::strip( line );
         if( !line.empty() && line[0] != '#' ) { break; }
     }
+    if( !boost::filesystem::exists( line ) ) { std::cerr << "cv-cat: file not found '" << line << "'" << std::endl; exit( 1 ); }
     std::pair< boost::posix_time::ptime, cv::Mat > p;
-    p.second = cv::imread( line, cv::IMREAD_UNCHANGED );
+    std::string extension = comma::split( line, '.' ).back();
+    if( extension == "bin" || extension == "gz" )
+    {
+        std::ifstream i( line );
+        if( !i.is_open() ) { std::cerr << "cv-cat: failed to open '" << line << "'" << std::endl; exit( 1 ); }
+        if( extension == "bin" )
+        {
+            p = input.read< boost::posix_time::ptime >( i );
+        }
+        else
+        {
+            boost::iostreams::filtering_streambuf< boost::iostreams::input > zin;
+            zin.push( boost::iostreams::gzip_decompressor() );
+            zin.push( i );
+            std::ostringstream oss;
+            boost::iostreams::copy( zin, oss );
+            std::istringstream iss( oss.str() ); // quick and dirty, watch performance
+            p = input.read< boost::posix_time::ptime >( iss );
+        }
+    }
+    else
+    {
+        p.second = cv::imread( line, cv::IMREAD_UNCHANGED );
+    }
     if( !p.second.data ) { std::cerr << "cv-cat: failed to read image '" << line << "'" << std::endl; exit( 1 ); }
     if( timestamped )
     {
@@ -309,13 +337,15 @@ int main( int argc, char** argv )
         snark::cv_mat::serialization output( output_options );
         boost::scoped_ptr< bursty_reader< pair > > reader;
         std::pair< boost::posix_time::ptime, cv::Mat > p;
-
         typedef snark::imaging::applications::pipeline_with_header pipeline_with_header;
         typedef snark::cv_mat::filters_with_header filters_with_header;
-
         if( vm.count( "file" ) )
         {
-            if( !vm.count( "video" ) ) { p.second = cv::imread( name, cv::IMREAD_UNCHANGED ); }
+            if( !vm.count( "video" ) )
+            { 
+                if( !boost::filesystem::exists( name ) ) { std::cerr << "cv-cat: file not found '" << name << "'" << std::endl; exit( 1 ); }
+                p.second = cv::imread( name, cv::IMREAD_UNCHANGED );
+            }
             if( p.second.data )
             {
                 if( vm.count( "timestamped" ) )
@@ -335,7 +365,7 @@ int main( int argc, char** argv )
         }
         else if( vm.count( "files" ) )
         {
-            reader.reset( new bursty_reader< pair >( boost::bind( &read_image_files, boost::cref( files ), boost::ref( rate ), vm.count( "timestamped" ) > 0 ), discard, capacity ) );
+            reader.reset( new bursty_reader< pair >( boost::bind( &read_image_files, boost::cref( files ), boost::ref( rate ), vm.count( "timestamped" ) > 0, boost::ref( input ) ), discard, capacity ) );
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
