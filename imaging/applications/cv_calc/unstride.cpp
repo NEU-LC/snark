@@ -241,8 +241,8 @@ class unstrided
         cv::Point2i strides_count_;
         bool fit_last_;
         std::unique_ptr< overlap::base > overlap_;
-        unsigned int ix_;
-        unsigned int iy_;
+        int ix_;
+        int iy_;
         pair_t output_;
 };
 
