@@ -108,7 +108,7 @@ std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
     if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "partition: currently support only single-channel images; got " << m.second.channels() << " channels" ); }
     if( merge_ && m.second.type() != CV_32SC1 ) { COMMA_THROW( comma::exception, "partition: asked to merge, expected image of type i (CV_32SC1), got: " << m.second.type() ); }
     cv::Mat partitions( m.second.rows, m.second.cols, CV_32SC1, cv::Scalar( none_ ) );
-    if( !keep_id_ ) { id_ = start_from_; }
+    comma::uint32 id = keep_id_ ? id_ : start_from_;
     std::unordered_set< std::pair< int, int >, pair_hash< int > > neighbours;
     auto insert_neighbour = [&]( int i, int j, int io, int jo, int none )
     {
@@ -121,7 +121,7 @@ std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
         if( std::memcmp( m.second.ptr( ni, nj ), m.second.ptr( i, j ), m.second.elemSize() ) != 0 ) { return; }
         neighbours.insert( std::make_pair( ni, nj ) );
     };
-    auto visit_partition_at = [&]( int i, int j, int id, int none ) -> unsigned int
+    auto visit_partition_at = [&]( int i, int j, int current_id, int none ) -> unsigned int
     {
         if( partitions.template at< comma::int32 >( i, j ) != none ) { return 0; }
         if( do_not_visit_value_ && std::memcmp( m.second.ptr( i, j ), &( *do_not_visit_value_ ), m.second.elemSize() ) == 0 ) { return 0; }
@@ -131,7 +131,7 @@ std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
         {
             int ci = neighbours.begin()->first;
             int cj = neighbours.begin()->second;
-            partitions.template at< comma::int32 >( ci, cj ) = id;
+            partitions.template at< comma::int32 >( ci, cj ) = current_id;
             ++size;
             neighbours.erase( neighbours.begin() );
             insert_neighbour( ci, cj, -1,  0, none );
@@ -153,10 +153,10 @@ std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
     {
         for( int j = 0; j < m.second.cols; ++j )
         {
-            unsigned int size = visit_partition_at( i, j, id_, none_ );
+            unsigned int size = visit_partition_at( i, j, id, none_ );
             if( size == 0 ) { continue; }
             if( size < min_partition_size_ ) { discarded.push_back( std::make_pair( i, j ) ); } // todo: quick and dirty, watch performance
-            else { ++id_; }
+            else { ++id; }
         }
     }
     for( const auto& p: discarded ) { visit_partition_at( p.first, p.second, none_, partitions.template at< comma::int32 >( p.first, p.second ) ); }
@@ -173,6 +173,7 @@ std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
     {
         n.second = partitions;
     }
+    if( keep_id_ ) { id_ = id; }
     return n;
 }
 

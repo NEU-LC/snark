@@ -83,6 +83,7 @@ class partition
         
         /// return partition functor and boolean flag that indicates whether functor is safely re-entrant in multithread context
         /// functor is re-entrant, if keep_id is set to false
+        /// @todo? protect with mutex instead?
         static std::pair< functor_t, bool > make( const std::string& options );
         
         static std::string usage( unsigned int indent = 0 );
