@@ -73,14 +73,14 @@ typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, c
     if( !ranges_.empty() )
     {
         for( ; range_index_ < ranges_.size() && count_ >= ranges_[range_index_].second; ++range_index_ );
-        if( range_index_ == ranges_.size() ) { return std::pair< H, cv::Mat >(); } // end of desired ranges; todo? simply continue?
+        if( range_index_ == ranges_.size() ) { return m; } // todo? optionally exit on end of desired ranges
         if( count_ < ranges_[range_index_].first ) { ++count_; return m; }
     }
     boost::posix_time::ptime timestamp = get_timestamp_( m.first );
     index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
     previous_timestamp_ = timestamp;
     const std::string& filename = make_filename_( timestamp );
-    if( filename.empty() ) { return std::pair< H, cv::Mat >(); } // end of list of filenames; todo? simply continue?
+    if( filename.empty() ) { return m; } // todo? optionally exit on end of list of filenames
     if( type_ == "bin" )
     {
         std::ofstream ofs( filename );
