@@ -2893,6 +2893,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
     bool modified = false;
     for( std::size_t i = 0; i < v.size(); name += ( i > 0 ? ";" : "" ) + v[i], ++i )
     {
+        if( v[i].empty() ) { continue; }
         std::vector< std::string > e = comma::split( v[i], '=' );
         if( e[0] == "mask" )
         {
