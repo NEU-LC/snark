@@ -29,11 +29,13 @@
 
 #include <iostream>
 #include <memory>
+#include <unordered_set>
 #include <vector>
+#include <boost/functional/hash.hpp>
+#include <boost/test/utils/nullstream.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
-#include <boost/test/utils/nullstream.hpp>
 #include <comma/name_value/parser.h>
 #include <comma/csv/options.h>
 #include <comma/string/split.h>
@@ -46,9 +48,10 @@ static snark::cv_mat::serialization::options input_options;
 static snark::cv_mat::serialization::header header;
 static comma::csv::options csv;
 static std::size_t channels = 3;
-static int depth=0;
+static int depth = 0;
 static std::vector< float > discard;
 static std::vector< char > discard_pixel;
+static bool unique;
 
 struct app_t
 {
@@ -113,6 +116,7 @@ static void usage( bool detail )
                     << "    --output-format: output format string and exit need to feed in image header through stdin or specify --input options" << std::endl
                     << "    --output-header-fields: output header fields and exit" << std::endl
                     << "    --output-header-format: output header format and exit" << std::endl
+                    << "    --some,--unique,-u: output unique pixel for each colour present in image" << std::endl
                     << std::endl
                     << "deprecated" << std::endl
                     << "    --channels=<n>: number of channels, example: " << std::endl
@@ -121,7 +125,7 @@ static void usage( bool detail )
                     << "    " << std::endl
                     << std::endl;
     std::cerr << "serialization and csv options" << std::endl;
-    if(detail)
+    if( detail )
     {
         std::cerr<< snark::cv_mat::serialization::options::usage() << std::endl << std::endl;
         std::cerr<< "output stream csv options:" << std::endl << csv.usage() << std::endl << std::endl;
@@ -131,7 +135,7 @@ static void usage( bool detail )
         std::cerr << "    run image-to-csv --help --verbose for more..." << std::endl;
     }
     std::cerr << std::endl;
-    std::cerr<< "example" << std::endl << "      cv-cat --file image.jpg | " << app_name << " > pixels.csv" << std::endl << std::endl;
+    std::cerr << "example" << std::endl << "      cv-cat --file image.jpg | " << app_name << " > pixels.csv" << std::endl << std::endl;
     exit( 0 );
 }
 
@@ -159,8 +163,31 @@ static void set_discard_pixel()
     for( unsigned int i = 0; i < channels; ++i ) { *( reinterpret_cast< T* >( &discard_pixel[ i * sizeof( T ) ] ) ) = static_cast< T >( discard[i] ); }
 }
 
+template < typename T >
+struct vector_hash
+{
+    std::size_t operator()( const std::vector< T >& v ) const
+    {
+        std::size_t seed = 0;
+        for( auto e: v ) { boost::hash_combine( seed, e ); }
+        return seed;
+    }
+};
+
 template< typename T >
-static bool keep( char* p ) { return discard.empty() || std::memcmp( p, &discard_pixel[0], discard_pixel.size() ) != 0; }
+static bool keep( char* p )
+{
+    if( unique )
+    {
+        static std::unordered_set< std::vector< T >, vector_hash< T > > colours;
+        static std::vector< T > pixel( channels );
+        static unsigned int size = sizeof( T ) * channels;
+        std::memcpy( reinterpret_cast< char* >( &pixel[0] ), p, size ); // todo: quick and dirty for now; watch performance
+        if( colours.find( pixel ) != colours.end() ) { return false; }
+        colours.insert( pixel );
+    }
+    return discard.empty() || std::memcmp( p, &discard_pixel[0], discard_pixel.size() ) != 0;
+}
 
 template< typename T >
 bool output_t< T >::process_image()
@@ -246,15 +273,16 @@ int main( int ac, char** av )
         header=input_options.get_header();
         channels = options.value< int >( "--channels", CV_MAT_CN( header.type ) );
         depth = CV_MAT_DEPTH( header.type );
+        unique = options.exists( "--unique,-u" );
         *cverbose<<app_name<<": type: "<<header.type<<" channels: "<<channels<<" depth: "<<int(CV_MAT_DEPTH(header.type))<<std::endl;
-        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--output-format,--verbose,-v,--output-header-fields,--output-header-format,--discard-zero,--output-non-zero,--flush", 
+        std::vector< std::string > unnamed = options.unnamed( "--output-fields,--output-format,--verbose,-v,--output-header-fields,--output-header-format,--discard-zero,--output-non-zero,--flush,--some,--unique,-u", 
                                                               "--input,--channels,--binary,-b,--fields,-f,--precision,--quote,--delimiter,-d,--discard");
-        if(!unnamed.empty()) { std::cerr<<"invalid option"<<((unnamed.size()>1)?"s":"")<<": "<< comma::join(unnamed, ',') <<std::endl; return 1; }
+        if( !unnamed.empty() ) { std::cerr<<"invalid option"<<((unnamed.size()>1)?"s":"")<<": "<< comma::join(unnamed, ',') <<std::endl; return 1; }
         get_app g;
-        if (options.exists("--output-fields")) { g.app->output_fields();exit(0); }
-        if (options.exists("--output-format")) { g.app->output_format(); exit(0); }
-        if (options.exists("--output-header-fields")) { std::cout<<comma::join( comma::csv::names< snark::cv_mat::serialization::header >(input_options.fields), ','  ) << std::endl; exit(0); }
-        if (options.exists("--output-header-format")) { std::cout<<comma::csv::format::value< snark::cv_mat::serialization::header >(input_options.fields, false) << std::endl; exit(0); }
+        if( options.exists( "--output-fields") ) { g.app->output_fields(); exit( 0 ); }
+        if( options.exists( "--output-format") ) { g.app->output_format(); exit( 0 ); }
+        if( options.exists( "--output-header-fields") ) { std::cout<<comma::join( comma::csv::names< snark::cv_mat::serialization::header >(input_options.fields), ','  ) << std::endl; exit(0); }
+        if( options.exists( "--output-header-format") ) { std::cout<<comma::csv::format::value< snark::cv_mat::serialization::header >(input_options.fields, false) << std::endl; exit(0); }
         options.assert_mutually_exclusive( "--discard-zero,--output-non-zero", "--discard" );
         if( options.exists( "--discard-zero,--output-non-zero" ) ) { discard.push_back( 0 ); }
         const auto& d = comma::split( options.value< std::string >( "--discard", "" ), ',' );
