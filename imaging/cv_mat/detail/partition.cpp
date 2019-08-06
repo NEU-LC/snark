@@ -194,7 +194,7 @@ std::pair< typename partition< H >::functor_t, bool > partition< H >::make( cons
         {
             if( s[i] == "merge" ) { merge = true; }
             else if( s[i] == "keep-id" ) { keep_id = true; }
-            else if( s[i].substr( 0, 5 ) == "none:" ) { start_from = boost::lexical_cast< comma::int32 >( s[i].substr( 5 ) ); }
+            else if( s[i].substr( 0, 5 ) == "none:" ) { none = boost::lexical_cast< comma::int32 >( s[i].substr( 5 ) ); }
             else if( s[i].substr( 0, 8 ) == "degrees:" ) { degrees = boost::lexical_cast< comma::uint32 >( s[i].substr( 8 ) ); }
             else if( s[i].substr( 0, 13 ) == "do-not-visit:" ) { do_not_visit = boost::lexical_cast< comma::int32 >( s[i].substr( 13 ) ); }
             else if( s[i].substr( 0, 11 ) == "start-from:" ) { start_from = boost::lexical_cast< comma::int32 >( s[i].substr( 11 ) ); }
