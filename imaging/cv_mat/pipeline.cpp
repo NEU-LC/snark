@@ -120,11 +120,7 @@ void pipeline< H >::setup_pipeline_()
         bool has_null = false;
         for( std::size_t i = 0; i < m_filters.size(); ++i )
         {
-            ::tbb::filter::mode mode = ::tbb::filter::serial_in_order;
-            if( m_filters[i].parallel )
-            {
-                mode = ::tbb::filter::parallel;
-            }
+            ::tbb::filter::mode mode = m_filters[i].parallel ? ::tbb::filter::parallel : ::tbb::filter::serial_in_order;
             if( !m_filters[i].filter_function ) { has_null = true; break; }
             ::tbb::filter_t< pair, pair > filter( mode, boost::bind( m_filters[i].filter_function, _1 ) );
             all_filters = i == 0 ? filter : ( all_filters & filter );
