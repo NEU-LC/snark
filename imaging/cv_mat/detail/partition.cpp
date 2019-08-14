@@ -56,11 +56,12 @@
 
 /// @author vsevolod vlaskine
 
-#include <limits>
+#include <deque>
+#include <map>
 #include <memory>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
-#include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/lexical_cast.hpp>
@@ -68,6 +69,8 @@
 #include <comma/base/types.h>
 #include <comma/string/split.h>
 #include "partition.h"
+
+#include <iostream>
 
 namespace snark { namespace cv_mat { namespace impl {
 
@@ -105,6 +108,117 @@ partition< H >::partition( boost::optional< cv::Scalar > do_not_visit_value
 template < typename H >
 std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
 {
+    if( false )
+    {
+        if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "partition: currently support only single-channel images; got " << m.second.channels() << " channels" ); }
+        if( merge_ && m.second.type() != CV_32SC1 ) { COMMA_THROW( comma::exception, "partition: asked to merge, expected image of type i (CV_32SC1), got: " << m.second.type() ); }
+        cv::Mat partitions( m.second.rows, m.second.cols, CV_32SC1, cv::Scalar( none_ ) );
+        comma::uint32 id = keep_id_ ? id_ : start_from_;
+        comma::uint32 start_from = id;
+        auto neighbour_id = [&]( int i, int j, int io, int jo )->int
+        {
+            int ni = i + io;
+            if( ni < 0 || ni >= m.second.rows ) { return none_; }
+            int nj = j + jo;
+            if( nj < 0 || nj >= m.second.cols ) { return none_; }
+            int nid = partitions.template at< comma::int32 >( ni, nj );
+            if( nid == none_ ) { return none_; }
+            return std::memcmp( m.second.ptr( i, j ), m.second.ptr( ni, nj ), m.second.elemSize() ) == 0 ? nid : none_;
+        };
+        auto set_pixel = [&]( int i, int j )
+        {
+            if( do_not_visit_value_ && std::memcmp( m.second.ptr( i, j ), &( *do_not_visit_value_ ), m.second.elemSize() ) == 0 ) { return; }
+            int nid = none_;
+            if( degrees_ == 8 ) { nid = neighbour_id( i, j, -1,  -1 ); }
+            if( nid == none_ ) { nid = neighbour_id( i, j, -1,  0 ); }
+            if( nid == none_ && degrees_ == 8 ) { nid = neighbour_id( i, j, -1,  1 ); }
+            if( nid == none_ ) { nid = neighbour_id( i, j, 0,  -1 ); }
+            if( nid == none_ ) { partitions.template at< comma::int32 >( i, j ) = id++; }
+            else { partitions.template at< comma::int32 >( i, j ) = nid; }
+        };
+        for( int i = 0; i < m.second.rows; ++i ) { for( int j = 0; j < m.second.cols; ++j ) { set_pixel( i, j ); } }
+        std::deque< std::unordered_set< int > > equivalencies; // todo! quick and dirty, watch performance
+        std::vector< int > indices( id - start_from, -1 );
+        auto update_equivalencies = [&]( int pid, int i, int j, int io, int jo )
+        {
+            int nid = neighbour_id( i, j, io,  jo );
+            if( nid == none_ || nid == pid ) { return; }
+            int nix = nid - start_from;
+            int pix = pid - start_from;
+            if( indices[nix] == -1 )
+            {
+                equivalencies[indices[pix]].insert( nix );
+                indices[nix] = indices[pix];
+            }
+            else
+            {
+                if( indices[pix] != indices[nix] )
+                {
+                    equivalencies[indices[nix]].insert( equivalencies[indices[pix]].begin(), equivalencies[indices[pix]].end() );
+                    int to_clear = indices[pix];
+                    for( int k: equivalencies[indices[pix]] ) { indices[k] = indices[nix]; }
+                    equivalencies[to_clear].clear();
+                }
+            }
+        };
+        auto make_equivalencies = [&]( int i, int j ) // todo: wasteful? fill the map on the first pass?
+        {
+            int pid = partitions.template at< comma::int32 >( i, j );
+            if( pid == none_ ) { return; }
+            int pix = pid - start_from;
+            if( indices[pix] == -1 )
+            {
+                indices[pix] = equivalencies.size();
+                equivalencies.push_back( std::unordered_set< int >() );
+                equivalencies.back().insert( pix );
+            }
+            update_equivalencies( pid, i, j, -1,  0 );
+            update_equivalencies( pid, i, j,  0, -1 );
+            update_equivalencies( pid, i, j,  0,  1 );
+            update_equivalencies( pid, i, j,  1,  0 );
+            if( degrees_ == 8 )
+            {
+                update_equivalencies( pid, i, j, -1, -1 );
+                update_equivalencies( pid, i, j, -1,  1 );
+                update_equivalencies( pid, i, j,  1, -1 );
+                update_equivalencies( pid, i, j,  1,  1 );
+            }
+        };
+        for( int i = 0; i < m.second.rows; ++i ) { for( int j = 0; j < m.second.cols; ++j ) { make_equivalencies( i, j ); } }
+        std::vector< int > ids( equivalencies.size(), -1 );
+        id = start_from;
+        for( unsigned int i = 0; i < ids.size(); ++i ) { if( !equivalencies[i].empty() ) { ids[i] = id++; } }
+        for( int i = 0; i < m.second.rows; ++i )
+        {
+            for( int j = 0; j < m.second.cols; ++j )
+            {
+                auto& p = partitions.template at< comma::int32 >( i, j );
+                if( p != none_ ) { p = ids[ indices[ p - start_from ] ]; }
+            }
+        }
+        
+        
+        // todo: drop partitions by size
+        
+        
+        if( keep_id_ ) { id_ = id; }
+        std::pair< H, cv::Mat > n;
+        n.first = m.first;
+        if( merge_ )
+        {
+            std::vector< cv::Mat > channels( 2 );
+            channels[0] = m.second;
+            channels[1] = partitions;
+            cv::merge( channels, n.second );
+        }
+        else
+        {
+            n.second = partitions;
+        }
+        return n;
+    }
+    
+    
     if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "partition: currently support only single-channel images; got " << m.second.channels() << " channels" ); }
     if( merge_ && m.second.type() != CV_32SC1 ) { COMMA_THROW( comma::exception, "partition: asked to merge, expected image of type i (CV_32SC1), got: " << m.second.type() ); }
     cv::Mat partitions( m.second.rows, m.second.cols, CV_32SC1, cv::Scalar( none_ ) );
