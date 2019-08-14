@@ -108,7 +108,7 @@ partition< H >::partition( boost::optional< cv::Scalar > do_not_visit_value
 template < typename H >
 std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
 {
-    if( false )
+    if( true )
     {
         if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "partition: currently support only single-channel images; got " << m.second.channels() << " channels" ); }
         if( merge_ && m.second.type() != CV_32SC1 ) { COMMA_THROW( comma::exception, "partition: asked to merge, expected image of type i (CV_32SC1), got: " << m.second.type() ); }
@@ -188,19 +188,30 @@ std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
         std::vector< int > ids( equivalencies.size(), -1 );
         id = start_from;
         for( unsigned int i = 0; i < ids.size(); ++i ) { if( !equivalencies[i].empty() ) { ids[i] = id++; } }
+        std::vector< unsigned int > sizes( id - start_from, 0 );
         for( int i = 0; i < m.second.rows; ++i )
         {
             for( int j = 0; j < m.second.cols; ++j )
             {
                 auto& p = partitions.template at< comma::int32 >( i, j );
-                if( p != none_ ) { p = ids[ indices[ p - start_from ] ]; }
+                if( p != none_ )
+                {
+                    p = ids[ indices[ p - start_from ] ];
+                    ++sizes[ p - start_from ];
+                }
             }
         }
-        
-        
-        // todo: drop partitions by size
-        
-        
+        if( min_partition_size_ > 0 ) // uber quick and dirty
+        {
+            for( int i = 0; i < m.second.rows; ++i )
+            {
+                for( int j = 0; j < m.second.cols; ++j )
+                {
+                    auto& p = partitions.template at< comma::int32 >( i, j );
+                    if( p != none_ && sizes[ p - start_from ] < min_partition_size_ ) { p = none_; }
+                }
+            }
+        }
         if( keep_id_ ) { id_ = id; }
         std::pair< H, cv::Mat > n;
         n.first = m.first;
