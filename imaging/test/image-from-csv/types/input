@@ -1,0 +1,8 @@
+types[0]="( echo 0,0,10; echo 0,1,20 ) | image-from-csv --fields=x,y,grey --output 'no-header;rows=2;cols=2;type=ub' | csv-from-bin 4ub"
+types[1]="( echo 0,0,10; echo 0,1,20 ) | image-from-csv --fields=x,y,grey --output 'no-header;rows=2;cols=2;type=i' | csv-from-bin 4i"
+types[2]="( echo 0,0,10; echo 0,1,20 ) | image-from-csv --fields=x,y,grey --output 'no-header;rows=2;cols=2;type=f' | csv-from-bin 4f"
+types[3]="( echo 0,0,10,11; echo 0,1,20,21 ) | image-from-csv --fields=x,y,b,g --output 'no-header;rows=2;cols=2;type=2ub' | csv-from-bin 8ub"
+types[4]="( echo 0,0,10,11; echo 0,1,20,21 ) | image-from-csv --fields=x,y,channels[0],channels[1] --output 'no-header;rows=2;cols=2;type=2ub' | csv-from-bin 8ub"
+types[5]="( echo 0,0,10,11,12,13; echo 0,1,20,21,22,23 ) | image-from-csv --fields=x,y,b,g,r,a --output 'no-header;rows=2;cols=2;type=4ub' | csv-from-bin 16ub"
+types[6]="( echo 0,0,10,11,12,13; echo 0,1,20,21,22,23 ) | image-from-csv --fields=x,y,channels[0],channels[1],channels[2],channels[3] --output 'no-header;rows=2;cols=2;type=4ub' | csv-from-bin 16ub"
+types[7]="( echo 0,0,10,11,12,13; echo 0,1,20,21,22,23 ) | image-from-csv --fields=x,y,b,g,r,a --output 'no-header;rows=2;cols=2;type=4i' | csv-from-bin 16i"

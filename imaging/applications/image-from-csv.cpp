@@ -35,6 +35,7 @@
 #include <comma/name_value/parser.h>
 #include <comma/csv/options.h>
 #include "../cv_mat/serialization.h"
+#include "../cv_mat/type_traits.h"
     
 struct input_t
 {
@@ -118,35 +119,8 @@ static void set_pixel( cv::Mat& m, const input_t& v, const std::pair< double, do
 {
     int x = std::floor( v.x + 0.5 - offset.first );
     int y = std::floor( v.y + 0.5 - offset.second );
-    if( x < 0 || x >= m.cols ) { return; }
-    if( y < 0 || y >= m.rows ) { return; }
-    switch( m.type() )
-    {
-        case CV_8UC1:
-            m.at< unsigned char >( y, x ) = v.channels[0];
-            break;
-        case CV_32FC1:
-            m.at< float >( y, x ) = v.channels[0];
-            break;
-        case CV_8UC3:
-        {
-            cv::Vec3b& p = m.at< cv::Vec3b >( y, x );
-            p[0] = v.channels[0];
-            p[1] = v.channels[1];
-            p[2] = v.channels[2];
-            break;
-        }
-        case CV_32FC3:
-        {
-            cv::Vec3f& p = m.at< cv::Vec3f >( y, x );
-            p[0] = v.channels[0];
-            p[1] = v.channels[1];
-            p[2] = v.channels[2];
-            break;
-        }
-        default:
-            COMMA_THROW( comma::exception, "unsupported cv mat type " << m.type() );
-    }   
+    snark::cv_mat::set( m, y, x, v.channels );
+    return;
 }
 
 class timestamping
@@ -213,7 +187,6 @@ private:
     unsigned int count_;
 };
 
-
 int main( int ac, char** av )
 {
     try
@@ -225,16 +198,16 @@ int main( int ac, char** av )
         input_t sample;
         bool is_greyscale = true;
         bool has_alpha = false;
-        for( unsigned int i = 0; i < v.size(); ++i )
+        for( unsigned int i = 0; i < v.size(); ++i ) // quick and dirty, somewhat silly
         {
             if( v[i] == "grey" ) { v[i] = "channels[0]"; }
             else if( v[i] == "b" ) { v[i] = "channels[0]"; is_greyscale = false; }
-            else if( v[i] == "g" ) { v[i] = "channels[1]"; is_greyscale = false; }
-            else if( v[i] == "r" ) { v[i] = "channels[2]"; is_greyscale = false; }
-            else if( v[i] == "a" ) { v[i] = "channels[3]"; is_greyscale = false; has_alpha = true; }
+            else if( v[i] == "g" || v[i] == "channels[1]" ) { v[i] = "channels[1]"; is_greyscale = false; }
+            else if( v[i] == "r" || v[i] == "channels[2]" ) { v[i] = "channels[2]"; is_greyscale = false; }
+            else if( v[i] == "a" || v[i] == "channels[3]" ) { v[i] = "channels[3]"; is_greyscale = false; has_alpha = true; }
+            else if( v[i] == "channels" ) { std::cerr << "image-from-csv: please specify channels fields explicitly, e.g. as \"channels[0],channels[1]\", or \"r,g\"" << std::endl; return 1; }
         }
         csv.fields = comma::join( v, ',' );
-        if( has_alpha ) { std::cerr << "image-from-csv: alpha support: todo" << std::endl; return 1; }
         std::string offset_string = options.value< std::string >( "--from,--begin,--origin", "0,0" );
         const std::vector< std::string >& w = comma::split( offset_string, ',' );
         if( w.size() != 2 ) { std::cerr << "image-from-csv: --from: expected <x>,<y>; got: \"" << offset_string << "\"" << std::endl; return 1; }
