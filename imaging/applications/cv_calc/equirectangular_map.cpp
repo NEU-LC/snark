@@ -101,7 +101,7 @@ std::string options()
     oss << "        --map-size,--size=<width>,<height>; output map size" << std::endl;
     oss << "        --orientation=<roll>,<pitch>,<yaw>; default=0,0,0; orientation in radians" << std::endl;
     oss << "        --spherical-size=<width>,<height>; input spherical size" << std::endl;
-    oss << "        --cubes=<width>; output map for top,back,left,front,right,bottom cubes with a given original orientation" << std::endl;
+    oss << "        --cubes=<width>; output map width for top,back,left,front,right,bottom cubes with a given original orientation" << std::endl;
     oss << std::endl;
     return oss.str();
 }
