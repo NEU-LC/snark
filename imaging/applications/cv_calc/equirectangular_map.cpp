@@ -125,8 +125,8 @@ struct reverse_calculator
         double ax = std::abs( v.x() );
         double ay = std::abs( v.y() );
         double az = std::abs( v.z() );
-        if( ax > ay && ax > az ) { return v.x() > 0 ? faces::front : faces::back; } // todo!!!
-        if( ay > az ) { return v.y() > 0 ? faces::left : faces::right; } // todo!!!
+        if( ax > ay && ax > az ) { return v.x() > 0 ? faces::left : faces::right; } // todo!!!
+        if( ay > az ) { return v.y() > 0 ? faces::front : faces::back; } // todo!!!
         return v.z() > 0 ? faces::bottom : faces::top; // todo!!!
     }
     
@@ -140,12 +140,12 @@ struct reverse_calculator
         Eigen::Vector2d pixel;
         switch( face )
         {
-            case faces::top: pixel = Eigen::Vector2d( c.x(), c.y() ) / std::abs( c.z() ); break;
-            case faces::back: pixel = Eigen::Vector2d( -c.z(), c.y() ) / std::abs( c.x() ); break;
-            case faces::left: pixel = Eigen::Vector2d( -c.x(), c.z() ) / std::abs( c.y() ); break;
-            case faces::front: pixel = Eigen::Vector2d( c.z(), c.y() ) / std::abs( c.x() ); break;                
-            case faces::right: pixel = Eigen::Vector2d( -c.x(), -c.z() ) / std::abs( c.y() ); break;
-            case faces::bottom: pixel = Eigen::Vector2d( -c.x(), c.y() ) / std::abs( c.z() ); break;
+            case faces::top: pixel = Eigen::Vector2d( -c.x(), c.y() ) / std::abs( c.z() ); break;
+            case faces::back: pixel = Eigen::Vector2d( c.x(), c.z() ) / std::abs( c.y() ); break;
+            case faces::left: pixel = Eigen::Vector2d( c.y(), c.z() ) / std::abs( c.x() ); break;
+            case faces::front: pixel = Eigen::Vector2d( -c.x(), c.z() ) / std::abs( c.y() ); break;
+            case faces::right: pixel = Eigen::Vector2d( -c.y(), c.z() ) / std::abs( c.x() ); break;
+            case faces::bottom: pixel = Eigen::Vector2d( c.x(), c.y() ) / std::abs( c.z() ); break;
         }
         pixel *= 0.5; // todo: why polar radius cannot be 1?
         pixel.x() += 0.5;
