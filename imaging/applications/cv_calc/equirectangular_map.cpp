@@ -125,14 +125,14 @@ struct reverse_calculator
         double ax = std::abs( v.x() );
         double ay = std::abs( v.y() );
         double az = std::abs( v.z() );
-        if( ax > ay && ax > az ) { return v.x() > 0 ? faces::left : faces::right; } // todo!!!
-        if( ay > az ) { return v.y() > 0 ? faces::front : faces::back; } // todo!!!
-        return v.z() > 0 ? faces::bottom : faces::top; // todo!!!
+        if( ax > ay && ax > az ) { return v.x() > 0 ? faces::front : faces::back; }
+        if( ay > az ) { return v.y() > 0 ? faces::right : faces::left; }
+        return v.z() > 0 ? faces::bottom : faces::top;
     }
     
     std::pair< double, double > projected_pixel( unsigned int x, unsigned int y )
     {
-        snark::range_bearing_elevation polar( 0.5 // todo: why polar radius cannot be 1?
+        snark::range_bearing_elevation polar( 0.5 // todo: why polar radius cannot be 1?!
                                             , M_PI * 2 * ( double( x ) / spherical_width - 0.5 )
                                             , M_PI * ( double( y ) / spherical_height - 0.5 ) );
         auto c = polar.to_cartesian();
@@ -140,18 +140,17 @@ struct reverse_calculator
         Eigen::Vector2d pixel;
         switch( face )
         {
-            case faces::top: pixel = Eigen::Vector2d( -c.x(), c.y() ) / std::abs( c.z() ); break;
-            case faces::back: pixel = Eigen::Vector2d( c.x(), c.z() ) / std::abs( c.y() ); break;
-            case faces::left: pixel = Eigen::Vector2d( c.y(), c.z() ) / std::abs( c.x() ); break;
-            case faces::front: pixel = Eigen::Vector2d( -c.x(), c.z() ) / std::abs( c.y() ); break;
-            case faces::right: pixel = Eigen::Vector2d( -c.y(), c.z() ) / std::abs( c.x() ); break;
-            case faces::bottom: pixel = Eigen::Vector2d( c.x(), c.y() ) / std::abs( c.z() ); break;
+            case faces::top: pixel = Eigen::Vector2d( c.y(), c.x() ) / std::abs( c.z() ); break;
+            case faces::left: pixel = Eigen::Vector2d( c.x(), c.z() ) / std::abs( c.y() ); break;
+            case faces::front: pixel = Eigen::Vector2d( c.y(), c.z() ) / std::abs( c.x() ); break;
+            case faces::right: pixel = Eigen::Vector2d( -c.x(), c.z() ) / std::abs( c.y() ); break;
+            case faces::back: pixel = Eigen::Vector2d( -c.y(), c.z() ) / std::abs( c.x() ); break;
+            case faces::bottom: pixel = Eigen::Vector2d( c.y(), -c.x() ) / std::abs( c.z() ); break;
         }
-        pixel *= 0.5; // todo: why polar radius cannot be 1?
+        pixel *= 0.5; // todo: why polar radius cannot be 1?!
         pixel.x() += 0.5;
         pixel.y() += 0.5 + face;
         pixel *= cube_size;
-        //if( pixel.x() < 0 || pixel.x() > 4096 || pixel.y() < 0 || pixel.y() > 4096 * 6 ) { std::cerr << "--> b: x: " << x << " y: " << y << " face: " << face << " c: " << c.transpose() << " pixel: " << pixel.transpose() << std::endl; }
         return std::make_pair( pixel.x(), pixel.y() );
     }
         
@@ -183,7 +182,6 @@ int run( const comma::command_line_options& options )
     boost::tie( spherical_width, spherical_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--spherical-size" ) );
     if( options.exists( "--reverse" ) )
     {
-        //std::cerr << "cv-calc: equirectangular-map --reverse: implementing..." << std::endl; return 1;
         unsigned int cube_size = options.value< unsigned int >( "--cubes,--cube-size", spherical_width / 4 ); // quick and dirty
         reverse_calculator calc( spherical_width, spherical_height, cube_size );
         cv::Mat x( spherical_height, spherical_width, CV_32F );
