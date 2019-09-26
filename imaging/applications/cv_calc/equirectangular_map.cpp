@@ -30,6 +30,7 @@
 #include <iostream>
 #include <sstream>
 #include <boost/static_assert.hpp>
+#include <Eigen/Core>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -39,6 +40,7 @@
 #include <comma/base/exception.h>
 #include <comma/csv/ascii.h>
 #include <comma/visiting/traits.h>
+#include "../../../math/range_bearing_elevation.h"
 #include "../../../visiting/eigen.h"
 #include "equirectangular_map.h"
 
@@ -60,7 +62,9 @@ static cv::Mat rotation_matrix( double x,double y,double z ) // quick and dirty
                   0,            0,      1 );
     return r_z * r_y * r_x;
 }
-    
+
+struct faces { enum values { top = 0, back, left, front, right, bottom }; };
+
 // see: inverse formula for spherical projection, Szeliski, "Computer Vision: Algorithms and Applications" p439.
 struct calculator
 {
@@ -94,14 +98,76 @@ struct calculator
     unsigned int h;
 };
 
+struct reverse_calculator
+{
+    reverse_calculator( unsigned int spherical_width, unsigned int spherical_height, unsigned int cube_size )
+        : spherical_width( spherical_width )
+        , spherical_height( spherical_height )
+        , cube_size( cube_size )
+    {
+    }
+    
+    static Eigen::Vector3d face_to_cartesian( const Eigen::Vector3d& norm, faces::values face ) // quick and dirty
+    {
+        switch( face )
+        {
+            case faces::top: return Eigen::Vector3d( norm.y(), norm.x(), -norm.z() );
+            case faces::back: return Eigen::Vector3d( -norm.z(), -norm.x(), norm.y() );
+            case faces::left: return Eigen::Vector3d( norm.x(), -norm.z(), norm.y() );
+            case faces::front: return Eigen::Vector3d( norm.z(), norm.x(), norm.y() );
+            case faces::right: return Eigen::Vector3d( -norm.x(), norm.z(), norm.y() );
+            case faces::bottom: return Eigen::Vector3d( -norm.y(), norm.x(), norm.z() );
+        }
+    }
+    
+    faces::values face_of( const Eigen::Vector3d v ) // todo: watch performance, don't need to call it so many times
+    {
+        double ax = std::abs( v.x() );
+        double ay = std::abs( v.y() );
+        double az = std::abs( v.z() );
+        if( ax > ay && ax > az ) { return v.x() > 0 ? faces::front : faces::back; } // todo!!!
+        if( ay > az ) { return v.y() > 0 ? faces::left : faces::right; } // todo!!!
+        return v.z() > 0 ? faces::bottom : faces::top; // todo!!!
+    }
+    
+    std::pair< double, double > projected_pixel( unsigned int x, unsigned int y )
+    {
+        snark::range_bearing_elevation polar( 0.5
+                                            , M_PI * 2 * ( double( x ) - 0.5 * spherical_width ) / spherical_width
+                                            , M_PI * ( double( y ) - 0.5 * spherical_height ) / spherical_height );
+        auto c = polar.to_cartesian();
+        auto face = face_of( c );
+        Eigen::Vector2d pixel;
+        switch( face )
+        {
+            case faces::top: Eigen::Vector2d( c.x(), c.y() ) / std::abs( c.z() ); break;
+            case faces::back: pixel = Eigen::Vector2d( -c.z(), c.y() ) / std::abs( c.x() ); break;
+            case faces::left: pixel = Eigen::Vector2d( -c.x(), c.z() ) / std::abs( c.y() ); break;
+            case faces::front: pixel = Eigen::Vector2d( c.z(), c.y() ) / std::abs( c.x() ); break;                
+            case faces::right: pixel = Eigen::Vector2d( -c.x(), -c.z() ) / std::abs( c.y() ); break;
+            case faces::bottom: Eigen::Vector2d( -c.x(), c.y() ) / std::abs( c.z() ); break;
+        }
+        pixel *= cube_size;
+        pixel.y() += face * cube_size;
+        return std::make_pair( pixel.x(), pixel.y() );
+    }
+        
+    unsigned int spherical_width;
+    unsigned int spherical_height;
+    unsigned int cube_size;
+};
+
 std::string options()
 {
     std::ostringstream oss;
+    oss << "        --cubes,--cube-size=[<width>]:" << std::endl;
+    oss << "            direct: output map width for top,back,left,front,right,bottom cubes with a given original orientation" << std::endl;
+    oss << "            reverse: cube size" << std::endl;
     oss << "        --focal-length=<pixels>; camera focal length" << std::endl;
-    oss << "        --map-size,--size=<width>,<height>; output map size" << std::endl;
+    oss << "        --map-size,--size=[<width>,<height>]; output map size" << std::endl;
     oss << "        --orientation=<roll>,<pitch>,<yaw>; default=0,0,0; orientation in radians" << std::endl;
-    oss << "        --spherical-size=<width>,<height>; input spherical size" << std::endl;
-    oss << "        --cubes=<width>; output map width for top,back,left,front,right,bottom cubes with a given original orientation" << std::endl;
+    oss << "        --reverse,--from-cubes; generate reverse map, i.e. mapping cubes to spherical images; if no --cube-size given, spherical width / 4 used" << std::endl;
+    oss << "        --spherical-size=<width>,<height>; spherical image size" << std::endl;
     oss << std::endl;
     return oss.str();
 }
@@ -109,62 +175,88 @@ std::string options()
 int run( const comma::command_line_options& options )
 {
     BOOST_STATIC_ASSERT( sizeof( float ) == 4 );
-    auto focal_length = options.optional< double >( "--focal-length" );
-    unsigned int spherical_width, spherical_height, map_width, map_height;
-    bool cubes = options.exists( "--cubes" );
-    if( cubes ) { map_width = map_height = options.value< unsigned int >( "--cubes" ); }
-    else { boost::tie( map_width, map_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--map-size,--size" ) ); }
+    options.assert_mutually_exclusive( "--reverse", "--focal-length,--map-size,--size,--orientation" );
+    unsigned int spherical_width, spherical_height;
     boost::tie( spherical_width, spherical_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--spherical-size" ) );
-    if( !focal_length )
+    if( options.exists( "--reverse" ) )
     {
-        if( map_width != map_height ) { std::cerr << "cv-calc: equirectangular-map: please specify --focal-length" << std::endl; return 1; }
-        focal_length = map_width / 2;
-    }
-    cv::Mat camera = ( cv::Mat_< double >( 3, 3 ) << *focal_length,             0,  map_width / 2,
-                                                                    0, *focal_length, map_height / 2,
-                                                                    0,             0,              1 );
-    auto orientation = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--orientation", "0,0,0" ) );
-    auto make_map = [&]( const Eigen::Vector3d& o ) -> std::pair< cv::Mat, cv::Mat >
-    {
-        cv::Mat x( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
-        cv::Mat y( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
-        tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, map_height ), [&]( const tbb::blocked_range< std::size_t >& r )
+        std::cerr << "cv-calc: equirectangular-map --reverse: implementing..." << std::endl; return 1;
+        unsigned int cube_size = options.value< unsigned int >( "--cubes,--cube-size", spherical_width / 4 ); // quick and dirty
+        reverse_calculator calc( spherical_width, spherical_height, cube_size );
+        cv::Mat x( spherical_height, spherical_width, CV_32F );
+        cv::Mat y( spherical_height, spherical_width, CV_32F );
+        tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, spherical_height ), [&]( const tbb::blocked_range< std::size_t >& r )
         {
-            calculator calc( o, camera, spherical_width, spherical_height );
             for( unsigned int v = r.begin(); v < r.end(); ++v )
             {
-                for( unsigned int u = 0; u < map_width; ++u )
+                for( unsigned int u = 0; u < spherical_width; ++u )
                 {
                     boost::tie( x.at< float >( v, u ), y.at< float >( v, u ) ) = calc.projected_pixel( u, v );
                 }
             }
         } );
-        return std::make_pair( x, y );
-    };
-    auto face = make_map( orientation );
-    if( !cubes )
-    {
-        std::cout.write( reinterpret_cast< const char* >( face.first.datastart ), face.first.dataend - face.first.datastart );
-        std::cout.write( reinterpret_cast< const char* >( face.second.datastart ), face.second.dataend - face.second.datastart );
+        std::cout.write( reinterpret_cast< const char* >( x.datastart ), x.dataend - x.datastart );
+        std::cout.write( reinterpret_cast< const char* >( y.datastart ), y.dataend - y.datastart );
         std::cout.flush();
-        return 0;
     }
-    if( orientation != Eigen::Vector3d::Zero() ) { std::cerr << "cv-calc: equirectangular-map: for cubes, expected --orientation 0,0,0; got: " << options.value< std::string >( "--orientation" ) << " (not supported)" << std::endl; return 1; }
-    auto top = make_map( Eigen::Vector3d( 0, M_PI / 2, orientation.z() ) );
-    auto bottom = make_map( Eigen::Vector3d( 0, -M_PI / 2, orientation.z() ) );
-    std::cout.write( reinterpret_cast< const char* >( top.first.datastart ), top.first.dataend - top.first.datastart );
-    int width = spherical_width / 4;
-    for( int i = -2; i < 2; ++i )
+    else
     {
-        cv::Mat f = face.first + width * i; // todo? waste to allocate it each time (currently, the only reason for it is the back face
-        if( i == -2 ) { cv::Mat( f, cv::Rect( 0, 0, f.cols / 2, f.rows ) ) += spherical_width; }
-        std::cout.write( reinterpret_cast< const char* >( f.datastart ), f.dataend - f.datastart );
+        auto focal_length = options.optional< double >( "--focal-length" );
+        unsigned int map_width, map_height;
+        bool cubes = options.exists( "--cubes,--cube-size" );
+        if( cubes ) { map_width = map_height = options.value< unsigned int >( "--cubes" ); }
+        else { boost::tie( map_width, map_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--map-size,--size" ) ); }
+        if( !focal_length )
+        {
+            if( map_width != map_height ) { std::cerr << "cv-calc: equirectangular-map: please specify --focal-length" << std::endl; return 1; }
+            focal_length = map_width / 2;
+        }
+        cv::Mat camera = ( cv::Mat_< double >( 3, 3 ) << *focal_length,             0,  map_width / 2,
+                                                                        0, *focal_length, map_height / 2,
+                                                                        0,             0,              1 );
+        auto orientation = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--orientation", "0,0,0" ) );
+        auto make_map = [&]( const Eigen::Vector3d& o ) -> std::pair< cv::Mat, cv::Mat >
+        {
+            cv::Mat x( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
+            cv::Mat y( map_height, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
+            tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, map_height ), [&]( const tbb::blocked_range< std::size_t >& r )
+            {
+                calculator calc( o, camera, spherical_width, spherical_height );
+                for( unsigned int v = r.begin(); v < r.end(); ++v )
+                {
+                    for( unsigned int u = 0; u < map_width; ++u )
+                    {
+                        boost::tie( x.at< float >( v, u ), y.at< float >( v, u ) ) = calc.projected_pixel( u, v );
+                    }
+                }
+            } );
+            return std::make_pair( x, y );
+        };
+        auto face = make_map( orientation );
+        if( !cubes )
+        {
+            std::cout.write( reinterpret_cast< const char* >( face.first.datastart ), face.first.dataend - face.first.datastart );
+            std::cout.write( reinterpret_cast< const char* >( face.second.datastart ), face.second.dataend - face.second.datastart );
+            std::cout.flush();
+            return 0;
+        }
+        if( orientation != Eigen::Vector3d::Zero() ) { std::cerr << "cv-calc: equirectangular-map: for cubes, expected --orientation 0,0,0; got: " << options.value< std::string >( "--orientation" ) << " (not supported)" << std::endl; return 1; }
+        auto top = make_map( Eigen::Vector3d( 0, M_PI / 2, orientation.z() ) );
+        auto bottom = make_map( Eigen::Vector3d( 0, -M_PI / 2, orientation.z() ) );
+        std::cout.write( reinterpret_cast< const char* >( top.first.datastart ), top.first.dataend - top.first.datastart );
+        int width = spherical_width / 4;
+        for( int i = -2; i < 2; ++i )
+        {
+            cv::Mat f = face.first + width * i; // todo? waste to allocate it each time (currently, the only reason for it is the back face
+            if( i == -2 ) { cv::Mat( f, cv::Rect( 0, 0, f.cols / 2, f.rows ) ) += spherical_width; }
+            std::cout.write( reinterpret_cast< const char* >( f.datastart ), f.dataend - f.datastart );
+        }
+        std::cout.write( reinterpret_cast< const char* >( bottom.first.datastart ), bottom.first.dataend - bottom.first.datastart );
+        std::cout.write( reinterpret_cast< const char* >( top.second.datastart ), top.second.dataend - top.second.datastart );
+        for( unsigned int i = 0; i < 4; ++i ) { std::cout.write( reinterpret_cast< const char* >( face.second.datastart ), face.second.dataend - face.second.datastart ); }
+        std::cout.write( reinterpret_cast< const char* >( bottom.second.datastart ), bottom.second.dataend - bottom.second.datastart );
+        std::cout.flush();
     }
-    std::cout.write( reinterpret_cast< const char* >( bottom.first.datastart ), bottom.first.dataend - bottom.first.datastart );
-    std::cout.write( reinterpret_cast< const char* >( top.second.datastart ), top.second.dataend - top.second.datastart );
-    for( unsigned int i = 0; i < 4; ++i ) { std::cout.write( reinterpret_cast< const char* >( face.second.datastart ), face.second.dataend - face.second.datastart ); }
-    std::cout.write( reinterpret_cast< const char* >( bottom.second.datastart ), bottom.second.dataend - bottom.second.datastart );
-    std::cout.flush();
     return 0;
 }
 
