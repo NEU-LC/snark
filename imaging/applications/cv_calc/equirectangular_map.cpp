@@ -42,6 +42,7 @@
 #include <comma/visiting/traits.h>
 #include "../../../math/range_bearing_elevation.h"
 #include "../../../visiting/eigen.h"
+#include "../../equirectangular.h"
 #include "equirectangular_map.h"
 
 namespace snark { namespace cv_calc { namespace equirectangular_map {
@@ -62,8 +63,6 @@ static cv::Mat rotation_matrix( double x,double y,double z ) // quick and dirty
                   0,            0,      1 );
     return r_z * r_y * r_x;
 }
-
-struct faces { enum values { top = 0, back, left, front, right, bottom }; };
 
 // see: inverse formula for spherical projection, Szeliski, "Computer Vision: Algorithms and Applications" p439.
 struct calculator
@@ -107,51 +106,12 @@ struct reverse_calculator
     {
     }
     
-    static Eigen::Vector3d face_to_cartesian( const Eigen::Vector3d& norm, faces::values face ) // quick and dirty
-    {
-        switch( face )
-        {
-            case faces::top: return Eigen::Vector3d( norm.y(), norm.x(), -norm.z() );
-            case faces::back: return Eigen::Vector3d( -norm.z(), -norm.x(), norm.y() );
-            case faces::left: return Eigen::Vector3d( norm.x(), -norm.z(), norm.y() );
-            case faces::front: return Eigen::Vector3d( norm.z(), norm.x(), norm.y() );
-            case faces::right: return Eigen::Vector3d( -norm.x(), norm.z(), norm.y() );
-            case faces::bottom: return Eigen::Vector3d( -norm.y(), norm.x(), norm.z() );
-        }
-    }
-    
-    faces::values face_of( const Eigen::Vector3d v ) // todo: watch performance, don't need to call it so many times
-    {
-        double ax = std::abs( v.x() );
-        double ay = std::abs( v.y() );
-        double az = std::abs( v.z() );
-        if( ax > ay && ax > az ) { return v.x() > 0 ? faces::front : faces::back; }
-        if( ay > az ) { return v.y() > 0 ? faces::right : faces::left; }
-        return v.z() > 0 ? faces::bottom : faces::top;
-    }
-    
     std::pair< double, double > projected_pixel( unsigned int x, unsigned int y )
     {
-        snark::range_bearing_elevation polar( 0.5 // todo: why polar radius cannot be 1?!
-                                            , M_PI * 2 * ( double( x ) / spherical_width - 0.5 )
-                                            , M_PI * ( double( y ) / spherical_height - 0.5 ) );
-        auto c = polar.to_cartesian();
-        auto face = face_of( c );
-        Eigen::Vector2d pixel;
-        switch( face )
-        {
-            case faces::top: pixel = Eigen::Vector2d( c.y(), c.x() ) / std::abs( c.z() ); break;
-            case faces::left: pixel = Eigen::Vector2d( c.x(), c.z() ) / std::abs( c.y() ); break;
-            case faces::front: pixel = Eigen::Vector2d( c.y(), c.z() ) / std::abs( c.x() ); break;
-            case faces::right: pixel = Eigen::Vector2d( -c.x(), c.z() ) / std::abs( c.y() ); break;
-            case faces::back: pixel = Eigen::Vector2d( -c.y(), c.z() ) / std::abs( c.x() ); break;
-            case faces::bottom: pixel = Eigen::Vector2d( c.y(), -c.x() ) / std::abs( c.z() ); break;
-        }
-        pixel *= 0.5; // todo: why polar radius cannot be 1?!
-        pixel.x() += 0.5;
-        pixel.y() += 0.5 + face;
-        pixel *= cube_size;
-        return std::make_pair( pixel.x(), pixel.y() );
+        auto pixel = snark::equirectangular::to_cube( Eigen::Vector2d( x, y ), spherical_width );
+        pixel.first.y() += pixel.second; // quick and dirty
+        pixel.first *= cube_size;
+        return std::make_pair( pixel.first.x(), pixel.first.y() );
     }
         
     unsigned int spherical_width;
