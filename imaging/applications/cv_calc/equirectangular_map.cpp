@@ -97,28 +97,6 @@ struct calculator
     unsigned int h;
 };
 
-struct reverse_calculator
-{
-    reverse_calculator( unsigned int spherical_width, unsigned int spherical_height, unsigned int cube_size )
-        : spherical_width( spherical_width )
-        , spherical_height( spherical_height )
-        , cube_size( cube_size )
-    {
-    }
-    
-    std::pair< double, double > projected_pixel( unsigned int x, unsigned int y )
-    {
-        auto pixel = snark::equirectangular::to_cube( Eigen::Vector2d( x, y ), spherical_width );
-        pixel.first.y() += pixel.second; // quick and dirty
-        pixel.first *= cube_size;
-        return std::make_pair( pixel.first.x(), pixel.first.y() );
-    }
-        
-    unsigned int spherical_width;
-    unsigned int spherical_height;
-    unsigned int cube_size;
-};
-
 std::string options()
 {
     std::ostringstream oss;
@@ -129,7 +107,7 @@ std::string options()
     oss << "        --map-size,--size=[<width>,<height>]; output map size" << std::endl;
     oss << "        --orientation=<roll>,<pitch>,<yaw>; default=0,0,0; orientation in radians" << std::endl;
     oss << "        --reverse,--from-cubes; generate reverse map, i.e. mapping cubes to spherical images; if no --cube-size given, spherical width / 4 used" << std::endl;
-    oss << "        --spherical-size=<width>,<height>; spherical image size" << std::endl;
+    oss << "        --spherical-size=<width>[,<height>]; spherical image size" << std::endl;
     oss << std::endl;
     return oss.str();
 }
@@ -138,12 +116,18 @@ int run( const comma::command_line_options& options )
 {
     BOOST_STATIC_ASSERT( sizeof( float ) == 4 );
     options.assert_mutually_exclusive( "--reverse", "--focal-length,--map-size,--size,--orientation" );
-    unsigned int spherical_width, spherical_height;
-    boost::tie( spherical_width, spherical_height ) = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--spherical-size" ) );
+    unsigned int spherical_width, spherical_height; // todo? make doubles?
+    const auto& s = comma::split( options.value< std::string >( "--spherical-size" ), ',' );
+    switch( s.size() )
+    {
+        case 1: spherical_width = boost::lexical_cast< unsigned int >( s[0] ); spherical_height = spherical_width / 2; break;
+        case 2: spherical_width = boost::lexical_cast< unsigned int >( s[0] ); spherical_height = boost::lexical_cast< unsigned int >( s[1] ); break;
+        default: std::cerr << "cv-calc: equirectangular-map: expected spherical size as <width>[,<height>]; got '" << comma::join( s, ',' ) << "'" << std::endl; return 1;
+    }
+    if( spherical_width != spherical_height * 2 ) { std::cerr << "cv-calc: equirectangular-map: expected spherical height half of width; got width: " << spherical_width << " height: " << spherical_height << std::endl; }
     if( options.exists( "--reverse" ) )
     {
         unsigned int cube_size = options.value< unsigned int >( "--cubes,--cube-size", spherical_width / 4 ); // quick and dirty
-        reverse_calculator calc( spherical_width, spherical_height, cube_size );
         cv::Mat x( spherical_height, spherical_width, CV_32F );
         cv::Mat y( spherical_height, spherical_width, CV_32F );
         tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, spherical_height ), [&]( const tbb::blocked_range< std::size_t >& r )
@@ -152,19 +136,14 @@ int run( const comma::command_line_options& options )
             {
                 for( unsigned int u = 0; u < spherical_width; ++u )
                 {
-                    boost::tie( x.at< float >( v, u ), y.at< float >( v, u ) ) = calc.projected_pixel( u, v );
+                    auto pixel = snark::equirectangular::to_cube( Eigen::Vector2d( u, v ), spherical_width );
+                    pixel.first.y() += pixel.second; // quick and dirty
+                    pixel.first *= cube_size;
+                    x.at< float >( v, u ) = pixel.first.x();
+                    y.at< float >( v, u ) = pixel.first.y();
                 }
             }
         } );
-        
-//         for( unsigned int v = 0; v < spherical_height; ++v )
-//         {
-//             for( unsigned int u = 0; u < spherical_width; ++u )
-//             {
-//                 boost::tie( x.at< float >( v, u ), y.at< float >( v, u ) ) = calc.projected_pixel( u, v );
-//             }
-//         }
-        
         std::cout.write( reinterpret_cast< const char* >( x.datastart ), x.dataend - x.datastart );
         std::cout.write( reinterpret_cast< const char* >( y.datastart ), y.dataend - y.datastart );
         std::cout.flush();

@@ -72,12 +72,14 @@ faces::values face_of( const Eigen::Vector3d& v ) // todo: watch performance, do
     return v.z() > 0 ? faces::bottom : faces::top;
 }
 
-std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p, unsigned int spherical_width )
+std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p, double spherical_width )
 {
-    snark::range_bearing_elevation polar( 0.5
-                                        , M_PI * 2 * ( double( p.x() ) / spherical_width - 0.5 )
-                                        , M_PI * ( double( p.y() ) / ( 0.5 * spherical_width ) - 0.5 ) );
-    auto c = polar.to_cartesian();
+    return to_cube( Eigen::Vector2d( p.x(), p.y() * 2 ) / spherical_width );
+}
+
+std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p )
+{
+    auto c = snark::range_bearing_elevation( 0.5, M_PI * 2 * ( p.x() - 0.5 ), M_PI * ( p.y() - 0.5 ) ).to_cartesian();
     std::pair< Eigen::Vector2d, faces::values > pixel;
     pixel.second = face_of( c );
     switch( pixel.second )

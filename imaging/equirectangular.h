@@ -71,6 +71,17 @@ faces::values face_of( const Eigen::Vector3d& v );
 /// @param p pixel coordinate in spherical image
 /// @param spherical_width width of spherical image in pixels
 /// @returns coordinates on cube face normalized to [0,1) and cube face id
-std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p, unsigned int spherical_width );
+std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p, double spherical_width );
+
+/// @param p normalized pixel coordinate in spherical image
+/// @returns coordinates on cube face normalized to [0,1) and cube face id
+std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p );
+
+/// @todo
+///
+/// @param p normalized pixel coordinate on a cube face
+/// @param spherical_width width of spherical image in pixels
+/// @returns coordinates on spherical face normalized to a spherical of size 1,0.5
+Eigen::Vector2d from_cube( const Eigen::Vector2d& p, faces::values face );
     
 } } // namespace snark { namespace equirectangular {
