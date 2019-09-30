@@ -1,0 +1,36 @@
+image="$1"
+
+[[ -n "$image" ]] || { echo "usage: $0 <image filename>; expected spherical size: 12880,6440" >&2; exit 1; }
+
+# ==============================================================================
+# convert spherical image to cubes and then cubes back to spherical
+
+echo "generating spherical-to-cubes map; outputting to map.bin..." >&2
+echo "since it is a slow operation, in real life, you may want to pre-generate and store map files" >&2
+cv-calc equirectangular-map --spherical-size 12880,6440 --cubes 4096 > map.bin
+
+echo "converting sample spherical '$image' to cubes; outputting to cubes.jpg..." >&2
+cv-cat --file "$image" "remap=map.bin,4096,$((4096*6));encode=jpg" --output no-header > cubes.jpg
+
+echo "making cubes-to-spherical map; outputting to map.reverse.bin..." >&2
+cv-calc equirectangular-map --reverse --cube-size 4096 --spherical-size 12880,6440 > map.reverse.bin
+
+echo "converting cubes back to spherical; outputting to reconstructed-spherical.jpg..." >&2
+cv-cat --file cubes.jpg "remap=map.reverse.bin,12880,6440;encode=jpg" --output no-header > reconstructed-spherical.jpg
+eog reconstructed-spherical.jpg
+
+# exit
+
+# ==============================================================================
+# further examples
+
+echo "converting sample spherical '$image' to cubes; outputting to top.jpg, back.jpg, left.jpg, front.jpg, right.jpg, bottom.jpg..." >&2
+( echo top.jpg; echo back.jpg; echo left.jpg; echo front.jpg; echo right.jpg; echo bottom.jpg ) > cubes.txt
+cv-cat --file "$image" "remap=map.bin,4096,$((4096*6))" --output no-header \
+    | cv-cat --input "no-header;rows=4096;cols=4096;type=3ub" "file=jpg,filenames:cubes.txt;null"
+
+echo "converting cube images back to spherical; outputting to reconstructed-spherical.jpg..." >&2
+cv-cat --files cubes.txt --output no-header \
+    | cv-cat --input "no-header;rows=$(( 4096 * 6 ));cols=4096;type=3ub" \
+             "remap=map.reverse.bin,12880,6440;encode=jpg" --output no-header > reconstructed-spherical.jpg
+eog reconstructed-spherical.jpg
