@@ -19,7 +19,7 @@ echo "converting cubes back to spherical; outputting to reconstructed-spherical.
 cv-cat --file cubes.jpg "remap=map.reverse.bin,12880,6440;encode=jpg" --output no-header > reconstructed-spherical.jpg
 eog reconstructed-spherical.jpg
 
-# exit
+exit
 
 # ==============================================================================
 # further examples
