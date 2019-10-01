@@ -59,6 +59,7 @@
 #pragma once
 
 #include <Eigen/Core>
+#include "../math/range_bearing_elevation.h"
 
 namespace snark { namespace equirectangular {
 
@@ -70,12 +71,30 @@ faces::values face_of( const Eigen::Vector3d& v );
 
 /// @param p pixel coordinate in spherical image
 /// @param spherical_width width of spherical image in pixels
+/// @returns normalized pixel on spherical image of size 1x0.5
+Eigen::Vector2d normalized( const Eigen::Vector2d& p, double spherical_width );
+
+/// @param p pixel coordinate in spherical image
+/// @param spherical_width width of spherical image in pixels
 /// @returns coordinates on cube face normalized to [0,1) and cube face id
 std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p, double spherical_width );
 
 /// @param p normalized pixel coordinate in spherical image
 /// @returns coordinates on cube face normalized to [0,1) and cube face id
 std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p );
+
+/// @param p pixel coordinate in spherical image
+/// @param spherical_width width of spherical image in pixels
+/// @returns range-bearing-elevation for point on sphere inscribed into a unit cube (i.e. sphere radius is 0.5)
+snark::range_bearing_elevation to_polar( const Eigen::Vector2d& p, double spherical_width );
+
+/// @param p normalized pixel coordinate in spherical image
+/// @returns range-bearing-elevation for point on sphere inscribed into a unit cube (i.e. sphere radius is 0.5)
+snark::range_bearing_elevation to_polar( const Eigen::Vector2d& p );
+
+/// @param p normalized pixel coordinate in spherical image
+/// @returns coordinates on unit cube with centre at 0,0,0
+Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p );
 
 /// @todo
 ///

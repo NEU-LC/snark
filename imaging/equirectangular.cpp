@@ -57,7 +57,6 @@
 /// @author vsevolod vlaskine
 
 #include <cmath>
-#include "../math/range_bearing_elevation.h"
 #include "equirectangular.h"
 
 namespace snark { namespace equirectangular {
@@ -72,14 +71,26 @@ faces::values face_of( const Eigen::Vector3d& v ) // todo: watch performance, do
     return v.z() > 0 ? faces::bottom : faces::top;
 }
 
-std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p, double spherical_width )
+Eigen::Vector2d normalized( const Eigen::Vector2d& p, double spherical_width ) { return Eigen::Vector2d( p.x(), p.y() * 2 ) / spherical_width; }
+
+std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p, double spherical_width ) { return to_cube( normalized( p, spherical_width ) ); }
+
+snark::range_bearing_elevation to_polar( const Eigen::Vector2d& p, double spherical_width ) { return to_polar( normalized( p, spherical_width ) ); }
+
+snark::range_bearing_elevation to_polar( const Eigen::Vector2d& p ) { return snark::range_bearing_elevation( 0.5, M_PI * 2 * ( p.x() - 0.5 ), M_PI * ( p.y() - 0.5 ) ); }
+
+Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p )
 {
-    return to_cube( Eigen::Vector2d( p.x(), p.y() * 2 ) / spherical_width );
+    auto v = to_polar( p ).to_cartesian();
+    double ax = std::abs( v.x() );
+    double ay = std::abs( v.y() );
+    double az = std::abs( v.z() );
+    return v * 0.5 / std::max( ax, std::max( ay, az ) );
 }
 
 std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p )
 {
-    auto c = snark::range_bearing_elevation( 0.5, M_PI * 2 * ( p.x() - 0.5 ), M_PI * ( p.y() - 0.5 ) ).to_cartesian();
+    auto c = to_polar( p ).to_cartesian();
     std::pair< Eigen::Vector2d, faces::values > pixel;
     pixel.second = face_of( c );
     switch( pixel.second )
@@ -96,18 +107,5 @@ std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p )
     pixel.first.y() += 0.5;
     return pixel;
 }
-
-// Eigen::Vector3d face_to_cartesian( const Eigen::Vector3d& norm, faces::values face ) // quick and dirty
-// {
-//     switch( face )
-//     {
-//         case faces::top: return Eigen::Vector3d( norm.y(), norm.x(), -norm.z() );
-//         case faces::back: return Eigen::Vector3d( -norm.z(), -norm.x(), norm.y() );
-//         case faces::left: return Eigen::Vector3d( norm.x(), -norm.z(), norm.y() );
-//         case faces::front: return Eigen::Vector3d( norm.z(), norm.x(), norm.y() );
-//         case faces::right: return Eigen::Vector3d( -norm.x(), norm.z(), norm.y() );
-//         case faces::bottom: return Eigen::Vector3d( -norm.y(), norm.x(), norm.z() );
-//     }
-// }
 
 } } // namespace snark { namespace equirectangular {
