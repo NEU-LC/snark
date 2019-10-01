@@ -57,23 +57,24 @@
 /// @author vsevolod vlaskine
 
 #include <cmath>
+#include <comma/base/exception.h>
 #include "equirectangular.h"
 
 namespace snark { namespace equirectangular {
 
-faces::values face_of( const Eigen::Vector3d& v ) // todo: watch performance, don't need to call it so many times
+cube::faces::values face_of( const Eigen::Vector3d& v ) // todo: watch performance, don't need to call it so many times
 {
     double ax = std::abs( v.x() );
     double ay = std::abs( v.y() );
     double az = std::abs( v.z() );
-    if( ax > ay && ax > az ) { return v.x() > 0 ? faces::front : faces::back; }
-    if( ay > az ) { return v.y() > 0 ? faces::right : faces::left; }
-    return v.z() > 0 ? faces::bottom : faces::top;
+    if( ax > ay && ax > az ) { return v.x() > 0 ? cube::faces::front : cube::faces::back; }
+    if( ay > az ) { return v.y() > 0 ? cube::faces::right : cube::faces::left; }
+    return v.z() > 0 ? cube::faces::bottom : cube::faces::top;
 }
 
 Eigen::Vector2d normalized( const Eigen::Vector2d& p, double spherical_width ) { return Eigen::Vector2d( p.x(), p.y() * 2 ) / spherical_width; }
 
-std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p, double spherical_width ) { return to_cube( normalized( p, spherical_width ) ); }
+std::pair< Eigen::Vector2d, cube::faces::values > to_cube( const Eigen::Vector2d& p, double spherical_width ) { return to_cube( normalized( p, spherical_width ) ); }
 
 snark::range_bearing_elevation to_polar( const Eigen::Vector2d& p, double spherical_width ) { return to_polar( normalized( p, spherical_width ) ); }
 
@@ -88,24 +89,50 @@ Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p )
     return v * 0.5 / std::max( ax, std::max( ay, az ) );
 }
 
-std::pair< Eigen::Vector2d, faces::values > to_cube( const Eigen::Vector2d& p )
+std::pair< Eigen::Vector2d, cube::faces::values > to_cube( const Eigen::Vector2d& p )
 {
     auto c = to_polar( p ).to_cartesian();
-    std::pair< Eigen::Vector2d, faces::values > pixel;
+    std::pair< Eigen::Vector2d, cube::faces::values > pixel;
     pixel.second = face_of( c );
     switch( pixel.second )
     {
-        case faces::top: pixel.first = Eigen::Vector2d( c.y(), c.x() ) / std::abs( c.z() ); break;
-        case faces::left: pixel.first = Eigen::Vector2d( c.x(), c.z() ) / std::abs( c.y() ); break;
-        case faces::front: pixel.first = Eigen::Vector2d( c.y(), c.z() ) / std::abs( c.x() ); break;
-        case faces::right: pixel.first = Eigen::Vector2d( -c.x(), c.z() ) / std::abs( c.y() ); break;
-        case faces::back: pixel.first = Eigen::Vector2d( -c.y(), c.z() ) / std::abs( c.x() ); break;
-        case faces::bottom: pixel.first = Eigen::Vector2d( c.y(), -c.x() ) / std::abs( c.z() ); break;
+        case cube::faces::top: pixel.first = Eigen::Vector2d( c.y(), c.x() ) / std::abs( c.z() ); break;
+        case cube::faces::left: pixel.first = Eigen::Vector2d( c.x(), c.z() ) / std::abs( c.y() ); break;
+        case cube::faces::front: pixel.first = Eigen::Vector2d( c.y(), c.z() ) / std::abs( c.x() ); break;
+        case cube::faces::right: pixel.first = Eigen::Vector2d( -c.x(), c.z() ) / std::abs( c.y() ); break;
+        case cube::faces::back: pixel.first = Eigen::Vector2d( -c.y(), c.z() ) / std::abs( c.x() ); break;
+        case cube::faces::bottom: pixel.first = Eigen::Vector2d( c.y(), -c.x() ) / std::abs( c.z() ); break;
     }
     pixel.first *= 0.5;
     pixel.first.x() += 0.5;
     pixel.first.y() += 0.5;
     return pixel;
 }
+
+Eigen::Vector2d from_cube( const Eigen::Vector2d& p, cube::faces::values face )
+{
+    snark::range_bearing_elevation polar( cube::to_cartesian( p, face ) );
+    return Eigen::Vector2d( polar.bearing() / ( M_PI * 2 ) + 0.5, ( polar.elevation() / M_PI + 0.5 ) / 2 );
+}
+
+namespace cube {
+    
+Eigen::Vector3d to_cartesian( const Eigen::Vector2d p, cube::faces::values face ) // todo! quick and dirty; debug
+{
+    Eigen::Vector3d v( p.x(), p.y(), 0 );
+    v -= Eigen::Vector3d::Ones() * 0.5;
+    switch( face )
+    {
+        case cube::faces::top: return Eigen::Vector3d( v.y(), v.x(), -v.z() );
+        case cube::faces::back: return Eigen::Vector3d( -v.z(), -v.x(), v.y() );
+        case cube::faces::left: return Eigen::Vector3d( v.x(), -v.z(), v.y() );
+        case cube::faces::front: return Eigen::Vector3d( v.z(), v.x(), v.y() );
+        case cube::faces::right: return Eigen::Vector3d( -v.x(), v.z(), v.y() );
+        case cube::faces::bottom: return Eigen::Vector3d( -v.y(), v.x(), v.z() );
+    }
+    COMMA_THROW( comma::exception, "expected face enumeration value between 0 and 5; got: " << face );
+}
+    
+} // namespace cube {
 
 } } // namespace snark { namespace equirectangular {
