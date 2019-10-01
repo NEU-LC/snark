@@ -148,7 +148,7 @@ int run( const comma::command_line_options& options )
         std::cout.write( reinterpret_cast< const char* >( y.datastart ), y.dataend - y.datastart );
         std::cout.flush();
     }
-    else
+    else // todo? reimplement using equirectangular::... methods, which potentially may speed it up 2-3 times
     {
         auto focal_length = options.optional< double >( "--focal-length" );
         unsigned int map_width, map_height;
