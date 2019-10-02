@@ -150,6 +150,7 @@ int run( const comma::command_line_options& options )
     }
     else // todo? reimplement using equirectangular::... methods, which potentially may speed it up 2-3 times
     {
+        options.assert_mutually_exclusive( "--focal-length", "--cubes,--cube-size" ); // quick and dirty for now
         auto focal_length = options.optional< double >( "--focal-length" );
         unsigned int map_width, map_height;
         bool cubes = options.exists( "--cubes,--cube-size" );
@@ -189,23 +190,44 @@ int run( const comma::command_line_options& options )
             std::cout.flush();
             return 0;
         }
-        if( orientation != Eigen::Vector3d::Zero() ) { std::cerr << "cv-calc: equirectangular-map: for cubes, expected --orientation 0,0,0; got: " << options.value< std::string >( "--orientation" ) << " (not supported)" << std::endl; return 1; }
-        auto top = make_map( Eigen::Vector3d( 0, M_PI / 2, orientation.z() ) );
-        auto bottom = make_map( Eigen::Vector3d( 0, -M_PI / 2, orientation.z() ) );
-        std::cout.write( reinterpret_cast< const char* >( top.first.datastart ), top.first.dataend - top.first.datastart );
-        int width = spherical_width / 4;
-        for( int i = -2; i < 2; ++i )
+        if( orientation != Eigen::Vector3d::Zero() ) { std::cerr << "cv-calc: equirectangular-map: for --cubes, expected --orientation 0,0,0; got: " << options.value< std::string >( "--orientation" ) << " (not supported)" << std::endl; return 1; }
+        cv::Mat x( map_height * 6, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
+        cv::Mat y( map_height * 6, map_width, CV_32F ); // quick and dirty; if output to stdout has problems, use serialisation class
+        tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, 6 ), [&]( const tbb::blocked_range< std::size_t >& r )
         {
-            cv::Mat f = face.first + width * i; // todo? waste to allocate it each time (currently, the only reason for it is the back face
-            if( i == -2 ) { cv::Mat( f, cv::Rect( 0, 0, f.cols / 2, f.rows ) ) += spherical_width; }
-            std::cout.write( reinterpret_cast< const char* >( f.datastart ), f.dataend - f.datastart );
-        }
-        std::cout.write( reinterpret_cast< const char* >( bottom.first.datastart ), bottom.first.dataend - bottom.first.datastart );
-        std::cout.write( reinterpret_cast< const char* >( top.second.datastart ), top.second.dataend - top.second.datastart );
-        for( unsigned int i = 0; i < 4; ++i ) { std::cout.write( reinterpret_cast< const char* >( face.second.datastart ), face.second.dataend - face.second.datastart ); }
-        std::cout.write( reinterpret_cast< const char* >( bottom.second.datastart ), bottom.second.dataend - bottom.second.datastart );
-        std::cout.flush();
+            for( unsigned int face = r.begin(); face < r.end(); ++face )
+            {
+                unsigned int offset = face * map_width;
+                for( unsigned int v = 0; v < map_width; ++v )
+                {
+                    for( unsigned int u = 0; u < map_width; ++u )
+                    {
+                        auto p = snark::equirectangular::from_cube( Eigen::Vector2d( u, v ) / map_width
+                                                                  , static_cast< equirectangular::cube::faces::values >( face ) ) * spherical_width;
+                        x.at< float >( v + offset, u ) = p.x();
+                        y.at< float >( v + offset, u ) = p.y();
+                    }
+                }
+            }
+        } );
+        std::cout.write( reinterpret_cast< const char* >( x.datastart ), x.dataend - x.datastart );
+        std::cout.write( reinterpret_cast< const char* >( y.datastart ), y.dataend - y.datastart );
     }
+//     auto top = make_map( Eigen::Vector3d( 0, M_PI / 2, orientation.z() ) );
+//     auto bottom = make_map( Eigen::Vector3d( 0, -M_PI / 2, orientation.z() ) );
+//     std::cout.write( reinterpret_cast< const char* >( top.first.datastart ), top.first.dataend - top.first.datastart );
+//     int width = spherical_width / 4;
+//     for( int i = -2; i < 2; ++i )
+//     {
+//         cv::Mat f = face.first + width * i; // todo? waste to allocate it each time (currently, the only reason for it is the back face
+//         if( i == -2 ) { cv::Mat( f, cv::Rect( 0, 0, f.cols / 2, f.rows ) ) += spherical_width; }
+//         std::cout.write( reinterpret_cast< const char* >( f.datastart ), f.dataend - f.datastart );
+//     }
+//     std::cout.write( reinterpret_cast< const char* >( bottom.first.datastart ), bottom.first.dataend - bottom.first.datastart );
+//     std::cout.write( reinterpret_cast< const char* >( top.second.datastart ), top.second.dataend - top.second.datastart );
+//     for( unsigned int i = 0; i < 4; ++i ) { std::cout.write( reinterpret_cast< const char* >( face.second.datastart ), face.second.dataend - face.second.datastart ); }
+//     std::cout.write( reinterpret_cast< const char* >( bottom.second.datastart ), bottom.second.dataend - bottom.second.datastart );
+//     std::cout.flush();
     return 0;
 }
 

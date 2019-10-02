@@ -117,18 +117,18 @@ Eigen::Vector2d from_cube( const Eigen::Vector2d& p, cube::faces::values face )
 
 namespace cube {
     
-Eigen::Vector3d to_cartesian( const Eigen::Vector2d p, cube::faces::values face ) // todo! quick and dirty; debug
+Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, cube::faces::values face )
 {
     Eigen::Vector3d v( p.x(), p.y(), 0 );
     v -= Eigen::Vector3d::Ones() * 0.5;
     switch( face )
     {
-        case cube::faces::top: return Eigen::Vector3d( v.y(), v.x(), -v.z() );
-        case cube::faces::back: return Eigen::Vector3d( -v.z(), -v.x(), v.y() );
-        case cube::faces::left: return Eigen::Vector3d( v.x(), -v.z(), v.y() );
-        case cube::faces::front: return Eigen::Vector3d( v.z(), v.x(), v.y() );
-        case cube::faces::right: return Eigen::Vector3d( -v.x(), v.z(), v.y() );
-        case cube::faces::bottom: return Eigen::Vector3d( -v.y(), v.x(), v.z() );
+        case cube::faces::top: return Eigen::Vector3d( v.y(), v.x(), v.z() );
+        case cube::faces::back: return Eigen::Vector3d( v.z(), -v.x(), v.y() );
+        case cube::faces::left: return Eigen::Vector3d( v.x(), v.z(), v.y() );
+        case cube::faces::front: return Eigen::Vector3d( -v.z(), v.x(), v.y() );
+        case cube::faces::right: return Eigen::Vector3d( -v.x(), -v.z(), v.y() );
+        case cube::faces::bottom: return Eigen::Vector3d( -v.y(), v.x(), -v.z() );
     }
     COMMA_THROW( comma::exception, "expected face enumeration value between 0 and 5; got: " << face );
 }

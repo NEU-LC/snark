@@ -71,7 +71,9 @@ struct faces { enum values { top = 0, back, left, front, right, bottom }; };
 /// @param p normalized pixel coordinates on cube face
 /// @param face cube face
 /// @returns coordinates on unit cube with centre at 0,0,0
-Eigen::Vector3d to_cartesian( const Eigen::Vector2d p, cube::faces::values face );
+///
+/// @todo confirm reference frame is correct (should be forward-right-down)
+Eigen::Vector3d to_cartesian( const Eigen::Vector2d& p, cube::faces::values face );
     
 } // namespace cube {
 
