@@ -230,10 +230,10 @@ if __name__ == '__main__':
         config.gpu_options.allow_growth = True # todo? parametrize with command line option?
         tf.keras.backend.set_session( tf.Session( config = config ) ) # quick and dirty, just to make it working
         if args.keras_model.split( '.' )[-1] == 'h5':
-            keras_model = tf.keras.models.load_model( args.keras_model )
+            keras_model = tf.keras.models.load_model( args.keras_model, custom_objects = { 'tf': tf } )
         else:
             if args.keras_weights is None: die( "got model definition in --keras-model, please specify --keras-weights" )
-            with open( args.keras_model, 'r' ) as f: keras_model = tf.keras.models.model_from_json( f.read() )
+            with open( args.keras_model, 'r' ) as f: keras_model = tf.keras.models.model_from_json( f.read(), custom_objects = { 'tf': tf } )
             saymore( "loading weights from '" + args.keras_weights + "'..." )
             keras_model.load_weights( args.keras_weights )
     else: # todo! there is an intermittent problem that prevents this branch from working; looking into it, but any help is welcome...
