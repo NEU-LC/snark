@@ -36,6 +36,8 @@ import numpy as np
 import os
 import signal
 import sys
+try: import os.errno as errno
+except: import errno
 
 __author__ = 'v.vlaskine'
 
@@ -230,10 +232,11 @@ if __name__ == '__main__':
         config.gpu_options.allow_growth = True # todo? parametrize with command line option?
         tf.keras.backend.set_session( tf.Session( config = config ) ) # quick and dirty, just to make it working
         if args.keras_model.split( '.' )[-1] == 'h5':
-            keras_model = tf.keras.models.load_model( args.keras_model, custom_objects = { 'tf': tf } )
+            keras_model = tf.keras.models.load_model( args.keras_model, custom_objects = { 'tf': tf }, compile=False)
+            keras_model.load_weights( args.keras_model )
         else:
             if args.keras_weights is None: die( "got model definition in --keras-model, please specify --keras-weights" )
-            with open( args.keras_model, 'r' ) as f: keras_model = tf.keras.models.model_from_json( f.read(), custom_objects = { 'tf': tf } )
+            with open( args.keras_model, 'r' ) as f: keras_model = tf.keras.models.model_from_json( f.read(), custom_objects = { 'tf': tf }, compile=False )
             saymore( "loading weights from '" + args.keras_weights + "'..." )
             keras_model.load_weights( args.keras_weights )
     else: # todo! there is an intermittent problem that prevents this branch from working; looking into it, but any help is welcome...
@@ -297,11 +300,11 @@ if __name__ == '__main__':
                         except StopIteration: die( "got input record " + str( input_number + 1 ) + " but only " + str( input_number ) + " entries in '" + args.output_dirs + "'" )
                         try: os.makedirs( output_dir ) #try: os.mkdir( output_dir )
                         except OSError as ex:
-                            if ex.errno != os.errno.EEXIST: raise
+                            if ex.errno != errno.EEXIST: raise
                         for i in range( len( values ) ):
                             try: os.mkdir( output_dir + '/' + output_names[i] )
                             except OSError as ex:
-                                if ex.errno != os.errno.EEXIST: raise
+                                if ex.errno != errno.EEXIST: raise
                             if values[i].shape[0] != 1: die( "output to files: expected output tensor with shape (1,...); got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
                             if len( values[i].shape ) > 4: die( "output to files: expected output tensor with no more than 4 dimensions; got tensor " + output_names[i] + " of shape: " + str( values[i].shape ) + "; todo?" )
                             v = values[i] if len( values[i].shape ) <= 3 else np.transpose( values[i][0], axes = ( 2, 0, 1 ) ) # quick and dirty
