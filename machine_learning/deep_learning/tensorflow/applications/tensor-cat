@@ -236,7 +236,7 @@ if __name__ == '__main__':
             keras_model.load_weights( args.keras_model )
         else:
             if args.keras_weights is None: die( "got model definition in --keras-model, please specify --keras-weights" )
-            with open( args.keras_model, 'r' ) as f: keras_model = tf.keras.models.model_from_json( f.read(), custom_objects = { 'tf': tf }, compile=False )
+            with open( args.keras_model, 'r' ) as f: keras_model = tf.keras.models.model_from_json( f.read(), custom_objects = { 'tf': tf } )
             saymore( "loading weights from '" + args.keras_weights + "'..." )
             keras_model.load_weights( args.keras_weights )
     else: # todo! there is an intermittent problem that prevents this branch from working; looking into it, but any help is welcome...
