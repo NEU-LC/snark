@@ -119,6 +119,8 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "common operation options" << std::endl;
     std::cerr << "    usage: points-calc <operation> <option>" << std::endl;
+    std::cerr << "    --input-fields: print input field names and exit" << std::endl;
+    std::cerr << "    --input-format: print input format and exit" << std::endl;
     std::cerr << "    --output-fields: print output field names and exit" << std::endl;
     std::cerr << "    --output-format: print output format and exit" << std::endl;
     std::cerr << std::endl;

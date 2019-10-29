@@ -72,16 +72,25 @@ std::string traits::usage()
 {
     std::ostringstream oss;
     oss
-        << "    triangles-discretise: TODO" << std::endl
-        << "        options:" << std::endl
-        << "            --output-points-only,--points-only,--discard-input" << std::endl
-        << "            --output-internal-only,--internal-only" << std::endl
-        << "            --output-sides-only,--sides-only" << std::endl
-        << "            --radius,-r=<meters>" << std::endl
-        << "            --tolerance,-t=[<meters>]" << std::endl
+        << "    triangles-discretise: read triangles on stdin, append/output points that reasonably cover the triangle\n"
+        << "                          (currently pretty quick and dirty)\n"
+        << "        fields\n"
+        << "            default input: \"corners\"\n"
+        << "            default output: \"x,y,z,internal\"\n"
+        << "        options\n"
+        << "            --output-points-only,--points-only,--discard-input; output points, don't output input triangles\n"
+        << "            --output-internal-only,--internal-only; output only points inside triangles\n"
+        << "            --output-sides-only,--sides-only; output points only on the sides of triangles\n"
+        << "            --radius,-r=<meters>; max distance between the points\n"
+        << "            --tolerance,-t=[<meters>]; min distance between the points, todo\n"
         << std::endl
-        << "        example:" << std::endl
-        << "            todo" << std::endl
+        << "        examples\n"
+        << "            echo 0,0,0,0,0,10,0,10,0 \\\n"
+        << "                | points-calc triangles-discretise --fields corners \\\n"
+        << "                | view-points --fields ,,,,,,,,,x,y,z,id\n"
+        << "            echo 0,0,0,0,0,10,0,10,0 \\\n"
+        << "                | points-calc triangles-discretise --fields corners --discard-input \\\n"
+        << "                | view-points --fields x,y,z,id\n"
         << std::endl;
     return oss.str();    
 }
@@ -141,7 +150,7 @@ template <> struct traits< snark::points_calc::triangles_discretise::output >
 
 namespace snark { namespace points_calc { namespace triangles_discretise {
 
-std::string traits::input_fields() { return comma::join( comma::csv::names< input >( false ), ',' ); }
+std::string traits::input_fields() { return comma::join( comma::csv::names< input >( true ), ',' ); }
 
 std::string traits::input_format() { return comma::csv::format::value< input >(); }
     
