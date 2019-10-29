@@ -52,6 +52,7 @@
 #include "points-calc/project.h"
 #include "points-calc/vector_calc.h"
 #include "points-calc/remove_outliers.h"
+#include "points-calc/triangles_discretise.h"
 
 static comma::csv::options csv;
 static bool verbose;
@@ -1502,7 +1503,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--from,--to,--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--input-fields,--input-format,--output-fields,--output-format,--filter,--fast,--percentile,--min-count,--output-percentile-only,--output-percentile", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--from,--to,--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--input-fields,--input-format,--output-fields,--output-format,--filter,--fast,--percentile,--min-count,--output-percentile-only,--output-percentile,--output-points-only,--points-only,--discard-input,--output-sides-only,--sides-only,--output-internal-only,--internal-only", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "integrate-frame" ) { return run< snark::points_calc::integrate_frame::traits >( options ); }
@@ -1512,6 +1513,7 @@ int main( int ac, char** av )
         if( operation == "plane-intersection-with-trajectory" ) { return run< snark::points_calc::plane_intersection_with_trajectory::traits >( options ); }
         if( vector_calc::has_operation( operation ) ) { vector_calc::process(operation, options, csv); return 0; }
         if( operation == "plane-intersection" ) { snark::points_calc::plane_intersection::traits::process(options, csv); return 0; }
+        if( operation == "triangles-discretise" || operation == "triangles-discretize" ) { return run< snark::points_calc::triangles_discretise::traits >( options ); }
         if( operation == "distance" || operation == "trajectory-distance" )
         {
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
