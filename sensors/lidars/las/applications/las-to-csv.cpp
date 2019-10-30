@@ -53,6 +53,7 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: help; --help --verbose: more help" << std::endl;
+    std::cerr << "    --no-offset; do not apply cartesian offset to points" << std::endl;
     std::cerr << "    --output-fields: output fields for a given point format (0-5) and exit; if --type not given, las data on stdin used" << std::endl;
     std::cerr << "    --output-format: output format for a given point format (0-5) and exit; if --type not given, las data on stdin used" << std::endl;
     std::cerr << "    --type,--point-format=<point format>: enforce point format" << std::endl;
@@ -190,10 +191,12 @@ template <> struct traits< point< 3 > >
 } } // namespace comma { namespace visiting {
 
 template < unsigned int I >
-static int read_points( const snark::las::header& header, const comma::csv::options& csv )
+static int read_points( const snark::las::header& header, const comma::command_line_options& options )
 {
+    comma::csv::options csv( options );
     Eigen::Vector3d factor( header.scale_factor.x(), header.scale_factor.y(), header.scale_factor.z() );
-    Eigen::Vector3d offset( header.offset.x(), header.offset.y(), header.offset.z() );
+    auto offset = options.exists( "--no-offset" ) ? Eigen::Vector3d::Zero()
+                                                  : Eigen::Vector3d( header.offset.x(), header.offset.y(), header.offset.z() );
     comma::csv::output_stream< point< I > > os( std::cout, csv );
     while( std::cin.good() && !std::cin.eof() )
     {
@@ -273,10 +276,10 @@ int main( int ac, char** av )
             if( count < int( offset.size() ) ) { std::cerr << "las-to-csv: expected " << offset.size() << " bytes, got only: " << count << std::endl; return 1; }
             switch( *point_format )
             {
-                case 0: return read_points< 0 >( header, comma::csv::options( options ) );
-                case 1: return read_points< 1 >( header, comma::csv::options( options ) );
-                case 2: return read_points< 2 >( header, comma::csv::options( options ) );
-                case 3: return read_points< 3 >( header, comma::csv::options( options ) );
+                case 0: return read_points< 0 >( header, options );
+                case 1: return read_points< 1 >( header, options );
+                case 2: return read_points< 2 >( header, options );
+                case 3: return read_points< 3 >( header, options );
                 case 4:
                 case 5:
                     std::cerr << "las-to-csv: point data format " << point_format << ": todo" << std::endl;
