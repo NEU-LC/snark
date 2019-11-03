@@ -63,7 +63,10 @@ void usage( bool verbose = false )
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: help; --help --verbose: more help" << std::endl;
     std::cerr << "    --angle-threshold,-a=<value>: angular radius in radians" << std::endl;
+    std::cerr << "    --range-threshold,-r=<value>: default=0; range threshold in meters" << std::endl;
     std::cerr << "    --input-fields; print input fields for an operation and exit" << std::endl;
+    std::cerr << "    --output-fields; print output fields for an operation and exit" << std::endl;
+    std::cerr << "    --output-format; print output format for an operation and exit" << std::endl;
     std::cerr << "    --verbose,-v: more debug output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "csv options" << std::endl;
@@ -180,7 +183,6 @@ int main( int argc, char** argv )
             double threshold = options.value< double >( "--angle-threshold,-a" );
             comma::csv::input_stream< snark::points_rays::operations::input_t > istream( std::cin, csv );
             snark::voxel_map< int, 2 >::point_type resolution = grid_t::point_type( threshold, threshold );
-            comma::uint32 id = 0;
             boost::optional< pair_t > last;
             while( istream.ready() || std::cin.good() )
             {
@@ -220,7 +222,6 @@ int main( int argc, char** argv )
                             it->second.points.push_back( &records.back() );
                         }
                     }
-                    ++id;
                 }
                 if( records.empty() ) { break; }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": loaded " << records.size() << " points in a grid of size " << grid.size() << " voxels" << std::endl; }
