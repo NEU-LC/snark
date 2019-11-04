@@ -60,7 +60,6 @@
 
 #include <string>
 #include <comma/application/command_line_options.h>
-#include <comma/csv/options.h>
 
 namespace snark { namespace points_calc { namespace triangles_discretise {
     
