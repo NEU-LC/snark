@@ -81,11 +81,11 @@ void usage( bool verbose = false )
 
 typedef snark::range_bearing_elevation point_t;
 
-namespace snark { namespace points_rays { namespace operations {
+namespace snark { namespace points_rays { namespace trace {
 
 struct input_t
 {
-    typedef std::pair< snark::points_rays::operations::input_t, std::vector< char > > pair_t;
+    typedef std::pair< snark::points_rays::trace::input_t, std::vector< char > > pair_t;
     
     point_t point;
     comma::uint32 block;
@@ -94,19 +94,19 @@ struct input_t
     input_t() : block( 0 ), traced( NULL ) {}
 };
 
-} } } // namespace snark { namespace points_rays { namespace operations {
+} } } // namespace snark { namespace points_rays { namespace trace {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::points_rays::operations::input_t >
+template <> struct traits< snark::points_rays::trace::input_t >
 {
-    template< typename K, typename V > static void visit( const K&, const snark::points_rays::operations::input_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const snark::points_rays::trace::input_t& t, V& v )
     {
         v.apply( "point", t.point );
         v.apply( "block", t.block );
     }
     
-    template< typename K, typename V > static void visit( const K&, snark::points_rays::operations::input_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, snark::points_rays::trace::input_t& t, V& v )
     {
         v.apply( "point", t.point );
         v.apply( "block", t.block );
@@ -115,16 +115,18 @@ template <> struct traits< snark::points_rays::operations::input_t >
     
 } } // namespace comma { namespace visiting {
 
+namespace snark { namespace points_rays { namespace trace {
+
 static double distance( const point_t& p, const point_t& q ) // todo: quick and dirty, watch performance
 {
     return snark::spherical::great_circle::arc( snark::spherical::coordinates( p.bearing_elevation() ), snark::spherical::coordinates( q.bearing_elevation() ) ).angle();
 }
 
-typedef std::pair< snark::points_rays::operations::input_t, std::vector< char > > pair_t;
+typedef std::pair< snark::points_rays::trace::input_t, std::vector< char > > pair_t;
 
 struct cell
 {
-    std::vector< pair_t* > points;
+    std::vector< pair_t* > points; // quick and dirty
     
     const pair_t* trace( const point_t& p, double threshold ) const
     {
@@ -157,6 +159,8 @@ static void trace_points( const tbb::blocked_range< std::size_t >& range, std::d
     }
 }
 
+} } } // namespace snark { namespace points_rays { namespace trace {
+
 int main( int argc, char** argv )
 {
     try
@@ -168,7 +172,8 @@ int main( int argc, char** argv )
         const std::string& operation = unnamed[0];
         if( operation == "trace" )
         {
-            if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::points_rays::operations::input_t >( false ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--input-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::points_rays::trace::input_t >( false ), ',' ) << std::endl; return 0; }
+            if( options.exists( "--output-fields" ) ) { std::cerr << comma::join( comma::csv::names< snark::points_rays::trace::input_t >( false ), ',' ) << std::endl; return 0; }
             comma::csv::options csv( options, "range,bearing,elevation" );
             csv.full_xpath = false;
             std::vector< std::string > v = comma::split( csv.fields, ',' );
@@ -181,20 +186,20 @@ int main( int argc, char** argv )
             csv.fields = comma::join( v, ',' );
             csv.full_xpath = false;
             double threshold = options.value< double >( "--angle-threshold,-a" );
-            comma::csv::input_stream< snark::points_rays::operations::input_t > istream( std::cin, csv );
-            snark::voxel_map< int, 2 >::point_type resolution = grid_t::point_type( threshold, threshold );
-            boost::optional< pair_t > last;
+            comma::csv::input_stream< snark::points_rays::trace::input_t > istream( std::cin, csv );
+            snark::voxel_map< int, 2 >::point_type resolution = snark::points_rays::trace::grid_t::point_type( threshold, threshold );
+            boost::optional< snark::points_rays::trace::pair_t > last;
             while( istream.ready() || std::cin.good() )
             {
-                grid_t grid( resolution );
+                snark::points_rays::trace::grid_t grid( resolution );
                 if( verbose ) { std::cerr << "points-rays: block" << ( last ? boost::lexical_cast< std::string >( last->first.block ) : std::string() ) << ": loading..." << std::endl; }
-                std::deque< pair_t > records;
+                std::deque< snark::points_rays::trace::pair_t > records;
                 if( last ) { records.push_back( *last ); }
                 while( istream.ready() || std::cin.good() )
                 {
-                    const snark::points_rays::operations::input_t* p = istream.read();
+                    const snark::points_rays::trace::input_t* p = istream.read();
                     if( !p ) { break; }
-                    if( !last ) { last = pair_t(); }
+                    if( !last ) { last = snark::points_rays::trace::pair_t(); }
                     last->first = *p;
                     if( csv.binary() ) // quick and dirty
                     {
@@ -218,7 +223,7 @@ int main( int argc, char** argv )
                             if( bearing < -M_PI ) { bearing += ( M_PI * 2 ); }
                             else if( bearing >= M_PI ) { bearing -= ( M_PI * 2 ); }
                             double elevation = records.back().first.point.elevation() + threshold * j;
-                            grid_t::iterator it = grid.touch_at( grid_t::point_type( bearing, elevation ) );
+                            snark::points_rays::trace::grid_t::iterator it = grid.touch_at( snark::points_rays::trace::grid_t::point_type( bearing, elevation ) );
                             it->second.points.push_back( &records.back() );
                         }
                     }
@@ -226,7 +231,7 @@ int main( int argc, char** argv )
                 if( records.empty() ) { break; }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": loaded " << records.size() << " points in a grid of size " << grid.size() << " voxels" << std::endl; }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": tracing..." << std::endl; }
-                tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, records.size(), records.size() / 4 ), boost::bind( &trace_points, _1, boost::ref( records ), boost::cref( grid ), threshold ) );
+                tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, records.size(), records.size() / 4 ), boost::bind( &snark::points_rays::trace::trace_points, _1, boost::ref( records ), boost::cref( grid ), threshold ) );
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": outputting..." << std::endl; }
                 for( std::size_t i = 0; i < records.size(); ++i )
                 {
