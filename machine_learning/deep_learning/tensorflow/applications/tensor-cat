@@ -216,6 +216,8 @@ if __name__ == '__main__':
     #with tf.device( args.device ) as device: run() # todo: tf.device() does not quite work
     # todo: load from checkpoint
     if not args.frozen_graph is None and not args.keras_model is None: die( "expected either --keras-model or --frozen-graph; got both" )
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True # todo? parametrize with command line option?
     if not args.frozen_graph is None: 
         saymore( "loading frozen graph from '" + args.frozen_graph + "'..." )
         graph = tf.Graph()
@@ -228,8 +230,6 @@ if __name__ == '__main__':
                 saymore( "loaded frozen graph from '" + args.frozen_graph + "'" )
     elif not args.keras_model is None: 
         saymore( "loading model from '" + args.keras_model + "'..." )
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True # todo? parametrize with command line option?
         tf.keras.backend.set_session( tf.Session( config = config ) ) # quick and dirty, just to make it working
         if args.keras_model.split( '.' )[-1] == 'h5':
             keras_model = tf.keras.models.load_model( args.keras_model, custom_objects = { 'tf': tf }, compile=False)
@@ -249,7 +249,7 @@ if __name__ == '__main__':
         saver = tf.train.import_meta_graph( session_meta ) if tf_version[0] < 1 else tf.train.import_meta_graph( session_meta, clear_devices = not args.keep_devices )
         saymore( "imported meta graph file from '" + session_meta + "'" )
     #with tf.Session if args.frozen_graph is None else tf.Session( graph = graph ) as session: #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
-    with tf.Session( graph = graph ) if not args.frozen_graph is None else tf.keras.backend.get_session() if not args.keras_model is None else tf.Session as session: #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
+    with tf.Session( graph = graph, config ) if not args.frozen_graph is None else tf.keras.backend.get_session() if not args.keras_model is None else tf.Session as session: #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
         if args.tensor_shape and args.tensor_type:
             for tensor in args.tensors.split( ',' ):
                 print( tensor + ',' + get_tensor( tensor ).dtype.name + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) ) )
