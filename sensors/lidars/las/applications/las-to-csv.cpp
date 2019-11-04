@@ -194,6 +194,7 @@ template < unsigned int I >
 static int read_points( const snark::las::header& header, const comma::command_line_options& options )
 {
     comma::csv::options csv( options );
+    csv.full_xpath = false;
     Eigen::Vector3d factor( header.scale_factor.x(), header.scale_factor.y(), header.scale_factor.z() );
     auto offset = options.exists( "--no-offset" ) ? Eigen::Vector3d::Zero()
                                                   : Eigen::Vector3d( header.offset.x(), header.offset.y(), header.offset.z() );
