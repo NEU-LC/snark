@@ -38,6 +38,8 @@
 #include <cmath>
 #include <string.h>
 #include <fstream>
+#include <map>
+#include <vector>
 #include <boost/bind.hpp>
 #include <boost/optional.hpp>
 #include <tbb/parallel_for.h>
@@ -67,6 +69,7 @@ void usage( bool verbose = false )
     std::cerr << "    --input-fields; print input fields for an operation and exit" << std::endl;
     std::cerr << "    --output-fields; print output fields for an operation and exit" << std::endl;
     std::cerr << "    --output-format; print output format for an operation and exit" << std::endl;
+    std::cerr << "    --threads=<number>; default=8; number of threads for parallel processing" << std::endl;
     std::cerr << "    --verbose,-v: more debug output" << std::endl;
     std::cerr << std::endl;
     std::cerr << "csv options" << std::endl;
@@ -124,19 +127,34 @@ static double distance( const point_t& p, const point_t& q ) // todo: quick and 
 
 typedef std::pair< snark::points_rays::trace::input_t, std::vector< char > > pair_t;
 
+// struct cell
+// {
+//     std::vector< pair_t* > points; // quick and dirty
+//     
+//     const pair_t* trace( const point_t& p, double threshold ) const
+//     {
+//         const pair_t* min = NULL;
+//         for( std::size_t i = 0; i < points.size(); ++i )
+//         {
+//             if( distance( p, points[i]->first.point ) > threshold ) { continue; }
+//             if( !min || points[i]->first.point.range() < min->first.point.range() ) { min = points[i]; }
+//         }
+//         return min;
+//     }
+// };
+
 struct cell
 {
-    std::vector< pair_t* > points; // quick and dirty
+    typedef std::map< double, pair_t* > map_t;
+    map_t points; // quick and dirty
     
     const pair_t* trace( const point_t& p, double threshold ) const
     {
-        const pair_t* min = NULL;
-        for( std::size_t i = 0; i < points.size(); ++i )
+        for( map_t::const_iterator it = points.begin(); it != points.end(); ++it )
         {
-            if( distance( p, points[i]->first.point ) > threshold ) { continue; }
-            if( !min || points[i]->first.point.range() < min->first.point.range() ) { min = points[i]; }
+            if( distance( p, it->second->first.point ) < threshold && it->second->first.point.range() < p.range() ) { return it->second; }
         }
-        return min;
+        return nullptr;
     }
 };
 
@@ -160,6 +178,14 @@ static void trace_points( const tbb::blocked_range< std::size_t >& range, std::d
 }
 
 } } } // namespace snark { namespace points_rays { namespace trace {
+
+// namespace snark { namespace points_rays { namespace trace_fast {
+// 
+// const pair_t* traced;
+//     
+// typedef snark::voxel_map< cell, 3 > grid_t;
+// 
+// } } } // namespace snark { namespace points_rays { namespace trace_fast {
 
 int main( int argc, char** argv )
 {
@@ -224,14 +250,15 @@ int main( int argc, char** argv )
                             else if( bearing >= M_PI ) { bearing -= ( M_PI * 2 ); }
                             double elevation = records.back().first.point.elevation() + threshold * j;
                             snark::points_rays::trace::grid_t::iterator it = grid.touch_at( snark::points_rays::trace::grid_t::point_type( bearing, elevation ) );
-                            it->second.points.push_back( &records.back() );
+                            it->second.points.insert( std::make_pair( records.back().first.point.range(), &records.back() ) ); //it->second.points.push_back( &records.back() );
                         }
                     }
                 }
                 if( records.empty() ) { break; }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": loaded " << records.size() << " points in a grid of size " << grid.size() << " voxels" << std::endl; }
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": tracing..." << std::endl; }
-                tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, records.size(), records.size() / 4 ), boost::bind( &snark::points_rays::trace::trace_points, _1, boost::ref( records ), boost::cref( grid ), threshold ) );
+                unsigned int threads = options.value( "--threads", 8 );
+                tbb::parallel_for( tbb::blocked_range< std::size_t >( 0, records.size(), records.size() / threads ), boost::bind( &snark::points_rays::trace::trace_points, _1, boost::ref( records ), boost::cref( grid ), threshold ) );
                 if( verbose ) { std::cerr << "points-rays: block " << records[0].first.block << ": outputting..." << std::endl; }
                 for( std::size_t i = 0; i < records.size(); ++i )
                 {
