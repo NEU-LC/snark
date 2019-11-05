@@ -170,7 +170,6 @@ if __name__ == '__main__':
     input_options.add_argument( '--input-shape', type = str, help = 'shape of a single input record as a comma-separated list' )    
     
     model_load_options = parser.add_argument_group( 'computational graph options' )
-    #parser.add_argument( '--device', type = str, help = 'device to use, e.g. /cpu:0, /device:GPU:0, etc' )# parser.add_argument( '--device', type = str, default = "/cpu:0", help = 'device to use, e.g. /cpu:0, /device:GPU:0, etc; default: %(default)s' )
     model_load_options.add_argument( '--frozen-graph', '--graph', type = str, help = 'path to frozen .pb graph file' )
     model_load_options.add_argument( '--keep-devices', action="store_true", help = 'do not clear devices on graph load, i.e. you plan to run inference in the same environment as training; has effect only in tensorflow 1.0 and higher')
     model_load_options.add_argument( '--keras-model', type = str, help = 'path to .json model file; h5 support: todo, just ask' )
@@ -179,6 +178,10 @@ if __name__ == '__main__':
     model_load_options.add_argument( '--session-dir', '--dir', default = '.', type = str, help = 'saved session directory; default: %(default)s' )
     model_load_options.add_argument( '--session-graph', type = str, help = 'path to saved graph file' ) #parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
     model_load_options.add_argument( '--variable', '--var', nargs = '*', type = str, help = 'variables to pass to the model as name-value pairs, e.g: "y:5", "dim:[3,4,5]", etc' )
+    
+    gpu_options = parser.add_argument_group( 'gpu options' )
+    #parser.add_argument( '--device', type = str, help = 'device to use, e.g. /cpu:0, /device:GPU:0, etc' )# parser.add_argument( '--device', type = str, default = "/cpu:0", help = 'device to use, e.g. /cpu:0, /device:GPU:0, etc; default: %(default)s' )
+    gpu_options.add_argument( '--gpu-allow-growth', action="store_true", help = 'ATTENTION: for keras model always is set to true' )
     
     output_options = parser.add_argument_group( 'output options' )
     output_options.add_argument( '--keep-input', action="store_true", help = 'append output to input' )
@@ -217,7 +220,7 @@ if __name__ == '__main__':
     # todo: load from checkpoint
     if not args.frozen_graph is None and not args.keras_model is None: die( "expected either --keras-model or --frozen-graph; got both" )
     config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True # todo? parametrize with command line option?
+    config.gpu_options.allow_growth = args.gpu_allow_growth
     if not args.frozen_graph is None: 
         saymore( "loading frozen graph from '" + args.frozen_graph + "'..." )
         graph = tf.Graph()
@@ -230,6 +233,7 @@ if __name__ == '__main__':
                 saymore( "loaded frozen graph from '" + args.frozen_graph + "'" )
     elif not args.keras_model is None: 
         saymore( "loading model from '" + args.keras_model + "'..." )
+        config.gpu_options.allow_growth = True # quick and dirty to make it backward compatible for now
         tf.keras.backend.set_session( tf.Session( config = config ) ) # quick and dirty, just to make it working
         if args.keras_model.split( '.' )[-1] == 'h5':
             keras_model = tf.keras.models.load_model( args.keras_model, custom_objects = { 'tf': tf }, compile=False)
@@ -249,7 +253,7 @@ if __name__ == '__main__':
         saver = tf.train.import_meta_graph( session_meta ) if tf_version[0] < 1 else tf.train.import_meta_graph( session_meta, clear_devices = not args.keep_devices )
         saymore( "imported meta graph file from '" + session_meta + "'" )
     #with tf.Session if args.frozen_graph is None else tf.Session( graph = graph ) as session: #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
-    with tf.Session( graph = graph, config ) if not args.frozen_graph is None else tf.keras.backend.get_session() if not args.keras_model is None else tf.Session as session: #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
+    with tf.Session( graph = graph, config = config ) if not args.frozen_graph is None else tf.keras.backend.get_session() if not args.keras_model is None else tf.Session as session: #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
         if args.tensor_shape and args.tensor_type:
             for tensor in args.tensors.split( ',' ):
                 print( tensor + ',' + get_tensor( tensor ).dtype.name + ',' + ','.join( list( map( str, list( get_tensor( tensor ).shape ) ) ) ) )
