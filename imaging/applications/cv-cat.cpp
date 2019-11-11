@@ -27,7 +27,6 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #ifdef WIN32
 #include <winsock2.h>
 #include <windows.h>
@@ -47,6 +46,7 @@
 #include <comma/name_value/parser.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/binary.h>
+#include <comma/string/split.h>
 #include "../cv_mat/pipeline.h"
 #include "../cv_mat/detail/help.h"
 
@@ -344,7 +344,16 @@ int main( int argc, char** argv )
             if( !vm.count( "video" ) )
             { 
                 if( !boost::filesystem::exists( name ) ) { std::cerr << "cv-cat: file not found '" << name << "'" << std::endl; exit( 1 ); }
-                p.second = cv::imread( name, cv::IMREAD_UNCHANGED );
+                if( comma::split( name, '.' ).back() == "bin" ) // quick and dirty, to keep --file semantics uniform
+                { 
+                    std::ifstream i( name );
+                    if( !i.is_open() ) { std::cerr << "cv-cat: failed to open '" << name << "'" << std::endl; exit( 1 ); }
+                    p = input.read< boost::posix_time::ptime >( i );
+                }
+                else
+                {
+                    p.second = cv::imread( name, cv::IMREAD_UNCHANGED );
+                }
             }
             if( p.second.data )
             {
