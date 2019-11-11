@@ -29,3 +29,10 @@ fields[1]/output/line[3]="0,0,4,1"
 fields[1]/output/line[4]="1,0,5,1"
 fields[1]/output/line[5]="2,0,6,1"
 fields[1]/status=0
+
+discard_any[0]/output="not-a-date-time,2,0,6,7,8"
+discard_any[0]/status=0
+discard_any[1]/output/line[0]="not-a-date-time,0,0,0,1,2"
+discard_any[1]/output/line[1]="not-a-date-time,1,0,3,4,5"
+discard_any[1]/output/line[2]="not-a-date-time,2,0,6,7,8"
+discard_any[1]/status=0
