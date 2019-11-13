@@ -34,6 +34,7 @@
 #include <comma/csv/stream.h>
 #include <comma/name_value/parser.h>
 #include <comma/csv/options.h>
+#include "../cv_mat/filters.h"
 #include "../cv_mat/serialization.h"
 #include "../cv_mat/type_traits.h"
     
@@ -82,6 +83,7 @@ static void usage( bool verbose )
               << std::endl
               << "options" << std::endl
               << "    --help,-h: show help; --help --verbose: more help" << std::endl
+              << "    --background=<colour>; e.g. --background=0, --background=0,-1,-1, etc; default: zeroes" << std::endl
               << "    --from,--begin,--origin=[<x>,<y>]: offset pixel coordinates by a given offset; default: 0,0" << std::endl
               << "    --output: output options, same as --input for image-from-csv or cv-cat (see --help --verbose)" << std::endl
               << "    --timestamp=<how>: which image timestamp to output" << std::endl
@@ -220,10 +222,25 @@ int main( int ac, char** av )
         boost::optional< input_t > last;
         int type = output_options.get_header().type;
         timestamping t( options.value< std::string >( "--timestamp", "first" ) );
+        cv::Mat background = cv::Mat::zeros( output_options.rows, output_options.cols, type );
+        if( options.exists( "--background" ) )
+        {
+            const auto& v = comma::split( options.value< std::string >( "--background" ), ',' );
+            if( int( v.size() ) != background.channels() ) { std::cerr << "image-from-csv: expected --background for " << background.channels() << "; got: '" << options.value< std::string >( "--background" ) << "'" << std::endl; return 1; }
+            std::vector< cv::Mat > channels( background.channels() );
+            for( int i = 0; i < background.channels(); ++i )
+            {
+                channels[i] = cv::Mat::zeros( output_options.rows, output_options.cols, snark::cv_mat::single_channel_type( background.type() ) );
+                try { channels[i].setTo( boost::lexical_cast< float >( v[i] ) ); }
+                catch( std::exception& ex ) { std::cerr << "image-from-csv: --background: invalid value: '" << v[i] << "' (" << ex.what() << ")" << std::endl; return 1; }
+                catch( ... ) { std::cerr << "image-from-csv: --background: invalid value: '" << v[i] << "'" << std::endl; return 1; }
+            }
+            cv::merge( channels, background );
+        }
         while( is.ready() || std::cin.good() )
         {
             std::pair< boost::posix_time::ptime, cv::Mat > pair;
-            pair.second = cv::Mat::zeros( output_options.rows, output_options.cols, type );
+            background.copyTo( pair.second );
             if( last ) { set_pixel( pair.second, *last, offset ); }
             while( is.ready() || std::cin.good() )
             {
