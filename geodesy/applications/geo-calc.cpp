@@ -66,6 +66,9 @@ static void usage( bool more = false )
     std::cerr << "                        input fields: default: latitude,longitude,z" << std::endl;
     std::cerr << "                        appended output fields: x,y,z,zone" << std::endl;
     std::cerr << "                        appended output format: 3d,ui" << std::endl;
+    std::cerr << "            --hemisphere=<what>: either 'north' or 'south', if --coordinates" << std::endl;
+    std::cerr << "            --north; same as hemisphere=north" << std::endl;
+    std::cerr << "            --south; same as hemisphere=south" << std::endl;
     std::cerr << "            --zone=<zone>: zone, if --to ned; e.g. 56 for Sydney: default zone, in case zone field is not on stdin input" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: ellipsoid arc distance in meters; if --binary, output as double" << std::endl;
@@ -224,7 +227,7 @@ int main( int ac, char **av )
         csv.full_xpath = true;
         std::string geoid_name = options.value< std::string >( "--geoid", "wgs84" );
         const snark::spherical::ellipsoid& geoid = snark::geodesy::geoids::select( geoid_name );
-        const std::vector<std::string> &operations = options.unnamed( "--verbose,-v,--degrees", "-.*" );
+        const std::vector<std::string> &operations = options.unnamed( "--verbose,-v,--degrees,--north,--south", "-.*" );
         if( operations.empty() ) { std::cerr << "geo-calc: please specify operation" << std::endl; return 1; }
         if( operations[0] == "convert" )
         {
@@ -257,12 +260,19 @@ int main( int ac, char **av )
                                                 , north
                                                 , convergence
                                                 , scale );
+                    if( p->coordinates.latitude >= 0 ) { north -= 10000000; }
                     q.coordinates = Eigen::Vector3d( north, east, -p->z );
                     tied.append( q );
                 }
+                return 0;
             }
-            else if( to == "coordinates" )
+            if( to == "coordinates" )
             {
+                std::string hemisphere = options.value< std::string >( "--hemisphere", "" );
+                bool north = options.exists( "--north" ) || hemisphere == "north";
+                bool south = options.exists( "--south" ) || hemisphere == "south";
+                if( !north && !south ) { std::cerr << "geo-calc: convert: for --what=coordinates, please specify either --north or --south" << std::endl; return 1; }
+                if( north && south ) { std::cerr << "geo-calc: convert: for --what=coordinates, expected either --north or --south; got both" << std::endl; return 1; }
                 if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
                 convert_::ned_ default_input;
                 if( !csv.has_field( "zone" ) ) { default_input.zone = options.value< unsigned int >( "--zone" ); }
@@ -278,7 +288,7 @@ int main( int ac, char **av )
                     double latitude, longitude, scale, convergence;
                     credfearn.GetGeographicCoordinates( p->zone
                                                       , p->coordinates.y()
-                                                      , p->coordinates.x()
+                                                      , p->coordinates.x() + ( north ? 10000000 : 0 )
                                                       , latitude
                                                       , longitude
                                                       , convergence
@@ -288,15 +298,17 @@ int main( int ac, char **av )
                     q.z = -p->coordinates.z();
                     tied.append( q );
                 }
+                return 0;
             }
-            return 0;
+            std::cerr << "geo-calc: expected --what=<to>; got --what='" << to << "'" << std::endl;
+            return 1;
         }
         if( operations[0] == "distance" )
         {
             comma::csv::input_stream< snark::spherical::ellipsoid::arc > istream( std::cin, csv );
             while ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
-                const snark::spherical::ellipsoid::arc *a = istream.read();
+                const snark::spherical::ellipsoid::arc* a = istream.read();
                 if ( !a ) { break; }
                 double distance = geoid.distance( a->begin, a->end );
                 if ( csv.binary() )
@@ -311,36 +323,20 @@ int main( int ac, char **av )
             }
             return 0;
         }
-        if ( operations[0] == "discretize" )
+        if( operations[0] == "discretize" )
         {
-            //whole circle or circular arc
             boost::optional< double > resolution = options.optional< double >( "--resolution" );
-            if ( resolution ) { resolution = *resolution * M_PI / 180; }
+            if( resolution ) { resolution = *resolution * M_PI / 180; }
             boost::optional< unsigned int > circle_size = options.optional< unsigned int >( "--circle-size,--size" );
-            if ( operations.size() == 2 )
-            {
-                if ( operations[1] == "circle" ) { return discretize< snark::spherical::ellipsoid::circle >( csv, geoid, resolution, circle_size ); }
-                else if ( operations[1] == "arc" ) { return discretize<snark::spherical::ellipsoid::circle::arc>( csv, geoid, resolution, circle_size ); }
-                std::cerr << "geo-calc: unknown shape for discretize: \"" << operations[1] << "\"" << std::endl;
-            }
-            else { std::cerr << "geo-calc: expected shape for operation discretize" << std::endl; return 1; }
-            return 0;
+            if( operations.size() != 2 ) { std::cerr << "geo-calc: expected shape for operation discretize" << std::endl; return 1; }
+            if( operations[1] == "circle" ) { return discretize< snark::spherical::ellipsoid::circle >( csv, geoid, resolution, circle_size ); }
+            else if ( operations[1] == "arc" ) { return discretize<snark::spherical::ellipsoid::circle::arc>( csv, geoid, resolution, circle_size ); }
+            std::cerr << "geo-calc: unknown shape for discretize: \"" << operations[1] << "\"" << std::endl;
         }
-        if ( operations[0] == "info" )
-        {
-            std::cerr << snark::geodesy::geoids::info( geoid_name );
-            return 0;
-        }
+        if( operations[0] == "info" ) { std::cerr << snark::geodesy::geoids::info( geoid_name ); return 0; }
         std::cerr << "geo-calc: unknown operation: \"" << operations[0] << "\"" << std::endl;
-        return 1;
     }
-    catch ( std::exception &ex )
-    {
-        std::cerr << "geo-calc: " << ex.what() << std::endl;
-    }
-    catch ( ... )
-    {
-        std::cerr << "geo-calc: unknown exception" << std::endl;
-    }
+    catch ( std::exception &ex ) { std::cerr << "geo-calc: " << ex.what() << std::endl; }
+    catch ( ... ) { std::cerr << "geo-calc: unknown exception" << std::endl; }
     return 1;
 }
