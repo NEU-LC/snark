@@ -122,8 +122,9 @@ static void usage( bool more = false )
     std::cerr << "examples (try them)" << std::endl;
     std::cerr << "    convert" << std::endl;
     std::cerr << "        echo -34,154,10 | geo-calc convert --to ned" << std::endl;
-    std::cerr << "        echo 6237393.34007,592349.603343,-10,56 | geo-calc convert --to coordinates --zone 56" << std::endl;
-    std::cerr << "        echo 6237393.34007,592349.603343,-10,56 | geo-calc convert --to coordinates --fields=x,y,z,zone" << std::endl;
+    std::cerr << "        echo 6237393.34007,592349.603343,-10,56 | geo-calc convert --to coordinates --zone 56 --south" << std::endl;
+    std::cerr << "        echo 6237393.34007,592349.603343,-10,56 | geo-calc convert --to coordinates --fields=x,y,z,zone --south" << std::endl;
+    std::cerr << "        echo 6237393.34007,592349.603343,-10,56,1 | geo-calc convert --to coordinates --fields=x,y,z,zone,is_south" << std::endl;
     std::cerr << "    discretize" << std::endl;
     std::cerr << "        cat circular-arcs.csv | geo-calc discretize arc --fields=circle/centre/latitude,circle/centre/longitude,circle/radius,begin,end --circle-size=32 > results.csv" << std::endl;
     std::cerr << "        cat circle.csv | geo-calc discretize circle --fields=centre,radius --resolution=0.1 | column -ts," << std::endl;
