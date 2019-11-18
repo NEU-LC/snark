@@ -58,18 +58,16 @@ static void usage( bool more = false )
     std::cerr << "                geoids: wgs84, agd84; support more geoids: todo, low-hanging fruit" << std::endl;
     std::cerr << "            --to=<what>: append the converted values and zone to output" << std::endl;
     std::cerr << "                <what>" << std::endl;
-    std::cerr << "                    coordinates: convert from north-east-down to coordinates" << std::endl;
-    std::cerr << "                        input fields: x,y,z,zone; default: x,y,z" << std::endl;
-    std::cerr << "                        appended output fields: latitude,longitude,z" << std::endl;
-    std::cerr << "                        appended output format: 3d" << std::endl;
-    std::cerr << "                    north-east-down,ned: convert from coordinates to north-east-down" << std::endl;
-    std::cerr << "                        input fields: default: latitude,longitude,z" << std::endl;
-    std::cerr << "                        appended output fields: x,y,z,zone" << std::endl;
-    std::cerr << "                        appended output format: 3d,ui" << std::endl;
+    std::cerr << "                    coordinates: convert from north-east-down to coordinates; default input fields: x,y,z" << std::endl;
+    std::cerr << "                    north-east-down,ned: convert from coordinates to north-east-down; default input fields: latitude,longitude,z" << std::endl;
     std::cerr << "            --hemisphere=<what>: either 'north' or 'south', if --coordinates" << std::endl;
     std::cerr << "            --north; same as hemisphere=north" << std::endl;
     std::cerr << "            --south; same as hemisphere=south" << std::endl;
     std::cerr << "            --zone=<zone>: zone, if --to ned; e.g. 56 for Sydney: default zone, in case zone field is not on stdin input" << std::endl;
+    std::cerr << "        info options" << std::endl;
+    std::cerr << "            --input-fields; print input fields for a given conversion to stdout and exit" << std::endl;
+    std::cerr << "            --output-fields; print output fields for a given conversion to stdout and exit" << std::endl;
+    std::cerr << "            --output-format; print binary output format for a given conversion to stdout and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    distance: ellipsoid arc distance in meters; if --binary, output as double" << std::endl;
     std::cerr << std::endl;
@@ -169,8 +167,9 @@ struct ned_
 {
     Eigen::Vector3d coordinates;
     comma::int32 zone; // todo: is it uint or int?
+    bool is_south;
     
-    ned_() : coordinates( 0, 0, 0 ), zone( 0 ) {}
+    ned_() : coordinates( 0, 0, 0 ), zone( 0 ), is_south( false ) {}
 };
 
 struct coordinates_
@@ -206,12 +205,14 @@ template <> struct traits< convert_::ned_ >
     {
         v.apply( "coordinates", p.coordinates );
         v.apply( "zone", p.zone );
+        v.apply( "is_south", p.is_south );
     }
     
     template < typename Key, class Visitor > static void visit( const Key&, const convert_::ned_& p, Visitor& v )
     {
         v.apply( "coordinates", p.coordinates );
         v.apply( "zone", p.zone );
+        v.apply( "is_south", p.is_south );
     }
 };
 
@@ -231,12 +232,33 @@ int main( int ac, char **av )
         if( operations.empty() ) { std::cerr << "geo-calc: please specify operation" << std::endl; return 1; }
         if( operations[0] == "convert" )
         {
+            std::string to = options.value< std::string >( "--to" );
+            if( options.exists( "--input-fields" ) )
+            { 
+                if( to == "north-east-down" || to == "ned" ) { std::cout << comma::join( comma::csv::names< convert_::coordinates_ >( false ), ',' ) << std::endl; return 0; }
+                if( to == "coordinates" ) { std::cout << comma::join( comma::csv::names< convert_::ned_ >( false ), ',' ) << std::endl; return 0; }
+                std::cerr << "geo-calc: expected --what=<to>; got --what='" << to << "'" << std::endl;
+                return 1;
+            }
+            if( options.exists( "--output-fields" ) )
+            { 
+                if( to == "north-east-down" || to == "ned" ) { std::cout << comma::join( comma::csv::names< convert_::ned_ >( false ), ',' ) << std::endl; return 0; }
+                if( to == "coordinates" ) { std::cout << comma::join( comma::csv::names< convert_::coordinates_ >( false ), ',' ) << std::endl; return 0; }
+                std::cerr << "geo-calc: expected --what=<to>; got --what='" << to << "'" << std::endl;
+                return 1;
+            }
+            if( options.exists( "--output-format" ) )
+            { 
+                if( to == "north-east-down" || to == "ned" ) { std::cout << comma::csv::format().value< convert_::ned_ >() << std::endl; return 0; }
+                if( to == "coordinates" ) { std::cout << comma::csv::format().value< convert_::coordinates_ >() << std::endl; return 0; }
+                std::cerr << "geo-calc: expected --what=<to>; got --what='" << to << "'" << std::endl;
+                return 1;
+            }
             snark::detail::GeographicGeodeticRectangular::CRedfearn credfearn(
                   geoid_name == "agd84" ? snark::detail::Ellipsoid::AUSTRALIAN_NATIONAL
                 : geoid_name == "wgs84" ? snark::detail::Ellipsoid::WGS84
                                         : snark::detail::Ellipsoid::WGS84
                 , snark::detail::MapGrid::MGA );
-            std::string to = options.value< std::string >( "--to" );
             csv.full_xpath = false; // quick and dirty
             comma::csv::options ocsv;
             ocsv.flush = options.exists( "--flush" );
@@ -244,7 +266,7 @@ int main( int ac, char **av )
             {
                 if( csv.fields.empty() ) { csv.fields = "latitude,longitude,z"; }
                 comma::csv::input_stream< convert_::coordinates_ > is( std::cin, csv );
-                if( csv.binary() ) { ocsv.format( comma::csv::format::value< convert_::ned_ >() ); }
+                if( csv.binary() ) { ocsv.format( comma::csv::format().value< convert_::ned_ >() ); }
                 comma::csv::output_stream< convert_::ned_ > os( std::cout, ocsv );
                 comma::csv::tied< convert_::coordinates_, convert_::ned_ > tied( is, os );
                 while ( is.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -260,7 +282,8 @@ int main( int ac, char **av )
                                                 , north
                                                 , convergence
                                                 , scale );
-                    if( p->coordinates.latitude >= 0 ) { north -= 10000000; }
+                    q.is_south = p->coordinates.latitude < 0;
+                    if( !q.is_south ) { north -= 10000000; }
                     q.coordinates = Eigen::Vector3d( north, east, -p->z );
                     tied.append( q );
                 }
@@ -271,11 +294,15 @@ int main( int ac, char **av )
                 std::string hemisphere = options.value< std::string >( "--hemisphere", "" );
                 bool north = options.exists( "--north" ) || hemisphere == "north";
                 bool south = options.exists( "--south" ) || hemisphere == "south";
-                if( !north && !south ) { std::cerr << "geo-calc: convert: for --what=coordinates, please specify either --north or --south" << std::endl; return 1; }
-                if( north && south ) { std::cerr << "geo-calc: convert: for --what=coordinates, expected either --north or --south; got both" << std::endl; return 1; }
+                if( !csv.has_field( "is_south" ) )
+                {
+                    if( !north && !south ) { std::cerr << "geo-calc: convert: for --what=coordinates, please specify either --north or --south" << std::endl; return 1; }
+                    if( north && south ) { std::cerr << "geo-calc: convert: for --what=coordinates, expected either --north or --south; got both" << std::endl; return 1; }
+                }
                 if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
                 convert_::ned_ default_input;
-                if( !csv.has_field( "zone" ) ) { default_input.zone = options.value< unsigned int >( "--zone" ); }
+                default_input.zone = options.value< unsigned int >( "--zone" );
+                default_input.is_south = south;
                 comma::csv::input_stream< convert_::ned_ > is( std::cin, csv, default_input );
                 if( csv.binary() ) { ocsv.format( comma::csv::format::value< convert_::coordinates_ >() ); }
                 comma::csv::output_stream< convert_::coordinates_ > os( std::cout, ocsv );
@@ -288,7 +315,7 @@ int main( int ac, char **av )
                     double latitude, longitude, scale, convergence;
                     credfearn.GetGeographicCoordinates( p->zone
                                                       , p->coordinates.y()
-                                                      , p->coordinates.x() + ( north ? 10000000 : 0 )
+                                                      , p->coordinates.x() + ( p->is_south ? 0 : 10000000 )
                                                       , latitude
                                                       , longitude
                                                       , convergence
