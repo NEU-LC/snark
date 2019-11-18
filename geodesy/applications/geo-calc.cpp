@@ -301,7 +301,7 @@ int main( int ac, char **av )
                 }
                 if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
                 convert_::ned_ default_input;
-                default_input.zone = options.value< unsigned int >( "--zone" );
+                if( !csv.has_field( "zone" ) ) { default_input.zone = options.value< unsigned int >( "--zone" ); }
                 default_input.is_south = south;
                 comma::csv::input_stream< convert_::ned_ > is( std::cin, csv, default_input );
                 if( csv.binary() ) { ocsv.format( comma::csv::format::value< convert_::coordinates_ >() ); }
