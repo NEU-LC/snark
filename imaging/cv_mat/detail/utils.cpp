@@ -150,8 +150,10 @@ unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid comp
 {
     static boost::unordered_map< std::string, unsigned int > cvt_color_types_ = impl::fill_cvt_color_types_();
     boost::unordered_map< std::string, unsigned int >::const_iterator it = cvt_color_types_.find( t );
-    if (it == cvt_color_types_.end()) { COMMA_THROW(comma::exception, "unknown conversion enum '" << t << "' for convert-color"); }
-    return it->second;
+    if( it != cvt_color_types_.end() ) { return it->second; }
+    try { return boost::lexical_cast< int >( t ); }
+    catch( ... ) {}
+    COMMA_THROW( comma::exception, "unknown conversion enum '" << t << "' for convert-color" );
 }
 
 std::string type_as_string( int t ) // to avoid compilation warning
