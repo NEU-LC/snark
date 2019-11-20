@@ -58,29 +58,33 @@
 
 #pragma once
 
-#include <string>
 #include <boost/function.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <string>
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark {
+namespace cv_mat {
+namespace impl {
 
-template < typename H >
-class contraharmonic
-{
-    public:
-        contraharmonic( double power ); // todo: kernel size etc
+template <typename H> class contraharmonic {
+public:
+  contraharmonic(int kernel, double power);
 
-        std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
-        
-        typedef boost::function< std::pair< H, cv::Mat >( std::pair< H, cv::Mat > ) > functor_t;
-        
-        static std::pair< functor_t, bool > make( const std::string& options );
-        
-        static std::string usage( unsigned int indent = 0 );
-        
-    private:
-        double power_; // etc
+  std::pair<H, cv::Mat> operator()(std::pair<H, cv::Mat> m);
+
+  typedef boost::function<std::pair<H, cv::Mat>(std::pair<H, cv::Mat>)>
+      functor_t;
+
+  static std::pair<functor_t, bool> make(const std::string &options);
+
+  static std::string usage(unsigned int indent = 0);
+
+private:
+  int kernel_;
+  double power_; // etc
 };
 
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+} // namespace impl
+} // namespace cv_mat
+} // namespace snark

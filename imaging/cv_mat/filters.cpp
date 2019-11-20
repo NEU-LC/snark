@@ -81,6 +81,7 @@
 #include "detail/arithmetic.h"
 #include "detail/bitwise.h"
 #include "detail/blank.h"
+#include "detail/contraharmonic.h"
 #include "detail/colors.h"
 #include "detail/file.h"
 #include "detail/hard_edge.h"
@@ -2360,6 +2361,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "hard-edge" ) { return impl::hard_edge< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "partition" ) { return impl::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
+    if( e[0] == "contraharmonic") { return impl::contraharmonic<H>::make( e.size() > 1 ? e[1] : ""); }
     if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
     {
         boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
@@ -3258,6 +3260,7 @@ static std::string usage_impl_()
     //oss << "        warp=<how>: todo: warp image" << std::endl;
     //oss << "        unwarp=<how>: todo: unwarp image" << std::endl;
     //oss << "            <how>: todo" << std::endl;
+    oss << impl::contraharmonic<boost::posix_time::ptime>::usage(8) << std::endl;
     oss << impl::text< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
