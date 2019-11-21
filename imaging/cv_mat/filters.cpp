@@ -3186,7 +3186,12 @@ static std::string usage_impl_()
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
     oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details; values will not overflow" << std::endl;
-    oss << "        convert-color,convert_color=<from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
+    oss << "        convert-color=<how>; convert from colour space to new colour space" << std::endl;
+    oss << "            <how>" << std::endl;
+    oss << "                <from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
+    oss << "                <n>: index of color conversion, see color conversion enumeration in opencv2/improc/types_c.h" << std::endl;
+    oss << "                     e.g: 'convert-color=6' is same as 'convert-color=BGR,GRAY'" << std::endl;
+    oss << "                     quick and dirty for now, but lets use dozens of conversions" << std::endl;
     oss << "        count: write frame number on images" << std::endl;
     oss << "        crop=[<x>,<y>],<width>,<height>: crop the portion of the image starting at x,y with size width x height" << std::endl;
     oss << "        crop-tile=<ncols>,<nrows>[,<i>,<j>,...[,horizontal]]: divide the image into a grid of tiles (ncols-by-nrows), and output an image made of the croped tiles defined by i,j (count from zero)" << std::endl;
