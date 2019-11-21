@@ -67,24 +67,22 @@ namespace snark {
 namespace cv_mat {
 namespace impl {
 
-template <typename H> class contraharmonic {
-public:
-  contraharmonic(int kernel, double power);
-
-  std::pair<H, cv::Mat> operator()(std::pair<H, cv::Mat> m);
-
+template <typename H>
+class contraharmonic {
   typedef boost::function<std::pair<H, cv::Mat>(std::pair<H, cv::Mat>)>
       functor_t;
 
+ public:
+  contraharmonic(int kernel, double power);
+  std::pair<H, cv::Mat> operator()(std::pair<H, cv::Mat> m);
   static std::pair<functor_t, bool> make(const std::string &options);
-
   static std::string usage(unsigned int indent = 0);
 
-private:
+ private:
   int kernel_;
-  double power_; // etc
+  double power_;  // etc
 };
 
-} // namespace impl
-} // namespace cv_mat
-} // namespace snark
+}  // namespace impl
+}  // namespace cv_mat
+}  // namespace snark

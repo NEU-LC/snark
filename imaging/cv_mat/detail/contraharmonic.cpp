@@ -60,17 +60,18 @@
 
 #include <comma/base/exception.h>
 #include <comma/string/split.h>
+#include <tbb/parallel_for.h>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/lexical_cast.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <tbb/parallel_for.h>
 
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -80,113 +81,162 @@ namespace snark {
 namespace cv_mat {
 namespace impl {
 
+template <typename T>
+struct Handle {
+    Handle(cv::Mat in, cv::Mat &out, double power, int kernel) : in_{in}, out_{out}, power_{power}, kernel_{kernel} {};
+
+    void operator()(int start, int end) {
+        end = std::min(end, in_.rows);
+        std::vector<double> numerator(in_.channels(), 0);
+        std::vector<double> denominator(in_.channels(), 0);
+        for (; start < end; ++start) {
+            for (int col = 0; col < in_.cols; ++col) {
+                for (int kernel_y = -(kernel_ / 2); kernel_y < std::ceil(static_cast<double>(kernel_) / 2.);
+                     ++kernel_y) {
+                    int y = start + kernel_y;
+                    if (y >= 0 && y < in_.rows) {
+                        const T *row_ptr = in_.template ptr<T>(y);
+                        for (int kernel_x = -(kernel_ / 2); kernel_x < std::ceil(static_cast<double>(kernel_) / 2.);
+                             ++kernel_x) {
+                            int x = col + kernel_x;
+                            if (x >= 0 && x < in_.cols) {
+                                for (int channel = 0; channel < in_.channels(); ++channel) {
+                                    numerator[channel] += std::pow(row_ptr[in_.channels() * x + channel], power_ + 1);
+                                    denominator[channel] += std::pow(row_ptr[in_.channels() * x + channel], power_);
+                                }
+                            }
+                        }
+                    }
+                }
+                T *row_ptr = out_.template ptr<T>(start);
+                for (int channel = 0; channel < in_.channels(); ++channel) {
+                    row_ptr[out_.channels() * col + channel] = numerator[channel] / denominator[channel];
+                    if (std::isnan(row_ptr[out_.channels() * col + channel])) {
+                        row_ptr[out_.channels() * col + channel] = 0;
+                    }
+                    numerator[channel] = 0;
+                    denominator[channel] = 0;
+                }
+            }
+        }
+    };
+
+    cv::Mat in_;
+    cv::Mat out_;
+    double power_;
+    int kernel_;
+};
+
 template <typename H>
-contraharmonic<H>::contraharmonic(int kernel, double power)
-    : kernel_{kernel}, power_{power} {}  // todo
+contraharmonic<H>::contraharmonic(int kernel, double power) : kernel_{kernel}, power_{power} {}
 
 template <typename H>
 std::pair<H, cv::Mat> contraharmonic<H>::operator()(std::pair<H, cv::Mat> m) {
-  int sizes[2]{m.second.rows, m.second.cols};
-  cv::Mat im_out(m.second.dims, sizes, m.second.type());
-  if (m.second.depth() != CV_8U) {
-    COMMA_THROW(comma::exception,
-                "todo: support for depth: " << m.second.depth());
-  }
-  // for (int row = kernel_ / 2; row < m.second.rows - kernel_ / 2 - 1; ++row) {
-  //   for (int col = kernel_ / 2; col < m.second.cols - kernel_ / 2 - 1; ++col) {
-  //     double num{0};
-  //     double den{0};
-  //     for (int channel = 0; channel < m.second.channels(); ++channel) {
-  //       for (int y = -(kernel_ / 2); y <= (kernel_ / 2); ++y) {
-  //         std::cout << y <<'\n';
-  //         for (int x = -(kernel_ / 2); x <= (kernel_ / 2); ++x) {
-  //           num += std::pow(
-  //               m.second.template at<cv::Vec3b>(row + y, col + x)[channel],
-  //               power_ + 1);
-  //           den += std::pow(
-  //               m.second.template at<cv::Vec3b>(row + y, col + x)[channel],
-  //               power_);
-  //         }
-  //       }
-  //       im_out.template at<cv::Vec3b>(row, col)[channel] = num / den;
-  //     }
-  //   }
-  // }
-
-  std::vector<double> numerator(m.second.channels(), 0);
-  std::vector<double> denominator(m.second.channels(), 0);
-  for (int row = 0; row < m.second.rows; ++row) {
-    for (int col = 0; col < m.second.cols; ++col) {
-      for (int kernel_y = -(kernel_ / 2); kernel_y < std::ceil(static_cast<double>(kernel_) / 2.); ++kernel_y) {
-        for (int kernel_x = -(kernel_ / 2); kernel_x < std::ceil(static_cast<double>(kernel_) / 2.); ++kernel_x) {
-          int y = row + kernel_y;
-          int x = col + kernel_x;
-          if (y >= 0 && y < m.second.rows && (x >= 0 && x < m.second.cols)) {
-            const auto& vec = m.second.template at <cv::Vec3b>(y, x);
-            for (int channel = 0; channel < m.second.channels(); ++channel) {
-              numerator[channel] += std::pow(vec[channel], power_ + 1);
-              denominator[channel] += std::pow(vec[channel], power_);
-            }
-          }
-        }
-      }
-      auto& vec_out = im_out.template at<cv::Vec3b>(row, col);
-      for (int channel = 0; channel < m.second.channels(); ++channel) {
-        vec_out[channel] = numerator[channel] / denominator[channel];
-        numerator[channel] = 0;
-        denominator[channel] = 0;
-      }
+    cv::Mat in{m.second};
+    if (!m.second.isContinuous()) {
+        COMMA_THROW(comma::exception, "matrix not continuous; non-continous image data not supported")
     }
-  }
 
-  // tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::thread::hardware_concurrency()), [&](const tbb::blocked_range<std::size_t>& r) {
-  //   for (auto i = r.begin(); i != r.end(); ++i) {
-  //     std::this_thread::sleep_for(std::chrono::seconds(5));
-  //   }
-  // });
+    int sizes[2]{m.second.rows, m.second.cols};
+    cv::Mat out(m.second.dims, sizes, m.second.type());
 
-  return std::make_pair(m.first, im_out);
+    size_t n = std::thread::hardware_concurrency() / 2;
+    int chunk_size = std::ceil(static_cast<double>(m.second.rows) / static_cast<double>(n));
+
+    switch (m.second.depth()) {
+        case CV_8U: {
+            auto handle_row = Handle<uint8_t>(m.second, out, power_, kernel_);
+            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
+                handle_row(chunk_size * i, chunk_size * (i + 1));
+            });
+            break;
+        }
+        case CV_8S: {
+            auto handle_row = Handle<int8_t>(m.second, out, power_, kernel_);
+            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
+                handle_row(chunk_size * i, chunk_size * (i + 1));
+            });
+            break;
+        }
+        case CV_16U: {
+            auto handle_row = Handle<uint16_t>(m.second, out, power_, kernel_);
+            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
+                handle_row(chunk_size * i, chunk_size * (i + 1));
+            });
+            break;
+        }
+        case CV_16S: {
+            auto handle_row = Handle<int16_t>(m.second, out, power_, kernel_);
+            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
+                handle_row(chunk_size * i, chunk_size * (i + 1));
+            });
+            break;
+        }
+        case CV_32S: {
+            auto handle_row = Handle<int32_t>(m.second, out, power_, kernel_);
+            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
+                handle_row(chunk_size * i, chunk_size * (i + 1));
+            });
+            break;
+        }
+        case CV_32F: {
+            auto handle_row = Handle<float>(m.second, out, power_, kernel_);
+            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
+                handle_row(chunk_size * i, chunk_size * (i + 1));
+            });
+            break;
+        }
+        case CV_64F: {
+            auto handle_row = Handle<double>(m.second, out, power_, kernel_);
+            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
+                handle_row(chunk_size * i, chunk_size * (i + 1));
+            });
+            break;
+        }
+        default: {
+            COMMA_THROW(comma::exception, "unknown image data type");
+            break;
+        }
+    }
+
+    return std::make_pair(m.first, out);
 }
 
 template <typename H>
-std::pair<typename contraharmonic<H>::functor_t, bool> contraharmonic<H>::make(
-    const std::string &options) {
-  // options -> square,7,1 whatever contraharmonic=<options>
-  std::string shape{"square"};
-  int kernel{};
-  double power{};
-  if (!options.empty()) {
-    const auto &s = comma::split(options, ',');
-    if (s.size() != 3) {
-      COMMA_THROW(
-          comma::exception,
-          "contraharmonic: expected shape,kernel,power got: " << options);
+std::pair<typename contraharmonic<H>::functor_t, bool> contraharmonic<H>::make(const std::string &options) {
+    // options -> square,7,1 whatever contraharmonic=<options>
+    double power{};
+    std::string shape{"square"};
+    int kernel{};
+    if (!options.empty()) {
+        const auto &s = comma::split(options, ',');
+        if (s.size() != 3) {
+            COMMA_THROW(comma::exception, "contraharmonic: expected shape,kernel,power got: " << options);
+        }
+        shape = s[1];
+        if (shape != "square") {
+            COMMA_THROW(comma::exception, "contraharmonic: expected shape=square got: " << shape);
+        }
+        power = boost::lexical_cast<decltype(power)>(s[0]);
+        kernel = boost::lexical_cast<decltype(kernel)>(s[2]);
     }
-    shape = s[0];
-    if (shape != "square") {
-      COMMA_THROW(comma::exception,
-                  "contraharmonic: expected shape=rectangle got: " << shape);
-    }
-    kernel = boost::lexical_cast<decltype(kernel)>(s[1]);
-    power = boost::lexical_cast<decltype(power)>(s[2]);
-  }
-  return std::make_pair(contraharmonic<H>{kernel, power}, true);  // todo
+    return std::make_pair(contraharmonic<H>{kernel, power}, true);  // todo
 }
 
 template <typename H>
 typename std::string contraharmonic<H>::usage(unsigned int indent) {
-  std::string offset(indent, ' ');
-  std::ostringstream oss;
-  oss << offset << "contraharmonic[=<options>]\n";
-  oss << offset << "    <options>\n";
-  oss << offset
-      << "        shape:<shape>: shape of kernel filter; default: square\n";
-  oss << offset
-      << "        kernel:<value>: size of kernel to apply filter to image\n";
-  oss << offset
-      << "        power:<value>: order of the filter; positive values remove "
-         "pepper noise; negative values remove salt noise\n";
-  return oss.str();
+    std::string offset(indent, ' ');
+    std::ostringstream oss;
+    oss << offset << "contraharmonic=<power>,<kernel_shape>,<kernel_geometry>, e.g: contraharmonic=3,square,5\n";
+    oss << offset
+        << "               <power>: order of the filter; positive values remove pepper noise; negative values remove "
+           "salt noise\n";
+    oss << offset
+        << "               <kernel_shape>: shape of kernel filter; default: square; todo: support other shapes, e.g. "
+           "rectangle\n";
+    oss << offset << "               <kernel_geometry>:\n";
+    oss << offset << "                   square,<side>, e.g: 'square,5'\n";
+    return oss.str();
 }
 
 template class contraharmonic<boost::posix_time::ptime>;
