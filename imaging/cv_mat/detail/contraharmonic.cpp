@@ -54,9 +54,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// @author vsevolod vlaskine
-
-#pragma once
+/// @author kent hu
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
