@@ -41,13 +41,14 @@ function generate()
     local ny=$2
     local t=$3
     python -c "
+from __future__ import print_function
 import math
 
 def generate( nx, ny, t, r, g, b ):
-    dy = 1. / float(ny)
+    dy = 1. // float(ny)
     for ix in range( nx ):
         for iy in range( ny ):
-            print '%s,%d,%d,%d,%d,%d' % ( t, ix, iy, r, g, b )
+            print( '{},{},{},{},{},{}'.format( t, ix, iy, r, g, b ) )
 
 if __name__ == '__main__':
     generate($nx, $ny, '$t', $red, $green, $blue)
