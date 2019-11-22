@@ -45,7 +45,7 @@ from __future__ import print_function
 import math
 
 def generate( nx, ny, t, r, g, b ):
-    dy = 1. // float(ny)
+    dy = 1. / float(ny)
     for ix in range( nx ):
         for iy in range( ny ):
             print( '{},{},{},{},{},{}'.format( t, ix, iy, r, g, b ) )
