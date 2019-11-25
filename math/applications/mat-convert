@@ -311,9 +311,15 @@ def from_mat( args ):
                     if sys.version_info.major > 2: sys.stdout.buffer.write( mat.tobytes() )
                     else: mat.tofile( sys.stdout )
                 else:
-                    for t in mat:
-                        t.tofile( sys.stdout, ",", "%s" ) # todo: python3: fix
-                        print()
+                    if sys.version_info.major > 2: # todo: python3: fix
+                        with os.fdopen( sys.stdout.fileno(), "wb" ) as stdout:
+                            for t in mat:
+                                t.tofile( stdout, ",", "%s" ) # this does not work
+                                print()
+                    else:
+                        for t in mat:
+                            t.tofile( sys.stdout, ",", "%s" )
+                            print()
         elif args.to == "json":
             if compound_variable:
                 dump_var = mat
