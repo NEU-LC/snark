@@ -167,7 +167,7 @@ def traverse( mat, path="", sep="" ):
                     ls.append( traverse(mat.flat[ix], "%s[%d]" % (path,ix), sep) )
                     ix+=1
                 return ls
-        if isinstance(mat,unicode):
+        if ( sys.version_info.major < 2 and isinstance( mat, unicode ) ) or ( sys.version_info.major >= 2 and str( type( mat ) ) == "<type 'unicode'>" ): # lame; todo: simplify
             if listing:
                 print( path )
                 return
@@ -221,7 +221,7 @@ def traverse( mat, path="", sep="" ):
 def to_numpy( input ):
     if isinstance( input, dict ):
         return { to_numpy( key ): to_numpy( value ) for key, value in input.items() }
-    elif isinstance( input, list ):
+    if isinstance( input, list ):
         ls=[ to_numpy( element ) for element in input ]
         if len( input ) > 1 and isinstance( input[0], dict ):
             dt = numpy.dtype([ ( k.encode( 'utf-8' ), 'O' ) for k in input[0].keys() ])
@@ -233,29 +233,24 @@ def to_numpy( input ):
                 ix += 1
             return nar
         return ls
-    elif isinstance( input, unicode ):
+    if ( sys.version_info.major < 2 and isinstance( input, unicode ) ) or ( sys.version_info.major >= 2 and str( type( input ) ) == "<type 'unicode'>" ): # lame; todo: simplify
         return input.encode( 'utf-8' )
-    elif isinstance( input, int ):
-        return ( float( input ))
-    else:
-        return input
+    if isinstance( input, int ): return float( input )
+    return input
 
 
 def to_mat( args ):
-    mat_data = json.load( sys.stdin )
-    mat_data = to_numpy( mat_data )
-
+    j = json.load( sys.stdin )
+    mat_data = to_numpy( j )
     try:
         fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
-        tmp_file = os.fdopen( fd, "w" )
+        tmp_file = os.fdopen( fd, "w" ) # tmp_file = os.fdopen( fd, "wb" )
     except OSError as e:
-        fatal( "failed to open temporary file - %s", e )
-
+        fatal( "failed to open temporary file - {}".format( e ) )
     try:
         scipy.io.savemat( tmp_file, mat_data, appendmat=False )
     except IOError as e:
-        fatal( "failed to write to temporary file %s - %s", ( tmp_path, e ))
-
+        fatal( "failed to write to temporary file {} - {}".format( tmp_path, e ))
     tmp_file = open( tmp_path, "r" )
     sys.stdout.write( tmp_file.read() )
     tmp_file.close()
@@ -269,7 +264,7 @@ def from_mat( args ):
         tmp_file.write( sys.stdin.read() )
         tmp_file.close()
     except IOError as e:
-        fatal( "failed to write to temporary file %s - %s", ( tmp_path, e ))
+        fatal( "failed to write to temporary file {} - {}".format( tmp_path, e ))
 
     try:
         mat = scipy.io.loadmat( tmp_path )
