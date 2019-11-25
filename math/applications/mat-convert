@@ -240,26 +240,36 @@ def to_numpy( input ):
 def to_mat( args ):
     j = json.load( sys.stdin )
     mat_data = to_numpy( j )
-    try:
-        fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
-        tmp_file = os.fdopen( fd, "w" ) # tmp_file = os.fdopen( fd, "wb" ) # todo: python3: fix
-    except OSError as e:
-        fatal( "failed to open temporary file: {}".format( e ) )
-    try:
-        scipy.io.savemat( tmp_file, mat_data, appendmat=False )
-    except IOError as e:
-        fatal( "failed to write to temporary file {}: {}".format( tmp_path, e ))
-    tmp_file = open( tmp_path, "r" )
-    sys.stdout.write( tmp_file.read() ) # todo: python3: fix
+    try: fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
+    except OSError as e: fatal( "failed to create temporary file: {}".format( e ) )
+    if sys.version_info.major > 2:
+        try: tmp_file = os.fdopen( fd, "wb" )
+        except OSError as e: fatal( "failed to open temporary file: {}".format( e ) )
+        try: scipy.io.savemat( tmp_file, mat_data, appendmat=False )
+        except IOError as e: fatal( "failed to write to temporary file {}: {}".format( tmp_path, e ) )
+        tmp_file.close()
+        tmp_file = open( tmp_path, "rb" )
+        sys.stdout.buffer.write( tmp_file.read() )
+    else:
+        try: tmp_file = os.fdopen( fd, "w" ) # tmp_file = os.fdopen( fd, "wb" ) # todo: python3: fix
+        except OSError as e: fatal( "failed to open temporary file: {}".format( e ) )
+        try: scipy.io.savemat( tmp_file, mat_data, appendmat=False )
+        except IOError as e: fatal( "failed to write to temporary file {}: {}".format( tmp_path, e ) )
+        tmp_file.close()
+        tmp_file = open( tmp_path, "r" )
+        sys.stdout.write( tmp_file.read() ) # todo: python3: fix
     tmp_file.close()
     os.remove( tmp_path )
-
 
 def from_mat( args ):
     fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
     try:
-        tmp_file = os.fdopen( fd, "w" )
-        tmp_file.write( sys.stdin.read() ) # todo: python3: fix
+        if sys.version_info.major > 2:
+            tmp_file = os.fdopen( fd, "wb" )
+            tmp_file.write( sys.stdin.buffer.read() )
+        else:
+            tmp_file = os.fdopen( fd, "w" )
+            tmp_file.write( sys.stdin.read() )
         tmp_file.close()
     except IOError as e:
         fatal( "failed to write to temporary file {}: {}".format( tmp_path, e ) )
@@ -298,7 +308,8 @@ def from_mat( args ):
                 message( '"--to csv" only supported for 2d matrices, {} is {}d'.format( args.variable, len( mat.shape ) ) )
             else:
                 if args.binary:
-                    mat.tofile( sys.stdout ) # todo: python3: fix
+                    if sys.version_info.major > 2: sys.stdout.buffer.write( mat.tobytes() )
+                    else: mat.tofile( sys.stdout )
                 else:
                     for t in mat:
                         t.tofile( sys.stdout, ",", "%s" ) # todo: python3: fix
@@ -311,15 +322,12 @@ def from_mat( args ):
                 leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
                 d[ leaf_var_name ] = mat
                 dump_var = d
-            if args.pretty_printing:
-                print( json.dumps( traverse( dump_var ), indent = 4, separators = ( ",", ": " ) ) )
-            else:
-                print( json.dumps( traverse( dump_var ) ) )
+            if args.pretty_printing: print( json.dumps( traverse( dump_var ), indent = 4, separators = ( ",", ": " ) ) )
+            else: print( json.dumps( traverse( dump_var ) ) )
         else:
             fatal( "--to <format> must be one of csv or json" )
     else:
         fatal( "must have one of --to, --from, --list or --output-format" )
-
 
 def main():
     reset_signals()
