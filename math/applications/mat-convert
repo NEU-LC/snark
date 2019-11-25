@@ -212,10 +212,8 @@ def traverse( mat, path="", sep="" ):
                     d[k] = traverse( next_item )
         return d
     else:
-        if listing:
-            print( path )
-        else:
-            return mat.tolist()
+        if listing: print( path )
+        else: return mat.tolist()
 
 
 def to_numpy( input ):
@@ -244,15 +242,15 @@ def to_mat( args ):
     mat_data = to_numpy( j )
     try:
         fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
-        tmp_file = os.fdopen( fd, "w" ) # tmp_file = os.fdopen( fd, "wb" )
+        tmp_file = os.fdopen( fd, "w" ) # tmp_file = os.fdopen( fd, "wb" ) # todo: python3: fix
     except OSError as e:
-        fatal( "failed to open temporary file - {}".format( e ) )
+        fatal( "failed to open temporary file: {}".format( e ) )
     try:
         scipy.io.savemat( tmp_file, mat_data, appendmat=False )
     except IOError as e:
-        fatal( "failed to write to temporary file {} - {}".format( tmp_path, e ))
+        fatal( "failed to write to temporary file {}: {}".format( tmp_path, e ))
     tmp_file = open( tmp_path, "r" )
-    sys.stdout.write( tmp_file.read() )
+    sys.stdout.write( tmp_file.read() ) # todo: python3: fix
     tmp_file.close()
     os.remove( tmp_path )
 
@@ -261,27 +259,22 @@ def from_mat( args ):
     fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
     try:
         tmp_file = os.fdopen( fd, "w" )
-        tmp_file.write( sys.stdin.read() )
+        tmp_file.write( sys.stdin.read() ) # todo: python3: fix
         tmp_file.close()
     except IOError as e:
-        fatal( "failed to write to temporary file {} - {}".format( tmp_path, e ))
+        fatal( "failed to write to temporary file {}: {}".format( tmp_path, e ) )
 
     try:
         mat = scipy.io.loadmat( tmp_path )
         os.remove( tmp_path )
-    except IOError as e:
-        fatal( "input must be redirected from a file" )
-    except NotImplementedError as e:
-        fatal( "support for Matlab file format v7.3 is not yet implemented (see help)" )
-    except IndexError as e:
-        fatal( "invalid or unsupported matlab file format" )
+    except IOError as e: fatal( "input must be redirected from a file" )
+    except NotImplementedError as e: fatal( "support for Matlab file format v7.3 is not yet implemented (see help)" )
+    except IndexError as e: fatal( "invalid or unsupported matlab file format" )
 
     if args.variable:
         for v in args.variable.split( args.path_separator ):
-            try:
-                mat = step_down( mat[ v ] )
-            except ( KeyError, ValueError ):
-                fatal( "variable \"%s\" does not exist", args.variable )
+            try: mat = step_down( mat[ v ] )
+            except ( KeyError, ValueError ): fatal( "variable \"%s\" does not exist", args.variable )
 
     if args.list:
         traverse( mat, args.variable, args.path_separator )
@@ -291,12 +284,10 @@ def from_mat( args ):
 
     if args.output_format:
         if compound_variable:
-            if args.variable:
-                message( "%s is not a data array", args.variable )
-            else:
-                message( "--output-format requires a non-compound variable" )
+            if args.variable: message( "{} is not a data array".format( args.variable ) )
+            else: message( "--output-format requires a non-compound variable" )
         else:
-            print( "{}{}".format( mat.shape[1], comma.csv.format.from_numpy( mat.dtype )) )
+            print( "{}{}".format( mat.shape[1], comma.csv.format.from_numpy( mat.dtype ) ) )
         return
 
     if not args.to is None:
@@ -304,13 +295,13 @@ def from_mat( args ):
             if compound_variable:
                 message( "only non-compound variables can be output in csv format" )
             elif len( mat.shape ) > 2:
-                message( '"--to csv" only supported for 2d matrices, %s is %sd' % ( args.variable, len( mat.shape )))
+                message( '"--to csv" only supported for 2d matrices, {} is {}d'.format( args.variable, len( mat.shape ) ) )
             else:
                 if args.binary:
-                    mat.tofile( sys.stdout )
+                    mat.tofile( sys.stdout ) # todo: python3: fix
                 else:
                     for t in mat:
-                        t.tofile( sys.stdout, ",", "%s" )
+                        t.tofile( sys.stdout, ",", "%s" ) # todo: python3: fix
                         print()
         elif args.to == "json":
             if compound_variable:
@@ -321,9 +312,9 @@ def from_mat( args ):
                 d[ leaf_var_name ] = mat
                 dump_var = d
             if args.pretty_printing:
-                print( json.dumps( traverse( dump_var ), indent=4, separators=(",", ": ")) )
+                print( json.dumps( traverse( dump_var ), indent = 4, separators = ( ",", ": " ) ) )
             else:
-                print( json.dumps( traverse( dump_var )) )
+                print( json.dumps( traverse( dump_var ) ) )
         else:
             fatal( "--to <format> must be one of csv or json" )
     else:
@@ -336,5 +327,4 @@ def main():
     if args.from_arg is None: from_mat( args )
     else: to_mat( args )
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
