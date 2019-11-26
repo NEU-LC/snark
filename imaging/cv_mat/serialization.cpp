@@ -419,6 +419,9 @@ std::string serialization::options::usage()
     stream << "        note: shall describe only the image header, not the data" << std::endl;
     stream << "    header-only: if present, output only header (output only)" << std::endl;
     stream << "    no-header: if present, no header" << std::endl;
+    stream << "    header: if present, image has header" << std::endl;
+    stream << "            e.g. if input has no header, but you want output to have header," << std::endl;
+    stream << "            run something like: cv-cat --input 'rows=400;cols=600;type=ub;no-header' --output 'header'" << std::endl;
     stream << "    rows=<rows>: default number of rows (input only)" << std::endl;
     stream << "    cols=<cols>: default number of columns (input only)" << std::endl;
     stream << "    type=<type>: default image type (input only)" << std::endl;
