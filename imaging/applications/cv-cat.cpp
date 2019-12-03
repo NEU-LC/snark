@@ -228,7 +228,7 @@ int main( int argc, char** argv )
             ( "threads", boost::program_options::value< unsigned int >( &number_of_threads )->default_value( 0 ), "number of threads; default: 0 (auto)" )
             ( "skip", boost::program_options::value< unsigned int >( &number_of_frames_to_skip )->default_value( 0 ), "number of initial frames to skip; default: 0" )
             ( "stay", "do not close at end of stream" )
-            ( "timestamped", "if --file present, use file name for timestamp, e.g. --file=images/20170101T012345.jpg" )
+            ( "timestamped", "if --file present, use file name for timestamp, e.g. --file=images/20170101T012345.jpg, or 20170101T012345.123.jpg, or 20170101T012345.123.0.jpg where 0 is index (see 'index' property in 'files' filter for explanation)" )
             ( "video", "has effect in opencv versions 2.12(?) and above; explicitly specify that filename given by --file refers to a video; e.g. --file ABC_0001.jpg will read a single image, --file ABC_0001.jpg will read images ABC_0001.jpg, ABC_0002.jpg, etc, if present" );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
