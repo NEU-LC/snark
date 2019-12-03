@@ -133,7 +133,7 @@ static pair read_image_files( const std::string& images, rate_limit& rate, bool 
     {
         std::vector< std::string > time_strings = comma::split( comma::split( line, '/' ).back(), '.' ); // quick and dirty, use boost::filesystem
         if( time_strings.size() == 2 ) { p.first = boost::posix_time::from_iso_string( time_strings[0] ); }
-        else if ( time_strings.size() == 3 ) { p.first = boost::posix_time::from_iso_string( time_strings[0] + '.' + time_strings[1] ); }
+        else if ( time_strings.size() > 2 ) { p.first = boost::posix_time::from_iso_string( time_strings[0] + '.' + time_strings[1] ); }
     }
     static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
@@ -361,7 +361,7 @@ int main( int argc, char** argv )
                 {
                     std::vector<std::string> time_strings = comma::split( comma::split( name, '/' ).back(), '.' ); // quick and dirty, use boost::filesystem
                     if ( time_strings.size() == 2 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] ); }
-                    else if ( time_strings.size() == 3 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] + '.' + time_strings[1] ); }
+                    else if ( time_strings.size() > 2 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] + '.' + time_strings[1] ); }
                 }
                 reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( p ) ), discard, capacity ) );
             }
