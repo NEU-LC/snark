@@ -29,6 +29,7 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 import os
 import sys
 import signal
@@ -44,35 +45,30 @@ def import_advice( module ):
     }
     preamble = "Install"
     if debian_pkg.has_key( module ):
-        print "On debian/ubuntu install with \"apt-get install %s\"" % debian_pkg[ module ]
+        print( "mat-convert: on debian/ubuntu install with \"apt-get install {}\"".format( debian_pkg[ module ] ), file=sys.stderr )
         preamble = "On other systems install"
-    print "%s with \"pip install %s\"" % ( preamble, module )
+    print( "mat-convert: {} with \"pip install {}\"".format( preamble, module ), file=sys.stderr )
 
 try:
     import numpy
     import scipy.io
 except ImportError as e:
-    print "ImportError:", e
+    print( "mat-convert: ImportError:", e, file=sys.stderr )
     module = e.args[0].split(' ')[-1]
     import_advice( module )
     sys.exit( 1 )
 
-
 def message( msg, data=() ):
-    msg = "mat-convert: %s" % msg
-    print >> sys.stderr, msg % data
-
+    print( "mat-convert: {}: {}".format( msg, data ), file=sys.stderr )
 
 def fatal( msg, data=() ):
     message( msg, data )
     sys.exit( 1 )
 
-
 def bash_completion (parser):
-    print " ".join(
+    print( " ".join(
         [ o for o in parser._option_string_actions.keys()
-          if o != "--bash-completion" ])
-
+          if o != "--bash-completion" ]) )
 
 def parse_args():
     description="""
@@ -171,9 +167,9 @@ def traverse( mat, path="", sep="" ):
                     ls.append( traverse(mat.flat[ix], "%s[%d]" % (path,ix), sep) )
                     ix+=1
                 return ls
-        if isinstance(mat,unicode):
+        if ( sys.version_info.major < 2 and isinstance( mat, unicode ) ) or ( sys.version_info.major >= 2 and str( type( mat ) ) == "<type 'unicode'>" ): # lame; todo: simplify
             if listing:
-                print path
+                print( path )
                 return
             else:
                 return mat;
@@ -216,16 +212,14 @@ def traverse( mat, path="", sep="" ):
                     d[k] = traverse( next_item )
         return d
     else:
-        if listing:
-            print path
-        else:
-            return mat.tolist()
+        if listing: print( path )
+        else: return mat.tolist()
 
 
 def to_numpy( input ):
     if isinstance( input, dict ):
-        return { to_numpy( key ): to_numpy( value ) for key, value in input.iteritems() }
-    elif isinstance( input, list ):
+        return { to_numpy( key ): to_numpy( value ) for key, value in input.items() }
+    if isinstance( input, list ):
         ls=[ to_numpy( element ) for element in input ]
         if len( input ) > 1 and isinstance( input[0], dict ):
             dt = numpy.dtype([ ( k.encode( 'utf-8' ), 'O' ) for k in input[0].keys() ])
@@ -237,60 +231,60 @@ def to_numpy( input ):
                 ix += 1
             return nar
         return ls
-    elif isinstance( input, unicode ):
+    if ( sys.version_info.major < 2 and isinstance( input, unicode ) ) or ( sys.version_info.major >= 2 and str( type( input ) ) == "<type 'unicode'>" ): # lame; todo: simplify
         return input.encode( 'utf-8' )
-    elif isinstance( input, int ):
-        return ( float( input ))
-    else:
-        return input
+    if isinstance( input, int ): return float( input )
+    return input
 
 
 def to_mat( args ):
-    mat_data = json.load( sys.stdin )
-    mat_data = to_numpy( mat_data )
-
-    try:
-        fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
-        tmp_file = os.fdopen( fd, "w" )
-    except OSError as e:
-        fatal( "failed to open temporary file - %s", e )
-
-    try:
-        scipy.io.savemat( tmp_file, mat_data, appendmat=False )
-    except IOError as e:
-        fatal( "failed to write to temporary file %s - %s", ( tmp_path, e ))
-
-    tmp_file = open( tmp_path, "r" )
-    sys.stdout.write( tmp_file.read() )
+    j = json.load( sys.stdin )
+    mat_data = to_numpy( j )
+    try: fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
+    except OSError as e: fatal( "failed to create temporary file: {}".format( e ) )
+    if sys.version_info.major > 2:
+        try: tmp_file = os.fdopen( fd, "wb" )
+        except OSError as e: fatal( "failed to open temporary file: {}".format( e ) )
+        try: scipy.io.savemat( tmp_file, mat_data, appendmat=False )
+        except IOError as e: fatal( "failed to write to temporary file {}: {}".format( tmp_path, e ) )
+        tmp_file.close()
+        tmp_file = open( tmp_path, "rb" )
+        sys.stdout.buffer.write( tmp_file.read() )
+    else:
+        try: tmp_file = os.fdopen( fd, "w" ) # tmp_file = os.fdopen( fd, "wb" ) # todo: python3: fix
+        except OSError as e: fatal( "failed to open temporary file: {}".format( e ) )
+        try: scipy.io.savemat( tmp_file, mat_data, appendmat=False )
+        except IOError as e: fatal( "failed to write to temporary file {}: {}".format( tmp_path, e ) )
+        tmp_file.close()
+        tmp_file = open( tmp_path, "r" )
+        sys.stdout.write( tmp_file.read() ) # todo: python3: fix
     tmp_file.close()
     os.remove( tmp_path )
-
 
 def from_mat( args ):
     fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
     try:
-        tmp_file = os.fdopen( fd, "w" )
-        tmp_file.write( sys.stdin.read() )
+        if sys.version_info.major > 2:
+            tmp_file = os.fdopen( fd, "wb" )
+            tmp_file.write( sys.stdin.buffer.read() )
+        else:
+            tmp_file = os.fdopen( fd, "w" )
+            tmp_file.write( sys.stdin.read() )
         tmp_file.close()
     except IOError as e:
-        fatal( "failed to write to temporary file %s - %s", ( tmp_path, e ))
+        fatal( "failed to write to temporary file {}: {}".format( tmp_path, e ) )
 
     try:
         mat = scipy.io.loadmat( tmp_path )
         os.remove( tmp_path )
-    except IOError as e:
-        fatal( "input must be redirected from a file" )
-    except NotImplementedError as e:
-        fatal( "support for Matlab file format v7.3 is not yet implemented (see help)" )
-    except IndexError as e:
-        fatal( "invalid or unsupported matlab file format" )
+    except IOError as e: fatal( "input must be redirected from a file" )
+    except NotImplementedError as e: fatal( "support for Matlab file format v7.3 is not yet implemented (see help)" )
+    except IndexError as e: fatal( "invalid or unsupported matlab file format" )
 
     if args.variable:
         for v in args.variable.split( args.path_separator ):
-            try:
-                mat = step_down( mat[ v ] )
-            except ( KeyError, ValueError ):
-                fatal( "variable \"%s\" does not exist", args.variable )
+            try: mat = step_down( mat[ v ] )
+            except ( KeyError, ValueError ): fatal( "variable \"%s\" does not exist", args.variable )
 
     if args.list:
         traverse( mat, args.variable, args.path_separator )
@@ -300,12 +294,10 @@ def from_mat( args ):
 
     if args.output_format:
         if compound_variable:
-            if args.variable:
-                message( "%s is not a data array", args.variable )
-            else:
-                message( "--output-format requires a non-compound variable" )
+            if args.variable: message( "{} is not a data array".format( args.variable ) )
+            else: message( "--output-format requires a non-compound variable" )
         else:
-            print "%s%s" % ( mat.shape[1], comma.csv.format.from_numpy( mat.dtype ))
+            print( "{}{}".format( mat.shape[1], comma.csv.format.from_numpy( mat.dtype ) ) )
         return
 
     if not args.to is None:
@@ -313,14 +305,21 @@ def from_mat( args ):
             if compound_variable:
                 message( "only non-compound variables can be output in csv format" )
             elif len( mat.shape ) > 2:
-                message( '"--to csv" only supported for 2d matrices, %s is %sd' % ( args.variable, len( mat.shape )))
+                message( '"--to csv" only supported for 2d matrices, {} is {}d'.format( args.variable, len( mat.shape ) ) )
             else:
                 if args.binary:
-                    mat.tofile( sys.stdout )
+                    if sys.version_info.major > 2: sys.stdout.buffer.write( mat.tobytes() )
+                    else: mat.tofile( sys.stdout )
                 else:
-                    for t in mat:
-                        t.tofile( sys.stdout, ",", "%s" )
-                        print
+                    if sys.version_info.major > 2: # todo: python3: fix
+                        with os.fdopen( sys.stdout.fileno(), "wb" ) as stdout:
+                            for t in mat:
+                                t.tofile( stdout, ",", "%s" ) # this does not work
+                                print()
+                    else:
+                        for t in mat:
+                            t.tofile( sys.stdout, ",", "%s" )
+                            print()
         elif args.to == "json":
             if compound_variable:
                 dump_var = mat
@@ -329,25 +328,17 @@ def from_mat( args ):
                 leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
                 d[ leaf_var_name ] = mat
                 dump_var = d
-            if args.pretty_printing:
-                print json.dumps( traverse( dump_var ), indent=4, separators=(",", ": "))
-            else:
-                print json.dumps( traverse( dump_var ))
+            if args.pretty_printing: print( json.dumps( traverse( dump_var ), indent = 4, separators = ( ",", ": " ) ) )
+            else: print( json.dumps( traverse( dump_var ) ) )
         else:
             fatal( "--to <format> must be one of csv or json" )
     else:
         fatal( "must have one of --to, --from, --list or --output-format" )
 
-
 def main():
     reset_signals()
     args = parse_args()
+    if args.from_arg is None: from_mat( args )
+    else: to_mat( args )
 
-    if not args.from_arg is None:
-        to_mat( args )
-    else:
-        from_mat( args )
-
-
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()

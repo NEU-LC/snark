@@ -14,6 +14,7 @@ function generate()
     local t=$3
     local cols="$4"
     python -c "
+from __future__ import print_function
 import math
 
 def generate( nx, ny, t, cols ):
@@ -24,21 +25,21 @@ def generate( nx, ny, t, cols ):
                 jx = ix * 3 + ic
                 for iy in range( ny ):
                     vgrey = iy * dy + 10 * ic
-                    print '%s,%d,%d,%d' % ( t, jx, iy, int(255*vgrey) )
+                    print( '{},{},{},{}'.format( t, jx, iy, int(255*vgrey) ) ) # print '%s,%d,%d,%d' % ( t, jx, iy, int(255*vgrey) )
     elif cols == 'rows':
         for ix in range( nx ):
             for iy in range( ny ):
                 for ic in range( 3 ):
                     jy = iy * 3 + ic
                     vgrey = iy * dy + 10 * ic
-                    print '%s,%d,%d,%d' % ( t, ix, jy, int(255*vgrey) )
+                    print( '{},{},{},{}'.format( t, ix, jy, int(255*vgrey) ) ) # print '%s,%d,%d,%d' % ( t, ix, jy, int(255*vgrey) )
     else:
         for ix in range( nx ):
             for iy in range( ny ):
                 vr = iy * dy
                 vg = iy * dy + 10
                 vb = iy * dy + 20
-                print '%s,%d,%d,%d,%d,%d' % ( t, ix, iy, int(255*vr), int(255*vg), int(255*vb) )
+                print( '{},{},{},{},{},{}'.format( t, ix, iy, int(255*vr), int(255*vg), int(255*vb) ) ) #print( '%s,%d,%d,%d,%d,%d' % ( t, ix, iy, int(255*vr), int(255*vg), int(255*vb) ) )
 
 if __name__ == '__main__':
     generate($nx, $ny, '$t', '$cols')

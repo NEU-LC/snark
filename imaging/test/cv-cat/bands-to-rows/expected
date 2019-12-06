@@ -1,10 +1,10 @@
 #python
 
 o = manual/column
-columns = o.keys()
+columns = list( o.keys() )
 
 o = bulk/column[columns[0]]/precision
-precisions = o.keys()
+precisions = list( o.keys() )
 
 for c in columns:
     for p in precisions:

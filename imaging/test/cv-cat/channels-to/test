@@ -10,6 +10,7 @@ function generate()
     local nx=$1
     local ny=$2
     python -c "
+from __future__ import print_function
 import math
 
 def generate( nx, ny ):
@@ -20,7 +21,7 @@ def generate( nx, ny ):
             vr = ix * dx
             vg = iy * dy
             vb = math.sqrt( 2. * ( math.pow( vr - 0.5, 2 ) + math.pow( vg - 0.5, 2 ) ) )
-            print '%d,%d,%d,%d,%d' % ( ix, iy, int(255*vr), int(255*vg), int(255*vb) )
+            print( '{},{},{},{},{}'.format( ix, iy, int(255*vr), int(255*vg), int(255*vb) ) ) #print '%d,%d,%d,%d,%d' % ( ix, iy, int(255*vr), int(255*vg), int(255*vb) )
 
 if __name__ == '__main__':
     generate($nx, $ny)

@@ -110,6 +110,7 @@ static void usage( bool verbose = false )
     std::cerr << "    trajectory-cumulative-distance,cumulative-distance" << std::endl;
     std::cerr << "    trajectory-cumulative-discretise,cumulative-discretise,cumulative-discretize,sample" << std::endl;
     std::cerr << "    trajectory-partition" << std::endl;
+    std::cerr << "    triangles-discretise,triangles-discretize" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
     std::cerr << "general options" << std::endl;
@@ -285,6 +286,7 @@ static void usage( bool verbose = false )
     std::cerr << snark::points_calc::project::onto_plane::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::triangles_discretise::traits::usage() << std::endl;
     std::cerr << "    thin" << std::endl;
     std::cerr << "        read input data and thin it down" << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;

@@ -7,6 +7,10 @@ b = blue
 for jf in range(number_of(formula)):
     for ie in range(number_of(formula[jf]/expr)):
         f = formula[jf]/expr[ie]
-        value = eval( f )
+        # quick and dirty: in python3 '/' is floating point division, but all operations under test are on 3ub rgb
+        #                  thus casting to int still (seems to) hold
+        # todo: fully rewrite test or at least add equivalent formulate for evaluation 
+        #value = eval( f ) 
+        value = int( eval( f ) )
         # all other elements are the same, check only one
         expect value == formula[jf]/x[0]/y[0]/channel[ie]

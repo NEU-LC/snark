@@ -15,15 +15,11 @@ cd $output_dir
 
 function format_output()
 {
-    if [[ $options =~ (--to csv|--list|--output-format) ]]; then
-        name-value-from-csv -f line -d : -n -p output
-    elif [[ $options =~ "--to json" ]]; then
-        name-value-convert --no-brackets
-    elif [[ $options =~ "--from json" ]]; then
-        mat-convert --to json | name-value-convert --no-brackets
-    else
-        echo "test: don't know how to format the output" >&2
-    fi
+    if [[ $options =~ "--list" ]]; then sort | name-value-from-csv -f line -d : -n -p output
+    elif [[ $options =~ (--to csv|--output-format) ]]; then name-value-from-csv -f line -d : -n -p output
+    elif [[ $options =~ "--to json" ]]; then name-value-convert --no-brackets
+    elif [[ $options =~ "--from json" ]]; then mat-convert --to json | name-value-convert --no-brackets
+    else echo "test: don't know how to format the output" >&2; fi
 }
 
 handle_binary=cat

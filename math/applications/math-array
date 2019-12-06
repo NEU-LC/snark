@@ -29,6 +29,8 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 __author__ = 'v.vlaskine'
 
 import argparse
@@ -62,21 +64,43 @@ examples
         ( echo some_other_stuff,0,1,2,3,4,5; echo more_other_stuff,6,7,8,9,10,11 ) | csv-to-bin s[32],6f | math-array "np.swapaxes, axis1 = 0, axis2 = 1" --shape 3,2 --header-size 32 | csv-from-bin s[32],6f
 """
 
-def die( m ): print >> sys.stderr, "math-array:", m; sys.exit( 1 )
+def die( m ): print( "math-array:", m, file=sys.stderr ); sys.exit( 1 )
 
 def split( array ):
-    for a in array:
-        header.tofile( sys.stdout )
-        a.tofile( sys.stdout )
-        footer.tofile( sys.stdout )
+    if sys.version_info.major > 2: #if np.__version__ >= '1.16.0': # sigh...
+        for a in array:
+            sys.stdout.buffer.write( header.tobytes() )
+            sys.stdout.buffer.write( a.tobytes() )
+            sys.stdout.buffer.write( footer.tobytes() )
+    else:
+        for a in array:
+            header.tofile( sys.stdout )
+            a.tofile( sys.stdout )
+            footer.tofile( sys.stdout )
 
 def numpy_operation( array, operation ):
-    header.tofile( sys.stdout )
-    operation( array ).tofile( sys.stdout )
-    footer.tofile( sys.stdout )
+    if sys.version_info.major > 2: #if np.__version__ >= '1.16.0': # sigh...
+        sys.stdout.buffer.write( header.tobytes() )
+        sys.stdout.buffer.write( operation( array ).tobytes() )
+        sys.stdout.buffer.write( footer.tobytes() )
+    else:
+        header.tofile( sys.stdout )
+        operation( array ).tofile( sys.stdout )
+        footer.tofile( sys.stdout )
+
+def read( size, ntype = np.int8 ):
+    if sys.version_info.major > 2: #if np.__version__ >= '1.16.0': # sigh...
+        if size == 0: return np.array( [], dtype = np.int8 )
+        b = sys.stdin.buffer.read( np.dtype( ntype ).itemsize * size )
+        # todo! test on streams where bytes come with irregular delays!
+        if len( b ) == 0: return np.array( [], dtype = np.int8 )
+        if len( b ) != np.dtype( ntype ).itemsize * size: raise ValueError( "expected {} bytes, got {}".format( np.dtype( ntype ).itemsize * size, len( b ) ) )
+        return np.frombuffer( b, dtype = ntype, count = len( b ) // np.dtype( ntype ).itemsize )
+    else:
+        return np.fromfile( sys.stdin, ntype, size )
 
 if __name__ == '__main__':
-    def handle_signal( s, f ): print >> sys.stderr, "tensor-cat: broken pipe, exit"; sys.exit( 0 )
+    def handle_signal( s, f ): print( "math-array: broken pipe, exit", file=sys.stderr ); sys.exit( 0 )
     signal.signal( signal.SIGPIPE, handle_signal ) 
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
     parser.add_argument( 'operation', nargs = 1, help = 'operation: split, transpose, or arbitrary numpy operation (see examples)' ) #parser.add_argument( 'operation', nargs = 1, choices = [ "split", "transpose" ], help = 'operation: %(choices)s' )
@@ -101,12 +125,12 @@ if __name__ == '__main__':
     shape = eval( '(' + args.shape + ')' )
     size = np.prod( shape );
     while True:
-        header = np.fromfile( sys.stdin, np.uint8, args.header_size )
-        if not args.header_size is None and ( header is None or len( header ) < args.header_size ): break
-        data = np.fromfile( sys.stdin, ntype, size )
+        header = read( args.header_size )
+        if len( header ) < args.header_size: break
+        data = read( size, ntype = ntype )
         if data is None or len( data ) == 0: break
         if len( data ) < size: die( "expected " + str( size ) + " values; got: " + str( len( data ) ) )
-        footer = np.fromfile( sys.stdin, np.uint8, args.footer_size )
-        if not args.footer_size is None and ( footer is None or len( footer ) < args.footer_size ): die( "expected " + str( args.footer_size ) + " bytes in footer; got: " + "0" if footer is None else str( len( footer ) ) )
+        footer = read( args.footer_size )
+        if len( footer ) < args.footer_size: die( "expected " + str( args.footer_size ) + " bytes in footer; got: " + "0" if footer is None else str( len( footer ) ) )
         operation( np.reshape( data, shape ) )
         if args.flush: sys.stdout.flush()
