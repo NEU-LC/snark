@@ -59,6 +59,7 @@
 #include "utils.h"
 
 #include <comma/base/exception.h>
+#include <comma/base/types.h>
 #include <comma/string/split.h>
 #include <tbb/parallel_for.h>
 #include <boost/bind.hpp>
@@ -73,124 +74,342 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
+
+namespace filters {
+template <typename T>
+class filter {
+   public:
+    filter(int channels) noexcept : channels_(channels){};
+    virtual ~filter() = default;
+    virtual void operator()(const T* row_ptr, int x, int y){};
+    virtual std::vector<double> get() { return {}; }
+    virtual void clear(){};
+
+   protected:
+    int channels_;
+};
+
+template <typename T>
+class contraharmonic final : public filter<T> {
+   public:
+    contraharmonic(int channels, double power) noexcept
+        : filter<T>(channels), num_(channels, 0), den_(channels, 0), power_(power){};
+    ~contraharmonic() = default;
+
+    void operator()(const T* row_ptr, int x, int y) override {
+        for (int channel = 0; channel != this->channels_; ++channel) {
+            num_[channel] += std::pow(static_cast<double>(row_ptr[this->channels_ * x + channel]), power_ + 1);
+            den_[channel] += std::pow(static_cast<double>(row_ptr[this->channels_ * x + channel]), power_);
+        }
+    };
+
+    std::vector<double> get() override {
+        std::vector<double> result(this->channels_, 0);
+        std::transform(begin(num_), end(num_), begin(den_), begin(result), [](double a, double b) {
+            double tmp = a / b;
+            return std::isnan(tmp) ? 0 : tmp;
+        });
+        return result;
+    };
+
+    void clear() override {
+        std::fill(begin(num_), end(num_), 0);
+        std::fill(begin(den_), end(den_), 0);
+    }
+
+   private:
+    std::vector<double> num_;
+    std::vector<double> den_;
+    const double power_;
+};
+}  // namespace filters
+
+namespace kernels {
+bool inline check_bounds(int value, int min, int max) { return value >= min && value < max; }
+
+template <typename T>
+class kernel {
+   public:
+    kernel(cv::Mat im) : im_(im){};
+    virtual ~kernel() = default;
+    virtual void stride(filters::filter<T>& filter) const {};
+    void set_x(int x) { x_ = x; };
+    void set_y(int y) { y_ = y; };
+
+   protected:
+    const cv::Mat im_;
+    int x_;
+    int y_;
+};
+
+template <typename T>
+class square final : public kernel<T> {
+   public:
+    square(cv::Mat im, int side) : kernel<T>(im), side_(side){};
+    ~square() = default;
+    void stride(filters::filter<T>& filter) const override {
+        for (int ky = -(side_ / 2); ky < std::ceil(static_cast<double>(side_) / 2); ++ky) {
+            int y = this->y_ + ky;
+            if (!check_bounds(y, 0, this->im_.rows)) {
+                continue;
+            }
+            const T* row_ptr = this->im_.template ptr<T>(y);
+            for (int kx = -(side_ / 2); kx < std::ceil(static_cast<double>(side_) / 2); ++kx) {
+                int x = this->x_ + kx;
+                if (!check_bounds(x, 0, this->im_.cols)) {
+                    continue;
+                }
+                filter(row_ptr, x, y);
+            }
+        }
+    };
+
+   private:
+    const int side_;
+};
+}  // namespace kernels
+
+/*
+class circle {
+
+}
+*/
+
+// template <typename T>
+// class kernel {
+//     class const_iterator {
+//        public:
+//         const_iterator(const T* src_iter, const T* dst_iter) : src_iter_(src_iter), dst_iter_(dst_iter){};
+//         ~const_iterator() = default;
+
+//         friend class kernel;
+
+//         // TODO: check correct types
+//         using iterator_category = std::bidirectional_iterator_tag;
+//         using value_type = T;
+//         using reference = T&;
+//         using pointer = T*;
+//         using difference_type = int;
+
+//         reference operator*();  // TODO
+//         // pre
+//         virtual const_iterator& operator++() noexcept;  // TODO
+//         // post
+//         const_iterator operator++(difference_type) {
+//             auto tmp(*this);
+//             ++(*this);
+//             return tmp;
+//         }
+//         // pre
+//         virtual const_iterator& operator--() noexcept;  // TODO
+//         // post
+//         const_iterator operator--(difference_type) {
+//             auto tmp(*this);
+//             --(*this);
+//             return tmp;
+//         }
+
+//         friend bool operator==(const const_iterator& lhs, const const_iterator& rhs) noexcept {
+//             return lhs.src_iter_ == rhs.src_iter_ and lhs.dst_iter_ == rhs.dst_iter_;
+//         };
+//         friend bool operator!=(const const_iterator& lhs, const const_iterator& rhs) { return !(lhs == rhs); }
+
+//        protected:
+//         T* src_iter_;
+//         T* dst_iter_;
+//         // TODO: is a sentinel required? as well as a reverse sentinel?
+//     };
+//     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+//    public:
+//     virtual ~kernel() = default;
+
+//     // void stride(cv::Mat, cv::Mat, int, int, double) = 0;
+//     void set_x(int x) { x_ = x; }
+//     void set_y(int y) { y_ = y; }
+//     void set_im(cv::Mat im) { im_ = im; }
+
+//     virtual const_iterator begin() const = 0;
+//     virtual const_iterator end() const = 0;
+
+//     virtual const_iterator cbegin() const = 0;
+//     virtual const_iterator cend() const = 0;
+
+//     virtual const_reverse_iterator rbegin() const = 0;
+//     virtual const_reverse_iterator rend() const = 0;
+
+//     virtual const_reverse_iterator crbegin() const = 0;
+//     virtual const_reverse_iterator crend() const = 0;
+
+//    protected:
+//     cv::Mat im_;
+//     int x_;
+//     int y_;
+
+//     bool check_bounds(int value, int min, int max) { return value < min || value >= max; }
+// };
+
+// template <typename T>
+// class square final : public kernel<T> {
+//     class const_iterator : public kernel<T>::const_iterator {};
+//     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+//    public:
+//     square(int side) : side_{side} {};
+
+//     const_iterator begin() const { return {}; }
+//     const_iterator end() const { return {}; }
+
+//     const_iterator cbegin() const { return {}; }
+//     const_iterator cend() const { return {}; }
+
+//     const_reverse_iterator rbegin() const { return {}; }
+//     const_reverse_iterator rend() const { return {}; }
+
+//     const_reverse_iterator crbegin() const { return {}; }
+//     const_reverse_iterator crend() const { return {}; }
+
+//    private:
+//     int side_;
+// };
+
+// class square final : public kernel {
+//    public:
+//     square(int side) : side_{side} {};
+//     square(const square &other) = default;
+//     square(square &&other) = default;
+//     square &operator=(const square &other) = default;
+//     square &operator=(square &&other) = default;
+//     ~square() = default;
+
+//     template <typename T>
+//     void stride(cv::Mat in, cv::Mat out, int px, int py, double power) {
+//         std::vector<double> num(in.channels(), 0);
+//         std::vector<double> den(in.channels(), 0);
+//         for (int ky = -(side_ / 2); ky < std::ceil(static_cast<double>(side_) / 2); ++ky) {
+//             int y = ky + py;
+//             if (check_bounds(y, 0, in.rows)) {
+//                 continue;
+//             }
+//             const T *row_ptr = in.template ptr<T>(y);
+//             for (int kx = -(side_ / 2); kx < std::ceil(static_cast<double>(side_) / 2); ++kx) {
+//                 int x = kx + px;
+//                 if (check_bounds(x, 0, in.cols)) {
+//                     continue;
+//                 }
+//                 for (int channel = 0; channel < in.channels(); ++channel) {
+//                     num[channel] += std::pow(row_ptr[in.channels() * x + channel], power + 1);
+//                     den[channel] += std::pow(row_ptr[in.channels() * x + channel], power);
+//                 }
+//             }
+//         }
+//         T *row_ptr = out.template ptr<T>(py);
+//         for (int channel = 0; channel < in.channels(); ++channel) {
+//             row_ptr[out.channels() * px + channel] = num[channel] / den[channel];
+//             if (std::isnan(row_ptr[out.channels() * px + channel])) {
+//                 row_ptr[out.channels() * px + channel] = 0;
+//             }
+//         }
+//     };
+
+//    private:
+//     int side_;
+// };
+
+// }  // namespace kernels
 
 namespace snark {
 namespace cv_mat {
 namespace impl {
 
+// todo
+// - use snake notation for all names except template parameters
+// - unsigned char, char, comma::int*, comma::uint*, float, double
+// - don't use shared_ptr
+// - move kernel classes to cpp
+
 template <typename T>
-struct Handle {
-    Handle(cv::Mat in, cv::Mat &out, double power, int kernel) : in_{in}, out_{out}, power_{power}, kernel_{kernel} {};
+struct handle {
+    handle(cv::Mat out, std::unique_ptr<kernels::kernel<T>> kernel, std::unique_ptr<filters::filter<T>> filter)
+        : out_(out), kernel_(std::move(kernel)), filter_(std::move(filter)){};
 
     void operator()(int start, int end) {
-        end = std::min(end, in_.rows);
-        std::vector<double> numerator(in_.channels(), 0);
-        std::vector<double> denominator(in_.channels(), 0);
-        for (; start < end; ++start) {
-            for (int col = 0; col < in_.cols; ++col) {
-                for (int kernel_y = -(kernel_ / 2); kernel_y < std::ceil(static_cast<double>(kernel_) / 2.);
-                     ++kernel_y) {
-                    int y = start + kernel_y;
-                    if (y >= 0 && y < in_.rows) {
-                        const T *row_ptr = in_.template ptr<T>(y);
-                        for (int kernel_x = -(kernel_ / 2); kernel_x < std::ceil(static_cast<double>(kernel_) / 2.);
-                             ++kernel_x) {
-                            int x = col + kernel_x;
-                            if (x >= 0 && x < in_.cols) {
-                                for (int channel = 0; channel < in_.channels(); ++channel) {
-                                    numerator[channel] += std::pow(row_ptr[in_.channels() * x + channel], power_ + 1);
-                                    denominator[channel] += std::pow(row_ptr[in_.channels() * x + channel], power_);
-                                }
-                            }
-                        }
-                    }
+        for (int py = start; py != end; ++py) {
+            T* row_ptr = out_.template ptr<T>(py);
+            for (int px = 0; px != out_.cols; ++px) {
+                kernel_->set_y(py);
+                kernel_->set_x(px);
+                kernel_->stride(*filter_);
+
+                // fill in pixel channel values in output image
+                const auto& result = filter_->get();
+                for (int channel = 0; channel != out_.channels(); ++channel) {
+                    row_ptr[out_.channels() * px + channel] = result[channel];
                 }
-                T *row_ptr = out_.template ptr<T>(start);
-                for (int channel = 0; channel < in_.channels(); ++channel) {
-                    row_ptr[out_.channels() * col + channel] = numerator[channel] / denominator[channel];
-                    if (std::isnan(row_ptr[out_.channels() * col + channel])) {
-                        row_ptr[out_.channels() * col + channel] = 0;
-                    }
-                    numerator[channel] = 0;
-                    denominator[channel] = 0;
-                }
+                filter_->clear();
             }
         }
     };
 
-    cv::Mat in_;
     cv::Mat out_;
-    double power_;
-    int kernel_;
+    std::unique_ptr<kernels::kernel<T>> kernel_;
+    std::unique_ptr<filters::filter<T>> filter_;
 };
 
 template <typename H>
-contraharmonic<H>::contraharmonic(int kernel, double power) : kernel_{kernel}, power_{power} {}
+template <typename T>
+cv::Mat contraharmonic<H>::do_parallel(cv::Mat in) {
+    int sizes[]{in.rows, in.cols};
+    cv::Mat out(in.dims, sizes, in.type());
+
+    tbb::parallel_for(size_t(0), size_t(in.rows), [=](size_t i) {
+        std::unique_ptr<kernels::kernel<T>> kernel;
+        std::unique_ptr<filters::filter<T>> filter(new filters::contraharmonic<T>(in.channels(), power_));
+        if (kernel_ == "square") {
+            kernel.reset(new kernels::square<T>(in, side_));
+        }
+        handle<T>(out, std::move(kernel), std::move(filter))(i, i + 1);
+    });
+    return out;
+}
 
 template <typename H>
 std::pair<H, cv::Mat> contraharmonic<H>::operator()(std::pair<H, cv::Mat> m) {
-    cv::Mat in{m.second};
     if (!m.second.isContinuous()) {
         COMMA_THROW(comma::exception, "matrix not continuous; non-continous image data not supported")
     }
-
-    int sizes[2]{m.second.rows, m.second.cols};
-    cv::Mat out(m.second.dims, sizes, m.second.type());
-
-    size_t n = std::thread::hardware_concurrency() / 2;
-    int chunk_size = std::ceil(static_cast<double>(m.second.rows) / static_cast<double>(n));
-
+    cv::Mat out;
     switch (m.second.depth()) {
         case CV_8U: {
-            auto handle_row = Handle<uint8_t>(m.second, out, power_, kernel_);
-            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
-                handle_row(chunk_size * i, chunk_size * (i + 1));
-            });
+            out = do_parallel<unsigned char>(m.second);
             break;
         }
         case CV_8S: {
-            auto handle_row = Handle<int8_t>(m.second, out, power_, kernel_);
-            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
-                handle_row(chunk_size * i, chunk_size * (i + 1));
-            });
+            out = do_parallel<char>(m.second);
             break;
         }
         case CV_16U: {
-            auto handle_row = Handle<uint16_t>(m.second, out, power_, kernel_);
-            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
-                handle_row(chunk_size * i, chunk_size * (i + 1));
-            });
+            out = do_parallel<comma::uint16>(m.second);
             break;
         }
         case CV_16S: {
-            auto handle_row = Handle<int16_t>(m.second, out, power_, kernel_);
-            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
-                handle_row(chunk_size * i, chunk_size * (i + 1));
-            });
+            out = do_parallel<comma::int16>(m.second);
             break;
         }
         case CV_32S: {
-            auto handle_row = Handle<int32_t>(m.second, out, power_, kernel_);
-            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
-                handle_row(chunk_size * i, chunk_size * (i + 1));
-            });
+            out = do_parallel<comma::int32>(m.second);
             break;
         }
         case CV_32F: {
-            auto handle_row = Handle<float>(m.second, out, power_, kernel_);
-            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
-                handle_row(chunk_size * i, chunk_size * (i + 1));
-            });
+            out = do_parallel<float>(m.second);
             break;
         }
         case CV_64F: {
-            auto handle_row = Handle<double>(m.second, out, power_, kernel_);
-            tbb::parallel_for(size_t{0}, n, [&chunk_size, &handle_row](size_t i) {
-                handle_row(chunk_size * i, chunk_size * (i + 1));
-            });
+            out = do_parallel<double>(m.second);
             break;
         }
         default: {
@@ -198,29 +417,34 @@ std::pair<H, cv::Mat> contraharmonic<H>::operator()(std::pair<H, cv::Mat> m) {
             break;
         }
     }
-
     return std::make_pair(m.first, out);
 }
 
 template <typename H>
-std::pair<typename contraharmonic<H>::functor_t, bool> contraharmonic<H>::make(const std::string &options) {
-    // options -> square,7,1 whatever contraharmonic=<options>
-    double power{};
-    std::string shape{"square"};
-    int kernel{};
-    if (!options.empty()) {
-        const auto &s = comma::split(options, ',');
-        if (s.size() != 3) {
-            COMMA_THROW(comma::exception, "contraharmonic: expected shape,kernel,power got: " << options);
-        }
-        shape = s[1];
-        if (shape != "square") {
-            COMMA_THROW(comma::exception, "contraharmonic: expected shape=square got: " << shape);
-        }
-        power = boost::lexical_cast<decltype(power)>(s[0]);
-        kernel = boost::lexical_cast<decltype(kernel)>(s[2]);
+std::pair<typename contraharmonic<H>::functor_t, bool> contraharmonic<H>::make(const std::string& options) {
+    const auto& tokens = comma::split(options, ',');
+    if (tokens.size() < 2) {
+        COMMA_THROW(comma::exception, "contraharmonic: expected options, got: '" << options << "'");
     }
-    return std::make_pair(contraharmonic<H>{kernel, power}, true);  // todo
+    double power = 0;
+    try {
+        power = boost::lexical_cast<double>(tokens[0]);
+    } catch (std::exception& ex) {
+        COMMA_THROW(comma::exception, "contraharmonic: expected <power>, got: '" << options << "'; " << ex.what());
+    }
+    if (tokens[1] == "square") {
+        // todo
+        if (tokens.size() < 3) {
+            COMMA_THROW(comma::exception, "contraharmonic: expected <power>,square,<side>, got: '" << options << "'");
+        }
+        int side = boost::lexical_cast<double>(tokens[2]);
+
+        return std::make_pair(contraharmonic<H>(tokens[1], power, side), true);
+        // return std::make_pair(contraharmonic<H, kernels::square >( power, side ), true);
+        // return std::make_pair(contraharmonic<H >( power, kernels::square(), side ), true);
+    }
+    COMMA_THROW(comma::exception, "contraharmonic: expected kernel shape, got: '"
+                                      << tokens[1] << "'; only 'square' supported at the moment");
 }
 
 template <typename H>
@@ -229,10 +453,12 @@ typename std::string contraharmonic<H>::usage(unsigned int indent) {
     std::ostringstream oss;
     oss << offset << "contraharmonic=<power>,<kernel_shape>,<kernel_geometry>, e.g: contraharmonic=3,square,5\n";
     oss << offset
-        << "               <power>: order of the filter; positive values remove pepper noise; negative values remove "
+        << "               <power>: order of the filter; positive values remove pepper noise; negative values "
+           "remove "
            "salt noise\n";
     oss << offset
-        << "               <kernel_shape>: shape of kernel filter; default: square; todo: support other shapes, e.g. "
+        << "               <kernel_shape>: shape of kernel filter; default: square; todo: support other shapes, "
+           "e.g. "
            "rectangle\n";
     oss << offset << "               <kernel_geometry>:\n";
     oss << offset << "                   square,<side>, e.g: 'square,5'\n";
