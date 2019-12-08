@@ -1,3 +1,0 @@
-to see what's in a .mat file, run
-$ cat <file>.mat | mat-convert
-$ cat <file>.mat | mat-convert --list
