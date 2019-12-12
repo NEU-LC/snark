@@ -60,6 +60,7 @@
 
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
+#include <comma/math/compare.h>
 #include <comma/string/split.h>
 #include <tbb/parallel_for.h>
 #include <boost/bind.hpp>
@@ -79,26 +80,25 @@
 #include <thread>
 #include <vector>
 
-namespace filters {
+namespace kernels {
+namespace operations {
 template <typename T>
-class filter {
-   public:
-    filter(int channels) noexcept : channels_(channels){};
-    virtual ~filter() = default;
-    virtual void operator()(const T* row_ptr, int x, int y){};
-    virtual std::vector<double> get() { return {}; }
-    virtual void clear(){};
+class operation {
+    public:
+        operation(unsigned int channels) noexcept : channels_(channels){};
+        virtual ~operation() = default;
+        virtual void operator()(const T* row_ptr, int x, int y) {};  // apply filter to row pointer at y and pixel x, y
+        virtual std::vector<double> get() const { return {}; }            // return result, up to derived classes on how to return
+        virtual void clear(){};  // clear the results, up to the derived classes on how to filter
 
-   protected:
-    int channels_;
+    protected:
+        unsigned int channels_;
 };
 
 template <typename T>
-class contraharmonic final : public filter<T> {
+class contraharmonic final : public operation<T> {
    public:
-    contraharmonic(int channels, double power) noexcept
-        : filter<T>(channels), num_(channels, 0), den_(channels, 0), power_(power){};
-    ~contraharmonic() = default;
+    contraharmonic(int channels, double power) noexcept : operation<T>(channels), num_(channels, 0), den_(channels, 0), power_(power){};
 
     void operator()(const T* row_ptr, int x, int y) override {
         for (int channel = 0; channel != this->channels_; ++channel) {
@@ -107,12 +107,9 @@ class contraharmonic final : public filter<T> {
         }
     };
 
-    std::vector<double> get() override {
+    std::vector<double> get() const override {
         std::vector<double> result(this->channels_, 0);
-        std::transform(begin(num_), end(num_), begin(den_), begin(result), [](double a, double b) {
-            double tmp = a / b;
-            return std::isnan(tmp) ? 0 : tmp;
-        });
+        std::transform(begin(num_), end(num_), begin(den_), begin(result), [](double a, double b) { return comma::math::equal( b, 0 ) ? 0 : a / b; });
         return result;
     };
 
@@ -126,50 +123,50 @@ class contraharmonic final : public filter<T> {
     std::vector<double> den_;
     const double power_;
 };
-}  // namespace filters
+}  // namespace operations
 
-namespace kernels {
-bool inline check_bounds(int value, int min, int max) { return value >= min && value < max; }
+bool static inline check_bounds(int value, int min, int max) { return value >= min && value < max; }
 
 template <typename T>
 class kernel {
    public:
     kernel(cv::Mat im) : im_(im){};
     virtual ~kernel() = default;
-    virtual void stride(filters::filter<T>& filter) const {};
-    void set_x(int x) { x_ = x; };
-    void set_y(int y) { y_ = y; };
+    virtual void stride(operations::operation<T>& filter) const = 0;                   // pixel traversal method over image, i.e. square, rectangle, circle, triangle
+    void set_x( unsigned int x) { x_ = x; };  // change current pixel x
+    void set_y( unsigned int y) { y_ = y; };  // change current pixel y
 
    protected:
     const cv::Mat im_;
-    int x_;
-    int y_;
+    unsigned int x_;
+    unsigned int y_;
 };
+template class kernel< unsigned char >;
+template class kernel< char >;
+template class kernel< comma::uint16 >;
+template class kernel< comma::int16 >;
+template class kernel< comma::int32 >;
+template class kernel< float >;
+template class kernel< double >;
 
 template <typename T>
 class square final : public kernel<T> {
-   public:
-    square(cv::Mat im, int side) : kernel<T>(im), side_(side){};
-    ~square() = default;
-    void stride(filters::filter<T>& filter) const override {
-        for (int ky = -(side_ / 2); ky < std::ceil(static_cast<double>(side_) / 2); ++ky) {
-            int y = this->y_ + ky;
-            if (!check_bounds(y, 0, this->im_.rows)) {
-                continue;
-            }
-            const T* row_ptr = this->im_.template ptr<T>(y);
-            for (int kx = -(side_ / 2); kx < std::ceil(static_cast<double>(side_) / 2); ++kx) {
-                int x = this->x_ + kx;
-                if (!check_bounds(x, 0, this->im_.cols)) {
-                    continue;
+    public:
+        square(cv::Mat im, unsigned int side) : kernel<T>(im), side_(side){};
+        void stride(operations::operation<T>& filter) const override {
+            for (int ky = -(side_ / 2); ky < std::ceil(static_cast<double>(side_) / 2); ++ky) {
+                int y = this->y_ + ky;
+                if (!check_bounds(y, 0, this->im_.rows)) { continue; }
+                const T* row_ptr = this->im_.template ptr<T>(y);
+                for (int kx = -(side_ / 2); kx < std::ceil(static_cast<double>(side_) / 2); ++kx) {
+                    int x = this->x_ + kx;
+                    if (check_bounds(x, 0, this->im_.cols)) { filter(row_ptr, x, y); }
                 }
-                filter(row_ptr, x, y);
             }
-        }
-    };
+        };
 
-   private:
-    const int side_;
+    private:
+        unsigned int side_;
 };
 }  // namespace kernels
 
@@ -322,34 +319,22 @@ class circle {
 
 // }  // namespace kernels
 
-namespace snark {
-namespace cv_mat {
-namespace impl {
-
-// todo
-// - use snake notation for all names except template parameters
-// - unsigned char, char, comma::int*, comma::uint*, float, double
-// - don't use shared_ptr
-// - move kernel classes to cpp
+namespace snark { namespace cv_mat { namespace impl {
 
 template <typename T>
 struct handle {
-    handle(cv::Mat out, std::unique_ptr<kernels::kernel<T>> kernel, std::unique_ptr<filters::filter<T>> filter)
-        : out_(out), kernel_(std::move(kernel)), filter_(std::move(filter)){};
+    handle(cv::Mat out, std::unique_ptr<kernels::kernel<T>> kernel, std::unique_ptr<kernels::operations::operation<T>> operation)
+        : out_(out), kernel_(std::move(kernel)), filter_(std::move(operation)){};
 
     void operator()(int start, int end) {
         for (int py = start; py != end; ++py) {
             T* row_ptr = out_.template ptr<T>(py);
+            kernel_->set_y(py);
             for (int px = 0; px != out_.cols; ++px) {
-                kernel_->set_y(py);
                 kernel_->set_x(px);
                 kernel_->stride(*filter_);
-
-                // fill in pixel channel values in output image
                 const auto& result = filter_->get();
-                for (int channel = 0; channel != out_.channels(); ++channel) {
-                    row_ptr[out_.channels() * px + channel] = result[channel];
-                }
+                for (int channel = 0; channel != out_.channels(); ++channel) { row_ptr[out_.channels() * px + channel] = result[channel]; }
                 filter_->clear();
             }
         }
@@ -357,7 +342,7 @@ struct handle {
 
     cv::Mat out_;
     std::unique_ptr<kernels::kernel<T>> kernel_;
-    std::unique_ptr<filters::filter<T>> filter_;
+    std::unique_ptr<kernels::operations::operation<T>> filter_;
 };
 
 template <typename H>
@@ -368,54 +353,26 @@ cv::Mat contraharmonic<H>::do_parallel(cv::Mat in) {
 
     tbb::parallel_for(size_t(0), size_t(in.rows), [=](size_t i) {
         std::unique_ptr<kernels::kernel<T>> kernel;
-        std::unique_ptr<filters::filter<T>> filter(new filters::contraharmonic<T>(in.channels(), power_));
-        if (kernel_ == "square") {
-            kernel.reset(new kernels::square<T>(in, side_));
-        }
-        handle<T>(out, std::move(kernel), std::move(filter))(i, i + 1);
+        std::unique_ptr<kernels::operations::operation<T>> operation(new kernels::operations::contraharmonic<T>(in.channels(), power_));
+        if (kernel_ == "square") { kernel.reset(new kernels::square<T>(in, side_)); }
+        handle<T>(out, std::move(kernel), std::move(operation))(i, i + 1);
     });
     return out;
 }
 
 template <typename H>
 std::pair<H, cv::Mat> contraharmonic<H>::operator()(std::pair<H, cv::Mat> m) {
-    if (!m.second.isContinuous()) {
-        COMMA_THROW(comma::exception, "matrix not continuous; non-continous image data not supported")
-    }
+    if (!m.second.isContinuous()) { COMMA_THROW(comma::exception, "matrix not continuous; non-continous image data not supported"); }
     cv::Mat out;
     switch (m.second.depth()) {
-        case CV_8U: {
-            out = do_parallel<unsigned char>(m.second);
-            break;
-        }
-        case CV_8S: {
-            out = do_parallel<char>(m.second);
-            break;
-        }
-        case CV_16U: {
-            out = do_parallel<comma::uint16>(m.second);
-            break;
-        }
-        case CV_16S: {
-            out = do_parallel<comma::int16>(m.second);
-            break;
-        }
-        case CV_32S: {
-            out = do_parallel<comma::int32>(m.second);
-            break;
-        }
-        case CV_32F: {
-            out = do_parallel<float>(m.second);
-            break;
-        }
-        case CV_64F: {
-            out = do_parallel<double>(m.second);
-            break;
-        }
-        default: {
-            COMMA_THROW(comma::exception, "unknown image data type");
-            break;
-        }
+        case CV_8U: out = do_parallel<unsigned char>(m.second); break;
+        case CV_8S: out = do_parallel<char>(m.second); break;
+        case CV_16U: out = do_parallel<comma::uint16>(m.second); break;
+        case CV_16S: out = do_parallel<comma::int16>(m.second); break;
+        case CV_32S: out = do_parallel<comma::int32>(m.second); break;
+        case CV_32F: out = do_parallel<float>(m.second); break;
+        case CV_64F: out = do_parallel<double>(m.second); break;
+        default: COMMA_THROW(comma::exception, "expected image data, got unsupported value: " << m.second.type());
     }
     return std::make_pair(m.first, out);
 }
@@ -423,28 +380,18 @@ std::pair<H, cv::Mat> contraharmonic<H>::operator()(std::pair<H, cv::Mat> m) {
 template <typename H>
 std::pair<typename contraharmonic<H>::functor_t, bool> contraharmonic<H>::make(const std::string& options) {
     const auto& tokens = comma::split(options, ',');
-    if (tokens.size() < 2) {
-        COMMA_THROW(comma::exception, "contraharmonic: expected options, got: '" << options << "'");
-    }
+    if (tokens.size() < 2) { COMMA_THROW(comma::exception, "contraharmonic: expected options, got: '" << options << "'"); }
     double power = 0;
-    try {
-        power = boost::lexical_cast<double>(tokens[0]);
-    } catch (std::exception& ex) {
-        COMMA_THROW(comma::exception, "contraharmonic: expected <power>, got: '" << options << "'; " << ex.what());
-    }
+    try { power = boost::lexical_cast<double>(tokens[0]); }
+    catch (std::exception& ex) { COMMA_THROW(comma::exception, "contraharmonic: expected <power>, got: '" << options << "'; " << ex.what()); }
     if (tokens[1] == "square") {
-        // todo
-        if (tokens.size() < 3) {
-            COMMA_THROW(comma::exception, "contraharmonic: expected <power>,square,<side>, got: '" << options << "'");
-        }
+        if (tokens.size() < 3) { COMMA_THROW(comma::exception, "contraharmonic: expected <power>,square,<side>, got: '" << options << "'"); }
         int side = boost::lexical_cast<double>(tokens[2]);
-
         return std::make_pair(contraharmonic<H>(tokens[1], power, side), true);
         // return std::make_pair(contraharmonic<H, kernels::square >( power, side ), true);
         // return std::make_pair(contraharmonic<H >( power, kernels::square(), side ), true);
     }
-    COMMA_THROW(comma::exception, "contraharmonic: expected kernel shape, got: '"
-                                      << tokens[1] << "'; only 'square' supported at the moment");
+    COMMA_THROW(comma::exception, "contraharmonic: expected kernel shape, got: '" << tokens[1] << "'; only 'square' supported at the moment");
 }
 
 template <typename H>
