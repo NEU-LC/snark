@@ -56,8 +56,6 @@
 
 /// @author vsevolod vlaskine
 
-#pragma once
-
 #include <memory>
 #include <vector>
 #include <boost/bind.hpp>
