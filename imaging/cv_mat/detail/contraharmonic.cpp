@@ -87,9 +87,9 @@ class operation {
     public:
         operation(unsigned int channels) noexcept : channels_(channels){};
         virtual ~operation() = default;
-        virtual void operator()(const T* row_ptr, int x, int y) {};  // apply filter to row pointer at y and pixel x, y
-        virtual std::vector<double> get() const { return {}; }            // return result, up to derived classes on how to return
-        virtual void clear(){};  // clear the results, up to the derived classes on how to filter
+        virtual void operator()(const T* row_ptr, unsigned int x, unsigned int y) = 0;  // apply filter to row pointer at y and pixel x, y
+        virtual std::vector<double> get() const = 0;            // return result, up to derived classes on how to return
+        virtual void clear() = 0;  // clear the results, up to the derived classes on how to filter
 
     protected:
         unsigned int channels_;
@@ -98,10 +98,10 @@ class operation {
 template <typename T>
 class contraharmonic final : public operation<T> {
    public:
-    contraharmonic(int channels, double power) noexcept : operation<T>(channels), num_(channels, 0), den_(channels, 0), power_(power){};
+    contraharmonic(unsigned int channels, double power) noexcept : operation<T>(channels), num_(channels, 0), den_(channels, 0), power_(power){};
 
-    void operator()(const T* row_ptr, int x, int y) override {
-        for (int channel = 0; channel != this->channels_; ++channel) {
+    void operator()(const T* row_ptr, unsigned int x, unsigned int y) override {
+        for (unsigned int channel = 0; channel != this->channels_; ++channel) {
             num_[channel] += std::pow(static_cast<double>(row_ptr[this->channels_ * x + channel]), power_ + 1);
             den_[channel] += std::pow(static_cast<double>(row_ptr[this->channels_ * x + channel]), power_);
         }
