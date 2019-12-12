@@ -45,7 +45,6 @@ if(snark_build_math_fft)
     install( TARGETS math-fft RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 endif(snark_build_math_fft)
 
-install( PROGRAMS mat-convert
-                  math-array
-         DESTINATION ${snark_INSTALL_BIN_DIR} )
+install( PROGRAMS math-matlab-convert DESTINATION ${snark_INSTALL_BIN_DIR} )
+install( PROGRAMS math-array DESTINATION ${snark_INSTALL_BIN_DIR} )
 

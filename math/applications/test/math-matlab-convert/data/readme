@@ -1,0 +1,3 @@
+to see what's in a .mat file, run
+$ cat <file>.mat | math-matlab-convert
+$ cat <file>.mat | math-matlab-convert --list

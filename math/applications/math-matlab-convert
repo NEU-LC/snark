@@ -45,21 +45,21 @@ def import_advice( module ):
     }
     preamble = "Install"
     if debian_pkg.has_key( module ):
-        print( "mat-convert: on debian/ubuntu install with \"apt-get install {}\"".format( debian_pkg[ module ] ), file=sys.stderr )
+        print( "math-matlab-convert: on debian/ubuntu install with \"apt-get install {}\"".format( debian_pkg[ module ] ), file=sys.stderr )
         preamble = "On other systems install"
-    print( "mat-convert: {} with \"pip install {}\"".format( preamble, module ), file=sys.stderr )
+    print( "math-matlab-convert: {} with \"pip install {}\"".format( preamble, module ), file=sys.stderr )
 
 try:
     import numpy
     import scipy.io
 except ImportError as e:
-    print( "mat-convert: ImportError:", e, file=sys.stderr )
+    print( "math-matlab-convert: ImportError:", e, file=sys.stderr )
     module = e.args[0].split(' ')[-1]
     import_advice( module )
     sys.exit( 1 )
 
 def message( msg, data=() ):
-    print( "mat-convert: {}: {}".format( msg, data ), file=sys.stderr )
+    print( "math-matlab-convert: {}: {}".format( msg, data ), file=sys.stderr )
 
 def fatal( msg, data=() ):
     message( msg, data )
@@ -240,7 +240,7 @@ def to_numpy( input ):
 def to_mat( args ):
     j = json.load( sys.stdin )
     mat_data = to_numpy( j )
-    try: fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
+    try: fd, tmp_path = tempfile.mkstemp( prefix="math-matlab-convert-" )
     except OSError as e: fatal( "failed to create temporary file: {}".format( e ) )
     if sys.version_info.major > 2:
         try: tmp_file = os.fdopen( fd, "wb" )
@@ -262,7 +262,7 @@ def to_mat( args ):
     os.remove( tmp_path )
 
 def from_mat( args ):
-    fd, tmp_path = tempfile.mkstemp( prefix="mat-convert-" )
+    fd, tmp_path = tempfile.mkstemp( prefix="math-matlab-convert-" )
     try:
         if sys.version_info.major > 2:
             tmp_file = os.fdopen( fd, "wb" )
@@ -312,10 +312,8 @@ def from_mat( args ):
                     else: mat.tofile( sys.stdout )
                 else:
                     if sys.version_info.major > 2: # todo: python3: fix
-                        with os.fdopen( sys.stdout.fileno(), "wb" ) as stdout:
-                            for t in mat:
-                                t.tofile( stdout, ",", "%s" ) # this does not work
-                                print()
+                        for t in mat:
+                            print( ','.join( map( str, t ) ) ) # t.tofile( stdout, ",", "%s" ) # this does not work anymore
                     else:
                         for t in mat:
                             t.tofile( sys.stdout, ",", "%s" )

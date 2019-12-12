@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # This file is part of snark, a generic and flexible library
 # Copyright (c) 2011 The University of Sydney
@@ -28,6 +28,8 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+from __future__ import print_function
 
 __author__ = 'z.xu, v.vlaskine'
 
@@ -62,9 +64,9 @@ examples
 
 """
 
-def warn( m ): print >> sys.stderr, "caffe-cat: warning:", m
+def warn( m ): print( "caffe-cat: warning: %s" % m, file=sys.stderr )
 
-def die( m ): print >> sys.stderr, "caffe-cat:", m; sys.exit( 1 )
+def die( m ): print( "caffe-cat: %s" % m, file=sys.stderr ); sys.exit( 1 )
 
 def type_from_string( s ): # quick and dirty
     if s == 'b': return np.int8
@@ -79,17 +81,30 @@ def type_from_string( s ): # quick and dirty
     if s == 'd': return np.float64
     die( "expected type, got: '" + s + "'" )
 
+def read( data_type, num_elements, file=sys.stdin ):
+    if sys.version_info.major < 3:
+        return np.fromfile( file, data_type, num_elements )
+    else:
+        buf = file.buffer.read( num_elements * np.dtype( data_type ).itemsize )
+        return np.frombuffer( buf, data_type, num_elements )
+
+def write( data, file=sys.stdout ):
+    if sys.version_info.major < 3: data.tofile( file )
+    else: file.buffer.write( data.tobytes() )
+
 def iterator( file, shape, ntype, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
-    size = np.prod( shape )
+    data_size = np.prod( shape )
     while True:
-        header = np.fromfile( file, np.uint8, header_size )
-        data = np.fromfile( file, ntype, size )
-        footer = np.fromfile( file, np.uint8, footer_size )
-        if data.shape[0] == size: yield header, data.reshape( shape ), footer
-        else: yield None, None, None
+        try:
+            header = read( np.uint8, header_size, file )
+            data = read( ntype, data_size, file )
+            footer = read( np.uint8, footer_size, file )
+            yield header, data.reshape( shape ), footer
+        except:
+            yield None, None, None
 
 if __name__ == '__main__':
-    def handle_signal( s, f ): print >> sys.stderr, "caffe-cat: broken pipe, exit"; sys.exit( 0 )
+    def handle_signal( s, f ): print( "caffe-cat: broken pipe, exit", file=sys.stderr ); sys.exit( 0 )
     signal.signal( signal.SIGPIPE, handle_signal ) 
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
     parser.add_argument( '--blob', type = str, help = 'helper parameter, see --blob-shape, --blob-type, etc' )
@@ -113,12 +128,12 @@ if __name__ == '__main__':
     log_levels = { "debug": "0", "info": "1", "warning": "2", "error": "3" }
     os.environ["GLOG_minloglevel"] = log_levels[ args.log_level ]
     import caffe
-    major, minor = map( int, caffe.__version__.split( '-' )[0].split( '.' ) )[0:2]
+    major, minor = list( map( int, caffe.__version__.split( '-' )[0].split( '.' )))[0:2]
     if args.net is None: die( "please specify --net" )
     if args.blob_shape or args.blob_type:
         net = caffe.Net( args.net, caffe.TEST )
-        if args.blob_shape: print net.blobs[ args.blob ].data.shape
-        elif args.blob_type: print net.blobs[ args.blob ].data.dtype
+        if args.blob_shape: print( net.blobs[ args.blob ].data.shape )
+        elif args.blob_type: print( net.blobs[ args.blob ].data.dtype )
         sys.exit( 0 )
     if args.cpu: caffe.set_mode_cpu()
     else: caffe.set_mode_gpu(); caffe.set_device( args.device )
@@ -133,18 +148,18 @@ if __name__ == '__main__':
     for header, data, footer in iterator( sys.stdin, net.blobs[ input_name ].data.shape, net.blobs[ input_name ].data.dtype, args.header_size, args.footer_size ):
         if data is None: break
         value = net.forward_all( **{ input_name: data } ) # quick and dirty, should we read input directly into net.blobs[ input_name ].data?
-        header.tofile( sys.stdout )
-        if args.keep_input: data.tofile( sys.stdout )
-        footer.tofile( sys.stdout )
+        write( header )
+        if args.keep_input: write( data )
+        write( footer )
         if outputs is None:
             if len( value ) > 1: die( "--output not specified; expected 1 output, got", len( value ), "outputs" )
             for key in value:
-                if not said_once: print >> sys.stderr, "caffe-cat: no output specified; outputting '" + str( key ) + "'"; said_once = True
-                if indices is None: value[key].tofile( sys.stdout )
-                else: value[key][indices].tofile( sys.stdout ) # quick and dirty 
+                if not said_once: print( "caffe-cat: no output specified; outputting '%s'" % str( key ), file=sys.stderr ); said_once = True
+                if indices is None: write( value[key] )
+                else: write( value[key][indices] ) # quick and dirty
                 break;
         else:
             for output in outputs:
-                if indices is None: net.blobs[output].data.tofile( sys.stdout )
-                else: net.blobs[output].data[indices].tofile( sys.stdout ) # quick and dirty
+                if indices is None: write( net.blobs[output].data )
+                else: write( net.blobs[output].data[indices] ) # quick and dirty
         sys.stdout.flush()
