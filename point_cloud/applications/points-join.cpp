@@ -396,10 +396,10 @@ template < typename V > struct join_impl_
     typedef typename traits< V >::input_t filter_value_t;
     typedef typename traits< V >::record_t filter_record_t;
     typedef typename traits< V >::grid_t grid_t;
+    static std::deque< filter_record_t > filter_points;
     
     static grid_t read_filter_block( comma::csv::input_stream< filter_value_t >& ifstream )
     {
-        static std::deque< filter_record_t > filter_points;
         filter_points.clear();
         snark::math::closed_interval< double, 3 > extents;
         if( verbose ) { std::cerr << "points-join: reading filter records..." << std::endl; }
@@ -633,7 +633,7 @@ int main( int ac, char** av )
         if( unnamed.size() != 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = parser.get< comma::csv::options >( unnamed[0] );
-        if ( filter_csv.fields.empty() ) { filter_csv.fields="x,y,z"; }
+        if ( filter_csv.fields.empty() ) { filter_csv.fields="x,y,z"; }, unnamed.empty()
         filter_csv.full_xpath = true;
         if( append_nearest && stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
