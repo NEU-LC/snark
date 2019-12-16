@@ -453,7 +453,7 @@ template < typename V > struct join_impl_
     
     static void handle_record( const typename traits< Eigen::Vector3d >::input_t& r ) {}
 
-    static int run( const comma::command_line_options& options )
+    static int run( const comma::command_line_options& options, bool self_join )
     {
         options.assert_mutually_exclusive( "--all", "--size,--number-of-points,--number-of-nearest-points" );
         unsigned int size = options.value( "--size,--number-of-points,--number-of-nearest-points", 1 );
@@ -610,8 +610,6 @@ template < typename V > struct join_impl_
     }
 };
 
-static int self_join( const comma::command_line_options& options ) { std::cerr << "points-join: self-join: todo" << std::endl; return 1; }
-
 bool find_in_fields( const std::vector< std::string >& fields, const std::vector< std::string >& strings )
 {
     for( const auto& s : strings ) { for( const auto& f : fields ) { if( comma::split( f, "[/" )[0] == s ) { return true; } } }
@@ -661,7 +659,7 @@ int main( int ac, char** av )
             origin = options.exists( "--origin" ) ? comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin" ) ) : Eigen::Vector3d::Zero();
         }
         resolution = Eigen::Vector3d( r, r, r );
-        return unnamed.empty() ? self_join( options ) : filter_triangulated ? join_impl_< snark::triangle >::run( options ) : join_impl_< Eigen::Vector3d >::run( options );
+        return filter_triangulated ? join_impl_< snark::triangle >::run( options, unnamed.empty() ) : join_impl_< Eigen::Vector3d >::run( options, unnamed.empty() );
     }
     catch( std::exception& ex ) { std::cerr << "points-join: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-join: unknown exception" << std::endl; }
