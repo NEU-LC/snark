@@ -396,10 +396,10 @@ template < typename V > struct join_impl_
     typedef typename traits< V >::input_t filter_value_t;
     typedef typename traits< V >::record_t filter_record_t;
     typedef typename traits< V >::grid_t grid_t;
+    static std::deque< filter_record_t > filter_points;
     
     static grid_t read_filter_block( comma::csv::input_stream< filter_value_t >& ifstream )
     {
-        static std::deque< filter_record_t > filter_points;
         filter_points.clear();
         snark::math::closed_interval< double, 3 > extents;
         if( verbose ) { std::cerr << "points-join: reading filter records..." << std::endl; }
@@ -452,9 +452,101 @@ template < typename V > struct join_impl_
     }
     
     static void handle_record( const typename traits< Eigen::Vector3d >::input_t& r ) {}
-
-    static int run( const comma::command_line_options& options )
+    
+    static int run_incremental( const comma::command_line_options& options )
     {
+        typedef traits< Eigen::Vector3d >::input_t input_t;
+        use_radius = stdin_csv.has_field( "radius" );
+        
+        // todo: incremental input_t with id
+        
+        comma::csv::input_stream< input_t > istream( std::cin, stdin_csv, input_t() );
+        #ifdef WIN32
+        if( stdin_csv.binary() ) { _setmode( _fileno( stdout ), _O_BINARY ); }
+        #endif
+        if( !stdin_csv.binary() ) { std::cout.precision( stdin_csv.precision ); }
+        std::size_t count = 0;
+        std::size_t discarded = 0;
+        boost::optional< grid_t > grid;
+        comma::uint32 block = 0;
+        while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+        {
+            const input_t* p = istream.read();
+            if( !p ) { break; }
+            double current_squared_radius = get_squared_radius( *p );
+            if( verbose && comma::math::less( squared_radius, current_squared_radius ) ) { std::cerr << "points-join: expected point-specific radius not exceeding --radius " << std::sqrt( squared_radius ) << "; got: " << p->radius << std::endl; }
+            if( !grid || p->block != block ) { grid = grid_t( p->value, resolution ); block = p->block; }
+            
+//             boost::optional< nearest_t > nearest;
+//             bool enough = false;
+//             if( size > 1 ) { nearest_map.clear(); }
+//             for( i[0] = index[0] - 1; !enough && i[0] < index[0] + 2; ++i[0] )
+//             {
+//                 for( i[1] = index[1] - 1; !enough && i[1] < index[1] + 2; ++i[1] )
+//                 {
+//                     for( i[2] = index[2] - 1; !enough && i[2] < index[2] + 2; ++i[2] )
+//                     {
+//                         typename grid_t::iterator it = grid.find( i );
+//                         if( it == grid.end() ) { continue; }
+//                         #ifdef SNARK_USE_CUDA
+//                         if( use_cuda ) { it->second.calculate_squared_norms( p->value ); }
+//                         #endif
+//                         if( size == 1 ) // have to handle size 1 separately due to poorer performance of std::map
+//                         {
+//                             for( std::size_t k = 0; k < it->second.records.size(); ++k )
+//                             {
+//                                 const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
+//                                 if( !q || q->second > current_squared_radius ) { continue; }
+//                                 if( !nearest || nearest->squared_distance > q->second ) { nearest.reset( nearest_t( it->second.records[k], q->first, q->second ) ); }
+//                                 if( !append_nearest ) { enough = true; break; }
+//                             }
+//                         }
+//                         else
+//                         {
+//                             for( std::size_t k = 0; k < it->second.records.size(); ++k )
+//                             {
+//                                 const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
+//                                 if( !q || q->second > current_squared_radius ) { continue; }
+//                                 if( nearest_map.size() >= size )
+//                                 {
+//                                     if( nearest_map.rbegin()->second.squared_distance < q->second ) { continue; }
+//                                     nearest_map.erase( std::prev( nearest_map.end() ) );
+//                                 }
+//                                 nearest_map.insert( std::make_pair( q->second, nearest_t( it->second.records[k], q->first, q->second ) ) );
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//             if( matching )
+//             {
+//                 if( nearest_map.empty() && !nearest )
+//                 {
+//                     if( verbose ) { std::cerr.precision( 12 ); std::cerr << "points-join: record " << count << " at " << p->value.x() << "," << p->value.y() << "," << p->value.z() << ": no matches found" << std::endl; }
+//                     if( strict ) { return 1; }
+//                     ++discarded;
+//                 }
+//                 else
+//                 {
+//                     if( size == 1 ) { traits< V >::output( istream, *nearest->record, nearest->point ); }
+//                     else { for( const auto& n: nearest_map ) { traits< V >::output( istream, *n.second.record, n.second.point ); } }
+//                 }
+//             }
+//             else
+//             { 
+//                 if( nearest_map.empty() && !nearest ) { output_last( istream ); } else { ++discarded; }
+//             }
+
+        }
+        return 0;
+    }
+    
+    static int run( const comma::command_line_options& options, bool self_join )
+    {
+        if( self_join ) { std::cerr << "points-join: self-join: todo" << std::endl; return 1; }
+        // todo: self-join
+        // todo: --ignore 0 distance (or --min-distance)
+        // todo? --incremental or it belongs to points-calc?
         options.assert_mutually_exclusive( "--all", "--size,--number-of-points,--number-of-nearest-points" );
         unsigned int size = options.value( "--size,--number-of-points,--number-of-nearest-points", 1 );
         strict = options.exists( "--strict" );
@@ -610,7 +702,7 @@ template < typename V > struct join_impl_
     }
 };
 
-static int self_join( const comma::command_line_options& options ) { std::cerr << "points-join: self-join: todo" << std::endl; return 1; }
+template < typename V > std::deque< typename join_impl_< V >::filter_record_t > join_impl_< V >::filter_points;
 
 bool find_in_fields( const std::vector< std::string >& fields, const std::vector< std::string >& strings )
 {
@@ -626,11 +718,14 @@ int main( int ac, char** av )
         if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< point_input >( true ), ',' ) << std::endl; return 0; }
         verbose = options.exists( "--verbose,-v" );
         stdin_csv = comma::csv::options( options );
+        if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
+        stdin_csv.full_xpath = true;
+        radius = options.value< double >( "--radius" );
+        squared_radius = radius * radius;
+        if( options.exists( "--incremental" ) ) { return join_impl_< Eigen::Vector3d >::run_incremental( options ); }
         options.assert_mutually_exclusive( "--matching,--not-matching" );
         matching = !options.exists( "--not-matching" );
         append_nearest = !options.exists( "--matching" ) && matching;
-        if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
-        stdin_csv.full_xpath = true;
         std::vector< std::string > unnamed = options.unnamed( "--all,--blocks-ordered,--matching,--not-matching,--strict,--permissive,--use-cuda,--cuda,--flush,--full-xpath,--verbose,-v", "-.*" );
         if( unnamed.size() != 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
@@ -649,8 +744,6 @@ int main( int ac, char** av )
         #ifdef SNARK_USE_CUDA
         if (use_cuda && use_normal) { std::cerr << "todo: point normals not implemented for cuda" << std::endl; return 1; }
         #endif
-        radius = options.value< double >( "--radius" );
-        squared_radius = radius * radius;
         double r = radius;
         if( filter_triangulated ) // quick and dirty
         {
@@ -661,7 +754,8 @@ int main( int ac, char** av )
             origin = options.exists( "--origin" ) ? comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin" ) ) : Eigen::Vector3d::Zero();
         }
         resolution = Eigen::Vector3d( r, r, r );
-        return unnamed.empty() ? self_join( options ) : filter_triangulated ? join_impl_< snark::triangle >::run( options ) : join_impl_< Eigen::Vector3d >::run( options );
+        if( filter_triangulated && unnamed.empty() ) { std::cerr << "points-join: self-join on triangles: not implemented" << std::endl; return 1; }
+        return filter_triangulated ? join_impl_< snark::triangle >::run( options, unnamed.empty() ) : join_impl_< Eigen::Vector3d >::run( options, unnamed.empty() );
     }
     catch( std::exception& ex ) { std::cerr << "points-join: " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << "points-join: unknown exception" << std::endl; }
