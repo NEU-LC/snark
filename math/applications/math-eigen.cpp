@@ -244,8 +244,8 @@ template <> struct traits< Eigen::Matrix< double, 3, 3 > >
 template < typename From, typename To >
 static int run( const comma::command_line_options& options )
 {
-    if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< From >( false ), ',' ) << std::endl; return 0; }
-    if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< To >( false ), ',' ) << std::endl; return 0; }
+    if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< From >( true ), ',' ) << std::endl; return 0; }
+    if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< To >( true ), ',' ) << std::endl; return 0; }
     if( options.exists( "--output-format" ) ) { std::cout << comma::csv::format::value< To >() << std::endl; return 0; }
     comma::csv::options csv( options );
     csv.full_xpath = true;
