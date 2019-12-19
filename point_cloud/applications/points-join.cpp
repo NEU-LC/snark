@@ -465,8 +465,8 @@ template < typename V > struct join_impl_
         if( stdin_csv.binary() ) { _setmode( _fileno( stdout ), _O_BINARY ); }
         #endif
         if( !stdin_csv.binary() ) { std::cout.precision( stdin_csv.precision ); }
-        std::size_t count = 0;
-        std::size_t discarded = 0;
+        //std::size_t count = 0;
+        //std::size_t discarded = 0;
         boost::optional< grid_t > grid;
         comma::uint32 block = 0;
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
