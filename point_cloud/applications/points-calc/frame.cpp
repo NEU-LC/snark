@@ -56,9 +56,10 @@
 
 /// @author vsevolod vlaskine
 
-#include <functional>
+#include <array>
 #include <sstream>
 #include <comma/csv/stream.h>
+#include <comma/string/split.h>
 #include "../../../math/rotation_matrix.h"
 #include "frame.h"
 
@@ -74,6 +75,7 @@ std::string traits::usage()
     oss << "            --frame=[<frame>]: default frame, used as initial frame and values for skipped input fields; default: 0,0,0,0,0,0" << std::endl;
     oss << "            --from: direction of transform, default; see points-frame --help for details" << std::endl;
     oss << "            --to: direction of transform; see points-frame --help for details" << std::endl;
+    oss << "            --in-place; replace input frame with the integrated one, do not append anything; convenience option" << std::endl;
     oss << std::endl;
     oss << "        examples" << std::endl;
     oss << "            the following two lines should output same result" << std::endl;
@@ -106,84 +108,7 @@ int traits::run( const comma::command_line_options& options )
     if( csv.binary() ) { output_csv.format( output_format() ); }
     snark::points_calc::pose integrated = comma::csv::ascii< input >().get( options.value< std::string >( "--frame", "0,0,0,0,0,0" ) );
     comma::csv::input_stream< input > istream( std::cin, csv, integrated );
-    comma::csv::output_stream< output > ostream( std::cout, output_csv, integrated );
-    comma::csv::tied< input, output > tied( istream, ostream );
     bool from = !options.exists( "--to" );
-    while( std::cin.good() || istream.ready() )
-    {
-        const input* p = istream.read();
-        if( !p ) { break; }
-        Eigen::Translation3d translation( integrated.coordinates );
-        Eigen::Matrix3d rotation = from ? snark::rotation_matrix::rotation( integrated.orientation ) : snark::rotation_matrix::rotation( integrated.orientation ).transpose();
-        Eigen::Affine3d transform = from ? ( translation * rotation ) : ( rotation.transpose() * translation.inverse() );
-        integrated.coordinates = transform * p->coordinates;
-        integrated.orientation = snark::rotation_matrix::roll_pitch_yaw( rotation * snark::rotation_matrix::rotation( p->orientation ) );
-        tied.append( integrated );
-    }
-    return 0;
-}
-
-} } } } // namespace snark { namespace points_calc { namespace frame { namespace integrate {
-
-namespace snark { namespace points_calc { namespace frame { namespace quick_convert {
-
-std::string traits::usage()
-{
-    std::ostringstream oss;
-    oss << "    frame-quick-convert" << std::endl;
-    oss << "        convenience operation, quickly convert pose to a new right-hand reference frame" << std::endl;
-    oss << "        with collinear axis, e.g. east-north-up to north-east-down, etc" << std::endl;
-    oss << std::endl;
-    oss << "        options" << std::endl;
-    oss << "            --in-place; don't append output, substitute in place; TODO" << std::endl;
-    oss << "            --list-transforms,--transforms; list typical transforms; TODO" << std::endl;
-    oss << "            --to=<how>; e.g. --to=-x,z,y converts 1,2,3 to -1,3,2" << std::endl; // todo: review: should it be --from or --to?
-    oss << std::endl;
-    oss << "        examples" << std::endl;
-    oss << "            todo" << std::endl;
-    oss << std::endl;
-    return oss.str();
-}
-    
-std::string traits::input_fields() { return comma::join( comma::csv::names< input >( false ), ',' ); }
-
-std::string traits::input_format() { return comma::csv::format::value< input >(); }
-
-std::string traits::output_fields() { return comma::join( comma::csv::names< output >( true ), ',' ); }
-
-std::string traits::output_format() { return comma::csv::format::value< output >(); }
-
-namespace detail {
-
-class transformed
-{
-    public:
-        transformed( const std::string& to )
-        {
-            // todo
-        }
-        
-        pose operator()( const pose& p ) const { return p; }
-    private:
-        // todo
-};
-
-} // namespace detail {
-
-int traits::run( const comma::command_line_options& options )
-{
-    if( options.exists( "--list-transforms,--transforms" ) )
-    {
-        std::cerr << "points-calc: frame-quick-transform: --list-transforms: implementing..." << std::endl;
-        return 1;
-    }
-    detail::transformed transformed( options.value< std::string >( "--to" ) );
-    comma::csv::options csv( options );
-    csv.full_xpath = false;
-    comma::csv::options output_csv;
-    output_csv.delimiter = csv.delimiter;
-    if( csv.binary() ) { output_csv.format( output_format() ); }
-    comma::csv::input_stream< input > istream( std::cin, csv );
     std::function< void( const pose& p ) > write;
     auto run_impl = [&]() -> int
     {
@@ -191,7 +116,12 @@ int traits::run( const comma::command_line_options& options )
         {
             const input* p = istream.read();
             if( !p ) { break; }
-            write( transformed( *p ) );
+            Eigen::Translation3d translation( integrated.coordinates );
+            Eigen::Matrix3d rotation = from ? snark::rotation_matrix::rotation( integrated.orientation ) : snark::rotation_matrix::rotation( integrated.orientation ).transpose();
+            Eigen::Affine3d transform = from ? ( translation * rotation ) : ( rotation.transpose() * translation.inverse() );
+            integrated.coordinates = transform * p->coordinates;
+            integrated.orientation = snark::rotation_matrix::roll_pitch_yaw( rotation * snark::rotation_matrix::rotation( p->orientation ) );
+            write( integrated );
         }
         return 0;
     };
@@ -201,14 +131,10 @@ int traits::run( const comma::command_line_options& options )
         write = [&]( const pose& p ) { passed.write( p ); };
         return run_impl();
     }
-    else
-    {
-        comma::csv::output_stream< output > ostream( std::cout, output_csv );
-        comma::csv::tied< input, output > tied( istream, ostream );
-        write = [&]( const pose& p ) { tied.append( p ); };
-        return run_impl();
-    }
-    return 0;
+    comma::csv::output_stream< output > ostream( std::cout, output_csv, integrated );
+    comma::csv::tied< input, output > tied( istream, ostream );
+    write = [&]( const pose& p ) { tied.append( p ); };
+    return run_impl();
 }
 
-} } } } // namespace snark { namespace points_calc { namespace frame { namespace quick_convert {
+} } } } // namespace snark { namespace points_calc { namespace frame { namespace integrate {

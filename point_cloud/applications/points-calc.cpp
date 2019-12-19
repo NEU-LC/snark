@@ -94,7 +94,6 @@ static void usage( bool verbose = false )
     std::cerr << "    discretise,discretize" << std::endl;
     std::cerr << "    find-outliers" << std::endl;
     std::cerr << "    frame-integrate, integrate-frame (deprecated)" << std::endl;
-    std::cerr << "    frame-quick-convert" << std::endl;
     std::cerr << "    lines-nearest" << std::endl;
     std::cerr << "    local-min" << std::endl;
     std::cerr << "    local-max" << std::endl;
@@ -192,7 +191,6 @@ static void usage( bool verbose = false )
     std::cerr << "            --discard: discards records that are outliers; output: same as input" << std::endl;
     std::cerr << std::endl;
     std::cerr << snark::points_calc::frame::integrate::traits::usage() << std::endl;
-    std::cerr << snark::points_calc::frame::quick_convert::traits::usage() << std::endl;
     std::cerr << snark::points_calc::lines_nearest::traits::usage() << std::endl;
     std::cerr << "    local-min, local-max: deprecated, use nearest-min, nearest-max;" << std::endl;
     std::cerr << "        output local minimums or maximums inside of given radius" << std::endl;
@@ -1437,11 +1435,10 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--in-place,--list-transforms,--transforms,--from,--to,--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--input-fields,--input-format,--output-fields,--output-format,--filter,--fast,--percentile,--min-count,--output-percentile-only,--output-percentile,--output-points-only,--points-only,--discard-input,--output-sides-only,--sides-only,--output-internal-only,--internal-only", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--in-place,--from,--to,--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--input-fields,--input-format,--output-fields,--output-format,--filter,--fast,--percentile,--min-count,--output-percentile-only,--output-percentile,--output-points-only,--points-only,--discard-input,--output-sides-only,--sides-only,--output-internal-only,--internal-only", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "frame-integrate" || operation == "integrate-frame" ) { return run< snark::points_calc::frame::integrate::traits >( options ); }
-        if( operation == "frame-quick-convert" ) { return run< snark::points_calc::frame::quick_convert::traits >( options ); }
         if( operation == "lines-nearest" ) { return run< snark::points_calc::lines_nearest::traits >( options ); }
         if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
         if( operation == "project-onto-plane" ) { return run< snark::points_calc::project::onto_plane::traits >( options ); }
