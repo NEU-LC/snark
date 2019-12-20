@@ -181,6 +181,10 @@ static void usage( bool verbose=false )
     std::cerr << "                                          --non-zero=size,,1000: output images that have not more than 999 non-zero pixels" << std::endl;
     std::cerr << "                                          --non-zero=size,,1: output images with all pixels zero (makes sense only when used with --filters" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    header" << std::endl;
+    std::cerr << "        --header-fields; output header fields and exit" << std::endl;
+    std::cerr << "        --header-format; output header fields and exit" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    life" << std::endl;
     std::cerr << "        --exit-on-stability: exit, if no change" << std::endl;
     std::cerr << "        --procreation-treshold,--procreation=[<threshold>]: todo: document; default: 3.0" << std::endl;
@@ -1494,19 +1498,16 @@ int main( int ac, char** av )
         {
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
-
-            if( options.exists("--header-fields") ) { std::cout << "t,rows,cols,type" << std::endl;  exit(0); }
-            if( options.exists("--header-format") ) { std::cout << "t,3ui" << std::endl;  exit(0); }
+            if( options.exists("--header-fields") ) { std::cout << "t,rows,cols,type" << std::endl; return 0; }
+            if( options.exists("--header-format") ) { std::cout << "t,3ui" << std::endl; return 0; }
             if( verbose ) { std::cerr << name << "fields: " << input_options.fields << std::endl; std::cerr << name << "format: " << input_options.format.string() << std::endl; }
-            if( options.exists("--output-fields") ) { std::cout << "rows,cols,type" << std::endl;  return 0; }
-
+            if( options.exists("--output-fields") ) { std::cout << "rows,cols,type,format" << std::endl;  return 0; }
             snark::cv_mat::serialization serialization( input_options );
             std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >(std::cin);
             if( p.second.empty() ) { std::cerr << name << "failed to read input stream" << std::endl; return 1; }
-            comma::csv::options out;
-            out.fields = "rows,cols,type";
-            comma::csv::output_stream< snark::cv_mat::serialization::header > ascii( std::cout, out );
-            ascii.write( serialization.get_header( &serialization.header_buffer()[0] ) );
+            const auto& h = serialization.get_header( &serialization.header_buffer()[0] );
+            std::string output = comma::csv::ascii< snark::cv_mat::serialization::header >( "rows,cols,type" ).put( h );
+            std::cout << output << "," << snark::cv_mat::format_from_type( h.type ) << std::endl;
             return 0;
         }
         if( operation == "format" )
