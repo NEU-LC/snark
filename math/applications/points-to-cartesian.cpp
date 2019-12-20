@@ -51,8 +51,12 @@ static void usage( bool )
     std::cerr << "    fields: r or range, b or bearing, e or elevation, default: r,b,e" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    cat rbe.csv | points-to-cartesian --fields=r,b,e > xyz.csv" << std::endl;
-    std::cerr << "    cat rbe.bin | points-to-cartesian --fields=r,b --binary=3d > xy0.bin" << std::endl;
+    std::cerr << "    basic" << std::endl;
+    std::cerr << "        cat rbe.csv | points-to-cartesian --fields=r,b,e > xyz.csv" << std::endl;
+    std::cerr << "    binary" << std::endl;
+    std::cerr << "        cat rbe.bin | points-to-cartesian --fields=r,b --binary=3d > xy0.bin" << std::endl;
+    std::cerr << "    fixed range" << std::endl;
+    std::cerr << "        cat rbe.csv | points-to-cartesian --fields=,b,e --range=5 > xyz.csv" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
