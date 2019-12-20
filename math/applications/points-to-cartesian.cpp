@@ -36,7 +36,7 @@
 #include "../../math/range_bearing_elevation.h"
 #include "../../visiting/traits.h"
 
-static void usage()
+static void usage( bool )
 {
     std::cerr << std::endl;
     std::cerr << "take range, bearing, elevation as input, output x,y,z" << std::endl;
@@ -46,6 +46,7 @@ static void usage()
     std::cerr << "<options>" << std::endl;
     std::cerr << "    --append; append x,y,z to each input record" << std::endl;
     std::cerr << "              (default behaviour is in place substitution: range with x, bearing with y, elevation with z)" << std::endl;
+    std::cerr << "    --range,-r=<range>; default=1; default range" << std::endl;
     std::cerr << comma::csv::options::usage() << std::endl;
     std::cerr << "    fields: r or range, b or bearing, e or elevation, default: r,b,e" << std::endl;
     std::cerr << std::endl;
@@ -53,30 +54,29 @@ static void usage()
     std::cerr << "    cat rbe.csv | points-to-cartesian --fields=r,b,e > xyz.csv" << std::endl;
     std::cerr << "    cat rbe.bin | points-to-cartesian --fields=r,b --binary=3d > xy0.bin" << std::endl;
     std::cerr << std::endl;
-    exit( -1 );
+    exit( 0 );
 }
 
 int main( int ac, char** av )
 {
     try
     {
-        comma::command_line_options options( ac, av );
-        if( options.exists( "--help,-h" ) ) { usage(); }
+        comma::command_line_options options( ac, av, usage );
         comma::csv::options input_options( ac, av );
         input_options.full_xpath = false;
         comma::csv::options output_options( input_options );
         if( input_options.fields.empty() ) { input_options.fields = "range,bearing,elevation"; }
         std::vector< std::string > fields = comma::split( input_options.fields, input_options.delimiter );
-        if (input_options.fields.empty()) { input_options.fields = comma::join(comma::csv::names< snark::range_bearing_elevation >(), ','); }
-        for( std::size_t i = 0; i < fields.size(); ++i )
+        if (input_options.fields.empty()) { input_options.fields = comma::join(comma::csv::names< snark::range_bearing_elevation >(), ',' ); }
+        snark::range_bearing_elevation sample( options.value( "--range,-r", 1. ), 0, 0 );
+        for( std::size_t i = 0; i < fields.size(); ++i ) // input fields use r,b,e as shorthand for range,bearing,elevation
         {
-            // input fields use r,b,e as shorthand for range,bearing,elevation
             if( fields[i] == "r" ) { fields[i] = "range"; }
             else if( fields[i] == "b" ) { fields[i] = "bearing"; }
             else if( fields[i] == "e" ) { fields[i] = "elevation"; }
         }
         input_options.fields = comma::join( fields, ',' );
-        bool append = options.exists("--append");
+        bool append = options.exists( "--append" );
         if ( append ) 
         {            
             output_options.fields = comma::join( comma::csv::names< Eigen::Vector3d >(), ',');
@@ -97,17 +97,14 @@ int main( int ac, char** av )
             if( !fields_set ) { std::cerr << "points-to-cartesian: expected some of the fields: " << comma::join( comma::csv::names< snark::range_bearing_elevation >(), ',' ) << ", got none in: " << input_options.fields << std::endl; return 1; }
             output_options.fields = comma::join( output_fields, ',' );
         }
-
-        comma::csv::input_stream< snark::range_bearing_elevation > istream(std::cin, input_options );
-        comma::csv::output_stream< Eigen::Vector3d > ostream(std::cout, output_options );
-        comma::csv::tied< snark::range_bearing_elevation, Eigen::Vector3d > tied( istream, ostream );
-        
+        comma::csv::input_stream< snark::range_bearing_elevation > istream( std::cin, input_options, sample );
+        comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, output_options );
+        comma::csv::tied< snark::range_bearing_elevation, Eigen::Vector3d > tied( istream, ostream );        
         while ( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const snark::range_bearing_elevation* p = istream.read();
-            if (!p) { break; }
-            if ( append ) { tied.append(p->to_cartesian()); }
-            else { ostream.write(p->to_cartesian(), istream.last()); }
+            if( !p ) { break; }
+            if( append ) { tied.append( p->to_cartesian() ); } else { ostream.write( p->to_cartesian(), istream.last() ); }
         }
         return 0;
     }
