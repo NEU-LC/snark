@@ -75,6 +75,7 @@ struct vector_calc
         std::cerr << std::endl;
         std::cerr << "        normalize: calculate normalized vector" << std::endl;
         std::cerr << "            input fields:  x,y,z" << std::endl;
+        std::cerr << "            --factor=<factor>; default=1.; factor to apply to normalized vector, convenience option" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        scale: calculate multiplication of scalar and vector;output vector" << std::endl;
@@ -153,7 +154,7 @@ struct vector_calc
             if(options.exists("--output-fields")){vector_calc::normalize().output_fields(); return; }
             if(options.exists("--output-format")){vector_calc::normalize().output_format(); return; }
             Eigen::Vector3d v=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
-            vector_calc::normalize( v ).run( csv );
+            vector_calc::normalize( v, options.value( "--factor", 1.0 ) ).run( csv );
             return;
         }
         if(operation=="subtract")
@@ -288,9 +289,10 @@ struct vector_calc
     };
     struct normalize:operation_t<vector,vector>
     {
-        normalize(){}
-        normalize(const vector& v ) : operation_t(v) {}
-        vector calc(const vector& in) const { return in.normalized(); }
+        normalize(): factor( 1. ) {}
+        normalize( const vector& v, double factor = 1. ) : operation_t( v ), factor( factor ) {}
+        vector calc( const vector& in ) const { return in.normalized() * factor; }
+        double factor;
     };
     struct add:operation_t<vector_pair,vector>
     {
