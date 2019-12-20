@@ -197,11 +197,19 @@ struct vector_calc
     template< typename input_t, typename output_t, bool InPlace > struct operation_traits; // todo: quick and dirty, simplify
     template< typename input_t, typename output_t > struct operation_traits< input_t, output_t, false >
     {
-        static void write( comma::csv::input_stream< input_t >& is, comma::csv::output_stream< output_t >& os, comma::csv::tied< input_t, output_t >& tied, const output_t& r ) { tied.append( r ); }
+        static void write( comma::csv::input_stream< input_t >& is, comma::csv::output_stream< output_t >& os, const output_t& r )
+        { 
+            static comma::csv::tied< input_t, output_t > tied( is, os );
+            tied.append( r );
+        }
     };
     template< typename input_t, typename output_t > struct operation_traits< input_t, output_t, true >
     {
-        static void write( comma::csv::input_stream< input_t >& is, comma::csv::output_stream< output_t >& os, comma::csv::tied< input_t, output_t >& tied, const output_t& r ) { os.write( r, is.last() ); }
+        static void write( comma::csv::input_stream< input_t >& is, comma::csv::output_stream< output_t >& os, const output_t& r )
+        {
+            static comma::csv::passed< input_t > passed( is, std::cout );
+            passed.write( r );
+        }
     };
     template< typename input_t, typename output_t, bool InPlace = false >
     struct operation_t
@@ -214,12 +222,12 @@ struct vector_calc
         {
             comma::csv::input_stream< input_t > is( std::cin, csv_opt, default_input );
             comma::csv::output_stream< output_t > os( std::cout, csv_opt.binary(), false, csv_opt.flush );
-            comma::csv::tied< input_t, output_t > tied( is, os );
             while( is.ready() || std::cin.good() )
             {
                 const input_t* rec = is.read();
                 if( !rec ){ break; }
-                operation_traits< input_t, output_t, InPlace >::write( is, os, tied, calc( *rec ) ); // quick and dirty; tied.append( calc( *rec ) );
+                operation_traits< input_t, output_t, InPlace >::write( is, os, calc( *rec ) ); // quick and dirty; tied.append( calc( *rec ) );
+                if( csv_opt.flush ) { std::cout.flush(); }
             }
         }
         static void input_fields(){std::cout<<comma::join( comma::csv::names<input_t>(true), ',' ) << std::endl; }
