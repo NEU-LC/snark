@@ -76,6 +76,7 @@ struct vector_calc
         std::cerr << "        normalize: calculate normalized vector" << std::endl;
         std::cerr << "            input fields:  x,y,z" << std::endl;
         std::cerr << "            --factor=<factor>; default=1.; factor to apply to normalized vector, convenience option" << std::endl;
+        std::cerr << "            --in-place: output in place instead of appending result" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        scale: calculate multiplication of scalar and vector;output vector" << std::endl;
@@ -150,11 +151,12 @@ struct vector_calc
         }
         if(operation=="normalize")
         {
-            if(options.exists("--input-fields")){vector_calc::normalize().input_fields(); return; }
-            if(options.exists("--output-fields")){vector_calc::normalize().output_fields(); return; }
-            if(options.exists("--output-format")){vector_calc::normalize().output_format(); return; }
-            Eigen::Vector3d v=comma::csv::ascii< Eigen::Vector3d >().get(options.value< std::string >( "--v",  "0,0,0"));
-            vector_calc::normalize( v, options.value( "--factor", 1.0 ) ).run( csv );
+            if(options.exists("--input-fields")){vector_calc::normalize<>::input_fields(); return; }
+            if(options.exists("--output-fields")){vector_calc::normalize<>::output_fields(); return; }
+            if(options.exists("--output-format")){vector_calc::normalize<>::output_format(); return; }
+            Eigen::Vector3d v = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--v",  "0,0,0" ) );
+            if( options.exists( "--in-place" ) ) { vector_calc::normalize< true >( v, options.value( "--factor", 1.0 ) ).run( csv ); }
+            else { vector_calc::normalize< false >( v, options.value( "--factor", 1.0 ) ).run( csv ); }
             return;
         }
         if(operation=="subtract")
@@ -192,28 +194,37 @@ struct vector_calc
     }
     //typedef double scalar;
     static vector vzero;
-    template<typename input_t,typename output_t>
+    template< typename input_t, typename output_t, bool InPlace > struct operation_traits; // todo: quick and dirty, simplify
+    template< typename input_t, typename output_t > struct operation_traits< input_t, output_t, false >
+    {
+        static void write( comma::csv::input_stream< input_t >& is, comma::csv::output_stream< output_t >& os, comma::csv::tied< input_t, output_t >& tied, const output_t& r ) { tied.append( r ); }
+    };
+    template< typename input_t, typename output_t > struct operation_traits< input_t, output_t, true >
+    {
+        static void write( comma::csv::input_stream< input_t >& is, comma::csv::output_stream< output_t >& os, comma::csv::tied< input_t, output_t >& tied, const output_t& r ) { os.write( r, is.last() ); }
+    };
+    template< typename input_t, typename output_t, bool InPlace = false >
     struct operation_t
     {
-        virtual output_t calc(const input_t& in) const = 0;
+        virtual output_t calc( const input_t& in ) const = 0;
         input_t default_input;
-        operation_t(const input_t& def):default_input(def){}
-        operation_t(){}
-        void run(const comma::csv::options& csv_opt)
+        operation_t( const input_t& def ): default_input( def ) {}
+        operation_t() {}
+        void run( const comma::csv::options& csv_opt )
         {
-            comma::csv::input_stream<input_t> is( std::cin, csv_opt, default_input);
-            comma::csv::output_stream<output_t> os( std::cout, csv_opt.binary(), false, csv_opt.flush );
-            comma::csv::tied<input_t,output_t> tied(is,os);
-            while(is.ready() || std::cin.good())
+            comma::csv::input_stream< input_t > is( std::cin, csv_opt, default_input );
+            comma::csv::output_stream< output_t > os( std::cout, csv_opt.binary(), false, csv_opt.flush );
+            comma::csv::tied< input_t, output_t > tied( is, os );
+            while( is.ready() || std::cin.good() )
             {
-                const input_t* rec=is.read();
-                if(!rec){break;}
-                tied.append(calc(*rec));
+                const input_t* rec = is.read();
+                if( !rec ){ break; }
+                operation_traits< input_t, output_t, InPlace >::write( is, os, tied, calc( *rec ) ); // quick and dirty; tied.append( calc( *rec ) );
             }
         }
-        void input_fields(){std::cout<<comma::join( comma::csv::names<input_t>(true), ',' ) << std::endl; }
-        void output_fields(){std::cout<<comma::join( comma::csv::names<output_t>(false), ',' ) << std::endl; }
-        void output_format(){std::cout<<comma::csv::format::value<output_t>() << std::endl; }
+        static void input_fields(){std::cout<<comma::join( comma::csv::names<input_t>(true), ',' ) << std::endl; }
+        static void output_fields(){std::cout<<comma::join( comma::csv::names<output_t>(false), ',' ) << std::endl; }
+        static void output_format(){std::cout<<comma::csv::format::value<output_t>() << std::endl; }
     };
     struct vector_pair
     {
@@ -240,57 +251,42 @@ struct vector_calc
     {
         cross(){}
         cross(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
-        vector calc(const vector_pair& in) const
-        {
-            return in.v.cross(in.u);
-        }
+        vector calc(const vector_pair& in) const { return in.v.cross(in.u); }
     };
     struct dot:operation_t<vector_pair,scalar>
     {
         dot(){}
         dot(const vector& default1, const vector& default2 ):operation_t(vector_pair(default1,default2)){}
-        scalar calc(const vector_pair& in) const
-        {
-            return in.v.dot(in.u);
-        }
+        scalar calc(const vector_pair& in) const { return in.v.dot(in.u); }
     };
     struct norm:operation_t<vector,scalar>
     {
         norm(){}
-        norm(const vector& default1, bool squre=false, bool invert=false ) :
-            operation_t(default1)
-            ,_squre(squre)
-            ,_invert(invert)
-        {
-        }
+        norm(const vector& default1, bool square=false, bool invert=false ): operation_t(default1),_square(square),_invert(invert) {}
         scalar calc(const vector& in) const
         {
-            double d=_squre?in.squaredNorm(): in.norm();
-            return _invert?1.0/d:d;
+            double d = _square ? in.squaredNorm() : in.norm();
+            return _invert ? 1.0 / d : d;
         }
-        bool _squre;
+        bool _square;
         bool _invert;
     };
     typedef std::pair<vector,scalar> vector_scalarpair;
     struct scale:operation_t<vector_scalarpair,vector>
     {
         scale(){}
-        scale(const vector& v, const scalar& s, bool invert=false ) :
-            operation_t(vector_scalarpair(v,s))
-            ,_invert(invert)
-        {
-        }
+        scale(const vector& v, const scalar& s, bool invert=false ): operation_t(vector_scalarpair(v,s)),_invert(invert) {}
         vector calc(const vector_scalarpair& in) const
         {
-            double d=_invert?1/in.second.a:in.second.a;
-            return d*in.first;
+            double d =_invert ? 1. / in.second.a : in.second.a;
+            return d * in.first;
         }
         bool _invert;
     };
-    struct normalize:operation_t<vector,vector>
+    template < bool InPlace = false > struct normalize: operation_t< vector, vector, InPlace >
     {
         normalize(): factor( 1. ) {}
-        normalize( const vector& v, double factor = 1. ) : operation_t( v ), factor( factor ) {}
+        normalize( const vector& v, double factor = 1. ) : operation_t< vector, vector, InPlace >( v ), factor( factor ) {}
         vector calc( const vector& in ) const { return in.normalized() * factor; }
         double factor;
     };
@@ -322,7 +318,6 @@ struct vector_calc
 vector_calc::vector vector_calc::vzero=Eigen::Vector3d::Zero();
 
 namespace comma { namespace visiting {
-
 
 template <> struct traits< vector_calc::vector_pair >
 {
@@ -379,7 +374,6 @@ template <> struct traits< vector_calc::scalar >
         v.apply( "scalar", t.a);
     }
 };
-
 
 } } // namespace comma { namespace visiting {
     
