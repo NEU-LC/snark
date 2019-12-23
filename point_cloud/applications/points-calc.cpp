@@ -68,6 +68,14 @@ struct point_with_block
     point_with_block() : coordinates( Eigen::Vector3d::Zero() ), block( 0 ) {}
 };
 
+struct point_with_id
+{
+    Eigen::Vector3d coordinates;
+    comma::uint32 block;
+    comma::uint32 id;
+    point_with_id() : coordinates( Eigen::Vector3d::Zero() ), block( 0 ), id( 0 ) {}
+};
+
 struct point_with_direction : public Eigen::Vector3d // todo: a bit of trash bin... decouple trajectory-partition operation into a set of operations?
 {
     Eigen::Vector3d direction;
@@ -1005,16 +1013,17 @@ class proportional_thinner
 class fixed_number_thinner
 {
     public:
-        fixed_number_thinner( unsigned int points_per_voxel_ )
-            : points_per_voxel( points_per_voxel_ )
-            , count( 0 )
-        {}
+        fixed_number_thinner( unsigned int points_per_voxel ): available_( points_per_voxel ) {}
 
-        bool keep() { return( ++count <= points_per_voxel ); }
+        bool keep()
+        {
+            if( available_ == 0 ) { return false; }
+            --available_;
+            return true;
+        }
 
     private:
-        unsigned int points_per_voxel;
-        unsigned int count;
+        unsigned int available_;
 };
 
 template < typename T >
@@ -1365,6 +1374,23 @@ template <> struct traits< point_with_block >
     {
         v.apply( "coordinates", t.coordinates );
         v.apply( "block", t.block );
+    }
+};
+
+template <> struct traits< point_with_id >
+{
+    template< typename K, typename V > static void visit( const K&, const point_with_id& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "block", t.block );
+        v.apply( "id", t.id );
+    }
+
+    template< typename K, typename V > static void visit( const K&, point_with_id& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "block", t.block );
+        v.apply( "id", t.id );
     }
 };
 
