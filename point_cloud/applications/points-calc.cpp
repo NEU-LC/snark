@@ -997,7 +997,7 @@ class proportional_thinner
     public:
         proportional_thinner( double rate ) : increment_( 1.0 / rate ) { count_ = ( std::isinf( increment_ ) ? 0.0 : increment_ / 2.0 ); }
 
-        bool keep()
+        bool keep( const point& )
         {
             count_ += 1.0;
             if( count_ < increment_ ) { return false; }
@@ -1015,7 +1015,7 @@ class fixed_number_thinner
     public:
         fixed_number_thinner( unsigned int points_per_voxel ): available_( points_per_voxel ) {}
 
-        bool keep()
+        bool keep( const point& )
         {
             if( available_ == 0 ) { return false; }
             --available_;
@@ -1029,38 +1029,20 @@ class fixed_number_thinner
 template < typename T >
 int process( double resolution, const T& empty_thinner, const comma::csv::options& csv )
 {
-    Eigen::Vector3d resolution_vector( resolution, resolution, resolution );
-    snark::voxel_map< T, 3 > grid( resolution_vector );
-
+    snark::voxel_map< T, 3 > grid( Eigen::Vector3d( resolution, resolution, resolution ); );
     comma::uint32 block = 0;
     comma::csv::input_stream< thin_operation::point > istream( std::cin, csv );
+    comma::csv::passed< thin_operation::point > passed( istream, std::cout );
     while( istream.ready() || std::cin.good() )
     {
         const thin_operation::point* p = istream.read();
         if( !p ) { break; }
-
-        std::string line;
-        if( csv.binary() ) // quick and dirty
-        {
-            line.resize( csv.format().size() );
-            ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
-        }
-        else
-        {
-            line = comma::join( istream.ascii().last(), csv.delimiter );
-        }
-
         if( block != p->block ) { grid.clear(); }
         block = p->block;
-
-        thin_operation::record record( *p, line );
-        // return the thinner for this voxel if it exists, or create a new one
         T* thinner = &grid.insert( p->coordinates, empty_thinner ).first->second;
-
-        if( thinner->keep() )
+        if( thinner->keep( *p ) )
         {
-            std::cout.write( &line[0], line.size() );
-            if( !csv.binary() ) { std::cout << "\n"; }
+            passed.write();
             if( csv.flush ) { std::cout.flush(); }
         }
     }
