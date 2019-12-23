@@ -1029,7 +1029,7 @@ class fixed_number_thinner
 template < typename T >
 int process( double resolution, const T& empty_thinner, const comma::csv::options& csv )
 {
-    snark::voxel_map< T, 3 > grid( Eigen::Vector3d( resolution, resolution, resolution ); );
+    snark::voxel_map< T, 3 > grid( Eigen::Vector3d( resolution, resolution, resolution ) );
     comma::uint32 block = 0;
     comma::csv::input_stream< thin_operation::point > istream( std::cin, csv );
     comma::csv::passed< thin_operation::point > passed( istream, std::cout );
