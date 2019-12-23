@@ -1010,10 +1010,10 @@ class proportional_thinner
         double count_;
 };
 
-class fixed_number_thinner
+class points_per_voxel_thinner
 {
     public:
-        fixed_number_thinner( unsigned int points_per_voxel ): available_( points_per_voxel ) {}
+        points_per_voxel_thinner( unsigned int points_per_voxel ): available_( points_per_voxel ) {}
 
         bool keep( const point& )
         {
@@ -1570,32 +1570,14 @@ int main( int ac, char** av )
                     }
                     last = *p;
                 }
+                return 0;
             }
-            else
-            {
-                if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
-                csv.full_xpath = false;
-                if( options.exists( "--rate" ))
-                {
-                    typedef thin_operation::proportional_thinner thinner_t;
-
-                    double rate = options.value< double >( "--rate" );
-                    if( comma::math::less( rate, 0 ) || comma::math::less( 1, rate )) { std::cerr << "points-calc: expected rate between 0 and 1, got " << rate << std::endl; return 1; }
-
-                    thinner_t empty_thinner( rate );
-                    return thin_operation::process< thinner_t >( resolution, empty_thinner, csv );
-                }
-                if( options.exists( "--points-per-voxel" ))
-                {
-                    typedef thin_operation::fixed_number_thinner thinner_t;
-                    unsigned int points_per_voxel = options.value< unsigned int >( "--points-per-voxel" );
-                    thinner_t empty_thinner( points_per_voxel );
-                    return thin_operation::process< thinner_t >( resolution, empty_thinner, csv );
-                }
-                std::cerr << "points-calc: spatial thinning requires one of --rate or --points-per-voxel" << std::endl;
-                return 1;
-            }
-            return 0;
+            if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+            csv.full_xpath = false;
+            if( options.exists( "--rate" ) ) { return thin_operation::process( resolution, thin_operation::proportional_thinner( options.value< double >( "--rate" ) ), csv ); }
+            if( options.exists( "--points-per-voxel" ) ) { return thin_operation::process( resolution, thin_operation::points_per_voxel_thinner( options.value< unsigned int >( "--points-per-voxel" ) ), csv ); }
+            std::cerr << "points-calc: spatial thinning requires one of --rate or --points-per-voxel" << std::endl;
+            return 1;
         }
         if( operation == "trajectory-discretise" || operation == "discretise" || operation == "discretize" )
         {
