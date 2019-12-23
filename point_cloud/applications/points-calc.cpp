@@ -119,6 +119,7 @@ static void usage( bool verbose = false )
     std::cerr << "    trajectory-cumulative-distance,cumulative-distance" << std::endl;
     std::cerr << "    trajectory-cumulative-discretise,cumulative-discretise,cumulative-discretize,sample" << std::endl;
     std::cerr << "    trajectory-partition" << std::endl;
+    std::cerr << "    trajectory-thin" << std::endl;
     std::cerr << "    triangles-discretise,triangles-discretize" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
@@ -300,11 +301,11 @@ static void usage( bool verbose = false )
     std::cerr << "                                    takes the first <n> points" << std::endl;
     std::cerr << "                --resolution=<distance>: size of voxels" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        linear:" << std::endl;
+    std::cerr << "        linear (deprecated, use trajectory-thin):" << std::endl;
     std::cerr << "            assume the input is a sequence of points of a trajectory" << std::endl;
     std::cerr << std::endl;
     std::cerr << "            options:" << std::endl;
-    std::cerr << "                --linear: activates this mode" << std::endl;
+    std::cerr << "                --linear (deprecated, use trajectory-thin): activates this mode" << std::endl;
     std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    trajectory calculations" << std::endl;
@@ -382,6 +383,13 @@ static void usage( bool verbose = false )
     std::cerr << "                --input-format; print input format and exit" << std::endl;
     std::cerr << "                --output-fields; print output fields and exit" << std::endl;
     std::cerr << "                --output-format; print output format and exit" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "        trajectory-thin (replaces deprecated thin --linear)" << std::endl;
+    std::cerr << "            read points of a trajectory and thin them down" << std::endl;
+    std::cerr << "            input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    std::cerr << "            options:" << std::endl;
+    std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
+    std::cerr << std::endl;
     std::cerr << std::endl;
 //     std::cerr << "        trajectory-partitions-match" << std::endl;
 //     std::cerr << "            read input, append partition ids based on a rule or heuristic (see options below)" << std::endl;
@@ -1542,12 +1550,31 @@ int main( int ac, char** av )
             else { std::cout << csv.delimiter << min_distance << std::endl; }
             return 0;
         }
+        if( operation == "trajectory-thin" )
+        {
+            double resolution = options.value< double >( "--resolution" );
+            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+            comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
+            boost::optional< Eigen::Vector3d > last;
+            double distance = 0;
+            while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+            {
+                const Eigen::Vector3d* p = istream.read();
+                if( !p ) { break; }
+                distance += last ? ( *p - *last ).norm() : 0;
+                if( !last || distance >= resolution ) { distance = 0; passed.write(); }
+                last = *p;
+            }
+            return 0;
+        }
         if( operation == "thin" )
         {
             double resolution = options.value< double >( "--resolution" );
             if( options.exists( "--linear" ))
             {
+                std::cerr << "points-calc: thin --linear: DEPRECATED, use trajectory-thin instead" << std::endl;
                 comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+                comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
                 boost::optional< Eigen::Vector3d > last;
                 double distance = 0;
                 while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -1555,19 +1582,7 @@ int main( int ac, char** av )
                     const Eigen::Vector3d* p = istream.read();
                     if( !p ) { break; }
                     distance += last ? ( *p - *last ).norm() : 0;
-                    if( !last || distance >= resolution )
-                    {
-                        distance = 0;
-                        if( csv.binary() )
-                        {
-                            std::cout.write( istream.binary().last(), istream.binary().binary().format().size() );
-                            if( csv.flush ) { std::cout.flush(); }
-                        }
-                        else
-                        {
-                            std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << std::endl;
-                        }
-                    }
+                    if( !last || distance >= resolution ) { distance = 0; passed.write(); }
                     last = *p;
                 }
                 return 0;
@@ -1576,7 +1591,7 @@ int main( int ac, char** av )
             csv.full_xpath = false;
             if( options.exists( "--rate" ) ) { return thin_operation::process( resolution, thin_operation::proportional_thinner( options.value< double >( "--rate" ) ), csv ); }
             if( options.exists( "--points-per-voxel" ) ) { return thin_operation::process( resolution, thin_operation::points_per_voxel_thinner( options.value< unsigned int >( "--points-per-voxel" ) ), csv ); }
-            std::cerr << "points-calc: spatial thinning requires one of --rate or --points-per-voxel" << std::endl;
+            std::cerr << "points-calc: thin: please specify either --linear, or --rate, or --points-per-voxel" << std::endl;
             return 1;
         }
         if( operation == "trajectory-discretise" || operation == "discretise" || operation == "discretize" )
