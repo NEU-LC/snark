@@ -286,20 +286,22 @@ static void usage( bool verbose = false )
     std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
     std::cerr << snark::points_calc::triangles_discretise::traits::usage() << std::endl;
     std::cerr << "    thin" << std::endl;
-    std::cerr << "        read input data and thin it down" << std::endl;
+    std::cerr << "        read input points and thin it down" << std::endl;
     std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "        there are two modes:" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        spatial:" << std::endl;
     std::cerr << "            thins data uniformly across space by creating voxels and thinning" << std::endl;
-    std::cerr << "            within each. Respects block fields." << std::endl;
+    std::cerr << "            within each; if block field is present, clears voxel grid on a new block" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "            options:" << std::endl;
-    std::cerr << "                --rate: rate of thinning, between 0.0 and 1.0" << std::endl;
-    std::cerr << "                --points-per-voxel: number of points to retain in each voxel" << std::endl;
+    std::cerr << "            options" << std::endl;
+    std::cerr << "                --id-filter: todo; output only the first point with a given id in a voxel" << std::endl;
+    std::cerr << "                --id-pass: output only the points with the id of the point first to hit a voxel" << std::endl;
+    std::cerr << "                --points-per-voxel=[<n>]: number of points to retain in each voxel" << std::endl;
     std::cerr << "                                    takes the first <n> points" << std::endl;
-    std::cerr << "                --resolution=<distance>: size of voxels" << std::endl;
+    std::cerr << "                --rate: rate of thinning, between 0.0 and 1.0" << std::endl;
+    std::cerr << "                --resolution=<voxel-grid-resolution>: size of cubic voxels, e.g. --resolution=0.1" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        linear (deprecated, use trajectory-thin):" << std::endl;
     std::cerr << "            assume the input is a sequence of points of a trajectory" << std::endl;
@@ -412,7 +414,7 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-static void calculate_distance( bool cumulative, bool propagate = false, bool differential = false )
+static int calculate_distance( bool cumulative, bool propagate = false, bool differential = false )
 {
     if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
     csv.full_xpath = false;
@@ -441,9 +443,10 @@ static void calculate_distance( bool cumulative, bool propagate = false, bool di
             std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << distance << std::endl;
         }
     }
+    return 0;
 }
 
-static void calculate_distance_next( bool propagate )
+static int calculate_distance_next( bool propagate )
 {
     comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
     boost::optional< Eigen::Vector3d > last;
@@ -481,9 +484,10 @@ static void calculate_distance_next( bool propagate )
         }
         else { std::cout << csv.delimiter << fake_final_distance << std::endl; }
     }
+    return 0;
 }
 
-static void calculate_distance_for_pairs( bool propagate )
+static int calculate_distance_for_pairs( bool propagate )
 {
     comma::csv::input_stream< point_pair_t > istream( std::cin, csv, point_pair_t( Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() ) );
     double previous_norm = 0;
@@ -504,10 +508,10 @@ static void calculate_distance_for_pairs( bool propagate )
             std::cout << comma::join( istream.ascii().last(), csv.delimiter ) << csv.delimiter << norm << std::endl;
         }
     }
+    return 0;
 }
 
-namespace percentile_in_radius
-{
+namespace percentile_in_radius {
 
 struct input_t
 {
@@ -704,7 +708,7 @@ static void execute( double const radius, double const percentile, size_t const 
     }
 }
 
-} // namespace percentile_in_radius
+} // namespace percentile_in_radius {
 
 namespace angle_axis_relative
 {
@@ -989,16 +993,7 @@ static int trajectory_cumulative_discretise( const comma::command_line_options& 
     
 namespace thin_operation {
 
-typedef point_with_block point;
-
-struct record
-{
-    thin_operation::point point;
-    std::string line;
-    
-    record() {}
-    record( const thin_operation::point& p, const std::string& line ) : point( p ), line( line ) {}
-};
+typedef point_with_id point;
 
 class proportional_thinner
 {
@@ -1012,6 +1007,8 @@ class proportional_thinner
             count_ -= increment_;
             return true;
         }
+        
+        const proportional_thinner& updated( const point& ) const { return *this; }
 
     private:
         double increment_;
@@ -1029,9 +1026,23 @@ class points_per_voxel_thinner
             --available_;
             return true;
         }
+        
+        const points_per_voxel_thinner& updated( const point& ) const { return *this; }
 
     private:
         unsigned int available_;
+};
+
+class id_thinner
+{
+    public:
+        id_thinner(): id_( 0 ) {}
+        id_thinner( comma::uint32 id ): id_( id ) {}
+        bool keep( const point& p ) const { return p.id == id_; }
+        id_thinner updated( const point& p ) const { return id_thinner( p.id ); }
+        
+    private:
+        comma::uint32 id_;
 };
 
 template < typename T >
@@ -1047,7 +1058,7 @@ int process( double resolution, const T& empty_thinner, const comma::csv::option
         if( !p ) { break; }
         if( block != p->block ) { grid.clear(); }
         block = p->block;
-        T* thinner = &grid.insert( p->coordinates, empty_thinner ).first->second;
+        T* thinner = &grid.insert( p->coordinates, empty_thinner.updated( *p ) ).first->second;
         if( thinner->keep( *p ) )
         {
             passed.write();
@@ -1060,7 +1071,6 @@ int process( double resolution, const T& empty_thinner, const comma::csv::option
 } // namespace thin_operation {
 
 namespace trajectory_chord_operation {
-
 
 struct record
 {
@@ -1451,7 +1461,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--in-place,--from,--to,--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--input-fields,--input-format,--output-fields,--output-format,--filter,--fast,--percentile,--min-count,--output-percentile-only,--output-percentile,--output-points-only,--points-only,--discard-input,--output-sides-only,--sides-only,--output-internal-only,--internal-only", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--id-filter,-id-pass,--in-place,--from,--to,--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--input-fields,--input-format,--output-fields,--output-format,--filter,--fast,--percentile,--min-count,--output-percentile-only,--output-percentile,--output-points-only,--points-only,--discard-input,--output-sides-only,--sides-only,--output-internal-only,--internal-only", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "frame-integrate" || operation == "integrate-frame" ) { return run< snark::points_calc::frame::integrate::traits >( options ); }
@@ -1467,17 +1477,11 @@ int main( int ac, char** av )
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
             if( options.exists("--output-format" )){ std::cout << "d" << std::endl; return 0; }
             bool propagate = options.exists( "--propagate" );
-            if(    csv.has_field( "first" )   || csv.has_field( "second" )
-                || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
-                || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
-                || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
-            {
-                calculate_distance_for_pairs( propagate );
-                return 0;
-            }
-            if ( options.exists( "--next" ) ) { calculate_distance_next( propagate ); }
-            else { calculate_distance( false, propagate ); }
-            return 0;
+            return csv.has_some_of_fields( "first,first/x,first/y,first/z,second,second/x,second/y,second/z" )
+                   ? calculate_distance_for_pairs( propagate )
+                   : options.exists( "--next" )
+                   ? calculate_distance_next( propagate )
+                   : calculate_distance( false, propagate );
         }
         if( operation == "trajectory-cumulative-distance" || operation == "cumulative-distance" )
         {
@@ -1485,8 +1489,7 @@ int main( int ac, char** av )
             if( options.exists("--input-format" ) ) { std::cout << comma::csv::format::value< point_with_block >() << std::endl; return 0; }
             if( options.exists("--output-fields" ) ) { std::cout << "distance" << std::endl; return 0; }
             if( options.exists("--output-format" ) ) { std::cout << "d" << std::endl; return 0; }
-            calculate_distance( true, false, options.exists( "--differential,--diff" ) );
-            return 0;
+            return calculate_distance( true, false, options.exists( "--differential,--diff" ) );
         }
         if( operation == "percentile-in-radius" || operation == "percentile-in-range" || operation == "percentile" )
         {
@@ -1494,11 +1497,9 @@ int main( int ac, char** av )
             auto const percentile_only = options.exists( "--output-percentile-only,--output-percentile" );
             auto const radius = options.value< double >( "--radius" );
             auto const min_count = options.value< size_t >( "--min-count", 0U );
-
             auto percentile = options.value< double >( "--percentile" );
             if( comma::math::less( percentile, 0.0 ) || comma::math::less( 1.0, percentile ) ) { COMMA_THROW( comma::exception, "percentile must be in [0,1], got: " << percentile ); }
             if( comma::math::equal( percentile, 0.0 ) ) { percentile = std::numeric_limits< double >::min(); }
-
             percentile_in_radius::execute( radius, percentile, min_count, force, percentile_only );
             return 0;
         }
@@ -1591,7 +1592,8 @@ int main( int ac, char** av )
             csv.full_xpath = false;
             if( options.exists( "--rate" ) ) { return thin_operation::process( resolution, thin_operation::proportional_thinner( options.value< double >( "--rate" ) ), csv ); }
             if( options.exists( "--points-per-voxel" ) ) { return thin_operation::process( resolution, thin_operation::points_per_voxel_thinner( options.value< unsigned int >( "--points-per-voxel" ) ), csv ); }
-            std::cerr << "points-calc: thin: please specify either --linear, or --rate, or --points-per-voxel" << std::endl;
+            if( csv.has_field( "id" ) ) { return thin_operation::process( resolution, thin_operation::id_thinner(), csv ); }
+            std::cerr << "points-calc: thin: please specify either --rate, or --points-per-voxel, or id field" << std::endl;
             return 1;
         }
         if( operation == "trajectory-discretise" || operation == "discretise" || operation == "discretize" )
