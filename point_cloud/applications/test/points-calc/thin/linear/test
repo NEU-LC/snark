@@ -1,4 +1,3 @@
 #!/bin/bash
 
-points-calc thin --linear --resolution 1 \
-    | name-value-from-csv -f line --prefix output -n -d ' '
+points-calc trajectory-thin --resolution 1 | name-value-from-csv -f line --prefix output -n -d ' '
