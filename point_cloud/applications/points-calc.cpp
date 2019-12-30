@@ -52,9 +52,10 @@
 #include "points-calc/plane_intersection.h"
 #include "points-calc/plane_intersection_with_trajectory.h"
 #include "points-calc/project.h"
-#include "points-calc/vector_calc.h"
 #include "points-calc/remove_outliers.h"
+#include "points-calc/thin.h"
 #include "points-calc/triangles_discretise.h"
+#include "points-calc/vector_calc.h"
 
 static comma::csv::options csv;
 static bool verbose;
@@ -67,14 +68,6 @@ struct point_with_block
     Eigen::Vector3d coordinates;
     comma::uint32 block;
     point_with_block() : coordinates( Eigen::Vector3d::Zero() ), block( 0 ) {}
-};
-
-struct point_with_id
-{
-    Eigen::Vector3d coordinates;
-    comma::uint32 block;
-    comma::uint32 id;
-    point_with_id() : coordinates( Eigen::Vector3d::Zero() ), block( 0 ), id( 0 ) {}
 };
 
 struct point_with_direction : public Eigen::Vector3d // todo: a bit of trash bin... decouple trajectory-partition operation into a set of operations?
@@ -285,34 +278,8 @@ static void usage( bool verbose = false )
     std::cerr << snark::points_calc::project::onto_plane::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::thin::traits::usage() << std::endl;
     std::cerr << snark::points_calc::triangles_discretise::traits::usage() << std::endl;
-    std::cerr << "    thin" << std::endl;
-    std::cerr << "        read input points and thin it down" << std::endl;
-    std::cerr << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        there are two modes:" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        spatial:" << std::endl;
-    std::cerr << "            thins data uniformly across space by creating voxels and thinning" << std::endl;
-    std::cerr << "            within each; if block field is present, clears voxel grid on a new block" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "            options" << std::endl;
-    std::cerr << "                --id-filter: todo; output only the first point with a given id in a voxel" << std::endl;
-    std::cerr << "                           if no id field present, equivalent to --points-per-voxel=1" << std::endl;
-    std::cerr << "                --id-pass: output only the points with the id of the point first to hit a voxel," << std::endl;
-    std::cerr << "                           if no id field present, passes all points through" << std::endl;
-    std::cerr << "                --points-per-voxel=[<n>]: number of points to retain in each voxel" << std::endl;
-    std::cerr << "                                    takes the first <n> points" << std::endl;
-    std::cerr << "                --rate: rate of thinning, between 0.0 and 1.0" << std::endl;
-    std::cerr << "                --resolution=<value>; e.g. either --resolution=0.1 or for non-cubic voxels: --resolution=0.1,0.2,0.3" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "        linear (deprecated, use trajectory-thin):" << std::endl;
-    std::cerr << "            assume the input is a sequence of points of a trajectory" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "            options:" << std::endl;
-    std::cerr << "                --linear (deprecated, use trajectory-thin): activates this mode" << std::endl;
-    std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
-    std::cerr << std::endl;
     std::cerr << "    trajectory calculations" << std::endl;
     std::cerr << "        the following operations perform calculations on trajectories." << std::endl;
     std::cerr << "        a trajectory is an ordered sequence of points" << std::endl;
@@ -988,87 +955,6 @@ static int trajectory_cumulative_discretise( const comma::command_line_options& 
     return 0;
 }
     
-namespace thin_operation {
-
-typedef point_with_id point;
-
-class proportional_thinner
-{
-    public:
-        proportional_thinner( double rate ) : increment_( 1.0 / rate ) { count_ = ( std::isinf( increment_ ) ? 0.0 : increment_ / 2.0 ); }
-
-        bool keep( const point& )
-        {
-            count_ += 1.0;
-            if( count_ < increment_ ) { return false; }
-            count_ -= increment_;
-            return true;
-        }
-        
-        const proportional_thinner& updated( const point& ) const { return *this; }
-
-    private:
-        double increment_;
-        double count_;
-};
-
-class points_per_voxel_thinner
-{
-    public:
-        points_per_voxel_thinner( unsigned int points_per_voxel ): available_( points_per_voxel ) {}
-
-        bool keep( const point& )
-        {
-            if( available_ == 0 ) { return false; }
-            --available_;
-            return true;
-        }
-        
-        const points_per_voxel_thinner& updated( const point& ) const { return *this; }
-
-    private:
-        unsigned int available_;
-};
-
-class id_pass_thinner
-{
-    public:
-        id_pass_thinner(): id_( 0 ) {}
-        id_pass_thinner( comma::uint32 id ): id_( id ) {}
-        bool keep( const point& p ) const { return p.id == id_; }
-        id_pass_thinner updated( const point& p ) const { return id_pass_thinner( p.id ); }
-        
-    private:
-        comma::uint32 id_;
-};
-
-template < typename T >
-int process( const Eigen::Vector3d& resolution, const T& thinner, const comma::csv::options& csv )
-{
-    typedef snark::voxel_map< T, 3 > grid_t;
-    std::unordered_map< comma::uint32, grid_t > grids; //( resolution );
-    comma::uint32 block = 0;
-    comma::csv::input_stream< thin_operation::point > istream( std::cin, csv );
-    comma::csv::passed< thin_operation::point > passed( istream, std::cout );
-    while( istream.ready() || std::cin.good() )
-    {
-        const thin_operation::point* p = istream.read();
-        if( !p ) { break; }
-        auto it = grids.find( p->id );
-        if( it == grids.end() ) { it = grids.insert( std::make_pair( p->id, grid_t( resolution ) ) ).first; }
-        grid_t& grid = it->second;
-        if( block != p->block ) { for( auto& g: grids ) { g.second.clear(); } }
-        block = p->block;
-        T* t = &grid.insert( p->coordinates, thinner.updated( *p ) ).first->second;
-        if( !t->keep( *p ) ) { continue; }
-        passed.write();
-        if( csv.flush ) { std::cout.flush(); }
-    }
-    return 0;
-}
-
-} // namespace thin_operation {
-
 namespace trajectory_chord_operation {
 
 struct record
@@ -1376,23 +1262,6 @@ template <> struct traits< point_with_block >
     }
 };
 
-template <> struct traits< point_with_id >
-{
-    template< typename K, typename V > static void visit( const K&, const point_with_id& t, V& v )
-    {
-        v.apply( "coordinates", t.coordinates );
-        v.apply( "block", t.block );
-        v.apply( "id", t.id );
-    }
-
-    template< typename K, typename V > static void visit( const K&, point_with_id& t, V& v )
-    {
-        v.apply( "coordinates", t.coordinates );
-        v.apply( "block", t.block );
-        v.apply( "id", t.id );
-    }
-};
-
 template <> struct traits< local_operation::point >
 {
     template< typename K, typename V > static void visit( const K&, const local_operation::point& t, V& v )
@@ -1567,44 +1436,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
-        if( operation == "thin" )
-        {
-            if( options.exists( "--linear" ))
-            {
-                double resolution = options.value< double >( "--resolution" );
-                std::cerr << "points-calc: thin --linear: DEPRECATED, use trajectory-thin instead" << std::endl;
-                comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
-                comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
-                boost::optional< Eigen::Vector3d > last;
-                double distance = 0;
-                while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
-                {
-                    const Eigen::Vector3d* p = istream.read();
-                    if( !p ) { break; }
-                    distance += last ? ( *p - *last ).norm() : 0;
-                    if( !last || distance >= resolution ) { distance = 0; passed.write(); }
-                    last = *p;
-                }
-                return 0;
-            }
-            if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
-            csv.full_xpath = false;
-            options.assert_mutually_exclusive( "--id-filter,-id-pass,--points-per-voxel,--rate" );
-            auto s = options.value< std::string >( "--resolution" );
-            Eigen::Vector3d r;
-            switch( comma::split( s, ',' ).size() )
-            {
-                case 1: { double v = boost::lexical_cast< double >( s ); r = Eigen::Vector3d( v, v, v ); break; }
-                case 3: r = comma::csv::ascii< Eigen::Vector3d >().get( s ); break;
-                default: std::cerr << "points-calc: thin: expected --resolution as <value> or <x>,<y>,<z>; got: '" << s << "'" << std::endl; return 1;
-            }
-            if( options.exists( "--rate" ) ) { return thin_operation::process( r, thin_operation::proportional_thinner( options.value< double >( "--rate" ) ), csv ); }
-            if( options.exists( "--points-per-voxel" ) ) { return thin_operation::process( r, thin_operation::points_per_voxel_thinner( options.value< unsigned int >( "--points-per-voxel" ) ), csv ); }
-            if( options.exists( "--id-filter" ) ) { std::cerr << "points-calc: thin: --id-filter: todo" << std::endl; return 1; }
-            if( options.exists( "--id-pass" ) ) { return thin_operation::process( r, thin_operation::id_pass_thinner(), csv ); }
-            std::cerr << "points-calc: thin: please specify either --rate, or --points-per-voxel, or --id-filter, or --id-pass" << std::endl;
-            return 1;
-        }
+        if( operation == "thin" ) { return run< snark::points_calc::thin::traits >( options ); }
         if( operation == "trajectory-discretise" || operation == "discretise" || operation == "discretize" )
         {
             double step = options.value< double >( "--step" );

@@ -1,0 +1,255 @@
+// This file is provided in addition to snark and is not an integral
+// part of snark library.
+// Copyright (c) 2018 Vsevolod Vlaskine
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// snark is a generic and flexible library for robotics research
+// Copyright (c) 2011 The University of Sydney
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. Neither the name of the University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/// @author vsevolod vlaskine
+
+#include <sstream>
+#include <unordered_map>
+#include <Eigen/Core>
+#include <comma/csv/stream.h>
+#include <comma/string/string.h>
+#include "../../../visiting/eigen.h"
+#include "../../voxel_map.h"
+#include "thin.h"
+
+namespace snark { namespace points_calc { namespace thin {
+
+std::string traits::usage()
+{
+    std::ostringstream oss;
+    oss << "    thin" << std::endl;
+    oss << "        read input points and thin it down" << std::endl;
+    oss << "        input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
+    oss << std::endl;
+    oss << "        thins data uniformly across space by creating voxels and thinning" << std::endl;
+    oss << "        within each; if block field is present, clears voxel grid on a new block" << std::endl;
+    oss << std::endl;
+    oss << "        options" << std::endl;
+    oss << "            --id-filter: todo; output only the first point with a given id in a voxel" << std::endl;
+    oss << "                         if no id field present, equivalent to --points-per-voxel=1" << std::endl;
+    oss << "            --id-pass: output only the points with the id of the point first to hit a voxel," << std::endl;
+    oss << "                         if no id field present, passes all points through" << std::endl;
+    oss << "            --points-per-voxel=[<n>]: number of points to retain in each voxel" << std::endl;
+    oss << "                                      takes the first <n> points" << std::endl;
+    oss << "            --rate: rate of thinning, between 0.0 and 1.0" << std::endl;
+    oss << "            --resolution=<value>; e.g. either --resolution=0.1 or for non-cubic voxels: --resolution=0.1,0.2,0.3" << std::endl;
+    oss << "                                  if --linear (DEPRECATED), minimum distance between points" << std::endl;
+    oss << std::endl;
+    std::cerr << "      --linear: DEPRECATED, will be removed soon; use trajectory-thin:" << std::endl;
+    std::cerr << "                assume the input is a sequence of points of a trajectory" << std::endl;
+    std::cerr << std::endl;
+    return oss.str();    
+}
+
+struct point
+{
+    Eigen::Vector3d coordinates;
+    comma::uint32 block;
+    comma::uint32 id;
+    point() : coordinates( Eigen::Vector3d::Zero() ), block( 0 ), id( 0 ) {}
+};
+
+typedef point input;
+
+} } } // namespace snark { namespace points_calc { namespace thin {
+
+namespace comma { namespace visiting {
+
+template <> struct traits< snark::points_calc::thin::input >
+{
+    template< typename K, typename V > static void visit( const K&, const snark::points_calc::thin::input& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "block", t.block );
+        v.apply( "id", t.id );
+    }
+
+    template< typename K, typename V > static void visit( const K&, snark::points_calc::thin::input& t, V& v )
+    {
+        v.apply( "coordinates", t.coordinates );
+        v.apply( "block", t.block );
+        v.apply( "id", t.id );
+    }
+};
+
+} } // namespace comma { namespace visiting {
+
+namespace snark { namespace points_calc { namespace thin {
+
+std::string traits::input_fields() { return comma::join( comma::csv::names< input >( true ), ',' ); }
+
+std::string traits::input_format() { return comma::csv::format::value< input >(); }
+    
+std::string traits::output_fields() { return ""; } // appends no fields
+
+std::string traits::output_format() { return ""; } // appends no fields
+
+class proportional_thinner
+{
+    public:
+        proportional_thinner( double rate ) : increment_( 1.0 / rate ) { count_ = ( std::isinf( increment_ ) ? 0.0 : increment_ / 2.0 ); }
+
+        bool keep( const point& )
+        {
+            count_ += 1.0;
+            if( count_ < increment_ ) { return false; }
+            count_ -= increment_;
+            return true;
+        }
+        
+        const proportional_thinner& updated( const point& ) const { return *this; }
+
+    private:
+        double increment_;
+        double count_;
+};
+
+class points_per_voxel_thinner
+{
+    public:
+        points_per_voxel_thinner( unsigned int points_per_voxel ): available_( points_per_voxel ) {}
+
+        bool keep( const point& )
+        {
+            if( available_ == 0 ) { return false; }
+            --available_;
+            return true;
+        }
+        
+        const points_per_voxel_thinner& updated( const point& ) const { return *this; }
+
+    private:
+        unsigned int available_;
+};
+
+class id_pass_thinner
+{
+    public:
+        id_pass_thinner(): id_( 0 ) {}
+        id_pass_thinner( comma::uint32 id ): id_( id ) {}
+        bool keep( const point& p ) const { return p.id == id_; }
+        id_pass_thinner updated( const point& p ) const { return id_pass_thinner( p.id ); }
+        
+    private:
+        comma::uint32 id_;
+};
+
+template < typename T >
+int process( const Eigen::Vector3d& resolution, const T& thinner, const comma::csv::options& csv )
+{
+    typedef snark::voxel_map< T, 3 > grid_t;
+    std::unordered_map< comma::uint32, grid_t > grids; //( resolution );
+    comma::uint32 block = 0;
+    comma::csv::input_stream< point > istream( std::cin, csv );
+    comma::csv::passed< point > passed( istream, std::cout );
+    while( istream.ready() || std::cin.good() )
+    {
+        const point* p = istream.read();
+        if( !p ) { break; }
+        auto it = grids.find( p->id );
+        if( it == grids.end() ) { it = grids.insert( std::make_pair( p->id, grid_t( resolution ) ) ).first; }
+        grid_t& grid = it->second;
+        if( block != p->block ) { for( auto& g: grids ) { g.second.clear(); } }
+        block = p->block;
+        T* t = &grid.insert( p->coordinates, thinner.updated( *p ) ).first->second;
+        if( !t->keep( *p ) ) { continue; }
+        passed.write();
+        if( csv.flush ) { std::cout.flush(); }
+    }
+    return 0;
+}
+
+int traits::run( const comma::command_line_options& options )
+{
+    comma::csv::options csv( options );
+    if( options.exists( "--linear" ) )
+    {
+        double resolution = options.value< double >( "--resolution" );
+        std::cerr << "points-calc: thin --linear: DEPRECATED, use trajectory-thin instead" << std::endl;
+        comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+        comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
+        boost::optional< Eigen::Vector3d > last;
+        double distance = 0;
+        while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+        {
+            const Eigen::Vector3d* p = istream.read();
+            if( !p ) { break; }
+            distance += last ? ( *p - *last ).norm() : 0;
+            if( !last || distance >= resolution ) { distance = 0; passed.write(); }
+            last = *p;
+        }
+        return 0;
+    }
+    if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
+    csv.full_xpath = false;
+    options.assert_mutually_exclusive( "--id-filter,-id-pass,--points-per-voxel,--rate" );
+    auto s = options.value< std::string >( "--resolution" );
+    Eigen::Vector3d r;
+    switch( comma::split( s, ',' ).size() )
+    {
+        case 1: { double v = boost::lexical_cast< double >( s ); r = Eigen::Vector3d( v, v, v ); break; }
+        case 3: r = comma::csv::ascii< Eigen::Vector3d >().get( s ); break;
+        default: std::cerr << "points-calc: thin: expected --resolution as <value> or <x>,<y>,<z>; got: '" << s << "'" << std::endl; return 1;
+    }
+    if( options.exists( "--rate" ) ) { return process( r, proportional_thinner( options.value< double >( "--rate" ) ), csv ); }
+    if( options.exists( "--points-per-voxel" ) ) { return process( r, points_per_voxel_thinner( options.value< unsigned int >( "--points-per-voxel" ) ), csv ); }
+    if( options.exists( "--id-filter" ) ) { std::cerr << "points-calc: thin: --id-filter: todo" << std::endl; return 1; }
+    if( options.exists( "--id-pass" ) ) { return process( r, id_pass_thinner(), csv ); }
+    std::cerr << "points-calc: thin: please specify either --rate, or --points-per-voxel, or --id-filter, or --id-pass" << std::endl;
+    return 1;
+}
+
+} } } // namespace snark { namespace points_calc { namespace thin {
