@@ -34,6 +34,7 @@
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <unordered_map>
 #include <unordered_set>
 #include <boost/optional.hpp>
 #include <comma/application/command_line_options.h>
@@ -1044,7 +1045,8 @@ class id_pass_thinner
 template < typename T >
 int process( const Eigen::Vector3d& resolution, const T& thinner, const comma::csv::options& csv )
 {
-    snark::voxel_map< T, 3 > grid( resolution );
+    typedef snark::voxel_map< T, 3 > grid_t;
+    std::unordered_map< comma::uint32, grid_t > grids; //( resolution );
     comma::uint32 block = 0;
     comma::csv::input_stream< thin_operation::point > istream( std::cin, csv );
     comma::csv::passed< thin_operation::point > passed( istream, std::cout );
@@ -1052,7 +1054,10 @@ int process( const Eigen::Vector3d& resolution, const T& thinner, const comma::c
     {
         const thin_operation::point* p = istream.read();
         if( !p ) { break; }
-        if( block != p->block ) { grid.clear(); }
+        auto it = grids.find( p->id );
+        if( it == grids.end() ) { it = grids.insert( std::make_pair( p->id, grid_t( resolution ) ) ).first; }
+        grid_t& grid = it->second;
+        if( block != p->block ) { for( auto& g: grids ) { g.second.clear(); } }
         block = p->block;
         T* t = &grid.insert( p->coordinates, thinner.updated( *p ) ).first->second;
         if( !t->keep( *p ) ) { continue; }
