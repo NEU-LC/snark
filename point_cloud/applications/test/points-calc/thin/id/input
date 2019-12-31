@@ -1,0 +1,9 @@
+block_pass[0]="( echo 0,0,0,0,0; echo 0,0,0,0,0; echo 0,0,0,1,0; echo 0,0,0,1,1; echo 0,0,0,1,2 ) | points-calc thin --block-pass --resolution=1 --fields x,y,z,block"
+block_pass[1]="( echo 0,0,0,0,0; echo 0,0,0,0,0; echo 0,0,0,1,0; echo 0,0,0,1,1; echo 0,0,0,1,2 ) | points-calc thin --block-pass --resolution=1 --fields x,y,z,block,id"
+
+id_pass[0]="( echo 0,0,0,0,0; echo 0,0,0,0,0; echo 0,0,0,1,0; echo 0,0,0,1,1; echo 0,0,0,1,0 ) | points-calc thin --id-pass --resolution=1 --fields x,y,z,block,id"
+id_pass[1]="( echo 0,0,0,0,0; echo 0,0,0,0,0; echo 0,0,0,1,1; echo 0,0,0,1,1; echo 0,0,0,1,0 ) | points-calc thin --id-pass --resolution=1 --fields x,y,z,,id"
+id_pass[2]="( echo 0,0,0,0,0; echo 0,0,0,0,0; echo 0,0,0,1,1; echo 0,0,0,1,1; echo 0,0,0,1,0 ) | points-calc thin --id-pass --resolution=1 --fields x,y,z,block,id"
+
+id_filter[0]="( echo 0,0,0,0,0; echo 0,0,0,0,0; echo 0,0,0,1,1; echo 0,0,0,1,1; echo 0,0,0,1,0 ) | points-calc thin --id-filter --resolution=1 --fields x,y,z,block,id"
+id_filter[1]="( echo 0,0,0,0,0; echo 0,0,0,0,0; echo 0,0,0,1,1; echo 0,0,0,1,1; echo 0,0,0,1,0 ) | points-calc thin --id-filter --resolution=1 --fields x,y,z,,id"

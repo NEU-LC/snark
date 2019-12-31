@@ -79,7 +79,7 @@ std::string traits::usage()
     oss << std::endl;
     oss << "        options" << std::endl;
     oss << "            --block-pass: output only the points with the block of the point first to hit a voxel;" << std::endl;
-    oss << "                          if id field present, for each id output only the points with the block" << std::endl;
+    oss << "                          if id field present, for each id output only the points of the same block" << std::endl;
     oss << "                          of the point first with this id to hit a voxel" << std::endl;
     oss << "            --id-filter: output only the first point with a given id in a voxel" << std::endl;
     oss << "                         if no id field present, equivalent to --points-per-voxel=1" << std::endl;
