@@ -78,10 +78,13 @@ std::string traits::usage()
     oss << "        within each; if block field is present, clears voxel grid on a new block" << std::endl;
     oss << std::endl;
     oss << "        options" << std::endl;
-    oss << "            --id-filter: todo; output only the first point with a given id in a voxel" << std::endl;
+    oss << "            --block-pass: output only the points with the block of the point first to hit a voxel;" << std::endl;
+    oss << "                          if id field present, for each id output only the points with the block" << std::endl;
+    oss << "                          of the point first with this id to hit a voxel" << std::endl;
+    oss << "            --id-filter: output only the first point with a given id in a voxel" << std::endl;
     oss << "                         if no id field present, equivalent to --points-per-voxel=1" << std::endl;
     oss << "            --id-pass: output only the points with the id of the point first to hit a voxel," << std::endl;
-    oss << "                         if no id field present, passes all points through" << std::endl;
+    oss << "                       if no id field present, passes all points through" << std::endl;
     oss << "            --points-per-voxel=[<n>]: number of points to retain in each voxel" << std::endl;
     oss << "                                      takes the first <n> points" << std::endl;
     oss << "            --rate: rate of thinning, between 0.0 and 1.0" << std::endl;
@@ -137,10 +140,10 @@ std::string traits::output_fields() { return ""; } // appends no fields
 
 std::string traits::output_format() { return ""; } // appends no fields
 
-class proportional_thinner
+class proportional
 {
     public:
-        proportional_thinner( double rate ) : increment_( 1.0 / rate ) { count_ = ( std::isinf( increment_ ) ? 0.0 : increment_ / 2.0 ); }
+        proportional( double rate ) : increment_( 1.0 / rate ) { count_ = ( std::isinf( increment_ ) ? 0.0 : increment_ / 2.0 ); }
 
         bool keep( const point& )
         {
@@ -150,17 +153,17 @@ class proportional_thinner
             return true;
         }
         
-        const proportional_thinner& updated( const point& ) const { return *this; }
+        const proportional& updated( const point& ) const { return *this; }
 
     private:
         double increment_;
         double count_;
 };
 
-class points_per_voxel_thinner
+class points_per_voxel
 {
     public:
-        points_per_voxel_thinner( unsigned int points_per_voxel ): available_( points_per_voxel ) {}
+        points_per_voxel( unsigned int points_per_voxel ): available_( points_per_voxel ) {}
 
         bool keep( const point& )
         {
@@ -169,42 +172,86 @@ class points_per_voxel_thinner
             return true;
         }
         
-        const points_per_voxel_thinner& updated( const point& ) const { return *this; }
+        const points_per_voxel& updated( const point& ) const { return *this; }
 
     private:
         unsigned int available_;
 };
 
-class id_pass_thinner
+class id_filter
 {
     public:
-        id_pass_thinner(): id_( 0 ) {}
-        id_pass_thinner( comma::uint32 id ): id_( id ) {}
+        id_filter(): keep_( true ) {}
+        bool keep( const point& ) const { bool k = keep_; keep_ = false; return k; } // quick and dirty
+        id_filter updated( const point& p ) const { return *this; }
+        
+    private:
+        mutable bool keep_; // quick and dirty
+};
+
+class id_pass
+{
+    public:
+        id_pass(): id_( 0 ) {}
+        id_pass( comma::uint32 id ): id_( id ) {}
         bool keep( const point& p ) const { return p.id == id_; }
-        id_pass_thinner updated( const point& p ) const { return id_pass_thinner( p.id ); }
+        id_pass updated( const point& p ) const { return id_pass( p.id ); }
         
     private:
         comma::uint32 id_;
 };
 
-template < typename T >
-int process( const Eigen::Vector3d& resolution, const T& thinner, const comma::csv::options& csv )
+class block_pass
 {
-    typedef snark::voxel_map< T, 3 > grid_t;
-    std::unordered_map< comma::uint32, grid_t > grids; //( resolution );
-    comma::uint32 block = 0;
+    public:
+        block_pass(): block_( 0 ) {}
+        block_pass( comma::uint32 block ): block_( block ) {}
+        bool keep( const point& p ) const { return p.block == block_; }
+        block_pass updated( const point& p ) const { return block_pass( p.block ); }
+        
+    private:
+        comma::uint32 block_;
+};
+
+static comma::csv::options csv;
+static Eigen::Vector3d resolution;
+
+template < typename T >
+static snark::voxel_map< T, 3 >& update_id( std::unordered_map< comma::uint32, snark::voxel_map< T, 3 > >& grids, const point& p )
+{
+    auto it = grids.find( p.id );
+    if( it == grids.end() ) { it = grids.insert( std::make_pair( p.id, snark::voxel_map< T, 3 >( resolution ) ) ).first; }
+    return it->second;
+}
+
+template < typename T >
+static void update_block( std::unordered_map< comma::uint32, snark::voxel_map< T, 3 > >& grids, const point& p )
+{
+    static comma::uint32 block = 0;
+    if( block != p.block ) { for( auto& g: grids ) { g.second.clear(); } }
+    block = p.block;
+}
+
+template <> void update_block< block_pass >( std::unordered_map< comma::uint32, snark::voxel_map< block_pass, 3 > >&, const point& ) {}
+
+template <> snark::voxel_map< id_pass, 3 >& update_id( std::unordered_map< comma::uint32, snark::voxel_map< id_pass, 3 > >& grids, const point& )
+{
+    if( grids.empty() ) { grids.insert( std::make_pair( 0, snark::voxel_map< id_pass, 3 >( resolution ) ) ); } // quick and dirty
+    return grids.begin()->second;
+}
+
+template < typename T >
+static int process( const T& thinner )
+{
+    std::unordered_map< comma::uint32, snark::voxel_map< T, 3 > > grids;
     comma::csv::input_stream< point > istream( std::cin, csv );
     comma::csv::passed< point > passed( istream, std::cout );
     while( istream.ready() || std::cin.good() )
     {
         const point* p = istream.read();
         if( !p ) { break; }
-        auto it = grids.find( p->id );
-        if( it == grids.end() ) { it = grids.insert( std::make_pair( p->id, grid_t( resolution ) ) ).first; }
-        grid_t& grid = it->second;
-        if( block != p->block ) { for( auto& g: grids ) { g.second.clear(); } }
-        block = p->block;
-        T* t = &grid.insert( p->coordinates, thinner.updated( *p ) ).first->second;
+        update_block< T >( grids, *p );
+        T* t = &update_id< T >( grids, *p ).insert( p->coordinates, thinner.updated( *p ) ).first->second;
         if( !t->keep( *p ) ) { continue; }
         passed.write();
         if( csv.flush ) { std::cout.flush(); }
@@ -214,11 +261,11 @@ int process( const Eigen::Vector3d& resolution, const T& thinner, const comma::c
 
 int traits::run( const comma::command_line_options& options )
 {
-    comma::csv::options csv( options );
+    csv = comma::csv::options( options );
     if( options.exists( "--linear" ) )
     {
         double resolution = options.value< double >( "--resolution" );
-        std::cerr << "points-calc: thin --linear: DEPRECATED, use trajectory-thin instead" << std::endl;
+        std::cerr << "points-calc: thin --linear: DEPRECATED, will be removed soon; use trajectory-thin instead" << std::endl;
         comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
         comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
         boost::optional< Eigen::Vector3d > last;
@@ -235,19 +282,19 @@ int traits::run( const comma::command_line_options& options )
     }
     if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
     csv.full_xpath = false;
-    options.assert_mutually_exclusive( "--id-filter,-id-pass,--points-per-voxel,--rate" );
+    options.assert_mutually_exclusive( "--block-pass,--id-filter,-id-pass,--points-per-voxel,--rate" );
     auto s = options.value< std::string >( "--resolution" );
-    Eigen::Vector3d r;
     switch( comma::split( s, ',' ).size() )
     {
-        case 1: { double v = boost::lexical_cast< double >( s ); r = Eigen::Vector3d( v, v, v ); break; }
-        case 3: r = comma::csv::ascii< Eigen::Vector3d >().get( s ); break;
+        case 1: { double v = boost::lexical_cast< double >( s ); resolution = Eigen::Vector3d( v, v, v ); break; }
+        case 3: resolution = comma::csv::ascii< Eigen::Vector3d >().get( s ); break;
         default: std::cerr << "points-calc: thin: expected --resolution as <value> or <x>,<y>,<z>; got: '" << s << "'" << std::endl; return 1;
     }
-    if( options.exists( "--rate" ) ) { return process( r, proportional_thinner( options.value< double >( "--rate" ) ), csv ); }
-    if( options.exists( "--points-per-voxel" ) ) { return process( r, points_per_voxel_thinner( options.value< unsigned int >( "--points-per-voxel" ) ), csv ); }
+    if( options.exists( "--rate" ) ) { return process( thin::proportional( options.value< double >( "--rate" ) ) ); }
+    if( options.exists( "--points-per-voxel" ) ) { return process( thin::points_per_voxel( options.value< unsigned int >( "--points-per-voxel" ) ) ); }
     if( options.exists( "--id-filter" ) ) { std::cerr << "points-calc: thin: --id-filter: todo" << std::endl; return 1; }
-    if( options.exists( "--id-pass" ) ) { return process( r, id_pass_thinner(), csv ); }
+    if( options.exists( "--id-pass" ) ) { return process( thin::id_pass() ); }
+    if( options.exists( "--block-pass" ) ) { return process( thin::block_pass() ); }
     std::cerr << "points-calc: thin: please specify either --rate, or --points-per-voxel, or --id-filter, or --id-pass" << std::endl;
     return 1;
 }
