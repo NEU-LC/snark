@@ -91,9 +91,8 @@ std::string traits::usage()
     oss << "            --resolution=<value>; e.g. either --resolution=0.1 or for non-cubic voxels: --resolution=0.1,0.2,0.3" << std::endl;
     oss << "                                  if --linear (DEPRECATED), minimum distance between points" << std::endl;
     oss << std::endl;
-    std::cerr << "      --linear: DEPRECATED, will be removed soon; use trajectory-thin:" << std::endl;
-    std::cerr << "                assume the input is a sequence of points of a trajectory" << std::endl;
-    std::cerr << std::endl;
+    oss << "      --linear: DEPRECATED; use trajectory-thin" << std::endl;
+    oss << std::endl;
     return oss.str();    
 }
 
@@ -262,24 +261,7 @@ static int process( const T& thinner )
 int traits::run( const comma::command_line_options& options )
 {
     csv = comma::csv::options( options );
-    if( options.exists( "--linear" ) )
-    {
-        double resolution = options.value< double >( "--resolution" );
-        std::cerr << "points-calc: thin --linear: DEPRECATED, will be removed soon; use trajectory-thin instead" << std::endl;
-        comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
-        comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
-        boost::optional< Eigen::Vector3d > last;
-        double distance = 0;
-        while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
-        {
-            const Eigen::Vector3d* p = istream.read();
-            if( !p ) { break; }
-            distance += last ? ( *p - *last ).norm() : 0;
-            if( !last || distance >= resolution ) { distance = 0; passed.write(); }
-            last = *p;
-        }
-        return 0;
-    }
+    if( options.exists( "--linear" ) ) { std::cerr << "points-calc: thin: --linear: DEPRECATED; use trajectory-thin instead" << std::endl; return 1; }
     if( csv.fields.empty() ) { csv.fields = "x,y,z"; }
     csv.full_xpath = false;
     options.assert_mutually_exclusive( "--block-pass,--id-filter,-id-pass,--points-per-voxel,--rate" );
