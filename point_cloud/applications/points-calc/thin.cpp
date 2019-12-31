@@ -292,7 +292,7 @@ int traits::run( const comma::command_line_options& options )
     }
     if( options.exists( "--rate" ) ) { return process( thin::proportional( options.value< double >( "--rate" ) ) ); }
     if( options.exists( "--points-per-voxel" ) ) { return process( thin::points_per_voxel( options.value< unsigned int >( "--points-per-voxel" ) ) ); }
-    if( options.exists( "--id-filter" ) ) { std::cerr << "points-calc: thin: --id-filter: todo" << std::endl; return 1; }
+    if( options.exists( "--id-filter" ) ) { return process( thin::id_filter() ); }
     if( options.exists( "--id-pass" ) ) { return process( thin::id_pass() ); }
     if( options.exists( "--block-pass" ) ) { return process( thin::block_pass() ); }
     std::cerr << "points-calc: thin: please specify either --rate, or --points-per-voxel, or --id-filter, or --id-pass" << std::endl;
