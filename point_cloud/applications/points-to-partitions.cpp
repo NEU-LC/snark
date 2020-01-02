@@ -240,16 +240,13 @@ static block_t* partition_( block_t* block )
     if( block->points->empty() ) { return block; }
     snark::math::closed_interval< double, 3 > extents;
     for( std::size_t i = 0; i < block->points->size(); ++i ) { extents.set_hull( block->points->operator[](i).first.point ); }
-    std::cerr << "--> a: extents: min: " << extents.min().transpose() << " max: " << extents.max().transpose() << std::endl;
     block->partition.reset( new snark::partition( extents, resolution, min_points_per_voxel ) );
-    std::cerr << "--> b" << std::endl;
     for( std::size_t i = 0; i < block->points->size(); ++i )
     {
         block_t::pair_t& p = block->points->operator[]( i );
         if( p.first.flag ) { p.first.id = &block->partition->insert( p.first.point ); }
     }
     block->partition->commit( min_voxels_per_partition, min_points_per_partition, min_id, min_density );
-    std::cerr << "--> c" << std::endl;
     return block;
 }
 

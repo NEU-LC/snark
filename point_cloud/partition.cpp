@@ -33,7 +33,6 @@
 #include "equivalence_classes.h"
 #include "partition.h"
 #include "voxel_grid.h"
-#include "voxel_map.h"
 
 namespace snark {
 
@@ -43,7 +42,7 @@ class partition::impl_
         impl_( const partition::extents_type& extents
              , const Eigen::Vector3d& resolution
              , std::size_t min_points_per_voxel = 1 )
-            : voxels_( resolution ) //: voxels_( expanded_( extents, resolution ), resolution )
+            : voxels_( expanded_( extents, resolution ), resolution )
             , min_points_per_voxel_( min_points_per_voxel )
         {
         }
@@ -105,7 +104,7 @@ class partition::impl_
             static void set_id( voxel_& e, comma::uint32 id ) { e.id = id; }
         };
 
-        typedef voxel_map< voxel_ > voxels_type_; // typedef voxel_grid< voxel_ > voxels_type_;
+        typedef voxel_grid< voxel_ > voxels_type_;
         voxels_type_ voxels_;
         boost::optional< comma::uint32 > none_;
         std::size_t min_points_per_voxel_;
