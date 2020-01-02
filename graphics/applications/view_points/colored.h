@@ -34,11 +34,13 @@
 #define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_COLORED_H_
 
 #include <string>
+#include <unordered_map>
 #include "types.h"
 #ifndef Q_MOC_RUN
 #include "../../../render/colour_map.h"
 #include "point_with_id.h"
 #endif
+#include <comma/base/types.h>
 
 namespace snark { namespace graphics { namespace view {
 
@@ -128,6 +130,22 @@ class by_id : public colored
         bool has_scalar_;
         double from_;
         double diff_;
+};
+
+class by_id_color_map : public colored
+{
+    public:
+        by_id_color_map( const std::unordered_map< comma::uint32, color_t >& colors, color_t not_found, bool cyclic );
+
+        virtual color_t color( const Eigen::Vector3d& point
+                             , comma::uint32 id
+                             , double scalar
+                             , const color_t& c ) const;
+
+    private:
+        std::unordered_map< comma::uint32, color_t > colors_;
+        color_t not_found_;
+        bool cyclic_;
 };
 
 struct by_rgb : public colored

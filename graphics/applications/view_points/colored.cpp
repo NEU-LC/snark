@@ -32,6 +32,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 #include <boost/array.hpp>
 #include <boost/lexical_cast.hpp>
 #include <qnamespace.h>
@@ -269,19 +270,25 @@ color_t by_id::color( const Eigen::Vector3d&, comma::uint32 id, double scalar, c
     return add( multiply( color, v ), multiply( background_, 1 - v ) );
 }
 
-color_t by_rgb::color( const Eigen::Vector3d& , comma::uint32, double, const color_t& c ) const
-{
-    return c;
+by_id_color_map::by_id_color_map( const std::unordered_map< comma::uint32, color_t >& colors, color_t not_found, bool cyclic ): colors_( colors ), not_found_( not_found ), cyclic_( cyclic ) {}
+
+color_t by_id_color_map::color( const Eigen::Vector3d&, comma::uint32 id, double scalar, const color_t& ) const
+{ 
+    if( cyclic_ ) { return colors_.find( id % colors_.size() )->second; }
+    auto it = colors_.find( id );
+    return it == colors_.end() ? not_found_ : it->second;
 }
+
+color_t by_rgb::color( const Eigen::Vector3d& , comma::uint32, double, const color_t& c ) const { return c; }
 
 colored* color_from_string( const std::string& t, const std::string& fields, const color_t& backgroundcolor )
 {
     std::string s = t.empty() ? std::string( "0:1,cyan:magenta" ) : t;
     std::vector< std::string > f = comma::split( fields, ',' );
-    bool hasId = false;
-    for( unsigned int i = 0; !hasId && i < f.size(); ++i ) { hasId = f[i] == "id"; } // quick and dirty
-    bool hasScalar = false;
-    for( unsigned int i = 0; !hasScalar && i < f.size(); ++i ) { hasScalar = f[i] == "scalar"; } // quick and dirty
+    bool has_id = false;
+    for( unsigned int i = 0; !has_id && i < f.size(); ++i ) { has_id = f[i] == "id"; } // quick and dirty
+    bool has_scalar = false;
+    for( unsigned int i = 0; !has_scalar && i < f.size(); ++i ) { has_scalar = f[i] == "scalar"; } // quick and dirty
     bool r = false;
     bool g = false;
     bool b = false;
@@ -296,26 +303,53 @@ colored* color_from_string( const std::string& t, const std::string& fields, con
     colored* c;
     try
     {
-        if( hasId )
+        if( has_id )
         {
-            if( hasScalar )
+            if( has_scalar )
             {
-                std::vector< std::string > v = comma::split( comma::split( s, ',' )[0], ':' );
+                const std::vector< std::string >& v = comma::split( comma::split( s, ',' )[0], ':' );
                 if( v.size() != 2 ) { COMMA_THROW( comma::exception, "expected range (-5:20), got " << s ); }
                 double from = boost::lexical_cast< double >( v[0] );
                 double to = boost::lexical_cast< double >( v[1] );
                 c = new by_id( backgroundcolor, from, to );
             }
-            else
+            else if( s.empty() )
             {
                 c = new by_id( backgroundcolor );
+            }
+            else
+            {
+                const std::vector< std::string >& v = comma::split( s, ',' );
+                std::unordered_map< comma::uint32, color_t > colors;
+                bool cyclic = false;
+                bool not_cyclic = false;
+                color_t default_color = color_from_name( "grey" );
+                for( unsigned int i = 0; i < v.size(); ++i )
+                {
+                    const std::vector< std::string >& w = comma::split( v[i], ':' );
+                    switch( w.size() )
+                    {
+                        case 1:
+                            cyclic = true;
+                            colors[i] = color_from_name( w[0] );
+                            break;
+                        case 2:
+                            not_cyclic = true;
+                            if( w[0] == "default" ) { default_color = color_from_name( w[1] ); }
+                            else { colors[ boost::lexical_cast< comma::uint32 >( w[0] ) ] = color_from_name( w[1] ); }
+                            break;
+                        default: COMMA_THROW( comma::exception, "expected color definition; got --color='" << s << "'" );
+                    }
+                }
+                if( cyclic && not_cyclic ) { COMMA_THROW( comma::exception, "expected either color list or color map; got --color='" << s << "'" ); }
+                c = new by_id_color_map( colors, default_color, cyclic );
             }
         }
         else if( r || g || b || a )
         {
             c = new by_rgb;
         }
-        else if( hasScalar )
+        else if( has_scalar )
         {
             color_t from_color, to_color;
             double from = 0;
