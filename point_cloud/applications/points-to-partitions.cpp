@@ -153,12 +153,10 @@ struct block_t // quick and dirty, no optimization for now
 {
     typedef std::pair< input_t, std::string > pair_t;
     typedef std::deque< pair_t > pairs_t;
-
     boost::scoped_ptr< pairs_t > points;
     comma::uint32 id;
     volatile bool empty;
     boost::scoped_ptr< snark::partition > partition;
-
     block_t() : id( 0 ), empty( true ) {}
     void clear() { partition.reset(); points.reset(); empty = true; }
 };
@@ -272,18 +270,9 @@ int main( int ac, char** av )
         const std::vector< std::string >& v = comma::split( resolution_string, ',' );
         switch( v.size() )
         {
-            case 1:
-            {
-                double r = boost::lexical_cast< double >( v[0] );
-                resolution = Eigen::Vector3d( r, r, r );
-                break;
-            }
-            case 3:
-                resolution = Eigen::Vector3d( boost::lexical_cast< double >( v[0] ), boost::lexical_cast< double >( v[1] ), boost::lexical_cast< double >( v[2] ) );
-                break;
-            default:
-                std::cerr << "points-to-partitions: expected resolution, got: \"" << resolution_string << "\"" << std::endl;
-                return 1;
+            case 1: { double r = boost::lexical_cast< double >( v[0] ); resolution = Eigen::Vector3d( r, r, r ); break; }
+            case 3: resolution = comma::csv::ascii< Eigen::Vector3d >().get( v ); break;
+            default: std::cerr << "points-to-partitions: expected resolution, got: \"" << resolution_string << "\"" << std::endl; return 1;
         }
         discard = options.exists( "--discard,-d" );
         min_id = options.value( "--min-id", 0 );
@@ -309,11 +298,7 @@ int main( int ac, char** av )
         #ifdef PROFILE
         ProfilerStop(); }
         #endif
-        if(verbose)
-        {
-            if( is_shutdown ) { std::cerr << "points-to-partitions: caught signal" << std::endl; }
-            else { std::cerr << "points-to-partitions: end of stream" << std::endl; }
-        }
+        if( verbose ) { std::cerr << "points-to-partitions: " << ( is_shutdown ? "caught signal" : "end of stream" ) << std::endl; }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "points-to-partitions: " << ex.what() << std::endl; }
