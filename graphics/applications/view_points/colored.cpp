@@ -305,6 +305,7 @@ colored* color_from_string( const std::string& t, const std::string& fields, con
     {
         if( has_id )
         {
+            std::cerr << "--> a: s: '" << s << "'" << std::endl;
             if( has_scalar )
             {
                 const std::vector< std::string >& v = comma::split( comma::split( s, ',' )[0], ':' );
@@ -313,13 +314,13 @@ colored* color_from_string( const std::string& t, const std::string& fields, con
                 double to = boost::lexical_cast< double >( v[1] );
                 c = new by_id( backgroundcolor, from, to );
             }
-            else if( s.empty() )
+            else if( t.empty() )
             {
                 c = new by_id( backgroundcolor );
             }
             else
             {
-                const std::vector< std::string >& v = comma::split( s, ',' );
+                const std::vector< std::string >& v = comma::split( t, ',' );
                 std::unordered_map< comma::uint32, color_t > colors;
                 bool cyclic = false;
                 bool not_cyclic = false;
