@@ -305,7 +305,6 @@ colored* color_from_string( const std::string& t, const std::string& fields, con
     {
         if( has_id )
         {
-            std::cerr << "--> a: s: '" << s << "'" << std::endl;
             if( has_scalar )
             {
                 const std::vector< std::string >& v = comma::split( comma::split( s, ',' )[0], ':' );
