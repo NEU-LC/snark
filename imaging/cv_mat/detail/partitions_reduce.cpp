@@ -88,105 +88,97 @@ struct vertex {
     unsigned int degree;
 };
 
-struct cmp_by_degree {
+struct compare_by_degree {
     bool operator()(const vertex& a, const vertex& b) const { return a.degree > b.degree; }
 };
 
 template <typename N>
 class graph {
-   public:
-    graph(cv::Mat m, unsigned int channel, comma::int32 background) : min_id_(background + 1) {
-        auto insert_edge = [this](N val, std::vector<comma::int32*>& first_neighbours, comma::int32* first_id_ptr) {
-            auto second_it = adjacency_.emplace(std::move(vertex{&this->ids_.emplace(val, val).first->second, 0}),
-                                                std::move(std::vector<comma::int32*>{}));
-            auto& second_neighbours = second_it.first->second;
-            auto* second_id_ptr = second_it.first->first.id;
+    public:
+        graph(cv::Mat m, unsigned int channel, comma::int32 background) : min_id_(background + 1) {
+            auto insert_edge = [this](N val, std::vector<comma::int32*>& first_neighbours, comma::int32* first_id_ptr) {
+                auto second_it = adjacency_.emplace(std::move(vertex{&this->ids_.emplace(val, val).first->second, 0}),
+                                                    std::move(std::vector<comma::int32*>{}));
+                auto& second_neighbours = second_it.first->second;
+                auto* second_id_ptr = second_it.first->first.id;
 
-            if (std::find(first_neighbours.begin(), first_neighbours.end(), second_id_ptr) == first_neighbours.end()) {
-                first_neighbours.emplace_back(second_id_ptr);
-            }
-            if (std::find(second_neighbours.begin(), second_neighbours.end(), first_id_ptr) ==
-                second_neighbours.end()) {
-                second_neighbours.emplace_back(first_id_ptr);
-            }
-        };
-
-        N* ptr;
-        N* ptr_below;
-        for (auto i = 0; i < m.rows - 1; ++i) {
-            ptr = m.ptr<N>(i);
-            ptr_below = m.ptr<N>(i + 1);
-            for (auto j = channel; j < (m.cols - 1) * m.channels(); j += m.channels()) {
-                N val = ptr[j];
-                if (val == background) continue;
-                auto first_it = adjacency_.emplace(std::move(vertex{&ids_.emplace(val, val).first->second, 0}),
-                                                   std::move(std::vector<comma::int32*>{}));
-                auto& first_neighbours = first_it.first->second;
-                auto* first_id_ptr = first_it.first->first.id;
-
-                N val_below = ptr_below[j];
-                if (val != val_below && val_below != background) {
-                    insert_edge(val_below, first_neighbours, first_id_ptr);
+                if (std::find(first_neighbours.begin(), first_neighbours.end(), second_id_ptr) == first_neighbours.end()) {
+                    first_neighbours.emplace_back(second_id_ptr);
                 }
-                N val_right = ptr[j + m.channels()];
-                if (val != val_right && val_right != background) {
-                    insert_edge(val_right, first_neighbours, first_id_ptr);
+                if (std::find(second_neighbours.begin(), second_neighbours.end(), first_id_ptr) ==
+                    second_neighbours.end()) {
+                    second_neighbours.emplace_back(first_id_ptr);
+                }
+            };
+
+            N* ptr;
+            N* ptr_below;
+            for (auto i = 0; i < m.rows - 1; ++i) {
+                ptr = m.ptr<N>(i);
+                ptr_below = m.ptr<N>(i + 1);
+                for (int j = channel; j < (m.cols - 1) * m.channels(); j += m.channels()) {
+                    N val = ptr[j];
+                    if (val == background) { continue; }
+                    auto first_it = adjacency_.emplace(std::move(vertex{&ids_.emplace(val, val).first->second, 0}),
+                                                    std::move(std::vector<comma::int32*>{}));
+                    auto& first_neighbours = first_it.first->second;
+                    auto* first_id_ptr = first_it.first->first.id;
+
+                    N val_below = ptr_below[j];
+                    if (val != val_below && val_below != background) {
+                        insert_edge(val_below, first_neighbours, first_id_ptr);
+                    }
+                    N val_right = ptr[j + m.channels()];
+                    if (val != val_right && val_right != background) {
+                        insert_edge(val_right, first_neighbours, first_id_ptr);
+                    }
                 }
             }
+            assign_degrees_();
         }
-        assign_degrees();
-    }
 
-    void reduce() {
-        std::multimap<vertex, std::vector<comma::int32*>, cmp_by_degree> adjacency(
+        void reduce() {
+            std::multimap<vertex, std::vector<comma::int32*>, compare_by_degree> adjacency(
             std::make_move_iterator(adjacency_.begin()), std::make_move_iterator(adjacency_.end()));
-        for (auto pair : adjacency) {
-            // at most 6 colours will be used to uniquely colour partitions so that adjacent partitions have different
-            // colours
-            std::array<bool, 6> colours_taken{false, false, false, false, false, false};
-            // iterate neighbour pointer ids and find the minimum value not used by adjacent vertices
-            for (comma::int32* o_vertex : pair.second) {
-                auto colour = *o_vertex - min_id_;  // offset by min id in partitions
-                if (colour >= 0 && colour < colours_taken.size()) {
-                    colours_taken[colour] = true;  // assign colour as "taken"
+            for (auto pair : adjacency) { *pair.first.id = 6 + min_id_; } // Kent: that's one of the fixes, unless I am missing something
+            for (auto pair : adjacency) {
+                // at most 6 colours will be used to uniquely colour partitions so that adjacent partitions have different
+                // colours
+                std::array<bool, 6> colours_taken{false, false, false, false, false, false};
+                // iterate neighbour pointer ids and find the minimum value not used by adjacent vertices
+                //std::cerr << "--> a: id: " << ( *pair.first.id - min_id_ ) << ":";
+                for (comma::int32* o_vertex : pair.second) {
+                    auto colour = *o_vertex - min_id_;  // offset by min id in partitions
+                    //std::cerr << " " << colour;
+                    if ( colour >= 0 && colour < int( colours_taken.size() ) ) { colours_taken[colour] = true; }
                 }
-            }
-            if (std::all_of(std::begin(colours_taken), std::end(colours_taken), [](bool& a) { return a; })) {
-                COMMA_THROW(comma::exception, "all adjacent vertices have used all 6 available colours");
-            }
-            for (auto i = 0; i < colours_taken.size(); ++i) {
-                if (!colours_taken[i]) {           // assign first non "taken" colour
-                    *pair.first.id = i + min_id_;  // add min id offset back to the "colour"
-                    break;
+                //std::cerr << std::endl;
+                if (std::all_of(std::begin(colours_taken), std::end(colours_taken), [](bool& a) { return a; })) {
+                    COMMA_THROW(comma::exception, "partitions-reduce: adjacent vertices have used all 6 available colours");
                 }
-            }
-        }
-    }
+                for (auto i = 0; i < int( colours_taken.size() ); ++i) {
+                    if (!colours_taken[i]) { *pair.first.id = i + min_id_; break; }
+              }
+          }
+      }
 
-    const std::map<comma::int32, comma::int32>& get() const { return ids_; }
-
-    std::map<comma::int32, comma::int32> get() { return ids_; }
+      const std::map<comma::int32, comma::int32>& ids() const { return ids_; }
 
    private:
-    std::map<vertex, std::vector<comma::int32*>> adjacency_;  // degree, connected vertices
-    std::map<comma::int32, comma::int32>
-        ids_;  // old id -> new id, using map for ordered printing, todo: change to unordered_map
-    comma::int32 min_id_;
+      std::map<vertex, std::vector<comma::int32*>> adjacency_;  // degree, connected vertices
+      std::map<comma::int32, comma::int32> ids_;  // old id -> new id, using map for ordered printing, todo: change to unordered_map
+      comma::int32 min_id_;
 
-    void assign_degrees() {
-        for (auto it = adjacency_.begin(); it != adjacency_.end();) {
-            auto vertex = std::move(it->first);
-            auto neighbours = std::move(it->second);
-            it = adjacency_.erase(it);
-            vertex.degree = neighbours.size();
-            adjacency_.emplace(std::move(vertex), std::move(neighbours));
-        }
-    }
+      void assign_degrees_() {
+          for (auto it = adjacency_.begin(); it != adjacency_.end();) {
+              auto vertex = std::move(it->first);
+              auto neighbours = std::move(it->second);
+              it = adjacency_.erase(it);
+              vertex.degree = neighbours.size();
+              adjacency_.emplace(std::move(vertex), std::move(neighbours));
+          }
+      }
 };
-
-// todo
-// - partitions_reduce.h/cpp -> partitions.h/cpp
-// - partitions_reduce -> partitions::reduce
 
 template < typename H >
 template < typename T, int I >
@@ -200,7 +192,7 @@ void partitions_reduce< H >::process_( cv::Mat m, cv::Mat out )
     cv::Mat partitions_reduced_channel(m.rows, m.cols, I);
     graph<unsigned char> g(m, channel_, background_ );
     g.reduce();
-    auto lookup_table = g.get();
+    auto lookup_table = g.ids();
     for (auto i = 0; i < m.rows; ++i) {
         auto ptr_a = m.template ptr<unsigned char>(i);
         auto ptr_b = partitions_reduced_channel.ptr<unsigned char>(i);
@@ -214,7 +206,7 @@ void partitions_reduce< H >::process_( cv::Mat m, cv::Mat out )
 template <typename H>
 std::pair<H, cv::Mat> partitions_reduce<H>::operator()(std::pair<H, cv::Mat> m) {
     if (m.second.channels() > 3) {
-        COMMA_THROW(comma::exception, "expected 3 or less channels, got " << m.second.channels());
+        COMMA_THROW(comma::exception, "partitions-reduce: not more than 3 channels, got " << m.second.channels());
     }
     cv::Mat out;
     switch (m.second.depth()) {
@@ -239,7 +231,7 @@ std::pair<H, cv::Mat> partitions_reduce<H>::operator()(std::pair<H, cv::Mat> m) 
             process_< comma::int32, CV_32SC1 >( m.second, out );
             break;
         default:
-            COMMA_THROW(comma::exception, "expected image depth, got value: " << m.second.depth() << "; not supported (yet?)");
+            COMMA_THROW(comma::exception, "partitions-reduce: expected image depth, got value: " << m.second.depth() << "; not supported (yet?)");
     }
     return std::make_pair(m.first, out);
 }  // namespace impl
@@ -251,10 +243,9 @@ std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::
     if (!options.empty()) {
         const auto& tokens = comma::split(options, ',');
         switch (tokens.size()) {
-            case 0: {
+            case 0:
                 break;
-            }
-            case 1: {
+            case 1:
                 try {
                     channel = boost::lexical_cast<decltype(channel)>(tokens[0]);
                 } catch (std::exception& e) {
@@ -262,8 +253,7 @@ std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::
                                 "partitions-reduce: expected <channel>, got: '" << options << "'; " << e.what());
                 }
                 break;
-            }
-            case 2: {
+            case 2:
                 try {
                     channel = boost::lexical_cast<decltype(channel)>(tokens[0]);
                     background = boost::lexical_cast<decltype(background)>(tokens[1]);
@@ -272,11 +262,9 @@ std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::
                                 "partitions-reduce: expected <channel>, got: '" << options << "'; " << e.what());
                 }
                 break;
-            }
-            default: {
+            default:
                 COMMA_THROW(comma::exception, "partitions-reduce: expected options, got: '" << options << "'");
                 break;
-            }
         }
     }
     return std::make_pair(partitions_reduce<H>(channel, background), true);
@@ -290,6 +278,8 @@ std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::
 //   - iterate through neighbours, if id between 0 and 5, set element in array
 //   - iterate through array, pick first empty
 //   - if all taken, throw exception with clear explanation what happened
+// - partitions_reduce.h/cpp -> partitions.h/cpp
+// - partitions_reduce -> partitions::reduce
 
 template <typename H>
 typename std::string partitions_reduce<H>::usage(unsigned int indent) {
@@ -301,8 +291,8 @@ typename std::string partitions_reduce<H>::usage(unsigned int indent) {
     return oss.str();
 }
 
-template class partitions_reduce<boost::posix_time::ptime>;
-template class partitions_reduce<std::vector<char>>;
+template class partitions_reduce< boost::posix_time::ptime >;
+template class partitions_reduce< std::vector< char > >;
 
 }  // namespace impl
 }  // namespace cv_mat
