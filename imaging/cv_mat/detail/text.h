@@ -37,14 +37,14 @@
 
 namespace snark { namespace cv_mat { namespace impl {
 
-struct text_input
+struct text_input // todo: move to impl in cpp
 {
     cv::Point origin;
     cv::Scalar colour;
     std::string text;
     
     text_input() {}
-    text_input( const std::string& text, const cv::Point& origin, const cv::Scalar& colour ): origin( origin ), colour( colour ), text( text ) {}
+    text_input( const cv::Point& origin, const cv::Scalar& colour, const std::string& text ): origin( origin ), colour( colour ), text( text ) {}
 };
     
 template < typename H >
