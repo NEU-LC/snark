@@ -2360,9 +2360,9 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
         return std::make_pair( boost::bind< value_type_t >( circle_impl_< H >, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) ), true );
     }
+    if( e[0] == "contraharmonic" ) { return impl::contraharmonic<H>::make( e.size() > 1 ? e[1] : ""); }
     if( e[0] == "hard-edge" ) { return impl::hard_edge< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "partition" ) { return impl::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
-    if( e[0] == "contraharmonic" ) { return impl::contraharmonic<H>::make( e.size() > 1 ? e[1] : ""); }
     if( e[0] == "partitions-reduce" ) { return impl::partitions_reduce<H>::make(e.size() > 1 ? e[1] : ""); }
     if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
     {
@@ -3247,6 +3247,7 @@ static std::string usage_impl_()
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
     oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
     oss << impl::partition< boost::posix_time::ptime >::usage( 8 ) << std::endl;
+    oss << impl::partitions_reduce< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        pow,power=<value>; each image channel power, currently plain wrapper of opencv pow(), thus may be slow; todo? parallelize and/or implement mapping with interpolation" << std::endl;
     oss << "        remap=<map-filename>[,<interpolation>]: remap, input image dimensions expected to match map dimentions; see cv::remap() for details" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;

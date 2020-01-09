@@ -86,6 +86,8 @@ class partitions_reduce {
    private:
     unsigned int channel_;
     comma::int32 background_;
+    template < typename T, int I >
+    void process_( cv::Mat m, cv::Mat out );
 };
 
 }  // namespace impl

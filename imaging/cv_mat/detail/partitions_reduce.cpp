@@ -184,104 +184,62 @@ class graph {
     }
 };
 
+// todo
+// - partitions_reduce.h/cpp -> partitions.h/cpp
+// - partitions_reduce -> partitions::reduce
+
+template < typename H >
+template < typename T, int I >
+void partitions_reduce< H >::process_( cv::Mat m, cv::Mat out )
+{
+    std::vector<int> from_to(out.channels()*2);
+    for (auto i = 0; i < out.channels(); ++i) {
+        from_to[i] = i;
+        from_to[i * 2 + 1] = i;
+    }
+    cv::Mat partitions_reduced_channel(m.rows, m.cols, I);
+    graph<unsigned char> g(m, channel_, background_ );
+    g.reduce();
+    auto lookup_table = g.get();
+    for (auto i = 0; i < m.rows; ++i) {
+        auto ptr_a = m.template ptr<unsigned char>(i);
+        auto ptr_b = partitions_reduced_channel.ptr<unsigned char>(i);
+        for (auto j = 0; j < m.cols; ++j) {
+            ptr_b[j] = lookup_table[ptr_a[j * m.channels() + channel_]];
+        }
+    }
+    cv::mixChannels(std::vector<cv::Mat>{m, partitions_reduced_channel}, std::vector<cv::Mat>{out}, from_to);
+}
+
 template <typename H>
 std::pair<H, cv::Mat> partitions_reduce<H>::operator()(std::pair<H, cv::Mat> m) {
     if (m.second.channels() > 3) {
         COMMA_THROW(comma::exception, "expected 3 or less channels, got " << m.second.channels());
     }
     cv::Mat out;
-    std::vector<int> from_to(8);
-    for (auto i = 0; i < m.second.channels() + 1; ++i) {
-        from_to[i] = i;
-        from_to[i * 2 + 1] = i;
-    }
     switch (m.second.depth()) {
-        case CV_8U: {
+        case CV_8U:
             out = cv::Mat(m.second.rows, m.second.cols, CV_8UC(m.second.channels() + 1));
-            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_8UC1);
-            graph<unsigned char> g(m.second, channel_, background_);
-            g.reduce();
-            auto lookup_table = g.get();
-            for (auto i = 0; i < m.second.rows; ++i) {
-                auto ptr_a = m.second.template ptr<unsigned char>(i);
-                auto ptr_b = partitions_reduced_channel.ptr<unsigned char>(i);
-                for (auto j = 0; j < m.second.cols; ++j) {
-                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
-                }
-            }
-            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
-                            from_to);
+            process_< unsigned char, CV_8UC1 >( m.second, out );
             break;
-        }
-        case CV_8S: {
+        case CV_8S:
             out = cv::Mat(m.second.rows, m.second.cols, CV_8SC(m.second.channels() + 1));
-            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_8SC1);
-            graph<char> g(m.second, channel_, background_);
-            g.reduce();
-            auto lookup_table = g.get();
-            for (auto i = 0; i < m.second.rows; ++i) {
-                auto ptr_a = m.second.template ptr<char>(i);
-                auto ptr_b = partitions_reduced_channel.ptr<char>(i);
-                for (auto j = 0; j < m.second.cols; ++j) {
-                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
-                }
-            }
-            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
-                            from_to);
+            process_< char, CV_8SC1 >( m.second, out );
             break;
-        }
-        case CV_16U: {
+        case CV_16U:
             out = cv::Mat(m.second.rows, m.second.cols, CV_16UC(m.second.channels() + 1));
-            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_16UC1);
-            graph<comma::uint16> g(m.second, channel_, background_);
-            g.reduce();
-            auto lookup_table = g.get();
-            for (auto i = 0; i < m.second.rows; ++i) {
-                auto ptr_a = m.second.template ptr<comma::uint16>(i);
-                auto ptr_b = partitions_reduced_channel.ptr<comma::uint16>(i);
-                for (auto j = 0; j < m.second.cols; ++j) {
-                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
-                }
-            }
-            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
-                            from_to);
-            break;
-        }
-        case CV_16S: {
+            process_< comma::uint16, CV_16UC1 >( m.second, out );
+            break;    
+        case CV_16S:
             out = cv::Mat(m.second.rows, m.second.cols, CV_16SC(m.second.channels() + 1));
-            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_16SC1);
-            graph<comma::int16> g(m.second, channel_, background_);
-            g.reduce();
-            auto lookup_table = g.get();
-            for (auto i = 0; i < m.second.rows; ++i) {
-                auto ptr_a = m.second.template ptr<comma::int16>(i);
-                auto ptr_b = partitions_reduced_channel.ptr<comma::int16>(i);
-                for (auto j = 0; j < m.second.cols; ++j) {
-                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
-                }
-            }
-            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
-                            from_to);
+            process_< comma::int16, CV_16SC1 >( m.second, out );
             break;
-        }
-        case CV_32S: {
+        case CV_32S:
             out = cv::Mat(m.second.rows, m.second.cols, CV_32SC(m.second.channels() + 1));
-            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_32SC1);
-            graph<comma::int32> g(m.second, channel_, background_);
-            g.reduce();
-            auto lookup_table = g.get();
-            for (auto i = 0; i < m.second.rows; ++i) {
-                auto ptr_a = m.second.template ptr<comma::int32>(i);
-                auto ptr_b = partitions_reduced_channel.ptr<comma::int32>(i);
-                for (auto j = 0; j < m.second.cols; ++j) {
-                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
-                }
-            }
-            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
-                            from_to);
+            process_< comma::int32, CV_32SC1 >( m.second, out );
             break;
-        }
-        default: { COMMA_THROW(comma::exception, "expected image data, got unsupported value: " << m.second.type()); }
+        default:
+            COMMA_THROW(comma::exception, "expected image depth, got value: " << m.second.depth() << "; not supported (yet?)");
     }
     return std::make_pair(m.first, out);
 }  // namespace impl
