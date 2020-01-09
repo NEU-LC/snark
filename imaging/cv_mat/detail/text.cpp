@@ -40,7 +40,7 @@ template <>
 struct traits< snark::cv_mat::impl::text_input >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::cv_mat::impl::text_input& p, Visitor& v )
+    static void visit( const Key&, const snark::cv_mat::impl::text_input& p, Visitor& v ) // hyper-quick and dirty
     {
         v.apply( "x", p.origin.x );
         v.apply( "y", p.origin.y );
@@ -51,7 +51,7 @@ struct traits< snark::cv_mat::impl::text_input >
     }
     
     template < typename Key, class Visitor >
-    static void visit( const Key&, snark::cv_mat::impl::text_input& p, Visitor& v )
+    static void visit( const Key&, snark::cv_mat::impl::text_input& p, Visitor& v ) // hyper-quick and dirty
     {
         v.apply( "x", p.origin.x );
         v.apply( "y", p.origin.y );
@@ -85,7 +85,7 @@ text< H >::text( const text_input& caption
 {
     if( csv.filename.empty() ) { return; }
     is_.reset( new comma::io::istream( csv.filename ) );
-    istream_.reset( new comma::csv::input_stream< text_input >( **is_, csv, caption_ ) );
+    istream_.reset( new comma::csv::input_stream< text_input >( **is_, csv, text_input( caption_.origin, caption_.colour / 256, caption_.text ) ) ); // quick and dirty
 }
 
 static std::unordered_map< int, float > colour_scale_factors{ { CV_8S, 0.5 }, { CV_16U, 256.0 }, { CV_16S, 128.0 }, { CV_32S, 8388608.0 }, { CV_32F, 1.0 / 255.0 } };
@@ -122,7 +122,7 @@ std::pair< typename text< H >::functor_t, bool > text< H >::make( const std::str
 {
     if( options.empty() ) { COMMA_THROW( comma::exception, "text: expected text options, got none" ); }
     const std::vector< std::string >& v = comma::split( options, ',' );
-    text_input t( v[0], cv::Point( 10, 10 ), cv::Scalar( 0, 0xffff, 0xffff ) );
+    text_input t( cv::Point( 10, 10 ), cv::Scalar( 0, 0xffff, 0xffff ), v[0] );
     if( v.size() >= 3 ) { t.origin = cv::Point( boost::lexical_cast< unsigned int >( v[1] ), boost::lexical_cast< unsigned int >( v[2] ) ); }
     if( v.size() >= 4 )
     {
