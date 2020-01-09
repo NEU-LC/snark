@@ -88,8 +88,8 @@
 #include "detail/load.h"
 #include "detail/morphology.h"
 #include "detail/partition.h"
+#include "detail/partitions_reduce.h"
 #include "detail/ratio.h"
-#include "detail/reduce_partitions.h"
 #include "detail/remove_speckles.h"
 #include "detail/remap.h"
 #include "detail/text.h"
@@ -2363,7 +2363,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if( e[0] == "hard-edge" ) { return impl::hard_edge< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "partition" ) { return impl::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "contraharmonic" ) { return impl::contraharmonic<H>::make( e.size() > 1 ? e[1] : ""); }
-    if( e[0] == "reduce-partitions" ) { return impl::reduce_partitions<H>::make(e.size() > 1 ? e[1] : ""); }
+    if( e[0] == "partitions-reduce" ) { return impl::partitions_reduce<H>::make(e.size() > 1 ? e[1] : ""); }
     if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
     {
         boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};

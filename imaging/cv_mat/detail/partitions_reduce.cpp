@@ -1,0 +1,351 @@
+// This file is provided in addition to snark and is not an integral
+// part of snark library.
+// Copyright (c) 2019 Vsevolod Vlaskine
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// snark is a generic and flexible library for robotics research
+// Copyright (c) 2011 The University of Sydney
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. Neither the name of the University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/// @author vsevolod vlaskine
+
+#include "partitions_reduce.h"
+
+#include <comma/base/exception.h>
+#include <comma/base/types.h>
+#include <comma/string/split.h>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/functional/hash.hpp>
+#include <boost/lexical_cast.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+#include <algorithm>
+#include <iostream>
+#include <limits>
+#include <map>
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+
+namespace snark {
+namespace cv_mat {
+namespace impl {
+
+struct vertex {
+    bool operator<(const vertex& other) const { return *id < *other.id; };
+
+    comma::int32* id;
+    unsigned int degree;
+};
+
+struct cmp_by_degree {
+    bool operator()(const vertex& a, const vertex& b) const { return a.degree > b.degree; }
+};
+
+template <typename N>
+class graph {
+   public:
+    graph(cv::Mat m, unsigned int channel, comma::int32 background) : min_id_(background + 1) {
+        auto insert_edge = [this](N val, std::vector<comma::int32*>& first_neighbours, comma::int32* first_id_ptr) {
+            auto second_it = adjacency_.emplace(std::move(vertex{&this->ids_.emplace(val, val).first->second, 0}),
+                                                std::move(std::vector<comma::int32*>{}));
+            auto& second_neighbours = second_it.first->second;
+            auto* second_id_ptr = second_it.first->first.id;
+
+            if (std::find(first_neighbours.begin(), first_neighbours.end(), second_id_ptr) == first_neighbours.end()) {
+                first_neighbours.emplace_back(second_id_ptr);
+            }
+            if (std::find(second_neighbours.begin(), second_neighbours.end(), first_id_ptr) ==
+                second_neighbours.end()) {
+                second_neighbours.emplace_back(first_id_ptr);
+            }
+        };
+
+        N* ptr;
+        N* ptr_below;
+        for (auto i = 0; i < m.rows - 1; ++i) {
+            ptr = m.ptr<N>(i);
+            ptr_below = m.ptr<N>(i + 1);
+            for (auto j = channel; j < (m.cols - 1) * m.channels(); j += m.channels()) {
+                N val = ptr[j];
+                if (val == background) continue;
+                auto first_it = adjacency_.emplace(std::move(vertex{&ids_.emplace(val, val).first->second, 0}),
+                                                   std::move(std::vector<comma::int32*>{}));
+                auto& first_neighbours = first_it.first->second;
+                auto* first_id_ptr = first_it.first->first.id;
+
+                N val_below = ptr_below[j];
+                if (val != val_below && val_below != background) {
+                    insert_edge(val_below, first_neighbours, first_id_ptr);
+                }
+                N val_right = ptr[j + m.channels()];
+                if (val != val_right && val_right != background) {
+                    insert_edge(val_right, first_neighbours, first_id_ptr);
+                }
+            }
+        }
+        assign_degrees();
+    }
+
+    void reduce() {
+        std::multimap<vertex, std::vector<comma::int32*>, cmp_by_degree> adjacency(
+            std::make_move_iterator(adjacency_.begin()), std::make_move_iterator(adjacency_.end()));
+        for (auto pair : adjacency) {
+            // at most 6 colours will be used to uniquely colour partitions so that adjacent partitions have different
+            // colours
+            std::array<bool, 6> colours_taken{false, false, false, false, false, false};
+            // iterate neighbour pointer ids and find the minimum value not used by adjacent vertices
+            for (comma::int32* o_vertex : pair.second) {
+                auto colour = *o_vertex - min_id_;  // offset by min id in partitions
+                if (colour >= 0 && colour < colours_taken.size()) {
+                    colours_taken[colour] = true;  // assign colour as "taken"
+                }
+            }
+            if (std::all_of(std::begin(colours_taken), std::end(colours_taken), [](bool& a) { return a; })) {
+                COMMA_THROW(comma::exception, "all adjacent vertices have used all 6 available colours");
+            }
+            for (auto i = 0; i < colours_taken.size(); ++i) {
+                if (!colours_taken[i]) {           // assign first non "taken" colour
+                    *pair.first.id = i + min_id_;  // add min id offset back to the "colour"
+                    break;
+                }
+            }
+        }
+    }
+
+    const std::map<comma::int32, comma::int32>& get() const { return ids_; }
+
+    std::map<comma::int32, comma::int32> get() { return ids_; }
+
+   private:
+    std::map<vertex, std::vector<comma::int32*>> adjacency_;  // degree, connected vertices
+    std::map<comma::int32, comma::int32>
+        ids_;  // old id -> new id, using map for ordered printing, todo: change to unordered_map
+    comma::int32 min_id_;
+
+    void assign_degrees() {
+        for (auto it = adjacency_.begin(); it != adjacency_.end();) {
+            auto vertex = std::move(it->first);
+            auto neighbours = std::move(it->second);
+            it = adjacency_.erase(it);
+            vertex.degree = neighbours.size();
+            adjacency_.emplace(std::move(vertex), std::move(neighbours));
+        }
+    }
+};
+
+template <typename H>
+std::pair<H, cv::Mat> partitions_reduce<H>::operator()(std::pair<H, cv::Mat> m) {
+    if (m.second.channels() > 3) {
+        COMMA_THROW(comma::exception, "expected 3 or less channels, got " << m.second.channels());
+    }
+    cv::Mat out;
+    std::vector<int> from_to(8);
+    for (auto i = 0; i < m.second.channels() + 1; ++i) {
+        from_to[i] = i;
+        from_to[i * 2 + 1] = i;
+    }
+    switch (m.second.depth()) {
+        case CV_8U: {
+            out = cv::Mat(m.second.rows, m.second.cols, CV_8UC(m.second.channels() + 1));
+            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_8UC1);
+            graph<unsigned char> g(m.second, channel_, background_);
+            g.reduce();
+            auto lookup_table = g.get();
+            for (auto i = 0; i < m.second.rows; ++i) {
+                auto ptr_a = m.second.template ptr<unsigned char>(i);
+                auto ptr_b = partitions_reduced_channel.ptr<unsigned char>(i);
+                for (auto j = 0; j < m.second.cols; ++j) {
+                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
+                }
+            }
+            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
+                            from_to);
+            break;
+        }
+        case CV_8S: {
+            out = cv::Mat(m.second.rows, m.second.cols, CV_8SC(m.second.channels() + 1));
+            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_8SC1);
+            graph<char> g(m.second, channel_, background_);
+            g.reduce();
+            auto lookup_table = g.get();
+            for (auto i = 0; i < m.second.rows; ++i) {
+                auto ptr_a = m.second.template ptr<char>(i);
+                auto ptr_b = partitions_reduced_channel.ptr<char>(i);
+                for (auto j = 0; j < m.second.cols; ++j) {
+                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
+                }
+            }
+            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
+                            from_to);
+            break;
+        }
+        case CV_16U: {
+            out = cv::Mat(m.second.rows, m.second.cols, CV_16UC(m.second.channels() + 1));
+            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_16UC1);
+            graph<comma::uint16> g(m.second, channel_, background_);
+            g.reduce();
+            auto lookup_table = g.get();
+            for (auto i = 0; i < m.second.rows; ++i) {
+                auto ptr_a = m.second.template ptr<comma::uint16>(i);
+                auto ptr_b = partitions_reduced_channel.ptr<comma::uint16>(i);
+                for (auto j = 0; j < m.second.cols; ++j) {
+                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
+                }
+            }
+            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
+                            from_to);
+            break;
+        }
+        case CV_16S: {
+            out = cv::Mat(m.second.rows, m.second.cols, CV_16SC(m.second.channels() + 1));
+            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_16SC1);
+            graph<comma::int16> g(m.second, channel_, background_);
+            g.reduce();
+            auto lookup_table = g.get();
+            for (auto i = 0; i < m.second.rows; ++i) {
+                auto ptr_a = m.second.template ptr<comma::int16>(i);
+                auto ptr_b = partitions_reduced_channel.ptr<comma::int16>(i);
+                for (auto j = 0; j < m.second.cols; ++j) {
+                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
+                }
+            }
+            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
+                            from_to);
+            break;
+        }
+        case CV_32S: {
+            out = cv::Mat(m.second.rows, m.second.cols, CV_32SC(m.second.channels() + 1));
+            cv::Mat partitions_reduced_channel(m.second.rows, m.second.cols, CV_32SC1);
+            graph<comma::int32> g(m.second, channel_, background_);
+            g.reduce();
+            auto lookup_table = g.get();
+            for (auto i = 0; i < m.second.rows; ++i) {
+                auto ptr_a = m.second.template ptr<comma::int32>(i);
+                auto ptr_b = partitions_reduced_channel.ptr<comma::int32>(i);
+                for (auto j = 0; j < m.second.cols; ++j) {
+                    ptr_b[j] = lookup_table[ptr_a[j * m.second.channels() + channel_]];
+                }
+            }
+            cv::mixChannels(std::vector<cv::Mat>{m.second, partitions_reduced_channel}, std::vector<cv::Mat>{out},
+                            from_to);
+            break;
+        }
+        default: { COMMA_THROW(comma::exception, "expected image data, got unsupported value: " << m.second.type()); }
+    }
+    return std::make_pair(m.first, out);
+}  // namespace impl
+
+template <typename H>
+std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::make(const std::string& options) {
+    unsigned int channel = 0;
+    comma::int32 background = -1;
+    if (!options.empty()) {
+        const auto& tokens = comma::split(options, ',');
+        switch (tokens.size()) {
+            case 0: {
+                break;
+            }
+            case 1: {
+                try {
+                    channel = boost::lexical_cast<decltype(channel)>(tokens[0]);
+                } catch (std::exception& e) {
+                    COMMA_THROW(comma::exception,
+                                "partitions-reduce: expected <channel>, got: '" << options << "'; " << e.what());
+                }
+                break;
+            }
+            case 2: {
+                try {
+                    channel = boost::lexical_cast<decltype(channel)>(tokens[0]);
+                    background = boost::lexical_cast<decltype(background)>(tokens[1]);
+                } catch (std::exception& e) {
+                    COMMA_THROW(comma::exception,
+                                "partitions-reduce: expected <channel>, got: '" << options << "'; " << e.what());
+                }
+                break;
+            }
+            default: {
+                COMMA_THROW(comma::exception, "partitions-reduce: expected options, got: '" << options << "'");
+                break;
+            }
+        }
+    }
+    return std::make_pair(partitions_reduce<H>(channel, background), true);
+}
+
+// todo
+// - fix checking of number of parameters
+// - struct instead of pair< vector< pair >, ...
+// - on a vertex
+//   - std::array< bool, 6 > a = {{ 0, 0, 0, 0, 0, 0 }};
+//   - iterate through neighbours, if id between 0 and 5, set element in array
+//   - iterate through array, pick first empty
+//   - if all taken, throw exception with clear explanation what happened
+
+template <typename H>
+typename std::string partitions_reduce<H>::usage(unsigned int indent) {
+    std::string offset(indent, ' ');
+    std::ostringstream oss;
+    oss << offset << "partitions-reduce=[<channel>],[<background>]; todo: explain operation\n";
+    oss << offset << "    <channel>; partition channel number in image; default: 0\n";
+    oss << offset << "    <background>; pixel value that is not assigned any partition; default: -1\n";
+    return oss.str();
+}
+
+template class partitions_reduce<boost::posix_time::ptime>;
+template class partitions_reduce<std::vector<char>>;
+
+}  // namespace impl
+}  // namespace cv_mat
+}  // namespace snark

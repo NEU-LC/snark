@@ -71,9 +71,9 @@ namespace cv_mat {
 namespace impl {
 
 template <typename H>
-class reduce_partitions {
+class partitions_reduce {
    public:
-    reduce_partitions(unsigned int channel = 0) : channel_(channel){};
+    partitions_reduce(unsigned int channel, comma::int32 background) : channel_(channel), background_(background){};
 
     std::pair<H, cv::Mat> operator()(std::pair<H, cv::Mat> m);
 
@@ -85,6 +85,7 @@ class reduce_partitions {
 
    private:
     unsigned int channel_;
+    comma::int32 background_;
 };
 
 }  // namespace impl
