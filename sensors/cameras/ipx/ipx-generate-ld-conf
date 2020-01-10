@@ -1,0 +1,6 @@
+#!/bin/bash
+dir=$1
+echo "idx-generate-ld-conf: generating $( pwd )/idx.conf..." >&2
+echo "idx-generate-ld-conf: idx libs dir: $1" >&2
+echo "$1" > idx.conf
+echo "idx-generate-ld-conf: generated $( pwd )/idx.conf" >&2
