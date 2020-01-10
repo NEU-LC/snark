@@ -2,7 +2,7 @@ set( PROJECT "roboteye" )
 set( TARGET_NAME snark_${PROJECT} )
 
 if( WIN32 )
-    message( FATAL "not implemented" )
+    message( FATAL_ERROR "not implemented" )
 endif()
 
 if( BUILD_SHARED_LIBS )

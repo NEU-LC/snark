@@ -2,7 +2,7 @@ SET( PROJECT "Basler" )
 SET( TARGET_NAME snark_${PROJECT} )
 
 if( WIN32 )
-    message( FATAL "not implemented" )
+    message( FATAL_ERROR "not implemented" )
 endif( WIN32 )
 
 SET( BASLER_PYLON_DIR /opt/pylon5 CACHE PATH "basler pylon library installation directory" )
