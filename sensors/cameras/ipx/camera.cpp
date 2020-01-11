@@ -25,10 +25,22 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <IpxCameraApi.h>
 #include <IpxCameraErr.h>
+#include <comma/base/exception.h>
 #include "camera.h"
 
 namespace snark { namespace ipx {
+
+static IpxCam::System* system_ = IpxCam::IpxCam_GetSystem(); // quick and dirty
+
+camera::camera(): device_( nullptr ) {}
+
+void camera::connect()
+{
+    if( device_ ) { device_->Release(); }
+    device_ = IpxCam::IpxCam_CreateDevice( device_info_ );
+    if( !device_ ) { COMMA_THROW( comma::exception, "failed to connect" ); }
     
+}
+
 } } // namespace snark { namespace ipx {

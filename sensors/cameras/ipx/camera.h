@@ -29,17 +29,22 @@
 
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <opencv2/core/core.hpp>
+#include <IpxCameraApi.h>
 
 namespace snark { namespace ipx {
 
 class camera
 {
     public:
-        camera() {} // todo
+        camera();
+        
+        void connect();
         
         void start_acquisition() {} // todo
     
     private:
+        IpxCam::DeviceInfo* device_info_;
+        IpxCam::Device* device_;
 };
 
 class stream
