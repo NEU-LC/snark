@@ -4,6 +4,6 @@ echo "ipx-generate-ld-conf: generating $( pwd )/ipx.conf..." >&2
 echo "ipx-generate-ld-conf: ipx libs dir: $1" >&2
 ARCH=$( basename $1 )
 echo "$1" > ipx.conf
-echo "$1/genicam/bin/$ARCH" > ipx.conf
-echo "$1/genicam/bin/$ARCH/GenApi/Generic" > ipx.conf
+echo "$1/genicam/bin/$ARCH" >> ipx.conf
+echo "$1/genicam/bin/$ARCH/GenApi/Generic" >> ipx.conf
 echo "ipx-generate-ld-conf: generated $( pwd )/ipx.conf" >&2
