@@ -27,8 +27,32 @@
 
 #pragma once
 
-#include <string>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <opencv2/core/core.hpp>
 
 namespace snark { namespace ipx {
+
+class camera
+{
+    public:
+        camera() {} // todo
+        
+        void start_acquisition() {} // todo
     
+    private:
+};
+
+class stream
+{
+    public:
+        typedef std::pair< boost::posix_time::ptime, cv::Mat > pair_t;
+        
+        stream( camera& c ): camera_( c ) {} // todo
+        
+        pair_t read() { return pair_t(); } // todo
+    
+    private:
+        camera camera_;
+};
+
 } } // namespace snark { namespace ipx {
