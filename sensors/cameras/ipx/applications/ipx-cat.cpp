@@ -131,6 +131,7 @@ int main( int argc, char** argv )
         // todo: pass --output to serialization
         if( verbose ) { std::cerr << "ipx-cat: data acquisition: starting..." << std::endl; }
         snark::ipx::camera camera;
+        camera.connect();
         snark::ipx::stream stream( camera );
         camera.start_acquisition();
         if( verbose ) { std::cerr << "ipx-cat: data acquisition: started" << std::endl; }
