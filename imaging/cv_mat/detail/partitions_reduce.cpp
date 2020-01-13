@@ -71,7 +71,6 @@
 #include <limits>
 #include <map>
 #include <memory>
-#include <opencv2/core.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -134,34 +133,23 @@ class graph {
             auto ptr = std::move(it->first);
             *ptr = min_id_;
             it = adjacency_.erase(it);
-            if (neighbours.empty()) {
-                continue;
-            }
+            if (neighbours.empty()) { continue; }
             *ptr += 6;
             adjacency.emplace(vertex{std::move(ptr), static_cast<unsigned int>(neighbours.size())},
                               std::move(neighbours));
         }
-        // at most 6 colours will be used to uniquely colour partitions so that adjacent partitions have different
-        // colours
-        std::array<bool, 6> colours_taken{false, false, false, false, false, false};
         for (auto pair : adjacency) {
-            // iterate neighbour pointer ids and find the minimum value not used by adjacent vertices
+            std::array<bool, 6> colours_taken{false, false, false, false, false, false};
             for (comma::int32* o_vertex : pair.second) {
                 auto colour = *o_vertex - min_id_;  // offset by min id in partitions
                 if (colour >= 0 && colour < int(colours_taken.size())) {
                     colours_taken[colour] = true;
                 }
             }
-            if (std::all_of(std::begin(colours_taken), std::end(colours_taken), [](bool& a) { return a; })) {
-                COMMA_THROW(comma::exception, "partitions-reduce: adjacent vertices have used all 6 available colours");
-            }
-            for (auto i = 0; i < colours_taken.size(); ++i) {
-                if (!colours_taken[i]) {
-                    *pair.first.id = i + min_id_;
-                    break;
-                }
-            }
-            colours_taken.fill(false);
+            unsigned int i = 0;
+            for( ; i < colours_taken.size() && colours_taken[i]; ++i );
+            if( i == colours_taken.size() ) { COMMA_THROW(comma::exception, "partitions-reduce: adjacent vertices have used all 6 available colours"); }
+            *pair.first.id = i + min_id_;
         }
     }
 
