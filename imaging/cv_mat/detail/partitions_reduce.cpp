@@ -164,13 +164,7 @@ class graph {
 
 template <typename H>
 template <typename T, int I>
-void partitions_reduce<H>::process_(cv::Mat m, cv::Mat out) {
-    std::vector<int> from_to(out.channels() * 2);
-    for (auto i = 0; i < out.channels(); ++i) {
-        from_to[i * 2] = i;
-        from_to[i * 2 + 1] = i;
-    }
-
+cv::Mat partitions_reduce<H>::process_(cv::Mat m, int type ) {
     graph<T> g(m, channel_, background_);
     g.reduce();
     auto lookup_table = g.ids();
@@ -183,7 +177,15 @@ void partitions_reduce<H>::process_(cv::Mat m, cv::Mat out) {
             ptr_b[j] = lookup_table[ptr_a[j * m.channels() + channel]];
         }
     });
+    if ( !merge_ ) { return partitions_reduced_channel; }
+    cv::Mat out( m.rows, m.cols, type );
+    std::vector<int> from_to(out.channels() * 2);
+    for (auto i = 0; i < out.channels(); ++i) {
+        from_to[i * 2] = i;
+        from_to[i * 2 + 1] = i;
+    }
     cv::mixChannels(std::vector<cv::Mat>{m, partitions_reduced_channel}, std::vector<cv::Mat>{out}, from_to);
+    return out;
 }
 
 template <typename H>
@@ -191,41 +193,38 @@ std::pair<H, cv::Mat> partitions_reduce<H>::operator()(std::pair<H, cv::Mat> m) 
     if (m.second.channels() > 3) {
         COMMA_THROW(comma::exception, "partitions-reduce: not more than 3 channels, got " << m.second.channels());
     }
-    cv::Mat out;
+    std::pair<H, cv::Mat> out;
+    out.first = m.first;
     switch (m.second.depth()) {
         case CV_8U:
-            out = cv::Mat(m.second.rows, m.second.cols, CV_8UC(m.second.channels() + 1));
-            process_<unsigned char, CV_8UC1>(m.second, out);
+            out.second = process_<unsigned char, CV_8UC1>(m.second, CV_8UC(m.second.channels() + 1));
             break;
         case CV_8S:
-            out = cv::Mat(m.second.rows, m.second.cols, CV_8SC(m.second.channels() + 1));
-            process_<char, CV_8SC1>(m.second, out);
+            out.second = process_<char, CV_8SC1>(m.second, CV_8SC(m.second.channels() + 1));
             break;
         case CV_16U:
-            out = cv::Mat(m.second.rows, m.second.cols, CV_16UC(m.second.channels() + 1));
-            process_<comma::uint16, CV_16UC1>(m.second, out);
+            out.second = process_<comma::uint16, CV_16UC1>(m.second, CV_16UC(m.second.channels() + 1));
             break;
         case CV_16S:
-            out = cv::Mat(m.second.rows, m.second.cols, CV_16SC(m.second.channels() + 1));
-            process_<comma::int16, CV_16SC1>(m.second, out);
+            out.second = process_<comma::int16, CV_16SC1>(m.second, CV_16SC(m.second.channels() + 1));
             break;
         case CV_32S:
-            out = cv::Mat(m.second.rows, m.second.cols, CV_32SC(m.second.channels() + 1));
-            process_<comma::int32, CV_32SC1>(m.second, out);
+            out.second = process_<comma::int32, CV_32SC1>(m.second, CV_32SC(m.second.channels() + 1));
             break;
         default:
             COMMA_THROW(comma::exception, "partitions-reduce: expected image depth, got value: "
                                               << m.second.depth() << "; not supported (yet?)");
     }
-    return std::make_pair(m.first, out);
+    return out;
 }
 
 template <typename H>
 std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::make(const std::string& options) {
     unsigned int channel = 0;
     comma::int32 background = -1;
+    bool merge = false;
     if (!options.empty()) {
-        const auto& tokens = comma::split(options, ',');
+        const std::vector<std::string>& tokens = comma::split(options, ',');
         try
         {
             switch (tokens.size()) {
@@ -241,16 +240,18 @@ std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::
                     }
                     background = boost::lexical_cast<comma::int32>(tokens[1]);
                     break;
+                case 3:
+                    if ( !tokens[0].empty() ) { channel = boost::lexical_cast<unsigned int>(tokens[0]); }
+                    if ( !tokens[1].empty() ) { background = boost::lexical_cast<comma::int32>(tokens[1]); }
+                    merge = tokens[2] == "merge";
+                    break;
                 default:
                     throw;
             }
         }
-        catch( std::exception& ex )
-        {
-            COMMA_THROW( comma::exception, "partitions-reduce: invalid options:: '" << options << "'; " << ex.what());
-        }
+        catch( std::exception& ex ) { COMMA_THROW( comma::exception, "partitions-reduce: invalid options:: '" << options << "'; " << ex.what()); }
     }
-    return std::make_pair(partitions_reduce<H>(channel, background), true);
+    return std::make_pair(partitions_reduce<H>(channel, background, merge), true);
 }
 
 // todo
@@ -262,9 +263,10 @@ template <typename H>
 typename std::string partitions_reduce<H>::usage(unsigned int indent) {
     std::string offset(indent, ' ');
     std::ostringstream oss;
-    oss << offset << "partitions-reduce=[<channel>],[<background>]; todo: explain operation\n";
+    oss << offset << "partitions-reduce=[<channel>],[<background>],[<merge>]; todo: explain operation\n";
     oss << offset << "    <channel>; partition channel number in image; default: 0\n";
     oss << offset << "    <background>; pixel value that is not assigned any partition; default: -1\n";
+    oss << offset << "    <merge>: if present merge reduced partitions channel to original image\n";
     return oss.str();
 }
 

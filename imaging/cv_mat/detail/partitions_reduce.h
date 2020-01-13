@@ -73,7 +73,7 @@ namespace impl {
 template <typename H>
 class partitions_reduce {
    public:
-    partitions_reduce(unsigned int channel, comma::int32 background) : channel_(channel), background_(background){};
+    partitions_reduce(unsigned int channel, comma::int32 background, bool merge) : channel_(channel), background_(background), merge_(merge){};
 
     std::pair<H, cv::Mat> operator()(std::pair<H, cv::Mat> m);
 
@@ -86,8 +86,10 @@ class partitions_reduce {
    private:
     unsigned int channel_;
     comma::int32 background_;
+    bool merge_;
+
     template < typename T, int I >
-    void process_( cv::Mat m, cv::Mat out );
+    cv::Mat process_( cv::Mat m, int type );
 };
 
 }  // namespace impl
