@@ -266,15 +266,9 @@ std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::
 }
 
 // todo
-// - fix checking of number of parameters
-// - struct instead of pair< vector< pair >, ...
-// - on a vertex
-//   - std::array< bool, 6 > a = {{ 0, 0, 0, 0, 0, 0 }};
-//   - iterate through neighbours, if id between 0 and 5, set element in array
-//   - iterate through array, pick first empty
-//   - if all taken, throw exception with clear explanation what happened
 // - partitions_reduce.h/cpp -> partitions.h/cpp
 // - partitions_reduce -> partitions::reduce
+// - --help: explain operation
 
 template <typename H>
 typename std::string partitions_reduce<H>::usage(unsigned int indent) {
