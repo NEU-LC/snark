@@ -56,7 +56,7 @@
 
 /// @author vsevolod vlaskine
 
-#include "partition.h"
+#include "partitions.h"
 
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
@@ -86,7 +86,7 @@
 #include <unordered_set>
 #include <utility>
 
-namespace snark { namespace cv_mat { namespace impl { namespace partition {
+namespace snark { namespace cv_mat { namespace impl { namespace partitions {
 
 template < typename S, typename T = S >
 struct pair_hash
@@ -369,7 +369,6 @@ typename std::string partition< H >::usage( unsigned int indent )
 template class partition< boost::posix_time::ptime >;
 template class partition< std::vector< char > >;
 
-namespace reduce {
 struct vertex {
     bool operator<(const vertex& other) const { return *id < *other.id; };
 
@@ -443,27 +442,27 @@ class graph {
 
 template <typename H>
 template <typename T, int I>
-cv::Mat partitions_reduce<H>::process_(cv::Mat m, int type ) {
+cv::Mat reduce<H>::process_(cv::Mat m, int type ) {
     graph<T> g(m, channel_, background_);
     g.reduce();
     auto lookup_table = g.ids();
     auto channel = channel_;
-    cv::Mat partitions_reduced_channel(m.rows, m.cols, I);
-    tbb::parallel_for(size_t(0), size_t(m.rows), [&m, &partitions_reduced_channel, &lookup_table, channel](size_t i) {
+    cv::Mat reduced_channel(m.rows, m.cols, I);
+    tbb::parallel_for(size_t(0), size_t(m.rows), [&m, &reduced_channel, &lookup_table, channel](size_t i) {
         auto ptr_a = m.template ptr<T>(i);
-        auto ptr_b = partitions_reduced_channel.ptr<T>(i);
+        auto ptr_b = reduced_channel.ptr<T>(i);
         for (auto j = 0; j < m.cols; ++j) { ptr_b[j] = lookup_table[ptr_a[j * m.channels() + channel]]; }
     });
-    if ( !merge_ ) { return partitions_reduced_channel; }
+    if ( !merge_ ) { return reduced_channel; }
     cv::Mat out( m.rows, m.cols, type );
     std::vector<int> from_to(out.channels() * 2);
     for (auto i = 0; i < out.channels(); ++i) { from_to[i * 2] = from_to[i * 2 + 1] = i; }
-    cv::mixChannels(std::vector<cv::Mat>{m, partitions_reduced_channel}, std::vector<cv::Mat>{out}, from_to);
+    cv::mixChannels(std::vector<cv::Mat>{m, reduced_channel}, std::vector<cv::Mat>{out}, from_to);
     return out;
 }
 
 template <typename H>
-std::pair<H, cv::Mat> partitions_reduce<H>::operator()(std::pair<H, cv::Mat> m) {
+std::pair<H, cv::Mat> reduce<H>::operator()(std::pair<H, cv::Mat> m) {
     if (m.second.channels() > 3) { COMMA_THROW(comma::exception, "partitions-reduce: not more than 3 channels, got " << m.second.channels()); }
     std::pair<H, cv::Mat> out;
     out.first = m.first;
@@ -490,7 +489,7 @@ std::pair<H, cv::Mat> partitions_reduce<H>::operator()(std::pair<H, cv::Mat> m) 
 }
 
 template <typename H>
-std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::make(const std::string& options) {
+std::pair<typename reduce<H>::functor_t, bool> reduce<H>::make(const std::string& options) {
     unsigned int channel = 0;
     comma::int32 background = -1;
     bool merge = false;
@@ -519,16 +518,13 @@ std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::
         }
         catch( std::exception& ex ) { COMMA_THROW( comma::exception, "partitions-reduce: invalid options:: '" << options << "'; " << ex.what()); }
     }
-    return std::make_pair(partitions_reduce<H>(channel, background, merge), true);
+    return std::make_pair(reduce<H>(channel, background, merge), true);
 }
 
-// todo
-// - partitions_reduce.h/cpp -> partitions.h/cpp
-// - partitions_reduce -> partitions::reduce
-// - --help: explain operation
+// todo: --help: explain operation
 
 template <typename H>
-typename std::string partitions_reduce<H>::usage(unsigned int indent) {
+typename std::string reduce<H>::usage(unsigned int indent) {
     std::string offset(indent, ' ');
     std::ostringstream oss;
     oss << offset << "partitions-reduce=[<channel>],[<background>],[<merge>]; todo: explain operation\n";
@@ -538,8 +534,7 @@ typename std::string partitions_reduce<H>::usage(unsigned int indent) {
     return oss.str();
 }
 
-template class partitions_reduce<boost::posix_time::ptime>;
-template class partitions_reduce<std::vector<char>>;
-} // namespace reduce {
+template class reduce<boost::posix_time::ptime>;
+template class reduce<std::vector<char>>;
 
-} } } }  // namespace snark { namespace cv_mat { namespace impl { namespace partition {
+} } } }  // namespace snark { namespace cv_mat { namespace impl { namespace partitions {

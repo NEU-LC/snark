@@ -64,7 +64,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <comma/base/types.h>
 
-namespace snark { namespace cv_mat { namespace impl { namespace partition {
+namespace snark { namespace cv_mat { namespace impl { namespace partitions {
 
 template < typename H >
 class partition
@@ -100,11 +100,10 @@ class partition
         unsigned int degrees_;
 };
 
-namespace reduce {
 template <typename H>
-class partitions_reduce {
+class reduce {
    public:
-    partitions_reduce(unsigned int channel, comma::int32 background, bool merge) : channel_(channel), background_(background), merge_(merge){};
+    reduce(unsigned int channel, comma::int32 background, bool merge) : channel_(channel), background_(background), merge_(merge){};
 
     std::pair<H, cv::Mat> operator()(std::pair<H, cv::Mat> m);
 
@@ -122,6 +121,5 @@ class partitions_reduce {
     template < typename T, int I >
     cv::Mat process_( cv::Mat m, int type );
 };
-} // namespace reduce {
 
-} } } }  // namespace snark { namespace cv_mat { namespace impl { namespace partition {
+} } } }  // namespace snark { namespace cv_mat { namespace impl { namespace partitions {

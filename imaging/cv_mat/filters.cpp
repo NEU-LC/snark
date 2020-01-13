@@ -87,8 +87,7 @@
 #include "detail/hard_edge.h"
 #include "detail/load.h"
 #include "detail/morphology.h"
-#include "detail/partition.h"
-#include "detail/partitions_reduce.h"
+#include "detail/partitions.h"
 #include "detail/ratio.h"
 #include "detail/remove_speckles.h"
 #include "detail/remap.h"
@@ -2362,8 +2361,8 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "contraharmonic" ) { return impl::contraharmonic<H>::make( e.size() > 1 ? e[1] : ""); }
     if( e[0] == "hard-edge" ) { return impl::hard_edge< H >::make( e.size() > 1 ? e[1] : "" ); }
-    if( e[0] == "partition" ) { return impl::partition::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
-    if( e[0] == "partitions-reduce" ) { return impl::partition::reduce::partitions_reduce<H>::make(e.size() > 1 ? e[1] : ""); }
+    if( e[0] == "partition" ) { return impl::partitions::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
+    if( e[0] == "partitions-reduce" ) { return impl::partitions::reduce<H>::make(e.size() > 1 ? e[1] : ""); }
     if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
     {
         boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
@@ -3246,8 +3245,8 @@ static std::string usage_impl_()
     oss << "            <bits>: number of bits, currently only 12-bit packing from 16-bit is supported (pack 2 pixels into 3 bytes)" << std::endl;
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
     oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
-    oss << impl::partition::partition< boost::posix_time::ptime >::usage( 8 ) << std::endl;
-    oss << impl::partition::reduce::partitions_reduce< boost::posix_time::ptime >::usage( 8 ) << std::endl;
+    oss << impl::partitions::partition< boost::posix_time::ptime >::usage( 8 ) << std::endl;
+    oss << impl::partitions::reduce< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        pow,power=<value>; each image channel power, currently plain wrapper of opencv pow(), thus may be slow; todo? parallelize and/or implement mapping with interpolation" << std::endl;
     oss << "        remap=<map-filename>[,<interpolation>]: remap, input image dimensions expected to match map dimentions; see cv::remap() for details" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;

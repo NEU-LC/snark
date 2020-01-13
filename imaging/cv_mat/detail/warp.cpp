@@ -92,9 +92,9 @@ typename unwarp< H >::value_type unwarp< H >::operator()( value_type n ) const
     return m;
 }
 
-template class snark::cv_mat::impl::warp< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::warp< std::vector< char > >;
-template class snark::cv_mat::impl::unwarp< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::unwarp< std::vector< char > >;
+template struct snark::cv_mat::impl::warp< boost::posix_time::ptime >;
+template struct snark::cv_mat::impl::warp< std::vector< char > >;
+template struct snark::cv_mat::impl::unwarp< boost::posix_time::ptime >;
+template struct snark::cv_mat::impl::unwarp< std::vector< char > >;
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
