@@ -62,8 +62,9 @@
 #include <boost/optional.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <comma/base/types.h>
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace impl { namespace partition {
 
 template < typename H >
 class partition
@@ -99,4 +100,28 @@ class partition
         unsigned int degrees_;
 };
 
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+namespace reduce {
+template <typename H>
+class partitions_reduce {
+   public:
+    partitions_reduce(unsigned int channel, comma::int32 background, bool merge) : channel_(channel), background_(background), merge_(merge){};
+
+    std::pair<H, cv::Mat> operator()(std::pair<H, cv::Mat> m);
+
+    typedef boost::function<std::pair<H, cv::Mat>(std::pair<H, cv::Mat>)> functor_t;
+
+    static std::pair<functor_t, bool> make(const std::string& options);
+
+    static std::string usage(unsigned int indent = 0);
+
+   private:
+    unsigned int channel_;
+    comma::int32 background_;
+    bool merge_;
+
+    template < typename T, int I >
+    cv::Mat process_( cv::Mat m, int type );
+};
+} // namespace reduce {
+
+} } } }  // namespace snark { namespace cv_mat { namespace impl { namespace partition {
