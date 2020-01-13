@@ -527,10 +527,10 @@ template <typename H>
 typename std::string reduce<H>::usage(unsigned int indent) {
     std::string offset(indent, ' ');
     std::ostringstream oss;
-    oss << offset << "partitions-reduce=[<channel>],[<background>],[<merge>]; todo: explain operation\n";
+    oss << offset << "partitions-reduce=[<channel>],[<background>],[merge]; todo: explain operation\n";
     oss << offset << "    <channel>; partition channel number in image; default: 0\n";
     oss << offset << "    <background>; pixel value that is not assigned any partition; default: -1\n";
-    oss << offset << "    <merge>: if present merge reduced partitions channel to original image\n";
+    oss << offset << "    merge: if present merge reduced partitions channel to original image\n";
     return oss.str();
 }
 
