@@ -98,22 +98,11 @@ template <typename N>
 class graph {
    public:
     graph(cv::Mat m, unsigned int channel, comma::int32 background) : min_id_(background + 1) {
-        auto insert_edge = [this](N val, std::unordered_set<comma::int32*>& first_neighbours,
-                                  comma::int32* first_id_ptr) {
-            if (ids_.find(val) != ids_.end()) {
-                auto* second_id_ptr = &ids_[val];
-                auto& second_neighbours = adjacency_[second_id_ptr];
-
-                first_neighbours.insert(second_id_ptr);
-                second_neighbours.insert(first_id_ptr);
-            } else {
-                auto& second_id = ids_[val] = val;
-                auto* second_id_ptr = &second_id;
-                auto& second_neighbours = adjacency_[second_id_ptr] = std::unordered_set<comma::int32*>{};
-
-                first_neighbours.insert(second_id_ptr);
-                second_neighbours.insert(first_id_ptr);
-            }
+        auto insert_edge = [this](N val, set_t& first_neighbours, comma::int32* first_id_ptr) {
+            comma::int32* second_id_ptr = ids_.find(val) == ids_.end() ? &(ids_[val] = val) : &ids_[val];
+            set_t* second_neighbours = &adjacency_[second_id_ptr];
+            first_neighbours.insert(second_id_ptr);
+            second_neighbours->insert(first_id_ptr);
         };
 
         for (auto i = 0; i < m.rows - 1; ++i) {
@@ -126,43 +115,26 @@ class graph {
                 }
                 N val_below = ptr_below[j];
                 N val_right = ptr[j + m.channels()];
-                if (ids_.find(val) != ids_.end()) {
-                    auto* first_id_ptr = &ids_[val];
-                    auto& first_neighbours = adjacency_[first_id_ptr];
-
-                    if (val != val_below && val_below != background) {
-                        insert_edge(val_below, first_neighbours, first_id_ptr);
-                    }
-
-                    if (val != val_right && val_right != background) {
-                        insert_edge(val_right, first_neighbours, first_id_ptr);
-                    }
-                } else {
-                    auto& first_id = ids_[val] = val;
-                    auto* first_id_ptr = &first_id;
-                    auto& first_neighbours = adjacency_[first_id_ptr] = std::unordered_set<comma::int32*>{};
-
-                    if (val != val_below && val_below != background) {
-                        insert_edge(val_below, first_neighbours, first_id_ptr);
-                    }
-
-                    if (val != val_right && val_right != background) {
-                        insert_edge(val_right, first_neighbours, first_id_ptr);
-                    }
+                comma::int32* first_id_ptr = ids_.find(val) == ids_.end() ? &(ids_[val] = val) : &ids_[val];
+                set_t* first_neighbours = &adjacency_[first_id_ptr];
+                if (val != val_below && val_below != background) {
+                    insert_edge(val_below, *first_neighbours, first_id_ptr);
+                }
+                if (val != val_right && val_right != background) {
+                    insert_edge(val_right, *first_neighbours, first_id_ptr);
                 }
             }
         }
     }
 
     void reduce() {
-        std::multimap<vertex, std::unordered_set<comma::int32*>, compare_by_degree> adjacency{};
+        std::multimap<vertex, set_t, compare_by_degree> adjacency{};
         for (auto it = adjacency_.begin(); it != adjacency_.end();) {
             auto neighbours = std::move(it->second);
             auto ptr = std::move(it->first);
             *ptr = min_id_;
             it = adjacency_.erase(it);
             if (neighbours.empty()) {
-                // std::cerr << "skipping empty neighbours\n";
                 continue;
             }
             *ptr += 6;
@@ -196,7 +168,8 @@ class graph {
     const std::unordered_map<comma::int32, comma::int32>& ids() const { return ids_; }
 
    private:
-    std::unordered_map<comma::int32*, std::unordered_set<comma::int32*>> adjacency_;
+    typedef std::unordered_set<comma::int32*> set_t;
+    std::unordered_map<comma::int32*, set_t> adjacency_;
     std::unordered_map<comma::int32, comma::int32> ids_;  // old -> new
     comma::int32 min_id_;
 };
@@ -215,7 +188,6 @@ void partitions_reduce<H>::process_(cv::Mat m, cv::Mat out) {
     auto lookup_table = g.ids();
     auto channel = channel_;
     cv::Mat partitions_reduced_channel(m.rows, m.cols, I);
-    // multi thread matrix copy via lookup table
     tbb::parallel_for(size_t(0), size_t(m.rows), [&m, &partitions_reduced_channel, &lookup_table, channel](size_t i) {
         auto ptr_a = m.template ptr<T>(i);
         auto ptr_b = partitions_reduced_channel.ptr<T>(i);
@@ -223,15 +195,11 @@ void partitions_reduce<H>::process_(cv::Mat m, cv::Mat out) {
             ptr_b[j] = lookup_table[ptr_a[j * m.channels() + channel]];
         }
     });
-
-    // cv::imshow("after", partitions_reduced_channel * 40); // debugging
-    // cv::waitKey(0);
     cv::mixChannels(std::vector<cv::Mat>{m, partitions_reduced_channel}, std::vector<cv::Mat>{out}, from_to);
 }
 
 template <typename H>
 std::pair<H, cv::Mat> partitions_reduce<H>::operator()(std::pair<H, cv::Mat> m) {
-    // cv::imshow("before", m.second * 100); // debugging
     if (m.second.channels() > 3) {
         COMMA_THROW(comma::exception, "partitions-reduce: not more than 3 channels, got " << m.second.channels());
     }
@@ -270,30 +238,28 @@ std::pair<typename partitions_reduce<H>::functor_t, bool> partitions_reduce<H>::
     comma::int32 background = -1;
     if (!options.empty()) {
         const auto& tokens = comma::split(options, ',');
-        switch (tokens.size()) {
-            case 0:
-                break;
-            case 1:
-                try {
-                    channel = boost::lexical_cast<decltype(channel)>(tokens[0]);
-                } catch (std::exception& e) {
-                    COMMA_THROW(comma::exception,
-                                "partitions-reduce: expected <channel>, got: '" << options << "'; " << e.what());
-                }
-                break;
-            case 2:
-                try {
-                    channel = boost::lexical_cast<decltype(channel)>(tokens[0]);
-                } catch (std::exception& e) {
-                }
-                try {
-                    background = boost::lexical_cast<decltype(background)>(tokens[1]);
-                } catch (std::exception& e) {
-                }
-                break;
-            default:
-                COMMA_THROW(comma::exception, "partitions-reduce: expected options, got: '" << options << "'");
-                break;
+        try
+        {
+            switch (tokens.size()) {
+                case 0:
+                    break;
+                case 1:
+                    channel = boost::lexical_cast<unsigned int>(tokens[0]);
+                    break;
+                case 2:
+                    if( !tokens[0].empty() )
+                    {
+                        channel = boost::lexical_cast<unsigned int>(tokens[0]);
+                    }
+                    background = boost::lexical_cast<comma::int32>(tokens[1]);
+                    break;
+                default:
+                    throw;
+            }
+        }
+        catch( std::exception& ex )
+        {
+            COMMA_THROW( comma::exception, "partitions-reduce: invalid options:: '" << options << "'; " << ex.what());
         }
     }
     return std::make_pair(partitions_reduce<H>(channel, background), true);
