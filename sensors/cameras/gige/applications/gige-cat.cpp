@@ -83,7 +83,7 @@ int main( int argc, char** argv )
             std::cerr << "usage: gige-cat [<options>] [<filters>]\n" << std::endl;
             std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
             std::cerr << description << std::endl;
-            std::cerr << snark::cv_mat::filters::usage() << std::endl;
+            std::cerr << snark::cv_mat::impl::filters<>::usage() << std::endl;
             return 1;
         }
         if( vm.count( "header" ) && vm.count( "no-header" ) ) { COMMA_THROW( comma::exception, "--header and --no-header are mutually exclusive" ); }

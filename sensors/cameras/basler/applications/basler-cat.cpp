@@ -1494,7 +1494,7 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" )) bash_completion( argc, argv );
-        if( options.exists( "--help-filters" )) { std::cerr << snark::cv_mat::filters::usage(); return 0; }
+        if( options.exists( "--help-filters" )) { std::cerr << snark::cv_mat::impl::filters<>::usage(); return 0; }
         if( options.exists( "--help-types" )) { std::cerr << snark::cv_mat::serialization::options::type_usage(); return 0; }
 
         Pylon::PylonAutoInitTerm auto_init_term;
