@@ -103,6 +103,7 @@ class partition
 template <typename H>
 class reduce {
    public:
+    reduce() : reduce(0, -1, false) {};
     reduce(unsigned int channel, comma::int32 background, bool merge) : channel_(channel), background_(background), merge_(merge){};
 
     std::pair<H, cv::Mat> operator()(std::pair<H, cv::Mat> m);
