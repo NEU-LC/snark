@@ -48,7 +48,7 @@
 #include <comma/csv/binary.h>
 #include <comma/string/split.h>
 #include "../cv_mat/pipeline.h"
-#include "../cv_mat/detail/help.h"
+#include "../cv_mat/filters/help.h"
 
 typedef std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair;
 typedef snark::cv_mat::serialization serialization;

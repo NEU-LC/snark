@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
-#include "utils.h"
+#include "../utils.h"
 
 namespace snark{ namespace cv_mat { namespace impl {
     

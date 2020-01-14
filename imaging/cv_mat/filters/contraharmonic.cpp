@@ -56,7 +56,7 @@
 /// @author kent hu
 
 #include "contraharmonic.h"
-#include "utils.h"
+#include "../utils.h"
 
 #include <comma/base/exception.h>
 #include <comma/base/types.h>

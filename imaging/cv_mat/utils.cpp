@@ -35,10 +35,10 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/types_c.h>
 #include <comma/base/types.h>
-#include "../../../timing/time.h"
+#include "../../timing/time.h"
 #include "utils.h"
 
-namespace snark{ namespace cv_mat { namespace impl {
+namespace snark{ namespace cv_mat {
 
 boost::unordered_map< std::string, int > fill_types()
 {
@@ -148,7 +148,7 @@ cv::Scalar scalar_from_strings( const std::string* begin, unsigned int size )
 
 unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid compilation warning
 {
-    static boost::unordered_map< std::string, unsigned int > cvt_color_types_ = impl::fill_cvt_color_types_();
+    static boost::unordered_map< std::string, unsigned int > cvt_color_types_ = fill_cvt_color_types_();
     boost::unordered_map< std::string, unsigned int >::const_iterator it = cvt_color_types_.find( t );
     if( it != cvt_color_types_.end() ) { return it->second; }
     try { return boost::lexical_cast< int >( t ); }
@@ -158,7 +158,7 @@ unsigned int cvt_color_type_from_string( const std::string& t ) // to avoid comp
 
 std::string type_as_string( int t ) // to avoid compilation warning
 {
-    static const boost::unordered_map< int, std::string > types_as_string = impl::fill_types_as_string_();
+    static const boost::unordered_map< int, std::string > types_as_string = fill_types_as_string_();
     boost::unordered_map< int, std::string >::const_iterator it = types_as_string.find( t );
     return it == types_as_string.end() ? boost::lexical_cast< std::string >( t ) : it->second;
 }
@@ -222,4 +222,4 @@ template void set_channel< comma::uint64 >( unsigned char*, comma::uint64, int )
 template void set_channel< float >( unsigned char*, float, int );
 template void set_channel< double >( unsigned char*, double, int );
 
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+} }  // namespace snark { namespace cv_mat {

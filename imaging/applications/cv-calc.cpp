@@ -52,7 +52,7 @@
 #include <comma/visiting/traits.h>
 #include "../../imaging/cv_mat/filters.h"
 #include "../../imaging/cv_mat/serialization.h"
-#include "../../imaging/cv_mat/detail/life.h"
+#include "../../imaging/cv_mat/filters/life.h"
 #include "../../visiting/eigen.h"
 #include "cv_calc/equirectangular_map.h"
 #include "cv_calc/unstride.h"

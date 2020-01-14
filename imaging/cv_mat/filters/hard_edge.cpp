@@ -64,9 +64,7 @@
 #include <tbb/parallel_for.h>
 #include <comma/base/exception.h>
 #include "hard_edge.h"
-#include "utils.h"
-
-#include <iostream>
+#include "../utils.h"
 
 namespace snark { namespace cv_mat { namespace impl {
 

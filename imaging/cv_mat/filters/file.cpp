@@ -36,7 +36,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <comma/base/exception.h>
 #include "file.h"
-#include "utils.h"
+#include "../utils.h"
 
 namespace snark { namespace cv_mat { namespace impl {
     

@@ -36,7 +36,7 @@
 #include <comma/csv/binary.h>
 #include <comma/string/string.h>
 #include <boost/bimap.hpp>
-#include "detail/utils.h"
+#include "utils.h"
 #include "serialization.h"
 
 namespace snark { namespace cv_mat {
@@ -327,7 +327,7 @@ unsigned type_from_string( const std::string& t )
     COMMA_THROW( comma::exception, "expected type, got \"" << t << "\"" );
 }
 
-std::string type_as_string( int type ) { return impl::type_as_string( type ); }
+// std::string type_as_string( int type ) { return type_as_string( type ); }
 
 std::string format_from_type( unsigned type )
 {

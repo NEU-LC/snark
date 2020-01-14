@@ -32,7 +32,7 @@
 #include <comma/name_value/parser.h>
 #include <comma/visiting/traits.h>
 #include "text.h"
-#include "utils.h"
+#include "../utils.h"
 
 namespace comma { namespace visiting {
 

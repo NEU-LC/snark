@@ -35,7 +35,7 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <opencv2/core/core.hpp>
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat {
 
 boost::unordered_map< std::string, int > fill_types();
 
@@ -54,4 +54,4 @@ std::vector< int > imwrite_params( const std::string& type, const int quality );
 template < typename T >
 void set_channel( unsigned char* channel, T value, int depth );
 
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+} }  // namespace snark { namespace cv_mat {

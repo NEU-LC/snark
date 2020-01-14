@@ -14,8 +14,8 @@ FILE( GLOB color_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/color/*.h )
 FILE( GLOB cvmat_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.cpp )
 FILE( GLOB cvmat_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/*.h )
 
-FILE( GLOB cvmat_detail_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.h )
-FILE( GLOB cvmat_detail_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/detail/*.cpp )
+FILE( GLOB cvmat_filters_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/filters/*.h )
+FILE( GLOB cvmat_filters_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/filters/*.cpp )
 
 FILE( GLOB vegetation_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.cpp )
 FILE( GLOB vegetation_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.h )
@@ -24,7 +24,7 @@ ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes}
                             ${camera_source} ${camera_includes}
                             ${color_source} ${color_includes}
                             ${cvmat_source} ${cvmat_includes}
-                            ${cvmat_detail_source} ${cvmat_detail_includes}
+                            ${cvmat_filters_source} ${cvmat_filters_includes}
                             ${vegetation_source} ${vegetation_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} snark_timing snark_math ${ZLIB_LIBRARIES} ${OpenCV_LIBS} tbb ${pgrey_libs} )
@@ -34,6 +34,7 @@ INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )
 INSTALL( FILES ${camera_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/camera )
 INSTALL( FILES ${color_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/color )
 INSTALL( FILES ${cvmat_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/cv_mat )
+INSTALL( FILES ${filters_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/cv_mat/filters )
 
 INSTALL( FILES ${vegetation_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT}/vegetation )
 
