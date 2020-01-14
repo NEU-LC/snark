@@ -66,7 +66,7 @@
 #include "hard_edge.h"
 #include "../utils.h"
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
 
 template < typename H >
 std::pair< H, cv::Mat > hard_edge< H >::handle( std::pair< H, cv::Mat > m, float background )

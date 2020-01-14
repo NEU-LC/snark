@@ -109,7 +109,7 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             if ( vm.count( "verbose" ) )
             {
-                std::cerr << snark::cv_mat::filters::usage() << std::endl;
+                std::cerr << snark::cv_mat::impl::filters<>::usage() << std::endl;
                 std::cerr << std::endl << "config file options:" << std::endl;
                 std::cerr << "\tvideo-mode: dc1394 video mode" << std::endl;
                 std::cerr << "\toperation-mode: dc1394 operation mode" << std::endl;

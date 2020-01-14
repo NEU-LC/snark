@@ -57,7 +57,5 @@ struct filters
 };
 
 } // namespace impl {
-
-typedef impl::filters< > filters;
     
 } } }  // namespace snark { namespace imaging { namespace vegetation {

@@ -33,7 +33,7 @@
 #include <comma/base/exception.h>
 #include "life.h"
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
 
 template < typename H > life< H >::life( double procreation_treshold, double stability_threshold, double step, bool exit_on_stability )
     : procreation_treshold_( procreation_treshold )
@@ -99,7 +99,7 @@ template < typename H > typename std::pair< H, cv::Mat > life< H >::operator()( 
     return generations_[ *index_ ];
 }
 
-template class snark::cv_mat::impl::life< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::life< std::vector< char > >;
+template class snark::cv_mat::filters::life< boost::posix_time::ptime >;
+template class snark::cv_mat::filters::life< std::vector< char > >;
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

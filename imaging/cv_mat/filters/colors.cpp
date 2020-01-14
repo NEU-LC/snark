@@ -32,7 +32,7 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 #include "colors.h"
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
 
 #if CV_MAJOR_VERSION > 2
     

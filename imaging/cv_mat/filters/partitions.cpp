@@ -86,7 +86,7 @@
 #include <unordered_set>
 #include <utility>
 
-namespace snark { namespace cv_mat { namespace impl { namespace partitions {
+namespace snark { namespace cv_mat { namespace filters { namespace partitions {
 
 template < typename S, typename T = S >
 struct pair_hash

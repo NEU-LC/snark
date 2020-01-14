@@ -1243,7 +1243,7 @@ int main( int ac, char** av )
             snark::cv_mat::serialization input_serialization( input_options );
             snark::cv_mat::serialization output_serialization( output_options );
             grep::non_zero non_zero( options.value< std::string >( "--non-zero", "" ) );
-            const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( options.value< std::string >( "--filter,--filters", "" ) );
+            const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::impl::filters<>::make( options.value< std::string >( "--filter,--filters", "" ) );
             if( !non_zero && !filters.empty() ) { std::cerr << "cv-calc: grep: warning: --filters specified, but --non-zero is not; --filters will have no effect" << std::endl; }
             while( std::cin.good() && !std::cin.eof() )
             {
@@ -1266,7 +1266,7 @@ int main( int ac, char** av )
             double stability_threshold = options.value( "--stability-threshold,--stability,--extinction-threshold,--extinction", 4.0 );
             double step = options.value( "--step", 1.0 );
             bool exit_on_stability = options.exists( "--exit-on-stability" );
-            snark::cv_mat::impl::life< boost::posix_time::ptime > life( procreation_threshold, stability_threshold, step, exit_on_stability );
+            snark::cv_mat::filters::life< boost::posix_time::ptime > life( procreation_threshold, stability_threshold, step, exit_on_stability );
             auto iterations = options.optional< unsigned int >( "--iterations,-i" );
             std::pair< boost::posix_time::ptime, cv::Mat > p = input_serialization.read< boost::posix_time::ptime >( std::cin );
             if( p.second.empty() ) { return 0; }

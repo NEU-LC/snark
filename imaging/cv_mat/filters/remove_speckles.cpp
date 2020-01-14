@@ -63,7 +63,7 @@
 #include <tbb/parallel_for.h>
 #include "remove_speckles.h"
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
     
 template < typename H >
 std::pair< H, cv::Mat > remove_speckles( std::pair< H, cv::Mat > m, cv::Size2i s )

@@ -35,7 +35,7 @@
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
 
 struct text_input // todo: move to impl in cpp
 {

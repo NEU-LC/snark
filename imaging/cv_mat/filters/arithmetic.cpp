@@ -34,7 +34,7 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 #include "../utils.h"
 
-namespace snark{ namespace cv_mat { namespace impl {
+namespace snark{ namespace cv_mat { namespace filters {
     
 template < typename H >
 typename arithmetic< H >::operation arithmetic< H >::str_to_operation(const std::string& s)
@@ -90,5 +90,5 @@ typename arithmetic< H >::value_type arithmetic< H >::apply_(const value_type& m
     
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
-template class snark::cv_mat::impl::arithmetic< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::arithmetic< std::vector< char > >;
+template class snark::cv_mat::filters::arithmetic< boost::posix_time::ptime >;
+template class snark::cv_mat::filters::arithmetic< std::vector< char > >;

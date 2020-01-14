@@ -60,7 +60,7 @@ struct bursty_reader_traits< std::pair< snark::cv_mat::serialization::header::bu
 
 namespace imaging { namespace applications {
     
-namespace impl {
+namespace filters {
 
 /// base class for video processing, capture images in a serarate thread, apply filters, serialize to stdout
 template < typename H=boost::posix_time::ptime >
@@ -100,8 +100,8 @@ class pipeline
 
 } // namespace impl {
 
-typedef impl::pipeline<> pipeline;
-typedef impl::pipeline< snark::cv_mat::serialization::header::buffer_t > pipeline_with_header;
+typedef filters::pipeline<> pipeline;
+typedef filters::pipeline< snark::cv_mat::serialization::header::buffer_t > pipeline_with_header;
     
     
 } }  // namespace imaging { namespace applications {

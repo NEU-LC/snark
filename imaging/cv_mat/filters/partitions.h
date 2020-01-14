@@ -64,7 +64,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <comma/base/types.h>
 
-namespace snark { namespace cv_mat { namespace impl { namespace partitions {
+namespace snark { namespace cv_mat { namespace filters { namespace partitions {
 
 template < typename H >
 class partition

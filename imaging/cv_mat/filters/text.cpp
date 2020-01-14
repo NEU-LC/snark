@@ -37,10 +37,10 @@
 namespace comma { namespace visiting {
 
 template <>
-struct traits< snark::cv_mat::impl::text_input >
+struct traits< snark::cv_mat::filters::text_input >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::cv_mat::impl::text_input& p, Visitor& v ) // hyper-quick and dirty
+    static void visit( const Key&, const snark::cv_mat::filters::text_input& p, Visitor& v ) // hyper-quick and dirty
     {
         v.apply( "x", p.origin.x );
         v.apply( "y", p.origin.y );
@@ -51,7 +51,7 @@ struct traits< snark::cv_mat::impl::text_input >
     }
     
     template < typename Key, class Visitor >
-    static void visit( const Key&, snark::cv_mat::impl::text_input& p, Visitor& v ) // hyper-quick and dirty
+    static void visit( const Key&, snark::cv_mat::filters::text_input& p, Visitor& v ) // hyper-quick and dirty
     {
         v.apply( "x", p.origin.x );
         v.apply( "y", p.origin.y );
@@ -70,7 +70,7 @@ struct traits< snark::cv_mat::impl::text_input >
     
 } } // namespace comma { namespace visiting {
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
     
 template < typename H >
 text< H >::text( const text_input& caption

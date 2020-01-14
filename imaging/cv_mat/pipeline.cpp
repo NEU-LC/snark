@@ -34,7 +34,7 @@
 
 namespace snark{ namespace imaging { namespace applications {
     
-namespace impl {
+namespace filters {
 
 /// constructor
 /// @param fields csv output fields

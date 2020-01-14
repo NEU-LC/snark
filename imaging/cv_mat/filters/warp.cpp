@@ -60,7 +60,7 @@
 #include <comma/base/exception.h>
 #include "warp.h"
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
 
 template < typename H >
 warp< H >::warp()
@@ -92,9 +92,9 @@ typename unwarp< H >::value_type unwarp< H >::operator()( value_type n ) const
     return m;
 }
 
-template struct snark::cv_mat::impl::warp< boost::posix_time::ptime >;
-template struct snark::cv_mat::impl::warp< std::vector< char > >;
-template struct snark::cv_mat::impl::unwarp< boost::posix_time::ptime >;
-template struct snark::cv_mat::impl::unwarp< std::vector< char > >;
+template struct snark::cv_mat::filters::warp< boost::posix_time::ptime >;
+template struct snark::cv_mat::filters::warp< std::vector< char > >;
+template struct snark::cv_mat::filters::unwarp< boost::posix_time::ptime >;
+template struct snark::cv_mat::filters::unwarp< std::vector< char > >;
 
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+} } }  // namespace snark { namespace cv_mat { namespace filters {

@@ -68,7 +68,7 @@
 
 namespace snark {
 namespace cv_mat {
-namespace impl {
+namespace filters {
 
 template <typename H>
 class contraharmonic {

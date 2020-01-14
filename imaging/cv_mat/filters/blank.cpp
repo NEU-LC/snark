@@ -60,12 +60,12 @@
 #include "../serialization.h"
 #include "blank.h"
 
-namespace snark{ namespace cv_mat { namespace impl {
+namespace snark{ namespace cv_mat { namespace filters {
 
 template < typename H >
 blank< H >::blank( unsigned int rows, unsigned int cols, int type ) { value.second = cv::Mat( rows, cols, type ); }
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
-template class snark::cv_mat::impl::blank< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::blank< std::vector< char > >;
+template class snark::cv_mat::filters::blank< boost::posix_time::ptime >;
+template class snark::cv_mat::filters::blank< std::vector< char > >;

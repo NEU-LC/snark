@@ -36,7 +36,7 @@
 #include <comma/base/exception.h>
 #endif // CV_MAJOR_VERSION > 2
 
-namespace snark{ namespace cv_mat { namespace impl {
+namespace snark{ namespace cv_mat { namespace filters {
 
 #if CV_MAJOR_VERSION > 2
     template < typename H >

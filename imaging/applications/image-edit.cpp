@@ -102,7 +102,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --undo-depth,--undo-size,--undo,-u=<depth>; number of undo steps; default: 10" << std::endl;
     std::cerr << std::endl;
     std::cerr << "filters" << std::endl;
-    if( verbose ) { std::cerr << snark::cv_mat::filters::usage() << std::endl; } else { std::cerr << "    run image-edit --help --verbose for details..." << std::endl; }
+    if( verbose ) { std::cerr << snark::cv_mat::impl::filters<>::usage() << std::endl; } else { std::cerr << "    run image-edit --help --verbose for details..." << std::endl; }
     std::cerr << std::endl;
     std::cerr << "image serialization" << std::endl;
     if( verbose ) { std::cerr << snark::cv_mat::serialization::options::usage() << std::endl; } else { std::cerr << "    run image-edit --help --verbose for details..." << std::endl; }
@@ -237,7 +237,7 @@ int main( int ac, char** av )
                 filters_history.push_back( filter_string );
                 log( i, j, command );
                 new_image = false;
-                const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::filters::make( filter_string );
+                const std::vector< snark::cv_mat::filter >& filters = snark::cv_mat::impl::filters<>::make( filter_string );
                 pair_t filtered;
                 filtered.first = current.first;
                 image_edit_history.back().copyTo( filtered.second );

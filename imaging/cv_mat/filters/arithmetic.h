@@ -34,7 +34,7 @@
 #include <comma/base/exception.h>
 #include <opencv2/core/core.hpp>
 
-namespace snark{ namespace cv_mat { namespace impl {
+namespace snark{ namespace cv_mat { namespace filters {
 
 template < typename H >
 class arithmetic

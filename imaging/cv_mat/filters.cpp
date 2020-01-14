@@ -2092,7 +2092,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what());
         }
     }
-    if( e[0] == "balance-white" ) { return std::make_pair( impl::balance_white< H >(), false ); }
+    if( e[0] == "balance-white" ) { return std::make_pair( filters::balance_white< H >(), false ); }
     if( e[0] == "canny" )
     {
         if( e.size() == 1 ) { COMMA_THROW( comma::exception, "canny: please specify <threshold1>,<threshold2>[,<kernel_size>]" ); }
@@ -2359,10 +2359,10 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
         return std::make_pair( boost::bind< value_type_t >( circle_impl_< H >, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) ), true );
     }
-    if( e[0] == "contraharmonic" ) { return impl::contraharmonic<H>::make( e.size() > 1 ? e[1] : ""); }
-    if( e[0] == "hard-edge" ) { return impl::hard_edge< H >::make( e.size() > 1 ? e[1] : "" ); }
-    if( e[0] == "partition" ) { return impl::partitions::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
-    if( e[0] == "partitions-reduce" ) { return impl::partitions::reduce<H>::make(e.size() > 1 ? e[1] : ""); }
+    if( e[0] == "contraharmonic" ) { return filters::contraharmonic<H>::make( e.size() > 1 ? e[1] : ""); }
+    if( e[0] == "hard-edge" ) { return filters::hard_edge< H >::make( e.size() > 1 ? e[1] : "" ); }
+    if( e[0] == "partition" ) { return filters::partitions::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
+    if( e[0] == "partitions-reduce" ) { return filters::partitions::reduce<H>::make(e.size() > 1 ? e[1] : ""); }
     if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
     {
         boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
@@ -2374,7 +2374,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     {
         std::vector< std::string > s = comma::split( e[1], ',' );
         if( s.size() != 2 ) { COMMA_THROW( comma::exception, "expected remove-speckles=<width>,<height>; got \"remove-speckles=" << e[1] << "\"" ); }
-        return std::make_pair( boost::bind< value_type_t >( impl::remove_speckles< H >, _1, cv::Size2i( boost::lexical_cast< unsigned int >( s[0] ), boost::lexical_cast< unsigned int >( s[1] ) ) ), true );
+        return std::make_pair( boost::bind< value_type_t >( filters::remove_speckles< H >, _1, cv::Size2i( boost::lexical_cast< unsigned int >( s[0] ), boost::lexical_cast< unsigned int >( s[1] ) ) ), true );
     }
     if( e[0] == "file" )
     {
@@ -2448,7 +2448,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( numbered && do_index ) { COMMA_THROW( comma::exception, "numbered and index are mutually exclusive in 'file=" << e[1] << "'" ); }
         if( numbered && !filenames.empty() ) { COMMA_THROW( comma::exception, "numbered and filenames:... are mutually exclusive in 'file=" << e[1] << "'" ); }
         if( do_index && !filenames.empty() ) { COMMA_THROW( comma::exception, "index and filenames:... are mutually exclusive in 'file=" << e[1] << "'" ); }
-        return std::make_pair( boost::bind< value_type_t >( impl::file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, filenames, ranges ), _1 ), false );
+        return std::make_pair( boost::bind< value_type_t >( filters::file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, filenames, ranges ), _1 ), false );
     }
     if( e[0] == "save" )
     {
@@ -2502,7 +2502,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if( e[0] == "flip" ) { return std::make_pair( boost::bind< value_type_t >( flip_impl_< H >, _1, 0 ), true ); }
     if( e[0] == "flop" ) { return std::make_pair( boost::bind< value_type_t >( flip_impl_< H >, _1, 1 ), true ); }
     if( e[0] == "magnitude" ) { return std::make_pair( boost::bind< value_type_t >( magnitude_impl_< H >, _1 ), true ); }
-    if( e[0] == "text" ) { return impl::text< H >::make( e.size() > 1 ? e[1] : "" ); }
+    if( e[0] == "text" ) { return filters::text< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "convert-to" || e[0] == "convert_to" )
     {
         if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "convert-to: expected options, got none" ); }
@@ -2540,7 +2540,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             else if( r[3] == "lanczos4" ) { interpolation = cv::INTER_LANCZOS4; }
             else { COMMA_THROW( comma::exception, "remap: expected interpolation type, got: '" << r[1] << "'" ); }
         }
-        return std::make_pair( snark::cv_mat::impl::remap< H >( map, width, height, interpolation ), true );
+        return std::make_pair( snark::cv_mat::filters::remap< H >( map, width, height, interpolation ), true );
     }
     if( e[0] == "resize" )
     {
@@ -2594,7 +2594,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "clone-channels: please specify number of channels" ); }
         return std::make_pair( boost::bind< value_type_t >( clone_channels_impl_< H >, _1, boost::lexical_cast< unsigned int >( e[1] ) ), true );
     }
-    if( e[0] == "undistort" ) { return std::make_pair( snark::cv_mat::impl::undistort< H >( e[1] ), false ); }
+    if( e[0] == "undistort" ) { return std::make_pair( snark::cv_mat::filters::undistort< H >( e[1] ), false ); }
     if( e[0] == "invert" )
     {
         if( e.size() == 1 ) { return std::make_pair( invert_impl_< H >, true ); }
@@ -2689,14 +2689,14 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
         // For the case where the file is just a file descriptor, no extenstion, use e[2]
-        return std::make_pair( impl::load< H >( e[1] ), true );
+        return std::make_pair( filters::load< H >( e[1] ), true );
     }
     if( e[0] == "blank" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename make=<rows>,<cols>,<type>" ); }
         const auto& s = comma::split( e[1], ',' );
         if( s.size() < 3 ) { COMMA_THROW( comma::exception, "expected 3 parameters, got only " << s.size() << "; please specify filename make=<rows>,<cols>,<type>" ); }
-        return std::make_pair( impl::blank< H >( boost::lexical_cast< unsigned int >( s[0] ), boost::lexical_cast< unsigned int >( s[1] ), snark::cv_mat::type_from_string( s[2] ) ), true );
+        return std::make_pair( filters::blank< H >( boost::lexical_cast< unsigned int >( s[0] ), boost::lexical_cast< unsigned int >( s[1] ), snark::cv_mat::type_from_string( s[2] ) ), true );
     }
     if( e[0] == "map" ) // todo! refactor usage, especially csv option separators and equal sign; make optionally map for each channel separately
     {
@@ -2877,7 +2877,7 @@ template <> struct time_traits< boost::posix_time::ptime >
 template < typename H >
 std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make( const std::string& how, unsigned int default_delay )
 {
-    return impl::filters< H >::make( how, boost::bind( &time_traits< H >::pass_time, _1 ), default_delay );
+    return impl::filters< H >::make( how, &time_traits< H >::pass_time, default_delay );
 }
 
 template < typename H >
@@ -2926,8 +2926,8 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
              maker_t m( get_timestamp, '|', ':' );
              composer_t c( m );
              auto operand_filters = boost::apply_visitor( snark::cv_mat::bitwise::visitor< input_type, input_type, composer_t >( c ), result );
-             auto op = arithmetic< H >::str_to_operation(e[0]);
-             f.push_back( filter_type( boost::bind< value_type_t >( arithmetic< H >( op ), _1, operand_filters.first ), operand_filters.second ) );
+             auto op = cv_mat::filters::arithmetic< H >::str_to_operation(e[0]);
+             f.push_back( filter_type( boost::bind< value_type_t >( cv_mat::filters::arithmetic< H >( op ), _1, operand_filters.first ), operand_filters.second ) );
         }
         else if( e[0] == "bitwise" )
         {
@@ -2949,13 +2949,13 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
 //         {
 //             //if( e.size() < 2 ) { COMMA_THROW( comma::exception, "spherical: please specify <what>"); }
 //             //const std::vector< std::string >& s = comma::split( e[1], ',' );
-//             f.push_back( filter_type( snark::cv_mat::impl::warp< H  >() ) );
+//             f.push_back( filter_type( snark::cv_mat::filters::warp< H  >() ) );
 //         }
 //         else if( e[0] == "unwarp" )
 //         {
 //             //if( e.size() < 2 ) { COMMA_THROW( comma::exception, "spherical: please specify <what>"); }
 //             //const std::vector< std::string >& s = comma::split( e[1], ',' );
-//             f.push_back( filter_type( snark::cv_mat::impl::unwarp< H  >() ) );
+//             f.push_back( filter_type( snark::cv_mat::filters::unwarp< H  >() ) );
 //         }
         else if( e[0] == "pack" )
         {
@@ -3216,7 +3216,7 @@ static std::string usage_impl_()
     oss << "        flop: flip horizontally" << std::endl;
     oss << "        grab=<format>[,<quality>]: write an image to file with timestamp as name in the specified format. <format>: jpg|ppm|png|tiff..., if no timestamp, system time is used" << std::endl;
     oss << "                                   <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
-    oss << impl::hard_edge< boost::posix_time::ptime >::usage( 8 ) << std::endl;
+    oss << filters::hard_edge< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        head=<n>: output <n> frames and exit" << std::endl;
     oss << "        inrange=<lower>,<upper>: a band filter on r,g,b or greyscale image; for rgb: <lower>::=<r>,<g>,<b>; <upper>::=<r>,<g>,<b>; see cv::inRange() for detail" << std::endl;
     oss << "        invert: invert image (to negative)" << std::endl;
@@ -3245,8 +3245,8 @@ static std::string usage_impl_()
     oss << "            <bits>: number of bits, currently only 12-bit packing from 16-bit is supported (pack 2 pixels into 3 bytes)" << std::endl;
     oss << "            <format>: output pixel formats in quadbits" << std::endl;
     oss << "                where 'a' is high quadbit of byte 0, 'b' is low quadbit of byte 0, 'c' is high quadbit of byte 1, etc... and '0' means quadbit zero" << std::endl;
-    oss << impl::partitions::partition< boost::posix_time::ptime >::usage( 8 ) << std::endl;
-    oss << impl::partitions::reduce< boost::posix_time::ptime >::usage( 8 ) << std::endl;
+    oss << filters::partitions::partition< boost::posix_time::ptime >::usage( 8 ) << std::endl;
+    oss << filters::partitions::reduce< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        pow,power=<value>; each image channel power, currently plain wrapper of opencv pow(), thus may be slow; todo? parallelize and/or implement mapping with interpolation" << std::endl;
     oss << "        remap=<map-filename>[,<interpolation>]: remap, input image dimensions expected to match map dimentions; see cv::remap() for details" << std::endl;
     oss << "            <interpolation>: nearest, linear, area, cubic, lanczos4; default: linear" << std::endl;
@@ -3267,8 +3267,8 @@ static std::string usage_impl_()
     //oss << "        warp=<how>: todo: warp image" << std::endl;
     //oss << "        unwarp=<how>: todo: unwarp image" << std::endl;
     //oss << "            <how>: todo" << std::endl;
-    oss << impl::contraharmonic<boost::posix_time::ptime>::usage(8) << std::endl;
-    oss << impl::text< boost::posix_time::ptime >::usage( 8 ) << std::endl;
+    oss << filters::contraharmonic<boost::posix_time::ptime>::usage(8) << std::endl;
+    oss << filters::text< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
     oss << "            <maxval>: maximum value to use with the binary and binary_inv thresholding types (default:255)" << std::endl;

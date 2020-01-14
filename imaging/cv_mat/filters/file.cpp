@@ -38,7 +38,7 @@
 #include "file.h"
 #include "../utils.h"
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
     
 template < typename H >
 file< H >::file( const get_timestamp_functor& get_timestamp

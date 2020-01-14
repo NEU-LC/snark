@@ -65,7 +65,7 @@
 #include "../../camera/traits.h"
 #include "remap.h"
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
 
 template < typename H >
 remap< H >::remap( const std::string& filename, unsigned int width, unsigned int height, int interpolation )
@@ -143,9 +143,9 @@ typename undistort< H >::value_type undistort< H >::operator()( typename undisto
     return remap_->operator()( m );
 }
 
-template class snark::cv_mat::impl::remap< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::remap< std::vector< char > >;
-template class snark::cv_mat::impl::undistort< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::undistort< std::vector< char > >;
+template class snark::cv_mat::filters::remap< boost::posix_time::ptime >;
+template class snark::cv_mat::filters::remap< std::vector< char > >;
+template class snark::cv_mat::filters::undistort< boost::posix_time::ptime >;
+template class snark::cv_mat::filters::undistort< std::vector< char > >;
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

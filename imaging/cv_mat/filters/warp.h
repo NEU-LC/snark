@@ -60,7 +60,7 @@
 
 #include <opencv2/core/core.hpp>
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
 
 template < typename H >
 struct warp
@@ -82,4 +82,4 @@ struct unwarp
     value_type operator()( value_type ) const;
 };
 
-} } }  // namespace snark { namespace cv_mat { namespace impl {
+} } }  // namespace snark { namespace cv_mat { namespace filters {

@@ -36,7 +36,7 @@
 #include <boost/optional.hpp>
 #include "../serialization.h"
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
     
 template < typename H >
 class file

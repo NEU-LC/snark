@@ -135,7 +135,7 @@ static typename impl::filters< H >::value_type exponential_combination_impl_( co
 }
 
 template < typename H >
-boost::function< typename impl::filters< H >::value_type( typename impl::filters< H >::value_type ) > impl::filters< H >::make_functor( const std::vector< std::string >& e )
+boost::function< typename cv_mat::impl::filters< H >::value_type( typename cv_mat::impl::filters< H >::value_type ) > impl::filters< H >::make_functor( const std::vector< std::string >& e )
 {
     if( e[0] == "ndvi" ) { return boost::bind< value_type >( ndvi_impl_< H >, _1 ); }
     if( e[0]=="exponential-combination" )

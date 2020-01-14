@@ -37,7 +37,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include "../serialization.h"
 
-namespace snark{ namespace cv_mat { namespace impl {
+namespace snark{ namespace cv_mat { namespace filters {
 
 template < typename H >
 load< H >::load( const std::string& filename )
@@ -60,5 +60,5 @@ load< H >::load( const std::string& filename )
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
-template class snark::cv_mat::impl::load< boost::posix_time::ptime >;
-template class snark::cv_mat::impl::load< std::vector< char > >;
+template class snark::cv_mat::filters::load< boost::posix_time::ptime >;
+template class snark::cv_mat::filters::load< std::vector< char > >;

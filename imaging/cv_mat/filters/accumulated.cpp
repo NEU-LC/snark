@@ -40,7 +40,7 @@
 
 namespace snark{ namespace cv_mat {  namespace accumulated {
     
-namespace impl {
+namespace filters {
     
 // Row and Col tells you which pixel to access or was accessed to get input nd result pixel
 // The returned value will also be set into this pixel in 'result' cv::Mat 
@@ -107,7 +107,7 @@ typename average< H >::value_type average< H >::operator()( const typename avera
     // This filter is not run in parallel, no locking required
     if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     
-    impl::iterate_by_input_type< H >(n.second, result_, [](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) { return avg + (in - avg)/count; } , count_);
+    filters::iterate_by_input_type< H >(n.second, result_, [](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) { return avg + (in - avg)/count; } , count_);
     
     cv::Mat output; // copy as result_ will be changed next iteration
     result_.convertTo(output, n.second.type());
@@ -122,7 +122,7 @@ typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::val
     if( count_ == 1 ) { n.second.convertTo( result_, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
     else { 
         // if count < spin_up then do normal average
-        impl::iterate_by_input_type< H >(n.second, result_, 
+        filters::iterate_by_input_type< H >(n.second, result_, 
             [this](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) { 
                 if( count <= spin_up_ ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha_; } 
             },
@@ -164,7 +164,7 @@ typename moving_average< H >::value_type moving_average< H >::operator()( const 
         int depth = n.second.depth();
         auto& window = window_;
         auto size = size_;
-        impl::iterate_by_input_type< H >(n.second, result_, 
+        filters::iterate_by_input_type< H >(n.second, result_, 
             [&window, size, depth](float new_value, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) -> float 
             {
                 switch( depth )

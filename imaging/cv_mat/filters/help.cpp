@@ -42,7 +42,7 @@
 namespace {
 
     typedef const std::string & ( *helper )( const std::string & input );
-    static std::map< std::string, helper > helpers = boost::assign::map_list_of( "filters", snark::cv_mat::filters::usage );
+    static std::map< std::string, helper > helpers = boost::assign::map_list_of( "filters", snark::cv_mat::impl::filters<>::usage );
 
 } // anonymous
 

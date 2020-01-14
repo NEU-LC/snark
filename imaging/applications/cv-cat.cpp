@@ -300,7 +300,7 @@ int main( int argc, char** argv )
                 std::cerr << std::endl;
                 std::cerr << snark::cv_mat::serialization::options::usage() << std::endl;
                 std::cerr << std::endl;
-                std::cerr << snark::cv_mat::filters::usage() << std::endl;
+                std::cerr << snark::cv_mat::impl::filters<>::usage() << std::endl;
             }
             std::cerr << std::endl;
             return 0;

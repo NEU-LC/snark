@@ -34,7 +34,7 @@
 #include <opencv2/core/core.hpp>
 #include <boost/optional.hpp>
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
 
 template < typename H >
 class life

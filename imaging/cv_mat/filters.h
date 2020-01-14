@@ -36,7 +36,7 @@
 #include <opencv2/core/core.hpp>
 #include "serialization.h"
 
-namespace snark{ namespace cv_mat {
+namespace snark { namespace cv_mat {
     
 typedef serialization::header::buffer_t header_type;
 
@@ -82,7 +82,6 @@ struct filters
 
 } // namespace impl {
 
-typedef impl::filters<> filters;
 typedef impl::filters< header_type > filters_with_header; // todo: a better name
 
 /// a helper: e.g. take CV_8UC3, return CV_8UC1

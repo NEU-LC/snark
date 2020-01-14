@@ -317,7 +317,7 @@ class circle {
 
 // }  // namespace kernels
 
-namespace snark { namespace cv_mat { namespace impl {
+namespace snark { namespace cv_mat { namespace filters {
 
 template <typename T>
 struct handle {
