@@ -158,7 +158,7 @@ int main( int argc, char** argv )
             std::cerr << "usage: flycapture-capture [<options>] [<filters>]" << std::endl;
             std::cerr << "known bug: freezes on slow consumers even with --discard, use flycapture-cat instead" << std::endl;
             std::cerr << description << std::endl;
-            std::cerr << snark::cv_mat::filters::usage() << std::endl;
+            std::cerr << snark::cv_mat::impl::filters<>::usage() << std::endl;
             return 1;
         }
         
@@ -233,7 +233,7 @@ int main( int argc, char** argv )
 
         if( !filters.empty() )
         {
-            std::vector< snark::cv_mat::filter > cvMatFilters = snark::cv_mat::filters::make( filters );
+            std::vector< snark::cv_mat::filter > cvMatFilters = snark::cv_mat::impl::filters<>::make( filters );
             for( std::size_t i = 0; i < cvMatFilters.size(); ++i )
             {
                 tbb::filter::mode mode = tbb::filter::serial_in_order;

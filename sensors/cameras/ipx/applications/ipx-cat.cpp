@@ -106,7 +106,7 @@ int main( int argc, char** argv )
             //    std::cerr << "    visible camera: BayerRG8, BayerRG10, BayerRG12" << std::endl;
             //    std::cerr << "    NIR camera: Mono8, Mono10, Mono12" << std::endl;
             //}
-            if( verbose ) { std::cerr << snark::cv_mat::filters::usage() << std::endl; }
+            if( verbose ) { std::cerr << snark::cv_mat::impl::filters<>::usage() << std::endl; }
             else { std::cerr << "for more info run: ipx-cat --help --verbose..." << std::endl; }
             std::cerr << std::endl;
             return 0;

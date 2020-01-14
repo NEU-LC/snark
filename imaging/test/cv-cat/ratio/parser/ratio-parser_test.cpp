@@ -27,7 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "../../../../../imaging/cv_mat/detail/ratio.h"
+#include "../../../../../imaging/cv_mat/filters/ratio.h"
 
 #include <gtest/gtest.h>
 
