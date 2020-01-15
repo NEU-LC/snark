@@ -27,6 +27,8 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <opencv2/core/core.hpp>
 #include <IpxCameraApi.h>
@@ -37,23 +39,33 @@ class system
 {
     public:
         system();
+        
         ~system();
+        
+        IpxCam::System& operator()() { return *system_; }
+        
+        const IpxCam::System& operator()() const { return *system_; }
+        
+        std::vector< std::string > description() const;
         
     private:
         IpxCam::System* system_;
+        IpxCam::InterfaceList* interface_list_;
 };
     
 class camera
 {
     public:
-        camera();
+        camera( IpxCam::Device* device );
+        
+        ~camera();
         
         void connect();
         
         void start_acquisition() {} // todo
     
     private:
-        IpxCam::DeviceInfo* device_info_;
+        friend class system_;
         IpxCam::Device* device_;
 };
 

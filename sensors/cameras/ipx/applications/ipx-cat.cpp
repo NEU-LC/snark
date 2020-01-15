@@ -72,6 +72,7 @@ int main( int argc, char** argv )
             //( "validate-settings", boost::program_options::value< std::string >( &settings_file ), "validate camera settings saved in file specified in <arg> in camera" )
             //( "do-and-exit", "perform --set, or --load-settings, or --save-settings and exit" )
             ( "id", boost::program_options::value< std::string >( &id )->default_value( "" ), "any fragment of user-readable part of camera id; connect to the first device with matching id" )
+            ( "description", "print description on stdout and exit" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             //( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
@@ -126,18 +127,21 @@ int main( int argc, char** argv )
         std::string filters;
         if( filter_strings.size() == 1 ) { filters = filter_strings[0]; }
         if( filter_strings.size() > 1 ) { COMMA_THROW( comma::exception, "expected filters as a single ';'-separated name-value string; got: " << comma::join( filter_strings, ' ' ) ); }
+        if( verbose ) { std::cerr << "ipx-cat: creating system..." << std::endl; }
+        snark::ipx::system system;
+        if( vm.count( "description" ) ) { std::cout << comma::join( system.description(), '\n' ) << std::endl; return 0; }
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         snark::cv_mat::serialization serialization( output_options );
         // todo: pass --output to serialization
+        //snark::ipx::camera camera;
         if( verbose ) { std::cerr << "ipx-cat: data acquisition: starting..." << std::endl; }
-        snark::ipx::camera camera;
-        camera.connect();
-        snark::ipx::stream stream( camera );
-        camera.start_acquisition();
+        //camera.connect();
+        //snark::ipx::stream stream( camera );
+        //camera.start_acquisition();
         if( verbose ) { std::cerr << "ipx-cat: data acquisition: started" << std::endl; }
-        reader.reset( new snark::tbb::bursty_reader< pair_t >( boost::bind( &capture, boost::ref( stream ) ), discard ) );
-        snark::imaging::applications::pipeline pipeline( serialization, filters, *reader ); // todo?! link only with selected filters?
-        pipeline.run();
+        //reader.reset( new snark::tbb::bursty_reader< pair_t >( boost::bind( &capture, boost::ref( stream ) ), discard ) );
+        //snark::imaging::applications::pipeline pipeline( serialization, filters, *reader ); // todo?! link only with selected filters?
+        //pipeline.run();
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << argv[0] << ": " << ex.what() << std::endl; }
