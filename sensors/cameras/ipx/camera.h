@@ -33,6 +33,16 @@
 
 namespace snark { namespace ipx {
 
+class system
+{
+    public:
+        system();
+        ~system();
+        
+    private:
+        IpxCam::System* system_;
+};
+    
 class camera
 {
     public:

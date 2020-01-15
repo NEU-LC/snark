@@ -26,22 +26,23 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <IpxCameraErr.h>
-#include <IpxCameraGuiApi.h>
 #include <comma/base/exception.h>
 #include "camera.h"
 
 namespace snark { namespace ipx {
 
-static IpxCam::System* system_ = IpxCam::IpxCam_GetSystem(); // quick and dirty
+system::system(): system_( IpxCam::IpxCam_GetSystem() ) { if( !system_ ) { COMMA_THROW( comma::exception, "failed to create system" ); } }
 
+system::~system() { system_->Release(); }
+    
 camera::camera(): device_( nullptr ) {}
 
 void camera::connect()
 {
     if( device_ ) { device_->Release(); }
-    device_info_ = IpxGui::SelectCameraA( ipx::system_, "get device selection" );
-    device_ = IpxCam::IpxCam_CreateDevice( device_info_ );
-    if( !device_ ) { COMMA_THROW( comma::exception, "failed to connect" ); }
+    //device_info_ = IpxGui::SelectCameraA( ipx::system_, "get device selection" );
+    //device_ = IpxCam::IpxCam_CreateDevice( device_info_ );
+    //if( !device_ ) { COMMA_THROW( comma::exception, "failed to connect" ); }
     
 }
 
