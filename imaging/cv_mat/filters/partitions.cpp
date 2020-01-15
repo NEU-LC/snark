@@ -119,6 +119,8 @@ partition< H >::partition( boost::optional< cv::Scalar > do_not_visit_value
 {
 }
 
+template < typename T > static void assign_( std::array< unsigned char, 4 >& a, T v ) { std::memcpy( &a[0], &v, sizeof( v ) ); }
+
 template < typename H >
 std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
 {
@@ -129,6 +131,18 @@ std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
         cv::Mat partitions( m.second.rows, m.second.cols, CV_32SC1, cv::Scalar( none_ ) );
         comma::uint32 id = keep_id_ ? id_ : start_from_;
         comma::uint32 start_from = id;
+        std::array< unsigned char, 4 > do_not_visit;
+        if( do_not_visit_value_ )
+        {
+            switch( m.second.type() ) // pain! quick and dirty
+            {
+                case CV_8SC1: case CV_8UC1: assign_< unsigned char >( do_not_visit, ( *do_not_visit_value_ )[0] ); break;
+                case CV_16SC1: case CV_16UC1: assign_< comma::uint16 >( do_not_visit, ( *do_not_visit_value_ )[0] ); break;
+                case CV_32SC1: assign_< comma::int32 >( do_not_visit, ( *do_not_visit_value_ )[0] ); break;
+                case CV_32FC1: BOOST_STATIC_ASSERT( sizeof( float ) == 4 ); assign_< float >( do_not_visit, ( *do_not_visit_value_ )[0] ); break;
+                default: break; // never here
+            }
+        }
         auto neighbour_id = [&]( int i, int j, int io, int jo )->int
         {
             int ni = i + io;
@@ -141,7 +155,7 @@ std::pair< H, cv::Mat > partition< H >::operator()( std::pair< H, cv::Mat > m )
         };
         auto set_pixel = [&]( int i, int j )
         {
-            if( do_not_visit_value_ && std::memcmp( m.second.ptr( i, j ), &( *do_not_visit_value_ ), m.second.elemSize() ) == 0 ) { return; }
+            if( do_not_visit_value_ && std::memcmp( m.second.ptr( i, j ), &do_not_visit[0], m.second.elemSize() ) == 0 ) { return; }
             int nid = none_;
             if( degrees_ == 8 ) { nid = neighbour_id( i, j, -1,  -1 ); }
             if( nid == none_ ) { nid = neighbour_id( i, j, -1,  0 ); }
