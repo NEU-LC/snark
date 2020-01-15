@@ -45,7 +45,7 @@ system::~system()
     if( system_ ) { system_->Release(); }
 }
 
-std::vector< std::string > system::description() const
+std::vector< std::string > system::interfaces_description() const
 {
     std::vector< std::string > v( interface_list_->GetCount() );
     for( auto i = interface_list_->GetFirst(); i; i = interface_list_->GetNext() ) { v.push_back( i->GetDescription() ); }

@@ -72,9 +72,9 @@ int main( int argc, char** argv )
             //( "validate-settings", boost::program_options::value< std::string >( &settings_file ), "validate camera settings saved in file specified in <arg> in camera" )
             //( "do-and-exit", "perform --set, or --load-settings, or --save-settings and exit" )
             ( "id", boost::program_options::value< std::string >( &id )->default_value( "" ), "any fragment of user-readable part of camera id; connect to the first device with matching id" )
-            ( "description", "print description on stdout and exit" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
+            ( "list-interfaces", "print interface list on stdout and exit" )
             //( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             //( "list-cameras,l", "list all cameras" )
             //( "list-settings", "list relevant implemented settings for given camera; todo: output settings tree as json" )
@@ -129,7 +129,7 @@ int main( int argc, char** argv )
         if( filter_strings.size() > 1 ) { COMMA_THROW( comma::exception, "expected filters as a single ';'-separated name-value string; got: " << comma::join( filter_strings, ' ' ) ); }
         if( verbose ) { std::cerr << "ipx-cat: creating system..." << std::endl; }
         snark::ipx::system system;
-        if( vm.count( "description" ) ) { std::cout << comma::join( system.description(), '\n' ) << std::endl; return 0; }
+        if( vm.count( "list-interfaces" ) ) { std::cout << comma::join( system.interfaces_description(), '\n' ) << std::endl; return 0; }
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         snark::cv_mat::serialization serialization( output_options );
         // todo: pass --output to serialization

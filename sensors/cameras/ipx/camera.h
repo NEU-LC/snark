@@ -46,7 +46,7 @@ class system
         
         const IpxCam::System& operator()() const { return *system_; }
         
-        std::vector< std::string > description() const;
+        std::vector< std::string > interfaces_description() const;
         
     private:
         IpxCam::System* system_;
