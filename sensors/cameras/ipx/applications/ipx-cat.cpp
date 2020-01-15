@@ -63,6 +63,7 @@ int main( int argc, char** argv )
         std::string directory;
         std::string output_options_string;
         unsigned int discard = 0;
+        unsigned int interface_id = 0;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
@@ -74,7 +75,8 @@ int main( int argc, char** argv )
             ( "id", boost::program_options::value< std::string >( &id )->default_value( "" ), "any fragment of user-readable part of camera id; connect to the first device with matching id" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
-            ( "list-interfaces", "print interface list on stdout and exit" )
+            ( "list-devices", "print device list as <interface>,<id>,<description> on stdout and exit" )
+            ( "list-interfaces", "print interface list as <id>,<description> on stdout and exit" )
             //( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             //( "list-cameras,l", "list all cameras" )
             //( "list-settings", "list relevant implemented settings for given camera; todo: output settings tree as json" )
@@ -129,7 +131,12 @@ int main( int argc, char** argv )
         if( filter_strings.size() > 1 ) { COMMA_THROW( comma::exception, "expected filters as a single ';'-separated name-value string; got: " << comma::join( filter_strings, ' ' ) ); }
         if( verbose ) { std::cerr << "ipx-cat: creating system..." << std::endl; }
         snark::ipx::system system;
-        if( vm.count( "list-interfaces" ) ) { std::cout << comma::join( system.interfaces_description(), '\n' ) << std::endl; return 0; }
+        if( vm.count( "list-interfaces" ) )
+        { 
+            const auto& v = system.interfaces_description();
+            for( unsigned int i = 0; i < v.size(); ++i ) { std::cout << i << ",\"" << v[i] << "\"" << std::endl; }
+            return 0;
+        }
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         snark::cv_mat::serialization serialization( output_options );
         // todo: pass --output to serialization
