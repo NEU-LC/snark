@@ -383,7 +383,7 @@ struct compare_by_degree {
 template <typename N>
 class graph {
    public:
-    graph(cv::Mat m, unsigned int channel, comma::int32 background) : min_id_(background + 1) {
+    graph(cv::Mat m, unsigned int channel, comma::int32 background) : ids_{{-1, -1}}, min_id_(background + 1) {
         auto insert_edge = [this](N val, set_t& first_neighbours, comma::int32* first_id_ptr) {
             comma::int32* second_id_ptr = ids_.find(val) == ids_.end() ? &(ids_[val] = val) : &ids_[val];
             set_t* second_neighbours = &adjacency_[second_id_ptr];
@@ -464,8 +464,8 @@ cv::Mat reduce<H>::process_(cv::Mat m, int type ) {
 template <typename H>
 std::pair<H, cv::Mat> reduce<H>::operator()(std::pair<H, cv::Mat> m) {
     if (m.second.channels() > 3) { COMMA_THROW(comma::exception, "partitions-reduce: not more than 3 channels, got " << m.second.channels()); }
-    std::pair<H, cv::Mat> out;
-    out.first = m.first;
+    std::pair<H, cv::Mat> out{std::move(m.first), {}};
+    // out.first = m.first;
     switch (m.second.depth()) {
         case CV_8U:
             out.second = process_<unsigned char, CV_8UC1>(m.second, CV_8UC(m.second.channels() + 1));
