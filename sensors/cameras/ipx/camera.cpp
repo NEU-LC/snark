@@ -34,6 +34,19 @@
 
 namespace snark { namespace ipx {
 
+static const char* access_status_to_string( int status )
+{
+    switch( status )
+    {
+        case IpxCam::DeviceInfo::AccessStatusUnknown: return "unknown";
+        case IpxCam::DeviceInfo::AccessStatusReadWrite: return "read-write";
+        case IpxCam::DeviceInfo::AccessStatusReadOnly: return "read-only";
+        case IpxCam::DeviceInfo::AccessStatusNoAccess: return "no access";
+        case IpxCam::DeviceInfo::IpSubnetMismatch: return "subnet mismatch";
+        default: return "unknown";
+    }
+}
+    
 system::system()
 { 
     system_ = IpxCam::IpxCam_GetSystem();
@@ -85,7 +98,10 @@ camera::camera( IpxCam::Device* device ): device_( device ) {}
 
 camera::camera( IpxCam::DeviceInfo* device_info )
 {
-    COMMA_THROW( comma::exception, "todo" );
+    if( device_info->GetAccessStatus() == IpxCam::DeviceInfo::IpSubnetMismatch ) { COMMA_THROW( comma::exception, "cannot connect due to ip subnet mismatch error" ); }
+    if( device_info->GetAccessStatus() != IpxCam::DeviceInfo::AccessStatusReadWrite ) { COMMA_THROW( comma::exception, "failed to connect due to access status: " << access_status_to_string( device_info->GetAccessStatus() ) ); }
+    device_ = IpxCam::IpxCam_CreateDevice( device_info );
+    if( !device_ ) { COMMA_THROW( comma::exception, "failed to create device" ); }
 }
 
 camera::~camera() { device_->Release(); }
