@@ -76,7 +76,7 @@ int main( int argc, char** argv )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "list-devices", "print device list as <interface>,<id>,<description> on stdout and exit" )
-            ( "list-interfaces", "print interface list as <id>,<description> on stdout and exit" )
+            ( "list-interfaces", "print interface list on stdout and exit" )
             //( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             //( "list-cameras,l", "list all cameras" )
             //( "list-settings", "list relevant implemented settings for given camera; todo: output settings tree as json" )
@@ -134,12 +134,8 @@ int main( int argc, char** argv )
         if( filter_strings.size() > 1 ) { COMMA_THROW( comma::exception, "expected filters as a single ';'-separated name-value string; got: " << comma::join( filter_strings, ' ' ) ); }
         if( verbose ) { std::cerr << "ipx-cat: creating system..." << std::endl; }
         snark::ipx::system system;
-        if( vm.count( "list-interfaces" ) )
-        { 
-            const auto& v = system.interfaces_description();
-            for( unsigned int i = 0; i < v.size(); ++i ) { std::cout << i << ",\"" << v[i] << "\"" << std::endl; }
-            return 0;
-        }
+        if( vm.count( "list-interfaces" ) ) { std::cout << system.interfaces_description(); return 0; }
+        if( vm.count( "list-devices" ) ) { std::cout << system.devices_description(); return 0; }
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         snark::cv_mat::serialization serialization( output_options );
         // todo: pass --output to serialization

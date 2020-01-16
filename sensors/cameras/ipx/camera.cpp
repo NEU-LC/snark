@@ -25,9 +25,12 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <sstream>
 #include <IpxCameraErr.h>
 #include <comma/base/exception.h>
 #include "camera.h"
+
+#include <iostream>
 
 namespace snark { namespace ipx {
 
@@ -46,11 +49,24 @@ system::~system()
     if( system_ ) { system_->Release(); }
 }
 
-std::vector< std::string > system::interfaces_description() const
+std::string system::interfaces_description() const
 {
-    std::vector< std::string > v( interface_list_->GetCount() );
-    for( auto i = interface_list_->GetFirst(); i; i = interface_list_->GetNext() ) { v.push_back( i->GetDescription() ); }
-    return v;
+    std::ostringstream oss;
+    for( auto i = interface_list_->GetFirst(); i; i = interface_list_->GetNext() ) { oss << i->GetDescription() << std::endl; }
+    return oss.str();
+}
+
+std::string system::devices_description() const
+{
+    std::ostringstream oss;
+    for( auto i = interface_list_->GetFirst(); i; i = interface_list_->GetNext() ) 
+    {
+        i->ReEnumerateDevices( nullptr, 200 );
+        auto del = []( IpxCam::DeviceInfoList *l ) { l->Release(); };
+        std::unique_ptr< IpxCam::DeviceInfoList, decltype( del ) > device_info_list( i->GetDeviceInfoList(), del );
+        for( auto d = device_info_list->GetFirst(); d; d = device_info_list->GetNext() ) { oss << i->GetDescription() << "," << d->GetID() << "," << d->GetDisplayName() << std::endl; }
+    }
+    return oss.str();
 }
     
 camera::camera( IpxCam::Device* device ): device_( device ) {}
