@@ -100,8 +100,11 @@ int main( int argc, char** argv )
         {
             std::cerr << "acquire images from a ipx camera" << std::endl;
             std::cerr << "output to stdout as serialized cv::Mat" << std::endl;
-            std::cerr << "usage: ipx-cat [<options>] [<filters>]\n" << std::endl;
-            std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui\n" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "usage: ipx-cat [<options>] [<filters>]" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "output header format: fields: t,cols,rows,type; binary: t,3ui" << std::endl;
+            std::cerr << std::endl;
             std::cerr << description << std::endl;
             //if( verbose )
             //{

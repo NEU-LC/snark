@@ -31,8 +31,9 @@
 
 namespace snark { namespace ipx {
 
-system::system(): system_( IpxCam::IpxCam_GetSystem() )
+system::system()
 { 
+    system_ = IpxCam::IpxCam_GetSystem();
     if( !system_ ) { COMMA_THROW( comma::exception, "failed to create system" ); }
     interface_list_ = system_->GetInterfaceList();
     if( !interface_list_ ) { COMMA_THROW( comma::exception, "failed to get interface list" ); }

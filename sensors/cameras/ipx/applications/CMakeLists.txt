@@ -8,6 +8,5 @@ target_link_libraries( ipx-cat
                        ${comma_ALL_EXTERNAL_LIBRARIES}
                        ${snark_ALL_EXTERNAL_LIBRARIES}
                        ${Boost_PROGRAM_OPTIONS_LIBRARY}
-                       tbb
-                       log4cpp )
+                       tbb )
 install( TARGETS ipx-cat RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
