@@ -35,6 +35,8 @@
 
 namespace snark { namespace ipx {
 
+class camera;
+    
 class system
 {
     public:
@@ -50,6 +52,8 @@ class system
         
         std::string devices_description() const;
         
+        ipx::camera camera( const std::string& id );
+        
     private:
         IpxCam::System* system_;
         IpxCam::InterfaceList* interface_list_;
@@ -58,6 +62,8 @@ class system
 class camera
 {
     public:
+        camera( IpxCam::DeviceInfo* device_info );
+        
         camera( IpxCam::Device* device );
         
         ~camera();

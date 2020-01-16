@@ -68,8 +68,25 @@ std::string system::devices_description() const
     }
     return oss.str();
 }
+
+ipx::camera system::camera( const std::string& id )
+{
+    for( auto i = interface_list_->GetFirst(); i; i = interface_list_->GetNext() ) 
+    {
+        i->ReEnumerateDevices( nullptr, 200 );
+        auto del = []( IpxCam::DeviceInfoList *l ) { l->Release(); };
+        std::unique_ptr< IpxCam::DeviceInfoList, decltype( del ) > device_info_list( i->GetDeviceInfoList(), del );
+        for( auto d = device_info_list->GetFirst(); d; d = device_info_list->GetNext() ) { if( d->GetID() == id ) { return ipx::camera( d ); } }
+    }
+    COMMA_THROW( comma::exception, "device not found, id: \"" << id << "\"" );
+}
     
 camera::camera( IpxCam::Device* device ): device_( device ) {}
+
+camera::camera( IpxCam::DeviceInfo* device_info )
+{
+    COMMA_THROW( comma::exception, "todo" );
+}
 
 camera::~camera() { device_->Release(); }
 
