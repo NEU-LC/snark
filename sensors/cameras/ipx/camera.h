@@ -117,6 +117,10 @@ class camera
         
         camera( IpxCam::Device* device );
         
+        // todo: get parameteres
+        
+        // todo: set parameteres
+        
         void connect();
         
         void start_acquisition() {} // todo
