@@ -63,7 +63,6 @@ int main( int argc, char** argv )
         std::string directory;
         std::string output_options_string;
         unsigned int discard = 0;
-        unsigned int interface_id = 0;
         boost::program_options::options_description description( "options" );
         description.add_options()
             ( "help,h", "display help message" )
@@ -72,7 +71,7 @@ int main( int argc, char** argv )
             //( "load-settings", boost::program_options::value< std::string >( &settings_file ), "load camera settings from file specified in <arg> in camera" )
             //( "validate-settings", boost::program_options::value< std::string >( &settings_file ), "validate camera settings saved in file specified in <arg> in camera" )
             //( "do-and-exit", "perform --set, or --load-settings, or --save-settings and exit" )
-            ( "id", boost::program_options::value< std::string >( &id )->default_value( "" ), "any fragment of user-readable part of camera id; connect to the first device with matching id" )
+            ( "id", boost::program_options::value< std::string >( &id )->default_value( "" ), "camera id; run --list-devices to get device id; if not present, will connect to the first available camera" )
             ( "discard", "discard frames, if cannot keep up; same as --buffer=1" )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "list-devices", "print device list as <interface>,<id>,<description> on stdout and exit" )
@@ -134,8 +133,12 @@ int main( int argc, char** argv )
         if( filter_strings.size() > 1 ) { COMMA_THROW( comma::exception, "expected filters as a single ';'-separated name-value string; got: " << comma::join( filter_strings, ' ' ) ); }
         if( verbose ) { std::cerr << "ipx-cat: creating system..." << std::endl; }
         snark::ipx::system system;
+        if( verbose ) { std::cerr << "ipx-cat: created system" << std::endl; }
         if( vm.count( "list-interfaces" ) ) { std::cout << system.interfaces_description(); return 0; }
         if( vm.count( "list-devices" ) ) { std::cout << system.devices_description(); return 0; }
+        if( verbose ) { std::cerr << "ipx-cat: obtaining " << ( id.empty() ? "first available device" : " device with id \"" + id + "\"" ) << "..." << std::endl; }
+        snark::ipx::camera camera( system.device_info( id ) );
+        if( verbose ) { std::cerr << "ipx-cat: obtaining device..." << std::endl; }
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         snark::cv_mat::serialization serialization( output_options );
         // todo: pass --output to serialization

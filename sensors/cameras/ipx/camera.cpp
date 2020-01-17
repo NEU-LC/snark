@@ -47,9 +47,8 @@ static const char* access_status_to_string( int status )
     }
 }
     
-system::system()
-{ 
-    system_ = IpxCam::IpxCam_GetSystem();
+system::system(): system_( IpxCam::IpxCam_GetSystem() )
+{
     if( !system_ ) { COMMA_THROW( comma::exception, "failed to create system" ); }
     interface_list_ = system_->GetInterfaceList();
     if( !interface_list_ ) { COMMA_THROW( comma::exception, "failed to get interface list" ); }
@@ -57,54 +56,49 @@ system::system()
 }
 
 system::~system()
-{
-    if( interface_list_ ) { interface_list_->Release(); }
-    if( system_ ) { system_->Release(); }
+{ 
+    interface_list_->Release();
+    system_->Release();
 }
 
-std::string system::interfaces_description() const
+std::string system::interfaces_description()
 {
     std::ostringstream oss;
     for( auto i = interface_list_->GetFirst(); i; i = interface_list_->GetNext() ) { oss << i->GetDescription() << std::endl; }
     return oss.str();
 }
 
-std::string system::devices_description() const
+std::string system::devices_description()
 {
     std::ostringstream oss;
     for( auto i = interface_list_->GetFirst(); i; i = interface_list_->GetNext() ) 
     {
         i->ReEnumerateDevices( nullptr, 200 );
-        auto del = []( IpxCam::DeviceInfoList *l ) { l->Release(); };
-        std::unique_ptr< IpxCam::DeviceInfoList, decltype( del ) > device_info_list( i->GetDeviceInfoList(), del );
+        ipx::unique_ptr< IpxCam::DeviceInfoList > device_info_list( i->GetDeviceInfoList() );
         for( auto d = device_info_list->GetFirst(); d; d = device_info_list->GetNext() ) { oss << i->GetDescription() << "," << d->GetID() << "," << d->GetDisplayName() << std::endl; }
     }
     return oss.str();
 }
 
-ipx::camera system::camera( const std::string& id )
+IpxCam::DeviceInfo* system::device_info( const std::string& id )
 {
     for( auto i = interface_list_->GetFirst(); i; i = interface_list_->GetNext() ) 
     {
         i->ReEnumerateDevices( nullptr, 200 );
-        auto del = []( IpxCam::DeviceInfoList *l ) { l->Release(); };
-        std::unique_ptr< IpxCam::DeviceInfoList, decltype( del ) > device_info_list( i->GetDeviceInfoList(), del );
-        for( auto d = device_info_list->GetFirst(); d; d = device_info_list->GetNext() ) { if( d->GetID() == id ) { return ipx::camera( d ); } }
+        ipx::unique_ptr< IpxCam::DeviceInfoList > device_info_list( i->GetDeviceInfoList() );
+        if( device_info_list->GetCount() == 0 ) { break; }
+        for( auto d = device_info_list->GetFirst(); d; d = device_info_list->GetNext() ) { if( id.empty() || d->GetID() == id ) { return d; } }
     }
-    COMMA_THROW( comma::exception, "device not found, id: \"" << id << "\"" );
+    COMMA_THROW( comma::exception, ( id.empty() ? "no devices available": "device not found, id: \"" + id + "\"" ) );
 }
     
-camera::camera( IpxCam::Device* device ): device_( device ) {}
-
 camera::camera( IpxCam::DeviceInfo* device_info )
 {
     if( device_info->GetAccessStatus() == IpxCam::DeviceInfo::IpSubnetMismatch ) { COMMA_THROW( comma::exception, "cannot connect due to ip subnet mismatch error" ); }
     if( device_info->GetAccessStatus() != IpxCam::DeviceInfo::AccessStatusReadWrite ) { COMMA_THROW( comma::exception, "failed to connect due to access status: " << access_status_to_string( device_info->GetAccessStatus() ) ); }
-    device_ = IpxCam::IpxCam_CreateDevice( device_info );
+    device_.reset( IpxCam::IpxCam_CreateDevice( device_info ) );
     if( !device_ ) { COMMA_THROW( comma::exception, "failed to create device" ); }
 }
-
-camera::~camera() { device_->Release(); }
 
 void camera::connect()
 {

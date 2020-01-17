@@ -27,16 +27,71 @@
 
 #pragma once
 
+#include <functional>
+#include <memory>
 #include <string>
 #include <vector>
+#include <boost/bind.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <opencv2/core/core.hpp>
 #include <IpxCameraApi.h>
 
 namespace snark { namespace ipx {
 
-class camera;
+/// convenience wrapper due to ipx workflow idiosynchrasies
+/// behaves identical to std::unique_ptr, but calls Release on destruction
+template < typename T >
+class unique_ptr
+{
+    public:
+        unique_ptr() {}
+        
+        unique_ptr( T* t ): ptr_( t, []( T* t ) { t->Release(); } ) {}
+        
+        void reset( T* t ) { ptr_.reset( t ); }
+        
+        T& operator*() { return *ptr_; }
+        
+        const T& operator*() const { return *ptr_; }
+        
+        T* operator->() { return ptr_.get(); }
+        
+        const T* operator->() const { return ptr_.get(); }
+        
+        operator bool() { return bool( ptr_ ); }        
+        
+    private:
+        std::unique_ptr< T, std::function< void( T* ) > > ptr_;
+};
     
+// template < typename T >
+// class unique_ptr
+// {
+//     public:
+//         unique_ptr() {}
+//         
+//         unique_ptr( T* t ): ptr_( t ) {}
+//         
+//         ~unique_ptr() { if( ptr_ ) { ptr_->Release(); } }
+//         
+//         void reset( T* t = nullptr ) { if( ptr_ ) { ptr_->Release(); } ptr_.reset( t ); }
+//         
+//         T& operator*() { return *ptr_; }
+//         
+//         const T& operator*() const { return *ptr_; }
+//         
+//         T* operator->() { return ptr_.get(); }
+//         
+//         const T* operator->() const { return ptr_.get(); }
+//         
+//         operator bool() { return bool( ptr_ ); }        
+//         
+//     private:
+//         std::unique_ptr< T > ptr_;
+// };
+
+class camera;
+
 class system
 {
     public:
@@ -44,21 +99,17 @@ class system
         
         ~system();
         
-        IpxCam::System& operator()() { return *system_; }
+        std::string interfaces_description(); // due to ipx api, cannot be const
         
-        const IpxCam::System& operator()() const { return *system_; }
+        std::string devices_description(); // due to ipx api, cannot be const
         
-        std::string interfaces_description() const;
-        
-        std::string devices_description() const;
-        
-        ipx::camera camera( const std::string& id );
+        IpxCam::DeviceInfo* device_info( const std::string& id = "" );
         
     private:
         IpxCam::System* system_;
         IpxCam::InterfaceList* interface_list_;
 };
-    
+
 class camera
 {
     public:
@@ -66,15 +117,12 @@ class camera
         
         camera( IpxCam::Device* device );
         
-        ~camera();
-        
         void connect();
         
         void start_acquisition() {} // todo
     
     private:
-        friend class system_;
-        IpxCam::Device* device_;
+        ipx::unique_ptr< IpxCam::Device > device_;
 };
 
 class stream
@@ -87,7 +135,7 @@ class stream
         pair_t read() { return pair_t(); } // todo
     
     private:
-        camera camera_;
+        camera& camera_;
 };
 
 } } // namespace snark { namespace ipx {
