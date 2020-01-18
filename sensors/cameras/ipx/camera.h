@@ -117,9 +117,11 @@ class camera
         
         camera( IpxCam::Device* device );
         
-        // todo: get parameteres
+        std::string get_parameter( const std::string& name );
         
-        // todo: set parameteres
+        void set_parameter( const std::string& name, const std::string& value );
+        
+        // todo: get all parameters
         
         void connect();
         
@@ -127,6 +129,7 @@ class camera
     
     private:
         ipx::unique_ptr< IpxCam::Device > device_;
+        std::string id_;
 };
 
 class stream
