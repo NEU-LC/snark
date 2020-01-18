@@ -76,6 +76,7 @@ int main( int argc, char** argv )
             ( "buffer", boost::program_options::value< unsigned int >( &discard )->default_value( 0 ), "maximum buffer size before discarding frames, default: unlimited" )
             ( "list-devices", "print device list as <interface>,<id>,<description> on stdout and exit" )
             ( "list-interfaces", "print interface list on stdout and exit" )
+            ( "list-parameters", "print parameter list of a given device on stdout and exit (likely to be replaced by --save-parameters later)" )
             //( "fields,f", boost::program_options::value< std::string >( &fields )->default_value( "t,rows,cols,type" ), "header fields, possible values: t,rows,cols,type,size" )
             //( "list-cameras,l", "list all cameras" )
             //( "list-settings", "list relevant implemented settings for given camera; todo: output settings tree as json" )
@@ -138,7 +139,7 @@ int main( int argc, char** argv )
         if( vm.count( "list-devices" ) ) { std::cout << system.devices_description(); return 0; }
         if( verbose ) { std::cerr << "ipx-cat: obtaining " << ( id.empty() ? "first available device" : " device with id \"" + id + "\"" ) << "..." << std::endl; }
         snark::ipx::camera camera( system.device_info( id ) );
-        if( verbose ) { std::cerr << "ipx-cat: obtaining device..." << std::endl; }
+        if( vm.count( "list-devices" ) ) { std::cout << camera.list_parameters(); return 0; }
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         snark::cv_mat::serialization serialization( output_options );
         // todo: pass --output to serialization

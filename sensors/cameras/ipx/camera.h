@@ -117,15 +117,19 @@ class camera
         
         camera( IpxCam::Device* device );
         
-        std::string get_parameter( const std::string& name );
+        std::string get_parameter( const std::string& path ); // todo! traverse path
         
-        void set_parameter( const std::string& name, const std::string& value );
+        void set_parameter( const std::string& path, const std::string& value ); // todo! traverse path
         
-        // todo: get all parameters
+        std::string list_parameters(); // todo? use Device::SaveConfiguration() instead?
         
         void connect();
         
         void start_acquisition() {} // todo
+        
+        IpxCam::Device& device() { return *device_; }
+        
+        const IpxCam::Device& device() const { return *device_; }
     
     private:
         ipx::unique_ptr< IpxCam::Device > device_;

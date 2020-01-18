@@ -107,9 +107,9 @@ std::string camera::get_parameter( const std::string& name )
     auto params = device_->GetCameraParameters();
     if( !params ) { COMMA_THROW( comma::exception, "device " << id_ << ": failed to get parameters" ); }
     IpxGenParam::Param *p = params->GetParam( &name[0], nullptr );
-    if( !p ) { COMMA_THROW( comma::exception, "device " << id_ << ": parameter not found: '" << p << "'" ); }
-    if( !p->IsAvailable() ) { COMMA_THROW( comma::exception, "device " << id_ << ": parameter not available: '" << p << "'" ); }
-    if( !p->IsReadable() ) { COMMA_THROW( comma::exception, "device " << id_ << ": parameter not readable: '" << p << "'" ); }
+    if( !p ) { COMMA_THROW( comma::exception, "device " << id_ << ": parameter not found: '" << name << "'" ); }
+    if( !p->IsAvailable() ) { COMMA_THROW( comma::exception, "device " << id_ << ": parameter not available: '" << name << "'" ); }
+    if( !p->IsReadable() ) { COMMA_THROW( comma::exception, "device " << id_ << ": parameter not readable: '" << name << "'" ); }
     switch( p->GetType() )
     {
         case IpxGenParam::ParamInt: return boost::lexical_cast< std::string >( dynamic_cast< IpxGenParam::Int* >( p )->GetValue() );
@@ -129,6 +129,84 @@ std::string camera::get_parameter( const std::string& name )
         default: break; // never here
     }
     COMMA_THROW( comma::exception, "device " << id_ << ": on '" << p << "': expected parameter type; got: " << p->GetType() );
+}
+
+void list_parameters_impl_( std::ostringstream& oss, const std::string& path, IpxGenParam::Param* p ) // todo! lame; export as xml using api
+{
+    if( !p ) { COMMA_THROW( comma::exception, "parameter not found: '" << path << "'" ); }
+    if( !p->IsAvailable() ) { COMMA_THROW( comma::exception, "parameter not available: '" << path << "'" ); }
+    if( !p->IsReadable() ) { COMMA_THROW( comma::exception, "parameter not readable: '" << path << "'" ); }
+    switch( p->GetType() )
+    {
+        oss << path << "/description=\"" << p->GetDescription() << "\"" << std::endl;
+        oss << path << "/available=\"" << p->IsAvailable() << "\"" << std::endl;
+        oss << path << "/readable=\"" << p->IsReadable() << "\"" << std::endl;
+        oss << path << "/writable=\"" << p->IsWritable() << "\"" << std::endl;
+        oss << path << "/streamable=\"" << p->IsStreamable() << "\"" << std::endl;
+        // todo? anything else?
+        case IpxGenParam::ParamInt:
+        {
+            auto t = dynamic_cast< IpxGenParam::Int* >( p );
+            oss << path << "/min=" << t->GetMin() << std::endl;
+            oss << path << "/max=" << t->GetMax() << std::endl;
+            oss << path << "/increment=" << t->GetIncrement() << std::endl;
+            oss << path << "/value=" << t->GetValue() << std::endl;
+            break;
+        }
+        case IpxGenParam::ParamFloat:
+        {
+            auto t = dynamic_cast< IpxGenParam::Float* >( p );
+            oss << path << "/min=" << t->GetMin() << std::endl;
+            oss << path << "/max=" << t->GetMax() << std::endl;
+            oss << path << "/value=" << t->GetValue() << std::endl;
+            break;
+        }
+        case IpxGenParam::ParamString:
+        {
+            auto t = dynamic_cast< IpxGenParam::String* >( p );
+            oss << path << "/max=" << t->GetMaxLength() << std::endl;
+            oss << path << "/value=\"" << t->GetValue() << "\"" << std::endl;
+            break;
+        }
+        case IpxGenParam::ParamEnum:
+        {
+            auto t = dynamic_cast< IpxGenParam::Enum* >( p );
+            oss << path << "/as_string=\"" << t->GetValueStr() << "\"" << std::endl;
+            oss << path << "/value=" << t->GetValue() << std::endl;
+            break;
+        }
+        case IpxGenParam::ParamBoolean:
+        {
+            auto t = dynamic_cast< IpxGenParam::Boolean* >( p );
+            oss << path << "/value=" << t->GetValue() << std::endl;
+            break;
+        }
+        case IpxGenParam::ParamCommand:
+        {
+            auto t = dynamic_cast< IpxGenParam::Command* >( p );
+            oss << path << "/value=" << t->IsDone() << std::endl;
+            break;
+        }
+        case IpxGenParam::ParamCategory:
+        {
+            auto r = dynamic_cast< IpxGenParam::Category* >( p );
+            for( unsigned int i = 0; i < r->GetCount(); ++i )
+            {
+                auto s = r->GetParamByIndex( i, nullptr );
+                list_parameters_impl_( oss, path + "/" + s->GetDisplayName(), s );
+            }
+            break;
+        }
+        default: break; // never here
+    }
+    COMMA_THROW( comma::exception, "expected parameter type; got: " << p->GetType() );
+}
+
+std::string camera::list_parameters()
+{
+    std::ostringstream oss;
+    list_parameters_impl_( oss, "", device_->GetCameraParameters()->GetRootCategory( nullptr ) );
+    return oss.str();
 }
 
 void camera::set_parameter( const std::string& name, const std::string& value )
