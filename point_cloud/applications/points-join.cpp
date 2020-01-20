@@ -396,6 +396,7 @@ template < typename V > struct join_impl_
     typedef typename traits< V >::input_t filter_value_t;
     typedef typename traits< V >::record_t filter_record_t;
     typedef typename traits< V >::grid_t grid_t;
+    typedef typename traits< Eigen::Vector3d >::input_t input_t;
     static std::deque< filter_record_t > filter_points;
     
     static grid_t read_filter_block( comma::csv::input_stream< filter_value_t >& istream )
@@ -428,7 +429,7 @@ template < typename V > struct join_impl_
             }
             else
             {
-                if( !permissive ) { COMMA_THROW(comma::exception, "points-join: filter point " << count << " invalid; use --permissive"); }
+                if( !permissive ) { COMMA_THROW( comma::exception, "points-join: filter point " << count << " invalid; use --permissive" ); }
                 if( verbose ) { std::cerr << "points-join: filter point " << count << " invalid; discarded" << std::endl; }
             }
             ++count;
@@ -443,8 +444,13 @@ template < typename V > struct join_impl_
         return grid;
     }
 
-    static grid_t read_filter_block()
+    static grid_t read_filter_block( bool self_join )
     {
+        if( self_join )
+        {
+            static comma::csv::input_stream< filter_value_t > istream( std::cin, stdin_csv );
+            return read_filter_block( istream );
+        }
         static std::ifstream ifs( &filter_csv.filename[0] );
         if( !ifs.is_open() ) { std::cerr << "points-join: failed to open \"" << filter_csv.filename << "\"" << std::endl; }
         static comma::csv::input_stream< filter_value_t > ifstream( ifs, filter_csv, filter_value_t() );
@@ -469,12 +475,13 @@ template < typename V > struct join_impl_
         use_cuda = options.exists( "--use-cuda,--cuda" );
         options.assert_mutually_exclusive( "--use-cuda,--cuda,--all" );
         #endif
-        grid_t grid = read_filter_block();
-        if( !block ) { std::cerr << "points-join: got no records from filter" << std::endl; return 1; }
-        typedef traits< Eigen::Vector3d >::input_t input_t;
+        grid_t grid = read_filter_block( self_join );
+        if( !block && !self_join ) { std::cerr << "points-join: got no records from filter" << std::endl; return 1; }
+        if( self_join ) { return 0; }
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
         use_radius = stdin_csv.has_field( "radius" );
-        comma::csv::input_stream< input_t > istream( std::cin, stdin_csv, input_t() );
+        if( self_join && use_radius ) { std::cerr << "points-join: self-join: radius field: not supported" << std::endl; return 1; }
+        comma::csv::input_stream< input_t > istream( std::cin, stdin_csv );
         #ifdef WIN32
         if( stdin_csv.binary() ) { _setmode( _fileno( stdout ), _O_BINARY ); }
         #endif
@@ -482,8 +489,7 @@ template < typename V > struct join_impl_
         std::size_t count = 0;
         std::size_t discarded = 0;
         typedef typename traits< V >::nearest_t nearest_t;
-        //boost::optional< nearest_t > nearest;
-        std::multimap< double, nearest_t > nearest_map;
+        std::multimap< double, nearest_t > nearest_map; // boost::optional< nearest_t > nearest;
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const input_t* p = istream.read();
@@ -494,7 +500,7 @@ template < typename V > struct join_impl_
             {
                 if( blocks_ordered )
                 {
-                    while( *block < p->block ) { grid = read_filter_block(); }
+                    while( *block < p->block ) { grid = read_filter_block( self_join ); }
                     if( *block > p->block )
                     {
                         if( matching ) { ++discarded; ++count; } else { output_last( istream ); }
@@ -503,7 +509,7 @@ template < typename V > struct join_impl_
                 }
                 else
                 {
-                    if( *block != p->block ) { grid = read_filter_block(); }
+                    if( *block != p->block ) { grid = read_filter_block( self_join ); }
                     if( *block != p->block ) { COMMA_THROW( comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block << "; make sure block ids are in ascending order and use --blocks-ordered" );}
                 }
             }
