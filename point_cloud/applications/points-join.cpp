@@ -398,14 +398,14 @@ template < typename V > struct join_impl_
     typedef typename traits< V >::grid_t grid_t;
     static std::deque< filter_record_t > filter_points;
     
-    static grid_t read_filter_block( comma::csv::input_stream< filter_value_t >& ifstream )
+    static grid_t read_filter_block( comma::csv::input_stream< filter_value_t >& istream )
     {
         filter_points.clear();
         snark::math::closed_interval< double, 3 > extents;
         if( verbose ) { std::cerr << "points-join: reading filter records..." << std::endl; }
         std::size_t count = 0;
         static const filter_value_t* p = nullptr;
-        if( !block ) { p = ifstream.read(); }
+        if( !block ) { p = istream.read(); }
         if( p ) { block = p->block; }
         while( p )
         {
@@ -414,11 +414,11 @@ template < typename V > struct join_impl_
             if( filter_csv.binary() ) // quick and dirty
             {
                 line.resize( filter_csv.format().size() );
-                ::memcpy( &line[0], ifstream.binary().last(), filter_csv.format().size() );
+                ::memcpy( &line[0], istream.binary().last(), filter_csv.format().size() );
             }
             else
             {
-                line = comma::join( ifstream.ascii().last(), filter_csv.delimiter );
+                line = comma::join( istream.ascii().last(), filter_csv.delimiter );
             }
             filter_record_t filter_record( filter_record_t( *p, line ) );
             if( filter_record.is_valid() )
@@ -432,7 +432,7 @@ template < typename V > struct join_impl_
                 if( verbose ) { std::cerr << "points-join: filter point " << count << " invalid; discarded" << std::endl; }
             }
             ++count;
-            p = ifstream.read();
+            p = istream.read();
         }
         if( verbose ) { std::cerr << "points-join: loading " << filter_points.size() << " records from block " << *block << " into grid..." << std::endl; }
         grid_t grid( extents.min(), resolution );
@@ -638,9 +638,9 @@ int main( int ac, char** av )
         matching = !options.exists( "--not-matching" );
         append_nearest = !options.exists( "--matching" ) && matching;
         std::vector< std::string > unnamed = options.unnamed( "--all,--blocks-ordered,--matching,--not-matching,--strict,--permissive,--use-cuda,--cuda,--flush,--full-xpath,--verbose,-v", "-.*" );
-        if( unnamed.size() != 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
+        if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
-        filter_csv = parser.get< comma::csv::options >( unnamed[0] );
+        filter_csv = unnamed.empty() ? stdin_csv : parser.get< comma::csv::options >( unnamed[0] );
         if ( filter_csv.fields.empty() ) { filter_csv.fields="x,y,z"; }
         filter_csv.full_xpath = true;
         if( append_nearest && stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
@@ -665,7 +665,8 @@ int main( int ac, char** av )
             origin = options.exists( "--origin" ) ? comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin" ) ) : Eigen::Vector3d::Zero();
         }
         resolution = Eigen::Vector3d( r, r, r );
-        if( filter_triangulated && unnamed.empty() ) { std::cerr << "points-join: self-join on triangles: not implemented" << std::endl; return 1; }
+        if( unnamed.empty() )  { return join_impl_< Eigen::Vector3d >::run( options, unnamed.empty() ); }
+        if( !filter_triangulated && unnamed.empty() ) { return join_impl_< Eigen::Vector3d >::run( options, unnamed.empty() ); }
         return filter_triangulated ? join_impl_< snark::triangle >::run( options, unnamed.empty() ) : join_impl_< Eigen::Vector3d >::run( options, unnamed.empty() );
     }
     catch( std::exception& ex ) { std::cerr << "points-join: " << ex.what() << std::endl; }
