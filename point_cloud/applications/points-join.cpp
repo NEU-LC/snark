@@ -481,7 +481,7 @@ template < typename V > struct join_impl_
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
         use_radius = stdin_csv.has_field( "radius" );
         if( self_join && use_radius ) { std::cerr << "points-join: self-join: radius field: not supported" << std::endl; return 1; }
-        comma::csv::input_stream< input_t > istream( std::cin, stdin_csv );
+        comma::csv::input_stream< input_t > istream( std::cin, stdin_csv ); // quick and dirty, don't mind self_join
         #ifdef WIN32
         if( stdin_csv.binary() ) { _setmode( _fileno( stdout ), _O_BINARY ); }
         #endif
@@ -490,9 +490,17 @@ template < typename V > struct join_impl_
         std::size_t discarded = 0;
         typedef typename traits< V >::nearest_t nearest_t;
         std::multimap< double, nearest_t > nearest_map; // boost::optional< nearest_t > nearest;
+        auto read_ = [&]() -> const input_t*
+        {
+            if( self_join )
+            {
+                // todo
+            }
+            return istream.ready() || ( std::cin.good() && !std::cin.eof() ) ? istream.read() : nullptr; // quick and dirty
+        };
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
-            const input_t* p = istream.read();
+            const input_t* p = read_(); //const input_t* p = istream.read();
             if( !p ) { break; }
             double current_squared_radius = get_squared_radius( *p );
             if( verbose && comma::math::less( squared_radius, current_squared_radius ) ) { std::cerr << "points-join: expected point-specific radius not exceeding --radius " << std::sqrt( squared_radius ) << "; got: " << p->radius << std::endl; }
