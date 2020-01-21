@@ -56,12 +56,15 @@ static void usage( bool verbose = false )
     std::cerr << "usage: cat points.csv | points-frame <options> > points.converted.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "options:" << std::endl;
-    std::cerr << "    --from <frame> : convert points from frames to the reference frame," << std::endl;
-    std::cerr << "    --to <frame> : convert points from the reference frame to frame" << std::endl;
+    std::cerr << "    --from[=<frame>] : convert points from frames to the reference frame," << std::endl;
+    std::cerr << "    --to[=<frame>] : convert points from the reference frame to frame" << std::endl;
     std::cerr << "        <frame> ::= <frame>[+<frames>]" << std::endl;
     std::cerr << "        <frame> : name of file with timestamped nav data" << std::endl;
     std::cerr << "                  or <x>,<y>,<z>[,<roll>,<pitch>,<yaw>]" << std::endl;
     std::cerr << "                  nav data in file: <t>,<x>,<y>,<z>,<roll>,<pitch>,<yaw>" << std::endl;
+    std::cerr << "        if 'frame' field present" << std::endl;
+    std::cerr << "            specify --from or --to without value, default behaviour: --from" << std::endl;
+    std::cerr << "            if --from=<value> or --to=<value> specified, it will be used as default for frame fields" << std::endl;
     std::cerr << "    --discard-out-of-order,--discard : if present, discard out of order points silently" << std::endl;
     std::cerr << "    --max-gap <seconds> : max valid time gap between two successive nav solutions;" << std::endl;
     std::cerr << "                          if exceeded, input points between those two timestamps" << std::endl;
@@ -346,13 +349,15 @@ int main( int ac, char** av )
             for( unsigned int i = 0; i < v.size(); ++i ) { if( v[i] == "x" || v[i] == "y" || v[i] == "z" || v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "position/" + v[i]; } }
             csv.fields = comma::join( v, ',' );
             csv.full_xpath = true;
-            comma::csv::input_stream< position_and_frame > is( std::cin, csv, position_and_frame( comma::csv::ascii< snark::applications::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) ) ) );
+            options.assert_mutually_exclusive( "--from,--to" );
+            bool from = !options.exists( "--to" );
+            comma::csv::input_stream< position_and_frame > is( std::cin, csv, position_and_frame( comma::csv::ascii< snark::applications::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) )
+                                                             , comma::csv::ascii< snark::applications::position >().get( options.value< std::string >( from ? "--from" : "--to", "0,0,0,0,0,0" ) ) ) );
             comma::csv::options output_csv;
             output_csv.flush = csv.flush;
             if( csv.binary() ) { output_csv.format( comma::csv::format::value< snark::applications::position >() ); }
             comma::csv::output_stream< snark::applications::position > os( std::cout, output_csv );
             comma::csv::tied< position_and_frame, snark::applications::position > tied( is, os );
-            bool from = !options.exists( "--to" );
             while( is.ready() || std::cin.good() )
             {
                 const position_and_frame* p = is.read();
