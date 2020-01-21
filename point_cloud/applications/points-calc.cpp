@@ -418,7 +418,7 @@ static int calculate_distance( bool cumulative, bool propagate = false, bool dif
 
 static int calculate_distance_next( bool propagate )
 {
-    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
     boost::optional< Eigen::Vector3d > last;
     double previous_norm = 0;
     while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -766,7 +766,7 @@ static void angle_axis()
     comma::csv::options output_csv( csv );
     output_csv.fields = comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' );
     if( output_csv.binary() ) { output_csv.format( comma::csv::format::value< Eigen::AngleAxis< double > >() ); }
-    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
     comma::csv::output_stream< Eigen::AngleAxis< double > > ostream( std::cout, output_csv );
     comma::csv::tied< Eigen::Vector3d, Eigen::AngleAxis< double > > tied( istream, ostream );
 
@@ -875,7 +875,7 @@ static void trajectory_discretise( double step, double tolerance )
     else
     {
         BOOST_STATIC_ASSERT( sizeof( Eigen::Vector3d ) == sizeof( double ) * 3 );
-        comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+        comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
         boost::optional< Eigen::Vector3d > previous_point;
         comma::csv::options output_csv;
         if( csv.binary() ) { output_csv.format( "3d" ); }
@@ -929,7 +929,7 @@ static int trajectory_cumulative_discretise( const comma::command_line_options& 
 {
     double step = options.value< double >( "--step" );
     if( step <= 0 ) { std::cerr << "points-calc: expected positive step, got " << step << std::endl; return 1; }
-    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+    comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
     comma::csv::options output_csv;
     if( csv.binary() ) { output_csv.format( "3d" ); }
     output_csv.flush = csv.flush;
@@ -1375,7 +1375,6 @@ int main( int ac, char** av )
         {
             if( options.exists("--output-fields" )){ std::cout << comma::join( comma::csv::names< Eigen::AngleAxis< double > >( false ), ',' ) << std::endl; return 0; }
             if( options.exists("--output-format" )){ std::cout << comma::csv::format::value< Eigen::AngleAxis< double > >() << std::endl; return 0; }
-
             if( options.exists( "--relative" ) )
             {
                 angle_axis_relative::execute( options.exists( "--reverse,--supplementary" ), options.exists( "--ignore-repeats" ) );
@@ -1383,22 +1382,21 @@ int main( int ac, char** av )
             else
             {
                 if(    csv.has_field( "first" )   || csv.has_field( "second" )
-                        || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
-                        || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
-                        || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
+                    || csv.has_field( "first/x" ) || csv.has_field( "second/x" )
+                    || csv.has_field( "first/y" ) || csv.has_field( "second/y" )
+                    || csv.has_field( "first/z" ) || csv.has_field( "second/z" ) )
                 {
                     angle_axis_for_pairs();
                     return 0;
                 }
-                if ( options.exists( "--next" ) ) { angle_axis_next(); }
-                else { angle_axis(); }
+                if( options.exists( "--next" ) ) { angle_axis_next(); } else { angle_axis(); }
             }
             return 0;
         }
         if( operation == "nearest" )
         {
             Eigen::Vector3d point = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--point,--to" ) );
-            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
             std::string record;
             double min_distance = std::numeric_limits< double >::max();
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
@@ -1410,19 +1408,17 @@ int main( int ac, char** av )
                 min_distance = d;
                 record = csv.binary() ? std::string( istream.binary().last(), csv.format().size() ) : comma::join( istream.ascii().last(), csv.delimiter );
             }
-            if( !record.empty() ) { std::cout << record; }
-            if( csv.binary() )
-            {
-                std::cout.write( reinterpret_cast< const char* >( &min_distance ), sizeof( double ) );
-                if( csv.flush ) { std::cout.flush(); }
-            }
+            if( record.empty() ) { return 0; }
+            std::cout.write( &record[0], record.size() );
+            if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &min_distance ), sizeof( double ) ); }
             else { std::cout << csv.delimiter << min_distance << std::endl; }
+            if( csv.flush ) { std::cout.flush(); }
             return 0;
         }
         if( operation == "trajectory-thin" )
         {
             double resolution = options.value< double >( "--resolution" );
-            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv );
+            comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
             comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
             boost::optional< Eigen::Vector3d > last;
             double distance = 0;
