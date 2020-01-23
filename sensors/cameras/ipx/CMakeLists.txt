@@ -24,8 +24,11 @@ target_link_libraries( ${TARGET_NAME}
                        snark_imaging
                        ${comma_ALL_LIBRARIES}
                        ${comma_ALL_EXTERNAL_LIBRARIES}
-                       ${snark_ALL_EXTERNAL_LIBRARIES}
-                       ippLib17
+                       ${snark_ALL_EXTERNAL_LIBRARIES} )
+if( ${IpxCameraSDK_VERSION} STRLESS "1.5.0.54" ) # quick and dirty
+    target_link_libraries( ${TARGET_NAME} ippLib17 )
+endif( ${IpxCameraSDK_VERSION} STRLESS "1.5.0.54" )
+target_link_libraries( ${TARGET_NAME}
                        IpxCameraApi
                        IpxCameraGuiApi
                        IpxDemosaicing
