@@ -75,7 +75,7 @@ std::string traits::usage()
     oss << "            --frame=[<frame>]: default frame, used as initial frame and values for skipped input fields; default: 0,0,0,0,0,0" << std::endl;
     oss << "            --from: direction of transform, default; see points-frame --help for details" << std::endl;
     oss << "            --to: direction of transform; see points-frame --help for details" << std::endl;
-    oss << "            --in-place; replace input frame with the integrated one, do not append anything; convenience option" << std::endl;
+    oss << "            --in-place,--emplace; replace input frame with the integrated one, do not append anything; convenience option" << std::endl;
     oss << std::endl;
     oss << "        examples" << std::endl;
     oss << "            the following two lines should output same result" << std::endl;
@@ -125,7 +125,7 @@ int traits::run( const comma::command_line_options& options )
         }
         return 0;
     };
-    if( options.exists( "--in-place" ) )
+    if( options.exists( "--in-place,--emplace" ) )
     {
         comma::csv::passed< input > passed( istream, std::cout, csv.flush );
         write = [&]( const pose& p ) { passed.write( p ); };
