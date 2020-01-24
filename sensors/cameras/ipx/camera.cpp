@@ -97,7 +97,7 @@ camera::camera( IpxCam::DeviceInfo* device_info )
 {
     if( device_info->GetAccessStatus() == IpxCam::DeviceInfo::IpSubnetMismatch ) { COMMA_THROW( comma::exception, "cannot connect due to ip subnet mismatch error" ); }
     if( device_info->GetAccessStatus() != IpxCam::DeviceInfo::AccessStatusReadWrite ) { COMMA_THROW( comma::exception, "failed to connect due to access status: " << access_status_to_string( device_info->GetAccessStatus() ) ); }
-    device_.reset( IpxCam::IpxCam_CreateDevice( device_info ) );
+    device_ = IpxCam::IpxCam_CreateDevice( device_info ) );
     if( !device_ ) { COMMA_THROW( comma::exception, "failed to create device" ); }
     id_ = device_info->GetID();
 }
