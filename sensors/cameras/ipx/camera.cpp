@@ -87,7 +87,7 @@ IpxCam::DeviceInfo* system::device_info( const std::string& id )
     {
         i->ReEnumerateDevices( nullptr, 200 );
         ipx::unique_ptr< IpxCam::DeviceInfoList > device_info_list( i->GetDeviceInfoList() );
-        if( device_info_list->GetCount() == 0 ) { break; }
+        if( device_info_list->GetCount() == 0 ) { continue; }
         for( auto d = device_info_list->GetFirst(); d; d = device_info_list->GetNext() ) { if( id.empty() || d->GetID() == id ) { return d; } }
     }
     COMMA_THROW( comma::exception, ( id.empty() ? "no devices available": "device not found, id: \"" + id + "\"" ) );
@@ -139,8 +139,8 @@ std::string camera::get_parameter( const std::string& name )
 void list_parameters_impl_( std::ostringstream& oss, const std::string& path, IpxGenParam::Param* p ) // todo! lame; export as xml using api
 {
     if( !p ) { COMMA_THROW( comma::exception, "parameter not found: '" << path << "'" ); }
-    if( !p->IsAvailable() ) { COMMA_THROW( comma::exception, "parameter not available: '" << path << "'" ); }
-    if( !p->IsReadable() ) { COMMA_THROW( comma::exception, "parameter not readable: '" << path << "'" ); }
+    if( !p->IsAvailable() ) { oss << path << "/description=\"" << "not-available" << "\"" << std::endl; } //COMMA_THROW( comma::exception, "parameter not available: '" << path << "'" ); }
+    if( !p->IsReadable() ){ oss << path << "/description=\"" << "not-readable" << "\"" << std::endl; } //COMMA_THROW( comma::exception, "parameter not readable: '" << path << "'" ); }
     switch( p->GetType() )
     {
         oss << path << "/description=\"" << p->GetDescription() << "\"" << std::endl;
@@ -202,9 +202,10 @@ void list_parameters_impl_( std::ostringstream& oss, const std::string& path, Ip
             }
             break;
         }
-        default: break; // never here
+        default:
+            COMMA_THROW( comma::exception, "expected parameter type; got: " << p->GetType() );
+            break; // never here
     }
-    COMMA_THROW( comma::exception, "expected parameter type; got: " << p->GetType() );
 }
 
 std::string camera::list_parameters()
