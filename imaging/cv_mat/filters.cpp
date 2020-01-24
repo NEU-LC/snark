@@ -2889,7 +2889,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
     typedef typename make_filter< cv::Mat, H >::maker maker_t;
     typedef typename make_filter< cv::Mat, H >::composer composer_t;
 
-    std::vector< std::string > v = comma::split( how, ';' );
+    std::vector< std::string > v = comma::split_bracketed( how, ';' ); // std::vector< std::string > v = comma::split( how, ';' );
     std::vector< filter_type > f;
     if( how == "" ) { return f; }
     std::string name;
