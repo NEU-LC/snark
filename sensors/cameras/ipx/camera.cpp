@@ -102,6 +102,11 @@ camera::camera( IpxCam::DeviceInfo* device_info )
     id_ = device_info->GetID();
 }
 
+camera::~camera()
+{
+    device_->Release();
+}
+
 std::string camera::get_parameter( const std::string& name )
 {
     auto params = device_->GetCameraParameters();

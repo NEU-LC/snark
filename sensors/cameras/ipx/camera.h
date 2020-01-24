@@ -117,6 +117,8 @@ class camera
         
         camera( IpxCam::Device* device );
         
+        ~camera();
+        
         std::string get_parameter( const std::string& path ); // todo! traverse path
         
         void set_parameter( const std::string& path, const std::string& value ); // todo! traverse path
@@ -132,7 +134,7 @@ class camera
         const IpxCam::Device& device() const { return *device_; }
     
     private:
-        ipx::unique_ptr< IpxCam::Device > device_;
+        IpxCam::Device * device_;
         std::string id_;
 };
 
