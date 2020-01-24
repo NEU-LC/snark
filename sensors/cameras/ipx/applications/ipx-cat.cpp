@@ -137,9 +137,9 @@ int main( int argc, char** argv )
         if( verbose ) { std::cerr << "ipx-cat: created system" << std::endl; }
         if( vm.count( "list-interfaces" ) ) { std::cout << system.interfaces_description(); return 0; }
         if( vm.count( "list-devices" ) ) { std::cout << system.devices_description(); return 0; }
-        if( verbose ) { std::cerr << "ipx-cat: obtaining " << ( id.empty() ? "first available device" : " device with id \"" + id + "\"" ) << "..." << std::endl; }
+        if( verbose ) { std::cerr << "ipx-cat: obtaining " << ( id.empty() ? "first available device" : "device with id \"" + id + "\"" ) << "..." << std::endl; }
         snark::ipx::camera camera( system.device_info( id ) );
-        if( vm.count( "list-devices" ) ) { std::cout << camera.list_parameters(); return 0; }
+        if( vm.count( "list-parameters" ) ) { std::cout << camera.list_parameters(); return 0; }
         snark::cv_mat::serialization::options output_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
         snark::cv_mat::serialization serialization( output_options );
         // todo: pass --output to serialization
