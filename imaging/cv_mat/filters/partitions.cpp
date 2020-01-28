@@ -396,7 +396,6 @@ class graph {
                 second_neighbours->insert(first_id_ptr);
             };
 
-            // TODO: multi-thread with tbb?
             for (auto i = 0; i < m.rows - 1; ++i) {
                 N *ptr = m.ptr< N >(i);
                 N *ptr_below = m.ptr< N >(i + 1);
@@ -415,24 +414,28 @@ class graph {
 
         void reduce() {
             std::multimap< vertex, set_t, compare_by_degree > adjacency{};
+            // move graph from map to multimap and order by degree
             for (auto it = adjacency_.begin(); it != adjacency_.end();) {
                 auto neighbours = std::move(it->second);
                 auto ptr = std::move(it->first);
-                *ptr = min_id_;
                 it = adjacency_.erase(it);
+                // if vertex has no neighbours, can be assigned min id automatically
+                *ptr = min_id_;
                 if (neighbours.empty()) { continue; }
+                // set all other vertices that do have neighbours to min id + 6
                 *ptr += 6;
+                // insert to multimap
                 adjacency.emplace(vertex{std::move(ptr), static_cast<unsigned int>(neighbours.size())}, std::move(neighbours));
             }
             std::vector< unsigned char > colours_taken(max_colours_);
-            for (auto pair : adjacency) {
+            for (const auto& pair : adjacency) {
                 std::fill(std::begin(colours_taken), std::end(colours_taken), false);
                 for (comma::int32 *o_vertex : pair.second) {
                     auto colour = *o_vertex - min_id_;  // offset by min id in partitions
-                    if (colour >= 0 && colour < int(colours_taken.size())) { colours_taken[colour] = true; }
+                    if (colour >= 0 && colour < static_cast<int>(colours_taken.size())) { colours_taken[colour] = true; }
                 }
                 unsigned int i = 0;
-                for (; i < colours_taken.size() && colours_taken[i]; ++i);
+                for (; i < max_colours_ && colours_taken[i]; ++i);
                 if (i == colours_taken.size()) { COMMA_THROW(comma::exception, "partitions-reduce: adjacent vertices have used all " << max_colours_ << " available colours"); }
                 *pair.first.id = i + min_id_;
             }
@@ -504,14 +507,14 @@ std::pair< typename reduce< H >::functor_t, bool > reduce< H >::make(const std::
     bool merge = false;
     if (!options.empty()) {
         std::vector< std::string > s = comma::split(options, ',');
-        for (unsigned int i = 0; i < s.size(); ++i) // todo: quick and dirty, use visiting
+        for (const auto& i : s) // todo: quick and dirty, use visiting
         {
-            if (s[i] == "merge") { merge = true; }
-            else if (s[i].substr(0, 8) == "colours:") { colours = boost::lexical_cast< unsigned int >(s[i].substr(8)); }
-            else if (s[i].substr(0, 8) == "channel:") { channel = boost::lexical_cast< unsigned int >(s[i].substr(8)); }
-            else if (s[i].substr(0, 11) == "background:") {
-                background = boost::lexical_cast< comma::int32 >(s[i].substr(11));
-            } else {COMMA_THROW(comma::exception, "partition-reduce: expected an option, got: '" << s[i] << "'"); }
+            if (i == "merge") { merge = true; }
+            else if (i.substr(0, 8) == "colours:") { colours = boost::lexical_cast< unsigned int >(i.substr(8)); }
+            else if (i.substr(0, 8) == "channel:") { channel = boost::lexical_cast< unsigned int >(i.substr(8)); }
+            else if (i.substr(0, 11) == "background:") {
+                background = boost::lexical_cast< comma::int32 >(i.substr(11));
+            } else {COMMA_THROW(comma::exception, "partition-reduce: expected an option, got: '" << i << "'"); }
         }
     }
     return std::make_pair(reduce< H >(colours, channel, background, merge), true);
