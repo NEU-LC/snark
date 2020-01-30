@@ -517,18 +517,19 @@ std::pair< typename reduce< H >::functor_t, bool > reduce< H >::make(const std::
             else {COMMA_THROW(comma::exception, "partition-reduce: expected an option, got: '" << i << "'"); }
         }
     }
-    return std::make_pair(reduce< H >(colours, channel, background, merge), true);
+    return std::make_pair(reduce< H >(channel, background, merge, colours), true);
 }
 
 template < typename H >
 typename std::string reduce< H >::usage(unsigned int indent) {
     std::string offset(indent, ' ');
     std::ostringstream oss;
-    oss << offset << "partitions-reduce=[<channel>],[<background>],[merge],[colors:<max-number-of-colours>]; reduce number of unique partition\n";
-    oss << offset << "    channel:<channel>; partition channel number in image; default: 0\n";
-    oss << offset << "    background:<background>; pixel value that is not assigned any partition; default: -1\n";
-    oss << offset << "    merge: if present merge reduced partitions channel to original image\n";
-    oss << offset << "    colours:<max-number-of-colours>; default: 6\n";
+    oss << offset << "partitions-reduce=[<properties>]; reduce number of unique partition\n";
+    oss << offset << "    <properties>\n";
+    oss << offset << "        channel:<channel>; partition channel number in image; default: 0\n";
+    oss << offset << "        background:<background>; pixel value that is not assigned any partition; default: -1\n";
+    oss << offset << "        merge: if present merge reduced partitions channel to original image\n";
+    oss << offset << "        colours:<max-number-of-colours>; default: 6\n";
     return oss.str();
 }
 
