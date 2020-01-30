@@ -98,9 +98,13 @@ class partition {
 template < typename H >
 class reduce {
     public:
-        explicit reduce(unsigned int colours = 6, unsigned int channel = 0, comma::int32 background = -1,
-                        bool merge = false) : colours_(colours), channel_(channel), background_(background),
-                                              merge_(merge) {};
+//        explicit reduce(unsigned int colours = 6, unsigned int channel = 0, comma::int32 background = -1,
+//                        bool merge = false) : colours_(colours), channel_(channel), background_(background),
+//                                              merge_(merge) {};
+
+        explicit reduce(unsigned int channel = 0, comma::int32 background = -1,
+                        bool merge = false, unsigned int colours = 6) : channel_(channel), background_(background),
+                                              merge_(merge), colours_(colours) {};
 
         std::pair< H, cv::Mat > operator()(std::pair< H, cv::Mat > m);
 
@@ -111,10 +115,10 @@ class reduce {
         static std::string usage(unsigned int indent = 0);
 
     private:
-        unsigned int colours_;
         unsigned int channel_;
         comma::int32 background_;
         bool merge_;
+        unsigned int colours_;
 
         template < typename T, int I >
         cv::Mat process_(cv::Mat m, int type);

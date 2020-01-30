@@ -399,7 +399,7 @@ class graph {
             for (auto i = 0; i < m.rows - 1; ++i) {
                 N *ptr = m.ptr< N >(i);
                 N *ptr_below = m.ptr< N >(i + 1);
-                for (auto j = channel; j < (m.cols - 1) * m.channels(); j += m.channels()) {
+                for (int j = channel; j < (m.cols - 1) * m.channels(); j += m.channels()) {
                     N val = ptr[j];
                     if (val == background) { continue; }
                     N val_below = ptr_below[j];
@@ -510,11 +510,11 @@ std::pair< typename reduce< H >::functor_t, bool > reduce< H >::make(const std::
         for (const auto& i : s) // todo: quick and dirty, use visiting
         {
             if (i == "merge") { merge = true; }
-            else if (i.substr(0, 8) == "colours:") { colours = boost::lexical_cast< unsigned int >(i.substr(8)); }
+            else if (i.substr(0, 7) == "colors:" ) { colours = boost::lexical_cast< unsigned int >(i.substr(7)); }
+            else if (i.substr(0, 8) == "colours:" ) { colours = boost::lexical_cast< unsigned int >(i.substr(8)); }
             else if (i.substr(0, 8) == "channel:") { channel = boost::lexical_cast< unsigned int >(i.substr(8)); }
-            else if (i.substr(0, 11) == "background:") {
-                background = boost::lexical_cast< comma::int32 >(i.substr(11));
-            } else {COMMA_THROW(comma::exception, "partition-reduce: expected an option, got: '" << i << "'"); }
+            else if (i.substr(0, 11) == "background:") { background = boost::lexical_cast< comma::int32 >(i.substr(11)); }
+            else {COMMA_THROW(comma::exception, "partition-reduce: expected an option, got: '" << i << "'"); }
         }
     }
     return std::make_pair(reduce< H >(colours, channel, background, merge), true);
@@ -524,11 +524,11 @@ template < typename H >
 typename std::string reduce< H >::usage(unsigned int indent) {
     std::string offset(indent, ' ');
     std::ostringstream oss;
-    oss << offset << "partitions-reduce=[<channel>],[<background>],[merge]; reduce number of unique partition\n";
-    oss << offset << "    <colours>; default: 6\n";
-    oss << offset << "    <channel>; partition channel number in image; default: 0\n";
-    oss << offset << "    <background>; pixel value that is not assigned any partition; default: -1\n";
+    oss << offset << "partitions-reduce=[<channel>],[<background>],[merge],[colors:<max-number-of-colours>]; reduce number of unique partition\n";
+    oss << offset << "    channel:<channel>; partition channel number in image; default: 0\n";
+    oss << offset << "    background:<background>; pixel value that is not assigned any partition; default: -1\n";
     oss << offset << "    merge: if present merge reduced partitions channel to original image\n";
+    oss << offset << "    colours:<max-number-of-colours>; default: 6\n";
     return oss.str();
 }
 
