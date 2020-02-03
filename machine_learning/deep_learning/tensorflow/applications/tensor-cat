@@ -456,13 +456,13 @@ def main(args):
                         die("got input record " + str(input_number + 1) + " but only "
                             + str(input_number) + " entries in '" + args.output_dirs + "'")
                     try:
-                        os.makedirs(output_dir)  # try: os.mkdir( output_dir )
+                        os.makedirs( output_dir )
                     except OSError as ex:
                         if ex.errno != errno.EEXIST:
                             raise
                     for i in range(len(values)):
                         try:
-                            os.mkdir(output_dir + '/' + output_names[i])
+                            os.makedirs(output_dir + '/' + output_names[i])
                         except OSError as ex:
                             if ex.errno != errno.EEXIST:
                                 raise
