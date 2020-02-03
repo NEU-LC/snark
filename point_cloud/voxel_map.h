@@ -28,8 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_POINT_CLOUD_VOXELMAP_H
-#define SNARK_POINT_CLOUD_VOXELMAP_H
+#pragma once
 
 #include <boost/array.hpp>
 #include <boost/functional/hash.hpp>
@@ -58,7 +57,7 @@ struct array_hash : public std::unary_function< Array, std::size_t >
 /// it may be a much better choice than voxel grid, whenever
 /// operations on a voxel do not depend on its neighbours,
 /// and also when the grid extents are not known beforehand
-template < typename V, unsigned int D, typename P = Eigen::Matrix< double, D, 1 > >
+template < typename V, unsigned int D, typename F = double, typename P = Eigen::Matrix< F, D, 1 > >
 class voxel_map : public boost::unordered_map< boost::array< comma::int32, D >, V, snark::array_hash< boost::array< comma::int32, D >, D > >
 {
     public:
@@ -127,22 +126,22 @@ class voxel_map : public boost::unordered_map< boost::array< comma::int32, D >, 
         point_type resolution_;
 };
 
-template < typename V, unsigned int D, typename P >
-inline voxel_map< V, D, P >::voxel_map( const typename voxel_map< V, D, P >::point_type& origin, const typename voxel_map< V, D, P >::point_type& resolution )
+template < typename V, unsigned int D, typename F, typename P >
+inline voxel_map< V, D, F, P >::voxel_map( const typename voxel_map< V, D, F, P >::point_type& origin, const typename voxel_map< V, D, F, P >::point_type& resolution )
     : origin_( origin )
     , resolution_( resolution )
 {
 }
 
-template < typename V, unsigned int D, typename P >
-inline voxel_map< V, D, P >::voxel_map( const typename voxel_map< V, D, P >::point_type& resolution )
+template < typename V, unsigned int D, typename F, typename P >
+inline voxel_map< V, D, F, P >::voxel_map( const typename voxel_map< V, D, F, P >::point_type& resolution )
     : origin_( point_type::Zero() ) // todo: use traits, if decoupling from eigen required
     , resolution_( resolution )
 {
 }
 
-template < typename V, unsigned int D, typename P >
-inline typename voxel_map< V, D, P >::iterator voxel_map< V, D, P >::touch_at( const typename voxel_map< V, D, P >::point_type& point )
+template < typename V, unsigned int D, typename F, typename P >
+inline typename voxel_map< V, D, F, P >::iterator voxel_map< V, D, F, P >::touch_at( const typename voxel_map< V, D, F, P >::point_type& point )
 {
     index_type index = index_of( point );
     iterator it = this->base_type::find( index );
@@ -150,8 +149,8 @@ inline typename voxel_map< V, D, P >::iterator voxel_map< V, D, P >::touch_at( c
     return this->base_type::insert( std::make_pair( index, voxel_type() ) ).first;
 }
 
-template < typename V, unsigned int D, typename P >
-inline std::pair< typename voxel_map< V, D, P >::iterator, bool > voxel_map< V, D, P >::insert( const typename voxel_map< V, D, P >::point_type& point, const typename voxel_map< V, D, P >::voxel_type& voxel )
+template < typename V, unsigned int D, typename F, typename P >
+inline std::pair< typename voxel_map< V, D, F, P >::iterator, bool > voxel_map< V, D, F, P >::insert( const typename voxel_map< V, D, F, P >::point_type& point, const typename voxel_map< V, D, F, P >::voxel_type& voxel )
 {
     return this->base_type::insert( std::make_pair( index_of( point ), voxel ) );
 }
@@ -163,8 +162,8 @@ static int positive_flooring_ = static_cast< int >( 1.5 ) == 1 ? 0 : static_cast
 
 } // namespace impl {
 
-template < typename V, unsigned int D, typename P >
-inline typename voxel_map< V, D, P >::index_type voxel_map< V, D, P >::index_of( const typename voxel_map< V, D, P >::point_type& point, const typename voxel_map< V, D, P >::point_type& origin, const typename voxel_map< V, D, P >::point_type& resolution )
+template < typename V, unsigned int D, typename F, typename P >
+inline typename voxel_map< V, D, F, P >::index_type voxel_map< V, D, F, P >::index_of( const typename voxel_map< V, D, F, P >::point_type& point, const typename voxel_map< V, D, F, P >::point_type& origin, const typename voxel_map< V, D, F, P >::point_type& resolution )
 {
     point_type diff = ( point - origin ).array() / resolution.array();
     index_type index;
@@ -178,50 +177,48 @@ inline typename voxel_map< V, D, P >::index_type voxel_map< V, D, P >::index_of(
     return index;
 }
 
-template < typename V, unsigned int D, typename P >
-inline typename voxel_map< V, D, P >::index_type voxel_map< V, D, P >::index_of( const typename voxel_map< V, D, P >::point_type& point, const typename voxel_map< V, D, P >::point_type& resolution )
+template < typename V, unsigned int D, typename F, typename P >
+inline typename voxel_map< V, D, F, P >::index_type voxel_map< V, D, F, P >::index_of( const typename voxel_map< V, D, F, P >::point_type& point, const typename voxel_map< V, D, F, P >::point_type& resolution )
 {
     return index_of( point, point_type::Zero(), resolution );
 }
 
-template < typename V, unsigned int D, typename P >
-inline typename voxel_map< V, D, P >::index_type voxel_map< V, D, P >::index_of( const typename voxel_map< V, D, P >::point_type& point ) const
+template < typename V, unsigned int D, typename F, typename P >
+inline typename voxel_map< V, D, F, P >::index_type voxel_map< V, D, F, P >::index_of( const typename voxel_map< V, D, F, P >::point_type& point ) const
 {
     return index_of( point, origin_, resolution_ );
 }
 
-template < typename V, unsigned int D, typename P >
-inline typename voxel_map< V, D, P >::iterator voxel_map< V, D, P >::find( const typename voxel_map< V, D, P >::point_type& point )
+template < typename V, unsigned int D, typename F, typename P >
+inline typename voxel_map< V, D, F, P >::iterator voxel_map< V, D, F, P >::find( const typename voxel_map< V, D, F, P >::point_type& point )
 {
     index_type i = index_of( point );
     return this->base_type::find( i );
 }
 
-template < typename V, unsigned int D, typename P >
-inline typename voxel_map< V, D, P >::const_iterator voxel_map< V, D, P >::find( const typename voxel_map< V, D, P >::point_type& point ) const
+template < typename V, unsigned int D, typename F, typename P >
+inline typename voxel_map< V, D, F, P >::const_iterator voxel_map< V, D, F, P >::find( const typename voxel_map< V, D, F, P >::point_type& point ) const
 {
     index_type i = index_of( point );
     return this->base_type::find( i );
 }
 
-template < typename V, unsigned int D, typename P >
-inline typename voxel_map< V, D, P >::iterator voxel_map< V, D, P >::find( const typename voxel_map< V, D, P >::index_type& index )
+template < typename V, unsigned int D, typename F, typename P >
+inline typename voxel_map< V, D, F, P >::iterator voxel_map< V, D, F, P >::find( const typename voxel_map< V, D, F, P >::index_type& index )
 {
     return this->base_type::find( index ); // otherwise strange things happen... debug, when we have time
 }
 
-template < typename V, unsigned int D, typename P >
-inline typename voxel_map< V, D, P >::const_iterator voxel_map< V, D, P >::find( const typename voxel_map< V, D, P >::index_type& index ) const
+template < typename V, unsigned int D, typename F, typename P >
+inline typename voxel_map< V, D, F, P >::const_iterator voxel_map< V, D, F, P >::find( const typename voxel_map< V, D, F, P >::index_type& index ) const
 {
     return this->base_type::find( index ); // otherwise strange things happen... debug, when we have time
 }
 
-template < typename V, unsigned int D, typename P >
-inline const typename voxel_map< V, D, P >::point_type& voxel_map< V, D, P >::origin() const { return origin_; }
+template < typename V, unsigned int D, typename F, typename P >
+inline const typename voxel_map< V, D, F, P >::point_type& voxel_map< V, D, F, P >::origin() const { return origin_; }
 
-template < typename V, unsigned int D, typename P >
-inline const typename voxel_map< V, D, P >::point_type& voxel_map< V, D, P >::resolution() const { return resolution_; }
+template < typename V, unsigned int D, typename F, typename P >
+inline const typename voxel_map< V, D, F, P >::point_type& voxel_map< V, D, F, P >::resolution() const { return resolution_; }
 
 } // namespace snark {
-
-#endif // SNARK_POINT_CLOUD_VOXELMAP_H
