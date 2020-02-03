@@ -222,7 +222,6 @@ def handle_signal(s, f):
     logging.warning("tensor-cat: broken pipe, exit")
     exit(0)
 
-
 # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
 def iterator(file, input_tensor, header_size, footer_size):
     shape = (input_tensor.get_shape() if TF_VERSION[0] < 1 else input_tensor.shape).as_list()
@@ -258,7 +257,6 @@ def iterator(file, input_tensor, header_size, footer_size):
             yield None, None, None
         yield header, data, footer
 
-
 def variables(v):
     if v is None:
         return {}
@@ -267,7 +265,6 @@ def variables(v):
         s = i.split(':')
         d[tf.compat.v1.get_collection(s[0].strip())[0]] = eval(s[1])
     return d
-
 
 def parse_output_names(output_names):
     if output_names and len(output_names) == 1:
@@ -390,8 +387,7 @@ class tf2:
         def load_model(self, frozen_graph=None, keras_model=None, keras_weights=None):
             output_names = parse_output_names(ARGS.output)
             if frozen_graph:
-                def _imports_graph_def():
-                    tf.compat.v1.import_graph_def(graph_def, name="")
+                def _imports_graph_def(): tf.compat.v1.import_graph_def(graph_def, name="")
                 graph_def = tf.compat.v1.GraphDef()
                 graph_def.ParseFromString(open(frozen_graph, 'rb').read())
                 wrapped_import = tf.compat.v1.wrap_function(_imports_graph_def, [])
@@ -407,45 +403,34 @@ class tf2:
                 else:
                     with open(keras_model, 'r') as file:
                         self._model = tf.keras.models.model_from_json(file.read(), custom_objects={'tf': tf})
-                if keras_weights:
-                    self._model.load_weights(keras_weights)
-                else:
-                    logging.warn("Keras model loaded, but weights not specified!")
+                if keras_weights: self._model.load_weights(keras_weights)
+                else: logging.warn("Keras model loaded, but weights not specified!")
                 # To work with --input and --outputs re-create the model with the desired tensors
                 self._populate_tensors()
-                if ARGS.get_operations:  # TODO: Examine, determine better segmentation of functions
-                    return
+                if ARGS.get_operations: return # TODO: Examine, determine better segmentation of functions
                 self._model = tf.keras.models.Model(self.get_input(), self.get_outputs())
                 self._populate_tensors()
 
         def _populate_tensors(self):
             tensors = []
             for layer in self._model.layers:
-                if isinstance(layer.input, list):
-                    tensors += layer.input
-                else:
-                    tensors.append(layer.input)
-                if isinstance(layer.output, list):
-                    tensors += layer.output
-                else:
-                    tensors.append(layer.output)
+                if isinstance(layer.input, list): tensors += layer.input
+                else: tensors.append(layer.input)
+                if isinstance(layer.output, list): tensors += layer.output
+                else: tensors.append(layer.output)
             self._tensors = dict(zip([tensor.name for tensor in tensors], tensors))
             try:
                 self._input = self.get_tensor(ARGS.input)
                 output_names = parse_output_names(ARGS.output)
                 self._outputs = [self.get_tensor(name) for name in output_names]
             except (TypeError, KeyError):
-                if not ARGS.get_operations:
-                    raise
+                if not ARGS.get_operations: raise
 
         def get_tensor(self, name, permissive=False):
             try:
-                if self._graph:
-                    return self._graph.get_tensor_by_name(name)  # Frozen graph
-                return self._tensors[name]  # Keras model
+                return self._graph.get_tensor_by_name(name) if self._graph else self._tensors[name]
             except KeyError:
-                if not permissive:
-                    raise
+                if not permissive: raise
 
         def get_outputs(self):
             return self._outputs
@@ -454,8 +439,7 @@ class tf2:
             return self._input
 
         def get_operations(self):
-            if ARGS.frozen_graph:
-                return self._graph.get_operations()
+            if ARGS.frozen_graph: return self._graph.get_operations()
             operations = list()
             unique_ops = set()
             for operation in self._tensors.values():
@@ -465,12 +449,7 @@ class tf2:
             return operations
 
         def run(self, data):
-            # if self._graph:
-                # logging.info(f"Frozen graph, data is: {data.dtype}, {data.shape}")
-            values = self._model(tf.convert_to_tensor(data))
-            # else:
-                # values = self._model(data)
-            return values
+            return self._model(tf.convert_to_tensor(data))
 
 
 def main(args):
@@ -542,8 +521,7 @@ def main(args):
 
     with os.fdopen(sys.stdout.fileno(), "wb") as stdout, os.fdopen(sys.stdin.fileno(), "rb") as stdin:
         for header, data, footer in iterator(stdin, input_tensor, args.header_size, args.footer_size):
-            if data is None:
-                break
+            if data is None: break
             values = model.run(data)
             if args.output_to_files or args.png:
                 try:
@@ -554,16 +532,14 @@ def main(args):
                 try:
                     os.makedirs(output_dir)
                 except OSError as ex:
-                    if ex.errno != errno.EEXIST:
-                        raise
+                    if ex.errno != errno.EEXIST: raise
                 for i, (output_tensor, value) in enumerate(zip(output_tensors, values)):
                     logging.info(f"output_tensor {output_tensor}")
                     logging.info(f"values[{i}]: shape ({value.shape}), shape ({value.dtype})")
                     try:
                         os.makedirs(output_dir + '/' + output_tensors[i].name)
                     except OSError as ex:
-                        if ex.errno != errno.EEXIST:
-                            raise
+                        if ex.errno != errno.EEXIST: raise
                     if value.shape[0] != 1:
                         die("output to files: expected output tensor with shape (1,...); got tensor "
                             + output_tensor.name + " of shape: " + str(value.shape) + "; todo?")
@@ -592,20 +568,17 @@ def main(args):
                 input_number += 1
             else:
                 stdout.write(header.tobytes())
-                if args.keep_input:
-                    stdout.write(data.tobytes())
+                if args.keep_input: stdout.write(data.tobytes())
                 stdout.write(footer.tobytes())
                 if args.output_channels_transpose:
                     for i in range(len(values)):
                         if value.shape[0] != 1:
                             die("transpose channels: expected output tensor with shape (1,...); got tensor "
                                 + output_tensor.name + " of shape: " + str(value.shape) + "; todo?")
-                        v = np.transpose(value[0], axes=(2, 0, 1)) if len(
-                            value.shape) == 4 else values[i]  # quick and dirty
+                        v = np.transpose(value[0], axes=(2, 0, 1)) if len( value.shape ) == 4 else values[i]  # quick and dirty
                         stdout.write(v.tobytes())
                 else:
-                    for value in values:
-                        stdout.write(value.tobytes())
+                    for value in values: stdout.write(value.tobytes())
                 stdout.flush()
 
 
