@@ -29,8 +29,6 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import print_function
-
 import argparse
 import gzip
 import logging
@@ -215,31 +213,22 @@ def parse_args(argv=None):
     return args
 
 
-saymore = logging.info
-warn = logging.warning
-
-
-def say(m):
-    print("tensor-cat:" + str(m), file=sys.stderr)
-
-
 def die(m):
     logging.critical("tensor-cat:" + str(m))
     exit(1)
 
 
 def handle_signal(s, f):
-    print("tensor-cat: broken pipe, exit", file=sys.stderr)
+    logging.warning("tensor-cat: broken pipe, exit")
     exit(0)
 
 
 # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
-def iterator(file, input, header_size, footer_size):
-    shape = (input.get_shape() if TF_VERSION[0] < 1 else input.shape).as_list()
+def iterator(file, input_tensor, header_size, footer_size):
+    shape = (input_tensor.get_shape() if TF_VERSION[0] < 1 else input_tensor.shape).as_list()
     if ARGS.input_shape is None:
         shape = [1 if v is None else v for v in shape]  # quick and dirty
-        print("tensor-cat: warning: input shape: --input-shape not defined, tried to deduce it as:",
-              shape, file=sys.stderr)
+        logging.warning(f"input shape: --input-shape not defined, tried to deduce it as: {shape}")
     else:
         input_shape = eval("[" + ARGS.input_shape + "]")
         if len(shape) != len(input_shape):
@@ -251,9 +240,8 @@ def iterator(file, input, header_size, footer_size):
             elif shape[i] != input_shape[i]:
                 die("expected input shape dimension " + str(i) + ": " + str(shape[i]) + ", got " + str(
                     input_shape[i]) + " in --input-shape: [" + ARGS.input_shape + "]")
-    print("tensor-cat: using input shape:", shape, file=sys.stderr)
-    ntype = (input._dtype if TF_VERSION[0]
-             < 1 else input.dtype).as_numpy_dtype()
+    logging.info(f"using input shape: {shape}")
+    ntype = (input_tensor._dtype if TF_VERSION[0] < 1 else input_tensor.dtype).as_numpy_dtype()
     size = np.prod(shape)
     itemsize = np.array([0], dtype=ntype).itemsize  # quick and dirty
     data_bytes = size * itemsize
@@ -277,36 +265,41 @@ def variables(v):
     d = {}
     for i in v:
         s = i.split(':')
-        d[tf.get_collection(s[0].strip())[0]] = eval(s[1])
+        d[tf.compat.v1.get_collection(s[0].strip())[0]] = eval(s[1])
     return d
 
+
+def parse_output_names(output_names):
+    if output_names and len(output_names) == 1:
+        return output_names[0].split(',')
+    return output_names
 
 class tf1:
     class model:
         def __init__(self):
-            self.config = tf.ConfigProto()
+            self.config = tf.compat.v1.ConfigProto()
             self.config.gpu_options.allow_growth = ARGS.gpu_allow_growth
             self.session = None
             self.session_meta = None
 
-        def load_model(self, frozen_graph, keras_model, keras_weights):
+        def load_model(self, frozen_graph=None, keras_model=None, keras_weights=None):
             if frozen_graph is not None:
-                saymore("loading frozen graph from '" + frozen_graph + "'...")
+                logging.info("loading frozen graph from '" + frozen_graph + "'...")
                 with tf.Graph().as_default() as graph:
                     graph_def = tf.GraphDef()
                     with tf.gfile.GFile(frozen_graph, 'rb') as fid:
                         serialized_graph = fid.read()
                         graph_def.ParseFromString(serialized_graph)
                         tf.import_graph_def(graph_def, name='')
-                        saymore("loaded frozen graph from '" + frozen_graph + "'")
+                        logging.info("loaded frozen graph from '" + frozen_graph + "'")
                     self.session = tf.Session(graph=graph, config=self.config)
             elif keras_model is not None:
-                saymore("loading model from '" + keras_model + "'...")
+                logging.info("loading model from '" + keras_model + "'...")
                 # # quick and dirty to make it backward compatible for now
                 # self.config.gpu_options.allow_growth = True
                 # quick and dirty, just to make it working
                 self.session = tf.Session(config=self.config)
-                tf.keras.backend.set_session(self.session)
+                tf.compat.v1.keras.backend.set_session(self.session)
                 if keras_model.split('.')[-1] == 'h5':
                     keras_model = tf.keras.models.load_model(
                         keras_model, custom_objects={'tf': tf}, compile=False)
@@ -317,76 +310,180 @@ class tf1:
                     with open(keras_model, 'r') as f:
                         keras_model = tf.keras.models.model_from_json(
                             f.read(), custom_objects={'tf': tf})
-                    saymore("loading weights from '" + keras_weights + "'...")
+                    logging.info("loading weights from '" + keras_weights + "'...")
                     keras_model.load_weights(keras_weights)
-                self.session = tf.keras.backend.get_session()
+                self.session = tf.compat.v1.keras.backend.get_session()
             else:  # todo! there is an intermittent problem that prevents this branch from working; looking into it, but any help is welcome...
-                say("WARNING: there is an intermittent problem that prevents loading from checkpoint from working.")
-                say("warning: if loading with --session does not work, use tensor-calc graph-freeze to freeze the graph and run tensor-cat --frozen-graph ...; loading from checkpoint: todo")
+                logging.warn("there is an intermittent problem that prevents loading from checkpoint from working.")
+                logging.warn("if loading with --session does not work, use tensor-calc graph-freeze to freeze the graph and run tensor-cat --frozen-graph ...; loading from checkpoint: todo")
                 tf.reset_default_graph()  # voodoo?
                 session_file = ARGS.session_dir + '/' + ARGS.session  # TODO: Is there a need for session_dir?
                 # TODO: Clean up ARGS, pass to function?
                 self.session_meta = ARGS.session_graph if ARGS.session_graph is not None else session_file + '.meta'
                 if TF_VERSION[0] < 1 and ARGS.keep_devices:
-                    warn("--keep-devices specified, but will have no effect: not implemented in tensorflow version "
+                    logging.warn("--keep-devices specified, but will have no effect: not implemented in tensorflow version "
                          + tf.__version__ + " that you are running")
-                saymore("importing meta graph file from '" + self.session_meta + "'...")
+                logging.info("importing meta graph file from '" + self.session_meta + "'...")
                 saver = tf.train.import_meta_graph(self.session_meta) if TF_VERSION[0] < 1 \
                     else tf.train.import_meta_graph(self.session_meta, clear_devices=not ARGS.keep_devices)
-                saymore("imported meta graph file from '" + self.session_meta + "'")
+                logging.info("imported meta graph file from '" + self.session_meta + "'")
                 self.session = tf.get_default_session()  # Todo: check this works
-                saymore("restoring session from '" + session_file + "'...")
+                logging.info("restoring session from '" + session_file + "'...")
                 saver.restore(self.session, session_file)
-                saymore("restored session from '" + session_file + "'")
-            # with tf.Session if args.frozen_graph is None else tf.Session( graph = graph ) as session: #with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
-            # with tf.Session( config = tf.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.ConfigProto( log_device_placement = True ) ) as session:
+                logging.info("restored session from '" + session_file + "'")
+            # with tf.Session if args.frozen_graph is None else tf.Session( graph = graph ) as session: #with tf.Session( config = tf.compat.v1.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.compat.v1.ConfigProto( log_device_placement = True ) ) as session:
+            # with tf.Session( config = tf.compat.v1.ConfigProto( log_device_placement = True ) ) if args.frozen_graph is None else tf.Session( graph = graph, config = tf.compat.v1.ConfigProto( log_device_placement = True ) ) as session:
+            if ARGS.get_operations:
+                return
+            output_names = ARGS.output
+            if ARGS.output and len(ARGS.output) == 1:
+                output_names = ARGS.output[0].split(',')
+            self._outputs = [self.get_tensor(name) for name in output_names]
+            self._input = self.get_tensor(ARGS.input)
+            self.keep_prob = self.get_tensor('keep_prob', True)  # todo! quick and dirty
+            self.feeds = variables(ARGS.variable)
 
         def get_tensor(self, name, permissive=False):
             try:
                 return self.session.graph.get_tensor_by_name(name)
             except (KeyError, ValueError):
-                saymore("no tensor '" + name + "' in graph, checking collection...")
-                entries = tf.get_collection(name)
+                logging.info("no tensor '" + name + "' in graph, checking collection...")
+                entries = tf.compat.v1.get_collection(name)
                 if len(entries) == 0:
                     if permissive:
-                        warn("graph does not have entry named '" + name + "'; skipped")
+                        logging.warn("graph does not have entry named '" + name + "'; skipped")
                         return None
                     else:
                         die("graph does not have entry named '" + name + "'")
                 if len(entries) > 1:
                     die("expected entry size 1 for entry named '"
                         + name + "'; got: " + str(len(entries)) + "(todo?)")
-                saymore("tensor '" + name + "' found in collection")
+                logging.info("tensor '" + name + "' found in collection")
                 return entries[0]
 
         def get_operations(self):
             return self.session.graph.get_operations()
 
-        def run(self, outputs, feeds):
-            values = self.session.run(outputs, feed_dict=feeds)
-            return values
-        # def __del__(self):
+        def run(self, data):
+            feeds = {self._input: data}
+            if self.keep_prob:
+                feeds[self.keep_prob] = 1.0
+            values = self.session.run(self._outputs, feed_dict=feeds)
+            return [values] if not isinstance(values, list) else values
+
+        def get_input(self):
+            return self._input
+
+        def get_outputs(self):
+            return self._outputs
 
 
 class tf2:
     class model:
         def __init__(self):
-            raise NotImplementedError("tensorflow 2 not yet supported")
+            self._model = None
+            self._input = None
+            self._outputs = None
+            self._tensors = None
+            self._graph = None
+
+        def load_model(self, frozen_graph=None, keras_model=None, keras_weights=None):
+            output_names = parse_output_names(ARGS.output)
+            if frozen_graph:
+                def _imports_graph_def():
+                    tf.compat.v1.import_graph_def(graph_def, name="")
+                graph_def = tf.compat.v1.GraphDef()
+                graph_def.ParseFromString(open(frozen_graph, 'rb').read())
+                wrapped_import = tf.compat.v1.wrap_function(_imports_graph_def, [])
+                self._graph = wrapped_import.graph
+                self._model = wrapped_import.prune(
+                    tf.nest.map_structure(self._graph.as_graph_element, ARGS.input),
+                    tf.nest.map_structure(self._graph.as_graph_element, output_names))
+                self._input = self._model.inputs[0]
+                self._outputs = self._model.outputs
+            if keras_model:
+                if keras_model.endswith(".h5"):
+                    self._model = tf.keras.models.load_model(keras_model)
+                else:
+                    with open(keras_model, 'r') as file:
+                        self._model = tf.keras.models.model_from_json(file.read(), custom_objects={'tf': tf})
+                if keras_weights:
+                    self._model.load_weights(keras_weights)
+                else:
+                    logging.warn("Keras model loaded, but weights not specified!")
+                # To work with --input and --outputs re-create the model with the desired tensors
+                self._populate_tensors()
+                if ARGS.get_operations:  # TODO: Examine, determine better segmentation of functions
+                    return
+                self._model = tf.keras.models.Model(self.get_input(), self.get_outputs())
+                self._populate_tensors()
+
+        def _populate_tensors(self):
+            tensors = []
+            for layer in self._model.layers:
+                if isinstance(layer.input, list):
+                    tensors += layer.input
+                else:
+                    tensors.append(layer.input)
+                if isinstance(layer.output, list):
+                    tensors += layer.output
+                else:
+                    tensors.append(layer.output)
+            self._tensors = dict(zip([tensor.name for tensor in tensors], tensors))
+            try:
+                self._input = self.get_tensor(ARGS.input)
+                output_names = parse_output_names(ARGS.output)
+                self._outputs = [self.get_tensor(name) for name in output_names]
+            except (TypeError, KeyError):
+                if not ARGS.get_operations:
+                    raise
+
+        def get_tensor(self, name, permissive=False):
+            try:
+                if self._graph:
+                    return self._graph.get_tensor_by_name(name)  # Frozen graph
+                return self._tensors[name]  # Keras model
+            except KeyError:
+                if not permissive:
+                    raise
+
+        def get_outputs(self):
+            return self._outputs
+
+        def get_input(self):
+            return self._input
+
+        def get_operations(self):
+            if ARGS.frozen_graph:
+                return self._graph.get_operations()
+            operations = list()
+            unique_ops = set()
+            for operation in self._tensors.values():
+                if operation not in unique_ops:
+                    unique_ops.add(operation)
+                    operations.append(operation)
+            return operations
+
+        def run(self, data):
+            # if self._graph:
+                # logging.info(f"Frozen graph, data is: {data.dtype}, {data.shape}")
+            values = self._model(tf.convert_to_tensor(data))
+            # else:
+                # values = self._model(data)
+            return values
+
 
 def main(args):
     signal.signal(signal.SIGPIPE, handle_signal)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = args.min_log_level
-    saymore("importing tensorflow...")  # Late import to speed up --help
+    logging.info("importing tensorflow...")  # Late import to speed up --help
     global tf, TF_VERSION
     import tensorflow as tf
-    saymore("imported tensorflow")
-    saymore("tensorflow version: " + tf.__version__)
+    logging.info("imported tensorflow")
+    logging.info("tensorflow version: " + tf.__version__)
     TF_VERSION = [int(field) for field in tf.__version__.split('.') if str.isdigit(field)]
-    output_names = args.output
-    if args.output and len(args.output) == 1:
-        output_names = args.output[0].split(',')
     if TF_VERSION[0] == 1:  # TODO: Is this needed since moving to python logging?
-        tf.logging.set_verbosity(tf.logging.INFO if args.loglevel else tf.logging.WARN)
+        tf.compat.v1.logging.set_verbosity(tf.logging.INFO if args.loglevel else tf.compat.v1.logging.WARN)
     # with tf.device( args.device ) as device: run() # todo: tf.device() does not quite work
     # todo: load from checkpoint
 
@@ -394,41 +491,45 @@ def main(args):
     model.load_model(
         frozen_graph=args.frozen_graph, keras_model=args.keras_model, keras_weights=args.keras_weights)
 
-    # Tensor information
-    if args.tensor_shape and args.tensor_type:
-        for tensor in args.tensors.split(','):
-            print(tensor + ',' + model.get_tensor(tensor).dtype.name + ','
-                  + ','.join(list(map(str, list(model.get_tensor(tensor).shape)))))
-    elif args.tensor_shape:
-        for tensor in args.tensors.split(','):
-            print(tensor + ','
-                  + ','.join(list(map(str, list(model.get_tensor(tensor).shape)))))
-    elif args.tensor_type:
-        for tensor in args.tensors.split(','):
-            print(tensor + ',' + model.get_tensor(tensor).dtype.name)
-    elif args.get_operations:
+    # Tensor and operations information
+    if ARGS.get_operations:  # TODO: Examine, determine better segmentation of functions
         for o in model.get_operations():
             print(o.name)
-    if args.tensor_shape or args.tensor_type or args.get_operations:
         exit(0)
+    if args.tensor_shape or args.tensor_type:
+        if args.tensors:
+            if args.tensor_shape and args.tensor_type:
+                for tensor in args.tensors.split(','):
+                    print(tensor + ',' + model.get_tensor(tensor).dtype.name + ','
+                          + ','.join(list(map(str, list(model.get_tensor(tensor).shape)))))
+            elif args.tensor_shape:
+                for tensor in args.tensors.split(','):
+                    print(tensor + ','
+                          + ','.join(list(map(str, list(model.get_tensor(tensor).shape)))))
+            elif args.tensor_type:
+                for tensor in args.tensors.split(','):
+                    print(tensor + ',' + model.get_tensor(tensor).dtype.name)
+            exit(0)
+        else:
+            die("To use --tensor-shape or --tensor-type please specify --tensor.")
 
     # Run model inference
-    input = model.get_tensor(args.input)
-    keep_prob = model.get_tensor('keep_prob', True)  # todo! quick and dirty
-    outputs = [model.get_tensor(name) for name in output_names]
-    feeds = variables(args.variable)
-    output_channels_max = [None] * len(output_names)
+
+    output_tensors = model.get_outputs()
+    input_tensor = model.get_input()
+    output_channels_max = [None] * len(output_tensors)
     if args.output_channels_max:
         s = args.output_channels_max.split(',')
         for i in range(len(s)):
             if s[i] != "":
                 output_channels_max[i] = int(s[i])
-    if args.loglevel:
-        print("tensor-cat: input '" + args.input + "':", input, file=sys.stderr)
-        for i in range(len(output_names)):
-            print("tensor-cat: output '" + output_names[i] + "':", outputs[i], file=sys.stderr)
 
-    saymore("running inference...")
+    logging.info("input tensor:")
+    logging.info(input_tensor)
+    logging.info("output tensors:")
+    logging.info(output_tensors)
+
+    logging.info("running inference...")
     input_number = 0
     if (args.output_to_files or args.png) and args.output_dirs:
         def output_dirs_iterator(filename):
@@ -439,79 +540,73 @@ def main(args):
                     yield line
         output_dirs = output_dirs_iterator(args.output_dirs)
 
-    with os.fdopen(sys.stdout.fileno(), "wb") as stdout:
-        with os.fdopen(sys.stdin.fileno(), "rb") as stdin:
-            for header, data, footer in iterator(stdin, input, args.header_size, args.footer_size):
-                if data is None:
-                    break
-                feeds[input] = data
-                if keep_prob:
-                    feeds[keep_prob] = 1.0
-                values = model.run(outputs, feeds)  # values = session.run(outputs, feed_dict=feeds)
-                if args.output_to_files or args.png:
+    with os.fdopen(sys.stdout.fileno(), "wb") as stdout, os.fdopen(sys.stdin.fileno(), "rb") as stdin:
+        for header, data, footer in iterator(stdin, input_tensor, args.header_size, args.footer_size):
+            if data is None:
+                break
+            values = model.run(data)
+            if args.output_to_files or args.png:
+                try:
+                    output_dir = str(input_number) if args.output_dirs is None else next(output_dirs)
+                except StopIteration:
+                    die("got input record " + str(input_number + 1) + " but only "
+                        + str(input_number) + " entries in '" + args.output_dirs + "'")
+                try:
+                    os.makedirs(output_dir)
+                except OSError as ex:
+                    if ex.errno != errno.EEXIST:
+                        raise
+                for i, (output_tensor, value) in enumerate(zip(output_tensors, values)):
+                    logging.info(f"output_tensor {output_tensor}")
+                    logging.info(f"values[{i}]: shape ({value.shape}), shape ({value.dtype})")
                     try:
-                        output_dir = str(
-                            input_number) if args.output_dirs is None else next(output_dirs)
-                    except StopIteration:
-                        die("got input record " + str(input_number + 1) + " but only "
-                            + str(input_number) + " entries in '" + args.output_dirs + "'")
-                    try:
-                        os.makedirs( output_dir )
+                        os.makedirs(output_dir + '/' + output_tensors[i].name)
                     except OSError as ex:
                         if ex.errno != errno.EEXIST:
                             raise
+                    if value.shape[0] != 1:
+                        die("output to files: expected output tensor with shape (1,...); got tensor "
+                            + output_tensor.name + " of shape: " + str(value.shape) + "; todo?")
+                    if len(value.shape) > 4:
+                        die("output to files: expected output tensor with no more than 4 dimensions; got tensor "
+                            + output_tensor.name + " of shape: " + str(value.shape) + "; todo?")
+                    v = value if len(value.shape) <= 3 else np.transpose(
+                        value[0], axes=(2, 0, 1))  # quick and dirty
+                    output_channels = v.shape[0] if output_channels_max[i] is None else output_channels_max[i]
+                    
+                    if args.output_to_files:
+                        for j in range(output_channels):
+                            n = output_dir + '/' + output_tensor.name + '/' + str(j) + '.bin'
+                            with gzip.open(n + '.gz', 'wb') if args.output_as_gzip else open(n, 'wb') as f:
+                                f.write(v[j].tobytes())
+                                f.close()
+                            # with open( n if args.output_as_gzip else n + '.gz', 'wb' ) as f: f.write( gzip.compress( v[j].tobytes() ) if args.output_as_gzip else v[j].tobytes() )
+                    if args.png:
+                        for j in range(output_channels):
+                            n = np.min(v[j]) if args.png_min is None else args.png_min
+                            x = np.max(v[j]) if args.png_max is None else args.png_max
+                            image = np.zeros(v[j].shape, dtype=np.uint8) if x == n else np.array(
+                                (((np.array(v[j], dtype=np.float32) - n) / (x - n)) * 255), dtype=np.uint8)
+                            from PIL import Image
+                            Image.fromarray(image).save(output_dir + '/' + output_tensor.name + '/' + str(j) + '.png')
+                input_number += 1
+            else:
+                stdout.write(header.tobytes())
+                if args.keep_input:
+                    stdout.write(data.tobytes())
+                stdout.write(footer.tobytes())
+                if args.output_channels_transpose:
                     for i in range(len(values)):
-                        try:
-                            os.makedirs(output_dir + '/' + output_names[i])
-                        except OSError as ex:
-                            if ex.errno != errno.EEXIST:
-                                raise
-                        if values[i].shape[0] != 1:
-                            die("output to files: expected output tensor with shape (1,...); got tensor "
-                                + output_names[i] + " of shape: " + str(values[i].shape) + "; todo?")
-                        if len(values[i].shape) > 4:
-                            die("output to files: expected output tensor with no more than 4 dimensions; got tensor "
-                                + output_names[i] + " of shape: " + str(values[i].shape) + "; todo?")
-                        v = values[i] if len(values[i].shape) <= 3 else np.transpose(
-                            values[i][0], axes=(2, 0, 1))  # quick and dirty
-                        output_channels = v.shape[0] if output_channels_max[i] is None else output_channels_max[i]
-                        if args.output_to_files:
-                            for j in range(output_channels):
-                                n = output_dir + '/' + \
-                                    output_names[i] + '/' + str(j) + '.bin'
-                                with gzip.open(n + '.gz', 'wb') if args.output_as_gzip else open(n, 'wb') as f:
-                                    f.write(v[j].tobytes())
-                                    f.close()
-                                # with open( n if args.output_as_gzip else n + '.gz', 'wb' ) as f: f.write( gzip.compress( v[j].tobytes() ) if args.output_as_gzip else v[j].tobytes() )
-                        if args.png:
-                            for j in range(output_channels):
-                                n = np.min(
-                                    v[j]) if args.png_min is None else args.png_min
-                                x = np.max(
-                                    v[j]) if args.png_max is None else args.png_max
-                                image = np.zeros(v[j].shape, dtype=np.uint8) if x == n else np.array(
-                                    (((np.array(v[j], dtype=np.float32) - n) / (x - n)) * 255), dtype=np.uint8)
-                                from PIL import Image
-                                Image.fromarray(image).save(
-                                    output_dir + '/' + output_names[i] + '/' + str(j) + '.png')
-                    input_number += 1
+                        if value.shape[0] != 1:
+                            die("transpose channels: expected output tensor with shape (1,...); got tensor "
+                                + output_tensor.name + " of shape: " + str(value.shape) + "; todo?")
+                        v = np.transpose(value[0], axes=(2, 0, 1)) if len(
+                            value.shape) == 4 else values[i]  # quick and dirty
+                        stdout.write(v.tobytes())
                 else:
-                    stdout.write(header.tobytes())
-                    if args.keep_input:
-                        stdout.write(data.tobytes())
-                    stdout.write(footer.tobytes())
-                    if args.output_channels_transpose:
-                        for i in range(len(values)):
-                            if values[i].shape[0] != 1:
-                                die("transpose channels: expected output tensor with shape (1,...); got tensor "
-                                    + output_names[i] + " of shape: " + str(values[i].shape) + "; todo?")
-                            v = np.transpose(values[i][0], axes=(2, 0, 1)) if len(
-                                values[i].shape) == 4 else values[i]  # quick and dirty
-                            stdout.write(v.tobytes())
-                    else:
-                        for value in values:
-                            stdout.write(value.tobytes())
-                    stdout.flush()
+                    for value in values:
+                        stdout.write(value.tobytes())
+                stdout.flush()
 
 
 if __name__ == '__main__':
