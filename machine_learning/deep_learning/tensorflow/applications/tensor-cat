@@ -335,6 +335,8 @@ class tf1:
             output_names = ARGS.output
             if ARGS.output and len(ARGS.output) == 1:
                 output_names = ARGS.output[0].split(',')
+            if ARGS.get_operations or ARGS.tensor_shape or ARGS.tensor_type:
+                return
             self._outputs = [self.get_tensor(name) for name in output_names]
             self._input = self.get_tensor(ARGS.input)
             self.keep_prob = self.get_tensor('keep_prob', True)  # todo! quick and dirty
