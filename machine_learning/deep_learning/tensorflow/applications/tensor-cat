@@ -385,15 +385,20 @@ class tf2:
             self._graph = None
 
         def load_model(self, frozen_graph=None, keras_model=None, keras_weights=None):
-            output_names = parse_output_names(ARGS.output)
             if frozen_graph:
-                def _imports_graph_def(): tf.compat.v1.import_graph_def(graph_def, name="")
                 graph_def = tf.compat.v1.GraphDef()
                 graph_def.ParseFromString(open(frozen_graph, 'rb').read())
+                def _imports_graph_def(): tf.compat.v1.import_graph_def(graph_def, name="")
                 wrapped_import = tf.compat.v1.wrap_function(_imports_graph_def, [])
                 self._graph = wrapped_import.graph
+                if ARGS.get_operations or ARGS.tensor_shape or ARGS.tensor_type:
+                    input_name = self._graph.get_operations()[0].name + ':0'
+                    output_names = [self._graph.get_operations()[-1].name + ':0']
+                else:
+                    input_name = ARGS.input
+                    output_names = parse_output_names(ARGS.output)
                 self._model = wrapped_import.prune(
-                    tf.nest.map_structure(self._graph.as_graph_element, ARGS.input),
+                    tf.nest.map_structure(self._graph.as_graph_element, input_name),
                     tf.nest.map_structure(self._graph.as_graph_element, output_names))
                 self._input = self._model.inputs[0]
                 self._outputs = self._model.outputs
@@ -449,7 +454,7 @@ class tf2:
             return operations
 
         def run(self, data):
-            return self._model(tf.convert_to_tensor(data))
+            return [value.numpy() for value in self._model(tf.convert_to_tensor(data))]
 
 
 def main(args):
@@ -571,7 +576,7 @@ def main(args):
                 if args.keep_input: stdout.write(data.tobytes())
                 stdout.write(footer.tobytes())
                 if args.output_channels_transpose:
-                    for i in range(len(values)):
+                    for i, value in enumerate(values):
                         if value.shape[0] != 1:
                             die("transpose channels: expected output tensor with shape (1,...); got tensor "
                                 + output_tensor.name + " of shape: " + str(value.shape) + "; todo?")
