@@ -47,7 +47,7 @@ struct input_point
     Eigen::Vector3d point;
     comma::uint32 block;
     
-    input_point() : block( 0 ), point( 0, 0, 0 ) {}
+    input_point() : point( 0, 0, 0 ), block( 0 ) {}
 };
 
 struct centroid

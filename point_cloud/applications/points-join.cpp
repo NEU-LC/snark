@@ -72,6 +72,7 @@ static void usage( bool more = false )
     std::cerr << "    --matching: output only points that have a match, do not append nearest point; a convenience option" << std::endl;
     std::cerr << "    --not-matching: output only points that do not have a match, i.e. opposite of --matching" << std::endl;
     std::cerr << "    --radius=<radius>: max lookup radius, required even if radius field is present" << std::endl;
+    std::cerr << "    --radius-min,--min-radius=<radius>: min lookup radius, e.g. to filter out points on poor-man's self-join" << std::endl;
     std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
     std::cerr << "    --permissive: discard invalid points or triangles and continue" << std::endl;
     std::cerr << "    --size,--number-of-points,--number-of-nearest-points=<number_of_points>; default=1: output up to a given number of nearest points in the given radius" << std::endl;
@@ -113,9 +114,11 @@ static bool strict;
 static bool permissive;
 static bool use_normal;
 static bool use_block;
-static double radius;
 static bool use_radius;
+static double radius;
 static double squared_radius;
+static double min_radius;
+static double squared_min_radius;
 static double max_triangle_side;
 static bool matching;
 static bool append_nearest;
@@ -201,7 +204,7 @@ struct record
     record( const point_input& input, const std::string& line ) : value( input.value ), normal( input.normal ), line( line ) {}
     boost::optional< Eigen::Vector3d > nearest_to( const point_input& rhs ) const
     {
-        if( use_normal ) { return !comma::math::less( normal.dot(rhs.normal), 0 ) ? boost::make_optional(value) : boost::none; }
+        if( use_normal ) { return !comma::math::less( normal.dot( rhs.normal ), 0 ) ? boost::make_optional( value ) : boost::none; }
         return value;
     } // watch performance
     bool is_valid() const { return true; }
@@ -247,7 +250,7 @@ template <> struct traits< Eigen::Vector3d >
             {
                 const boost::optional< Eigen::Vector3d >& n = records[k]->nearest_to( rhs );
                 if( !n ) { return boost::none; }
-                return std::make_pair(*n, (*n - rhs.value).squaredNorm());
+                return std::make_pair( *n, ( *n - rhs.value ).squaredNorm() );
             }
         #endif // SNARK_USE_CUDA
     };
@@ -539,7 +542,7 @@ template < typename V > struct join_impl_
                             for( std::size_t k = 0; k < it->second.records.size(); ++k )
                             {
                                 const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
-                                if( !q || q->second > current_squared_radius ) { continue; }
+                                if( !q || q->second > current_squared_radius || q->second < squared_min_radius ) { continue; }
                                 if( stdin_csv.binary() )
                                 {
                                     std::cout.write( istream.binary().last(), stdin_csv.format().size() );
@@ -577,7 +580,7 @@ template < typename V > struct join_impl_
                                 for( std::size_t k = 0; k < it->second.records.size(); ++k )
                                 {
                                     const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
-                                    if( !q || q->second > current_squared_radius ) { continue; }
+                                    if( !q || q->second > current_squared_radius || q->second < squared_min_radius ) { continue; }
                                     if( !nearest || nearest->squared_distance > q->second ) { nearest.reset( nearest_t( it->second.records[k], q->first, q->second ) ); }
                                     if( !append_nearest ) { enough = true; break; }
                                 }
@@ -587,10 +590,10 @@ template < typename V > struct join_impl_
                                 for( std::size_t k = 0; k < it->second.records.size(); ++k )
                                 {
                                     const boost::optional< std::pair< Eigen::Vector3d, double > >& q = it->second.nearest_to( *p, k ); // todo: fix! currently, visiting each triangle 3 times
-                                    if( !q || q->second > current_squared_radius ) { continue; }
+                                    if( !q || q->second > current_squared_radius || q->second < squared_min_radius ) { continue; }
                                     if( nearest_map.size() >= size )
                                     {
-                                        if( nearest_map.rbegin()->second.squared_distance < q->second ) { continue; }
+                                        if( nearest_map.rbegin()->second.squared_distance < q->second || q->second < squared_min_radius ) { continue; }
                                         nearest_map.erase( std::prev( nearest_map.end() ) );
                                     }
                                     nearest_map.insert( std::make_pair( q->second, nearest_t( it->second.records[k], q->first, q->second ) ) );
@@ -648,6 +651,8 @@ int main( int ac, char** av )
         stdin_csv.full_xpath = true;
         radius = options.value< double >( "--radius" );
         squared_radius = radius * radius;
+        min_radius = options.value( "--radius-min,--min-radius", 0. );
+        squared_min_radius = min_radius * min_radius;
         options.assert_mutually_exclusive( "--matching,--not-matching" );
         matching = !options.exists( "--not-matching" );
         append_nearest = !options.exists( "--matching" ) && matching;
