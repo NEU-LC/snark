@@ -454,7 +454,7 @@ class tf2:
             return operations
 
         def run(self, data):
-            return [value.numpy() for value in self._model(tf.convert_to_tensor(data))]
+            return [value.numpy()[np.newaxis, ...] for value in self._model(tf.convert_to_tensor(data))]
 
 
 def main(args):
@@ -576,7 +576,7 @@ def main(args):
                 if args.keep_input: stdout.write(data.tobytes())
                 stdout.write(footer.tobytes())
                 if args.output_channels_transpose:
-                    for i, value in enumerate(values):
+                    for i, (output_tensor, value) in enumerate(zip(output_tensors, values)):
                         if value.shape[0] != 1:
                             die("transpose channels: expected output tensor with shape (1,...); got tensor "
                                 + output_tensor.name + " of shape: " + str(value.shape) + "; todo?")
