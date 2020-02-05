@@ -35,7 +35,9 @@ import logging
 import os
 import signal
 import sys
+import warnings
 from time import gmtime
+from time import time as get_time
 
 import numpy as np
 
@@ -208,8 +210,19 @@ def parse_args(argv=None):
     args = parser.parse_args(argv)
 
     # Argument checking
-    if args.frozen_graph and args.keras_model:
+    if not (args.tensor_shape or args.tensor_type or args.get_operations) and not (args.input or args.output):
+        die("Select operation (--input-shape, --input-tensor or --get-operations) "
+            "or provide --input and --output to run inference.")
+    if not args.frozen_graph and not args.keras_model:
+        die("expected one of --keras-model or --frozen-graph")
+    elif args.frozen_graph and args.keras_model:
         die("expected either --keras-model or --frozen-graph; got both")
+    elif not args.get_operations:  # Inference mode
+        if args.tensor_type or args.tensor_shape:
+            if not args.tensors:
+                die("To use --tensor-shape or --tensor-type please specify --tensor.")
+        elif not args.input or not args.output:
+            die("provide --input and --output to run inference.")
     return args
 
 
@@ -249,11 +262,7 @@ def iterator(file, input_tensor, header_size, footer_size):
     data = np.zeros(shape, dtype=ntype)
     footer = np.zeros((footer_size), dtype=np.uint8)
     while True:
-        if file.readinto(header) != header_size:
-            yield None, None, None
-        if file.readinto(data) != data_bytes:
-            yield None, None, None
-        if file.readinto(footer) != footer_size:
+        if file.readinto(header) != header_size or file.readinto(data) != data_bytes or file.readinto(footer) != footer_size:
             yield None, None, None
         yield header, data, footer
 
@@ -269,7 +278,7 @@ def variables(v):
 def parse_output_names(output_names):
     if output_names and len(output_names) == 1:
         return output_names[0].split(',')
-    return output_names
+    return output_names or []
 
 class tf1:
     class model:
@@ -298,27 +307,26 @@ class tf1:
                 self.session = tf.Session(config=self.config)
                 tf.compat.v1.keras.backend.set_session(self.session)
                 if keras_model.split('.')[-1] == 'h5':
-                    keras_model = tf.keras.models.load_model(
-                        keras_model, custom_objects={'tf': tf}, compile=False)
-                    keras_model.load_weights(keras_model)
+                    model = tf.keras.models.load_model(keras_model, custom_objects={'tf': tf}, compile=False)
+                    model.load_weights(keras_model)
                 else:
-                    if keras_weights is None:
-                        die("got model definition in --keras-model, please specify --keras-weights")
                     with open(keras_model, 'r') as f:
-                        keras_model = tf.keras.models.model_from_json(
-                            f.read(), custom_objects={'tf': tf})
-                    logging.info("loading weights from '" + keras_weights + "'...")
-                    keras_model.load_weights(keras_weights)
+                        model = tf.keras.models.model_from_json(f.read(), custom_objects={'tf': tf})
+                    if not keras_weights and not (ARGS.get_operations or ARGS.tensor_shape or ARGS.tensor_type):
+                        logging.warning("Keras model definition loaded, but weights not specified")
+                    else:
+                        logging.info("loading weights from '" + keras_weights + "'...")
+                        model.load_weights(keras_weights)
                 self.session = tf.compat.v1.keras.backend.get_session()
             else:  # todo! there is an intermittent problem that prevents this branch from working; looking into it, but any help is welcome...
-                logging.warn("there is an intermittent problem that prevents loading from checkpoint from working.")
-                logging.warn("if loading with --session does not work, use tensor-calc graph-freeze to freeze the graph and run tensor-cat --frozen-graph ...; loading from checkpoint: todo")
+                logging.warning("there is an intermittent problem that prevents loading from checkpoint from working.")
+                logging.warning("if loading with --session does not work, use tensor-calc graph-freeze to freeze the graph and run tensor-cat --frozen-graph ...; loading from checkpoint: todo")
                 tf.reset_default_graph()  # voodoo?
                 session_file = ARGS.session_dir + '/' + ARGS.session  # TODO: Is there a need for session_dir?
                 # TODO: Clean up ARGS, pass to function?
                 self.session_meta = ARGS.session_graph if ARGS.session_graph is not None else session_file + '.meta'
                 if TF_VERSION[0] < 1 and ARGS.keep_devices:
-                    logging.warn("--keep-devices specified, but will have no effect: not implemented in tensorflow version "
+                    logging.warning("--keep-devices specified, but will have no effect: not implemented in tensorflow version "
                          + tf.__version__ + " that you are running")
                 logging.info("importing meta graph file from '" + self.session_meta + "'...")
                 saver = tf.train.import_meta_graph(self.session_meta) if TF_VERSION[0] < 1 \
@@ -350,7 +358,7 @@ class tf1:
                 entries = tf.compat.v1.get_collection(name)
                 if len(entries) == 0:
                     if permissive:
-                        logging.warn("graph does not have entry named '" + name + "'; skipped")
+                        logging.warning("graph does not have entry named '" + name + "'; skipped")
                         return None
                     else:
                         die("graph does not have entry named '" + name + "'")
@@ -406,15 +414,16 @@ class tf2:
                 self._outputs = self._model.outputs
             if keras_model:
                 if keras_model.endswith(".h5"):
-                    self._model = tf.keras.models.load_model(keras_model)
+                    self._model = tf.keras.models.load_model(keras_model, custom_objects={'tf': tf}, compile=False)
                 else:
                     with open(keras_model, 'r') as file:
                         self._model = tf.keras.models.model_from_json(file.read(), custom_objects={'tf': tf})
+                    if not keras_weights and not (ARGS.get_operations or ARGS.tensor_shape or ARGS.tensor_type):
+                        logging.warning("Keras model definition loaded, but weights not specified")
                 if keras_weights: self._model.load_weights(keras_weights)
-                else: logging.warn("Keras model loaded, but weights not specified!")
                 # To work with --input and --outputs re-create the model with the desired tensors
                 self._populate_tensors()
-                if ARGS.get_operations: return # TODO: Examine, determine better segmentation of functions
+                if ARGS.get_operations or ARGS.tensor_shape or ARGS.tensor_type: return
                 self._model = tf.keras.models.Model(self.get_input(), self.get_outputs())
                 self._populate_tensors()
 
@@ -427,15 +436,17 @@ class tf2:
                 else: tensors.append(layer.output)
             self._tensors = dict(zip([tensor.name for tensor in tensors], tensors))
             try:
-                self._input = self.get_tensor(ARGS.input)
+                self._input = self.get_tensor(ARGS.input, permissive=True)
                 output_names = parse_output_names(ARGS.output)
-                self._outputs = [self.get_tensor(name) for name in output_names]
+                self._outputs = [self.get_tensor(name, permissive=True) for name in output_names]
             except (TypeError, KeyError):
                 if not ARGS.get_operations: raise
 
         def get_tensor(self, name, permissive=False):
             try:
-                return self._graph.get_tensor_by_name(name) if self._graph else self._tensors[name]
+                if self._graph:
+                    return self._graph.get_tensor_by_name(name)
+                return self._tensors[name]
             except KeyError:
                 if not permissive: raise
 
@@ -456,17 +467,18 @@ class tf2:
             return operations
 
         def run(self, data):
-            return [value.numpy()[np.newaxis, ...] for value in self._model(tf.convert_to_tensor(data))]
+            return [value.numpy() for value in self._model(tf.convert_to_tensor(data))]
 
 
 def main(args):
+    global tf, TF_VERSION
     signal.signal(signal.SIGPIPE, handle_signal)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = args.min_log_level
-    logging.info("importing tensorflow...")  # Late import to speed up --help
-    global tf, TF_VERSION
+    # with warnings.catch_warnings():  # Silence numpy deprecation warnings
+        # warnings.simplefilter('ignore')
+        # import tensorflow as tf
     import tensorflow as tf
-    logging.info("imported tensorflow")
-    logging.info("tensorflow version: " + tf.__version__)
+    logging.info("imported tensorflow version: " + tf.__version__)
     TF_VERSION = [int(field) for field in tf.__version__.split('.') if str.isdigit(field)]
     if TF_VERSION[0] == 1:  # TODO: Is this needed since moving to python logging?
         tf.compat.v1.logging.set_verbosity(tf.logging.INFO if args.loglevel else tf.compat.v1.logging.WARN)
@@ -596,6 +608,6 @@ if __name__ == '__main__':
         datefmt='%Y%m%dT%H%M%S',
         level=ARGS.loglevel)
     logging.Formatter.converter = gmtime
-    logging.info('--verbose enabled')
+    logging.info('Arguments:')
     logging.info(ARGS)
     main(ARGS)
