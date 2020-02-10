@@ -360,6 +360,7 @@ static void usage( bool verbose = false )
     std::cerr << "            read points of a trajectory and thin them down" << std::endl;
     std::cerr << "            input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( true ), ',' ) << std::endl;
     std::cerr << "            options:" << std::endl;
+    std::cerr << "                --do-not-accumulate: do not accumulate distance travelled from the last point, just measure distance to the last point directly" << std::endl;
     std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
     std::cerr << std::endl;
     std::cerr << std::endl;
@@ -1329,7 +1330,7 @@ int main( int ac, char** av )
         csv = comma::csv::options( options );
         csv.full_xpath = true;
         ascii = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", csv.delimiter );
-        const std::vector< std::string >& operations = options.unnamed( "--id-filter,--id-pass,--in-place,--emplace,--from,--to,--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--input-fields,--input-format,--output-fields,--output-format,--filter,--fast,--percentile,--min-count,--output-percentile-only,--output-percentile,--output-points-only,--points-only,--discard-input,--output-sides-only,--sides-only,--output-internal-only,--internal-only", "-.*" );
+        const std::vector< std::string >& operations = options.unnamed( "--do-not-accumulate,--id-filter,--id-pass,--in-place,--emplace,--from,--to,--differential,--diff,--verbose,-v,--trace,--no-antialiasing,--next,--unit,--output-full-record,--full-record,--full,--flush,--with-trajectory,--trajectory,--linear,--input-fields,--input-format,--output-fields,--output-format,--filter,--fast,--percentile,--min-count,--output-percentile-only,--output-percentile,--output-points-only,--points-only,--discard-input,--output-sides-only,--sides-only,--output-internal-only,--internal-only", "-.*" );
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "frame-integrate" || operation == "integrate-frame" ) { return run< snark::points_calc::frame::integrate::traits >( options ); }
@@ -1417,6 +1418,7 @@ int main( int ac, char** av )
         }
         if( operation == "trajectory-thin" )
         {
+            bool do_not_accumulate = options.exists( "--do-not-accumulate" );
             double resolution = options.value< double >( "--resolution" );
             comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
             comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
@@ -1426,9 +1428,33 @@ int main( int ac, char** av )
             {
                 const Eigen::Vector3d* p = istream.read();
                 if( !p ) { break; }
-                distance += last ? ( *p - *last ).norm() : 0;
-                if( !last || distance >= resolution ) { distance = 0; passed.write(); }
-                last = *p;
+                if( last )
+                {
+                    double norm = ( *p - *last ).norm();
+                    if( do_not_accumulate )
+                    {
+                        if( norm >= resolution )
+                        {
+                            last = *p;
+                            passed.write();
+                        }
+                    }
+                    else
+                    {
+                        distance += norm;
+                        last = *p;
+                        if( distance >= resolution )
+                        { 
+                            distance = 0;
+                            passed.write();
+                        }
+                    }
+                }
+                else
+                {
+                    last = *p;
+                    passed.write();
+                }
             }
             return 0;
         }
