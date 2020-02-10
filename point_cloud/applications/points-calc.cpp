@@ -1418,16 +1418,14 @@ int main( int ac, char** av )
         }
         if( operation == "trajectory-thin" )
         {
-            bool do_not_accumulate = options.exists( "--do-not-accumulate" );
             double resolution = options.value< double >( "--resolution" );
             comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
             comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
-            boost::optional< Eigen::Vector3d > last;
             const Eigen::Vector3d* p = istream.read();
             if( !p ) { return 0; }
-            last = *p;
+            boost::optional< Eigen::Vector3d > last = *p;
             passed.write();
-            if( do_not_accumulate )
+            if( options.exists( "--do-not-accumulate" ) )
             {
                 while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
                 {
