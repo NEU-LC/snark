@@ -1423,38 +1423,32 @@ int main( int ac, char** av )
             comma::csv::input_stream< Eigen::Vector3d > istream( std::cin, csv, Eigen::Vector3d::Zero() );
             comma::csv::passed< Eigen::Vector3d > passed( istream, std::cout );
             boost::optional< Eigen::Vector3d > last;
+            const Eigen::Vector3d* p = istream.read();
+            if( !p ) { return 0; }
+            last = *p;
+            passed.write();
+            if( do_not_accumulate )
+            {
+                while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+                {
+                    const Eigen::Vector3d* p = istream.read();
+                    if( !p ) { break; }
+                    if( ( *p - *last ).norm() < resolution ) { continue; }
+                    last = *p;
+                    passed.write();
+                }
+                return 0;
+            }    
             double distance = 0;
             while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
             {
                 const Eigen::Vector3d* p = istream.read();
                 if( !p ) { break; }
-                if( last )
-                {
-                    double norm = ( *p - *last ).norm();
-                    if( do_not_accumulate )
-                    {
-                        if( norm >= resolution )
-                        {
-                            last = *p;
-                            passed.write();
-                        }
-                    }
-                    else
-                    {
-                        distance += norm;
-                        last = *p;
-                        if( distance >= resolution )
-                        { 
-                            distance = 0;
-                            passed.write();
-                        }
-                    }
-                }
-                else
-                {
-                    last = *p;
-                    passed.write();
-                }
+                distance += ( *p - *last ).norm();
+                last = *p;
+                if( distance < resolution ) { continue; }
+                distance = 0;
+                passed.write();
             }
             return 0;
         }
