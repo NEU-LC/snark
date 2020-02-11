@@ -467,7 +467,8 @@ class tf2:
             return operations
 
         def run(self, data):
-            return [value.numpy() for value in self._model(tf.convert_to_tensor(data))]
+            values = [value.numpy() for value in self._model(tf.convert_to_tensor(data))]
+            return [value[np.newaxis, ...] if value.ndim == 2 else [np.newaxis, ...] for value in values]
 
 
 def main(args):
