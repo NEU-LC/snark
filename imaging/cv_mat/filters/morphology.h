@@ -29,8 +29,10 @@
 
 #pragma once
 
-#include <string>
+#include <functional>
 #include <map>
+#include <string>
+#include <vector>
 #include <comma/base/types.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -41,11 +43,10 @@ const std::map< std::string, int >& operations();
 
 struct parameters
 {
-public:
     parameters( const std::vector< std::string >& e );
     
-    cv::Mat kernel_;
-    comma::uint32 iterations_;
+    cv::Mat kernel;
+    comma::uint32 iterations;
 };
 
 
@@ -58,19 +59,39 @@ typename std::pair< H, cv::Mat > morphology( const typename std::pair< H, cv::Ma
 }
 
 template < typename H >
-struct skeleton
+class skeleton
 {
-    typedef std::pair< H, cv::Mat > value_type;
-    value_type value;
+    public:
+        typedef std::pair< H, cv::Mat > value_type;
+        value_type value;
 
-    // Set load as "bin" to load cv-cat format, else load using cv::imread
-    skeleton( const parameters& param );
+        // Set load as "bin" to load cv-cat format, else load using cv::imread
+        skeleton( const parameters& param );
 
-    value_type operator()( value_type );
-    
-private:
-    cv::Mat kernel_;
-    int iterations_;
+        value_type operator()( value_type );
+        
+    private:
+        cv::Mat kernel_;
+        int iterations_;
+};
+
+template < typename H >
+class advance
+{
+    public:
+        typedef std::pair< H, cv::Mat > value_type;
+
+        advance( const parameters& param, bool advance = true, int background = 0 );
+
+        value_type operator()( value_type );
+        
+    private:
+        int background_;
+        std::vector< cv::Point > offsets_; // quick and dirty
+        unsigned int iterations_;
+        std::function< bool( unsigned char*, const unsigned char*, const unsigned char*, const unsigned char*, unsigned int ) > set_pixel_;
+        static bool advance_( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size );
+        static bool retreat_( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size );
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
