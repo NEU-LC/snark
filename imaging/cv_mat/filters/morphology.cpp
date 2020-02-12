@@ -177,7 +177,7 @@ typename advance< H >::value_type advance< H >::operator()( value_type m )
     std::vector< unsigned char > background_pixel( m.second.elemSize() );
     for( unsigned int i = 0; i < m.second.elemSize(); i += m.second.elemSize1() ) { set_channel( &background_pixel[i], background_, m.second.depth() ); }
     cv::Point p( 0, 0 );
-    for( ; p.y < m.second.rows; ++p.y ) // todo? tbb::parallel_for?
+    for( ; p.y < m.second.rows; ++p.y )
     {
         for( p.x = 0; p.x < m.second.rows; ++p.x )
         {
@@ -185,9 +185,9 @@ typename advance< H >::value_type advance< H >::operator()( value_type m )
             unsigned char* dest = n.second.ptr( p.y, p.x );
             for( unsigned int k = 0; k < offsets_.size(); ++k )
             {
-                cv::Point n = p + offsets_[k];
-                if( n.x < 0 || n.x >= m.second.cols || n.y < 0 || n.y >= m.second.rows ) { continue; }
-                unsigned char* neighbour = m.second.ptr( n.y, n.x );
+                cv::Point r = p + offsets_[k];
+                if( r.x < 0 || r.x >= m.second.cols || r.y < 0 || r.y >= m.second.rows ) { continue; }
+                unsigned char* neighbour = m.second.ptr( r.y, r.x );
                 if( set_pixel_( dest, src, neighbour, &background_pixel[0], background_pixel.size() ) ) { break; }
             }
         }
