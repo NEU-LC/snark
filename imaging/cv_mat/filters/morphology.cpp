@@ -34,7 +34,7 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <comma/base/exception.h>
-#include <comma/string/split.h>
+#include <comma/string/string.h>
 #include "../utils.h"
 #include "morphology.h"
 
@@ -64,7 +64,7 @@ parameters::parameters( const std::vector< std::string >& e )
     if( e.size() < 2 ) { return; }
     std::vector< std::string > p = comma::split( e[1], ',' );
     std::string eltype = p[0];
-    try 
+    try
     {
         if( eltype == "rectangle" || eltype == "ellipse" || eltype == "cross" ) 
         {
@@ -128,15 +128,33 @@ typename skeleton< H >::value_type skeleton< H >::operator()( value_type m )
     return result;
 }
 
+static bool advance_by_nearest( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
+{
+    if( std::memcmp( src, background, size ) != 0 || std::memcmp( neighbour, background, size ) == 0 ) { return false; }
+    std::memcpy( dest, neighbour, size );
+    return true;
+}
+
+static bool retreat_by_nearest( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
+{
+    if( std::memcmp( src, background, size ) == 0 || std::memcmp( neighbour, background, size ) != 0 ) { return false; }
+    std::memcpy( dest, background, size );
+    return true;
+}
+
+// static bool advance_by_vote( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
+// {
+//     COMMA_THROW( comma::exception, "todo" )
+// }
+
 template < typename H >
 advance< H >::advance( const parameters& param, bool a, int background ) // todo? quick and dirty: use cv::FilterEngine instead? (but cv::FilterEngine is so over-engineered)
     : background_( background )
-    , set_pixel_( a ? std::bind( &advance< H >::advance_, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5 )
-                    : std::bind( &advance< H >::retreat_, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5 ) )
+    , set_pixel_( a ? &advance_by_nearest: &retreat_by_nearest )
 {
+    if( param.iterations > 1 ) { COMMA_THROW( comma::exception, "advance/retreat: only one iteration is supported; got: " << param.iterations ); }
     std::multimap< double, cv::Point > distances;
-    cv::Point anchor( param.kernel.cols / 2, param.kernel.rows / 2 );
-    
+    cv::Point anchor( param.kernel.cols / 2, param.kernel.rows / 2 );    
     cv::Point p( 0, 0 );
     for( ; p.y < param.kernel.rows; ++p.y )
     {
@@ -152,32 +170,16 @@ advance< H >::advance( const parameters& param, bool a, int background ) // todo
 }
 
 template < typename H >
-bool advance< H >::advance_( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
-{
-    if( std::memcmp( src, background, size ) != 0 || std::memcmp( neighbour, background, size ) == 0 ) { return false; }
-    std::memcpy( dest, neighbour, size );
-    return true;
-}
-
-template < typename H >
-bool advance< H >::retreat_( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
-{
-    if( std::memcmp( src, background, size ) == 0 || std::memcmp( neighbour, background, size ) != 0 ) { return false; }
-    std::memcpy( dest, background, size );
-    return true;
-}
-
-template < typename H >
 typename advance< H >::value_type advance< H >::operator()( value_type m )
 {
-    if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "advance/retreat:: got " << m.second.channels() << "-channel image; only 1-channel images supported now" ); }
+    if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "advance/retreat: got " << m.second.channels() << "-channel image; only 1-channel images supported now" ); }
     value_type n;
     n.first = m.first;
     m.second.copyTo( n.second );
     std::vector< unsigned char > background_pixel( m.second.elemSize() );
     for( unsigned int i = 0; i < m.second.elemSize(); i += m.second.elemSize1() ) { set_channel( &background_pixel[i], background_, m.second.depth() ); }
     cv::Point p( 0, 0 );
-    for( ; p.y < m.second.rows; ++p.y )
+    for( ; p.y < m.second.rows; ++p.y ) // todo? use tbb::parallel_for?
     {
         for( p.x = 0; p.x < m.second.rows; ++p.x )
         {
@@ -193,6 +195,19 @@ typename advance< H >::value_type advance< H >::operator()( value_type m )
         }
     }
     return n;
+}
+
+template < typename H >
+advance< H > advance< H >::make( const std::vector< std::string >& options )
+{
+    int background = 0;
+    std::vector< std::string > e = comma::split( options[1], ',' );
+    if( e.back().substr( 0, 11 ) == "background:" ) // super quick and dirty
+    {
+        background = boost::lexical_cast< int >( e.back().substr( 11 ) );
+        e.pop_back();
+    }
+    return advance< H >( parameters( std::vector< std::string >{{ options[0], comma::join( e, ',' ) }} ), options[0] == "advance", background ); // pain!
 }
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

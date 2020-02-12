@@ -85,13 +85,13 @@ class advance
 
         value_type operator()( value_type );
         
+        static advance make( const std::vector< std::string >& options );
+        
     private:
         int background_;
         std::vector< cv::Point > offsets_; // quick and dirty
         unsigned int iterations_;
         std::function< bool( unsigned char*, const unsigned char*, const unsigned char*, const unsigned char*, unsigned int ) > set_pixel_;
-        static bool advance_( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size );
-        static bool retreat_( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size );
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
