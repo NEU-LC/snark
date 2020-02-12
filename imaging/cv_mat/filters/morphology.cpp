@@ -32,6 +32,7 @@
 #include <string>
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <tbb/parallel_for.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <comma/base/exception.h>
 #include <comma/string/string.h>
@@ -178,22 +179,25 @@ typename advance< H >::value_type advance< H >::operator()( value_type m )
     m.second.copyTo( n.second );
     std::vector< unsigned char > background_pixel( m.second.elemSize() );
     for( unsigned int i = 0; i < m.second.elemSize(); i += m.second.elemSize1() ) { set_channel( &background_pixel[i], background_, m.second.depth() ); }
-    cv::Point p( 0, 0 );
-    for( ; p.y < m.second.rows; ++p.y ) // todo? use tbb::parallel_for?
+    tbb::parallel_for( tbb::blocked_range< int >( 0, m.second.rows, m.second.rows / 8 ), [&]( const tbb::blocked_range< int >& rows )
     {
-        for( p.x = 0; p.x < m.second.rows; ++p.x )
+        cv::Point p;
+        for( p.y = rows.begin(); p.y < rows.end(); ++p.y )
         {
-            unsigned char* src = m.second.ptr( p.y, p.x );
-            unsigned char* dest = n.second.ptr( p.y, p.x );
-            for( unsigned int k = 0; k < offsets_.size(); ++k )
+            for( p.x = 0; p.x < m.second.cols; ++p.x )
             {
-                cv::Point r = p + offsets_[k];
-                if( r.x < 0 || r.x >= m.second.cols || r.y < 0 || r.y >= m.second.rows ) { continue; }
-                unsigned char* neighbour = m.second.ptr( r.y, r.x );
-                if( set_pixel_( dest, src, neighbour, &background_pixel[0], background_pixel.size() ) ) { break; }
+                unsigned char* src = m.second.ptr( p.y, p.x );
+                unsigned char* dest = n.second.ptr( p.y, p.x );
+                for( unsigned int k = 0; k < offsets_.size(); ++k )
+                {
+                    cv::Point r = p + offsets_[k];
+                    if( r.x < 0 || r.x >= m.second.cols || r.y < 0 || r.y >= m.second.rows ) { continue; }
+                    unsigned char* neighbour = m.second.ptr( r.y, r.x );
+                    if( set_pixel_( dest, src, neighbour, &background_pixel[0], background_pixel.size() ) ) { break; }
+                }
             }
         }
-    }
+    } );
     return n;
 }
 
