@@ -196,6 +196,9 @@ template < typename S, typename T >
 static void assign_( unsigned char* channel, T value ) { *( reinterpret_cast< S* >( channel ) ) = static_cast< S >( value ); }
 
 template < typename T >
+static T get_( unsigned char* channel ) { return *( reinterpret_cast< T* >( channel ) ); }
+
+template < typename T >
 void set_channel( unsigned char* channel, T value, int depth )
 {
     switch( depth )
@@ -207,7 +210,23 @@ void set_channel( unsigned char* channel, T value, int depth )
         case CV_32S: assign_< comma::int32 >( channel, value ); break;
         case CV_32F: assign_< float >( channel, value ); break;
         case CV_64F: assign_< double >( channel, value ); break;
-        default: break; // never here
+        default: COMMA_THROW( comma::exception, "never here" );
+    }
+}
+
+template < typename T >
+T get_channel( unsigned char* channel, int depth )
+{
+    switch( depth )
+    {
+        case CV_8U: return get_< unsigned char >( channel );
+        case CV_8S: return get_< char >( channel );
+        case CV_16U: return get_< comma::uint16 >( channel );
+        case CV_16S: return get_< comma::int16 >( channel );
+        case CV_32S: return get_< comma::int32 >( channel );
+        case CV_32F: return get_< float >( channel );
+        case CV_64F: return get_< double >( channel );
+        default: COMMA_THROW( comma::exception, "never here" );
     }
 }
 
@@ -221,5 +240,16 @@ template void set_channel< comma::int64 >( unsigned char*, comma::int64, int );
 template void set_channel< comma::uint64 >( unsigned char*, comma::uint64, int );
 template void set_channel< float >( unsigned char*, float, int );
 template void set_channel< double >( unsigned char*, double, int );
+
+template char get_channel< char >( unsigned char*, int );
+template unsigned char get_channel< unsigned char >( unsigned char*, int );
+template comma::int16 get_channel< comma::int16 >( unsigned char*, int );
+template comma::uint16 get_channel< comma::uint16 >( unsigned char*, int );
+template comma::int32 get_channel< comma::int32 >( unsigned char*, int );
+template comma::uint32 get_channel< comma::uint32 >( unsigned char*, int );
+template comma::int64 get_channel< comma::int64 >( unsigned char*, int );
+template comma::uint64 get_channel< comma::uint64 >( unsigned char*, int );
+template float get_channel< float >( unsigned char*, int );
+template double get_channel< double >( unsigned char*, int );
 
 } }  // namespace snark { namespace cv_mat {

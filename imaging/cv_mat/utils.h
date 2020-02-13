@@ -54,4 +54,7 @@ std::vector< int > imwrite_params( const std::string& type, const int quality );
 template < typename T >
 void set_channel( unsigned char* channel, T value, int depth );
 
+template < typename T >
+T get_channel( unsigned char* channel, int depth );
+
 } }  // namespace snark { namespace cv_mat {
