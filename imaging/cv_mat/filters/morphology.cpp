@@ -129,32 +129,40 @@ typename skeleton< H >::value_type skeleton< H >::operator()( value_type m )
     return result;
 }
 
-static bool advance_by_nearest( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
+struct by_nearest
 {
-    if( std::memcmp( src, background, size ) != 0 || std::memcmp( neighbour, background, size ) == 0 ) { return false; }
-    std::memcpy( dest, neighbour, size );
-    return true;
-}
+    struct advance
+    {
+        static bool visit( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
+        {
+            if( std::memcmp( src, background, size ) != 0 || std::memcmp( neighbour, background, size ) == 0 ) { return false; }
+            std::memcpy( dest, neighbour, size );
+            return true;
+        }
+    };
 
-static bool retreat_by_nearest( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
-{
-    if( std::memcmp( src, background, size ) == 0 || std::memcmp( neighbour, background, size ) != 0 ) { return false; }
-    std::memcpy( dest, background, size );
-    return true;
-}
+    struct retreat
+    {
+        static bool visit( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
+        {
+            if( std::memcmp( src, background, size ) == 0 || std::memcmp( neighbour, background, size ) != 0 ) { return false; }
+            std::memcpy( dest, background, size );
+            return true;
+        }
+    };
+};
 
-// static bool advance_by_vote( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
+// static void by_nearest( unsigned char*, const unsigned char*, const offsets_t_& )
 // {
-//     COMMA_THROW( comma::exception, "todo" )
 // }
 
 template < typename H >
 advance< H >::advance( const parameters& param, bool a, int background ) // todo? quick and dirty: use cv::FilterEngine instead? (but cv::FilterEngine is so over-engineered)
     : background_( background )
-    , set_pixel_( a ? &advance_by_nearest: &retreat_by_nearest )
+    , visit_neighbour_( a ? &by_nearest::advance::visit: &by_nearest::retreat::visit )
 {
     if( param.iterations > 1 ) { COMMA_THROW( comma::exception, "advance/retreat: only one iteration is supported; got: " << param.iterations ); }
-    std::multimap< double, cv::Point > distances;
+    std::multimap< float, cv::Point > distances;
     cv::Point anchor( param.kernel.cols / 2, param.kernel.rows / 2 );    
     cv::Point p( 0, 0 );
     for( ; p.y < param.kernel.rows; ++p.y )
@@ -167,7 +175,7 @@ advance< H >::advance( const parameters& param, bool a, int background ) // todo
         }
     }
     offsets_.reserve( distances.size() );
-    for( auto d: distances ) { offsets_.push_back( d.second ); }
+    for( auto d: distances ) { offsets_.push_back( d ); }
 }
 
 template < typename H >
@@ -190,10 +198,10 @@ typename advance< H >::value_type advance< H >::operator()( value_type m )
                 unsigned char* dest = n.second.ptr( p.y, p.x );
                 for( unsigned int k = 0; k < offsets_.size(); ++k )
                 {
-                    cv::Point r = p + offsets_[k];
+                    cv::Point r = p + offsets_[k].second;
                     if( r.x < 0 || r.x >= m.second.cols || r.y < 0 || r.y >= m.second.rows ) { continue; }
                     unsigned char* neighbour = m.second.ptr( r.y, r.x );
-                    if( set_pixel_( dest, src, neighbour, &background_pixel[0], background_pixel.size() ) ) { break; }
+                    if( visit_neighbour_( dest, src, neighbour, &background_pixel[0], background_pixel.size() ) ) { break; }
                 }
             }
         }

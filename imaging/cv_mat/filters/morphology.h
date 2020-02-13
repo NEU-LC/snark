@@ -89,9 +89,11 @@ class advance
         
     private:
         int background_;
-        std::vector< cv::Point > offsets_; // quick and dirty
+        typedef std::vector< std::pair< float, cv::Point > > offsets_t_;
+        offsets_t_ offsets_; // quick and dirty
         unsigned int iterations_;
-        std::function< bool( unsigned char*, const unsigned char*, const unsigned char*, const unsigned char*, unsigned int ) > set_pixel_;
+        std::function< void( unsigned char*, const unsigned char* ) > set_;
+        std::function< bool( unsigned char*, const unsigned char*, const unsigned char*, const unsigned char*, unsigned int ) > visit_neighbour_;
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
