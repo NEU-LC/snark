@@ -89,11 +89,23 @@ class advance
         
     private:
         int background_;
-        typedef std::vector< std::pair< float, cv::Point > > offsets_t_;
-        offsets_t_ offsets_; // quick and dirty
-        unsigned int iterations_;
+        std::vector< std::pair< float, cv::Point > > offsets_; // quick and dirty
         std::function< void( unsigned char*, const unsigned char* ) > set_;
         std::function< bool( unsigned char*, const unsigned char*, const unsigned char*, const unsigned char*, unsigned int ) > visit_neighbour_;
+};
+
+template < typename H >
+class meet
+{
+    public:
+        typedef std::pair< H, cv::Mat > value_type;
+
+        meet( const parameters& param );
+
+        value_type operator()( value_type );
+        
+    private:
+        std::vector< std::pair< float, cv::Point > > offsets_;
 };
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

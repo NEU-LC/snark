@@ -27,9 +27,11 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <tbb/parallel_for.h>
@@ -152,30 +154,32 @@ struct by_nearest
     };
 };
 
-// static void by_nearest( unsigned char*, const unsigned char*, const offsets_t_& )
-// {
-// }
-
-template < typename H >
-advance< H >::advance( const parameters& param, bool a, int background ) // todo? quick and dirty: use cv::FilterEngine instead? (but cv::FilterEngine is so over-engineered)
-    : background_( background )
-    , visit_neighbour_( a ? &by_nearest::advance::visit: &by_nearest::retreat::visit )
+static std::vector< std::pair< float, cv::Point > > make_offsets( cv::Mat kernel )
 {
-    if( param.iterations > 1 ) { COMMA_THROW( comma::exception, "advance/retreat: only one iteration is supported; got: " << param.iterations ); }
     std::multimap< float, cv::Point > distances;
-    cv::Point anchor( param.kernel.cols / 2, param.kernel.rows / 2 );    
+    cv::Point anchor( kernel.cols / 2, kernel.rows / 2 );    
     cv::Point p( 0, 0 );
-    for( ; p.y < param.kernel.rows; ++p.y )
+    for( ; p.y < kernel.rows; ++p.y )
     {
-        for( p.x = 0; p.x < param.kernel.cols; ++p.x )
+        for( p.x = 0; p.x < kernel.cols; ++p.x )
         {
-            if( p == anchor || !param.kernel.at< unsigned char >( p ) ) { continue; }
+            if( p == anchor || !kernel.at< unsigned char >( p ) ) { continue; }
             cv::Point d = p - anchor;
             distances.insert( std::make_pair( d.x * d.x + d.y * d.y, d ) );
         }
     }
-    offsets_.reserve( distances.size() );
-    for( auto d: distances ) { offsets_.push_back( d ); }
+    std::vector< std::pair< float, cv::Point > > offsets( distances.size() );
+    std::copy( distances.begin(), distances.end(), offsets.begin() );
+    return offsets;
+}
+
+template < typename H >
+advance< H >::advance( const parameters& param, bool a, int background ) // todo? quick and dirty: use cv::FilterEngine instead? (but cv::FilterEngine is so over-engineered)
+    : background_( background )
+    , offsets_( make_offsets( param.kernel ) )
+    , visit_neighbour_( a ? &by_nearest::advance::visit: &by_nearest::retreat::visit )
+{
+    if( param.iterations > 1 ) { COMMA_THROW( comma::exception, "advance/retreat: only one iteration is supported; got: " << param.iterations ); }
 }
 
 template < typename H >
@@ -222,9 +226,51 @@ advance< H > advance< H >::make( const std::vector< std::string >& options )
     return advance< H >( parameters( std::vector< std::string >{{ options[0], comma::join( e, ',' ) }} ), options[0] == "advance", background ); // pain!
 }
 
+template < typename H >
+meet< H >::meet( const parameters& param ) // todo? quick and dirty: use cv::FilterEngine instead? (but cv::FilterEngine is so over-engineered)
+    : offsets_( make_offsets( param.kernel ) )
+{
+    if( param.iterations > 1 ) { COMMA_THROW( comma::exception, "advance/retreat: only one iteration is supported; got: " << param.iterations ); }
+}
+
+template < typename H >
+typename meet< H >::value_type meet< H >::operator()( value_type m )
+{
+    if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "meet: got " << m.second.channels() << "-channel image; only 1-channel images supported now" ); }
+    if( m.second.type() == CV_32FC1 || m.second.type() == CV_64FC1 ) { COMMA_THROW( comma::exception, "meet: supports only integer image types, got: " << m.second.type() ); }
+    value_type n( m.first, cv::Mat( m.second.rows, m.second.cols, m.second.type() ) );
+    tbb::parallel_for( tbb::blocked_range< int >( 0, m.second.rows, m.second.rows / 8 ), [&]( const tbb::blocked_range< int >& rows )
+    {
+        cv::Point p;
+        for( p.y = rows.begin(); p.y < rows.end(); ++p.y )
+        {
+            for( p.x = 0; p.x < m.second.cols; ++p.x )
+            {
+                std::unordered_map< int, float > counts;
+                for( unsigned int k = 0; k < offsets_.size(); ++k )
+                {
+                    cv::Point r = p + offsets_[k].second;
+                    if( r.x < 0 || r.x >= m.second.cols || r.y < 0 || r.y >= m.second.rows ) { continue; }
+                    unsigned char* neighbour = m.second.ptr( r.y, r.x );
+                    int v = get_channel< int >( neighbour, m.second.depth() );
+                    auto it = counts.find( v );
+                    if( it == counts.end() ) { counts.insert( std::make_pair( v, offsets_[k].first ) ); }
+                    else { it->second += offsets_[k].first; }
+                }
+                std::unordered_map< int, float >::const_iterator best = counts.begin();
+                for( std::unordered_map< int, float >::const_iterator it = counts.begin(); it != counts.end(); ++it ) { if( it->second > best->second ) { best = it; } }
+                set_channel( n.second.ptr( p.y, p.x ), best->first, m.second.depth() );
+            }
+        }
+    } );
+    return n;
+}
+
 } } }  // namespace snark { namespace cv_mat { namespace impl {
 
 template class snark::cv_mat::morphology::advance< boost::posix_time::ptime >;
 template class snark::cv_mat::morphology::advance< std::vector< char > >;
+template class snark::cv_mat::morphology::meet< boost::posix_time::ptime >;
+template class snark::cv_mat::morphology::meet< std::vector< char > >;
 template class snark::cv_mat::morphology::skeleton< boost::posix_time::ptime >;
 template class snark::cv_mat::morphology::skeleton< std::vector< char > >;

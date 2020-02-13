@@ -2779,6 +2779,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "skeleton" || e[0] == "thinning" ) { return std::make_pair( boost::bind< value_type_t >( morphology::skeleton< H >(snark::cv_mat::morphology::parameters( e )), _1 ), true ); }
     if( e[0] == "advance" || e[0] == "retreat" ) { return std::make_pair( boost::bind< value_type_t >( morphology::advance< H >::make( e ), _1 ), true ); }
+    if( e[0] == "meet" ) { return std::make_pair( boost::bind< value_type_t >( morphology::meet< H >( snark::cv_mat::morphology::parameters( e ) ), _1 ), true ); }
     if( e[0] == "overlay" )
     {
         if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected file name (and optional x,y) with the overlay, e.g. overlay=a.svg" ); }
@@ -3427,21 +3428,23 @@ static std::string usage_impl_()
     oss << std::endl;
     oss << "    morphology operations" << std::endl;
     oss << "        opencv morphology operations" << std::endl;
-    oss << "            blackhat[=<parameters>]; apply black-hat operation with the given parameters" << std::endl;
-    oss << "            close[=<parameters>], closing[=<parameters>]; apply closing with the given parameters" << std::endl;
-    oss << "            dilate[=<parameters>], dilation[=<parameters>]; apply dilation with the given parameters" << std::endl;
-    oss << "            erode[=<parameters>], erosion[=<parameters>]; apply erosion with the given parameters" << std::endl;
-    oss << "            gradient[=<parameters>]; apply morphological gradient with the given parameters" << std::endl;
-    oss << "            open[=<parameters>], opening[=<parameters>]; apply opening with the given parameters" << std::endl;
-    oss << "            tophat[=<parameters>]; apply top-hat operation with the given parameters" << std::endl;
-    oss << "            skeleton[=<parameters>], thinning[=<parameters>]; apply skeletonization (thinning) with the given parameters" << std::endl;
-    oss << "        custor morphology operations" << std::endl;
-    oss << "            advance[=<parameters>][,background:<value>]; similar to dilate, but dilates only background pixels to the nearest non-background value in kernel" << std::endl;
+    oss << "            blackhat=<parameters>; apply black-hat operation with the given parameters" << std::endl;
+    oss << "            close=<parameters>, closing=<parameters>; apply closing with the given parameters" << std::endl;
+    oss << "            dilate=<parameters>, dilation=<parameters>; apply dilation with the given parameters" << std::endl;
+    oss << "            erode=<parameters>, erosion=<parameters>; apply erosion with the given parameters" << std::endl;
+    oss << "            gradient=<parameters>; apply morphological gradient with the given parameters" << std::endl;
+    oss << "            open=<parameters>, opening=<parameters>; apply opening with the given parameters" << std::endl;
+    oss << "            tophat=<parameters>; apply top-hat operation with the given parameters" << std::endl;
+    oss << "            skeleton=<parameters>, thinning=<parameters>; apply skeletonization (thinning) with the given parameters" << std::endl;
+    oss << "        custom morphology operations" << std::endl;
+    oss << "            advance=<parameters>[,background:<value>]; similar to dilate, but dilates only background pixels to the nearest non-background value in kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
-    oss << "            retreat[=<parameters>][,background:<value>]; similar to erode, but erodes only non-background pixels, if there is a background pixel in in kernel" << std::endl;
+    oss << "            retreat=<parameters>[,background:<value>]; similar to erode, but erodes only non-background pixels, if there is a background pixel in in kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
+    oss << "            meet=<parameters>; similar to dilate, but ... todo ..." << std::endl;
+    oss << "                               only shape <parameters> supported" << std::endl;
     oss << std::endl;
     oss << "            <parameters> for all the above operations have the same syntax; erode as an example is shown below:" << std::endl;
     oss << "                erode=rectangle,<size/x>,<size/y>[,<anchor/x>,<anchor/y>][,iterations]; apply erosion with a rectangular structuring element" << std::endl;
