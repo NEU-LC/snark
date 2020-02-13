@@ -84,14 +84,15 @@ parameters::parameters( const std::vector< std::string >& e )
         } 
         else if( eltype == "square" || eltype == "circle" ) 
         {
-            if ( p.size() > 4 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 0, or 1, or 2, or 3 parameters" ); }
-            while ( p.size() < 4 ) { p.push_back( "" ); }
+            if ( p.size() > 5 ) { COMMA_THROW( comma::exception, "structuring element of " << eltype << " type for the " << e[0] << " operation takes either 0, or 1, or 2, or 3 parameters" ); }
+            while ( p.size() < 5 ) { p.push_back( "" ); }
             int size_x = ( p[1].empty() ? 3 : boost::lexical_cast< int >( p[1] ) );
             if ( size_x == 1 ) { std::cerr << "parse_structuring_element: warning: structuring element of a single point, no transformation is applied" << std::endl; }
             int anchor_x = ( p[2].empty() ? -1 : boost::lexical_cast< int >( p[2] ) );
+            int anchor_y = ( p[3].empty() ? anchor_x : boost::lexical_cast< int >( p[3] ) );
             int shape = ( eltype == "square" ? cv::MORPH_RECT : cv::MORPH_ELLIPSE );
-            kernel = cv::getStructuringElement( shape, cv::Size( size_x, size_x ), cv::Point( anchor_x, anchor_x ) );
-            iterations = p[3].empty() ? 1 : boost::lexical_cast< comma::uint32 >( p[3] );
+            kernel = cv::getStructuringElement( shape, cv::Size( size_x, size_x ), cv::Point( anchor_x, anchor_y ) );
+            iterations = p[4].empty() ? 1 : boost::lexical_cast< comma::uint32 >( p[4] );
         }
         else
         {
@@ -227,43 +228,44 @@ advance< H > advance< H >::make( const std::vector< std::string >& options )
 }
 
 template < typename H >
-meet< H >::meet( const parameters& param ) // todo? quick and dirty: use cv::FilterEngine instead? (but cv::FilterEngine is so over-engineered)
-    : offsets_( make_offsets( param.kernel ) )
-{
-    if( param.iterations > 1 ) { COMMA_THROW( comma::exception, "advance/retreat: only one iteration is supported; got: " << param.iterations ); }
-}
+meet< H >::meet( const parameters& param ): iterations_( param.iterations ), offsets_( make_offsets( param.kernel ) ) {}
 
 template < typename H >
 typename meet< H >::value_type meet< H >::operator()( value_type m )
 {
     if( m.second.channels() > 1 ) { COMMA_THROW( comma::exception, "meet: got " << m.second.channels() << "-channel image; only 1-channel images supported now" ); }
     if( m.second.type() == CV_32FC1 || m.second.type() == CV_64FC1 ) { COMMA_THROW( comma::exception, "meet: supports only integer image types, got: " << m.second.type() ); }
-    value_type n( m.first, cv::Mat( m.second.rows, m.second.cols, m.second.type() ) );
-    tbb::parallel_for( tbb::blocked_range< int >( 0, m.second.rows, m.second.rows / 8 ), [&]( const tbb::blocked_range< int >& rows )
+    cv::Mat src = cv::Mat( m.second.rows, m.second.cols, m.second.type() );
+    cv::Mat dest = m.second; // funny, ain't it?
+    for( unsigned int i = 0; i < iterations_; ++i )
     {
-        cv::Point p;
-        for( p.y = rows.begin(); p.y < rows.end(); ++p.y )
+        std::swap( src, dest );
+        tbb::parallel_for( tbb::blocked_range< int >( 0, src.rows, src.rows / 8 ), [&]( const tbb::blocked_range< int >& rows )
         {
-            for( p.x = 0; p.x < m.second.cols; ++p.x )
+            cv::Point p;
+            for( p.y = rows.begin(); p.y < rows.end(); ++p.y )
             {
-                std::unordered_map< int, float > counts;
-                for( unsigned int k = 0; k < offsets_.size(); ++k )
+                for( p.x = 0; p.x < src.cols; ++p.x )
                 {
-                    cv::Point r = p + offsets_[k].second;
-                    if( r.x < 0 || r.x >= m.second.cols || r.y < 0 || r.y >= m.second.rows ) { continue; }
-                    unsigned char* neighbour = m.second.ptr( r.y, r.x );
-                    int v = get_channel< int >( neighbour, m.second.depth() );
-                    auto it = counts.find( v );
-                    if( it == counts.end() ) { counts.insert( std::make_pair( v, offsets_[k].first ) ); }
-                    else { it->second += offsets_[k].first; }
+                    std::unordered_map< int, float > counts;
+                    for( unsigned int k = 0; k < offsets_.size(); ++k )
+                    {
+                        cv::Point r = p + offsets_[k].second;
+                        if( r.x < 0 || r.x >= src.cols || r.y < 0 || r.y >= src.rows ) { continue; }
+                        unsigned char* neighbour = src.ptr( r.y, r.x );
+                        int v = get_channel< int >( neighbour, src.depth() );
+                        auto it = counts.find( v );
+                        if( it == counts.end() ) { counts.insert( std::make_pair( v, offsets_[k].first ) ); }
+                        else { it->second += offsets_[k].first; }
+                    }
+                    std::unordered_map< int, float >::const_iterator best = counts.begin();
+                    for( std::unordered_map< int, float >::const_iterator it = counts.begin(); it != counts.end(); ++it ) { if( it->second > best->second ) { best = it; } }
+                    set_channel( dest.ptr( p.y, p.x ), best->first, src.depth() );
                 }
-                std::unordered_map< int, float >::const_iterator best = counts.begin();
-                for( std::unordered_map< int, float >::const_iterator it = counts.begin(); it != counts.end(); ++it ) { if( it->second > best->second ) { best = it; } }
-                set_channel( n.second.ptr( p.y, p.x ), best->first, m.second.depth() );
             }
-        }
-    } );
-    return n;
+        } );
+    }
+    return value_type( m.first, dest );
 }
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

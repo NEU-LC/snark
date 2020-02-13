@@ -105,6 +105,7 @@ class meet
         value_type operator()( value_type );
         
     private:
+        unsigned int iterations_;
         std::vector< std::pair< float, cv::Point > > offsets_;
 };
 
