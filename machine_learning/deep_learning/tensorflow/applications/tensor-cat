@@ -280,6 +280,11 @@ def parse_output_names(output_names):
         return output_names[0].split(',')
     return output_names or []
 
+def shape_output(value):
+    if value.shape[0] != 1: value = value[np.newaxis, ...]
+    if value.ndim != 4: value = value[..., np.newaxis]
+    return value
+
 class tf1:
     class model:
         def __init__(self):
@@ -375,8 +380,7 @@ class tf1:
             feeds = {self._input: data}
             if self.keep_prob:
                 feeds[self.keep_prob] = 1.0
-            values = self.session.run(self._outputs, feed_dict=feeds)
-            return [values] if not isinstance(values, list) else values
+            return [shape_output(value) for value in self.session.run(self._outputs, feed_dict=feeds)]
 
         def get_input(self):
             return self._input
@@ -467,8 +471,7 @@ class tf2:
             return operations
 
         def run(self, data):
-            values = [value.numpy() for value in self._model(tf.convert_to_tensor(data))]
-            return [value[np.newaxis, ...] if value.ndim == 2 else [np.newaxis, ...] for value in values]
+            return [shape_output(value.numpy()) for value in self._model(tf.convert_to_tensor(data))]
 
 
 def main(args):
