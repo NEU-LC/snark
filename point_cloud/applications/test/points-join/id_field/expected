@@ -1,0 +1,9 @@
+matching[0]/output=""
+matching[1]/output="0,0,0,0,0,1,1,1"
+matching[2]/output=""
+matching[3]/output="0,0,0,0,0,1,-1,-1,1,1,-1,1,0,1,1,0,0"
+
+not_matching[0]/output=""
+not_matching[1]/output="0,0,0,0,1,1,1,1"
+not_matching[2]/output=""
+not_matching[3]/output="0,0,0,0,1,0,-1,-1,0,1,-1,0,0,1,0,0,0"
