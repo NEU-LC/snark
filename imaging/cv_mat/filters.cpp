@@ -2775,12 +2775,11 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if( snark::cv_mat::morphology::operations().find( e[0] ) != snark::cv_mat::morphology::operations().end() )
     {
         snark::cv_mat::morphology::parameters parameters( e );
-        return std::make_pair( boost::bind< value_type_t >( morphology::morphology< H >, _1, snark::cv_mat::morphology::operations().at( e[0] ), parameters.kernel_, parameters.iterations_ ), true );
+        return std::make_pair( boost::bind< value_type_t >( morphology::morphology< H >, _1, snark::cv_mat::morphology::operations().at( e[0] ), parameters.kernel, parameters.iterations ), true );
     }
-    if( e[0] == "skeleton" || e[0] == "thinning" )
-    {
-        return std::make_pair( boost::bind< value_type_t >( morphology::skeleton< H >(snark::cv_mat::morphology::parameters( e )), _1 ), true );
-    }
+    if( e[0] == "skeleton" || e[0] == "thinning" ) { return std::make_pair( boost::bind< value_type_t >( morphology::skeleton< H >(snark::cv_mat::morphology::parameters( e )), _1 ), true ); }
+    if( e[0] == "advance" || e[0] == "retreat" ) { return std::make_pair( boost::bind< value_type_t >( morphology::advance< H >::make( e ), _1 ), true ); }
+    if( e[0] == "meet" ) { return std::make_pair( boost::bind< value_type_t >( morphology::meet< H >( snark::cv_mat::morphology::parameters( e ) ), _1 ), true ); }
     if( e[0] == "overlay" )
     {
         if( e.size() != 2 ) { COMMA_THROW( comma::exception, "expected file name (and optional x,y) with the overlay, e.g. overlay=a.svg" ); }
@@ -3428,21 +3427,31 @@ static std::string usage_impl_()
     oss << "        rectangle,box=<x>,<y>,<x>,<y>[,<r>,<g>,<b>,<thickness>,<line_type>,<shift>]: draw rectangle; see cv::rectangle for details on parameters and defaults" << std::endl;
     oss << std::endl;
     oss << "    morphology operations" << std::endl;
-    oss << "        blackhat[=<parameters>]; apply black-hat operation with the given parameters" << std::endl;
-    oss << "        close[=<parameters>], closing[=<parameters>]; apply closing with the given parameters" << std::endl;
-    oss << "        dilate[=<parameters>], dilation[=<parameters>]; apply dilation with the given parameters" << std::endl;
-    oss << "        erode[=<parameters>], erosion[=<parameters>]; apply erosion with the given parameters" << std::endl;
-    oss << "        gradient[=<parameters>]; apply morphological gradient with the given parameters" << std::endl;
-    oss << "        open[=<parameters>], opening[=<parameters>]; apply opening with the given parameters" << std::endl;
-    oss << "        tophat[=<parameters>]; apply top-hat operation with the given parameters" << std::endl;
-    oss << "        skeleton[=<parameters>], thinning[=<parameters>]; apply skeletonization (thinning) with the given parameters" << std::endl;
+    oss << "        opencv morphology operations" << std::endl;
+    oss << "            blackhat=[<parameters>]; apply black-hat operation with the given parameters" << std::endl;
+    oss << "            close=[<parameters>], closing=[<parameters>]; apply closing with the given parameters" << std::endl;
+    oss << "            dilate=[<parameters>], dilation=[<parameters>]; apply dilation with the given parameters" << std::endl;
+    oss << "            erode=[<parameters>], erosion=[<parameters>]; apply erosion with the given parameters" << std::endl;
+    oss << "            gradient=[<parameters>]; apply morphological gradient with the given parameters" << std::endl;
+    oss << "            open=[<parameters>], opening=[<parameters>]; apply opening with the given parameters" << std::endl;
+    oss << "            tophat=[<parameters>]; apply top-hat operation with the given parameters" << std::endl;
+    oss << "            skeleton=[<parameters>], thinning=[<parameters>]; apply skeletonization (thinning) with the given parameters" << std::endl;
+    oss << "        custom morphology operations" << std::endl;
+    oss << "            advance=[<parameters>][,background:<value>]; similar to dilate, but dilates only background pixels to the nearest non-background value in kernel" << std::endl;
+    oss << "                                                         only shape <parameters> supported" << std::endl;
+    oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
+    oss << "            retreat=[<parameters>][,background:<value>]; similar to erode, but erodes only non-background pixels, if there is a background pixel in in kernel" << std::endl;
+    oss << "                                                         only shape <parameters> supported" << std::endl;
+    oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
+    oss << "            meet=[<parameters>]; similar to dilate, but decides on the pixel value based on the majority of pixels in the kernel weighted by distance to anchor" << std::endl;
+    oss << "                               only shape <parameters> supported" << std::endl;
     oss << std::endl;
     oss << "            <parameters> for all the above operations have the same syntax; erode as an example is shown below:" << std::endl;
     oss << "                erode=rectangle,<size/x>,<size/y>[,<anchor/x>,<anchor/y>][,iterations]; apply erosion with a rectangular structuring element" << std::endl;
-    oss << "                erode=square,<size/x>[,<anchor/x>][,iterations]; apply erosion with a square structuring element of custom size" << std::endl;
-    oss << "                erode=ellipse,<size/x>,<size/y>[,<anchor/x>,<anchor/y>][,iterations]; apply erosion with an elliptic structuring element" << std::endl;
-    oss << "                erode=circle,<size/x>[,<anchor/x>][,iterations]; apply erosion with a circular structuring element" << std::endl;
-    oss << "                erode=cross,<size/x>,<size/y>[,<anchor/x>,<anchor/y>][,iterations]; apply erosion with a circular structuring element" << std::endl;
+    oss << "                erode=square,<size/x>,[<anchor/x>],[<anchor/y>],[iterations]; apply erosion with a square structuring element of custom size" << std::endl;
+    oss << "                erode=ellipse,<size/x>,<size/y>[,<anchor/x>,<anchor/y>],[iterations]; apply erosion with an elliptic structuring element" << std::endl;
+    oss << "                erode=circle,<size/x>,[<anchor/x>],[<anchor/y>],[iterations]; apply erosion with a circular structuring element" << std::endl;
+    oss << "                erode=cross,<size/x>,<size/y>,[<anchor/x>],[<anchor/y>],[iterations]; apply erosion with a circular structuring element" << std::endl;
     oss << "                    note that the structuring element shall usually be symmetric, and therefore, size/s,size/y shall be odd" << std::endl;
     oss << "                    any of the parameters after the shape name can be omitted (left as an empty csv field) to use the defaults:" << std::endl;
     oss << "                        - size/x = 3:" << std::endl;

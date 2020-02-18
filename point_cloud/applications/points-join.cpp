@@ -122,6 +122,7 @@ static double squared_min_radius;
 static double max_triangle_side;
 static bool matching;
 static bool append_nearest;
+static bool matching_id;
 static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
 static Eigen::Vector3d resolution;
 static comma::csv::options stdin_csv;
@@ -144,7 +145,8 @@ struct point_input
     Eigen::Vector3d normal;
     double radius;
     comma::uint32 block;
-    point_input() : value( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ), radius( 0 ), block( 0 ) {}
+    comma::uint32 id;
+    point_input() : value( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ), radius( 0 ), block( 0 ), id( 0 ) {}
 };
 
 static double get_squared_radius( const point_input& p ) { return use_radius ? p.radius * p.radius : squared_radius; }
@@ -153,7 +155,8 @@ struct triangle_input
 {
     snark::triangle value;
     comma::uint32 block;
-    triangle_input() : block( 0 ) {}
+    comma::uint32 id;
+    triangle_input() : block( 0 ), id( 0 ) {}
 };
 
 namespace comma { namespace visiting {
@@ -166,6 +169,7 @@ template <> struct traits< point_input >
         v.apply( "normal", t.normal );
         v.apply( "radius", t.radius );
         v.apply( "block", t.block );
+        v.apply( "id", t.id );
     }
 
     template< typename K, typename V > static void visit( const K& k, const point_input& t, V& v )
@@ -174,6 +178,7 @@ template <> struct traits< point_input >
         v.apply( "normal", t.normal );
         v.apply( "radius", t.radius );
         v.apply( "block", t.block );
+        v.apply( "id", t.id );
     }
 };
 
@@ -183,12 +188,14 @@ template <> struct traits< triangle_input >
     {
         traits< snark::triangle >::visit( k, t.value, v );
         v.apply( "block", t.block );
+        v.apply( "id", t.id );
     }
 
     template< typename K, typename V > static void visit( const K& k, const triangle_input& t, V& v )
     {
         traits< snark::triangle >::visit( k, t.value, v );
         v.apply( "block", t.block );
+        v.apply( "id", t.id );
     }
 };
 
@@ -199,11 +206,13 @@ struct record
 {
     Eigen::Vector3d value;
     Eigen::Vector3d normal;
+    comma::uint32 id;
     std::string line;
-    record() : value( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ) {}
-    record( const point_input& input, const std::string& line ) : value( input.value ), normal( input.normal ), line( line ) {}
+    record() : value( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ), id( 0 ) {}
+    record( const point_input& input, const std::string& line ) : value( input.value ), normal( input.normal ), id( input.id ), line( line ) {}
     boost::optional< Eigen::Vector3d > nearest_to( const point_input& rhs ) const
     {
+        if( ( rhs.id == id ) != matching_id ) { return boost::none; }
         if( use_normal ) { return !comma::math::less( normal.dot( rhs.normal ), 0 ) ? boost::make_optional( value ) : boost::none; }
         return value;
     } // watch performance
@@ -214,11 +223,13 @@ struct record
 struct triangle_record
 {
     snark::triangle value;
+    comma::uint32 id;
     std::string line;
-    triangle_record() {}
-    triangle_record( const triangle_input& input, const std::string& line ) : value( input.value ), line( line ) {}
+    triangle_record(): id( 0 ) {}
+    triangle_record( const triangle_input& input, const std::string& line ) : value( input.value ), id( input.id ), line( line ) {}
     boost::optional< Eigen::Vector3d > nearest_to( const point_input& rhs ) const // quick and dirty, watch performance
     {
+        if( ( rhs.id == id ) != matching_id ) { return boost::none; }
         boost::optional< Eigen::Vector3d > p = value.projection_of( rhs.value );
         return value.includes( *p ) && !comma::math::less( value.normal().dot( origin - rhs.value ), 0 ) ? p : boost::none;
     }
@@ -656,7 +667,8 @@ int main( int ac, char** av )
         options.assert_mutually_exclusive( "--matching,--not-matching" );
         matching = !options.exists( "--not-matching" );
         append_nearest = !options.exists( "--matching" ) && matching;
-        std::vector< std::string > unnamed = options.unnamed( "--all,--blocks-ordered,--matching,--not-matching,--strict,--permissive,--use-cuda,--cuda,--flush,--full-xpath,--verbose,-v", "-.*" );
+        matching_id = !options.exists( "--id-not-matching,--not-matching-id" );
+        std::vector< std::string > unnamed = options.unnamed( "--all,--blocks-ordered,--id-not-matching,--not-matching-id,--matching,--not-matching,--strict,--permissive,--use-cuda,--cuda,--flush,--full-xpath,--verbose,-v", "-.*" );
         if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = unnamed.empty() ? stdin_csv : parser.get< comma::csv::options >( unnamed[0] );
