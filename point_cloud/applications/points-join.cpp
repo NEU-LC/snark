@@ -68,6 +68,8 @@ static void usage( bool more = false )
     std::cerr << "options" << std::endl;
     std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
     std::cerr << "    --blocks-ordered: stdin and filter blocks are ordered and therefore missing filter blocks can be handled correctly" << std::endl;
+    std::cerr << "    --id-not-matching,--not-matching-id: if id field present in --fields, match only points with different ids" << std::endl;
+    std::cerr << "                                         default: if id field present, match points with the same id" << std::endl;
     std::cerr << "    --input-fields: output input fields and exit" << std::endl;
     std::cerr << "    --matching: output only points that have a match, do not append nearest point; a convenience option" << std::endl;
     std::cerr << "    --not-matching: output only points that do not have a match, i.e. opposite of --matching" << std::endl;
