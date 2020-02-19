@@ -196,6 +196,7 @@ int traits::run( const comma::command_line_options& options )
     comma::csv::options csv( options );
     comma::csv::options output_csv;
     output_csv.flush = csv.flush;
+    if( csv.binary() ) { output_csv.format( comma::csv::format::value< output >() ); }
     comma::csv::input_stream< input > istream( std::cin, csv );
     comma::csv::output_stream < output > ostream( std::cout, output_csv );
     comma::csv::tied< input, output > tied( istream, ostream );
