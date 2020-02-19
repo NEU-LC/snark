@@ -140,4 +140,6 @@ double triangle::circumscribing_radius() const
     return a.norm() / ( std::sqrt( 1 - b.dot( c ) / ( b.squaredNorm() * c.squaredNorm() ) ) * 2 );
 }
 
+double triangle::area() const { return ( ( corners[1] - corners[0] ).cross( corners[2] - corners[0] ) ).norm() / 2; }
+
 } // namespace snark {

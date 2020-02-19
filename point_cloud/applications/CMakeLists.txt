@@ -19,7 +19,7 @@ ADD_EXECUTABLE( points-to-voxel-indices points-to-voxel-indices.cpp )
 ADD_EXECUTABLE( points-track-partitions points-track-partitions.cpp )
 
 TARGET_LINK_LIBRARIES( points-align snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
-TARGET_LINK_LIBRARIES( points-calc snark_math snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+TARGET_LINK_LIBRARIES( points-calc snark_point_cloud snark_math snark_math_geometry ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 TARGET_LINK_LIBRARIES( points-detect-change snark_math ${comma_ALL_LIBRARIES} ) #profiler )
 TARGET_LINK_LIBRARIES( points-foreground-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
 TARGET_LINK_LIBRARIES( points-rays snark_math snark_math_spherical_geometry ${comma_ALL_LIBRARIES} tbb ) #profiler )

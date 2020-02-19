@@ -66,7 +66,23 @@
 #include "../../../math/geometry/traits.h"
 #include "triangles.h"
 
-namespace snark { namespace points_calc { namespace triangles { namespace discretise {
+namespace snark { namespace points_calc { namespace triangles {
+
+namespace area {
+
+std::string traits::usage() { return "    triangles-area: read triangles on stdin, append area\n"; }
+
+typedef snark::triangle input;
+
+struct output
+{
+    double area;
+    output( double a = 0 ): area( a ) {}
+};
+
+} // namespace area
+
+namespace discretise {
 
 std::string traits::usage()
 {
@@ -110,7 +126,9 @@ struct output
     output( const Eigen::Vector3d& point = Eigen::Vector3d::Zero(), bool internal = false, comma::uint32 id = 0 ): point( point ), internal( internal ), id( id ) {}
 };
 
-} } } } // namespace snark { namespace points_calc { namespace triangles { namespace discretise {
+} // namespace discretise {
+
+} } } // namespace snark { namespace points_calc { namespace triangles {
 
 namespace comma { namespace visiting {
 
@@ -146,9 +164,53 @@ template <> struct traits< snark::points_calc::triangles::discretise::output >
     }
 };
 
+template <> struct traits< snark::points_calc::triangles::area::output >
+{
+    template < typename K, typename V > static void visit( const K& k, snark::points_calc::triangles::area::output& t, V& v )
+    {
+        v.apply( "area", t.area );
+    }
+    
+    template < typename K, typename V > static void visit( const K& k, const snark::points_calc::triangles::area::output& t, V& v )
+    {
+        v.apply( "area", t.area );
+    }
+};
+
 } }
 
-namespace snark { namespace points_calc { namespace triangles { namespace discretise {
+namespace snark { namespace points_calc { namespace triangles {
+
+namespace area {
+
+std::string traits::input_fields() { return comma::join( comma::csv::names< input >( true ), ',' ); }
+
+std::string traits::input_format() { return comma::csv::format::value< input >(); }
+    
+std::string traits::output_fields() { return comma::join( comma::csv::names< output >( false ), ',' ); }
+
+std::string traits::output_format() { return comma::csv::format::value< output >(); }
+
+int traits::run( const comma::command_line_options& options )
+{
+    comma::csv::options csv( options );
+    comma::csv::options output_csv;
+    output_csv.flush = csv.flush;
+    comma::csv::input_stream< input > istream( std::cin, csv );
+    comma::csv::output_stream < output > ostream( std::cout, output_csv );
+    comma::csv::tied< input, output > tied( istream, ostream );
+    while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
+    {
+        const input* r = istream.read();
+        if( !r ) { break; }
+        tied.append( output( r->area() ) );
+    }
+    return 0;
+}
+
+} // namespace area {
+    
+namespace discretise {
 
 std::string traits::input_fields() { return comma::join( comma::csv::names< input >( true ), ',' ); }
 
@@ -225,4 +287,6 @@ int traits::run( const comma::command_line_options& options )
     return 0;
 }
 
-} } } } // namespace snark { namespace points_calc { namespace triangles { namespace discretise {
+} // namespace discretise {
+    
+} } } // namespace snark { namespace points_calc { namespace triangles { 

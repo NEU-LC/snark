@@ -92,6 +92,9 @@ struct triangle
     
     /// return circumscribing radius
     double circumscribing_radius() const;
+    
+    /// return area
+    double area() const;
 };
 
 } // namespace snark {
