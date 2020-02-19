@@ -64,9 +64,9 @@
 #include <comma/math/compare.h>
 #include "../../../math/geometry/polygon.h"
 #include "../../../math/geometry/traits.h"
-#include "triangles_discretise.h"
+#include "triangles.h"
 
-namespace snark { namespace points_calc { namespace triangles_discretise {
+namespace snark { namespace points_calc { namespace triangles { namespace discretise {
 
 std::string traits::usage()
 {
@@ -110,35 +110,35 @@ struct output
     output( const Eigen::Vector3d& point = Eigen::Vector3d::Zero(), bool internal = false, comma::uint32 id = 0 ): point( point ), internal( internal ), id( id ) {}
 };
 
-} } } // namespace snark { namespace points_calc { namespace triangles_discretise {
+} } } } // namespace snark { namespace points_calc { namespace triangles { namespace discretise {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::points_calc::triangles_discretise::input >
+template <> struct traits< snark::points_calc::triangles::discretise::input >
 {
-    template < typename K, typename V > static void visit( const K& k, snark::points_calc::triangles_discretise::input& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::points_calc::triangles::discretise::input& t, V& v )
     {
         traits< snark::triangle >::visit( k, t.triangle, v );
         v.apply( "id", t.id );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const snark::points_calc::triangles_discretise::input& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::points_calc::triangles::discretise::input& t, V& v )
     {
         traits< snark::triangle >::visit( k, t.triangle, v );
         v.apply( "id", t.id );
     }
 };
 
-template <> struct traits< snark::points_calc::triangles_discretise::output >
+template <> struct traits< snark::points_calc::triangles::discretise::output >
 {
-    template < typename K, typename V > static void visit( const K& k, snark::points_calc::triangles_discretise::output& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, snark::points_calc::triangles::discretise::output& t, V& v )
     {
         traits< Eigen::Vector3d >::visit( k, t.point, v );
         v.apply( "internal", t.internal );
         v.apply( "id", t.id );
     }
     
-    template < typename K, typename V > static void visit( const K& k, const snark::points_calc::triangles_discretise::output& t, V& v )
+    template < typename K, typename V > static void visit( const K& k, const snark::points_calc::triangles::discretise::output& t, V& v )
     {
         traits< Eigen::Vector3d >::visit( k, t.point, v );
         v.apply( "internal", t.internal );
@@ -148,7 +148,7 @@ template <> struct traits< snark::points_calc::triangles_discretise::output >
 
 } }
 
-namespace snark { namespace points_calc { namespace triangles_discretise {
+namespace snark { namespace points_calc { namespace triangles { namespace discretise {
 
 std::string traits::input_fields() { return comma::join( comma::csv::names< input >( true ), ',' ); }
 
@@ -225,4 +225,4 @@ int traits::run( const comma::command_line_options& options )
     return 0;
 }
 
-} } } // namespace snark { namespace points_calc { namespace triangles_discretise {
+} } } } // namespace snark { namespace points_calc { namespace triangles { namespace discretise {

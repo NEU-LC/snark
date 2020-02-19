@@ -54,7 +54,7 @@
 #include "points-calc/project.h"
 #include "points-calc/remove_outliers.h"
 #include "points-calc/thin.h"
-#include "points-calc/triangles_discretise.h"
+#include "points-calc/triangles.h"
 #include "points-calc/vector_calc.h"
 
 static comma::csv::options csv;
@@ -279,7 +279,7 @@ static void usage( bool verbose = false )
     std::cerr << snark::points_calc::plane_intersection::traits::usage() << std::endl;
     std::cerr << snark::points_calc::plane_intersection_with_trajectory::traits::usage() << std::endl;
     std::cerr << snark::points_calc::thin::traits::usage() << std::endl;
-    std::cerr << snark::points_calc::triangles_discretise::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::triangles::discretise::traits::usage() << std::endl;
     std::cerr << "    trajectory calculations" << std::endl;
     std::cerr << "        the following operations perform calculations on trajectories." << std::endl;
     std::cerr << "        a trajectory is an ordered sequence of points" << std::endl;
@@ -1340,7 +1340,7 @@ int main( int ac, char** av )
         if( operation == "plane-intersection-with-trajectory" ) { return run< snark::points_calc::plane_intersection_with_trajectory::traits >( options ); }
         if( vector_calc::has_operation( operation ) ) { vector_calc::process(operation, options, csv); return 0; }
         if( operation == "plane-intersection" ) { snark::points_calc::plane_intersection::traits::process(options, csv); return 0; }
-        if( operation == "triangles-discretise" || operation == "triangles-discretize" ) { return run< snark::points_calc::triangles_discretise::traits >( options ); }
+        if( operation == "triangles-discretise" || operation == "triangles-discretize" ) { return run< snark::points_calc::triangles::discretise::traits >( options ); }
         if( operation == "distance" || operation == "trajectory-distance" )
         {
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
