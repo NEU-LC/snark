@@ -62,10 +62,9 @@ static void usage( bool verbose = false )
     std::cerr << "        <frame> : name of file with timestamped nav data" << std::endl;
     std::cerr << "                  or <x>,<y>,<z>[,<roll>,<pitch>,<yaw>]" << std::endl;
     std::cerr << "                  nav data in file: <t>,<x>,<y>,<z>,<roll>,<pitch>,<yaw>" << std::endl;
-    std::cerr << "        if 'frame' field present" << std::endl;
-    std::cerr << "            specify --from or --to without value, default behaviour: --from" << std::endl;
-    std::cerr << "            if --from=<value> or --to=<value> specified, it will be used as default for frame fields" << std::endl;
+    std::cerr << "      ATTENTION: if 'frame' field present, specify --from or --to without value, default behaviour: --from" << std::endl;
     std::cerr << "    --discard-out-of-order,--discard : if present, discard out of order points silently" << std::endl;
+    std::cerr << "    --frame[=<frame>]; default: 0,0,0,0,0,0; if 'frame' field present, <frame> will be used as default for frame fields" << std::endl;
     std::cerr << "    --max-gap <seconds> : max valid time gap between two successive nav solutions;" << std::endl;
     std::cerr << "                          if exceeded, input points between those two timestamps" << std::endl;
     std::cerr << "                          will be discarded, thus use --discard, too; default: infinity" << std::endl;
@@ -352,7 +351,7 @@ int main( int ac, char** av )
             options.assert_mutually_exclusive( "--from,--to" );
             bool from = !options.exists( "--to" );
             comma::csv::input_stream< position_and_frame > is( std::cin, csv, position_and_frame( comma::csv::ascii< snark::applications::position >().get( options.value< std::string >( "--position", "0,0,0,0,0,0" ) )
-                                                             , comma::csv::ascii< snark::applications::position >().get( options.value< std::string >( from ? "--from" : "--to", "0,0,0,0,0,0" ) ) ) );
+                                                             , comma::csv::ascii< snark::applications::position >().get( options.value< std::string >( "--frame", "0,0,0,0,0,0" ) ) ) );
             comma::csv::options output_csv;
             output_csv.flush = csv.flush;
             if( csv.binary() ) { output_csv.format( comma::csv::format::value< snark::applications::position >() ); }
