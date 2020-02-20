@@ -389,6 +389,7 @@ class graph {
     public:
         graph(cv::Mat m, unsigned int channel, comma::int32 background, unsigned int max_colours)
                 : ids_{{-1, -1}}, min_id_(background + 1), max_colours_(max_colours) {
+
             auto insert_edge = [this](N val, set_t &first_neighbours, comma::int32 *first_id_ptr) {
                 comma::int32 *second_id_ptr = ids_.find(val) == ids_.end() ? &(ids_[val] = val) : &ids_[val];
                 set_t *second_neighbours = &adjacency_[second_id_ptr];
@@ -396,18 +397,23 @@ class graph {
                 second_neighbours->insert(first_id_ptr);
             };
 
-            for (auto i = 0; i < m.rows - 1; ++i) {
+            for (int i = 0; i < m.rows; ++i) {
                 N *ptr = m.ptr< N >(i);
-                N *ptr_below = m.ptr< N >(i + 1);
-                for (int j = channel; j < (m.cols - 1) * m.channels(); j += m.channels()) {
+                N *ptr_below = i < m.rows - 1 ? m.ptr< N >(i + 1): nullptr;
+                for (int j = channel; j < m.cols * m.channels(); j += m.channels()) {
                     N val = ptr[j];
                     if (val == background) { continue; }
-                    N val_below = ptr_below[j];
-                    N val_right = ptr[j + m.channels()];
                     comma::int32 *first_id_ptr = ids_.find(val) == ids_.end() ? &(ids_[val] = val) : &ids_[val];
                     set_t *first_neighbours = &adjacency_[first_id_ptr];
-                    if (val != val_below && val_below != background) { insert_edge(val_below, *first_neighbours, first_id_ptr); }
-                    if (val != val_right && val_right != background) { insert_edge(val_right, *first_neighbours, first_id_ptr); }
+
+                    if( ptr_below ) {
+                        N val_below = ptr_below[j];
+                        if (val != val_below && val_below != background) { insert_edge(val_below, *first_neighbours, first_id_ptr); }
+                    }
+                    if (j < (m.cols - 1) * m.channels()) {
+                        N val_right = ptr[j + m.channels()];
+                        if (val != val_right && val_right != background) { insert_edge(val_right, *first_neighbours, first_id_ptr); }
+                    }
                 }
             }
         }
@@ -456,13 +462,20 @@ template < typename T, int I >
 cv::Mat reduce< H >::process_(cv::Mat m, int type) {
     graph< T > g(m, channel_, background_, colours_);
     g.reduce();
-    auto lookup_table = g.ids();
+    const auto& lookup_table = g.ids();
+//    std::cerr << "--> lookup_table.size(): " << lookup_table.size() << std::endl;
+//    for (auto p: lookup_table ) { std::cerr << "--> first: " << p.first << " second: " << p.second << std::endl; }
     auto channel = channel_;
     cv::Mat reduced_channel(m.rows, m.cols, I);
     tbb::parallel_for(size_t(0), size_t(m.rows), [&m, &reduced_channel, &lookup_table, channel](size_t i) {
         auto ptr_a = m.template ptr< T >(i);
-        auto ptr_b = reduced_channel.ptr< T >(i);
-        for (auto j = 0; j < m.cols; ++j) { ptr_b[j] = lookup_table[ptr_a[j * m.channels() + channel]]; }
+        T* ptr_b = reduced_channel.ptr< T >(i);
+        for (auto j = 0; j < m.cols; ++j)
+        {
+            auto it = lookup_table.find( ptr_a[j * m.channels() + channel] );
+            if (it == lookup_table.end()) { COMMA_THROW( comma::exception, "pixel " << ptr_a[j * m.channels() + channel] << " at " << i << ", " << ( j * m.channels() + channel ) << " not found in the lookup table" ); }
+            ptr_b[j] = it->second;
+        }
     });
     if (!merge_) { return reduced_channel; }
     cv::Mat out(m.rows, m.cols, type);
