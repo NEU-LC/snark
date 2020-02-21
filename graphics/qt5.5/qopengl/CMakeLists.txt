@@ -2,10 +2,10 @@ set( PROJECT "qopengl" )
 set( TARGET_NAME snark_graphics_${PROJECT} )
 
 if( QT_VERSION_MAJOR LESS 5 )
-    message( FATAL_ERROR "snark graphics qopengl requires Qt 5.5 or higher (got vesion: ${QT_VERSION_MAJOR}.${QT_VERSION_MINOR})" )
+    message( FATAL_ERROR "snark graphics qopengl requires Qt 5.5 or higher (got version: ${QT_VERSION_MAJOR}.${QT_VERSION_MINOR})" )
 elseif( QT_VERSION_MAJOR EQUAL 5 )
     if( QT_VERSION_MINOR LESS 5 )
-        message( FATAL_ERROR "snark graphics qopengl requires Qt 5.5 or higher (got vesion: ${QT_VERSION_MAJOR}.${QT_VERSION_MINOR})" )
+        message( FATAL_ERROR "snark graphics qopengl requires Qt 5.5 or higher (got version: ${QT_VERSION_MAJOR}.${QT_VERSION_MINOR})" )
     endif()
 endif()
 
