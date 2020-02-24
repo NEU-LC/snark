@@ -31,11 +31,10 @@
 #include <sstream>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/stream.h>
-#include <comma/visiting/traits.h>
-#include "../svg.h"
-#include "../../colours.h"
-#include "../traits.h"
 #include "../../colour_map.h"
+#include "../../colours.h"
+#include "../svg.h"
+#include "../traits.h"
 
 std::string example()
 {
@@ -228,7 +227,7 @@ int main( int ac, char** av )
         std::cout.precision( csv.precision );
         snark::render::colour_map colour_map;
         bool parse_colour = true;
-        if( csv.has_field( "scalar" ) && ( what == "point" || what == "circle" || what == "line" || what == "lines" ) )
+        if( csv.has_field( "scalar" ) && ( what == "point" || what == "circle" || what == "line" || what == "lines" || what == "triangle" ) )
         {
             colour_map = parse_colour_map( options.value< std::string >( "--colour,--color,-c", "" ) );
             parse_colour = false;
@@ -264,7 +263,7 @@ int main( int ac, char** av )
             {
                 // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< coloured< snark::render::svg::circle > >( csv.fields, true ) ); }
                 comma::csv::input_stream< coloured< snark::render::svg::circle > > istream( std::cin, csv );
-                while( std::cin.good() )
+                while( istream.ready() || std::cin.good() )
                 {
                     const coloured< snark::render::svg::circle >* c = istream.read();
                     if( !c ) { break; }
@@ -276,7 +275,7 @@ int main( int ac, char** av )
                 if( csv.fields.empty() ) { csv.fields = what == "point" ? "x,y" : comma::join( comma::csv::names< snark::render::svg::circle >(), ',' ); }
                 // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::circle >( csv.fields, true ) ); }
                 comma::csv::input_stream< snark::render::svg::circle > istream( std::cin, csv );
-                while( std::cin.good() )
+                while( istream.ready() || std::cin.good() )
                 {
                     const snark::render::svg::circle* c = istream.read();
                     if( !c ) { break; }
@@ -291,7 +290,7 @@ int main( int ac, char** av )
             {
                 // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( options.value< std::string >( "--binary,-b", comma::csv::format::value< coloured< snark::render::svg::line > >( csv.fields, true ) ) ); }
                 comma::csv::input_stream< coloured< snark::render::svg::line > > istream( std::cin, csv );
-                while( std::cin.good() )
+                while( istream.ready() || std::cin.good() )
                 {
                     const coloured< snark::render::svg::line >* l = istream.read();
                     if( !l ) { break; }
@@ -303,7 +302,7 @@ int main( int ac, char** av )
                 if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::render::svg::line >(), ',' ); }
                 // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::line >( csv.fields, true ) ); }
                 comma::csv::input_stream< snark::render::svg::line > istream( std::cin, csv );
-                while( std::cin.good() )
+                while( istream.ready() || std::cin.good() )
                 {
                     const snark::render::svg::line* l = istream.read();
                     if( !l ) { break; }
@@ -319,7 +318,7 @@ int main( int ac, char** av )
                 // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< coloured< snark::render::svg::point > >( csv.fields, true ) ); }
                 comma::csv::input_stream< coloured< snark::render::svg::point > > istream( std::cin, csv );
                 boost::optional< coloured< snark::render::svg::point > > prev;
-                while( std::cin.good() )
+                while( istream.ready() || std::cin.good() )
                 {
                     const coloured< snark::render::svg::point >* p = istream.read();
                     if( !p ) { break; }
@@ -333,7 +332,7 @@ int main( int ac, char** av )
                 // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
                 comma::csv::input_stream< snark::render::svg::point > istream( std::cin, csv );
                 boost::optional< snark::render::svg::point > prev;
-                while( std::cin.good() )
+                while( istream.ready() || std::cin.good() )
                 {
                     const snark::render::svg::point* p = istream.read();
                     if( !p ) { break; }
@@ -349,7 +348,7 @@ int main( int ac, char** av )
             // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
             comma::csv::input_stream< snark::render::svg::point > istream( std::cin, csv );
             snark::render::svg::polyline polyline;
-            while( std::cin.good() )
+            while( istream.ready() || std::cin.good() )
             {
                 const snark::render::svg::point* p = istream.read();
                 if( !p ) { break; }
@@ -370,7 +369,7 @@ int main( int ac, char** av )
             snark::render::svg::polygon polygon;
             boost::optional< snark::render::svg::point > first;
             boost::optional< snark::render::svg::point > prev;
-            while( std::cin.good() )
+            while( istream.ready() || std::cin.good() )
             {
                 const snark::render::svg::point* p = istream.read();
                 if( !p ) { break; }
@@ -386,7 +385,7 @@ int main( int ac, char** av )
             if( csv.has_field( "scalar" ) )
             {
                 comma::csv::input_stream< coloured< snark::render::svg::text > > istream( std::cin, csv );
-                while( std::cin.good() )
+                while( istream.ready() || std::cin.good() )
                 {
                     const coloured< snark::render::svg::text >* t = istream.read();
                     if( !t ) { break; }
@@ -397,11 +396,36 @@ int main( int ac, char** av )
             {
                 if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::render::svg::text >(), ',' ); }
                 comma::csv::input_stream< snark::render::svg::text > istream( std::cin, csv );
-                while( std::cin.good() )
+                while( istream.ready() || std::cin.good() )
                 {
                     const snark::render::svg::text* t = istream.read();
                     if( !t ) { break; }
                     std::cout << *t << std::endl;
+                }
+            }
+            return 0;
+        }
+        if( what == "triangle" )
+        {
+            bool has_scalar = csv.has_field( "scalar" );
+            if( csv.fields.empty() ) { csv.fields = "points"; }
+            csv.full_xpath = true;
+            coloured< snark::render::svg::polygon > sample;
+            sample.points.resize( 3 );
+            comma::csv::input_stream< coloured< snark::render::svg::polygon > > istream( std::cin, csv, sample );
+            while( std::cin.good() )
+            {
+                auto p = istream.read();
+                if( !p ) { break; }
+                if( has_scalar )
+                {
+                    snark::render::svg::polygon s = *p; // quick and dirty
+                    s.style += "fill:" + colour_map( p->scalar ).hex();
+                    std::cout << s << std::endl;
+                }
+                else
+                {
+                    std::cout << *p << std::endl;
                 }
             }
             return 0;

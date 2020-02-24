@@ -28,8 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_RENDER_SVG_H
-#define SNARK_RENDER_SVG_H
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -134,7 +133,7 @@ struct point
     double x;
     double y;
     
-    point() { }
+    point(): x( 0 ), y( 0 ) {}
     point( const double x, const double y ) : x( x ), y( y ) { }
 };
 
@@ -148,7 +147,11 @@ struct polyline : public element
 struct polygon : public element
 {
     std::vector< point > points;
-
+    
+    polygon() {}
+    
+    polygon( unsigned int size ): points( size ) {}
+    
     friend std::ostream& operator<<( std::ostream& os, const polygon& p );
 };
 
@@ -165,5 +168,3 @@ struct text : public element
 };
 
 } } } // namespace snark { namespace render { namespace svg {
-
-#endif // SNARK_RENDER_SVG_H
