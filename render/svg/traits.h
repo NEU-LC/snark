@@ -28,8 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#ifndef SNARK_RENDER_SVG_TRAITS_H
-#define SNARK_RENDER_SVG_TRAITS_H
+#pragma once
 
 #include <comma/visiting/traits.h>
 #include "svg.h"
@@ -121,6 +120,18 @@ template <> struct traits< snark::render::svg::text >
     }
 };
 
+template <> struct traits< snark::render::svg::polygon >
+{
+    template< typename K, typename V > static void visit( const K&, snark::render::svg::polygon& t, V& v )
+    {
+        v.apply( "points", t.points );
+    }
+
+    template< typename K, typename V > static void visit( const K&, const snark::render::svg::polygon& t, V& v )
+    {
+        v.apply( "points", t.points );
+    }
+};
+
 } } // namespace comma { namespace visiting {
 
-#endif // SNARK_RENDER_SVG_TRAITS_H
