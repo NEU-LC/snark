@@ -3437,14 +3437,17 @@ static std::string usage_impl_()
     oss << "            tophat=[<parameters>]; apply top-hat operation with the given parameters" << std::endl;
     oss << "            skeleton=[<parameters>], thinning=[<parameters>]; apply skeletonization (thinning) with the given parameters" << std::endl;
     oss << "        custom morphology operations" << std::endl;
-    oss << "            advance=[<parameters>][,background:<value>]; similar to dilate, but dilates only background pixels to the nearest non-background value in kernel" << std::endl;
+    oss << "            advance=[<parameters>][,background:<value>]; similar to dilate, but dilates only background pixels to" << std::endl;
+    oss << "                                                         the nearest non-background value in kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
-    oss << "            retreat=[<parameters>][,background:<value>]; similar to erode, but erodes only non-background pixels, if there is a background pixel in in kernel" << std::endl;
+    oss << "            retreat=[<parameters>][,background:<value>]; similar to erode, but erodes only non-background pixels," << std::endl
+    oss << "                                                         if there is a background pixel in in kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
-    oss << "            meet=[<parameters>]; similar to dilate, but decides on the pixel value based on the majority of pixels in the kernel weighted by distance to anchor" << std::endl;
-    oss << "                               only shape <parameters> supported" << std::endl;
+    oss << "            meet=[<parameters>]; similar to dilate, but decides on the pixel value based on the majority of" << std::endl
+    oss << "                                 pixels in the kernel weighted by distance to anchor" << std::endl;
+    oss << "                                 only shape <parameters> supported" << std::endl;
     oss << std::endl;
     oss << "            <parameters> for all the above operations have the same syntax; erode as an example is shown below:" << std::endl;
     oss << "                erode=rectangle,<size/x>,<size/y>[,<anchor/x>,<anchor/y>][,iterations]; apply erosion with a rectangular structuring element" << std::endl;

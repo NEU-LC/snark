@@ -4,7 +4,6 @@ source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-u
 source $( type -p comma-application-util ) || { echo "$0: failed to source comma-application-util" >&2 ; exit 1 ; }
 
 format=$( cv-cat --file ../data/square.png | cv-calc format ; comma_status_ok ) || { echo "$0: failed to get format of '../data/square.png'" >&2 ; exit 1 ; }
-echo -n "size="
-csv-size "$format"
+echo "size=$( csv-size "$format" )"
 
 comma_test_commands
