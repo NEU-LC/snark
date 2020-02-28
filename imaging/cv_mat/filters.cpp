@@ -3445,7 +3445,7 @@ static std::string usage_impl_()
     oss << "                                                         if there is a background pixel in in kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
-    oss << "            meet=[<parameters>]; similar to dilate, but decides on the pixel value based on the majority of" << std::endl
+    oss << "            meet=[<parameters>]; similar to dilate, but decides on the pixel value based on the majority of" << std::endl;
     oss << "                                 pixels in the kernel weighted by distance to anchor" << std::endl;
     oss << "                                 only shape <parameters> supported" << std::endl;
     oss << std::endl;
