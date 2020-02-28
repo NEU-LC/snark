@@ -129,7 +129,7 @@ static Eigen::Vector3d origin = Eigen::Vector3d::Zero();
 static Eigen::Vector3d resolution;
 static comma::csv::options stdin_csv;
 static comma::csv::options filter_csv;
-static boost::optional< comma::uint32 > block;
+static boost::optional< comma::uint64 > block;
 #ifdef SNARK_USE_CUDA
 bool use_cuda;
 void* cuda_buf = NULL;
@@ -146,7 +146,7 @@ struct point_input
     Eigen::Vector3d value;
     Eigen::Vector3d normal;
     double radius;
-    comma::uint32 block;
+    comma::uint64 block;
     comma::uint32 id;
     point_input() : value( Eigen::Vector3d::Zero() ), normal( Eigen::Vector3d::Zero() ), radius( 0 ), block( 0 ), id( 0 ) {}
 };
@@ -156,7 +156,7 @@ static double get_squared_radius( const point_input& p ) { return use_radius ? p
 struct triangle_input
 {
     snark::triangle value;
-    comma::uint32 block;
+    comma::uint64 block;
     comma::uint32 id;
     triangle_input() : block( 0 ), id( 0 ) {}
 };
