@@ -3441,7 +3441,7 @@ static std::string usage_impl_()
     oss << "                                                         the nearest non-background value in kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
-    oss << "            retreat=[<parameters>][,background:<value>]; similar to erode, but erodes only non-background pixels," << std::endl
+    oss << "            retreat=[<parameters>][,background:<value>]; similar to erode, but erodes only non-background pixels," << std::endl;
     oss << "                                                         if there is a background pixel in in kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
