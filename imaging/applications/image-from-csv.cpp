@@ -192,14 +192,6 @@ private:
     unsigned int count_;
 };
 
-void write( std::pair< boost::posix_time::ptime, cv::Mat > &pair, snark::cv_mat::serialization &output, timestamping &t )
-{
-    pair.first = t.value();
-    t.reset();
-    output.write( std::cout, pair );
-    std::cout.flush();
-}
-
 int main( int ac, char** av )
 {
     try
@@ -259,24 +251,31 @@ int main( int ac, char** av )
             if( last ) { t.update( last->t, block_done ); }
             if( !last || block_done )
             {
-                if( last ) { write( pair, output, t ); }
+                if( last )
+                {
+                    pair.first = t.value();
+                    t.reset();
+                    output.write( std::cout, pair );
+                    std::cout.flush();
+                }
                 background.copyTo( pair.second );
                 if( output_on_missing_blocks )
                 {
                     int gap;
                     if( p ) { gap = last ? p->block - last->block - 1 : p->block; } 
-                    else if ( number_of_blocks ) { gap = (last ? *number_of_blocks - last->block - 1: *number_of_blocks); } 
+                    else if ( number_of_blocks ) { gap = last ? *number_of_blocks - last->block - 1: *number_of_blocks; } 
                     else { gap = 0; }
                     if( gap < 0 ) { std::cerr << "image-from-csv: expected incrementing block numbers, got: " << p->block << " after " << last->block << std::endl; exit( 1 ); }
                     if( number_of_blocks && p && p->block >= *number_of_blocks ) { std::cerr << "image-from-csv: expecting block number less than number-of-blocks (" << *number_of_blocks << "), got: " << p->block << std::endl; exit( 1 ); }
-                    for( int i = 0; i < gap; ++i ) { write( pair, output, t ); }
+                    for( int i = 0; i < gap; ++i ) { output.write( std::cout, pair ); }
+                    std::cout.flush();
                 }
             }
             if( !p ) { break; }
             set_pixel( pair.second, *p, offset );
             last = *p;
         }
-        if( output_on_empty_input && !output_on_missing_blocks && !last ) { write( pair, output, t ); }
+        if( output_on_empty_input && !output_on_missing_blocks && !last ) { output.write( std::cout, pair ); }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "image-from-csv: " << ex.what() << std::endl; }
