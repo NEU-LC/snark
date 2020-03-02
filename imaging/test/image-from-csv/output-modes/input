@@ -2,6 +2,7 @@ output_on_empty_input[0]="( echo ) | image-from-csv --fields block,x,y,channels[
 output_on_empty_input[1]="( echo ) | image-from-csv --fields block,x,y,channels[0] --output 'rows=1;cols=1;type=i;no-header' --output-on-empty-input | csv-from-bin i"
 output_on_empty_input[2]="( echo ) | image-from-csv --fields block,x,y,channels[0] --output 'rows=1;cols=1;type=i;no-header' --output-on-missing-blocks --block-count 1 | csv-from-bin i"
 output_on_empty_input[3]="( echo ) | image-from-csv --fields block,x,y,channels[0] --output 'rows=1;cols=1;type=i;no-header' --output-on-missing-blocks --block-count 2 | csv-from-bin i"
+output_on_empty_input[4]="( echo ) | image-from-csv --fields block,x,y,channels[0] --output 'rows=1;cols=1;type=i;no-header' --output-on-missing-blocks --number-of-blocks=6 --block-count 2 | csv-from-bin i"
 output_on_missing_blocks[0]="( echo 2,0,0,2; echo 4,0,0,4 ) | image-from-csv --output-on-missing-blocks --fields block,x,y,channels[0] --output 'rows=1;cols=1;type=i;no-header' | csv-from-bin i"
 output_on_missing_blocks[1]="( echo 2,0,0,2; echo 4,0,0,4 ) | image-from-csv --output-on-missing-blocks --fields block,x,y,channels[0] --output 'rows=1;cols=1;type=i;no-header' --block-count 7 | csv-from-bin i"
 output_on_missing_blocks[2]="( echo 2,0,0,2; echo 4,0,0,4 ) | image-from-csv --output-on-missing-blocks --fields block,x,y,channels[0] --output 'rows=1;cols=1;type=i;no-header' ---block-count 3 | csv-from-bin i"

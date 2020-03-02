@@ -85,7 +85,10 @@ static void usage( bool verbose )
               << "    --help,-h: show help; --help --verbose: more help" << std::endl
               << "    --background=<colour>; e.g. --background=0, --background=0,-1,-1, etc; default: zeroes" << std::endl
               << "    --from,--begin,--origin=[<x>,<y>]: offset pixel coordinates by a given offset; default: 0,0" << std::endl
+              << "    --number-of-blocks,--block-count=[<count>]; if --output-on-missing-blocks, expected number of input blocks" << std::endl
               << "    --output: output options, same as --input for image-from-csv or cv-cat (see --help --verbose)" << std::endl
+              << "    --output-on-missing-blocks: output empty images on missing input blocks; input blocks expected ordered" << std::endl
+              << "    --output-on-empty-input,--output-on-empty: output empty image on empty input" << std::endl
               << "    --timestamp=<how>: which image timestamp to output" << std::endl
               << "          <how>" << std::endl
               << "              first: timestamp of the first point of a block" << std::endl
@@ -189,6 +192,14 @@ private:
     unsigned int count_;
 };
 
+void write( std::pair< boost::posix_time::ptime, cv::Mat > &pair, snark::cv_mat::serialization &output, timestamping &t )
+{
+    pair.first = t.value();
+    t.reset();
+    output.write( std::cout, pair );
+    std::cout.flush();
+}
+
 int main( int ac, char** av )
 {
     try
@@ -211,6 +222,9 @@ int main( int ac, char** av )
         }
         csv.fields = comma::join( v, ',' );
         std::string offset_string = options.value< std::string >( "--from,--begin,--origin", "0,0" );
+        bool output_on_empty_input = options.exists( "--output-on-empty-input,--output-on-empty" );
+        bool output_on_missing_blocks = options.exists( "--output-on-missing-blocks" );
+        auto number_of_blocks = options.optional<unsigned int>("--number-of-blocks,--block-count");
         const std::vector< std::string >& w = comma::split( offset_string, ',' );
         if( w.size() != 2 ) { std::cerr << "image-from-csv: --from: expected <x>,<y>; got: \"" << offset_string << "\"" << std::endl; return 1; }
         std::pair< double, double > offset( boost::lexical_cast< double >( w[0] ), boost::lexical_cast< double >( w[1] ) ); // todo: quick and dirty; use better types
@@ -237,29 +251,32 @@ int main( int ac, char** av )
             }
             cv::merge( channels, background );
         }
+        std::pair< boost::posix_time::ptime, cv::Mat > pair;
         while( is.ready() || std::cin.good() )
         {
-            std::pair< boost::posix_time::ptime, cv::Mat > pair;
-            background.copyTo( pair.second );
-            if( last ) { set_pixel( pair.second, *last, offset ); }
-            while( is.ready() || std::cin.good() )
+            const input_t* p = is.read();
+            bool block_done = !p || ( last && p->block != last->block );
+            if( last ) { t.update( last->t, block_done ); }
+            if( !last || block_done )
             {
-                const input_t* p = is.read();
-                bool block_done = last && ( !p || p->block != last->block );
-                if( last ) { t.update( last->t, block_done || !p ); }
-                if( p ) { last = *p; }
-                if( block_done )
+                if( last ) { write( pair, output, t ); }
+                background.copyTo( pair.second );
+                if( output_on_missing_blocks )
                 {
-                    pair.first = t.value();
-                    t.reset();
-                    output.write( std::cout, pair );
-                    std::cout.flush();
-                    break;
+                    int gap;
+                    if( p ) { gap = last ? p->block - last->block - 1 : p->block; } 
+                    else if ( number_of_blocks ) { gap = (last ? *number_of_blocks - last->block - 1: *number_of_blocks); } 
+                    else { gap = 0; }
+                    if( gap < 0 ) { std::cerr << "image-from-csv: expected incrementing block numbers, got: " << p->block << " after " << last->block << std::endl; exit( 1 ); }
+                    if( number_of_blocks && p && p->block >= *number_of_blocks ) { std::cerr << "image-from-csv: expecting block number less than number-of-blocks (" << *number_of_blocks << "), got: " << p->block << std::endl; exit( 1 ); }
+                    for( int i = 0; i < gap; ++i ) { write( pair, output, t ); }
                 }
-                if( !p ) { break; }
-                set_pixel( pair.second, *p, offset );
             }
+            if( !p ) { break; }
+            set_pixel( pair.second, *p, offset );
+            last = *p;
         }
+        if( output_on_empty_input && !output_on_missing_blocks && !last ) { write( pair, output, t ); }
         return 0;
     }
     catch( std::exception& ex ) { std::cerr << "image-from-csv: " << ex.what() << std::endl; }
