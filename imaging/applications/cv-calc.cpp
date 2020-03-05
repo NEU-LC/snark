@@ -129,7 +129,8 @@ static void usage( bool verbose=false )
     std::cerr << "        --circles=<options>|<deprecated-options>: draw circles given in the image header; fields: centre/x,centre/y,radius" << std::endl;
     std::cerr << "        --labels=<options>|<deprecated-options>: draw labels given in the image header; fields: position/x,position/y,text" << std::endl;
     std::cerr << "        --rectangles=<options>|<deprecated-options>: rectangles as min and max given in the image header; fields: min/x,min/y,max/x,max/y" << std::endl;
-    std::cerr << "            <options>:<filename>[;size=<size>][;normalized][;weight=<weight>][;color/(r|g|b)]*[;<csv_options>]; fields: t,index,<shape_fields>" << std::endl;
+    std::cerr << "            <options>: <filename>[;size=<size>][;normalized][;weight=<weight>][;color/(r|g|b)]*[;<csv_options>]; fields: t,index,<shape_fields>" << std::endl;
+    std::cerr << "                       <color>: only integer colours supported (i.e. not float values)" << std::endl;
     std::cerr << "            <deprecated-options>:<size>[,normalized][,weight=<weight>][,color/(r|g|b)=<component>]*]" << std::endl;
     std::cerr << "                <filename>: file name as in csv options." << std::endl;
     std::cerr << "                <csv_options>: acfr csv options like fields, format etc." << std::endl;
@@ -577,9 +578,9 @@ class shapes
 public:
     struct color
     {
-        unsigned char r;
-        unsigned char g;
-        unsigned char b;
+        int r;
+        int g;
+        int b;
         color(): r( 0 ), g( 0 ), b( 0 ) {}
         operator cv::Scalar() const { return cv::Scalar( b, g, r ); }
     };
