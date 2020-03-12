@@ -3185,10 +3185,10 @@ static std::string usage_impl_()
     oss << "                kernel_size: size of the extended Sobel kernel; it must be 1, 3, 5 or 7" << std::endl;
     oss << "        color-map=<type>: take image, apply colour map; see cv::applyColorMap for detail" << std::endl;
     oss << "            <type>: autumn, bone, jet, winter, rainbow, ocean, summer, spring, cool, hsv, pink, hot" << std::endl;
-    oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv convertTo for details; values will not overflow" << std::endl;
+    oss << "        convert-to,convert_to=<type>[,<scale>[,<offset>]]: convert to given type; should be the same number of channels; see opencv cvtColor() for details; values will not overflow" << std::endl;
     oss << "        convert-color=<how>; convert from colour space to new colour space" << std::endl;
     oss << "            <how>" << std::endl;
-    oss << "                <from>,<to>: convert from colour space to new colour space (BGR, RGB, Lab, XYZ, Bayer**, GRAY); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
+    oss << "                <from>,<to>: convert from colour space to new colour space (BGR, RGB, HSV, Lab, XYZ, Bayer**, GRAY supported; if you need more just ask, see opencv cvtColor() for more); eg: BGR,GRAY or CV_BGR2GRAY" << std::endl;
     oss << "                <n>: index of color conversion, see color conversion enumeration in opencv2/improc/types_c.h" << std::endl;
     oss << "                     e.g: 'convert-color=6' is same as 'convert-color=BGR,GRAY'" << std::endl;
     oss << "                     quick and dirty for now, but lets use dozens of conversions" << std::endl;
