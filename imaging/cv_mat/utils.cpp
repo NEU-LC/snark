@@ -116,8 +116,10 @@ boost::unordered_map< std::string, unsigned int > fill_cvt_color_types_()
     types[ "CV_GRAY2BGR" ] = types[ "GRAY,BGR" ] = types[ "CV_GRAY2RGB" ] = types[ "GRAY,RGB" ] = CV_GRAY2BGR;
     types[ "CV_BGR2XYZ" ] = types[ "BGR,XYZ" ] = types[ "CV_RGB2XYZ" ] = types[ "RGB,XYZ" ] = CV_BGR2XYZ;
     types[ "CV_XYZ2BGR" ] = types[ "XYZ,BGR" ] = types[ "CV_XYZ2RGB" ] = types[ "XYZ,RGB" ] = CV_XYZ2BGR;
-    types[ "CV_BGR2HSV" ] = types[ "BGR,HSV" ] = types[ "CV_RGB2HSV" ] = types[ "RGB,HSV" ] = CV_BGR2HSV;
-    types[ "CV_HSV2BGR" ] = types[ "HSV,BGR" ] = types[ "CV_HSV2RGB" ] = types[ "HSV,RGB" ] = CV_HSV2BGR;
+    types[ "CV_RGB2HSV" ] = types[ "RGB,HSV" ] = CV_RGB2HSV;
+    types[ "CV_BGR2HSV" ] = types[ "BGR,HSV" ] = CV_BGR2HSV;
+    types[ "CV_HSV2RGB" ] = types[ "HSV,RGB" ] = CV_HSV2RGB;
+    types[ "CV_HSV2BGR" ] = types[ "HSV,BGR" ] = CV_HSV2BGR;
     types[ "CV_BGR2Lab" ] = types[ "BGR,Lab" ] = types[ "CV_RGB2Lab" ] = types[ "RGB,Lab" ] = CV_BGR2Lab;
     types[ "CV_Lab2BGR" ] = types[ "Lab,BGR" ] = types[ "CV_Lab2RGB" ] = types[ "Lab,RGB" ] = CV_Lab2BGR;
     types[ "CV_BayerBG2BGR" ] = types[ "BayerBG,BGR" ] = types[ "CV_BayerBG2RGB" ] = types[ "BayerBG,RGB" ] = CV_BayerBG2BGR;
