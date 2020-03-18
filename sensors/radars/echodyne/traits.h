@@ -34,65 +34,6 @@
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::echodyne::vector3_t >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, snark::echodyne::vector3_t& t, Visitor& v )
-    {
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::echodyne::vector3_t& t, Visitor& v )
-    {
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-    }
-};
-
-template <> struct traits< snark::echodyne::spherical_coordinates_t >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, snark::echodyne::spherical_coordinates_t& t, Visitor& v )
-    {
-        v.apply( "range", t.range );
-        v.apply( "bearing", t.bearing );
-        v.apply( "elevation", t.elevation );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::echodyne::spherical_coordinates_t& t, Visitor& v )
-    {
-        v.apply( "range", t.range );
-        v.apply( "bearing", t.bearing );
-        v.apply( "elevation", t.elevation );
-    }
-};
-
-template <> struct traits< snark::echodyne::quaternion_t >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, snark::echodyne::quaternion_t& t, Visitor& v )
-    {
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-        v.apply( "w", t.w );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::echodyne::quaternion_t& t, Visitor& v )
-    {
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-        v.apply( "w", t.w );
-    }
-};
-
 template <> struct traits< snark::echodyne::status_data_t >
 {
     template < typename Key, class Visitor >

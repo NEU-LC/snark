@@ -30,6 +30,7 @@
 #include <chrono>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
+#include "../../../../visiting/traits.h"
 #include "../echodyne.h"
 #include "../radar.h"
 #include "../reader.h"

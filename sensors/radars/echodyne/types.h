@@ -29,8 +29,10 @@
 
 #pragma once
 
+#include "../../../math/range_bearing_elevation.h"
 #include <comma/base/types.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <Eigen/Core>
 #include <mesak_status_packet.h>
 #include <mesak_rvmap_packet.h>
 #include <mesak_detection_packet.h>
@@ -41,43 +43,6 @@ namespace snark { namespace echodyne {
 
 boost::posix_time::ptime from_echodyne_time( uint32_t days, uint32_t ms );
 
-struct vector3_t
-{
-    float x;
-    float y;
-    float z;
-
-    vector3_t() {}
-    vector3_t( float x_, float y_, float z_ )
-        : x( x_ ), y( y_ ), z( z_ )
-    {}
-};
-
-struct spherical_coordinates_t
-{
-    float range;
-    float bearing;
-    float elevation;
-
-    spherical_coordinates_t() {}
-    spherical_coordinates_t( float range_, float bearing_, float elevation_ )
-        : range( range_ ), bearing( bearing_ ), elevation( elevation_ )
-    {}
-};
-
-struct quaternion_t
-{
-    float x;
-    float y;
-    float z;
-    float w;
-
-    quaternion_t() {}
-    quaternion_t( float x_, float y_, float z_, float w_ )
-        : x( x_ ), y( y_ ), z( z_ ), w( w_ )
-    {}
-};
-
 // User manual section 7.3
 struct status_data_t
 {
@@ -85,8 +50,8 @@ struct status_data_t
     uint32_t state;
     float search_fps;
     float platform_height;
-    quaternion_t orientation;
-    vector3_t velocity;                 // platform velocity over ground (m/s)
+    Eigen::Quaternionf orientation;
+    Eigen::Vector3f velocity;           // platform velocity over ground (m/s)
     uint32_t time_channel_state;
     uint32_t eth_speed;
 
@@ -104,12 +69,12 @@ struct rvmap_data_t
     float num_ranges;
     float dV;
     float num_velocities;
-    quaternion_t orientation;
+    Eigen::Quaternionf orientation;
     float search_fps;
     uint32_t zero_range_bin;
     uint32_t zero_doppler_bin;
     float platform_height;
-    vector3_t velocity;                 // platform velocity over ground (m/s)
+    Eigen::Vector3f velocity;           // platform velocity over ground (m/s)
     uint8_t status;
     std::array< uint32_t, MAX_RVMAP_SIZE > data;
 
@@ -123,7 +88,7 @@ struct detection_data_t
     boost::posix_time::ptime t;
     float power;                        // dB
     float snr;                          // dB
-    spherical_coordinates_t position;
+    range_bearing_elevation position;
     float vradial;                      // m/s
     float r_interp;                     // m
     uint32_t detection_id;
@@ -139,9 +104,9 @@ struct track_data_t
     boost::posix_time::ptime t;
     uint32_t id;
     uint32_t state;
-    spherical_coordinates_t rbe;
-    vector3_t position;
-    vector3_t velocity;
+    range_bearing_elevation rbe;
+    Eigen::Vector3f position;
+    Eigen::Vector3f velocity;
     boost::posix_time::ptime toca;      // time of closest approach
     float doca;                         // distance of closest approach
     float lifetime;
@@ -165,7 +130,7 @@ struct meas_data_t
     uint32_t id;
     uint32_t type;
     uint32_t hyper_cube_reject;
-    spherical_coordinates_t rbe;
+    range_bearing_elevation rbe;
     float rcs;
     float vradial;
     uint32_t num_detections;
