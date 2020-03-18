@@ -75,11 +75,13 @@ namespace snark { namespace cv_mat { namespace filters {
 template < typename H >
 text< H >::text( const text_input& caption
                , const comma::csv::options& csv
-               , const std::vector< std::pair< unsigned int, unsigned int > >& ranges )
+               , const std::vector< std::pair< unsigned int, unsigned int > >& ranges
+               , float font_scale )
     : caption_( caption )
     , is_( nullptr )
     , istream_( nullptr )
     , ranges_( ranges )
+    , font_scale_( font_scale )
     , range_index_( 0 )
     , count_( 0 )
 {
@@ -112,7 +114,7 @@ typename std::pair< H, cv::Mat > text< H >::operator()( typename std::pair< H, c
         const text_input* p = istream_->read();
         if( p ) { caption = *p; }
     }
-    if( !caption.text.empty() ) { cv::putText( m.second, caption.text, caption.origin, cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar( caption.colour * colour_scale_factor_( m.second.depth() ) ), 1, CV_AA ); }
+    if( !caption.text.empty() ) { cv::putText( m.second, caption.text, caption.origin, cv::FONT_HERSHEY_SIMPLEX, font_scale_, cv::Scalar( caption.colour * colour_scale_factor_( m.second.depth() ) ), 1, CV_AA ); }
     ++count_;
     return m;
 }
@@ -138,6 +140,7 @@ std::pair< typename text< H >::functor_t, bool > text< H >::make( const std::str
     }
     comma::csv::options csv;
     std::vector< std::pair< unsigned int, unsigned int > > ranges;
+    float font_scale = 1;
     for( unsigned int i = 4; i < v.size(); ++i )
     {
         if( v[i].substr( 0, 9 ) == "filename:" )
@@ -159,8 +162,12 @@ std::pair< typename text< H >::functor_t, bool > text< H >::make( const std::str
             }
             ifs.close();
         }
+        else if( v[i].substr( 0, 6 ) == "scale:" )
+        {
+            font_scale = boost::lexical_cast< float >( v[i].substr( 7 ) );
+        }
     }
-    return std::make_pair( text< H >( t, csv, ranges ), true );
+    return std::make_pair( text< H >( t, csv, ranges, font_scale ), true );
 }
 
 template < typename H >
@@ -168,11 +175,12 @@ typename std::string text< H >::usage( unsigned int indent )
 {
     std::string offset( indent, ' ' );
     std::ostringstream oss;
-    oss << "text=<text>,[<x>,<y>],[<colour>],[filename:<filename>],[ranges:<ranges>]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
-    oss << "     <x>,<y>: text origin pixel coordinates; default x,y: 10,10" << std::endl;
-    oss << "     <colour>: text colour: red, green, blue, black, white, yellow, cyan, magenta; default: yellow" << std::endl;
-    oss << "     filename:<filename>]: read text from a file line by line, new line for each new frame" << std::endl;
-    oss << "     ranges:<filename>]: file containing sorted list of non-intersecting desired ranges of frame numbers to put text on; <begin>,<end> pairs, where <end> is not included" << std::endl;
+    oss << offset << "text=<text>,[<x>,<y>],[<colour>],[filename:<filename>],[ranges:<ranges>]: print text; default x,y: 10,10; default colour: yellow" << std::endl;
+    oss << offset << "     <x>,<y>: text origin pixel coordinates; default x,y: 10,10" << std::endl;
+    oss << offset << "     <colour>: text colour: red, green, blue, black, white, yellow, cyan, magenta; default: yellow" << std::endl;
+    oss << offset << "     filename:<filename>]: read text from a file line by line, new line for each new frame" << std::endl;
+    oss << offset << "     ranges:<filename>]: file containing sorted list of non-intersecting desired ranges of frame numbers to put text on; <begin>,<end> pairs, where <end> is not included" << std::endl;
+    oss << offset << "     scale:<factor>]: font scale, default: 1.0, see opencv putText() for more" << std::endl;
     return oss.str();
 }
 

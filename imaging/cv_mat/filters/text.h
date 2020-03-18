@@ -53,7 +53,8 @@ class text
     public:
         text( const text_input& t
             , const comma::csv::options& csv
-            , const std::vector< std::pair< unsigned int, unsigned int > >& ranges = std::vector< std::pair< unsigned int, unsigned int > >() );
+            , const std::vector< std::pair< unsigned int, unsigned int > >& ranges = std::vector< std::pair< unsigned int, unsigned int > >()
+            , float font_scale = 1 );
 
         std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
         
@@ -70,6 +71,7 @@ class text
         boost::shared_ptr< comma::io::istream > is_; // quick and dirty, ashamed of myself
         boost::shared_ptr< comma::csv::input_stream< text_input > > istream_; // quick and dirty, ashamed of myself
         std::vector< std::pair< unsigned int, unsigned int > > ranges_; 
+        float font_scale_;
         unsigned int range_index_;
         unsigned int count_;
 };
