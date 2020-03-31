@@ -344,11 +344,24 @@ int main( int argc, char** argv )
             if( !vm.count( "video" ) )
             { 
                 if( !boost::filesystem::exists( name ) ) { std::cerr << "cv-cat: file not found '" << name << "'" << std::endl; exit( 1 ); }
-                if( comma::split( name, '.' ).back() == "bin" ) // quick and dirty, to keep --file semantics uniform
+                auto extension = comma::split( name, '.' ).back();
+                if( extension == "bin" ) // quick and dirty, to keep --file semantics uniform
                 { 
                     std::ifstream i( name );
                     if( !i.is_open() ) { std::cerr << "cv-cat: failed to open '" << name << "'" << std::endl; exit( 1 ); }
                     p = input.read< boost::posix_time::ptime >( i );
+                }
+                else if( extension == "gz" )
+                {
+                    std::ifstream i( name );
+                    if( !i.is_open() ) { std::cerr << "cv-cat: failed to open '" << name << "'" << std::endl; exit( 1 ); }
+                    boost::iostreams::filtering_streambuf< boost::iostreams::input > zin;
+                    zin.push( boost::iostreams::gzip_decompressor() );
+                    zin.push( i );
+                    std::ostringstream oss;
+                    boost::iostreams::copy( zin, oss );
+                    std::istringstream iss( oss.str() ); // quick and dirty, watch performance
+                    p = input.read< boost::posix_time::ptime >( iss );
                 }
                 else
                 {
