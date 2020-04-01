@@ -19,7 +19,7 @@ source_group( ${TARGET_NAME} FILES ${source} ${includes} )
 
 add_library( ${TARGET_NAME} ${source} ${includes} )
 set_target_properties( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
-target_link_libraries( ${TARGET_NAME} ${snark_ALL_LIBRARIES} )
+target_link_libraries( ${TARGET_NAME} snark_math ${snark_ALL_EXTERNAL_LIBRARIES} )
 
 set( Echodyne_API "/opt/echodyne/API" CACHE PATH "Path to Echodyne API" )
 if( NOT EXISTS ${Echodyne_API} )
