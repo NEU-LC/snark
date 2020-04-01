@@ -32,5 +32,13 @@ endif()
 
 include_directories( ${Echodyne_API}/include ${Echodyne_API}/bnet_interface/inc ${Echodyne_API}/bnet_reader/inc )
 link_directories( ${Echodyne_API}/bnet_interface/lib ${Echodyne_API}/bnet_plus/lib )
+
+install( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/radars/${PROJECT} )
+install(
+   TARGETS ${TARGET_NAME}
+   RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime     # .exe, .dll
+   LIBRARY DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Runtime     # .so, mod.dll
+   ARCHIVE DESTINATION ${snark_INSTALL_LIB_DIR} COMPONENT Development # .a, .lib
+)
                  
 add_subdirectory( applications )

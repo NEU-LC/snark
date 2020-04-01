@@ -364,6 +364,11 @@ endif( snark_build_imaging )
 #                              optimized snark_navigation_trimble )
 # endif( snark_build_navigation )
 
+IF( snark_build_sensors_echodyne )
+    SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_echodyne-d
+                             optimized snark_echodyne )
+ENDIF( snark_build_sensors_echodyne )
+
 IF( snark_build_sensors_velodyne )
     SET( snark_ALL_LIBRARIES ${snark_ALL_LIBRARIES} debug snark_velodyne-d
                              optimized snark_velodyne )
