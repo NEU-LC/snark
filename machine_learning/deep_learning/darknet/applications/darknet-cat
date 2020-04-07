@@ -61,6 +61,13 @@ examples
 
 home = expanduser("~")
 
+# NOTE: This application works with either the original darknet implementation
+# at https://github.com/pjreddie/darknet (ORIGINAL) or the more actively-developed
+# fork at https://github.com/alexeyab/darknet (ALEXEY_AB).
+# The C-API is slightly different, so we need to detect which version is in use.
+lib = CDLL("/usr/local/lib/libdarknet.so", RTLD_GLOBAL)
+DARKNET_VERSION = 'ALEXEY_AB' if hasattr(lib, 'network_predict_ptr') else 'ORIGINAL'
+
 def sample(probs):
     s = sum(probs)
     probs = [a/s for a in probs]
@@ -84,12 +91,13 @@ class BOX(Structure):
                 ("h", c_float)]
 
 class DETECTION(Structure):
-    _fields_ = [("bbox", BOX),
-                ("classes", c_int),
-                ("prob", POINTER(c_float)),
-                ("mask", POINTER(c_float)),
-                ("objectness", c_float),
-                ("sort_class", c_int)]
+    _fields_ = ([("bbox", BOX),
+                 ("classes", c_int),
+                 ("prob", POINTER(c_float)),
+                 ("mask", POINTER(c_float)),
+                 ("objectness", c_float),
+                 ("sort_class", c_int)] +
+                 ([("uc", POINTER(c_float)), ("points", c_int)] if DARKNET_VERSION == 'ALEXEY_AB' else []))
 
 
 class IMAGE(Structure):
@@ -102,7 +110,6 @@ class METADATA(Structure):
     _fields_ = [("classes", c_int),
                 ("names", POINTER(c_char_p))]
 
-lib = None
 predict = None
 set_gpu = None
 make_image = None
@@ -123,7 +130,6 @@ rgbgr_image = None
 predict_image = None
 
 def set_up_darknet_funcs():
-    global lib
     global predict
     global set_gpu
     global make_image
@@ -143,7 +149,6 @@ def set_up_darknet_funcs():
     global rgbgr_image
     global predict_image
 
-    lib = CDLL("/usr/local/lib/libdarknet.so", RTLD_GLOBAL)
     lib.network_width.argtypes = [c_void_p]
     lib.network_width.restype = c_int
     lib.network_height.argtypes = [c_void_p]
@@ -174,7 +179,10 @@ def set_up_darknet_funcs():
     free_ptrs = lib.free_ptrs
     free_ptrs.argtypes = [POINTER(c_void_p), c_int]
 
-    network_predict = lib.network_predict
+    if DARKNET_VERSION == 'ALEXEY_AB':
+        network_predict = lib.network_predict_ptr
+    else:
+        network_predict = lib.network_predict
     network_predict.argtypes = [c_void_p, POINTER(c_float)]
 
     reset_rnn = lib.reset_rnn
@@ -285,6 +293,8 @@ if __name__ == '__main__':
     parser.add_argument( '--config', help="configuration (cfg) file required by darknet", required=True)
     parser.add_argument( '--weights', help="tained darknet weights file", required=True)
     parser.add_argument( '--classes', help="number of classes", required=True, type=int)
+    parser.add_argument( '--input-file', help="file to read image data from", type=argparse.FileType('rb'), default=sys.stdin.buffer)
+    parser.add_argument( '--output-file', help="file to write detection results to", type=argparse.FileType('wb'), default=sys.stdout.buffer)
     args = parser.parse_args()
     warn( "ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment" )
 
@@ -301,7 +311,7 @@ if __name__ == '__main__':
 
     img_counter = 0
     t0 = time()
-    for header, data, footer in iterator( sys.stdin.buffer, input_shape, ntype, args.header_size, args.footer_size ):
+    for header, data, footer in iterator( args.input_file, input_shape, ntype, args.header_size, args.footer_size ):
         if args.verbose:
             say("time per image: {}".format(time()-t0))
             t0=time()
@@ -312,13 +322,13 @@ if __name__ == '__main__':
         p1_list, p2_list = list(), list()
 
         for (label, likelihood, output) in results:
-            write_buffer(sys.stdout.buffer, header)
-            if args.keep_input: write_buffer(sys.stdout.buffer, data)
-            write_buffer(sys.stdout.buffer, footer)
-            write_buffer(sys.stdout.buffer, np.asarray( meta.names.index(label), np.uint32 )) # convert back from number as string
-            write_buffer(sys.stdout.buffer, np.asarray( likelihood, np.float32 ))
-            write_buffer(sys.stdout.buffer, np.asarray( output, np.float32 )) # todo: is this generic enough - is it always a label, likelihood, tuple-of-floats?
-            sys.stdout.flush()
+            write_buffer(args.output_file, header)
+            if args.keep_input: write_buffer(args.output_file, data)
+            write_buffer(args.output_file, footer)
+            write_buffer(args.output_file, np.asarray( meta.names.index(label), np.uint32 )) # convert back from number as string
+            write_buffer(args.output_file, np.asarray( likelihood, np.float32 ))
+            write_buffer(args.output_file, np.asarray( output, np.float32 )) # todo: is this generic enough - is it always a label, likelihood, tuple-of-floats?
+            args.output_file.flush()
 
             if args.save_images:
                 x, y, w, h = np.array(output).astype(int)
