@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # This file is part of snark, a generic and flexible library
 # Copyright (c) 2011 The University of Sydney
@@ -250,23 +250,29 @@ def detect(net, meta, image, input_type, thresh=.25, hier_thresh=.5, nms=.45):
     free_detections(dets, num)
     return res
 
-def say( m ): print >> sys.stderr, "darknet-cat: ", m
+def say( m ): sys.stderr.write("darknet-cat: {}\n".format(m))
 
-def warn( m ): print >> sys.stderr, "darknet-cat: warning:", m
+def warn( m ): sys.stderr.write("darknet-cat: warning: {}\n".format(m))
 
-def die( m ): print >> sys.stderr, "darknet-cat:", m; sys.exit( 1 )
+def die( m ): sys.stderr.write("darknet-cat: {}\n".format(m)); sys.exit( 1 )
 
-def iterator( file, shape, n_type, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
+def read_buffer(buffer, dtype, count):
+    return np.frombuffer(buffer.read(count * np.dtype(dtype).itemsize), dtype)
+
+def write_buffer(buffer, data):
+    buffer.write(data.tobytes())
+
+def iterator( buffer, shape, n_type, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
     size = np.prod( shape )
     while True:
-        header = np.fromfile( file, np.uint8, header_size )
-        data = np.fromfile( file, ntype, size )
-        footer = np.fromfile( file, np.uint8, footer_size )
+        header = read_buffer( buffer, np.uint8, header_size)
+        data = read_buffer( buffer, ntype, size )
+        footer = read_buffer( buffer, np.uint8, footer_size )
         if data.shape[0] == size: yield header, data.reshape( shape ), footer
         else: yield None, None, None
 
 if __name__ == '__main__':
-    def handle_signal( s, f ): print >> sys.stderr, "darknet-cat: broken pipe, exit"; sys.exit( 0 )
+    def handle_signal( s, f ): sys.stderr.write("darknet-cat: broken pipe, exit\n"); sys.exit( 0 )
     signal.signal( signal.SIGPIPE, handle_signal ) 
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
     parser.add_argument( '--input-shape', type = str, required=True, help = 'image size in the the format width,height,channels' )
@@ -295,7 +301,7 @@ if __name__ == '__main__':
 
     img_counter = 0
     t0 = time()
-    for header, data, footer in iterator( sys.stdin, input_shape, ntype, args.header_size, args.footer_size ):
+    for header, data, footer in iterator( sys.stdin.buffer, input_shape, ntype, args.header_size, args.footer_size ):
         if args.verbose:
             say("time per image: {}".format(time()-t0))
             t0=time()
@@ -306,12 +312,12 @@ if __name__ == '__main__':
         p1_list, p2_list = list(), list()
 
         for (label, likelihood, output) in results:
-            header.tofile( sys.stdout )
-            if args.keep_input: data.tofile( sys.stdout )
-            footer.tofile( sys.stdout )
-            np.asarray( meta.names.index(label), np.uint32 ).tofile( sys.stdout ) # convert back from number as string
-            np.asarray( likelihood, np.float32 ).tofile( sys.stdout )
-            np.asarray( output, np.float32 ).tofile( sys.stdout ) # todo: is this generic enough - is it always a label, likelihood, tuple-of-floats?
+            write_buffer(sys.stdout.buffer, header)
+            if args.keep_input: write_buffer(sys.stdout.buffer, data)
+            write_buffer(sys.stdout.buffer, footer)
+            write_buffer(sys.stdout.buffer, np.asarray( meta.names.index(label), np.uint32 )) # convert back from number as string
+            write_buffer(sys.stdout.buffer, np.asarray( likelihood, np.float32 ))
+            write_buffer(sys.stdout.buffer, np.asarray( output, np.float32 )) # todo: is this generic enough - is it always a label, likelihood, tuple-of-floats?
             sys.stdout.flush()
 
             if args.save_images:
