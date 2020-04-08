@@ -594,13 +594,96 @@ struct channels_to_cols_impl_ {
     }
 };
 
+template < typename H > struct timestamp_traits // todo: super-quick and dirty; make generic
+{
+    static boost::posix_time::ptime get( const H& ) { COMMA_THROW( comma::exception, "not implemented" ); }
+    static H& set( H& h, boost::posix_time::ptime t ) { COMMA_THROW( comma::exception, "not implemented" ); }
+};
+
+template <> struct timestamp_traits< boost::posix_time::ptime > // todo: super-quick and dirty; make generic
+{
+    static boost::posix_time::ptime get( const boost::posix_time::ptime& t ) { return t; }
+    static boost::posix_time::ptime& set( boost::posix_time::ptime& h, boost::posix_time::ptime t ) { h = t; return h; }
+};
+
 template < typename H >
 class accumulate_impl_
 {
     public:
         typedef typename impl::filters< H >::value_type value_type;
         enum how_values { sliding = 0, fixed = 1 };
-        accumulate_impl_( unsigned int how_many, how_values how, bool reverse ) : how_many_ ( how_many ), how_( how ), count_( 0 ), reverse_( reverse ), index_( 0 ), initialised_ ( false ) {}
+        class timestamping
+        { 
+            public:
+                enum how { first = 0, last, mean, median };
+                
+                timestamping( how h, unsigned int size ): how_( h ), size_( size ), last_( 0 ), count_( 0 ) {}
+                
+                void update( H& h )
+                {
+                    ++count_;
+                    ++last_;
+                    if( last_ == size_ ) { last_ = 0; }
+                    values_[last_] = timestamp_traits< H >::get( h );
+                }
+                const H& get( H& h ) const
+                {
+                    boost::posix_time::ptime t;
+                    switch( how_ )
+                    {
+                        case timestamping::first:
+                        {
+                            t = values_[ count_ <= 1 ? last_ : last_ == 0 ? size_ - 1 : ( last_ - 1 ) ];
+                            break;
+                        }
+                        case timestamping::last:
+                        {
+                            t = values_[last_];
+                            break;
+                        }
+                        case timestamping::mean:
+                        {
+                            COMMA_THROW( comma::exception, "todo, just ask" );
+                        }
+                        case timestamping::median:
+                        {
+                            if( count_ < size_ )
+                            {
+                                t = values_[ count_ / 2 ]; // quick and dirty
+                            }
+                            else
+                            {
+                                unsigned int end = last_ + 1;
+                                unsigned int half = size_ / 2;
+                                t = values_[ end < half ? end + half : end - half ];
+                            }
+                            break;
+                        }
+                    }
+                    return timestamp_traits< H >::set( h, t );
+                }
+                
+            private:
+                std::vector< boost::posix_time::ptime > values_;
+                how how_;
+                unsigned int size_;
+                unsigned int last_;
+                unsigned int count_;
+        };
+        
+        accumulate_impl_( unsigned int how_many
+                        , how_values how
+                        , bool reverse
+                        , typename accumulate_impl_< H >::timestamping::how timestamping_how = timestamping::last )
+            : how_many_ ( how_many )
+            , how_( how )
+            , count_( 0 )
+            , reverse_( reverse )
+            , index_( 0 )
+            , initialised_ ( false )
+            , timestamping_( timestamping_how, how_many )
+        {
+        }
         value_type operator()( value_type input )
         {
             if( !initialised_ )
@@ -619,7 +702,8 @@ class accumulate_impl_
             if( input.second.cols != cols_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << cols_ << " columns, got " << input.second.cols << " columns"); }
             if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
             if( input.second.type() != type_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image of type " << type_ << ", got type " << input.second.type() << " rows"); }
-            value_type output( input.first, cv::Mat( accumulated_image_[0].size(), accumulated_image_[0].type() ) );
+            timestamping_.update( input.first );
+            value_type output( timestamping_.get( input.first ), cv::Mat( accumulated_image_[0].size(), accumulated_image_[0].type() ) );
             switch( how_ )
             {
                 case sliding:
@@ -653,6 +737,7 @@ class accumulate_impl_
         int cols_, h_, rows_, type_;
         cv::Rect rect_for_new_data_, rect_for_old_data_, rect_to_keep_;
         std::array< cv::Mat, 2 > accumulated_image_;
+        typename accumulate_impl_< H >::timestamping timestamping_;
 };
 
 template < typename H >
@@ -2052,6 +2137,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         unsigned int how_many = boost::lexical_cast< unsigned int >( w[0] );
         if( how_many == 0 ) { COMMA_THROW( comma::exception, "expected positive number of images to accumulate in accumulate filter, got " << how_many ); }
         typename accumulate_impl_< H >::how_values how = accumulate_impl_< H >::sliding;
+        typename accumulate_impl_< H >::timestamping::how timestamping = accumulate_impl_< H >::timestamping::last;
         bool reverse = false;
         if( w.size() > 1 )
         {
@@ -2059,12 +2145,21 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             else if( w[1] == "fixed" ) { how = accumulate_impl_< H >::fixed; }
             else { COMMA_THROW( comma::exception, "accumulate: expected <how>, got\"" << w[1] << "\"" ); }
         }
-        if( w.size() > 2 )
+        for( unsigned int i = 2; i < w.size(); ++i )
         {
-            if( w[2] == "reverse" || w[1].empty() ) { reverse = true; }
-            else { COMMA_THROW( comma::exception, "accumulate: expected reverse, got\"" << w[1] << "\"" ); }
+            if( w[i] == "reverse" ) { reverse = true; }
+            else if( w[i].substr( 0, 5 ) == "time:" )
+            { 
+                std::string t = w[i].substr( 5 );
+                if( t == "first" ) { timestamping = accumulate_impl_< H >::timestamping::first; }
+                else if( t == "last" ) { timestamping = accumulate_impl_< H >::timestamping::last; }
+                else if( t == "mean" ) { timestamping = accumulate_impl_< H >::timestamping::mean; }
+                else if( t == "median" ) { timestamping = accumulate_impl_< H >::timestamping::median; }
+                else { COMMA_THROW( comma::exception, "accumulate: expected time:first|last|mean|median, got\"" << w[1] << "\"" ); }
+            }
+            else { COMMA_THROW( comma::exception, "accumulate: expected accumulate options, got\"" << w[1] << "\"" ); }
         }
-        return std::make_pair( accumulate_impl_< H >( how_many, how, reverse ), false );
+        return std::make_pair( accumulate_impl_< H >( how_many, how, reverse, timestamping ), false );
     }
     if( e[0] == "accumulated" )
     {
@@ -3150,15 +3245,21 @@ static std::string usage_impl_()
     oss << "    OpenCV version: " << CV_MAJOR_VERSION << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
-    oss << "        accumulate=<n>[,<how>]: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
+    oss << "        accumulate=<n>[,<how>][,<options>]: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
     oss << "            example: cat slit-scan.bin | cv-cat \"accumulate=400;view;null\"" << std::endl;
     oss << "            <how>" << std::endl;
     oss << "                sliding: sliding window" << std::endl;
     oss << "                fixed: input image location in the output image is defined by its number modulo <n>" << std::endl;
-    oss << "                fixed-reverse: same as fixed, but in the opposite order" << std::endl;
     oss << "                default: sliding" << std::endl;
     oss << "                example: run the command line below; press white space key to see image accumulating; try it with fixed or fixed-inverse" << std::endl;
     oss << "                    > ( yes 255 | head -n $(( 64 * 64 * 20 )) | csv-to-bin ub ) | cv-cat --input 'no-header;rows=64;cols=64;type=ub' 'count;accumulate=20,sliding;view=0;null'" << std::endl;
+    oss << "            <options>" << std::endl;
+    oss << "                reverse: e.g. fixed,reverse: same as fixed, but in the opposite order" << std::endl;
+    oss << "                time:<how>; how to timestamp accumulated image" << std::endl;
+    oss << "                    first: by first input frame" << std::endl;
+    oss << "                    last: by last input frame" << std::endl;
+    oss << "                    mean: by mean input timestamp value across accumulated frame (todo)" << std::endl;
+    oss << "                    median: by middle input timestamp of accumulated frame (todo)" << std::endl;
     oss << "        accumulated=<operation>: apply a pixel-wise operation to the input images" << std::endl;
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
