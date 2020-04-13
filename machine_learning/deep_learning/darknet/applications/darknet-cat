@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # This file is part of snark, a generic and flexible library
 # Copyright (c) 2011 The University of Sydney
@@ -61,6 +61,13 @@ examples
 
 home = expanduser("~")
 
+# NOTE: This application works with either the original darknet implementation
+# at https://github.com/pjreddie/darknet (ORIGINAL) or the more actively-developed
+# fork at https://github.com/alexeyab/darknet (ALEXEY_AB).
+# The C-API is slightly different, so we need to detect which version is in use.
+lib = CDLL("/usr/local/lib/libdarknet.so", RTLD_GLOBAL)
+DARKNET_VERSION = 'ALEXEY_AB' if hasattr(lib, 'network_predict_ptr') else 'ORIGINAL'
+
 def sample(probs):
     s = sum(probs)
     probs = [a/s for a in probs]
@@ -84,12 +91,13 @@ class BOX(Structure):
                 ("h", c_float)]
 
 class DETECTION(Structure):
-    _fields_ = [("bbox", BOX),
-                ("classes", c_int),
-                ("prob", POINTER(c_float)),
-                ("mask", POINTER(c_float)),
-                ("objectness", c_float),
-                ("sort_class", c_int)]
+    _fields_ = ([("bbox", BOX),
+                 ("classes", c_int),
+                 ("prob", POINTER(c_float)),
+                 ("mask", POINTER(c_float)),
+                 ("objectness", c_float),
+                 ("sort_class", c_int)] +
+                 ([("uc", POINTER(c_float)), ("points", c_int)] if DARKNET_VERSION == 'ALEXEY_AB' else []))
 
 
 class IMAGE(Structure):
@@ -102,7 +110,6 @@ class METADATA(Structure):
     _fields_ = [("classes", c_int),
                 ("names", POINTER(c_char_p))]
 
-lib = None
 predict = None
 set_gpu = None
 make_image = None
@@ -123,7 +130,6 @@ rgbgr_image = None
 predict_image = None
 
 def set_up_darknet_funcs():
-    global lib
     global predict
     global set_gpu
     global make_image
@@ -143,7 +149,6 @@ def set_up_darknet_funcs():
     global rgbgr_image
     global predict_image
 
-    lib = CDLL("/usr/local/lib/libdarknet.so", RTLD_GLOBAL)
     lib.network_width.argtypes = [c_void_p]
     lib.network_width.restype = c_int
     lib.network_height.argtypes = [c_void_p]
@@ -174,7 +179,10 @@ def set_up_darknet_funcs():
     free_ptrs = lib.free_ptrs
     free_ptrs.argtypes = [POINTER(c_void_p), c_int]
 
-    network_predict = lib.network_predict
+    if DARKNET_VERSION == 'ALEXEY_AB':
+        network_predict = lib.network_predict_ptr
+    else:
+        network_predict = lib.network_predict
     network_predict.argtypes = [c_void_p, POINTER(c_float)]
 
     reset_rnn = lib.reset_rnn
@@ -250,23 +258,29 @@ def detect(net, meta, image, input_type, thresh=.25, hier_thresh=.5, nms=.45):
     free_detections(dets, num)
     return res
 
-def say( m ): print >> sys.stderr, "darknet-cat: ", m
+def say( m ): sys.stderr.write("darknet-cat: {}\n".format(m))
 
-def warn( m ): print >> sys.stderr, "darknet-cat: warning:", m
+def warn( m ): sys.stderr.write("darknet-cat: warning: {}\n".format(m))
 
-def die( m ): print >> sys.stderr, "darknet-cat:", m; sys.exit( 1 )
+def die( m ): sys.stderr.write("darknet-cat: {}\n".format(m)); sys.exit( 1 )
 
-def iterator( file, shape, n_type, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
+def read_buffer(buffer, dtype, count):
+    return np.frombuffer(buffer.read(count * np.dtype(dtype).itemsize), dtype)
+
+def write_buffer(buffer, data):
+    buffer.write(data.tobytes())
+
+def iterator( buffer, shape, n_type, header_size, footer_size ): # todo: quick and dirty; failed to find how to read from stdin using tf.FixedLengthRecordReader
     size = np.prod( shape )
     while True:
-        header = np.fromfile( file, np.uint8, header_size )
-        data = np.fromfile( file, ntype, size )
-        footer = np.fromfile( file, np.uint8, footer_size )
+        header = read_buffer( buffer, np.uint8, header_size)
+        data = read_buffer( buffer, ntype, size )
+        footer = read_buffer( buffer, np.uint8, footer_size )
         if data.shape[0] == size: yield header, data.reshape( shape ), footer
         else: yield None, None, None
 
 if __name__ == '__main__':
-    def handle_signal( s, f ): print >> sys.stderr, "darknet-cat: broken pipe, exit"; sys.exit( 0 )
+    def handle_signal( s, f ): sys.stderr.write("darknet-cat: broken pipe, exit\n"); sys.exit( 0 )
     signal.signal( signal.SIGPIPE, handle_signal ) 
     parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
     parser.add_argument( '--input-shape', type = str, required=True, help = 'image size in the the format width,height,channels' )
@@ -279,6 +293,8 @@ if __name__ == '__main__':
     parser.add_argument( '--config', help="configuration (cfg) file required by darknet", required=True)
     parser.add_argument( '--weights', help="tained darknet weights file", required=True)
     parser.add_argument( '--classes', help="number of classes", required=True, type=int)
+    parser.add_argument( '--input-file', help="file to read image data from", type=argparse.FileType('rb'), default=sys.stdin.buffer)
+    parser.add_argument( '--output-file', help="file to write detection results to", type=argparse.FileType('wb'), default=sys.stdout.buffer)
     args = parser.parse_args()
     warn( "ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment" )
 
@@ -295,7 +311,7 @@ if __name__ == '__main__':
 
     img_counter = 0
     t0 = time()
-    for header, data, footer in iterator( sys.stdin, input_shape, ntype, args.header_size, args.footer_size ):
+    for header, data, footer in iterator( args.input_file, input_shape, ntype, args.header_size, args.footer_size ):
         if args.verbose:
             say("time per image: {}".format(time()-t0))
             t0=time()
@@ -306,13 +322,13 @@ if __name__ == '__main__':
         p1_list, p2_list = list(), list()
 
         for (label, likelihood, output) in results:
-            header.tofile( sys.stdout )
-            if args.keep_input: data.tofile( sys.stdout )
-            footer.tofile( sys.stdout )
-            np.asarray( meta.names.index(label), np.uint32 ).tofile( sys.stdout ) # convert back from number as string
-            np.asarray( likelihood, np.float32 ).tofile( sys.stdout )
-            np.asarray( output, np.float32 ).tofile( sys.stdout ) # todo: is this generic enough - is it always a label, likelihood, tuple-of-floats?
-            sys.stdout.flush()
+            write_buffer(args.output_file, header)
+            if args.keep_input: write_buffer(args.output_file, data)
+            write_buffer(args.output_file, footer)
+            write_buffer(args.output_file, np.asarray( meta.names.index(label), np.uint32 )) # convert back from number as string
+            write_buffer(args.output_file, np.asarray( likelihood, np.float32 ))
+            write_buffer(args.output_file, np.asarray( output, np.float32 )) # todo: is this generic enough - is it always a label, likelihood, tuple-of-floats?
+            args.output_file.flush()
 
             if args.save_images:
                 x, y, w, h = np.array(output).astype(int)
