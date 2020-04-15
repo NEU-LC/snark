@@ -642,7 +642,7 @@ class accumulate_impl_
                             else
                             {
                                 unsigned int half = values_.size() / 2;
-                                h = values_[ last_ < half ? last_ + half : last_ - half ];
+                                h = values_[ last_ < half ? ( last_ + half ) : ( last_ - half ) ];
                             }
                             break;
                         }
