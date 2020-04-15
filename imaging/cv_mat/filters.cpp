@@ -641,9 +641,8 @@ class accumulate_impl_
                             }
                             else
                             {
-                                unsigned int end = last_ + 1;
                                 unsigned int half = values_.size() / 2;
-                                h = values_[ end < half ? end + half : end - half ];
+                                h = values_[ last_ < half ? last_ + half : last_ - half ];
                             }
                             break;
                         }
