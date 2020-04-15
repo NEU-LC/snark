@@ -633,18 +633,10 @@ class accumulate_impl_
                         {
                             COMMA_THROW( comma::exception, "not implemented" );
                         }
-                        case timestamping::median:
+                        case timestamping::median: // quick and dirty, dodgy
                         {
-                            if( count_ < values_.size() )
-                            {
-                                h = values_[ count_ / 2 ]; // quick and dirty
-                            }
-                            else
-                            {
-                                unsigned int half = values_.size() / 2;
-                                h = values_[ last_ < half ? ( last_ + half ) : ( last_ - half ) ];
-                            }
-                            break;
+                            unsigned int half = values_.size() / 2;
+                            h = values_[ ( count_ - 1 ) < half ? 0 : ( last_ < half ? ( last_ + half ) : ( last_ - half ) ) ];
                         }
                     }
                     return h;
