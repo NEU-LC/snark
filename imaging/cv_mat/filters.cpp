@@ -594,18 +594,6 @@ struct channels_to_cols_impl_ {
     }
 };
 
-template < typename H > struct timestamp_traits // todo: super-quick and dirty; make generic
-{
-    static boost::posix_time::ptime get( const H& ) { COMMA_THROW( comma::exception, "not implemented" ); }
-    static H& set( H& h, boost::posix_time::ptime t ) { COMMA_THROW( comma::exception, "not implemented" ); }
-};
-
-template <> struct timestamp_traits< boost::posix_time::ptime > // todo: super-quick and dirty; make generic
-{
-    static boost::posix_time::ptime get( const boost::posix_time::ptime& t ) { return t; }
-    static boost::posix_time::ptime& set( boost::posix_time::ptime& h, boost::posix_time::ptime t ) { h = t; return h; }
-};
-
 template < typename H >
 class accumulate_impl_
 {
@@ -617,56 +605,55 @@ class accumulate_impl_
             public:
                 enum how { first = 0, last, mean, median };
                 
-                timestamping( how h, unsigned int size ): how_( h ), size_( size ), last_( 0 ), count_( 0 ) {}
+                timestamping( how h, unsigned int size ): how_( h ), values_( size ), last_( values_.size() - 1 ), count_( 0 ) {}
                 
                 void update( H& h )
                 {
                     ++count_;
                     ++last_;
-                    if( last_ == size_ ) { last_ = 0; }
-                    values_[last_] = timestamp_traits< H >::get( h );
+                    if( last_ == values_.size() ) { last_ = 0; }
+                    values_[last_] = h;
                 }
-                const H& get( H& h ) const
+                const H get() const
                 {
-                    boost::posix_time::ptime t;
+                    H h;
                     switch( how_ )
                     {
                         case timestamping::first:
                         {
-                            t = values_[ count_ <= 1 ? last_ : last_ == 0 ? size_ - 1 : ( last_ - 1 ) ];
+                            h = values_[ count_ <= 1 ? last_ : last_ == 0 ? values_.size() - 1 : ( last_ - 1 ) ];
                             break;
                         }
                         case timestamping::last:
                         {
-                            t = values_[last_];
+                            h = values_[last_];
                             break;
                         }
                         case timestamping::mean:
                         {
-                            COMMA_THROW( comma::exception, "todo, just ask" );
+                            COMMA_THROW( comma::exception, "not implemented" );
                         }
                         case timestamping::median:
                         {
-                            if( count_ < size_ )
+                            if( count_ < values_.size() )
                             {
-                                t = values_[ count_ / 2 ]; // quick and dirty
+                                h = values_[ count_ / 2 ]; // quick and dirty
                             }
                             else
                             {
                                 unsigned int end = last_ + 1;
-                                unsigned int half = size_ / 2;
-                                t = values_[ end < half ? end + half : end - half ];
+                                unsigned int half = values_.size() / 2;
+                                h = values_[ end < half ? end + half : end - half ];
                             }
                             break;
                         }
                     }
-                    return timestamp_traits< H >::set( h, t );
+                    return h;
                 }
                 
             private:
-                std::vector< boost::posix_time::ptime > values_;
                 how how_;
-                unsigned int size_;
+                std::vector< H > values_;
                 unsigned int last_;
                 unsigned int count_;
         };
@@ -703,7 +690,7 @@ class accumulate_impl_
             if( input.second.rows != h_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image with " << h_ << " rows, got " << input.second.rows << " rows"); }
             if( input.second.type() != type_ ) { COMMA_THROW( comma::exception, "accumulate: expected input image of type " << type_ << ", got type " << input.second.type() << " rows"); }
             timestamping_.update( input.first );
-            value_type output( timestamping_.get( input.first ), cv::Mat( accumulated_image_[0].size(), accumulated_image_[0].type() ) );
+            value_type output( timestamping_.get(), cv::Mat( accumulated_image_[0].size(), accumulated_image_[0].type() ) );
             switch( how_ )
             {
                 case sliding:
@@ -3086,7 +3073,6 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             bool index = false;
             if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "please specify log=<filename> or log=<directory>[,<options>]" ); }
             const std::vector< std::string >& w = comma::split( e[1], ',' );
-
             std::string file = w[0];
             for ( std::size_t option = 1; option < w.size(); ++option )
             {
@@ -3099,7 +3085,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                 }
                 else if( u[0] == "size" )
                 {
-                    if (period) { COMMA_THROW( comma::exception, "log: expected \"period\" or \"size\"; got both" ); }
+                    if( period ) { COMMA_THROW( comma::exception, "log: expected \"period\" or \"size\"; got both" ); }
                     if( u.size() <= 1 ) { COMMA_THROW( comma::exception, "log: please specify size:<number of frames>" ); }
                     size = boost::lexical_cast< comma::uint32 >( u[1] );
                 }
@@ -3112,14 +3098,14 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                     COMMA_THROW( comma::exception, "log: expected \"index\", \"period\" or \"size\"; got: \"" << u[0] << "\"" );
                 }
             }
-            if (period)
+            if( period )
             {
                 unsigned int seconds = static_cast< unsigned int >( *period );
                 f.push_back( filter_type( log_impl_< H >( file, boost::posix_time::seconds( seconds ) + boost::posix_time::microseconds( static_cast< unsigned int >( ( *period - seconds ) * 1000000 ) ), index, get_timestamp ), false ) );
             }
-            else if ( size )
+            else if( size )
             {
-                f.push_back( filter_type( log_impl_< H >( file, *size, index, get_timestamp), false ) );
+                f.push_back( filter_type( log_impl_< H >( file, *size, index, get_timestamp ), false ) );
             }
             else
             {
