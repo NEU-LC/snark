@@ -27,10 +27,8 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_WHEELS_WHEEL_COMMANDS_H_
-#define SNARK_WHEELS_WHEEL_COMMANDS_H_
+#pragma once
 
-#include <boost/math/constants/constants.hpp>
 #include <Eigen/Core>
 #include "../../math/frame_transforms.h"
 #include <boost/optional.hpp>
@@ -74,5 +72,3 @@ wheel_command compute_wheel_command( const steer_command& desired, const Eigen::
 wheel_command compute_wheel_command(const steer_command& desired, const Eigen::Matrix4d& wheel_pose, double wheel_offset, const boost::optional< limit >& angle_limit, boost::optional< double > current_angle, bool wrap,const boost::optional<Eigen::Vector2d>& icr);
 
 } } // namespace snark { namespace wheels {
-
-#endif // SNARK_WHEELS_WHEEL_COMMANDS_H_
