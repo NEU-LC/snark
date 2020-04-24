@@ -54,6 +54,7 @@
 #include "../../imaging/cv_mat/serialization.h"
 #include "../../imaging/cv_mat/filters/life.h"
 #include "../../visiting/eigen.h"
+#include "cv_calc/enumerate.h"
 #include "cv_calc/equirectangular_map.h"
 #include "cv_calc/unstride.h"
 
@@ -76,6 +77,7 @@ static void usage( bool verbose=false )
     std::cerr << "    chessboard-corners: detect and output corners of a chessboard calibration image" << std::endl;
     std::cerr << "    crop-random,roi-random,random-crop,random-roi: output random patches of given size, e.g. to create a machine learning test dataset" << std::endl;
     std::cerr << "    draw: draw on the image primitives defined in the image header; skip a primitive if its dimensions are zero" << std::endl;
+    std::cerr << "    enumerate: replace image timestamp with an 64-bit integer counter (convenience operation)" << std::endl;
     std::cerr << "    equirectangular-map: output equirectangular-to-rectilinear map for a given orientation or 6 cube faces" << std::endl;
     std::cerr << "    format: output header and data format string in ascii" << std::endl;
     std::cerr << "    grep: output only images that satisfy conditions" << std::endl;
@@ -162,6 +164,9 @@ static void usage( bool verbose=false )
     std::cerr << "                --circles=\"circles.csv;fields=t,index,centre/x,centre/y,radius;weight=3;normalized\"" << std::endl;
     std::cerr << std::endl;
     std::cerr << "        fields: t,rows,cols,type,circles,labels,rectangles" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    enumerate" << std::endl;
+    std::cerr << snark::cv_calc::enumerate::options() << std::endl;
     std::cerr << std::endl;
     std::cerr << "    equirectangular-map" << std::endl;
     std::cerr << snark::cv_calc::equirectangular_map::options() << std::endl;
@@ -1088,7 +1093,7 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--forever,--header-fields,--header-format,--output-fields,--output-format,--exit-on-stability,--crop,--no-discard,--show-partial,--permissive,--deterministic,--fit-last,--output-number-of-strides,--number-of-strides,--reverse", "-.*");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--forever,--header-fields,--header-format,--output-fields,--output-format,--exit-on-stability,--crop,--no-discard,--show-partial,--permissive,--deterministic,--fit-last,--output-number-of-strides,--number-of-strides,--prepend,--reverse", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
@@ -1237,6 +1242,7 @@ int main( int ac, char** av )
             }
             return 0;
         }
+        if( operation == "enumerate" ) { return snark::cv_calc::enumerate::run( options, input_options, output_options ); }
         if( operation == "equirectangular-map" ) { return snark::cv_calc::equirectangular_map::run( options ); }
         if( operation == "grep" )
         {
