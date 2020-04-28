@@ -3219,7 +3219,7 @@ static std::string usage_impl_()
 {
     std::ostringstream oss;
     oss << std::endl;
-    oss << "    OpenCV version: " << CV_VERSION_MAJOR << std::endl;
+    oss << "    OpenCV version: " << CV_VERSION_MAJOR << "." << CV_VERSION_MINOR << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>[,<how>][,<options>]: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
