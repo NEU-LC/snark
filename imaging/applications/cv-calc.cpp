@@ -43,6 +43,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <comma/base/exception.h>
+#include <comma/csv/impl/epoch.h> // quick and dirty
 #include <comma/csv/stream.h>
 #include <comma/io/stream.h>
 #include <comma/math/compare.h>
@@ -1117,13 +1118,8 @@ int main( int ac, char** av )
             snark::cv_mat::serialization output_serialization( output_options );
             unsigned int number = options.value( "--number,-n", 1 );
             bool forever = options.exists( "--forever" );
-            std::pair< boost::posix_time::ptime, cv::Mat > p;
-            cv::Mat m = cv::Mat::zeros( output_options.rows, output_options.cols, snark::cv_mat::type_from_string( output_options.type ) );
-            
-            for( unsigned int i = 0; std::cout.good() && ( forever || i < number ); ++i )
-            {
-                output_serialization.write_to_stdout( std::make_pair( boost::posix_time::microsec_clock::universal_time(), m ) );
-            }
+            std::pair< boost::posix_time::ptime, cv::Mat > p( boost::posix_time::ptime( comma::csv::impl::epoch ), cv::Mat::zeros( output_options.rows, output_options.cols, snark::cv_mat::type_from_string( output_options.type ) ) );            
+            for( unsigned int i = 0; std::cout.good() && ( forever || i < number ); ++i ) { output_serialization.write_to_stdout( p ); }
             return 0;
         }
         if( operation == "chessboard-corners")
