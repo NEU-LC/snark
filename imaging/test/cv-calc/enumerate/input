@@ -1,0 +1,7 @@
+emplace[0]="yes 20200101T000000,2,2,0,0,1,2,3 | head -n3 | csv-to-bin t,3ui,4ub | cv-calc enumerate | csv-from-bin l,3ui,4ub"
+emplace[1]="yes 20200101T000000,2,2,0,0,1,2,3 | head -n3 | csv-to-bin t,3ui,4ub | cv-calc enumerate --begin -1 | csv-from-bin l,3ui,4ub"
+emplace[2]="yes 20200101T000000,2,2,0,0,1,2,3 | head -n3 | csv-to-bin t,3ui,4ub | cv-calc enumerate --begin 10 | csv-from-bin l,3ui,4ub"
+
+prepend[0]="yes 20200101T000000,2,2,0,0,1,2,3 | head -n3 | csv-to-bin t,3ui,4ub | cv-calc enumerate --prepend | csv-from-bin i,t,3ui,4ub"
+prepend[1]="yes 20200101T000000,2,2,0,0,1,2,3 | head -n3 | csv-to-bin t,3ui,4ub | cv-calc enumerate --begin -1 --prepend | csv-from-bin i,t,3ui,4ub"
+prepend[2]="yes 20200101T000000,2,2,0,0,1,2,3 | head -n3 | csv-to-bin t,3ui,4ub | cv-calc enumerate --begin 10 --prepend | csv-from-bin i,t,3ui,4ub"
