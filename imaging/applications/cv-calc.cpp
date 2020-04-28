@@ -112,6 +112,8 @@ static void usage( bool verbose=false )
     std::cerr << "        use --output to specify rows, cols, and image type" << std::endl;
     std::cerr << "        --number,-n=<n>; default=1; output a given number of blank images" << std::endl;
     std::cerr << "        --forever; keep outputting blank image in the loop" << std::endl;
+    std::cerr << "        --realtime; timestamp is actual clock value" << std::endl;
+    std::cerr << "        --timestamp,--time=<iso_time>; default: epoch" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    chessboard-corners" << std::endl;
     std::cerr << "        --draw; outputs image with detected corners drawn" << std::endl;
@@ -499,8 +501,9 @@ private:
     bool has_index;
 };
 
-template < typename shape_type, typename config_type > static void init_( std::vector< shape_type >& header_shapes , std::unique_ptr< join_filter< shape_type > >& stream_shapes
-        , const comma::command_line_options& options, const std::string& what )
+template < typename shape_type, typename config_type > static void init_( std::vector< shape_type >& header_shapes
+                                                                        , std::unique_ptr< join_filter< shape_type > >& stream_shapes
+                                                                        , const comma::command_line_options& options, const std::string& what )
 {
     std::string config_string = options.value< std::string >( what, "" );
     if( config_string.empty() ) { return; }
@@ -1094,7 +1097,7 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--forever,--header-fields,--header-format,--output-fields,--output-format,--exit-on-stability,--crop,--no-discard,--show-partial,--permissive,--deterministic,--fit-last,--output-number-of-strides,--number-of-strides,--prepend,--reverse", "-.*");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--forever,--header-fields,--header-format,--output-fields,--output-format,--exit-on-stability,--crop,--no-discard,--show-partial,--permissive,--deterministic,--fit-last,--output-number-of-strides,--number-of-strides,--prepend,--realtime,--reverse", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
@@ -1118,8 +1121,15 @@ int main( int ac, char** av )
             snark::cv_mat::serialization output_serialization( output_options );
             unsigned int number = options.value( "--number,-n", 1 );
             bool forever = options.exists( "--forever" );
-            std::pair< boost::posix_time::ptime, cv::Mat > p( boost::posix_time::ptime( comma::csv::impl::epoch ), cv::Mat::zeros( output_options.rows, output_options.cols, snark::cv_mat::type_from_string( output_options.type ) ) );            
-            for( unsigned int i = 0; std::cout.good() && ( forever || i < number ); ++i ) { output_serialization.write_to_stdout( p ); }
+            options.assert_mutually_exclusive( "--timestamp,--time", "--realtime" );
+            std::pair< boost::posix_time::ptime, cv::Mat > p( boost::posix_time::ptime(), cv::Mat::zeros( output_options.rows, output_options.cols, snark::cv_mat::type_from_string( output_options.type ) ) );            
+            if( options.exists( "--timestamp,--time" ) ) { p.first = boost::posix_time::from_iso_string( options.value< std::string >( "--timestamp,--time" ) ); }
+            bool realtime = options.exists( "--realtime" );
+            for( unsigned int i = 0; std::cout.good() && ( forever || i < number ); ++i )
+            {
+                if( realtime ) { p.first = boost::posix_time::microsec_clock::universal_time(); }
+                output_serialization.write_to_stdout( p );
+            }
             return 0;
         }
         if( operation == "chessboard-corners")
