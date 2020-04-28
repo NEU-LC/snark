@@ -1605,7 +1605,7 @@ class max_impl_ // experimental, to debug
         std::deque< value_type > deque_; // use vector?
 };
 
-#if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 3
+#if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
 template < typename H >
 class map_impl_
 {
@@ -1700,7 +1700,7 @@ class map_impl_
             }
         }
 };
-#endif // #if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 3
+#endif // #if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
 
 template < typename H >
 static typename impl::filters< H >::value_type magnitude_impl_( typename impl::filters< H >::value_type m )
@@ -2773,16 +2773,16 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "map" ) // todo! refactor usage, especially csv option separators and equal sign; make optionally map for each channel separately
     {
-#if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 3
+#if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
         std::stringstream s; s << e[1]; for( std::size_t i = 2; i < e.size(); ++i ) { s << "=" << e[i]; }
         std::string map_filter_options = s.str();
         std::vector< std::string > items = comma::split( map_filter_options, '&' );
         bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
         return std::make_pair( map_impl_ < H >( map_filter_options, permissive ), true );
-#else // #if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 3
+#else // #if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
         COMMA_THROW( comma::exception, "map: opencv 3 support: todo" );
-#endif // #if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 3
+#endif // #if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
     }
     if( e[0] == "inrange" )
     {
