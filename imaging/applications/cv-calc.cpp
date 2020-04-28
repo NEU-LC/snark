@@ -1118,7 +1118,8 @@ int main( int ac, char** av )
             unsigned int number = options.value( "--number,-n", 1 );
             bool forever = options.exists( "--forever" );
             std::pair< boost::posix_time::ptime, cv::Mat > p;
-            cv::Mat m( output_options.rows, output_options.cols, snark::cv_mat::type_from_string( output_options.type ) );
+            cv::Mat m = cv::Mat::zeros( output_options.rows, output_options.cols, snark::cv_mat::type_from_string( output_options.type ) );
+            
             for( unsigned int i = 0; std::cout.good() && ( forever || i < number ); ++i )
             {
                 output_serialization.write_to_stdout( std::make_pair( boost::posix_time::microsec_clock::universal_time(), m ) );
