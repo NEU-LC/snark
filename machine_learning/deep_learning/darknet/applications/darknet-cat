@@ -188,9 +188,22 @@ def set_up_darknet_funcs():
     reset_rnn = lib.reset_rnn
     reset_rnn.argtypes = [c_void_p]
 
-    load_net = lib.load_network
-    load_net.argtypes = [c_char_p, c_char_p, c_int]
-    load_net.restype = c_void_p
+    def load_net_fn(cfg, weights):
+        # The AlexeyAB darknet version uses a "batch" parameter >0 to
+        # load_network_custom to put the network in detection mode. When not
+        # training, the yolov3 network uses about half as much GPU RAM.
+        if DARKNET_VERSION == 'ALEXEY_AB':
+            load = lib.load_network_custom
+            load.argtypes = [c_char_p, c_char_p, c_int, c_int]
+            load.restype = c_void_p
+            return load(cfg, weights, 0, 1)
+        else:
+            load = lib.load_network
+            load.argtypes = [c_char_p, c_char_p, c_int]
+            load.restype = c_void_p
+            return load(cfg, weights, 0)
+
+    load_net = load_net_fn
 
     do_nms_obj = lib.do_nms_obj
     do_nms_obj.argtypes = [POINTER(DETECTION), c_int, c_int, c_float]
@@ -299,7 +312,7 @@ if __name__ == '__main__':
     warn( "ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment" )
 
     set_up_darknet_funcs() # todo: install darknet somehow
-    net = load_net(args.config.encode('utf-8'), args.weights.encode('utf-8'), 0) # todo: get number of classes from config file
+    net = load_net(args.config.encode('utf-8'), args.weights.encode('utf-8'))
 
     meta = namedtuple("meta", "classes names") # create meta class directly rather than requiring a file
     meta.classes=args.classes
