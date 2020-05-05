@@ -82,16 +82,17 @@
 #include "filters/arithmetic.h"
 #include "filters/bitwise.h"
 #include "filters/blank.h"
-#include "filters/contraharmonic.h"
 #include "filters/colors.h"
+#include "filters/contraharmonic.h"
 #include "filters/file.h"
 #include "filters/hard_edge.h"
 #include "filters/load.h"
 #include "filters/morphology.h"
+#include "filters/pad.h"
 #include "filters/partitions.h"
 #include "filters/ratio.h"
-#include "filters/remove_speckles.h"
 #include "filters/remap.h"
+#include "filters/remove_speckles.h"
 #include "filters/text.h"
 #include "filters/warp.h"
 
@@ -2395,18 +2396,9 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         {
             std::vector< std::string > setting = comma::split( inputs[s], ':' );
             if ( setting.size() != 2 ) { COMMA_THROW( comma::exception, op_name << ": expected keyword:value; got " << setting.size() << " parameter '" << inputs[s] << "'" ); }
-            if ( setting[0] == "pad" )
-            {
-                padding = boost::lexical_cast< double >( setting[1] );
-            }
-            else if ( setting[0] == "repeat" )
-            {
-                repeat = boost::lexical_cast< unsigned int >( setting[1] );
-            }
-            else
-            {
-                COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" );
-            }
+            if ( setting[0] == "pad" ) { padding = boost::lexical_cast< double >( setting[1] ); }
+            else if ( setting[0] == "repeat" ) { repeat = boost::lexical_cast< unsigned int >( setting[1] ); }
+            else { COMMA_THROW( comma::exception, op_name << ": the keyword '" << setting[0] << "' is not one of [pad,repeat]" ); }
             ++s;
         }
         if ( values.empty() ) { COMMA_THROW( comma::exception, op_name << ": specify at least one " << op_what << " to store as channel" ); }
@@ -2433,6 +2425,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         return std::make_pair( boost::bind< value_type_t >( circle_impl_< H >, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) ), true );
     }
     if( e[0] == "contraharmonic" ) { return filters::contraharmonic<H>::make( e.size() > 1 ? e[1] : ""); }
+    if( e[0] == "pad" ) { return filters::pad::pad< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "hard-edge" ) { return filters::hard_edge< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "partition" ) { return filters::partitions::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "partitions-reduce" ) { return filters::partitions::reduce<H>::make(e.size() > 1 ? e[1] : ""); }
@@ -3345,6 +3338,7 @@ static std::string usage_impl_()
     //oss << "        unwarp=<how>: todo: unwarp image" << std::endl;
     //oss << "            <how>: todo" << std::endl;
     oss << filters::contraharmonic<boost::posix_time::ptime>::usage(8) << std::endl;
+    oss << filters::pad::pad<boost::posix_time::ptime>::usage(8) << std::endl;
     oss << filters::text< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
