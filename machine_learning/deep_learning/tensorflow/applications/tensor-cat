@@ -156,6 +156,9 @@ def parse_args(argv=None):
     # parser.add_argument( '--device', type = str, help = 'device to use, e.g. /cpu:0, /device:GPU:0, etc' )# parser.add_argument( '--device', type = str, default = "/cpu:0", help = 'device to use, e.g. /cpu:0, /device:GPU:0, etc; default: %(default)s' )
     gpu_options.add_argument('--gpu-allow-growth', action="store_true",
                              help='ATTENTION: for keras model always is set to true')
+    gpu_options.add_argument('--gpu-virtual-memory', type=float,
+                             help='(tf2 only) GPU memory to allocate in GBs. Use about 80%% of memory on laptops to bypass some CUDNN out of memory bugs.')
+    # --gpu-virtual-memory: for some reason, allocating less memory for the virtual GPU fixes CUDNN out of memory bugs when creating graph.
 
     output_options = parser.add_argument_group('output options')
     output_options.add_argument(
@@ -397,6 +400,11 @@ class tf2:
             self._outputs = None
             self._tensors = None
             self._graph = None
+            if len(tf.config.experimental.list_physical_devices('GPU')) == 1 and ARGS.gpu_virtual_memory:
+                tf.config.experimental.set_memory_growth(tf.config.experimental.list_physical_devices('GPU')[0], True)
+                tf.config.experimental.set_virtual_device_configuration(
+                    tf.config.experimental.list_physical_devices('GPU')[0],
+                    [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=int(1024 * ARGS.virtual_memory))])
 
         def load_model(self, frozen_graph=None, keras_model=None, keras_weights=None):
             if frozen_graph:
