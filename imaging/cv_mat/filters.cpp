@@ -53,9 +53,9 @@
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
-#if CV_VERSION_MAJOR <= 2
+#if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
 #include <opencv2/contrib/contrib.hpp>
-#endif // #if CV_VERSION_MAJOR <= 2
+#endif // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_reduce.h>
@@ -1248,7 +1248,7 @@ template < typename T > static T cv_read_( const std::string& filename = "", con
     return t;
 }
 
-#if CV_VERSION_MAJOR <= 2
+#if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
 template < typename H >
 struct simple_blob_impl_ {
     typedef typename impl::filters< H >::value_type value_type;
@@ -1266,7 +1266,7 @@ struct simple_blob_impl_ {
         return m;
     }
 };
-#endif // #if CV_VERSION_MAJOR <= 2
+#endif // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
 
 template < typename H >
 struct grab_impl_ {
@@ -1606,7 +1606,7 @@ class max_impl_ // experimental, to debug
         std::deque< value_type > deque_; // use vector?
 };
 
-#if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
+#if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
 template < typename H >
 class map_impl_
 {
@@ -1701,7 +1701,7 @@ class map_impl_
             }
         }
 };
-#endif // #if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
+#endif // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
 
 template < typename H >
 static typename impl::filters< H >::value_type magnitude_impl_( typename impl::filters< H >::value_type m )
@@ -2766,16 +2766,16 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     }
     if( e[0] == "map" ) // todo! refactor usage, especially csv option separators and equal sign; make optionally map for each channel separately
     {
-#if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
+#if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
         std::stringstream s; s << e[1]; for( std::size_t i = 2; i < e.size(); ++i ) { s << "=" << e[i]; }
         std::string map_filter_options = s.str();
         std::vector< std::string > items = comma::split( map_filter_options, '&' );
         bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
         return std::make_pair( map_impl_ < H >( map_filter_options, permissive ), true );
-#else // #if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
+#else // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
         COMMA_THROW( comma::exception, "map: opencv 3 support: todo" );
-#endif // #if CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR > 4
+#endif // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
     }
     if( e[0] == "inrange" )
     {
@@ -3128,7 +3128,7 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "simple-blob" )
         {
-#if CV_VERSION_MAJOR <= 2
+#if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
             if( i < v.size() - 1 ) { COMMA_THROW( comma::exception, "expected 'simple-blob' as the last filter, got \"" << how << "\"" ); }
             std::vector< std::string > s;
             if( e.size() > 1 ) { s = comma::split( e[1], ',' ); }
@@ -3156,9 +3156,9 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
             }
             f.push_back( filter_type( boost::bind< value_type_t >( simple_blob_impl_< H >(get_timestamp), _1, cv_read_< cv::SimpleBlobDetector::Params >( config, path ), is_binary ), false ) );
             f.push_back( filter_type( NULL ) ); // quick and dirty
-#else // #if CV_VERSION_MAJOR <= 2
+#else // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
             COMMA_THROW( comma::exception, "simple-blob: opencv 3 support: todo" );
-#endif // #if CV_VERSION_MAJOR <= 2
+#endif // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
         }
         else if( e[0] == "null" )
         {
@@ -3212,7 +3212,7 @@ static std::string usage_impl_()
 {
     std::ostringstream oss;
     oss << std::endl;
-    oss << "    OpenCV version: " << CV_VERSION_MAJOR << "." << CV_VERSION_MINOR << std::endl;
+    oss << "    OpenCV version: " << CV_VERSION << std::endl;
     oss << std::endl;
     oss << "    cv::Mat image filters usage (';'-separated):" << std::endl;
     oss << "        accumulate=<n>[,<how>][,<options>]: accumulate the last n images and concatenate them vertically (useful for slit-scan and spectral cameras like pika2)" << std::endl;
