@@ -62,8 +62,8 @@ protected:
 private:
     std::unique_ptr< advanced_navigation::stream > stream;
     std::vector< char > buf;
-    unsigned index;
-    unsigned head;
+    unsigned int index;
+    unsigned int head;
     messages::header* msg_header;
 };
 

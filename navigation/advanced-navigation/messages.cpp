@@ -58,7 +58,7 @@ static const uint16_t crc16_table[256] =
     0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8, 0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0
 };
 
-uint16_t calculate_crc( const uint8_t *bytes, unsigned length )
+uint16_t calculate_crc( const uint8_t *bytes, unsigned int length )
 {
     uint16_t crc = 0xFFFF, i;
     for( i = 0; i < length; i++ )
@@ -94,7 +94,7 @@ bool header::is_valid() const
 }
 bool header::check_crc( const char* data ) const
 {
-    return detail::calculate_crc( (const uint8_t *)data, unsigned( length() )) == msg_crc();
+    return detail::calculate_crc( (const uint8_t *)data, (unsigned int)( length() )) == msg_crc();
 }
 
 header::header() { LRC = 1; id = 255; length = 0; msg_crc = 0; }   // invalid header
@@ -129,7 +129,7 @@ snark::spherical::coordinates system_state::coordinates() const
 // ----------------
 // rtcm_corrections
 // ----------------
-rtcm_corrections::rtcm_corrections( const char* buf, unsigned size )
+rtcm_corrections::rtcm_corrections( const char* buf, unsigned int size )
     : header( id, size, buf)
 {
     std::memcpy( &msg_data[0], buf,size );
@@ -161,8 +161,8 @@ std::string system_status_description::string( uint16_t status )
 {
     if( !status ) { return "null"; }
     std::stringstream ss;
-    unsigned bit = 1;
-    for( unsigned i = 0; i < text.size(); ++i )
+    unsigned int bit = 1;
+    for( unsigned int i = 0; i < text.size(); ++i )
     {
         if( status & bit ) { ss << i << ": " << text[i] << "; "; }
         bit <<= 1;
@@ -171,29 +171,29 @@ std::string system_status_description::string( uint16_t status )
 }
 void system_status_description::descroption( std::ostream& os )
 {
-    for( unsigned i = 0; i < text.size(); ++i )
+    for( unsigned int i = 0; i < text.size(); ++i )
     {
         os << i << "," << "\"" << text[i] << "\"" << std::endl;
     }
 }
 
 system_status_description::system_status_description( uint16_t status ) : status( status ) {}
-unsigned system_status_description::system_failure() const { return (status & 1) ? 1 : 0; }
-unsigned system_status_description::accelerometer_sensor_failure() const { return ( status & 2 ) ? 1 : 0; }
-unsigned system_status_description::gyroscope_sensor_failure() const { return ( status & 4 ) ? 1 : 0; }
-unsigned system_status_description::magnetometer_sensor_failure() const { return ( status & 8 ) ? 1 : 0; }
-unsigned system_status_description::pressure_sensor_failure() const { return ( status & 0x10 ) ? 1 : 0; }
-unsigned system_status_description::gnss_failure() const { return ( status & 0x20 ) ? 1 : 0; }
-unsigned system_status_description::accelerometer_over_range() const { return ( status & 0x40 ) ? 1 : 0; }
-unsigned system_status_description::gyroscope_over_range() const { return ( status & 0x80 ) ? 1 : 0; }
-unsigned system_status_description::magnetometer_over_range() const { return ( status & 0x100 ) ? 1 : 0; }
-unsigned system_status_description::pressure_over_range() const { return ( status & 0x200 ) ? 1 : 0; }
-unsigned system_status_description::minimum_temperature_alarm() const { return ( status & 0x400 ) ? 1 : 0; }
-unsigned system_status_description::maximum_temperature_alarm() const { return ( status & 0x800 ) ? 1 : 0; }
-unsigned system_status_description::low_voltage_alarm() const { return ( status & 0x1000 ) ? 1 : 0; }
-unsigned system_status_description::high_voltage_alarm() const { return ( status & 0x2000 ) ? 1 : 0; }
-unsigned system_status_description::gnss_antenna_short_circuit() const { return ( status & 0x4000 ) ? 1 : 0; }
-unsigned system_status_description::data_output_overflow_alarm() const { return ( status & 0x8000 ) ? 1 : 0; }
+unsigned int system_status_description::system_failure() const { return (status & 1) ? 1 : 0; }
+unsigned int system_status_description::accelerometer_sensor_failure() const { return ( status & 2 ) ? 1 : 0; }
+unsigned int system_status_description::gyroscope_sensor_failure() const { return ( status & 4 ) ? 1 : 0; }
+unsigned int system_status_description::magnetometer_sensor_failure() const { return ( status & 8 ) ? 1 : 0; }
+unsigned int system_status_description::pressure_sensor_failure() const { return ( status & 0x10 ) ? 1 : 0; }
+unsigned int system_status_description::gnss_failure() const { return ( status & 0x20 ) ? 1 : 0; }
+unsigned int system_status_description::accelerometer_over_range() const { return ( status & 0x40 ) ? 1 : 0; }
+unsigned int system_status_description::gyroscope_over_range() const { return ( status & 0x80 ) ? 1 : 0; }
+unsigned int system_status_description::magnetometer_over_range() const { return ( status & 0x100 ) ? 1 : 0; }
+unsigned int system_status_description::pressure_over_range() const { return ( status & 0x200 ) ? 1 : 0; }
+unsigned int system_status_description::minimum_temperature_alarm() const { return ( status & 0x400 ) ? 1 : 0; }
+unsigned int system_status_description::maximum_temperature_alarm() const { return ( status & 0x800 ) ? 1 : 0; }
+unsigned int system_status_description::low_voltage_alarm() const { return ( status & 0x1000 ) ? 1 : 0; }
+unsigned int system_status_description::high_voltage_alarm() const { return ( status & 0x2000 ) ? 1 : 0; }
+unsigned int system_status_description::gnss_antenna_short_circuit() const { return ( status & 0x4000 ) ? 1 : 0; }
+unsigned int system_status_description::data_output_overflow_alarm() const { return ( status & 0x8000 ) ? 1 : 0; }
 
 // -------------------------
 // filter_status_description
@@ -231,10 +231,10 @@ const std::vector< std::string > filter_status_description::gnss_fix_text({
 std::string filter_status_description::full_description( uint16_t status )
 {
     std::stringstream ss;
-    unsigned index = ( status >> 4 ) & 7;
+    unsigned int index = ( status >> 4 ) & 7;
     ss << "GNSS fix " << index << ": " << gnss_fix_text[index] << ";";
-    unsigned bit = 1;
-    for( unsigned i = 0; i < text.size(); ++i )
+    unsigned int bit = 1;
+    for( unsigned int i = 0; i < text.size(); ++i )
     {
         if( !text[i].empty() ) 
         { 
@@ -255,10 +255,10 @@ std::string filter_status_description::full_description( uint16_t status )
 std::string filter_status_description::string( uint16_t status )
 {
     std::stringstream ss;
-    unsigned index = ( status >> 4 ) & 7;
+    unsigned int index = ( status >> 4 ) & 7;
     ss << "GNSS fix " << index << ": " << gnss_fix_text[index] << "; ";
-    unsigned bit = 1;
-    for( unsigned i = 0; i < text.size(); ++i )
+    unsigned int bit = 1;
+    for( unsigned int i = 0; i < text.size(); ++i )
     {
         if(( status & bit ) && !text[i].empty() ) { ss << i << ": " << text[i] << "; "; }
         bit <<= 1;
@@ -268,7 +268,7 @@ std::string filter_status_description::string( uint16_t status )
 
 void filter_status_description::descroption( std::ostream& os )
 {
-    for( unsigned i = 0; i < text.size(); ++i )
+    for( unsigned int i = 0; i < text.size(); ++i )
     {
         if( !text[i].empty() )
             os << i << "," << "\"" << text[i] << "\"" << std::endl;
@@ -276,7 +276,7 @@ void filter_status_description::descroption( std::ostream& os )
 }
 void filter_status_description::gnss_fix_descroption( std::ostream& os )
 {
-    for( unsigned i = 0; i < gnss_fix_text.size(); ++i )
+    for( unsigned int i = 0; i < gnss_fix_text.size(); ++i )
     {
         os << i << "," << "\"" << gnss_fix_text[i] << "\"" << std::endl;
     }
@@ -284,24 +284,6 @@ void filter_status_description::gnss_fix_descroption( std::ostream& os )
 
 filter_status_description::filter_status_description( uint16_t status ) : status( status ) {}
 
-<<<<<<< HEAD
-unsigned filter_status_description::gnss_fix() const { return ( status >> 4 ) & 7; }
-unsigned filter_status_description::orientation_filter_initialised() const { return ( status & 0x1 ) ? 1 : 0; }
-unsigned filter_status_description::navigation_filter_initialised() const { return ( status & 0x2 ) ? 1 : 0; }
-unsigned filter_status_description::heading_initialised() const { return ( status & 0x4 ) ? 1 : 0; }
-unsigned filter_status_description::utc_time_initialised() const { return ( status & 0x8 ) ? 1 : 0; }
-unsigned filter_status_description::event_1_occurred() const { return ( status & 0x80 ) ? 1 : 0; }
-unsigned filter_status_description::event_2_occurred() const { return ( status & 0x100 ) ? 1 : 0; }
-unsigned filter_status_description::internal_gnss_enabled() const { return ( status & 0x200 ) ? 1 : 0; }
-unsigned filter_status_description::dual_antenna_heading_active() const { return ( status & 0x400 ) ? 1 : 0; }
-unsigned filter_status_description::velocity_heading_enabled() const { return ( status & 0x800 ) ? 1 : 0; }
-unsigned filter_status_description::atmospheric_altitude_enabled() const { return ( status & 0x1000 ) ? 1 : 0; }
-unsigned filter_status_description::external_position_active() const { return ( status & 0x2000 ) ? 1 : 0; }
-unsigned filter_status_description::external_velocity_active() const { return ( status & 0x4000 ) ? 1 : 0; }
-unsigned filter_status_description::external_heading_active() const { return ( status & 0x8000 ) ? 1 : 0; }
-
-command::command( uint8_t id, const char* buf, unsigned size )
-=======
 unsigned int filter_status_description::gnss_fix() const { return ( status >> 4 ) & 7; }
 unsigned int filter_status_description::orientation_filter_initialised() const { return ( status & 0x1 ) ? 1 : 0; }
 unsigned int filter_status_description::navigation_filter_initialised() const { return ( status & 0x2 ) ? 1 : 0; }
@@ -321,7 +303,6 @@ unsigned int filter_status_description::external_heading_active() const { return
 // command
 // -------
 command::command( uint8_t id, const char* buf, unsigned int size )
->>>>>>> c96f2a1a... fixup! advanced_navigation: added comments for clarity
     : header( id, size, buf )
 {
     std::memcpy( &msg_data[0], buf, size );
@@ -354,14 +335,10 @@ void magnetic_calibration_status::status_description( std::ostream& os )
     os << "12,Calibration error: interference error" << std::endl;
 }
 
-<<<<<<< HEAD
-const char* acknowledgement::result_msg( unsigned result )
-=======
 // ---------------
 // acknowledgement
 // ---------------
 const char* acknowledgement::result_msg( unsigned int result )
->>>>>>> c96f2a1a... fixup! advanced_navigation: added comments for clarity
 {
     switch( result )
     {

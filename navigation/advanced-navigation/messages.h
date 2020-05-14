@@ -58,7 +58,7 @@ public:
     header();
     header( unsigned char id, unsigned char length, const char* data );
     void reset( unsigned char id, unsigned char length, const char* data );
-    unsigned len() const { return unsigned( length() ); }
+    unsigned int len() const { return (unsigned int)( length() ); }
 };
 
 struct system_state : public comma::packed::packed_struct< system_state, 100 >
@@ -90,22 +90,22 @@ struct system_status_description
     
     system_status_description( uint16_t status = 0 );
     uint16_t status;
-    unsigned system_failure() const;
-    unsigned accelerometer_sensor_failure() const;
-    unsigned gyroscope_sensor_failure() const;
-    unsigned magnetometer_sensor_failure() const;
-    unsigned pressure_sensor_failure() const;
-    unsigned gnss_failure() const;
-    unsigned accelerometer_over_range() const;
-    unsigned gyroscope_over_range() const;
-    unsigned magnetometer_over_range() const;
-    unsigned pressure_over_range() const;
-    unsigned minimum_temperature_alarm() const;
-    unsigned maximum_temperature_alarm() const;
-    unsigned low_voltage_alarm() const;
-    unsigned high_voltage_alarm() const;
-    unsigned gnss_antenna_short_circuit() const;
-    unsigned data_output_overflow_alarm() const;
+    unsigned int system_failure() const;
+    unsigned int accelerometer_sensor_failure() const;
+    unsigned int gyroscope_sensor_failure() const;
+    unsigned int magnetometer_sensor_failure() const;
+    unsigned int pressure_sensor_failure() const;
+    unsigned int gnss_failure() const;
+    unsigned int accelerometer_over_range() const;
+    unsigned int gyroscope_over_range() const;
+    unsigned int magnetometer_over_range() const;
+    unsigned int pressure_over_range() const;
+    unsigned int minimum_temperature_alarm() const;
+    unsigned int maximum_temperature_alarm() const;
+    unsigned int low_voltage_alarm() const;
+    unsigned int high_voltage_alarm() const;
+    unsigned int gnss_antenna_short_circuit() const;
+    unsigned int data_output_overflow_alarm() const;
 };
 
 struct filter_status_description
@@ -119,20 +119,20 @@ struct filter_status_description
     
     filter_status_description( uint16_t status = 0 );
     uint16_t status;
-    unsigned gnss_fix() const;
-    unsigned orientation_filter_initialised() const;
-    unsigned navigation_filter_initialised() const;
-    unsigned heading_initialised() const;
-    unsigned utc_time_initialised() const;
-    unsigned event_1_occurred() const;
-    unsigned event_2_occurred() const;
-    unsigned internal_gnss_enabled() const;
-    unsigned dual_antenna_heading_active() const;
-    unsigned velocity_heading_enabled() const;
-    unsigned atmospheric_altitude_enabled() const;
-    unsigned external_position_active() const;
-    unsigned external_velocity_active() const;
-    unsigned external_heading_active() const;
+    unsigned int gnss_fix() const;
+    unsigned int orientation_filter_initialised() const;
+    unsigned int navigation_filter_initialised() const;
+    unsigned int heading_initialised() const;
+    unsigned int utc_time_initialised() const;
+    unsigned int event_1_occurred() const;
+    unsigned int event_2_occurred() const;
+    unsigned int internal_gnss_enabled() const;
+    unsigned int dual_antenna_heading_active() const;
+    unsigned int velocity_heading_enabled() const;
+    unsigned int atmospheric_altitude_enabled() const;
+    unsigned int external_position_active() const;
+    unsigned int external_velocity_active() const;
+    unsigned int external_heading_active() const;
 };
 
 struct raw_sensors : public comma::packed::packed_struct< raw_sensors, 48 >
@@ -165,7 +165,7 @@ struct rtcm_corrections : public comma::packed::packed_struct< rtcm_corrections,
     boost::array< comma::packed::uint8, 255 > msg_data;
 
     rtcm_corrections() {}
-    rtcm_corrections( const char* buf, unsigned size );
+    rtcm_corrections( const char* buf, unsigned int size );
 };
 
 struct position_standard_deviation : public comma::packed::packed_struct< position_standard_deviation, 12 >
@@ -194,7 +194,7 @@ struct acknowledgement : public comma::packed::packed_struct< acknowledgement, 4
     comma::packed::little_endian::uint16 crc;
     comma::packed::uint8 result;
 
-    static const char* result_msg( unsigned result );
+    static const char* result_msg( unsigned int result );
 };
 
 struct command : public comma::packed::packed_struct< command, 260 >
@@ -203,7 +203,7 @@ struct command : public comma::packed::packed_struct< command, 260 >
     boost::array< comma::packed::uint8, 255 > msg_data;
 
     command() {}
-    command( uint8_t id, const char* buf, unsigned size );
+    command( uint8_t id, const char* buf, unsigned int size );
 };
 
 struct magnetic_calibration_configuration : public comma::packed::packed_struct< magnetic_calibration_configuration, 1 >

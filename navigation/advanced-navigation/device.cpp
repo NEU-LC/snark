@@ -47,7 +47,7 @@ comma::io::file_descriptor device::fd() { return stream->fd(); }
 void device::process()
 {
     static messages::header* skipper = NULL;
-    static unsigned debug_count = 0;
+    static unsigned int debug_count = 0;
 
     if( head > 0 && index > buf.size() / 2 )
     {
@@ -64,16 +64,16 @@ void device::process()
         }
         msg_header = NULL;
     }
-    unsigned rest_size = buf.size() - index;
+    unsigned int rest_size = buf.size() - index;
     if( rest_size > 0 )
     {
-        unsigned to_read = msg_header ? msg_header->len() - ( index - head - 5 ) : 10;
-//         unsigned to_read=rest_size;
-        unsigned read_size = stream->read_some( &buf[index], rest_size, to_read );
+        unsigned int to_read = msg_header ? msg_header->len() - ( index - head - 5 ) : 10;
+//         unsigned int to_read=rest_size;
+        unsigned int read_size = stream->read_some( &buf[index], rest_size, to_read );
 //        comma::verbose << "device::process() read " << read_size << " bytes" << std::endl;
         if( read_size == 0 )
             return;
-        if( read_size > (unsigned)rest_size )
+        if( read_size > (unsigned int)rest_size )
             comma::verbose << "read long " << read_size << " vs " << rest_size << std::endl;
         index += read_size;
     }
@@ -136,16 +136,16 @@ void device::process()
                     if( !skipper )
                         comma::verbose << " skipped " << debug_count << std::endl;
                     else
-                        comma::verbose << " skipped " << debug_count << "; " << unsigned( skipper->LRC() ) << " "
-                                       << unsigned( skipper->id() ) << " " << skipper->len() << std::endl;
+                        comma::verbose << " skipped " << debug_count << "; " << (unsigned int)( skipper->LRC() ) << " "
+                                       << (unsigned int)( skipper->id() ) << " " << skipper->len() << std::endl;
                     debug_count = 0;
                     skipper = NULL;
                 }
             }
             else
             {
-                comma::verbose << "crc failed " << unsigned( msg_header->LRC() ) << " "
-                               << unsigned( msg_header->id() ) << " " << msg_header->len() << std::endl;
+                comma::verbose << "crc failed " << (unsigned int)( msg_header->LRC() ) << " "
+                               << (unsigned int)( msg_header->id() ) << " " << msg_header->len() << std::endl;
             }
             head += msg_header->len() + 5;
             msg_header = NULL;
@@ -156,10 +156,10 @@ void device::process()
 void device::send_ntrip( std::vector<char> buf )
 {
 //     comma::verbose<<"send_ntrip "<<buf.size()<<std::endl;
-    unsigned index = 0;
+    unsigned int index = 0;
     while( index < buf.size() )
     {
-        unsigned size = std::min< unsigned >( buf.size() - index, 255 );
+        unsigned int size = std::min< unsigned int >( buf.size() - index, 255 );
         messages::rtcm_corrections msg( &buf[index], size );
         index += size;
 //         comma::verbose<<"rtcm_corrections "<<size<<std::endl;
@@ -176,7 +176,7 @@ void device::send( const messages::command command )
     if( written != to_write )
     {
         std::cerr << "writing command msg failed (expected " << to_write << " actual " << written
-                  << " id " << (unsigned)command.header.id() << ")" << std::endl;
+                  << " id " << (unsigned int)command.header.id() << ")" << std::endl;
     }
 }
 
