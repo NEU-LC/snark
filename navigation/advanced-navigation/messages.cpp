@@ -76,7 +76,9 @@ uint8_t calculate_LRC( const uint8_t* buf )
 
 } //namespace detail {
 
-
+// ------
+// header
+// ------
 bool header::is_valid() const
 {
     uint8_t* buf = (uint8_t*)data();
@@ -110,16 +112,13 @@ void header::reset( unsigned char i, unsigned char l, const char* buf )
     LRC = detail::calculate_LRC( (uint8_t*)data() );
 }
 
+// ------------
+// system_state
+// ------------
 boost::posix_time::ptime system_state::t() const
 {
     return boost::posix_time::ptime( boost::gregorian::date( 1970, 1, 1 )
                                    , boost::posix_time::seconds( unix_time_seconds() ) + boost::posix_time::microseconds( microseconds() ));
-}
-
-rtcm_corrections::rtcm_corrections( const char* buf, unsigned size )
-    : header( id, size, buf)
-{
-    std::memcpy( &msg_data[0], buf,size );
 }
 
 snark::spherical::coordinates system_state::coordinates() const
@@ -127,6 +126,18 @@ snark::spherical::coordinates system_state::coordinates() const
     return snark::spherical::coordinates( latitude(), longitude() );
 }
 
+// ----------------
+// rtcm_corrections
+// ----------------
+rtcm_corrections::rtcm_corrections( const char* buf, unsigned size )
+    : header( id, size, buf)
+{
+    std::memcpy( &msg_data[0], buf,size );
+}
+
+// -------------------------
+// system_status_description
+// -------------------------
 const std::vector< std::string > system_status_description::text({
     "System Failure",
     "Accelerometer Sensor Failure",
@@ -184,7 +195,9 @@ unsigned system_status_description::high_voltage_alarm() const { return ( status
 unsigned system_status_description::gnss_antenna_short_circuit() const { return ( status & 0x4000 ) ? 1 : 0; }
 unsigned system_status_description::data_output_overflow_alarm() const { return ( status & 0x8000 ) ? 1 : 0; }
 
-
+// -------------------------
+// filter_status_description
+// -------------------------
 const std::vector< std::string > filter_status_description::text({
     "Orientation Filter Initialised",
     "Navigation Filter Initialised",
@@ -271,6 +284,7 @@ void filter_status_description::gnss_fix_descroption( std::ostream& os )
 
 filter_status_description::filter_status_description( uint16_t status ) : status( status ) {}
 
+<<<<<<< HEAD
 unsigned filter_status_description::gnss_fix() const { return ( status >> 4 ) & 7; }
 unsigned filter_status_description::orientation_filter_initialised() const { return ( status & 0x1 ) ? 1 : 0; }
 unsigned filter_status_description::navigation_filter_initialised() const { return ( status & 0x2 ) ? 1 : 0; }
@@ -287,16 +301,43 @@ unsigned filter_status_description::external_velocity_active() const { return ( 
 unsigned filter_status_description::external_heading_active() const { return ( status & 0x8000 ) ? 1 : 0; }
 
 command::command( uint8_t id, const char* buf, unsigned size )
+=======
+unsigned int filter_status_description::gnss_fix() const { return ( status >> 4 ) & 7; }
+unsigned int filter_status_description::orientation_filter_initialised() const { return ( status & 0x1 ) ? 1 : 0; }
+unsigned int filter_status_description::navigation_filter_initialised() const { return ( status & 0x2 ) ? 1 : 0; }
+unsigned int filter_status_description::heading_initialised() const { return ( status & 0x4 ) ? 1 : 0; }
+unsigned int filter_status_description::utc_time_initialised() const { return ( status & 0x8 ) ? 1 : 0; }
+unsigned int filter_status_description::event_1_occurred() const { return ( status & 0x80 ) ? 1 : 0; }
+unsigned int filter_status_description::event_2_occurred() const { return ( status & 0x100 ) ? 1 : 0; }
+unsigned int filter_status_description::internal_gnss_enabled() const { return ( status & 0x200 ) ? 1 : 0; }
+unsigned int filter_status_description::dual_antenna_heading_active() const { return ( status & 0x400 ) ? 1 : 0; }
+unsigned int filter_status_description::velocity_heading_enabled() const { return ( status & 0x800 ) ? 1 : 0; }
+unsigned int filter_status_description::atmospheric_altitude_enabled() const { return ( status & 0x1000 ) ? 1 : 0; }
+unsigned int filter_status_description::external_position_active() const { return ( status & 0x2000 ) ? 1 : 0; }
+unsigned int filter_status_description::external_velocity_active() const { return ( status & 0x4000 ) ? 1 : 0; }
+unsigned int filter_status_description::external_heading_active() const { return ( status & 0x8000 ) ? 1 : 0; }
+
+// -------
+// command
+// -------
+command::command( uint8_t id, const char* buf, unsigned int size )
+>>>>>>> c96f2a1a... fixup! advanced_navigation: added comments for clarity
     : header( id, size, buf )
 {
     std::memcpy( &msg_data[0], buf, size );
 }
 
+// ----------------------------------
+// magnetic_calibration_configuration
+// ----------------------------------
 command magnetic_calibration_configuration::get_command() const
 {
     return command( id, data(), size );
 }
 
+// ---------------------------
+// magnetic_calibration_status
+// ---------------------------
 void magnetic_calibration_status::status_description( std::ostream& os )
 {
     os << "0,Magnetic calibration not completed" << std::endl;
@@ -313,7 +354,14 @@ void magnetic_calibration_status::status_description( std::ostream& os )
     os << "12,Calibration error: interference error" << std::endl;
 }
 
+<<<<<<< HEAD
 const char* acknowledgement::result_msg( unsigned result )
+=======
+// ---------------
+// acknowledgement
+// ---------------
+const char* acknowledgement::result_msg( unsigned int result )
+>>>>>>> c96f2a1a... fixup! advanced_navigation: added comments for clarity
 {
     switch( result )
     {

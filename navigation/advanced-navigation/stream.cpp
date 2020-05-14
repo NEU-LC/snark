@@ -34,6 +34,9 @@
 
 namespace snark { namespace navigation { namespace advanced_navigation {
 
+// -------------
+// serial_stream
+// -------------
 serial_stream::serial_stream( const std::string& name, const advanced_navigation::options& options )
     : port( service, name )
 {
@@ -61,6 +64,9 @@ comma::io::file_descriptor serial_stream::fd()
     return port.native_handle();
 }
 
+// -------------
+// io_stream
+// -------------
 io_stream::io_stream( const std::string& name, const advanced_navigation::options& options )
     : is( name, comma::io::mode::binary, comma::io::mode::non_blocking )
 {
