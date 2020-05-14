@@ -29,27 +29,27 @@
 
 /// @author Navid Pirmarzdashti
 
-#include <comma/application/command_line_options.h>
-#include <comma/application/verbose.h>
-#include <Eigen/Core>
-#include <boost/date_time/posix_time/ptime.hpp>
-#include "../../../math/roll_pitch_yaw.h"
-#include "../../../visiting/traits.h"
-#include <comma/csv/options.h>
-#include <comma/csv/stream.h>
 #include "../device.h"
 #include "../messages.h"
-#include <comma/application/signal_flag.h>
+#include "../traits.h"
+#include "../../../math/roll_pitch_yaw.h"
 #include "../../../math/spherical_geometry/coordinates.h"
 #include "../../../math/spherical_geometry/traits.h"
-#include "../traits.h"
+#include "../../../visiting/traits.h"
+#include <comma/application/command_line_options.h>
+#include <comma/application/signal_flag.h>
+#include <comma/application/verbose.h>
+#include <comma/csv/options.h>
+#include <comma/csv/stream.h>
 #include <comma/io/select.h>
 #include <comma/io/stream.h>
-#include <tbb/concurrent_queue.h>
-#include <thread>
-#include <chrono>
 #include <comma/name_value/serialize.h>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <Eigen/Core>
+#include <tbb/concurrent_queue.h>
+#include <chrono>
 #include <regex>
+#include <thread>
 
 using namespace snark::navigation::advanced_navigation;
 

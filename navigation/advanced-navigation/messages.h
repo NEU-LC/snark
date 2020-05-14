@@ -30,11 +30,12 @@
 /// @author Navid Pirmarzdashti
 
 #pragma once
+
+#include "../../math/spherical_geometry/coordinates.h"
 #include <comma/base/types.h>
 #include <comma/packed/packed.h>
 #include <boost/array.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
-#include "../../math/spherical_geometry/coordinates.h"
 
 
 namespace snark { namespace navigation { namespace advanced_navigation {

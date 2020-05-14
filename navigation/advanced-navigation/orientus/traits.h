@@ -29,11 +29,11 @@
 
 #pragma once
 
-#include <string>
-#include <comma/visiting/traits.h>
+#include "../messages.h"
 #include "../../../math/spherical_geometry/traits.h"
 #include "../../../timing/timestamped.h"
-#include "../messages.h"
+#include <comma/visiting/traits.h>
+#include <string>
 
 using namespace snark::navigation::advanced_navigation;
 

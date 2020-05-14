@@ -30,6 +30,7 @@
 /// @author Navid Pirmarzdashti
 
 #pragma once
+
 #include "messages.h"
 #include "stream.h"
 #include <vector>

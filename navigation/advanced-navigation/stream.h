@@ -30,8 +30,9 @@
 /// @author Navid Pirmarzdashti
 
 #pragma once
-#include <boost/asio.hpp>
+
 #include <comma/io/stream.h>
+#include <boost/asio.hpp>
 
 namespace snark { namespace navigation { namespace advanced_navigation {
 

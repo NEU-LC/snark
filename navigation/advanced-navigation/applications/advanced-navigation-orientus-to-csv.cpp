@@ -27,13 +27,13 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "../device.h"
+#include "../orientus/traits.h"
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
 #include <comma/io/select.h>
-#include "../device.h"
-#include "../orientus/traits.h"
 
 using namespace snark::navigation::advanced_navigation;
 

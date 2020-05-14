@@ -30,8 +30,8 @@
 /// @author Navid Pirmarzdashti
 
 #include "messages.h"
-#include "boost/date_time/posix_time/posix_time.hpp"
 #include <comma/application/verbose.h>
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 namespace snark { namespace navigation { namespace advanced_navigation {
 

@@ -32,9 +32,9 @@
 #pragma once
 
 #include "messages.h"
+#include "../../math/spherical_geometry/traits.h"
 #include <comma/visiting/traits.h>
 #include <string>
-#include "../../math/spherical_geometry/traits.h"
 
 using namespace snark::navigation::advanced_navigation;
 
