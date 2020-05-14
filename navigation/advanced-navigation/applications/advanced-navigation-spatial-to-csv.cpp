@@ -642,25 +642,25 @@ int main( int argc, char** argv )
         auto opt_status_description=options.optional<std::string>("--status-description");
         if(opt_status_description)
         {
-            if( *opt_status_description == "system_status" ) { messages::system_status_description::descroption(std::cout); }
-            else if( *opt_status_description == "filter_status" ) { messages::filter_status_description::descroption(std::cout); }
-            else if( *opt_status_description == "gnss_fix" ) { messages::filter_status_description::gnss_fix_descroption(std::cout); }
+            if( *opt_status_description == "system_status" ) { messages::system_status_description::descroption( std::cout ); }
+            else if( *opt_status_description == "filter_status" ) { messages::filter_status_description::descroption( std::cout ); }
+            else if( *opt_status_description == "gnss_fix" ) { messages::filter_status_description::gnss_fix_descroption( std::cout ); }
             else { COMMA_THROW( comma::exception, "invalid field for --status-description. expected 'system_status' or 'filter_status' or 'gnss_fix', got " << *opt_status_description ); }
             return 0;
         }
-        if(options.exists("--magnetic-calibration-description")) { messages::magnetic_calibration_status::status_description(std::cout); return 0; }
+        if( options.exists( "--magnetic-calibration-description" )) { messages::magnetic_calibration_status::status_description( std::cout ); return 0; }
         
-        auto opt_send=options.optional<std::string>("--send");
-        if(opt_send)
+        auto opt_send = options.optional< std::string >( "--send" );
+        if( opt_send )
         {
             std::unique_ptr<send_factory_i> sf;
-            if(*opt_send == "magnetic-calibration") { sf.reset(new send_factory_t<send_app<messages::magnetic_calibration_configuration>>()); }
-            else { COMMA_THROW(comma::exception,"invalid send command: "<<*opt_send); }
+            if( *opt_send == "magnetic-calibration" ) { sf.reset( new send_factory_t< send_app< messages::magnetic_calibration_configuration >>() ); }
+            else { COMMA_THROW( comma::exception, "invalid send command: " << *opt_send ); }
             
-            if(options.exists("--input-fields")) { sf->input_fields(); return 0; }
-            if(options.exists("--input-format")) { sf->input_format(); return 0; }
+            if( options.exists( "--input-fields" )) { sf->input_fields(); return 0; }
+            if( options.exists( "--input-format" )) { sf->input_format(); return 0; }
             
-            return sf->run(options);
+            return sf->run( options );
         }
         
         std::unique_ptr<factory_i> factory;
