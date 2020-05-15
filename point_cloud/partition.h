@@ -57,7 +57,8 @@ class partition
         void commit( std::size_t min_voxels_per_partition
                    , std::size_t min_points_per_partition
                    , comma::uint32 min_id = 0
-                   , double min_density = 0 );
+                   , double min_density = 0
+                   , unsigned int keep_largest = 0 );
 
     private:
         class impl_;

@@ -29,7 +29,10 @@
 
 /// @author vsevolod vlaskine
 
+#include <algorithm>
 #include <cmath>
+#include <map>
+#include <unordered_set>
 #include "equivalence_classes.h"
 #include "partition.h"
 #include "voxel_grid.h"
@@ -58,7 +61,8 @@ class partition::impl_
         void commit( std::size_t min_voxels_per_partition
                    , std::size_t min_points_per_partition
                    , comma::uint32 min_id
-                   , double min_density )
+                   , double min_density
+                   , unsigned int keep_largest )
         {
             for( voxels_type_::iterator it = voxels_.begin(); it != voxels_.end(); ++it ) { if( it->count < min_points_per_voxel_ ) { it->count = 0; } }
             typedef std::list< voxels_type_::iterator > Set;
@@ -81,6 +85,24 @@ class partition::impl_
                     remove = size < min_points_per_partition || ( double( size ) / it->second.size() ) < min_density;
                 }
                 if( remove ) { for( Set::const_iterator j = it->second.begin(); j != it->second.end(); ( *j++ )->id.reset() ); }
+            }
+            if( keep_largest ) // quick and dirty for now; todo: watch performance
+            {
+                std::map< comma::uint32, comma::uint32 > sizes;
+                std::unordered_set< comma::uint32 > ids;
+                for( partitions::const_iterator it = parts.begin(); it != parts.end(); ++it )
+                {
+                    std::size_t size = 0;
+                    for( Set::const_iterator j = it->second.begin(); j != it->second.end(); size += ( *j++ )->count );
+                    sizes[ it->first ] = size;
+                }
+                auto s = sizes.begin();
+                if( keep_largest > parts.size() ) { keep_largest = parts.size(); }
+                for( unsigned int i = 0; i < keep_largest; ++i, ++s ) { ids.insert( s->first ); }
+                for( partitions::const_iterator it = parts.begin(); it != parts.end(); ++it )
+                {
+                    if( ids.find( it->first ) == ids.end() ) { for( Set::const_iterator j = it->second.begin(); j != it->second.end(); ( *j++ )->id.reset() ); }
+                }
             }
         }
 
@@ -134,15 +156,16 @@ const boost::optional< comma::uint32 >& partition::insert( const Eigen::Vector3d
 
 void partition::commit()
 {
-    pimpl_->commit( 1, 1, 0, 0 );
+    pimpl_->commit( 1, 1, 0, 0, 0 );
 }
 
 void partition::commit( std::size_t min_voxels_per_partition
                       , std::size_t min_points_per_partition
                       , comma::uint32 min_id
-                      , double min_density )
+                      , double min_density
+                      , unsigned int keep_largest )
 {
-    pimpl_->commit( min_voxels_per_partition, min_points_per_partition, min_id, min_density );
+    pimpl_->commit( min_voxels_per_partition, min_points_per_partition, min_id, min_density, keep_largest );
 }
 
 } // namespace snark {

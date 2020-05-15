@@ -81,6 +81,7 @@ static void usage( bool )
     std::cerr << "    data flow options:" << std::endl;
     std::cerr << "        --discard,-d: if present, partition as many points as possible, discard the rest" << std::endl;
     std::cerr << "        --output-all: output all points, even non-partitioned; the latter with id: max uint32" << std::endl;
+    std::cerr << "        --output-largest=[<n>]; output up to <n> largest partitions, discard the rest" << std::endl;
     std::cerr << "        --verbose, -v: output progress info" << std::endl;
     std::cerr << std::endl;
     std::cerr << "<fields>" << std::endl;
@@ -110,6 +111,7 @@ static bool verbose;
 static std::size_t min_points_per_voxel = 1;
 static std::size_t min_voxels_per_partition = 1;
 static std::size_t min_points_per_partition = 1;
+static std::size_t output_largest = 0;
 static double min_density;
 static Eigen::Vector3d resolution;
 static comma::csv::options csv;
@@ -221,7 +223,7 @@ static block_t* read_block_bursty_() { return read_block_impl_(); }
 static void write_block_( block_t* block )
 {
     if( !block ) { return; } // quick and dirty for now, only if --discard
-    for( std::size_t i = 0; i < block->points->size(); ++i )
+        for( std::size_t i = 0; i < block->points->size(); ++i )
     {
         const block_t::pair_t& p = block->points->operator[]( i );
         if( !( p.first.id && *p.first.id ) && !output_all ) { continue; }
@@ -246,7 +248,7 @@ static block_t* partition_( block_t* block )
         block_t::pair_t& p = block->points->operator[]( i );
         if( p.first.flag ) { p.first.id = &block->partition->insert( p.first.point ); }
     }
-    block->partition->commit( min_voxels_per_partition, min_points_per_partition, min_id, min_density );
+    block->partition->commit( min_voxels_per_partition, min_points_per_partition, min_id, min_density, output_largest );
     return block;
 }
 
@@ -258,12 +260,14 @@ int main( int ac, char** av )
         _setmode( _fileno( stdout ), _O_BINARY );
         #endif
         comma::command_line_options options( ac, av, usage );
+        options.assert_mutually_exclusive( "--output-all,--output-largest" );
         csv = comma::csv::options( options, "x,y,z" );
         csv.full_xpath = false;
         min_points_per_voxel = options.value( "--min-points-per-voxel", 1u );
         min_voxels_per_partition = options.value( "--min-voxels-per-partition", 1u );
         min_points_per_partition = options.value( "--min-points-per-partition", 1u );
         min_density = options.value( "--min-density", 0.0 );
+        output_largest = options.value( "--output-largest", 0 );
         if( min_points_per_voxel == 0 ) { std::cerr << "points-to-partitions: expected minimum number of points in a non-empty voxel, got zero" << std::endl; }
         verbose = options.exists( "--verbose,-v" );
         std::string resolution_string = options.value< std::string >( "--resolution", "0.2" );
