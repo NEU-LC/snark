@@ -169,7 +169,7 @@ std::string system_status_description::string( uint16_t status )
     }
     return ss.str();
 }
-void system_status_description::descroption( std::ostream& os )
+void system_status_description::description( std::ostream& os )
 {
     for( unsigned int i = 0; i < text.size(); ++i )
     {
@@ -266,7 +266,7 @@ std::string filter_status_description::string( uint16_t status )
     return ss.str();
 }
 
-void filter_status_description::descroption( std::ostream& os )
+void filter_status_description::description( std::ostream& os )
 {
     for( unsigned int i = 0; i < text.size(); ++i )
     {
@@ -274,7 +274,7 @@ void filter_status_description::descroption( std::ostream& os )
             os << i << "," << "\"" << text[i] << "\"" << std::endl;
     }
 }
-void filter_status_description::gnss_fix_descroption( std::ostream& os )
+void filter_status_description::gnss_fix_description( std::ostream& os )
 {
     for( unsigned int i = 0; i < gnss_fix_text.size(); ++i )
     {

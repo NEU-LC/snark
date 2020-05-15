@@ -642,9 +642,9 @@ int main( int argc, char** argv )
         auto opt_status_description=options.optional<std::string>("--status-description");
         if(opt_status_description)
         {
-            if( *opt_status_description == "system_status" ) { messages::system_status_description::descroption( std::cout ); }
-            else if( *opt_status_description == "filter_status" ) { messages::filter_status_description::descroption( std::cout ); }
-            else if( *opt_status_description == "gnss_fix" ) { messages::filter_status_description::gnss_fix_descroption( std::cout ); }
+            if( *opt_status_description == "system_status" ) { messages::system_status_description::description( std::cout ); }
+            else if( *opt_status_description == "filter_status" ) { messages::filter_status_description::description( std::cout ); }
+            else if( *opt_status_description == "gnss_fix" ) { messages::filter_status_description::gnss_fix_description( std::cout ); }
             else { COMMA_THROW( comma::exception, "invalid field for --status-description. expected 'system_status' or 'filter_status' or 'gnss_fix', got " << *opt_status_description ); }
             return 0;
         }
