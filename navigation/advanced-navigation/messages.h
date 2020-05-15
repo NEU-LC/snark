@@ -64,8 +64,6 @@ public:
 struct system_state : public comma::packed::packed_struct< system_state, 100 >
 {
     enum { id = 20 };
-    boost::posix_time::ptime t() const;
-
     comma::packed::little_endian::uint16 system_status;
     comma::packed::little_endian::uint16 filter_status;
     comma::packed::little_endian::uint32 unix_time_seconds;
@@ -79,17 +77,18 @@ struct system_state : public comma::packed::packed_struct< system_state, 100 >
     boost::array< comma::packed::little_endian::float32, 3 > orientation;   //roll,pitch,heading radians
     boost::array< comma::packed::little_endian::float32, 3 > angular_velocity;  //x,y,z rad/s
     boost::array< comma::packed::little_endian::float32, 3 > position_stddev;    //latitude,longitude,height m
+
+    boost::posix_time::ptime t() const;
     snark::spherical::coordinates coordinates() const;
 };
 
 struct system_status_description
 {
-    static const std::vector< std::string > text;
+    system_status_description( uint16_t status = 0 );
+
     static std::string string( uint16_t status) ;
     static void descroption( std::ostream& os );
     
-    system_status_description( uint16_t status = 0 );
-    uint16_t status;
     unsigned int system_failure() const;
     unsigned int accelerometer_sensor_failure() const;
     unsigned int gyroscope_sensor_failure() const;
@@ -106,19 +105,20 @@ struct system_status_description
     unsigned int high_voltage_alarm() const;
     unsigned int gnss_antenna_short_circuit() const;
     unsigned int data_output_overflow_alarm() const;
+
+    static const std::vector< std::string > text;
+    uint16_t status;
 };
 
 struct filter_status_description
 {
-    static const std::vector< std::string > text;
-    static const std::vector< std::string > gnss_fix_text;
+    filter_status_description( uint16_t status = 0 );
+
     static std::string string( uint16_t status );
     static std::string full_description( uint16_t status );
     static void descroption( std::ostream& os );
     static void gnss_fix_descroption( std::ostream& os );
     
-    filter_status_description( uint16_t status = 0 );
-    uint16_t status;
     unsigned int gnss_fix() const;
     unsigned int orientation_filter_initialised() const;
     unsigned int navigation_filter_initialised() const;
@@ -133,6 +133,10 @@ struct filter_status_description
     unsigned int external_position_active() const;
     unsigned int external_velocity_active() const;
     unsigned int external_heading_active() const;
+
+    static const std::vector< std::string > text;
+    static const std::vector< std::string > gnss_fix_text;
+    uint16_t status;
 };
 
 struct raw_sensors : public comma::packed::packed_struct< raw_sensors, 48 >
