@@ -88,17 +88,16 @@ class partition::impl_
             }
             if( keep_largest ) // quick and dirty for now; todo: watch performance
             {
-                std::map< comma::uint32, comma::uint32 > sizes;
-                std::unordered_set< comma::uint32 > ids;
+                std::multimap< comma::uint32, comma::uint32 > sizes;
                 for( partitions::const_iterator it = parts.begin(); it != parts.end(); ++it )
                 {
                     std::size_t size = 0;
                     for( Set::const_iterator j = it->second.begin(); j != it->second.end(); size += ( *j++ )->count );
-                    sizes[ it->first ] = size;
+                    sizes.insert( std::make_pair( size, it->first ) );
                 }
-                auto s = sizes.begin();
-                if( keep_largest > parts.size() ) { keep_largest = parts.size(); }
-                for( unsigned int i = 0; i < keep_largest; ++i, ++s ) { ids.insert( s->first ); }
+                std::unordered_set< comma::uint32 > ids;
+                auto s = sizes.rbegin();
+                for( unsigned int i = 0; i < keep_largest && s != sizes.rend(); ++i, ++s ) { ids.insert( s->second ); }
                 for( partitions::const_iterator it = parts.begin(); it != parts.end(); ++it )
                 {
                     if( ids.find( it->first ) == ids.end() ) { for( Set::const_iterator j = it->second.begin(); j != it->second.end(); ( *j++ )->id.reset() ); }
