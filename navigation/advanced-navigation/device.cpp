@@ -44,6 +44,12 @@ device::device( const std::string& name, const advanced_navigation::options& opt
 
 comma::io::file_descriptor device::fd() { return stream->fd(); }
 
+// |                buf                 |
+//       |      |<---   rest_size   --->
+//     head   index
+//
+// index is the end of the current data
+// head points to the start of the message header when we find it
 void device::process()
 {
     static messages::header* skipper = NULL;
@@ -67,7 +73,11 @@ void device::process()
     unsigned int rest_size = buf.size() - index;
     if( rest_size > 0 )
     {
-        unsigned int to_read = msg_header ? msg_header->len() - ( index - head - 5 ) : 10;
+        // if we have a header, attempt to read the rest of the message
+        // otherwise, read enough to get a header but no more (so we don't read in to the following header)
+        unsigned int to_read = msg_header
+                             ? msg_header->len() - ( index - head - messages::header::size )
+                             : messages::header::size * 2;
 //         unsigned int to_read=rest_size;
         unsigned int read_size = stream->read_some( &buf[index], rest_size, to_read );
 //        comma::verbose << "device::process() read " << read_size << " bytes" << std::endl;
@@ -77,12 +87,12 @@ void device::process()
             comma::verbose << "read long " << read_size << " vs " << rest_size << std::endl;
         index += read_size;
     }
-    while( index - head >= 5 )
+    while( head + messages::header::size <= index )
     {
         if( !msg_header )
         {
-            // find the header
-            for( ; index - head >= 5; head++ )
+            // find the header by stepping through the buffer looking for a valid sequence of bytes
+            for( ; head + messages::header::size <= index; head++ )
             {
                 msg_header = reinterpret_cast< messages::header* >( &buf[head] );
                 if( msg_header->is_valid() )
@@ -97,35 +107,35 @@ void device::process()
         }
         if( msg_header )
         {
-            if(( index - head - 5 ) < msg_header->len() )
+            unsigned int msg_start = head + messages::header::size;
+
+            if( msg_start + msg_header->len() > index ) { return; } // we don't have the whole message yet
+
+            if( msg_header->check_crc( &buf[msg_start] ))
             {
-                return;
-            }
-            if( msg_header->check_crc( &buf[head+5] ))
-            {
-                handle_raw( msg_header, &buf[head+5], msg_header->len() );
+                handle_raw( msg_header, &buf[msg_start], msg_header->len() );
                 switch( msg_header->id() )
                 {
                 case messages::system_state::id:
-                    handle( reinterpret_cast< messages::system_state* >( &buf[head+5] ));
+                    handle( reinterpret_cast< messages::system_state* >( &buf[msg_start] ));
                     break;
                 case messages::raw_sensors::id:
-                    handle( reinterpret_cast< messages::raw_sensors* >( &buf[head+5] ));
+                    handle( reinterpret_cast< messages::raw_sensors* >( &buf[msg_start] ));
                     break;
                 case messages::satellites::id:
-                    handle( reinterpret_cast< messages::satellites* >( &buf[head+5] ));
+                    handle( reinterpret_cast< messages::satellites* >( &buf[msg_start] ));
                     break;
                 case messages::position_standard_deviation::id:
-                    handle( reinterpret_cast< messages::position_standard_deviation* >( &buf[head+5] ));
+                    handle( reinterpret_cast< messages::position_standard_deviation* >( &buf[msg_start] ));
                     break;
                 case messages::velocity_standard_deviation::id:
-                    handle( reinterpret_cast< messages::velocity_standard_deviation* >( &buf[head+5] ));
+                    handle( reinterpret_cast< messages::velocity_standard_deviation* >( &buf[msg_start] ));
                     break;
                 case messages::orientation_standard_deviation::id:
-                    handle( reinterpret_cast< messages::orientation_standard_deviation* >( &buf[head+5] ));
+                    handle( reinterpret_cast< messages::orientation_standard_deviation* >( &buf[msg_start] ));
                     break;
                 case messages::acknowledgement::id:
-                    handle( reinterpret_cast< messages::acknowledgement* >( &buf[head+5] ));
+                    handle( reinterpret_cast< messages::acknowledgement* >( &buf[msg_start] ));
                     break;
                 default:
 //                     comma::verbose<<"unhandled msg id: "<<int(msg_header->id())<<" len "<<msg_header->len()<<" "<<head<<" "<<index<<std::endl;
@@ -147,7 +157,7 @@ void device::process()
                 comma::verbose << "crc failed " << (unsigned int)( msg_header->LRC() ) << " "
                                << (unsigned int)( msg_header->id() ) << " " << msg_header->len() << std::endl;
             }
-            head += msg_header->len() + 5;
+            head += msg_header->len() + messages::header::size;
             msg_header = NULL;
         }
     }
