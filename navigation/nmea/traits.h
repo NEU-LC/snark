@@ -100,6 +100,31 @@ template <> struct traits< snark::nmea::messages::time > // pain
     }
 };
 
+template <> struct traits< snark::nmea::messages::date > // pain
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, snark::nmea::messages::date& p, Visitor& v ) // hyper-quick and monster-dirty
+    {
+        std::string t;
+        v.apply( "date", t );
+        if( !t.empty() ) {
+            const int date_int = boost::lexical_cast<int>(t);
+            const int year = 2000 + date_int % 100;
+            const int month = (date_int / 100) % 100;
+            const int day = (date_int / 10000);
+            p.value = boost::gregorian::date(year, month, day);
+        }
+    }
+    
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const snark::nmea::messages::date& p, Visitor& v ) // hyper-quick and monster-dirty
+    {
+        std::string t; // todo, if needed: set from p
+        v.apply( "date", t );
+    }
+};
+
+
 template <> struct traits< snark::nmea::message >
 {
     template < typename Key, class Visitor >
@@ -151,6 +176,37 @@ template <> struct traits< snark::nmea::messages::gga >
         v.apply( "geoid_separation_unit", p.geoid_separation_unit );
         v.apply( "age_of_differential_gps_data_record", p.age_of_differential_gps_data_record );
         v.apply( "reference_station_id", p.reference_station_id );
+    }
+};
+
+template <> struct traits< snark::nmea::messages::rmc>
+{
+    template < typename Key, class Visitor >
+    static void visit( const Key&, snark::nmea::messages::rmc& p, Visitor& v ) // hyper-quick and monster-dirty
+    {
+        v.apply( "", static_cast< snark::nmea::message& >( p ) );
+        v.apply( "time", p.time );
+        v.apply( "validity", p.validity );
+        v.apply( "coordinates", p.coordinates );
+        v.apply( "speed_in_knots", p.speed_in_knots );
+        v.apply( "true_course", p.true_course);
+        v.apply( "date", p.date);
+        v.apply( "variation", p.variation);
+        v.apply( "east_west", p.east_west);
+    }
+    
+    template < typename Key, class Visitor >
+    static void visit( const Key&, const snark::nmea::messages::rmc& p, Visitor& v ) // hyper-quick and monster-dirty
+    {
+        v.apply( "", static_cast< const snark::nmea::message& >( p ) );
+        v.apply( "time", p.time );
+        v.apply( "validity", p.validity );
+        v.apply( "coordinates", p.coordinates );
+        v.apply( "speed_in_knots", p.speed_in_knots );
+        v.apply( "true_course", p.true_course);
+        v.apply( "date", p.date);
+        v.apply( "variation", p.variation);
+        v.apply( "east_west", p.east_west);
     }
 };
 

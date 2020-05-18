@@ -200,30 +200,44 @@ bool handle( const nmea::messages::zda& zda )
 bool handle( const nmea::messages::gga& v )
 {
     if(v.quality==snark::nmea::messages::gga::quality_t::fix_not_valid) { return false; }
-    if(!zda_only)
+    // GGA message contains only time_of_day, so need to have loaded the actual date from
+    // a different message already.
+    const bool valid_time = !output_.t.is_not_a_date_time();
+    if(!zda_only && valid_time)
     {
-        //this is a bug, date comes from system, time from GPS => on day rollover it can jump 24h
-        output_.t = v.time.value;
+        output_.t = boost::posix_time::ptime(output_.t.date(), v.time.value.time_of_day());
     }
     output_.data.position.coordinates = v.coordinates();
     output_.data.position.z = v.orthometric_height;
     output_.data.number_of_satellites = v.satellites_in_use;
+    return valid_time;
+}
+
+bool handle( const nmea::messages::rmc& v )
+{
+    if(!zda_only && v.validity == "A")
+    {
+        output_.t = boost::posix_time::ptime(v.date.value, v.time.value.time_of_day());
+    }
+    output_.data.position.coordinates = v.coordinates();
     return true;
 }
 
 bool handle( const nmea::messages::trimble::avr& m )
 {
     if(m.quality==snark::nmea::messages::trimble::avr::quality_t::fix_not_valid) { return false; }
-    if(!zda_only)
+    // GGA message contains only time_of_day, so need to have loaded the actual date from
+    // a different message already.
+    const bool valid_time = !output_.t.is_not_a_date_time();
+    if(!zda_only && valid_time)
     {
-        //this is a bug, date comes from system, time from GPS => on day rollover it can jump 24h
-        output_.t = m.time.value;
+        output_.t = boost::posix_time::ptime(output_.t.date(), m.time.value.time_of_day());
     }
     output_.data.orientation.roll = m.roll.value;
     output_.data.orientation.pitch = m.tilt.value;
     output_.data.orientation.yaw = m.yaw.value;
     //output_.data.number_of_satellites = m.value.satellites_in_use;
-    return true;
+    return valid_time;
 }
 
 template < typename T > bool handle( const nmea::string& s )
@@ -287,6 +301,7 @@ int main( int ac, char** av )
                     else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented proprietary nmea message: \"" << line << "\"" << std::endl; } continue; }
                 }
                 else if( s.message_type() == nmea::messages::gga::type ) { valid=handle< nmea::messages::gga >( s ); }
+                else if( s.message_type() == nmea::messages::rmc::type ) { valid=handle< nmea::messages::rmc>( s ); }
                 else if( s.message_type() == nmea::messages::zda::type ) { valid=handle(nmea::messages::zda(s)); }
                 else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } continue; }
             }

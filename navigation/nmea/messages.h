@@ -33,6 +33,7 @@
 #define SNARK_NAVIGATION_NMEA_MESSAGES_H_
 
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/lexical_cast.hpp>
 #include <comma/string/string.h>
 #include "../../math/spherical_geometry/coordinates.h"
@@ -59,6 +60,7 @@ struct coordinates
 };
 
 struct time { boost::posix_time::ptime value; };
+struct date { boost::gregorian::date value; };
 
 struct angle { double value; };
     
@@ -79,6 +81,20 @@ struct gga : message
     std::string geoid_separation_unit;
     double age_of_differential_gps_data_record;
     std::string reference_station_id;
+};
+
+struct rmc : message
+{
+    static const std::string type;
+
+    nmea::messages::time time;
+    std::string validity;
+    nmea::messages::coordinates coordinates;
+    double speed_in_knots;
+    double true_course;
+    nmea::messages::date date;
+    double variation;
+    std::string east_west;
 };
 
 // http://www.gpsinformation.org/dale/nmea.htm#ZDA
@@ -132,6 +148,7 @@ struct avr : message
 }; // namespace trimble {
 
 const std::string gga::type = "GGA";
+const std::string rmc::type = "RMC";
 const std::string zda::type = "ZDA";
 const std::string trimble::avr::type = "AVR";
 
