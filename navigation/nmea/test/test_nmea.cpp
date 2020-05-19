@@ -19,7 +19,7 @@ TEST( nmea, GPGGA )
     EXPECT_NEAR( deg2rad( 48.1173 ), gga.coordinates.latitude.value, 1e-9 );
     EXPECT_NEAR( deg2rad( 11.5166667 ), gga.coordinates.longitude.value, 1e-9 );
     EXPECT_EQ( snark::nmea::messages::gga::quality_t::gps_fix, gga.quality );
-    EXPECT_EQ( 8, gga.satellites_in_use );
+    EXPECT_EQ( 8u, gga.satellites_in_use );
     EXPECT_NEAR( 0.9, gga.hdop, 1e-9 );
     EXPECT_NEAR( 545.4, gga.orthometric_height, 1e-9 );
     EXPECT_EQ( "M", gga.height_unit );
@@ -44,7 +44,7 @@ TEST( nmea, GNGGA )
     EXPECT_NEAR( deg2rad( 48.1173 ), gga.coordinates.latitude.value, 1e-9 );
     EXPECT_NEAR( deg2rad( 11.5166667 ), gga.coordinates.longitude.value, 1e-9 );
     EXPECT_EQ( snark::nmea::messages::gga::quality_t::gps_fix, gga.quality );
-    EXPECT_EQ( 8, gga.satellites_in_use );
+    EXPECT_EQ( 8u, gga.satellites_in_use );
     EXPECT_NEAR( 0.9, gga.hdop, 1e-9 );
     EXPECT_NEAR( 545.4, gga.orthometric_height, 1e-9 );
     EXPECT_EQ( "M", gga.height_unit );
@@ -69,7 +69,7 @@ TEST( nmea, GLGGA )
     EXPECT_NEAR( deg2rad( 48.1173 ), gga.coordinates.latitude.value, 1e-9 );
     EXPECT_NEAR( deg2rad( 11.5166667 ), gga.coordinates.longitude.value, 1e-9 );
     EXPECT_EQ( snark::nmea::messages::gga::quality_t::gps_fix, gga.quality );
-    EXPECT_EQ( 8, gga.satellites_in_use );
+    EXPECT_EQ( 8u, gga.satellites_in_use );
     EXPECT_NEAR( 0.9, gga.hdop, 1e-9 );
     EXPECT_NEAR( 545.4, gga.orthometric_height, 1e-9 );
     EXPECT_EQ( "M", gga.height_unit );
@@ -77,6 +77,27 @@ TEST( nmea, GLGGA )
     EXPECT_EQ( "M", gga.geoid_separation_unit );
     EXPECT_EQ( 0, gga.age_of_differential_gps_data_record );
     EXPECT_EQ( "", gga.reference_station_id );
+}
+
+TEST( nmea, GNRMC ) {
+    std::string line = "$GNRMC,232341.40,A,3648.2223524,N,12011.3811276,W,0.05,,061219,,,A*45";
+    bool permissive = false;
+    snark::nmea::string s( line, permissive );
+    EXPECT_FALSE( s.is_proprietary() );
+    EXPECT_EQ( "GN", s.talker_id() );
+    EXPECT_EQ( "RMC", s.message_type() );
+    EXPECT_EQ( snark::nmea::messages::rmc::type, s.message_type() );
+    snark::nmea::messages::rmc rmc = comma::csv::ascii< snark::nmea::messages::rmc>().get( s.values() );
+    EXPECT_EQ( "GNRMC", rmc.id );
+    EXPECT_EQ( boost::posix_time::ptime( boost::posix_time::microsec_clock::universal_time().date(), boost::posix_time::time_duration( 23, 23, 41, 400000 ) ), rmc.time.value );
+    EXPECT_EQ( "A", rmc.validity );
+    EXPECT_NEAR( deg2rad( 36.8037058733 ), rmc.coordinates.latitude.value, 1e-9 );
+    EXPECT_NEAR( deg2rad( -120.18968546 ), rmc.coordinates.longitude.value, 1e-9 );
+    EXPECT_NEAR( 0.05, rmc.speed_in_knots, 1e-9 );
+    EXPECT_NEAR( 0.0, rmc.true_course, 1e-9 );
+    EXPECT_EQ( boost::gregorian::date(2019, 12, 6), rmc.date.value );
+    EXPECT_NEAR( 0.0, rmc.variation, 1e-9 );
+    EXPECT_TRUE(  rmc.east_west.empty() );
 }
 
 TEST( nmea, trimble_AVR )
@@ -103,5 +124,5 @@ TEST( nmea, trimble_AVR )
     EXPECT_NEAR( 60.191, avr.range, 1e-9 );
     EXPECT_EQ( snark::nmea::messages::trimble::avr::quality_t::differential_carrier_phase_solution_rtk_int, avr.quality );
     EXPECT_NEAR( 2.5, avr.pdop, 1e-9 );
-    EXPECT_EQ( 6, avr.satellites_in_use );
+    EXPECT_EQ( 6u, avr.satellites_in_use );
 }
