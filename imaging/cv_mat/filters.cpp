@@ -2868,9 +2868,9 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( e.size() > 1 )
         {
             const std::vector< std::string >& w = comma::split( e[1], ',' );
-            if( w.size() > 0 && !w[0].empty() ) { delay = boost::lexical_cast< unsigned int >( w[0] ); }
+            if( w.size() > 0 && !w[0].empty() ) { delay = w[0] == "stay" ? -1 : boost::lexical_cast< unsigned int >( w[0] ); }
             if( w.size() > 1 ) { n = w[1]; }
-            if(w.size()>2) { suffix=w[2]; }
+            if( w.size() > 2) { suffix = w[2]; }
         }
         return std::make_pair( boost::bind< value_type_t >( view_impl_< H >( get_timestamp, n, delay, suffix ), _1 ), false );
     }
@@ -3368,7 +3368,9 @@ static std::string usage_impl_()
     oss << "                                press <esc>: to close" << std::endl;
     oss << "                                press numerical '0' to '9' to add the id (0-9) to the file name: <timestamp>.<id>.<suffix>" << std::endl;
     oss << "                                press any other key to show the next frame" << std::endl;
-    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display and key press (0 waits indefinitely); default 1" << std::endl;
+    oss << "                                <wait-interval>: a hack for now; milliseconds to wait for image display or key press (-1 waits indefinitely); default 1" << std::endl;
+    oss << "                                                 view=-1 or view=stay: wait indefinitely" << std::endl;
+    oss << "                                                 default: 1 (1 millisecond)" << std::endl;
     oss << "                                <name>: view window name; default: the number of view occurence in the filter string" << std::endl;
     oss << "                                <suffix>: image suffix type e.g. png, default ppm" << std::endl;
     oss << "            attention! it seems that lately using cv::imshow() in multithreaded context has been broken in opencv or in underlying x window stuff" << std::endl;
