@@ -102,7 +102,7 @@ examples:
     echo get_sensor_info | $scriptname command
     echo get_alerts | $scriptname command
     echo "get_config_param active timestamp_mode" | $scriptname command
-    echo "set_config_param window_rejection_enable 0" | $scriptname command
+    echo "set_config_param lidar_mode 1024x10" | $scriptname command
     echo reinitialize | $scriptname command
 
     Note that values are sticky across calls to reinitialize. Only a
@@ -362,7 +362,6 @@ function initialize()
 
     update_parameter timestamp_mode $parameter_timestamp_mode
     update_parameter lidar_mode $parameter_lidar_mode
-    update_parameter window_rejection_enable $parameter_window_rejection_enable
 
     verbose "status=$( run_cmd get_sensor_info | name-value-get status )"
     udp_port_lidar=$( get_parameter udp_port_lidar )
