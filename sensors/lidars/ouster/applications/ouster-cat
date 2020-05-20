@@ -1,0 +1,461 @@
+#!/bin/bash
+
+# Copyright (c) 2019 The University of Sydney
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
+
+function description()
+{
+    cat <<EOF
+--help,-h;           show this help and exit
+--verbose,-v;        show more information
+--config=[<file>];   json config filename with optional path
+--device=[<lidar>];  host name of lidar
+--output-fields;     show output fields and exit
+--output-format;     show output format and exit
+--packet-size;       show packet size and exit
+--port=<port>;       default=7501; command port
+EOF
+}
+
+available_operations="command,config,init,lidar,imu"
+azimuth_blocks_per_packet=16
+
+function usage()
+{
+    cat <<EOF >&2
+
+get data from the Ouster OS-1 lidar
+
+usage: $scriptname <operation> [<options>]
+
+    where <operation> is one of:
+        command        - reads commands from stdin
+        config         - outputs the sensor configuration for --device
+        init           - initializes the device with the address of the host
+        lidar          - streams lidar data
+        imu            - streams imu data
+        alerts         - current snapshot of alerts
+        stream_alerts  - continuous stream of alerts
+
+    if required "lidar" and "imu" will perform an "init" first
+
+options:
+EOF
+    description | sed 's/^/    /g' >&2
+        cat <<EOF >&2
+
+    some options are relevant only to certain operations:
+
+    config:  --device
+    imu:     --output-fields, --output-format
+    lidar:   --output-fields, --output-format
+
+    --config is required for all operations except config
+
+    command port is taken from the config file, but can be overridden by
+    the --port option. If neither is specified it defaults to 7501
+
+EOF
+    if (( options_verbose )); then
+        cat <<EOF >&2
+configuration:
+    the normal process of configuration is to run:
+
+        $scriptname config --device <lidar-addr> > config.json
+
+    to generate a config file, then edit that file to make required changes,
+    including adding the following:
+
+    "address": <ip or host name of destination>,
+    "port": <publishing port>,
+    "binary": <format>,
+    "device": { "host": <host name of lidar>, "target": <target ip for data> },
+
+    You can optionally add "bandwidth_monitor_port" within the "lidar" and
+    "imu" sections to publish the raw bandwidth.
+
+    Once this config file has been created it can be updated with:
+
+        $scriptname config --config config.json | sponge config.json
+
+    which will preserve the address, port and device parameters.
+
+    configurable parameters are:
+
+    timestamp_mode: one of “TIME_FROM_INTERNAL_OSC”, “TIME_FROM_PPS_IN_SYNCED”,
+                           “TIME_FROM_PTP_1588”
+
+    lidar_mode: one of “512x10”, “1024x10”, “2048x10”, “512x20”, “1024x20
+
+    if you change any configurable parameter it should be loaded with
+
+        $scriptname init --config <file>
+
+examples:
+    Note that all these commands except "config" require the
+    --config=<file:path> option
+
+    --- commands ---
+    echo get_sensor_info | $scriptname command
+    echo get_alerts | $scriptname command
+    echo "get_config_param active timestamp_mode" | $scriptname command
+    echo "set_config_param window_rejection_enable 0" | $scriptname command
+    echo reinitialize | $scriptname command
+
+    Note that values are sticky across calls to reinitialize. Only a
+    power-cycle resets them to defaults.
+
+    Any parameters that can be set via the config file (see above) should be
+    done that way, followed by "$scriptname init --config <file>"
+
+    --- data acquisition ---
+    $scriptname config --device os1-991832000987.local
+    $scriptname init
+    $scriptname lidar
+    $scriptname imu
+
+    --- logging ---
+    block_size=\$(( \$( csv-size \$( $scriptname lidar --output-format ) ) * 16 ))
+    $scriptname lidar | csv-split --size \$block_size --period 60
+
+    block_size=\$( csv-size \$( $scriptname imu --output-format ) )
+    $scriptname imu | csv-split --size \$imu_block_size  --period 60
+
+    --- alerts ---
+    $scriptname alerts
+    $scriptname stream_alerts
+
+EOF
+    else
+        cat <<EOF >&2
+For more detailed help, including examples, add the --verbose flag.
+
+EOF
+    fi
+    exit 0
+}
+
+function say() { echo "$scriptname: $@" >&2; }
+function verbose() { (( options_verbose )) && say "$@"; }
+function die() { say "$@"; exit 1; }
+
+if (( $( comma_options_has "--bash-completion" $@ ) )); then
+    description | comma_options_to_bash_completion
+    echo $available_operations | tr ',' '\n'
+    exit 0
+fi
+
+if (( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )); then
+    options_verbose=$(( $( comma_options_has "--verbose" $@ ) || $( comma_options_has "-v" $@ ) ))
+    usage
+fi
+
+options="$( description | comma-options-to-name-value "$@" )"
+comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
+
+unnamed_options=( $( echo "$options" | grep -v '=' | sed 's/^"//g; s/"$//g' | tr '\n' ' ' ) )
+
+function prefix { csv-fields prefix --path $1; }
+
+function output_fields()
+{
+    case $1 in
+        lidar)
+            local channel_fields=$( seq -w 0 63 | sed 's/^/channel_/' | while read line; do seq 0 2 | sed "s/^/${line}_data_/"; done | tr '\n' , | sed 's/,$//' )
+            echo "timestamp,measurement_id,encoder_count,$channel_fields,packet_status"
+            ;;
+        imu)
+            echo $( echo start,acceleration,gyro | prefix time ),$( echo x,y,z | prefix acceleration ),$( echo -n x,y,z | prefix angular_acceleration )
+            ;;
+        alerts|stream_alerts)
+            echo "t,cursor,code,brief,description"
+            ;;
+        *) die "invalid operation: $1"
+    esac
+}
+
+function output_format()
+{
+    case $1 in
+        lidar) echo "ul,2ui,192ui,ui" ;;
+        imu)   echo "3ul,3ui,3ui" ;;
+        alerts|stream_alerts) echo "t,ul,s[128],s[128],s[256]" ;;
+        *) die "invalid operation: $1"
+    esac
+}
+
+function packet_size()
+{
+    case $1 in
+        lidar) echo $(( $azimuth_blocks_per_packet * $( csv-size $( output_format lidar ) ) )) ;;
+        imu)   csv-size $( output_format imu ) ;;
+        *) die "invalid operation: $1"
+    esac
+}
+
+# file path      -> file:path
+# file:path path -> file:path/path
+function config_path_concat()
+{
+    echo $1:$2 | sed 's!:!/!2'
+}
+
+function load_config()
+{
+    local config_file=$1
+    if [[ $config_file ]]; then
+        local file path
+        IFS=: read file path <<< "$config_file"
+        [[ -e $file ]] || die "couldn't find config file \"$file\""
+        cat "$file" | name-value-get "$path"
+    fi
+}
+
+operation=${unnamed_options[0]}
+
+(( $( comma_options_has --output-fields "$@" ) )) && { output_fields $operation; exit 0; }
+(( $( comma_options_has --output-format "$@" ) )) && { output_format $operation; exit 0; }
+(( $( comma_options_has --packet-size "$@" ) )) && { packet_size $operation; exit 0; }
+
+if [[ $operation == "config" ]]; then
+    [[ $options_config ]] || [[ $options_device ]] || die "one of --config or --device is required"
+else
+    [[ $options_config ]] || die "--config required"
+fi
+
+if [[ $options_config ]]; then
+    comma_path_value_to_var --prefix=parameter < <( load_config $( config_path_concat $options_config parameters ) )
+    lidar=$( load_config $( config_path_concat $options_config device/host ) )
+fi
+[[ $options_device ]] && lidar=$options_device
+[[ $lidar ]] || die "lidar host name or ip address is required"
+
+if (( ! $( comma_options_has --port $@ ) )) && [[ $parameter_tcp_port ]]; then
+    command_port=$parameter_tcp_port
+else
+    command_port=$options_port
+fi
+verbose "connecting to $lidar on command port $command_port"
+
+if [[ $operation =~ init|lidar|imu ]]; then
+    host=$( load_config $( config_path_concat $options_config device/target ) )
+    [[ $host ]] || die "host name or ip address is required"
+    [[ $host =~ ^[0-9.]+$ ]] && host_ip=$host || host_ip=$( getent hosts $host | awk '{ print $1 }' )
+    [[ $host_ip ]] || die "unable to resolve $host"
+fi
+
+# send stdout to stderr
+function log_stdout()
+{
+    sed "s/^/$scriptname: /" >&2
+}
+
+function run_cmd()
+{
+    [[ $1 == -q ]] && shift || verbose $1
+    echo $1 | socat tcp:$lidar:$command_port -
+}
+
+function ping_lidar()
+{
+    ping -c1 -W1 $lidar >/dev/null || die "$lidar is not reachable, check \"sudo journalctl -u dnsmasq.service\""
+}
+
+function send_commands()
+{
+    ping_lidar
+    while read line; do
+        run_cmd "$line"
+    done
+}
+
+function get_parameter()
+{
+    local name=$1
+    local result=
+    local retries=0
+    while (( retries < 5 )); do
+        result=$( run_cmd "get_config_param active $name" )
+        [[ $result ]] && break
+        say "couldn't read $name, retrying..."
+        (( retries++ ))
+        sleep 1
+    done
+    [[ $result ]] || say "failed to read $name"
+    echo $result | csv-quote --unquote
+}
+
+function set_parameter()
+{
+    local name=$1
+    local value=$2
+    local response=$( run_cmd "set_config_param $name $value" )
+    [[ $response == "set_config_param" ]] || { say "failed to set $name to $value"; die "$response"; }
+}
+
+function wrap_json_arrays()
+{
+    gawk '
+        /\[$/    { in_array=1; i=0; print; next }
+        /\],?$/  { in_array=0 }
+        in_array { i++; if(i%4==1) printf $0; else if( i%4 == 0 ) print " "$1; else printf " "$1; next }
+                 { print }
+        '
+}
+
+function output_config()
+{
+    ping_lidar
+    {
+        for operation in lidar imu; do
+            echo "$operation/address=$( load_config $( config_path_concat $options_config $operation/address ) 2>/dev/null )"
+            echo "$operation/port=$( load_config $( config_path_concat $options_config $operation/port ) 2>/dev/null )"
+            echo "$operation/binary=$( output_format $operation )"
+            local bandwidth_monitor_config=$( load_config $( config_path_concat $options_config $operation/bandwidth_monitor ) 2> /dev/null )
+            if [[ $bandwidth_monitor_config ]]; then
+                echo "$bandwidth_monitor_config" | sed "s#^#lidar/bandwidth_monitor/#"
+                echo
+            fi
+        done
+        echo "device/host=$lidar"
+        echo "device/target=$( load_config $( config_path_concat $options_config device/target ) 2>/dev/null )"
+        run_cmd "get_config_txt" | name-value-convert | sed 's#^#parameters/#'
+        run_cmd "get_beam_intrinsics" | name-value-convert | sed 's#^#beam_intrinsics/#'
+        run_cmd "get_imu_intrinsics" | name-value-convert | sed 's#^#imu_intrinsics/#'
+        run_cmd "get_lidar_intrinsics" | name-value-convert | sed 's#^#lidar_intrinsics/#'
+    } | name-value-convert --to json | wrap_json_arrays
+}
+
+function reinitialize()
+{
+    verbose "reinitializing..."
+    verbose "status=$( run_cmd get_sensor_info | name-value-get status )"
+    run_cmd "reinitialize"
+    local status=$( run_cmd get_sensor_info | name-value-get status )
+    while [[ $status != "RUNNING" ]]; do
+        verbose "status=$status"
+        sleep 1
+        status=$( run_cmd -q get_sensor_info | name-value-get status 2> /dev/null )
+    done
+    verbose "status=$status"
+}
+
+function update_parameter()
+{
+    local name=$1
+    local value=$2
+
+    local current_value=$( get_parameter $name )
+    if [[ $current_value != $value ]]; then
+        say "setting $name to $value (was $current_value)"
+        set_parameter $name $value
+    fi
+}
+
+function initialize()
+{
+    verbose "initializing from $options_config..."
+    ping_lidar
+
+    update_parameter timestamp_mode $parameter_timestamp_mode
+    update_parameter lidar_mode $parameter_lidar_mode
+    update_parameter window_rejection_enable $parameter_window_rejection_enable
+
+    verbose "status=$( run_cmd get_sensor_info | name-value-get status )"
+    udp_port_lidar=$( get_parameter udp_port_lidar )
+    udp_port_imu=$( get_parameter udp_port_imu )
+    verbose "lidar port=$udp_port_lidar"
+    verbose "imu port=$udp_port_imu"
+    set_parameter udp_ip $host_ip
+    reinitialize                    # to set the udp_ip
+}
+
+function alerts()
+{
+    local input_fields="cursor,code,realtime,brief,description"
+    local output_fields=$( output_fields alerts ),next_cursor
+    local eval_format=$( output_format alerts | csv-fields rename --fields t --to ul ),ul
+
+    verbose "alerts..."
+    run_cmd get_alerts \
+        | name-value-convert \
+        | name-value-to-csv --fields $input_fields --prefix alerts --unindexed-fields=next_cursor \
+        | csv-quote --unquote | csv-quote \
+        | csv-shuffle --fields $input_fields,next_cursor \
+                      --output $( csv-fields rename --fields t --to realtime <<< $output_fields ) \
+        | csv-eval --fields $output_fields --format $eval_format "t=t/1000000000" \
+        | csv-time --fields $( csv-fields clear --except t <<< $output_fields ) --from seconds --to iso
+}
+
+next_cursor=0
+
+function stream_alerts()
+{
+    local fields=$( output_fields alerts ),next_cursor
+    local format=$( output_format alerts ),ul
+
+    verbose "streaming alerts..."
+    while : ; do
+        local alerts=$( alerts )
+        local new_next_cursor=$( echo "$alerts" | head -1 | csv-shuffle --fields $fields --output next_cursor )
+        verbose "new_next_cursor=$new_next_cursor"
+        if (( new_next_cursor != next_cursor )); then
+            echo "$alerts" | csv-select --fields $fields --format $format "cursor;from=$next_cursor"
+            next_cursor=$new_next_cursor
+        fi
+        sleep 5
+    done
+}
+
+function output_alerts()
+{
+    local output_fields=$( output_fields alerts )
+    csv-shuffle --fields $output_fields,next_cursor --output $output_fields
+}
+
+function publish_bandwidth_stats()
+{
+    local port=$1
+    io-bandwidth 2> >( io-publish tcp:$port )
+}
+
+function stream()
+{
+    verbose "streaming..."
+    ping_lidar
+
+    local active_udp_ip=$( get_parameter udp_ip )
+    if [[ $active_udp_ip != $host_ip ]]; then
+        verbose "active udp_ip=$active_udp_ip, should be $host_ip"
+        initialize | log_stdout
+    fi
+
+    local port=$( get_parameter $1 )
+    local packet_size=$2
+    verbose "streaming $packet_size byte packets from port $port"
+
+    local bandwidth_monitor_port=$( load_config $( config_path_concat $options_config $operation/bandwidth_monitor/port ) )
+    local bandwidth_fn=cat
+    if [[ $bandwidth_monitor_port ]]; then
+        bandwidth_fn="publish_bandwidth_stats $bandwidth_monitor_port"
+        verbose "sending bandwidth data to port $bandwidth_monitor_port"
+    fi
+
+    local transfer_block_option=
+    (( packet_size > 8192 )) && transfer_block_option="-b$packet_size"
+    socat $transfer_block_option -u udp-listen:$port - | $bandwidth_fn
+}
+
+case $operation in
+    command)        send_commands ;;
+    config)         output_config ;;
+    init)           initialize ;;
+    lidar)          stream udp_port_lidar $( packet_size lidar ) ;;
+    imu)            stream udp_port_imu $( packet_size imu ) ;;
+    alerts)         alerts | output_alerts ;;
+    stream_alerts)  stream_alerts | output_alerts ;;
+    *)              die "requires operation"
+esac
