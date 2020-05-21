@@ -211,7 +211,7 @@ function load_config()
         local file path
         IFS=: read file path <<< "$config_file"
         [[ -e $file ]] || die "couldn't find config file \"$file\""
-        cat "$file" | name-value-get "$path"
+        cat "$file" | name-value-get "$path" | tr '[]' '__'
     fi
 }
 
