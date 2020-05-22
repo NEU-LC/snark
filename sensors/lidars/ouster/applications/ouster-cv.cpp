@@ -2,11 +2,11 @@
 
 #include "../packet.h"
 #include "../traits.h"
+#include "../../../../imaging/cv_mat/serialization.h"
 #include <comma/application/command_line_options.h>
 #include <comma/csv/format.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
-#include <snark/imaging/cv_mat/serialization.h>
 
 static void bash_completion( unsigned int const ac, char const * const * av )
 {

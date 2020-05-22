@@ -3,7 +3,7 @@
 #pragma once
 
 #include "packet.h"
-#include <snark/math/roll_pitch_yaw.h>
+#include "../../../math/roll_pitch_yaw.h"
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <Eigen/Geometry>
 

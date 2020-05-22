@@ -1,8 +1,8 @@
 // Copyright (c) 2019 The University of Sydney
 
 #include "types.h"
-#include <snark/math/rotation_matrix.h>
-#include <snark/timing/time.h>
+#include "../../../math/rotation_matrix.h"
+#include "../../../timing/time.h"
 
 namespace snark { namespace ouster {
 
