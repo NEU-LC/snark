@@ -110,6 +110,8 @@ void usage( bool verbose )
     std::cerr << "\n" << std::endl;
 }
 
+static snark::ouster::OS1::beam_angle_lut_t beam_angle_lut;
+
 struct intrinsics_t
 {
     snark::ouster::transform_t imu_transform;
@@ -146,7 +148,7 @@ struct app
             return 0;
         }
 
-        snark::ouster::OS1::init_beam_angle_lut( config.beam_intrinsics );
+        snark::ouster::OS1::init_beam_angle_lut( config.beam_intrinsics, beam_angle_lut );
 
         output();
         return 0;
@@ -201,7 +203,8 @@ void app< snark::ouster::OS1::azimuth_block_t, snark::ouster::output_lidar_t >::
             os.write( snark::ouster::output_lidar_t( output_azimuth_block
                                                    , snark::ouster::output_data_block_t( azimuth_encoder_angle
                                                                                        , azimuth_block.data_blocks[channel]
-                                                                                       , channel )));
+                                                                                       , channel
+                                                                                       , beam_angle_lut )));
         }
         os.flush();
     }

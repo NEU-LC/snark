@@ -78,9 +78,16 @@ struct beam_angle_lut_entry
 {
     double altitude;
     double azimuth;
+
+    beam_angle_lut_entry() : altitude( 0 ), azimuth( 0 ) {}
+
+    beam_angle_lut_entry( double altitude_, double azimuth_ )
+        : altitude( altitude_ )
+        , azimuth( azimuth_ )
+    {}
 };
 
-extern beam_angle_lut_entry beam_angle_lut[ ouster::OS1::pixels_per_column ];
-void init_beam_angle_lut( const beam_intrinsics_t& beam_intrinsics );
+typedef std::array< beam_angle_lut_entry, pixels_per_column > beam_angle_lut_t;
+void init_beam_angle_lut( const beam_intrinsics_t& beam_intrinsics, beam_angle_lut_t& beam_angle_lut );
 
 } } } // namespace snark { namespace ouster { namespace OS1 {

@@ -42,8 +42,9 @@ output_azimuth_block_t::output_azimuth_block_t( const OS1::azimuth_block_t& azim
 }
 
 output_data_block_t::output_data_block_t( double azimuth_encoder_angle
-                                        , const ouster::OS1::data_block_t& data_block
-                                        , comma::uint16 channel )
+                                        , const OS1::data_block_t& data_block
+                                        , comma::uint16 channel
+                                        , const OS1::beam_angle_lut_t& beam_angle_lut )
     : channel( channel )
     , signal( data_block.signal )
     , reflectivity( data_block.reflectivity )
