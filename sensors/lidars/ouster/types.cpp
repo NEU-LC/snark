@@ -32,7 +32,7 @@ std::vector< double > transform_t::frame() const
     return frame_;
 }
 
-output_azimuth_block_t::output_azimuth_block_t( const ouster::OS1::azimuth_block_t& azimuth_block
+output_azimuth_block_t::output_azimuth_block_t( const OS1::azimuth_block_t& azimuth_block
                                               , comma::uint32 block_id )
     : t( convert_timestamp( azimuth_block.timestamp ))
     , measurement_id( azimuth_block.measurement_id )
@@ -50,11 +50,11 @@ output_data_block_t::output_data_block_t( double azimuth_encoder_angle
     , ambient( data_block.noise )
 {
     range = static_cast< double >( data_block.range & 0x000FFFFF ) / 1000;
-    bearing = M_PI * 2 - ( azimuth_encoder_angle + OS1::beam_angle_lut[ channel ].azimuth );
-    elevation = OS1::beam_angle_lut[ channel ].altitude;
+    bearing = M_PI * 2 - ( azimuth_encoder_angle + beam_angle_lut[ channel ].azimuth );
+    elevation = beam_angle_lut[ channel ].altitude;
 }
 
-output_imu_t::output_imu_t( const ouster::OS1::imu_block_t& imu_block )
+output_imu_t::output_imu_t( const OS1::imu_block_t& imu_block )
     : start_time( convert_timestamp( imu_block.start_read_time ))
     , acceleration( convert_timestamp( imu_block.acceleration_read_time )
                   , Eigen::Vector3d( imu_block.acceleration_x

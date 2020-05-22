@@ -38,7 +38,7 @@ struct output_azimuth_block_t
         , block_id( 0 )
     {}
 
-    output_azimuth_block_t( const ouster::OS1::azimuth_block_t& azimuth_block
+    output_azimuth_block_t( const OS1::azimuth_block_t& azimuth_block
                           , comma::uint32 block_id );
 };
 
@@ -88,7 +88,7 @@ struct output_imu_t
 
     output_imu_t() {}
 
-    output_imu_t( const ouster::OS1::imu_block_t& imu_block );
+    output_imu_t( const OS1::imu_block_t& imu_block );
 };
 
 } } // namespace snark { namespace ouster {
