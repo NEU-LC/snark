@@ -24,7 +24,13 @@ struct data_block_t
     comma::uint16 noise;
     comma::uint16 unused;
 
-    data_block_t() {}
+    data_block_t()
+        : range( 0 )
+        , reflectivity( 0 )
+        , signal( 0 )
+        , noise( 0 )
+        , unused( 0 )
+    {}
 };
 
 struct azimuth_block_t
@@ -35,7 +41,12 @@ struct azimuth_block_t
     std::array< data_block_t, pixels_per_column > data_blocks;
     comma::uint32 packet_status;
 
-    azimuth_block_t() {}
+    azimuth_block_t()
+        : timestamp( 0 )
+        , measurement_id( 0 )
+        , encoder_count( 0 )
+        , packet_status( 0 )
+    {}
 };
 
 struct imu_block_t
@@ -50,7 +61,17 @@ struct imu_block_t
     float angular_acceleration_y;
     float angular_acceleration_z;
 
-    imu_block_t() {}
+    imu_block_t()
+        : start_read_time( 0 )
+        , acceleration_read_time( 0 )
+        , gyro_read_time( 0 )
+        , acceleration_x( 0 )
+        , acceleration_y( 0 )
+        , acceleration_z( 0 )
+        , angular_acceleration_x( 0 )
+        , angular_acceleration_y( 0 )
+        , angular_acceleration_z( 0 )
+    {}
 };
 
 struct beam_angle_lut_entry

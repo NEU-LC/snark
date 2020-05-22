@@ -32,7 +32,11 @@ struct output_azimuth_block_t
     comma::uint32 encoder_count;
     comma::uint32 block_id;
 
-    output_azimuth_block_t() {}
+    output_azimuth_block_t()
+        : measurement_id( 0 )
+        , encoder_count( 0 )
+        , block_id( 0 )
+    {}
 
     output_azimuth_block_t( const ouster::OS1::azimuth_block_t& azimuth_block
                           , comma::uint32 block_id );
@@ -48,7 +52,15 @@ struct output_data_block_t
     comma::uint16 reflectivity;
     comma::uint16 ambient;
 
-    output_data_block_t() {}
+    output_data_block_t()
+        : channel( 0 )
+        , range( 0 )
+        , bearing( 0 )
+        , elevation( 0 )
+        , signal( 0 )
+        , reflectivity( 0 )
+        , ambient( 0 )
+    {}
 
     output_data_block_t( double azimuth_encoder_angle
                        , const ouster::OS1::data_block_t& data_block
