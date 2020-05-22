@@ -4,6 +4,7 @@
 
 #include "packet.h"
 #include "../../../math/roll_pitch_yaw.h"
+#include "../../../timing/timestamped.h"
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <Eigen/Geometry>
 
@@ -67,25 +68,11 @@ struct output_lidar_t
     {}
 };
 
-template < typename T >
-struct timed_xyz_t
-{
-    boost::posix_time::ptime time;
-    T x;
-    T y;
-    T z;
-
-    timed_xyz_t() {}
-
-    timed_xyz_t( boost::posix_time::ptime time, T x, T y, T z )
-        : time( time ), x( x ), y( y ), z( z ) {}
-};
-
 struct output_imu_t
 {
     boost::posix_time::ptime start_time;
-    timed_xyz_t< double > acceleration;
-    timed_xyz_t< double > angular_acceleration;
+    snark::timestamped< Eigen::Vector3d > acceleration;
+    snark::timestamped< Eigen::Vector3d > angular_acceleration;
 
     output_imu_t() {}
 

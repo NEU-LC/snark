@@ -5,6 +5,8 @@
 #include "config.h"
 #include "packet.h"
 #include "types.h"
+#include "../../../timing/traits.h"
+#include "../../../visiting/eigen.h"
 #include <comma/visiting/traits.h>
 
 namespace comma { namespace visiting {
@@ -165,27 +167,6 @@ template <> struct traits< snark::ouster::OS1::azimuth_block_t >
         v.apply( "encoder_count", t.encoder_count );
         v.apply( "data_blocks", t.data_blocks );
         v.apply( "packet_status", t.packet_status );
-    }
-};
-
-template < typename T > struct traits< snark::ouster::timed_xyz_t< T > >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, snark::ouster::timed_xyz_t< T >& t, Visitor& v )
-    {
-        v.apply( "t", t.time );
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::ouster::timed_xyz_t< T >& t, Visitor& v )
-    {
-        v.apply( "t", t.time );
-        v.apply( "x", t.x );
-        v.apply( "y", t.y );
-        v.apply( "z", t.z );
     }
 };
 

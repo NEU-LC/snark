@@ -57,13 +57,13 @@ output_data_block_t::output_data_block_t( double azimuth_encoder_angle
 output_imu_t::output_imu_t( const ouster::OS1::imu_block_t& imu_block )
     : start_time( convert_timestamp( imu_block.start_read_time ))
     , acceleration( convert_timestamp( imu_block.acceleration_read_time )
-                  , imu_block.acceleration_x
-                  , imu_block.acceleration_y
-                  , imu_block.acceleration_z )
+                  , Eigen::Vector3d( imu_block.acceleration_x
+                                   , imu_block.acceleration_y
+                                   , imu_block.acceleration_z ))
     , angular_acceleration( convert_timestamp( imu_block.gyro_read_time )
-                          , imu_block.angular_acceleration_x * M_PI / 180
-                          , imu_block.angular_acceleration_y * M_PI / 180
-                          , imu_block.angular_acceleration_z * M_PI / 180 )
+                          , Eigen::Vector3d( imu_block.angular_acceleration_x * M_PI / 180
+                                           , imu_block.angular_acceleration_y * M_PI / 180
+                                           , imu_block.angular_acceleration_z * M_PI / 180 ))
 {
 }
 

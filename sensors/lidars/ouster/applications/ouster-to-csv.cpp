@@ -97,9 +97,9 @@ void usage( bool verbose )
         std::cerr << "\n";
         std::cerr << "\n    --- display imu data ---";
         std::cerr << "\n    ouster-cat imu --config config.json:ouster | ouster-to-csv imu \\";
-        std::cerr << "\n        | csv-shuffle --fields $fields --binary $format --output\\";
-        std::cerr << "\n              acceleration/t,acceleration/x,acceleration/y,acceleration/z \\";
-        std::cerr << "\n        | csv-plot --binary ul,3f \"-;fields=x,y;color=red\" \\";
+        std::cerr << "\n        | csv-shuffle --fields $fields --binary $format --output \\";
+        std::cerr << "\n              acceleration/t,acceleration/data/x,acceleration/data/y,acceleration/data/z \\";
+        std::cerr << "\n        | csv-plot --binary ul,3d \"-;fields=x,y;color=red\" \\";
         std::cerr << "\n                   \"-;fields=x,,y;color=green\" \"-;fields=x,,,y;color=blue\"";
     }
     else
