@@ -6,7 +6,7 @@
 #include <vector>
 #include <comma/base/types.h>
 
-namespace ouster { namespace OS1 {
+namespace snark { namespace ouster { namespace OS1 {
 
 struct parameters_t
 {
@@ -52,4 +52,4 @@ struct config_t
     lidar_intrinsics_t lidar_intrinsics;
 };
 
-} } // namespace ouster { namespace OS1 {
+} } } // namespace snark { namespace ouster { namespace OS1 {

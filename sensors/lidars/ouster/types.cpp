@@ -4,7 +4,7 @@
 #include <snark/math/rotation_matrix.h>
 #include <snark/timing/time.h>
 
-namespace ouster {
+namespace snark { namespace ouster {
 
 static boost::posix_time::ptime convert_timestamp( comma::uint64 timestamp )
 {
@@ -67,4 +67,4 @@ output_imu_t::output_imu_t( const ouster::OS1::imu_block_t& imu_block )
 {
 }
 
-} // namespace ouster {
+} } // namespace snark { namespace ouster {

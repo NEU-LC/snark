@@ -2,7 +2,7 @@
 
 #include "packet.h"
 
-namespace ouster { namespace OS1 {
+namespace snark { namespace ouster { namespace OS1 {
 
 beam_angle_lut_entry beam_angle_lut[ ouster::OS1::pixels_per_column ];
 
@@ -15,4 +15,4 @@ void init_beam_angle_lut( const beam_intrinsics_t& beam_intrinsics )
     }
 }
 
-} } // namespace ouster { namespace OS1 {
+} } } // namespace snark { namespace ouster { namespace OS1 {

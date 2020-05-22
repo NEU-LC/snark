@@ -9,10 +9,10 @@
 
 namespace comma { namespace visiting {
 
-template <> struct traits< ouster::OS1::parameters_t >
+template <> struct traits< snark::ouster::OS1::parameters_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::OS1::parameters_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::OS1::parameters_t& t, Visitor& v )
     {
         v.apply( "auto_start_flag", t.auto_start_flag );
         v.apply( "tcp_port", t.tcp_port );
@@ -32,7 +32,7 @@ template <> struct traits< ouster::OS1::parameters_t >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::OS1::parameters_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::OS1::parameters_t& t, Visitor& v )
     {
         v.apply( "auto_start_flag", t.auto_start_flag );
         v.apply( "tcp_port", t.tcp_port );
@@ -52,57 +52,57 @@ template <> struct traits< ouster::OS1::parameters_t >
     }
 };
 
-template <> struct traits< ouster::OS1::beam_intrinsics_t >
+template <> struct traits< snark::ouster::OS1::beam_intrinsics_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::OS1::beam_intrinsics_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::OS1::beam_intrinsics_t& t, Visitor& v )
     {
         v.apply( "beam_altitude_angles", t.beam_altitude_angles );
         v.apply( "beam_azimuth_angles", t.beam_azimuth_angles );
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::OS1::beam_intrinsics_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::OS1::beam_intrinsics_t& t, Visitor& v )
     {
         v.apply( "beam_altitude_angles", t.beam_altitude_angles );
         v.apply( "beam_azimuth_angles", t.beam_azimuth_angles );
     }
 };
 
-template <> struct traits< ouster::OS1::imu_intrinsics_t >
+template <> struct traits< snark::ouster::OS1::imu_intrinsics_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::OS1::imu_intrinsics_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::OS1::imu_intrinsics_t& t, Visitor& v )
     {
         v.apply( "imu_to_sensor_transform", t.imu_to_sensor_transform );
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::OS1::imu_intrinsics_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::OS1::imu_intrinsics_t& t, Visitor& v )
     {
         v.apply( "imu_to_sensor_transform", t.imu_to_sensor_transform );
     }
 };
 
-template <> struct traits< ouster::OS1::lidar_intrinsics_t >
+template <> struct traits< snark::ouster::OS1::lidar_intrinsics_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::OS1::lidar_intrinsics_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::OS1::lidar_intrinsics_t& t, Visitor& v )
     {
         v.apply( "lidar_to_sensor_transform", t.lidar_to_sensor_transform );
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::OS1::lidar_intrinsics_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::OS1::lidar_intrinsics_t& t, Visitor& v )
     {
         v.apply( "lidar_to_sensor_transform", t.lidar_to_sensor_transform );
     }
 };
 
-template <> struct traits< ouster::OS1::config_t >
+template <> struct traits< snark::ouster::OS1::config_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::OS1::config_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::OS1::config_t& t, Visitor& v )
     {
         v.apply( "parameters", t.parameters );
         v.apply( "prod_sn", t.serial_number );
@@ -112,7 +112,7 @@ template <> struct traits< ouster::OS1::config_t >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::OS1::config_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::OS1::config_t& t, Visitor& v )
     {
         v.apply( "parameters", t.parameters );
         v.apply( "prod_sn", t.serial_number );
@@ -122,10 +122,10 @@ template <> struct traits< ouster::OS1::config_t >
     }
 };
 
-template <> struct traits< ouster::OS1::data_block_t >
+template <> struct traits< snark::ouster::OS1::data_block_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::OS1::data_block_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::OS1::data_block_t& t, Visitor& v )
     {
         v.apply( "range", t.range );
         v.apply( "reflectivity", t.reflectivity );
@@ -135,7 +135,7 @@ template <> struct traits< ouster::OS1::data_block_t >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::OS1::data_block_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::OS1::data_block_t& t, Visitor& v )
     {
         v.apply( "range", t.range );
         v.apply( "reflectivity", t.reflectivity );
@@ -145,10 +145,10 @@ template <> struct traits< ouster::OS1::data_block_t >
     }
 };
 
-template <> struct traits< ouster::OS1::azimuth_block_t >
+template <> struct traits< snark::ouster::OS1::azimuth_block_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::OS1::azimuth_block_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::OS1::azimuth_block_t& t, Visitor& v )
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "measurement_id", t.measurement_id );
@@ -158,7 +158,7 @@ template <> struct traits< ouster::OS1::azimuth_block_t >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::OS1::azimuth_block_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::OS1::azimuth_block_t& t, Visitor& v )
     {
         v.apply( "timestamp", t.timestamp );
         v.apply( "measurement_id", t.measurement_id );
@@ -168,10 +168,10 @@ template <> struct traits< ouster::OS1::azimuth_block_t >
     }
 };
 
-template < typename T > struct traits< ouster::timed_xyz_t< T > >
+template < typename T > struct traits< snark::ouster::timed_xyz_t< T > >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::timed_xyz_t< T >& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::timed_xyz_t< T >& t, Visitor& v )
     {
         v.apply( "t", t.time );
         v.apply( "x", t.x );
@@ -180,7 +180,7 @@ template < typename T > struct traits< ouster::timed_xyz_t< T > >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::timed_xyz_t< T >& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::timed_xyz_t< T >& t, Visitor& v )
     {
         v.apply( "t", t.time );
         v.apply( "x", t.x );
@@ -189,10 +189,10 @@ template < typename T > struct traits< ouster::timed_xyz_t< T > >
     }
 };
 
-template <> struct traits< ouster::OS1::imu_block_t >
+template <> struct traits< snark::ouster::OS1::imu_block_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::OS1::imu_block_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::OS1::imu_block_t& t, Visitor& v )
     {
         v.apply( "start_read_time", t.start_read_time );
         v.apply( "acceleration_read_time", t.acceleration_read_time );
@@ -206,7 +206,7 @@ template <> struct traits< ouster::OS1::imu_block_t >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::OS1::imu_block_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::OS1::imu_block_t& t, Visitor& v )
     {
         v.apply( "start_read_time", t.start_read_time );
         v.apply( "acceleration_read_time", t.acceleration_read_time );
@@ -220,10 +220,10 @@ template <> struct traits< ouster::OS1::imu_block_t >
     }
 };
 
-template <> struct traits< ouster::output_azimuth_block_t >
+template <> struct traits< snark::ouster::output_azimuth_block_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::output_azimuth_block_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::output_azimuth_block_t& t, Visitor& v )
     {
         v.apply( "t", t.t );
         v.apply( "measurement_id", t.measurement_id );
@@ -232,7 +232,7 @@ template <> struct traits< ouster::output_azimuth_block_t >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::output_azimuth_block_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::output_azimuth_block_t& t, Visitor& v )
     {
         v.apply( "t", t.t );
         v.apply( "measurement_id", t.measurement_id );
@@ -241,10 +241,10 @@ template <> struct traits< ouster::output_azimuth_block_t >
     }
 };
 
-template <> struct traits< ouster::output_data_block_t >
+template <> struct traits< snark::ouster::output_data_block_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::output_data_block_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::output_data_block_t& t, Visitor& v )
     {
         v.apply( "channel", t.channel );
         v.apply( "range", t.range );
@@ -256,7 +256,7 @@ template <> struct traits< ouster::output_data_block_t >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::output_data_block_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::output_data_block_t& t, Visitor& v )
     {
         v.apply( "channel", t.channel );
         v.apply( "range", t.range );
@@ -268,27 +268,27 @@ template <> struct traits< ouster::output_data_block_t >
     }
 };
 
-template <> struct traits< ouster::output_lidar_t >
+template <> struct traits< snark::ouster::output_lidar_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::output_lidar_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::output_lidar_t& t, Visitor& v )
     {
         v.apply( "azimuth_block", t.azimuth_block );
         v.apply( "data_block", t.data_block );
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::output_lidar_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::output_lidar_t& t, Visitor& v )
     {
         v.apply( "azimuth_block", t.azimuth_block );
         v.apply( "data_block", t.data_block );
     }
 };
 
-template <> struct traits< ouster::output_imu_t >
+template <> struct traits< snark::ouster::output_imu_t >
 {
     template < typename Key, class Visitor >
-    static void visit( const Key&, ouster::output_imu_t& t, Visitor& v )
+    static void visit( const Key&, snark::ouster::output_imu_t& t, Visitor& v )
     {
         v.apply( "start_time", t.start_time );
         v.apply( "acceleration", t.acceleration );
@@ -296,7 +296,7 @@ template <> struct traits< ouster::output_imu_t >
     }
 
     template < typename Key, class Visitor >
-    static void visit( const Key&, const ouster::output_imu_t& t, Visitor& v )
+    static void visit( const Key&, const snark::ouster::output_imu_t& t, Visitor& v )
     {
         v.apply( "start_time", t.start_time );
         v.apply( "acceleration", t.acceleration );

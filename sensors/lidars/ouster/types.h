@@ -7,7 +7,7 @@
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <Eigen/Geometry>
 
-namespace ouster {
+namespace snark { namespace ouster {
 
 struct transform_t
 {
@@ -92,4 +92,4 @@ struct output_imu_t
     output_imu_t( const ouster::OS1::imu_block_t& imu_block );
 };
 
-} // namespace ouster {
+} } // namespace snark { namespace ouster {
