@@ -149,7 +149,7 @@ struct app
             return 0;
         }
 
-        snark::ouster::OS1::init_beam_angle_lut( config.beam_intrinsics, beam_angle_lut );
+        beam_angle_lut = snark::ouster::OS1::get_beam_angle_lut( config.beam_intrinsics );
 
         output();
         return 0;

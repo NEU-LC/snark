@@ -89,6 +89,6 @@ struct beam_angle_lut_entry
 };
 
 typedef std::array< beam_angle_lut_entry, pixels_per_column > beam_angle_lut_t;
-void init_beam_angle_lut( const beam_intrinsics_t& beam_intrinsics, beam_angle_lut_t& beam_angle_lut );
+beam_angle_lut_t get_beam_angle_lut( const beam_intrinsics_t& beam_intrinsics );
 
 } } } // namespace snark { namespace ouster { namespace OS1 {
