@@ -22,14 +22,9 @@ transform_t::transform_t( std::vector< double >& transform_vector )
 
 std::vector< double > transform_t::frame() const
 {
-    std::vector< double > frame_;
-    frame_.push_back( translation.x() );
-    frame_.push_back( translation.y() );
-    frame_.push_back( translation.z() );
-    frame_.push_back( rotation.roll() );
-    frame_.push_back( rotation.pitch() );
-    frame_.push_back( rotation.yaw() );
-    return frame_;
+    return std::vector< double >({ translation.x(), translation.y(), translation.z()
+                                 , rotation.roll(), rotation.pitch(), rotation.yaw()
+                                 });
 }
 
 output_azimuth_block_t::output_azimuth_block_t( const OS1::azimuth_block_t& azimuth_block
