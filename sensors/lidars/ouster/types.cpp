@@ -1,4 +1,5 @@
 // Copyright (c) 2019 The University of Sydney
+// Copyright (c) 2020 Mission Systems Pty Ltd
 
 #include "types.h"
 #include "../../../math/rotation_matrix.h"
