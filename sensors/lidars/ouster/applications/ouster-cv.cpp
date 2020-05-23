@@ -135,7 +135,7 @@ int main( int ac, char** av )
 
         comma::uint32 block_id = 0;
 
-        const snark::ouster::output_lidar_t* record;
+        const snark::ouster::output_lidar_t* record = nullptr;
         while( is.ready() || ( std::cin.good() && !std::cin.eof() ))
         {
             record = is.read();
