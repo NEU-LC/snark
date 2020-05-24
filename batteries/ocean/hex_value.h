@@ -27,16 +27,17 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_OCEAN_HEX_VALUE
-#define SNARK_OCEAN_HEX_VALUE
-#include <comma/base/types.h>
-#include <comma/packed/packed.h>
-#include <boost/array.hpp>
-#include <vector>
+#pragma once
+
 #include <iomanip>
 #include <iostream>
+#include <type_traits>
+#include <vector>
+#include <boost/array.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits.hpp>
+#include <comma/base/types.h>
+#include <comma/packed/packed.h>
 #include "packed_data.h"
 
 namespace snark { namespace ocean {
@@ -56,9 +57,9 @@ struct hex_value_t
 {
     hex_value_t() : value(0)
     {
-        BOOST_STATIC_ASSERT_MSG( boost::is_integral< T >::value, " T must be integral type" );
-        BOOST_STATIC_ASSERT_MSG( (!boost::is_same< T, unsigned char >::value), " T must not be unsigned char, use unsigned short instead" );
-        BOOST_STATIC_ASSERT_MSG( (!boost::is_same< T, char >::value), " T must not be char, use short instead" );
+        static_assert( boost::is_integral< T >::value, " T must be integral type" );
+        static_assert( (!boost::is_same< T, unsigned char >::value), " T must not be unsigned char, use unsigned short instead" );
+        static_assert( (!boost::is_same< T, char >::value), " T must not be char, use short instead" );
 
     }
     hex_value_t( T v ) : value(v)

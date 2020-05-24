@@ -27,16 +27,17 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SNARK_OCEAN_BATTERY_H
-#define SNARK_OCEAN_BATTERY_H
-#include <comma/base/types.h>
-#include <comma/base/exception.h>
-#include <boost/date_time/posix_time/ptime.hpp>
-#include <boost/date_time/posix_time/posix_time_duration.hpp>
-#include <boost/array.hpp>
-#include <vector>
+#pragma once
+
 #include <iomanip>
 #include <iostream>
+#include <type_traits>
+#include <vector>
+#include <comma/base/types.h>
+#include <comma/base/exception.h>
+#include <boost/array.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include "hex_value.h"
 #include "units.h"
 #include "commands.h"
@@ -112,7 +113,7 @@ struct controller
     controller() : id(0), state( battery_state::uninitialised ), average_charge( OCEAN_NAN ) 
     { 
         // One controller to 8 batteries only
-        BOOST_STATIC_ASSERT_MSG( ( N > 0 && N <= 8 ), " N must be between 1 and 8 inclusive" );
+        static_assert( ( N > 0 && N <= 8 ), " N must be between 1 and 8 inclusive" );
         set_battery_id(); 
         
     }
@@ -170,5 +171,3 @@ struct controller
 };
 
 } } // namespace snark { namespace ocean {
-
-#endif // SNARK_OCEAN_BATTERY_H

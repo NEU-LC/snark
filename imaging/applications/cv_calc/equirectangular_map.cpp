@@ -29,7 +29,7 @@
 
 #include <iostream>
 #include <sstream>
-#include <boost/static_assert.hpp>
+#include <type_traits>
 #include <Eigen/Core>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -114,7 +114,7 @@ std::string options()
 
 int run( const comma::command_line_options& options )
 {
-    BOOST_STATIC_ASSERT( sizeof( float ) == 4 );
+    static_assert( sizeof( float ) == 4, "expected float of size 4" );
     options.assert_mutually_exclusive( "--reverse", "--focal-length,--map-size,--size,--orientation" );
     unsigned int spherical_width, spherical_height; // todo? make doubles?
     const auto& s = comma::split( options.value< std::string >( "--spherical-size" ), ',' );

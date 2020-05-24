@@ -29,6 +29,7 @@
 
 
 #include <iostream>
+#include <type_traits>
 #include <boost/array.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -36,7 +37,6 @@
 #include <boost/bind.hpp>
 #include <boost/optional.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <boost/static_assert.hpp>
 #include <comma/base/exception.h>
 #include <comma/base/last_error.h>
 #include <comma/io/select.h>
@@ -98,8 +98,8 @@ class protocol::impl
         const packet< typename C::response >* send( const C& command, bool debug )
         {
             if( command_pending ) { COMMA_THROW( comma::exception, "cannot send command 0x" << std::hex << ( 0xff & C::id ) << std::dec << " since command 0x" << std::hex << ( 0xff & *command_pending ) << std::dec << " is pending" ); }
-            BOOST_STATIC_ASSERT( packet< C >::size < 64 );
-            BOOST_STATIC_ASSERT( packet< typename C::response >::size < 64 );
+            static_assert( packet< C >::size < 64, "expected size less than 64" );
+            static_assert( packet< typename C::response >::size < 64, "expected size less than 64" );
             packet< C > p( command );
             escape_( p );
             if( debug ) print_buf_( "send", txbuf_.data(), txbuf_.size(), constants::etx );
