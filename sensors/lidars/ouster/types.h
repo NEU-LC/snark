@@ -89,8 +89,8 @@ struct output_imu_t
     snark::timestamped< Eigen::Vector3d > angular_acceleration;
 
     output_imu_t()
-        : acceleration( snark::timestamped( Eigen::Vector3d( 0, 0, 0 )))
-        , angular_acceleration( snark::timestamped( Eigen::Vector3d( 0, 0, 0 )))
+        : acceleration( snark::timestamped< Eigen::Vector3d >( Eigen::Vector3d( 0, 0, 0 )))
+        , angular_acceleration( snark::timestamped< Eigen::Vector3d >( Eigen::Vector3d( 0, 0, 0 )))
     {}
 
     output_imu_t( const OS1::imu_block_t& imu_block );
