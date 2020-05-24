@@ -164,6 +164,7 @@ struct app
         output_csv.format( comma::csv::format::value< O >() );
         comma::csv::binary_output_stream< O > os( std::cout, output_csv );
 
+        std::cin.tie( nullptr );
         while( std::cin.good() && !std::cin.eof() )
         {
             std::cin.read( buf, sizeof( I ));
