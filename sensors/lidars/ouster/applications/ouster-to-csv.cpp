@@ -157,19 +157,18 @@ struct app
 
     static void output()
     {
-        comma::csv::options csv;
-        csv.full_xpath = true;
-        csv.format( comma::csv::format::value< I >() );
-        comma::csv::binary_input_stream< I > is( std::cin, csv );
+        char buf[ sizeof( I )];
 
         comma::csv::options output_csv;
         output_csv.full_xpath = true;
         output_csv.format( comma::csv::format::value< O >() );
         comma::csv::binary_output_stream< O > os( std::cout, output_csv );
 
-        while( is.ready() || ( std::cin.good() && !std::cin.eof() ))
+        while( std::cin.good() && !std::cin.eof() )
         {
-            const I* data_block = is.read();
+            std::cin.read( buf, sizeof( I ));
+            if( std::cin.gcount() < ( long )( sizeof( I ))) { break; }
+            const I* data_block = reinterpret_cast< I* >( buf );
             if( data_block ) { process( *data_block, os ); }
         }
     }
@@ -193,12 +192,12 @@ void app< snark::ouster::OS1::azimuth_block_t, snark::ouster::output_lidar_t >::
     static comma::uint32 block_id = 0;
     static comma::uint32 last_encoder_count = 0;
 
-    if( azimuth_block.packet_status == snark::ouster::OS1::packet_status_good )
+    if( azimuth_block.packet_status() == snark::ouster::OS1::packet_status_good )
     {
-        if( azimuth_block.encoder_count < last_encoder_count ) { block_id++; }
-        last_encoder_count = azimuth_block.encoder_count;
+        if( azimuth_block.encoder_count() < last_encoder_count ) { block_id++; }
+        last_encoder_count = azimuth_block.encoder_count();
         const snark::ouster::output_azimuth_block_t output_azimuth_block( azimuth_block, block_id );
-        const double azimuth_encoder_angle( M_PI * 2 * azimuth_block.encoder_count / snark::ouster::OS1::encoder_ticks_per_rev );
+        const double azimuth_encoder_angle( M_PI * 2 * azimuth_block.encoder_count() / snark::ouster::OS1::encoder_ticks_per_rev );
         for( comma::uint16 channel = 0; channel < azimuth_block.data_blocks.size(); ++channel )
         {
             os.write( snark::ouster::output_lidar_t( output_azimuth_block

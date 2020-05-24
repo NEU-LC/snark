@@ -5,6 +5,7 @@
 
 #include "config.h"
 #include <comma/base/types.h>
+#include <comma/packed/packed.h>
 #include <array>
 
 namespace snark { namespace ouster { namespace OS1 {
@@ -15,64 +16,35 @@ const comma::uint32 packet_status_bad = 0;
 const std::size_t pixels_per_column = 64; // TODO: determine from config, to support 16 beam lidar
 const unsigned int encoder_ticks_per_rev = 90112;
 
-// it would be nice to use comma::packed for this structure but it doesn't play
-// well with reading via input_stream
-struct data_block_t
+struct data_block_t : public comma::packed::packed_struct< data_block_t, 12 >
 {
-    comma::uint32 range;
-    comma::uint16 reflectivity;
-    comma::uint16 signal;
-    comma::uint16 noise;
-    comma::uint16 unused;
-
-    data_block_t()
-        : range( 0 )
-        , reflectivity( 0 )
-        , signal( 0 )
-        , noise( 0 )
-        , unused( 0 )
-    {}
+    comma::packed::little_endian::uint32 range;
+    comma::packed::little_endian::uint16 reflectivity;
+    comma::packed::little_endian::uint16 signal;
+    comma::packed::little_endian::uint16 noise;
+    comma::packed::little_endian::uint16 unused;
 };
 
-struct azimuth_block_t
+struct azimuth_block_t : public comma::packed::packed_struct< azimuth_block_t, 20 + pixels_per_column * 12 >
 {
-    comma::uint64 timestamp;
-    comma::uint32 measurement_id;
-    comma::uint32 encoder_count;
+    comma::packed::little_endian::uint64 timestamp;
+    comma::packed::little_endian::uint32 measurement_id;
+    comma::packed::little_endian::uint32 encoder_count;
     std::array< data_block_t, pixels_per_column > data_blocks;
-    comma::uint32 packet_status;
-
-    azimuth_block_t()
-        : timestamp( 0 )
-        , measurement_id( 0 )
-        , encoder_count( 0 )
-        , packet_status( 0 )
-    {}
+    comma::packed::little_endian::uint32 packet_status;
 };
 
-struct imu_block_t
+struct imu_block_t : public comma::packed::packed_struct< imu_block_t, 48 >
 {
-    comma::uint64 start_read_time;
-    comma::uint64 acceleration_read_time;
-    comma::uint64 gyro_read_time;
-    float acceleration_x;
-    float acceleration_y;
-    float acceleration_z;
-    float angular_acceleration_x;
-    float angular_acceleration_y;
-    float angular_acceleration_z;
-
-    imu_block_t()
-        : start_read_time( 0 )
-        , acceleration_read_time( 0 )
-        , gyro_read_time( 0 )
-        , acceleration_x( 0 )
-        , acceleration_y( 0 )
-        , acceleration_z( 0 )
-        , angular_acceleration_x( 0 )
-        , angular_acceleration_y( 0 )
-        , angular_acceleration_z( 0 )
-    {}
+    comma::packed::little_endian::uint64 start_read_time;
+    comma::packed::little_endian::uint64 acceleration_read_time;
+    comma::packed::little_endian::uint64 gyro_read_time;
+    comma::packed::little_endian::float32 acceleration_x;
+    comma::packed::little_endian::float32 acceleration_y;
+    comma::packed::little_endian::float32 acceleration_z;
+    comma::packed::little_endian::float32 angular_acceleration_x;
+    comma::packed::little_endian::float32 angular_acceleration_y;
+    comma::packed::little_endian::float32 angular_acceleration_z;
 };
 
 struct beam_angle_lut_entry
