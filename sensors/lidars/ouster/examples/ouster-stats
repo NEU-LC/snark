@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Copyright (c) 2019 The University of Sydney
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
+
+stat_fields="t,range,elevation,signal,reflectivity,ambient"
+stats="min,max,diameter"
+extended_stats="percentile=0.1,percentile=0.9"
+
+function description()
+{
+    cat <<EOF
+--help,-h;        show this help and exit
+--verbose,-v;     show more information
+--output-fields;  show output fields and exit
+--output-format;  show output format and exit
+--config=<file>;  default=config.json:ouster
+--extended;       include extended stats (takes longer)
+EOF
+}
+
+function usage()
+{
+    cat <<EOF >&2
+
+display statistics about Ouster OS-1 lidar data
+
+usage: cat *.bin | $scriptname
+
+note that the --extended option is not optimised for memory use
+
+options:
+EOF
+    description | sed 's/^/    /g' >&2
+    cat <<EOF >&2
+
+examples:
+    cat *.bin | $scriptname | csv-from-bin \$( $scriptname --output-format ) \\
+        | name-value-from-csv \$( $scriptname --output-fields )
+    cat *.bin | $scriptname --extended
+    $scriptname --output-fields --extended
+
+EOF
+    exit 0
+}
+
+function say() { echo "$scriptname: $@" >&2; }
+function verbose() { (( options_verbose )) && say "$@"; }
+function die() { say "$@"; exit 1; }
+
+(( $( comma_options_has "--bash-completion" $@ ) )) && { description | comma_options_to_bash_completion; exit 0; }
+(( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )) && usage
+
+options="$( description | comma-options-to-name-value "$@" )"
+comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
+
+if (( options_extended )); then
+    stats="$stats,$extended_stats"
+    stat_fields=$( echo $stat_fields | csv-fields cut --fields t ) #  percentile doesn't support time
+fi
+
+ouster_csv_fields=$( ouster-to-csv lidar --output-fields )
+ouster_csv_format=$( ouster-to-csv lidar --output-format )
+
+csv_calc_fields=$( echo $ouster_csv_fields | csv-fields clear --except $stat_fields )
+
+(( $( comma_options_has --output-fields "$@" ) )) && { csv-calc $stats --fields $csv_calc_fields --output-fields ; exit 0; }
+(( $( comma_options_has --output-format "$@" ) )) && { csv-calc $stats --fields $csv_calc_fields --format $ouster_csv_format --output-format; exit 0; }
+
+ouster-to-csv lidar --config $options_config \
+    | csv-calc $stats --fields $csv_calc_fields --binary $ouster_csv_format

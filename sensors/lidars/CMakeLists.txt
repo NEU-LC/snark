@@ -16,4 +16,8 @@ if(snark_build_sensors_cepton)
     add_subdirectory(cepton)
 endif()
 
+if( snark_build_sensors_ouster )
+    add_subdirectory( ouster )
+endif()
+
 add_subdirectory( robosense )

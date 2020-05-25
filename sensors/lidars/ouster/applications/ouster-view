@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Copyright (c) 2019 The University of Sydney
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
+
+function description()
+{
+    cat <<EOF
+--help,-h;        show this help and exit
+--verbose,-v;     show more information
+--beams=<num>;    default=64; number of beams
+--columns=<num>;  default=1024; columns per frame
+--config=<file>;  default=config.json:ouster
+--speed=[<n>];    set playback speed (default, fast as possible)
+EOF
+}
+
+function usage()
+{
+    cat <<EOF >&2
+
+display Ouster OS-1 lidar data
+
+usage: cat *.bin | $scriptname
+
+options:
+EOF
+    description | sed 's/^/    /g' >&2
+    cat <<EOF >&2
+
+description:
+    displays image and point cloud Ouster data
+    the image data is displayed as a stack of $( ouster-cv --output-images )
+
+examples:
+    ouster-cat lidar | ouster-to-csv lidar | $scriptname
+    cat *.bin | ouster-to-csv lidar | $scriptname --speed=1
+
+EOF
+    exit 0
+}
+
+function say() { echo "$scriptname: $@" >&2; }
+function verbose() { (( options_verbose )) && say "$@"; }
+function die() { say "$@"; exit 1; }
+
+(( $( comma_options_has "--bash-completion" $@ ) )) && { description | comma_options_to_bash_completion; exit 0; }
+(( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )) && usage
+
+options="$( description | comma-options-to-name-value "$@" )"
+comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
+
+fields=$( ouster-to-csv lidar --output-fields )
+format=$( ouster-to-csv lidar --output-format )
+
+function wait_for
+{
+    while [[ ! -S "$1" ]]; do sleep 0.5; done
+}
+
+socket_file=/tmp/ouster-view-socket.$$
+
+function clean
+{
+    rm $socket_file
+}
+trap clean EXIT
+
+play_cmd=cat
+[[ $options_speed ]] && play_cmd="csv-play --binary $format --speed $options_speed"
+
+records_per_frame=$(( options_columns * options_beams ))
+ouster-align --columns $options_columns \
+    | $play_cmd \
+    | io-publish local:$socket_file --size $( csv-size $format ) --multiplier $records_per_frame &
+wait_for $socket_file
+
+io-cat local:$socket_file \
+    | ouster-cv --columns $options_columns \
+    | cv-cat "brightness=60;resize=1.0,2.0;view;null" &
+
+io-cat local:$socket_file \
+    | points-to-cartesian --fields $fields --binary $format --append \
+    | points-frame --from $( ouster-to-csv lidar --config $options_config --output-frame ) \
+                   --fields $fields,x,y,z --binary $format,3d \
+    | view-points --fields $fields,x,y,z --binary $format,3d --z-is-up --exit-on-end-of-input
