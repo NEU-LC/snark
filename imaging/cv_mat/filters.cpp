@@ -3409,7 +3409,7 @@ static std::string usage_impl_()
     oss << std::endl;
     oss << "    operations on channels" << std::endl;
     oss << "        clone-channels=<n>: take 1-channel image, output n-channel image, with each channel a copy of the input" << std::endl;
-    oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n)" << std::endl;
+    oss << "        merge=<n>: split an image into n horizontal bands of equal height and merge them into an n-channel image (the number of rows must be a multiple of n); default <n>: 3" << std::endl;
     oss << "        split: split n-channel image into a nx1 grey-scale image" << std::endl;
     oss << "        shuffle=<list>; re-shuffle input channels, e.g., shuffle=r,b,g - swap channels 1 and 2; channels are described by symbolic names 'r', 'g', 'b', and 'a'," << std::endl;
     oss << "            where 'r' is always channel[0], 'b' is channel[1], etc.; if a field is left empty, the corresponding channel is copied verbatim from the input" << std::endl;
