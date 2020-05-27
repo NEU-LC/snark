@@ -758,7 +758,8 @@ static typename impl::filters< H >::value_type brightness_impl_( typename impl::
 {
     typename impl::filters< H >::value_type n;
     n.first = m.first;
-    n.second = (m.second * scale) + offset;
+    cv::multiply(cv::Scalar::all(scale), m.second, n.second);
+    cv::add(cv::Scalar::all(offset), n.second, n.second);
     return n;
 }
 
