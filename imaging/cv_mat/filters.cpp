@@ -2845,7 +2845,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         return std::make_pair( boost::bind< value_type_t >( morphology::morphology< H >, _1, snark::cv_mat::morphology::operations().at( e[0] ), parameters.kernel, parameters.iterations ), true );
     }
     if( e[0] == "skeleton" || e[0] == "thinning" ) { return std::make_pair( boost::bind< value_type_t >( morphology::skeleton< H >(snark::cv_mat::morphology::parameters( e )), _1 ), true ); }
-    if( e[0] == "advance" || e[0] == "retreat" || e[0] == "force_retreat" ) { return std::make_pair( boost::bind< value_type_t >( morphology::advance< H >::make( e ), _1 ), true ); }
+    if( e[0] == "advance" || e[0] == "retreat" ) { return std::make_pair( boost::bind< value_type_t >( morphology::advance< H >::make( e ), _1 ), true ); }
     if( e[0] == "meet" ) { return std::make_pair( boost::bind< value_type_t >( morphology::meet< H >( snark::cv_mat::morphology::parameters( e ) ), _1 ), true ); }
     if( e[0] == "overlay" )
     {
@@ -3516,14 +3516,12 @@ static std::string usage_impl_()
     oss << "                                                         the nearest non-background value in kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
-    oss << "            force_retreat=[<parameters>][,background:<value>]; similar to erode, but erodes only non-background pixels," << std::endl;
-    oss << "                                                         edges will be replaced with background" << std::endl;
+    oss << "            retreat=[<parameters>][,background:<value>][,force]; similar to erode, but erodes only non-background pixels," << std::endl;
+    oss << "                                                         if there is a background pixel in the kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
-    oss << "            retreat=[<parameters>][,background:<value>]; similar to erode, but erodes only non-background pixels," << std::endl;
-    oss << "                                                         if there is a background pixel in in kernel" << std::endl;
-    oss << "                                                         only shape <parameters> supported" << std::endl;
-    oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
+    oss << "                                                         force: drops requirement for background pixel in the kernel" << std::endl;
+    oss << "                                                         resulting in borders (of background) around edges" << std::endl;
     oss << "            meet=[<parameters>]; similar to dilate, but decides on the pixel value based on the majority of" << std::endl;
     oss << "                                 pixels in the kernel weighted by distance to anchor" << std::endl;
     oss << "                                 only shape <parameters> supported" << std::endl;
