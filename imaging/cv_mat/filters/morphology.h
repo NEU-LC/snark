@@ -81,7 +81,7 @@ class advance
     public:
         typedef std::pair< H, cv::Mat > value_type;
 
-        advance( const parameters& param, bool advance = true, int background = 0 );
+        advance( const parameters& param, const std::string& mode, int background = 0 );
 
         value_type operator()( value_type );
         
