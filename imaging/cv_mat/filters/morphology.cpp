@@ -153,6 +153,17 @@ struct by_nearest
             return true;
         }
     };
+
+    struct force_retreat
+    {
+        static bool visit( unsigned char* dest, const unsigned char* src, const unsigned char* neighbour, const unsigned char* background, unsigned int size )
+        {
+            if( std::memcmp( src, background, size ) == 0 ||
+                std::memcmp( src, neighbour, size ) == 0 ) { return false; }
+            std::memcpy( dest, background, size );
+            return true;
+        }
+    };
 };
 
 static std::vector< std::pair< float, cv::Point > > make_offsets( cv::Mat kernel )
@@ -175,10 +186,14 @@ static std::vector< std::pair< float, cv::Point > > make_offsets( cv::Mat kernel
 }
 
 template < typename H >
-advance< H >::advance( const parameters& param, bool a, int background ) // todo? quick and dirty: use cv::FilterEngine instead? (but cv::FilterEngine is so over-engineered)
+advance< H >::advance( const parameters& param, bool advance, int background, bool force ) // todo? quick and dirty: use cv::FilterEngine instead? (but cv::FilterEngine is so over-engineered)
     : background_( background )
     , offsets_( make_offsets( param.kernel ) )
-    , visit_neighbour_( a ? &by_nearest::advance::visit: &by_nearest::retreat::visit )
+    , visit_neighbour_(
+        advance ? &by_nearest::advance::visit
+        : force ? &by_nearest::force_retreat::visit
+        : &by_nearest::retreat::visit
+     )
 {
     if( param.iterations > 1 ) { COMMA_THROW( comma::exception, "advance/retreat: only one iteration is supported; got: " << param.iterations ); }
 }
@@ -218,13 +233,19 @@ template < typename H >
 advance< H > advance< H >::make( const std::vector< std::string >& options )
 {
     int background = 0;
+    bool force = false;
     std::vector< std::string > e = comma::split( options[1], ',' );
+    if( e.back() == "force" ) // super quick and dirty
+    {
+        force = true;
+        e.pop_back();
+    }
     if( e.back().substr( 0, 11 ) == "background:" ) // super quick and dirty
     {
         background = boost::lexical_cast< int >( e.back().substr( 11 ) );
         e.pop_back();
     }
-    return advance< H >( parameters( std::vector< std::string >{{ options[0], comma::join( e, ',' ) }} ), options[0] == "advance", background ); // pain!
+    return advance< H >( parameters( std::vector< std::string >{{ options[0], comma::join( e, ',' ) }} ), options[0] == "advance", background, force ); // pain!
 }
 
 template < typename H >

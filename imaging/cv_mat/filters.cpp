@@ -3516,10 +3516,12 @@ static std::string usage_impl_()
     oss << "                                                         the nearest non-background value in kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
-    oss << "            retreat=[<parameters>][,background:<value>]; similar to erode, but erodes only non-background pixels," << std::endl;
-    oss << "                                                         if there is a background pixel in in kernel" << std::endl;
+    oss << "            retreat=[<parameters>][,background:<value>][,force]; similar to erode, but erodes only non-background pixels," << std::endl;
+    oss << "                                                         if there is a background pixel in the kernel" << std::endl;
     oss << "                                                         only shape <parameters> supported" << std::endl;
     oss << "                                                         background:<value>: background pixel value; default: 0" << std::endl;
+    oss << "                                                         force: drops requirement for background pixel in the kernel" << std::endl;
+    oss << "                                                         resulting in borders (of background) around edges" << std::endl;
     oss << "            meet=[<parameters>]; similar to dilate, but decides on the pixel value based on the majority of" << std::endl;
     oss << "                                 pixels in the kernel weighted by distance to anchor" << std::endl;
     oss << "                                 only shape <parameters> supported" << std::endl;
