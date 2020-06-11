@@ -1,9 +1,11 @@
 source_group( echodyne-cat FILES echodyne-cat.cpp )
 add_executable( echodyne-cat echodyne-cat.cpp )
+set_target_properties( echodyne-cat PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE )
 target_link_libraries( echodyne-cat snark_echodyne bnetplus )
 
 source_group( echodyne-command FILES echodyne-command.cpp )
 add_executable( echodyne-command echodyne-command.cpp )
+set_target_properties( echodyne-command PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE )
 target_link_libraries( echodyne-command snark_echodyne bnetplus )
 
 install( TARGETS echodyne-cat echodyne-command
