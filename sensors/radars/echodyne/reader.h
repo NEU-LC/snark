@@ -52,17 +52,17 @@ private:
     std::unique_ptr< bnet_reader > reader_;
 };
 
-template<> MESAK_Status reader::get_data() { return reader_->get_data( STATUS_DATA ); }
-template<> MESAK_Rvmap reader::get_data() { return reader_->get_data( RVMAP_DATA ); }
-template<> MESAK_Detection reader::get_data() { return reader_->get_data( DETECTION_DATA ); }
-template<> MESAK_Track reader::get_data() { return reader_->get_data( TRACK_DATA ); }
-template<> MESAK_Measurement reader::get_data() { return reader_->get_data( MEAS_DATA ); }
+template<> MESAK_Status reader::get_data();
+template<> MESAK_Rvmap reader::get_data();
+template<> MESAK_Detection reader::get_data();
+template<> MESAK_Track reader::get_data();
+template<> MESAK_Measurement reader::get_data();
 
-template<> std::vector< status_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Status >()); }
-template<> std::vector< rvmap_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Rvmap >()); }
-template<> std::vector< detection_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Detection >()); }
-template<> std::vector< track_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Track >()); }
-template<> std::vector< meas_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Measurement >()); }
+template<> std::vector< status_data_t > reader::output_packet();
+template<> std::vector< rvmap_data_t > reader::output_packet();
+template<> std::vector< detection_data_t > reader::output_packet();
+template<> std::vector< track_data_t > reader::output_packet();
+template<> std::vector< meas_data_t > reader::output_packet();
 
 template< typename T > void reader::output( mesa_data_t d_type, comma::csv::binary_output_stream< T >& os )
 {

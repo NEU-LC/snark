@@ -64,11 +64,11 @@ private:
 };
 
 // a single packet from the echodyne API might end up as multiple entries in the comma world
-template<> std::vector< status_data_t > radar::output_packet() { return from_packet( radar_->get_status() ); }
-template<> std::vector< rvmap_data_t > radar::output_packet() { return from_packet( radar_->get_rvmap() ); }
-template<> std::vector< detection_data_t > radar::output_packet() { return from_packet( radar_->get_detection() ); }
-template<> std::vector< track_data_t > radar::output_packet() { return from_packet( radar_->get_track() ); }
-template<> std::vector< meas_data_t > radar::output_packet() { return from_packet( radar_->get_meas() ); }
+template<> std::vector< status_data_t > radar::output_packet();
+template<> std::vector< rvmap_data_t > radar::output_packet();
+template<> std::vector< detection_data_t > radar::output_packet();
+template<> std::vector< track_data_t > radar::output_packet();
+template<> std::vector< meas_data_t > radar::output_packet();
 
 template< typename T > void radar::output( mesa_data_t d_type, comma::csv::binary_output_stream< T >& os )
 {
