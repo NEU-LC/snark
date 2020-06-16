@@ -16,3 +16,8 @@ compile_commands.json
 
 .vscode/launch.json
 .vscode/settings.json
+
+python/build
+python/snark.egg-info
+*.pyc
+
