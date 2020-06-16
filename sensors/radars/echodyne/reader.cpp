@@ -36,4 +36,16 @@ reader::reader( const std::string& source_folder )
     reader_ = std::make_unique< bnet_reader >( source_folder );
 }
 
+template<> MESAK_Status reader::get_data() { return reader_->get_data( STATUS_DATA ); }
+template<> MESAK_Rvmap reader::get_data() { return reader_->get_data( RVMAP_DATA ); }
+template<> MESAK_Detection reader::get_data() { return reader_->get_data( DETECTION_DATA ); }
+template<> MESAK_Track reader::get_data() { return reader_->get_data( TRACK_DATA ); }
+template<> MESAK_Measurement reader::get_data() { return reader_->get_data( MEAS_DATA ); }
+
+template<> std::vector< status_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Status >()); }
+template<> std::vector< rvmap_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Rvmap >()); }
+template<> std::vector< detection_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Detection >()); }
+template<> std::vector< track_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Track >()); }
+template<> std::vector< meas_data_t > reader::output_packet() { return from_packet( get_data< MESAK_Measurement >()); }
+
 } } // namespace snark { namespace echodyne {

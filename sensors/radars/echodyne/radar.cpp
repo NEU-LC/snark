@@ -179,4 +179,11 @@ void radar::show_system_state()
                << " (" << data_status_packet.data->sys_state << ")" << std::endl;
 }
 
+// a single packet from the echodyne API might end up as multiple entries in the comma world
+template<> std::vector< status_data_t > radar::output_packet() { return from_packet( radar_->get_status() ); }
+template<> std::vector< rvmap_data_t > radar::output_packet() { return from_packet( radar_->get_rvmap() ); }
+template<> std::vector< detection_data_t > radar::output_packet() { return from_packet( radar_->get_detection() ); }
+template<> std::vector< track_data_t > radar::output_packet() { return from_packet( radar_->get_track() ); }
+template<> std::vector< meas_data_t > radar::output_packet() { return from_packet( radar_->get_meas() ); }
+
 } } // namespace snark { namespace echodyne {
