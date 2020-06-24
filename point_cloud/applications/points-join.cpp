@@ -496,7 +496,7 @@ template < typename V > struct join_impl_
         if( self_join ) { return 0; }
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
         use_radius = stdin_csv.has_field( "radius" );
-        if( self_join && use_radius ) { std::cerr << "points-join: self-join: radius field: not supported" << std::endl; return 1; }
+        if( self_join && use_radius ) { std::cerr << "points-join: self-join: radius field: not supported" << std::endl; return 0; }
         comma::csv::input_stream< input_t > istream( std::cin, stdin_csv ); // quick and dirty, don't mind self_join
         #ifdef WIN32
         if( stdin_csv.binary() ) { _setmode( _fileno( stdout ), _O_BINARY ); }
