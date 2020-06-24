@@ -66,9 +66,7 @@
 #include <memory>
 #include <string>
 
-namespace snark {
-namespace cv_mat {
-namespace filters {
+namespace snark { namespace cv_mat { namespace filters {
 
 template <typename H>
 class contraharmonic {
@@ -89,6 +87,4 @@ class contraharmonic {
     cv::Mat do_parallel(cv::Mat in);  // helper function
 };
 
-}  // namespace impl
-}  // namespace cv_mat
-}  // namespace snark
+} } } /// namespace snark { namespace cv_mat { namespace filters {

@@ -84,6 +84,7 @@
 #include "filters/blank.h"
 #include "filters/colors.h"
 #include "filters/contraharmonic.h"
+#include "filters/convolution.h"
 #include "filters/file.h"
 #include "filters/hard_edge.h"
 #include "filters/load.h"
@@ -2765,6 +2766,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( s.size() < 3 ) { COMMA_THROW( comma::exception, "expected 3 parameters, got only " << s.size() << "; please specify filename make=<rows>,<cols>,<type>" ); }
         return std::make_pair( filters::blank< H >( boost::lexical_cast< unsigned int >( s[0] ), boost::lexical_cast< unsigned int >( s[1] ), snark::cv_mat::type_from_string( s[2] ) ), true );
     }
+    if( e[0] == "convolution" ) { return std::make_pair( boost::bind< value_type_t >( filters::convolution< H >::make( e ), _1 ), true ); }
     if( e[0] == "map" ) // todo! refactor usage, especially csv option separators and equal sign; make optionally map for each channel separately
     {
 #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
@@ -3338,8 +3340,9 @@ static std::string usage_impl_()
     //oss << "        warp=<how>: todo: warp image" << std::endl;
     //oss << "        unwarp=<how>: todo: unwarp image" << std::endl;
     //oss << "            <how>: todo" << std::endl;
-    oss << filters::contraharmonic<boost::posix_time::ptime>::usage(8) << std::endl;
-    oss << filters::pad::pad<boost::posix_time::ptime>::usage(8) << std::endl;
+    oss << filters::contraharmonic< boost::posix_time::ptime >::usage(8) << std::endl;
+    oss << filters::convolution< boost::posix_time::ptime >::usage(8) << std::endl;
+    oss << filters::pad::pad< boost::posix_time::ptime >::usage(8) << std::endl;
     oss << filters::text< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        threshold=<threshold|otsu>[,<maxval>[,<type>]]: threshold image; same semantics as cv::threshold()" << std::endl;
     oss << "            <threshold|otsu>: threshold value; if 'otsu' then the optimum threshold value using the Otsu's algorithm is used (only for 8-bit images)" << std::endl;
