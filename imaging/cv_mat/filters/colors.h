@@ -30,15 +30,15 @@
 #pragma once
 
 #include <opencv2/core/core.hpp>
-#if CV_MAJOR_VERSION > 2
+#if CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
 #include <opencv2/xphoto/white_balance.hpp>
-#else // CV_MAJOR_VERSION > 2
+#else // CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
 #include <comma/base/exception.h>
-#endif // CV_MAJOR_VERSION > 2
+#endif // CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
 
 namespace snark{ namespace cv_mat { namespace filters {
 
-#if CV_MAJOR_VERSION > 2
+#if CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
     template < typename H >
     class balance_white
     {
@@ -48,13 +48,20 @@ namespace snark{ namespace cv_mat { namespace filters {
         private:
             cv::Ptr< cv::xphoto::SimpleWB > wb_;
     };
-#else // CV_MAJOR_VERSION > 2
+#else // CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
     template < typename H >
     struct balance_white
     {
-        balance_white() { COMMA_THROW( comma::exception, "balance-white not implemented for opencv version " << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION << " that you have" ); }
-        std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m ) { COMMA_THROW( comma::exception, "balance-white not implemented for opencv version " << CV_MAJOR_VERSION << "." << CV_MINOR_VERSION << " that you have" ); }
+    #if CV_MAJOR_VERSION < 3
+        #define STR_HELPER(x) #x
+        #define STR(x) STR_HELPER(x)
+        #define BALANCE_WHITE_ERROR_MSG "balance-white not implemented for opencv version " STR(CV_MAJOR_VERSION) "." STR(CV_MINOR_VERSION) " that you have"
+    #else // CV_MAJOR_VERSION >= 3
+        #define BALANCE_WHITE_ERROR_MSG "balance-white disabled. Enable with snark_build_imaging_opencv_contrib=ON"
+    #endif // CV_MAJOR_VERSION >= 3
+        balance_white() { COMMA_THROW( comma::exception, BALANCE_WHITE_ERROR_MSG ); }
+        std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m ) { COMMA_THROW( comma::exception, BALANCE_WHITE_ERROR_MSG ); }
     };
-#endif // CV_MAJOR_VERSION > 2
+#endif // CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

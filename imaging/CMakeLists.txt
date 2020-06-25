@@ -20,6 +20,10 @@ FILE( GLOB cvmat_filters_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/cv_mat/filter
 FILE( GLOB vegetation_source ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.cpp )
 FILE( GLOB vegetation_includes ${SOURCE_CODE_BASE_DIR}/${PROJECT}/vegetation/*.h )
 
+if( snark_build_imaging_opencv_contrib )
+    add_definitions( -DSNARK_OPENCV_CONTRIB )
+endif()
+
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes}
                             ${camera_source} ${camera_includes}
                             ${color_source} ${color_includes}

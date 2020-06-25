@@ -34,7 +34,7 @@
 
 namespace snark { namespace cv_mat { namespace filters {
 
-#if CV_MAJOR_VERSION > 2
+#if CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
     
 template < typename H > balance_white< H >::balance_white(): wb_( cv::xphoto::createSimpleWB() ) {}
 
@@ -46,7 +46,7 @@ template < typename H > std::pair< H, cv::Mat > balance_white< H >::operator()( 
     return n;
 }
 
-#endif // CV_MAJOR_VERSION > 2
+#endif // CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
 
 template class balance_white< boost::posix_time::ptime >;
 template class balance_white< std::vector< char > >;
