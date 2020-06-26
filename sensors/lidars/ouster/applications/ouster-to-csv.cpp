@@ -56,7 +56,7 @@ void usage( bool verbose )
         std::cerr << "\n    format=$( ouster-to-csv lidar --output-format )";
         std::cerr << "\n";
         std::cerr << "\n    --- view live data ---";
-        std::cerr << "\n    ouster-cat lidar --config config.json:ouster | ouster-to-csv lidar \\";
+        std::cerr << "\n    ouster-cat lidar | ouster-to-csv lidar \\";
         std::cerr << "\n        | points-to-cartesian --append --fields $fields --binary $format \\";
         std::cerr << "\n        | view-points --fields $fields,x,y,z --binary $format,3d --z-is-up";
         std::cerr << "\n";
@@ -94,10 +94,10 @@ void usage( bool verbose )
         std::cerr << "\n    --- live imu ---";
         std::cerr << "\n    fields=$( ouster-to-csv imu --output-fields )";
         std::cerr << "\n    format=$( ouster-to-csv imu --output-format )";
-        std::cerr << "\n    ouster-cat imu --config config.json:ouster | ouster-to-csv imu";
+        std::cerr << "\n    ouster-cat imu | ouster-to-csv imu";
         std::cerr << "\n";
         std::cerr << "\n    --- display imu data ---";
-        std::cerr << "\n    ouster-cat imu --config config.json:ouster | ouster-to-csv imu \\";
+        std::cerr << "\n    ouster-cat imu | ouster-to-csv imu \\";
         std::cerr << "\n        | csv-shuffle --fields $fields --binary $format --output \\";
         std::cerr << "\n              acceleration/t,acceleration/data/x,acceleration/data/y,acceleration/data/z \\";
         std::cerr << "\n        | csv-plot --binary ul,3d \"-;fields=x,y;color=red\" \\";
