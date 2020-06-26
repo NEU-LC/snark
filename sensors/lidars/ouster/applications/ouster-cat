@@ -7,12 +7,14 @@ scriptname=$( basename $0 )
 
 source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
 
+default_config="config.json:ouster"
+
 function description()
 {
     cat <<EOF
 --help,-h;           show this help and exit
 --verbose,-v;        show more information
---config=[<file>];   json config filename with optional path
+--config=[<file>];   defaults to config.json:ouster
 --device=[<lidar>];  host name of lidar
 --output-fields;     show output fields and exit
 --output-format;     show output format and exit
@@ -55,8 +57,6 @@ EOF
     imu:     --output-fields, --output-format
     lidar:   --output-fields, --output-format
 
-    --config is required for all operations except config
-
     command port is taken from the config file, but can be overridden by
     the --port option. If neither is specified it defaults to 7501
 
@@ -97,8 +97,6 @@ configuration:
         $scriptname init --config <file>
 
 examples:
-    Note that all these commands except "config" require the
-    --config=<file:path> option
 
     --- commands ---
     echo get_sensor_info | $scriptname command
@@ -225,7 +223,7 @@ operation=${unnamed_options[0]}
 if [[ $operation == "config" ]]; then
     [[ $options_config ]] || [[ $options_device ]] || die "one of --config or --device is required"
 else
-    [[ $options_config ]] || die "--config required"
+    [[ $options_config ]] || options_config=$default_config
 fi
 
 if [[ $options_config ]]; then
