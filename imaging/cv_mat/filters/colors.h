@@ -29,16 +29,18 @@
 
 #pragma once
 
+#define OPENCV_HAS_BALANCE_WHITE !(defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
+
 #include <opencv2/core/core.hpp>
-#if CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
+#if OPENCV_HAS_BALANCE_WHITE && SNARK_OPENCV_CONTRIB
 #include <opencv2/xphoto/white_balance.hpp>
-#else // CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
+#else // OPENCV_HAS_BALANCE_WHITE && SNARK_OPENCV_CONTRIB
 #include <comma/base/exception.h>
-#endif // CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
+#endif // OPENCV_HAS_BALANCE_WHITE && SNARK_OPENCV_CONTRIB
 
 namespace snark{ namespace cv_mat { namespace filters {
 
-#if CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
+#if OPENCV_HAS_BALANCE_WHITE && SNARK_OPENCV_CONTRIB
     template < typename H >
     class balance_white
     {
@@ -48,20 +50,20 @@ namespace snark{ namespace cv_mat { namespace filters {
         private:
             cv::Ptr< cv::xphoto::SimpleWB > wb_;
     };
-#else // CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
+#else // OPENCV_HAS_BALANCE_WHITE && SNARK_OPENCV_CONTRIB
     template < typename H >
     struct balance_white
     {
-    #if CV_MAJOR_VERSION < 3
+        #if !OPENCV_HAS_BALANCE_WHITE
         #define STR_HELPER(x) #x
         #define STR(x) STR_HELPER(x)
         #define BALANCE_WHITE_ERROR_MSG "balance-white not implemented for opencv version " STR(CV_MAJOR_VERSION) "." STR(CV_MINOR_VERSION) " that you have"
-    #else // CV_MAJOR_VERSION >= 3
+        #else // OPENCV_HAS_BALANCE_WHITE
         #define BALANCE_WHITE_ERROR_MSG "balance-white disabled. Enable with snark_build_imaging_opencv_contrib=ON"
-    #endif // CV_MAJOR_VERSION >= 3
+        #endif // OPENCV_HAS_BALANCE_WHITE
         balance_white() { COMMA_THROW( comma::exception, BALANCE_WHITE_ERROR_MSG ); }
         std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m ) { COMMA_THROW( comma::exception, BALANCE_WHITE_ERROR_MSG ); }
     };
-#endif // CV_MAJOR_VERSION >= 3 && SNARK_OPENCV_CONTRIB
+#endif // OPENCV_HAS_BALANCE_WHITE && SNARK_OPENCV_CONTRIB
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
