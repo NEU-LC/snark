@@ -66,7 +66,9 @@ void usage( bool verbose )
     std::cerr << "\n";
     std::cerr << "\nexample:";
     std::cerr << "\n    cat *.bin | ouster-to-csv lidar | ouster-align \\";
-    std::cerr << "\n        | csv-shuffle --fields $fields --binary $format --output signal \\";
+    std::cerr << "\n        | csv-shuffle --fields $( ouster-align --output-fields ) \\";
+    std::cerr << "\n                      --binary $( ouster-align --output-format ) \\";
+    std::cerr << "\n                      --output signal \\";
     std::cerr << "\n        | cv-cat --input=\"rows=64;cols=1024;no-header;type=CV_16UC1\" \\";
     std::cerr << "\n                \"scale=60;resize=1.0,2.0;view;null\"";
     std::cerr << "\n" << std::endl;
