@@ -104,7 +104,7 @@ int main( int ac, char** av )
         comma::uint32 columns = options.value< comma::uint32 >( "--columns", default_columns_per_frame );
         records_per_frame = columns * snark::ouster::OS1::pixels_per_column;
 
-        comma::csv::options csv( options, default_fields );
+        comma::csv::options csv( options, default_fields, false );
         csv.format( comma::csv::format::value< snark::ouster::output_lidar_t >() );
 
         // get the format for the output images, so we can use it in the OpenCV header
