@@ -121,8 +121,8 @@ int main( int ac, char** av )
 
         records_per_frame = options.value< comma::uint32 >( "--columns", default_columns_per_frame ) * snark::ouster::OS1::pixels_per_column;
 
-        comma::csv::options csv;
-        csv.full_xpath = true;
+        // input and output format are the same
+        comma::csv::options csv( options, output_fields(), false );
         csv.format( output_format() );
         comma::csv::binary_input_stream< snark::ouster::output_lidar_t > is( std::cin, csv );
 
