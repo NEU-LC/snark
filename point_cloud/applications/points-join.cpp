@@ -424,6 +424,7 @@ template < typename V > struct join_impl_
         static const filter_value_t* p = nullptr;
         if( !block ) { p = istream.read(); }
         if( p ) { block = p->block; }
+        else { block = boost::none; }  // reached end of istream
         while( p )
         {
             if( use_block && ( p->block != *block ) ) { break; } // todo: is the condition excessive? is not it just ( p->block != *block )?
@@ -492,7 +493,7 @@ template < typename V > struct join_impl_
         options.assert_mutually_exclusive( "--use-cuda,--cuda,--all" );
         #endif
         grid_t grid = read_filter_block( self_join );
-        if( !block && !self_join ) { std::cerr << "points-join: got no records from filter" << std::endl; return 1; }
+        if( !block && !self_join && matching ) { std::cerr << "points-join: got no records from filter" << std::endl; return 0; }
         if( self_join ) { return 0; }
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
         use_radius = stdin_csv.has_field( "radius" );
@@ -508,35 +509,54 @@ template < typename V > struct join_impl_
         std::multimap< double, nearest_t > nearest_map; // boost::optional< nearest_t > nearest;
         auto read_ = [&]() -> const input_t*
         {
-            if( self_join )
-            {
-                // todo
-            }
+            if( self_join ) { /* todo */ }
             return istream.ready() || ( std::cin.good() && !std::cin.eof() ) ? istream.read() : nullptr; // quick and dirty
         };
         while( istream.ready() || ( std::cin.good() && !std::cin.eof() ) )
         {
             const input_t* p = read_(); //const input_t* p = istream.read();
             if( !p ) { break; }
-            double current_squared_radius = get_squared_radius( *p );
-            if( verbose && comma::math::less( squared_radius, current_squared_radius ) ) { std::cerr << "points-join: expected point-specific radius not exceeding --radius " << std::sqrt( squared_radius ) << "; got: " << p->radius << std::endl; }
             if( use_block )
             {
+                if( !block )
+                {
+                    if( matching ) { std::cerr << "points-join: reached end of filter stream" << std::endl; break; }
+                    else { output_last ( istream ); ++count; continue; }
+                }
                 if( blocks_ordered )
                 {
-                    while( *block < p->block ) { grid = read_filter_block( self_join ); }
-                    if( *block > p->block )
+                    // read until end of filter stream or std input block is less than or equal to filter block
+                    while( block && p->block > *block ) { grid = read_filter_block( self_join ); }
+                    if( !block )
                     {
-                        if( matching ) { ++discarded; ++count; } else { output_last( istream ); }
+                        if( matching ) { std::cerr << "points-join: reached end of filter stream" << std::endl; break; }
+                        else { output_last( istream ); ++count; continue; }
+                    }
+                    if( p->block < *block )
+                    {
+                        ++count;
+                        if( matching ) { ++discarded; }
+                        else { output_last( istream ); }
                         continue;
                     }
                 }
                 else
                 {
-                    if( *block != p->block ) { grid = read_filter_block( self_join ); }
-                    if( *block != p->block ) { COMMA_THROW( comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block << "; make sure block ids are in ascending order and use --blocks-ordered" );}
+                    if( p->block != *block )
+                    {
+                        if ( count == 0 ) { COMMA_THROW( comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block << "; make sure block ids are in ascending order and use --blocks-ordered" ); }
+                        grid = read_filter_block( self_join ); // non-matching block; read next filter block
+                        if( !block )
+                        {
+                            if( matching ) { std::cerr << "points-join: reached end of filter stream" << std::endl; break; }
+                            else { output_last ( istream ); ++count; continue; }
+                        }
+                        if( p->block != *block ) { COMMA_THROW( comma::exception, "expected blocks in input and filter to match, got input block " << p->block << " and filter block " << *block << "; make sure block ids are in ascending order and use --blocks-ordered" ); }
+                    }
                 }
             }
+            double current_squared_radius = get_squared_radius( *p );
+            if( verbose && comma::math::less( squared_radius, current_squared_radius ) ) { std::cerr << "points-join: expected point-specific radius not exceeding --radius " << std::sqrt( squared_radius ) << "; got: " << p->radius << std::endl; }
             typename grid_t::index_type index = grid.index_of( p->value );
             typename grid_t::index_type i;
             if( all )
