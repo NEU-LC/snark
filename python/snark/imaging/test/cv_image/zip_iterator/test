@@ -1,0 +1,44 @@
+#!/bin/bash
+set -e
+
+mapfile -t INPUTS <input
+function test_zip_iterator
+{
+    python -c "$( cat <<END
+from __future__ import print_function
+import sys
+from snark.imaging import cv_image
+from comma.io import windows_binary
+print("test_iterator loaded comma and snark", file=sys.stderr)
+print("test_zip_iterator: streams: ", sys.argv[1:], file=sys.stderr)
+for images in cv_image.zip_iterator(*sys.argv[1:]):
+    for image in images:
+        image.write()
+print("test_iterator finished", file=sys.stderr)
+END
+)" "$@"
+}
+
+
+# Test reading headers from stream
+mapfile -t OUTPUT < <( test_zip_iterator \
+    <(csv-to-bin t,3ui,6ub <<< "${INPUTS[0]}") \
+    <(csv-to-bin t,3ui,6ub <<< "${INPUTS[1]}") \
+    <(csv-to-bin t,3ui,6ub <<< "${INPUTS[2]}") | csv-from-bin t,3ui,6ub )
+status=$?
+echo "test/zip_iterator/from_stream/status=$status"
+for i in $(seq 0 $(( ${#OUTPUT[@]} - 1 )) ); do 
+    echo "test/zip_iterator/from_stream/output[$i]=\"${OUTPUT[$i]}\""
+done
+
+
+# Test mixed specification of headers from stream and specified as string
+mapfile -t OUTPUT < <( test_zip_iterator \
+    <(csv-to-bin t,3ui,6ub <<< "${INPUTS[0]}" | tail -c +21 )";type=b;rows=2;cols=3" \
+    <(csv-to-bin t,3ui,6ub <<< "${INPUTS[1]}") \
+    <(csv-to-bin t,3ui,6ub <<< "${INPUTS[2]}") | csv-from-bin 6ub,t,3ui,6ub,t,3ui,6ub | sed 's#,2020#\n2020#g' )
+status=$?
+echo "test/zip_iterator/mixed/status=$status"
+for i in $(seq 0 $(( ${#OUTPUT[@]} - 1 )) ); do 
+    echo "test/zip_iterator/mixed/output[$i]=\"${OUTPUT[$i]}\""
+done
