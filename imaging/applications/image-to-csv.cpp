@@ -49,8 +49,8 @@ static snark::cv_mat::serialization::header header;
 static comma::csv::options csv;
 static std::size_t channels = 3;
 static int depth = 0;
-static std::vector< float > discard;
-static std::vector< char > discard_pixel;
+static std::vector< std::vector< float > > discard;
+static std::vector< std::vector< char > > discard_pixels;
 static bool discard_any;
 static bool unique;
 
@@ -110,8 +110,8 @@ static void usage( bool detail )
                     << "options" << std::endl
                     << "    --help,-h: show help" << std::endl
                     << "    --verbose,-v: show detailed messages" << std::endl
-                    << "    --discard=[<pixel-value>]: discard given pixel values, e.g: --discard=-1, or --discard=0,0,255" << std::endl
-                    << "                               todo: support multiple semicolon-separated values" << std::endl
+                    << "    --discard=[<pixel-value>]: discard given pixel values, e.g:" << std::endl
+                    << "                                --discard=-1, or --discard=0,0,255, or --discard='255,0,0;0,255,0;0,0,255'" << std::endl
                     << "    --discard-any: makes sense only for multichannel images" << std::endl
                     << "                   example: for --discard=-1,0,0, discard pixels" << std::endl
                     << "                            with first channel equal to -1 or second channel" << std::endl
@@ -163,11 +163,15 @@ template< typename T > void output_t<T>::output_fields() { std::cout<<comma::joi
 template< typename T > void output_t<T>::output_format() { std::cout<<comma::csv::format::value< output_t< T > >( csv.fields, false ) << std::endl; }
 
 template< typename T >
-static void set_discard_pixel()
+static void set_discard_pixels()
 {
     if( discard.empty() ) { return; }
-    discard_pixel.resize( sizeof( T ) * channels );
-    for( unsigned int i = 0; i < channels; ++i ) { *( reinterpret_cast< T* >( &discard_pixel[ i * sizeof( T ) ] ) ) = static_cast< T >( discard[i] ); }
+    discard_pixels.resize( discard.size() );
+    for( unsigned int i = 0; i < discard.size(); ++i )
+    {
+        discard_pixels[i].resize( sizeof( T ) * channels );
+        for( unsigned int j = 0; j < channels; ++j ) { *( reinterpret_cast< T* >( &discard_pixels[i][ j * sizeof( T ) ] ) ) = static_cast< T >( discard[i][j] ); }
+    }
 }
 
 template < typename T >
@@ -196,13 +200,17 @@ static bool keep( const char* p )
     if( discard.empty() ) { return true; }
     if( discard_any )
     {
-        for( unsigned int i = 0; i < size; i += sizeof( T ) )
+        for( const auto& d: discard_pixels )
         {
-            if( std::memcmp( p + i, &discard_pixel[i], sizeof( T ) ) == 0 ) { return false; }
+            for( unsigned int i = 0; i < size; i += sizeof( T ) )
+            {
+                if( std::memcmp( p + i, &d[i], sizeof( T ) ) == 0 ) { return false; }
+            }
         }
         return true;
     }
-    return std::memcmp( p, &discard_pixel[0], discard_pixel.size() ) != 0;
+    for( const auto& d: discard_pixels ) { if( std::memcmp( p, &d[0], d.size() ) == 0 ) { return false; } }
+    return true;
 }
 
 template< typename T >
@@ -213,7 +221,7 @@ bool output_t< T >::process_image()
     out.channels.resize( ::channels );
     out.t = header.timestamp;
     std::size_t size = ::channels * sizeof( T );
-    set_discard_pixel< T >();
+    set_discard_pixels< T >();
     for( out.y = 0; out.y < header.rows && std::cin.good(); ++out.y )
     {
         std::vector< char > buffer( header.cols * size );
@@ -234,6 +242,7 @@ bool output_t< T >::process_image()
     ++out.block;
     return true;
 }
+
 struct get_app
 {
     app_t* app;
@@ -241,13 +250,13 @@ struct get_app
     {
         switch(depth)
         {
-            case CV_8U: app = new output_t<unsigned char>(); break;
-            case CV_8S: app = new output_t<char>(); break;
-            case CV_16U: app = new output_t<comma::uint16>(); break;
-            case CV_16S: app = new output_t<comma::int16>(); break;
-            case CV_32S: app = new output_t<comma::int32>(); break;
-            case CV_32F: app = new output_t<float>(); break;
-            case CV_64F: app = new output_t<double>(); break;
+            case CV_8U: app = new output_t< unsigned char >(); break;
+            case CV_8S: app = new output_t< char >(); break;
+            case CV_16U: app = new output_t< comma::uint16 >(); break;
+            case CV_16S: app = new output_t< comma::int16 >(); break;
+            case CV_32S: app = new output_t< comma::int32 >(); break;
+            case CV_32F: app = new output_t< float >(); break;
+            case CV_64F: app = new output_t< double >(); break;
             default: COMMA_THROW( comma::exception, "unsupported depth " << depth );
         }
     }
@@ -259,29 +268,29 @@ static void process()
     #ifdef WIN32
     _setmode( _fileno( stdin ), _O_BINARY );
     #endif
-    while(std::cin.good() && std::cin.peek()!=-1)
+    while( std::cin.good() && std::cin.peek() != -1 )
     {
-        if(!input_options.no_header) 
+        if( !input_options.no_header ) 
         {
             read_header();
-            channels=CV_MAT_CN(header.type);
-            depth=CV_MAT_DEPTH(header.type);
+            channels = CV_MAT_CN( header.type );
+            depth = CV_MAT_DEPTH( header.type );
         }
-        if( discard.size() > 1 && discard.size() < channels ) { std::cerr << "image-to-csv: input image has " << channels << " channels, but --discard specifies only " << discard.size() << std::endl; }
-        *cverbose<<app_name<<": timestamp: "<<header.timestamp<<" cols: "<<header.cols<<" rows: "<<header.rows<<" type: "<<header.type<<std::endl;
-        *cverbose<<app_name<<": channels: "<<channels<<" depth: "<<depth<<std::endl;
-        //we need new app_t because channel/depth may change after reading header
-        get_app g;
-        if(!g.app->process_image()) { break; }
+        if( !discard.empty() && discard[0].size() > 1 && discard[0].size() < channels ) { std::cerr << "image-to-csv: input image has " << channels << " channels, but --discard specifies only " << discard.size() << std::endl; }
+        *cverbose << app_name << ": timestamp: " << header.timestamp << " cols: " << header.cols << " rows: " << header.rows << " type: " << header.type << std::endl;
+        *cverbose << app_name << ": channels: " << channels << " depth: " << depth << std::endl;
+        get_app g; //we need new app_t because channel/depth may change after reading header
+        if( !g.app->process_image() ) { break; }
     }
 }
+
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
         cverbose =  options.exists( "--verbose,-v" ) ? &std::cerr : &nullstream;
-        input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value<std::string>("--input", "") );
+        input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) );
         if( input_options.fields.empty() ) { input_options.fields = "t,rows,cols,type"; }
         csv = comma::csv::options( options );
         if( csv.fields.empty() ) { csv.fields = "t,x,y,channels"; }
@@ -301,10 +310,13 @@ int main( int ac, char** av )
         if( options.exists( "--output-header-fields") ) { std::cout<<comma::join( comma::csv::names< snark::cv_mat::serialization::header >( input_options.fields ), ','  ) << std::endl; return 0; }
         if( options.exists( "--output-header-format") ) { std::cout<<comma::csv::format::value< snark::cv_mat::serialization::header >( input_options.fields, false ) << std::endl; return 0; }
         options.assert_mutually_exclusive( "--discard-zero,--output-non-zero", "--discard" );
-        if( options.exists( "--discard-zero,--output-non-zero" ) ) { discard.push_back( 0 ); }
-        const auto& d = comma::split( options.value< std::string >( "--discard", "" ), ',' );
-        for( const auto& v: d ) { if( !v.empty() ) { discard.push_back( boost::lexical_cast< float >( v ) ); } }
-        if( discard.size() == 1 ) { discard = std::vector< float >( 4, discard[0] ); } // quick and dirty
+        if( options.exists( "--discard-zero,--output-non-zero" ) ) { discard.push_back( std::vector< float >( 4, 0 ) ); }
+        const auto& d = comma::split( options.value< std::string >( "--discard", "" ), ';', true );
+        for( const auto& v: d )
+        { 
+            discard.push_back( comma::split_as< float >( v, ',' ) );
+            if( discard.back().size() == 1 ) { discard.back() = std::vector< float >( 4, discard.back()[0] ); } // quick and dirty
+        }
         process();
         return 0;
     }

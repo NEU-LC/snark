@@ -2,5 +2,8 @@ basic[0]="echo 20190101T000000,2,3,0,1,2,3,4,5,6 | csv-to-bin t,3ui,6ub | image-
 basic[1]="echo 1,2,3,4,5,6 | csv-to-bin 6ub | image-to-csv --input 'rows=2;cols=3;no-header;type=ub'"
 fields[0]="echo 1,2,3,4,5,6 | csv-to-bin 6ub | image-to-csv --input 'rows=2;cols=3;no-header;type=ub' --fields x,y,channels,block"
 fields[1]="echo 1,2,3,4,5,6 | csv-to-bin 6ub | image-to-csv --input 'rows=1;cols=3;no-header;type=ub' --fields x,y,channels,block"
+discard[0]="echo 0,1,2,3,4,5,6,7,8 | csv-to-bin 9ub | image-to-csv --input 'rows=1;cols=3;no-header;type=3ub' --discard=0,1,2"
+discard[1]="echo 0,1,2,3,4,5,6,7,8 | csv-to-bin 9ub | image-to-csv --input 'rows=1;cols=3;no-header;type=3ub' --discard='0,1,2;3,4,5'"
 discard_any[0]="echo 0,1,2,3,4,5,6,7,8 | csv-to-bin 9ub | image-to-csv --input 'rows=1;cols=3;no-header;type=3ub' --discard=0,4,20 --discard-any"
 discard_any[1]="echo 0,1,2,3,4,5,6,7,8 | csv-to-bin 9ub | image-to-csv --input 'rows=1;cols=3;no-header;type=3ub' --discard=10,20,30 --discard-any"
+discard_any[2]="echo 0,1,2,3,4,5,6,7,8 | csv-to-bin 9ub | image-to-csv --input 'rows=1;cols=3;no-header;type=3ub' --discard='0,4,20;3,100,100' --discard-any"
