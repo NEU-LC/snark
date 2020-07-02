@@ -60,6 +60,29 @@ def safe_read(file, dtype, count):
         raise EOFError()
 
 
+def make_header(rows, cols, dtype, timestamp=None):
+    header = np.empty(1, dtype=image.header_dtype)
+    header['time'] = timestamp if timestamp is not None else np.datetime64('now')
+    header['rows'] = rows
+    header['cols'] = cols
+    try:
+        channels = int(dtype[0])
+        dtype = dtype[1:]
+    except ValueError:
+        channels = 1
+    header['type'] = cv_types.string2cv(dtype, channels)
+    return header[0]
+
+
+def make_header_from(frame, timestamp=None):
+    header = np.empty(1, dtype=image.header_dtype)
+    header['time'] = timestamp if timestamp is not None else np.datetime64('now')
+    header['rows'], header['cols'] = frame.shape[:2]
+    channels = 1 if frame.ndim == 2 else frame.shape[-1]
+    header['type'] = cv_types.string2cv(frame.dtype.name, channels)
+    return header[0]
+
+
 class image():
     header_dtype = np.dtype([('time', 'datetime64[us]'),
                              ('rows', np.uint32),
@@ -71,17 +94,16 @@ class image():
         self.data = data
 
     def validate(self):
-        if self.header is not None:
-            type_string, channels = cv_types.cv2string(self.header['type'])
-            if self.data.dtype.name != type_string:
-                raise ValueError("cv_image dtype mismatch ({}, expected {})".format(self.data.dtype.name, type_string))
-            expected_shape = (self.header['rows'], self.header['cols'], channels)
-            if self.data.shape != expected_shape:
-                raise ValueError("cv_image shape mismatch ({}, expected {})".format(self.data.shape, expected_shape))
+        type_string, channels = cv_types.cv2string(self.header['type'])
+        if self.data.dtype.name != type_string:
+            raise ValueError("cv_image dtype mismatch ({}, expected {})".format(self.data.dtype.name, type_string))
+        expected_shape = (self.header['rows'], self.header['cols'], channels)
+        if self.data.shape != expected_shape:
+            raise ValueError("cv_image shape mismatch ({}, expected {})".format(self.data.shape, expected_shape))
 
     def write(self, file=STDOUT, flush=False):
-        self.validate()
         if self.header is not None:
+            self.validate()
             file.write(self.header.tobytes())
         if self.data is not None:
             file.write(self.data.tobytes())
@@ -101,7 +123,7 @@ class image():
         return image(header, frame)
 
 
-def iterator(file, rows=None, cols=None, dtype=None):
+def iterator(file=STDIN, rows=None, cols=None, dtype=None):
     """
     read binary cv-cat data from file object in the form t,rows,cols,type,data, t,3ui,data.
     if rows, cols and dtype provided, assume there is no header in the stream.
@@ -124,19 +146,41 @@ def iterator(file, rows=None, cols=None, dtype=None):
         return
 
 
-def zip_images(*input_specs):
-    """Read stream(s) given path and header input specifications; if no header specification
-    is given, then assume it can be read from the stream.
-        input_spec=<path>[;rows=<rows>;cols=<cols>;type=<dtype>] (dtype as in cv_image.iterator)"""
+def parse_inputspec(input_spec):
+    """input_spec=<path>[;rows=<rows>;cols=<cols>;type=<dtype>] (dtype as in cv_image.iterator)"""
+    parts = input_spec.split(';')
+    header = dict([tuple(part.split('=')) for part in parts if '=' in part])
+    rows = int(header['rows']) if 'rows' in header else None
+    cols = int(header['cols']) if 'cols' in header else None
+    dtype = header['type'] if 'type' in header else None
+    return parts[0], rows, cols, dtype
+
+
+def zip_iterator(*inputs):
+    """Iterate over image stream(s) given input specifications which can be either input_spec strings or
+    tuple(file-like, input_spec or dict).
+    If the input is a string, it is parameterised as:
+        input_spec=<path>[;rows=<rows>;cols=<cols>;type=<dtype>] (dtype as in cv_image.iterator)
+    If the input is a tuple, the first element is a file-like object (supporting .read()), and the second
+    element can be either a dict specifying rows, cols and type, or an input_spec string (path should be ommitted).
+    In any case, if the rows, cols and type is None, the header is read from the stream.
+    """
+
     iterators = []
     files = []
-    for input_spec in input_specs:
-        parts = input_spec.split(';')
-        header = dict([tuple(part.split('=')) for part in parts if '=' in part])
-        rows = int(header['rows']) if 'rows' in header else None
-        cols = int(header['cols']) if 'cols' in header else None
-        dtype = header['type'] if 'type' in header else None
-        files.append(open(parts[0], 'rb'))
+    for input_spec in inputs:
+        rows, cols, dtype = None, None, None
+        if isinstance(input_spec, tuple):
+            assert hasattr(input_spec[0], 'read'), "image input specified via tuple must have a file-like object"
+            file = input_spec[0]
+            if isinstance(input_spec[1], dict):
+                rows, cols, dtype = [input_spec[1][i] for i in ('rows', 'cols', 'dtype')]
+            elif isinstance(input_spec[1], str):
+                _, rows, cols, dtype = parse_inputspec(";" + input_spec[1])
+        else:
+            path, rows, cols, dtype = parse_inputspec(input_spec)
+            file = open(path, 'rb')
+        files.append(file)
         iterators.append(iterator(files[-1], rows=rows, cols=cols, dtype=dtype))
     try:
         while True:

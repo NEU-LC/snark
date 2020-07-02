@@ -1,0 +1,8 @@
+test/zip_iterator/from_stream/status=0
+test/zip_iterator/from_stream/output[0]="20200630T124700,2,3,0,0,1,2,3,4,5"
+test/zip_iterator/from_stream/output[1]="20200630T124700,2,3,0,10,11,12,13,14,15"
+test/zip_iterator/from_stream/output[2]="20200630T124700,2,3,0,20,21,22,23,24,25"
+test/zip_iterator/mixed/status=0
+test/zip_iterator/mixed/output[0]="0,1,2,3,4,5"
+test/zip_iterator/mixed/output[1]="20200630T124700,2,3,0,10,11,12,13,14,15"
+test/zip_iterator/mixed/output[2]="20200630T124700,2,3,0,20,21,22,23,24,25"
