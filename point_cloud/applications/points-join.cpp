@@ -242,6 +242,7 @@ template < typename S > static void output_last( const S& istream )
 {
     if( stdin_csv.binary() ) { std::cout.write( istream.binary().last(), stdin_csv.format().size() ); }
     else { std::cout << comma::join( istream.ascii().last(), stdin_csv.delimiter ) << std::endl; }
+    if( stdin_csv.flush ) { std::cout.flush(); }
 }
 
 template < typename V > struct traits;
@@ -315,6 +316,7 @@ template <> struct traits< Eigen::Vector3d >
         {
             std::cout.write( istream.binary().last(), stdin_csv.format().size() );
             if( append_nearest ) { std::cout.write( &nearest.line[0], filter_csv.format().size() ); }
+            if( stdin_csv.flush ) { std::cout.flush(); }
         }
         else
         {
@@ -323,7 +325,7 @@ template <> struct traits< Eigen::Vector3d >
             std::cout << stdin_csv.delimiter;
             if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &nearest.line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
             else { std::cout << nearest.line << std::endl; }
-        }
+        }        
     }
 };
 
@@ -388,12 +390,13 @@ template <> struct traits< snark::triangle >
         if( stdin_csv.binary() ) // quick and dirty
         {
             std::cout.write( istream.binary().last(), stdin_csv.format().size() );
-            if( !append_nearest ) { return; }
+            if( !append_nearest ) { if( stdin_csv.flush ) { std::cout.flush(); } return; }
             std::cout.write( &nearest.line[0], filter_csv.format().size() );
             static comma::csv::binary< Eigen::Vector3d > b;
             static std::vector< char > buf( b.format().size() );
             b.put( nearest_point, &buf[0] );
             std::cout.write( &buf[0], buf.size() );
+            if( stdin_csv.flush ) { std::cout.flush(); }
         }
         else
         {
@@ -587,6 +590,7 @@ template < typename V > struct join_impl_
                                     if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &it->second.records[k]->line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
                                     else { std::cout << &it->second.records[k]->line[0] << std::endl; }
                                 }
+                                if( stdin_csv.flush ) { std::cout.flush(); }
                             }
                         }
                     }
