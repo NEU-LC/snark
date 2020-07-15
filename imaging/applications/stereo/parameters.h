@@ -31,7 +31,7 @@
 #ifndef SNARK_IMAGING_APPLICATIONS_STEREO_PARAMETERS_H
 #define SNARK_IMAGING_APPLICATIONS_STEREO_PARAMETERS_H
 
-#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/calib3d.hpp>
 #include <Eigen/Core>
 #include <comma/visiting/apply.h>
 #include <comma/visiting/traits.h>

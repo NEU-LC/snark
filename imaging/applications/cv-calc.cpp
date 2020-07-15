@@ -34,7 +34,7 @@
 #include <boost/static_assert.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/calib3d.hpp>
 #include <tbb/parallel_for.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/random/mersenne_twister.hpp>
@@ -616,8 +616,8 @@ public:
         bool draw( cv::Mat m ) const
         {
             if( max.x == 0 && min.x == 0 && max.y == 0 && max.y == 0 ) { return false; }
-            if( properties.normalized ) { cv::rectangle( m, cv::Point2i( min.x * m.cols, min.y * m.rows ), cv::Point2i( max.x * m.cols, max.y * m.rows ), properties.color, properties.weight ); } // CV_AA );
-            else { cv::rectangle( m, min, max, properties.color, properties.weight ); } // CV_AA );
+            if( properties.normalized ) { cv::rectangle( m, cv::Point2i( min.x * m.cols, min.y * m.rows ), cv::Point2i( max.x * m.cols, max.y * m.rows ), properties.color, properties.weight ); } // cv::LINE_AA );
+            else { cv::rectangle( m, min, max, properties.color, properties.weight ); } // cv::LINE_AA );
             return true;
         }
     };
@@ -630,8 +630,8 @@ public:
         bool draw( cv::Mat m ) const
         {
             if( !comma::math::less( 0, radius ) ) { return false; }
-            if( properties.normalized ) { cv::circle( m, cv::Point2i( centre.x * m.cols, centre.y * m.rows ), radius * m.cols, properties.color, properties.weight, CV_AA ); }
-            else { cv::circle( m, centre, radius, properties.color, properties.weight, CV_AA ); }
+            if( properties.normalized ) { cv::circle( m, cv::Point2i( centre.x * m.cols, centre.y * m.rows ), radius * m.cols, properties.color, properties.weight, cv::LINE_AA ); }
+            else { cv::circle( m, centre, radius, properties.color, properties.weight, cv::LINE_AA ); }
             return true;
         }
     };
@@ -644,7 +644,7 @@ public:
         bool draw( cv::Mat m ) const
         {
             if( text.empty() ) { return false; }
-            cv::putText( m, text, properties.normalized ? cv::Point2f( position.x * m.cols, position.y * m.rows ) : position, cv::FONT_HERSHEY_SIMPLEX, 1.0, properties.color, properties.weight, CV_AA );
+            cv::putText( m, text, properties.normalized ? cv::Point2f( position.x * m.cols, position.y * m.rows ) : position, cv::FONT_HERSHEY_SIMPLEX, 1.0, properties.color, properties.weight, cv::LINE_AA );
             return true;
         }
     };

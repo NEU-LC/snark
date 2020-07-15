@@ -866,9 +866,9 @@ static typename impl::filters< H >::value_type blur_impl_( typename impl::filter
 struct threshold_t
 {
     enum types { binary = CV_THRESH_BINARY
-               , binary_inv = CV_THRESH_BINARY_INV
+               , binary_inv = cv::THRESH_BINARY_INV
                , trunc = CV_THRESH_TRUNC
-               //, trunc_inv = CV_THRESH_TRUNC | CV_THRESH_BINARY_INV // == CV_THRESH_TOZERO
+               //, trunc_inv = CV_THRESH_TRUNC | cv::THRESH_BINARY_INV // == CV_THRESH_TOZERO
                , tozero = CV_THRESH_TOZERO
                , tozero_inv = CV_THRESH_TOZERO_INV };
 
@@ -967,7 +967,7 @@ static typename impl::filters< H >::value_type kmeans_impl_( typename impl::filt
     cv::Mat classes;
     cv::Mat centers;
     int attempts = 5;
-    cv::kmeans(pixels, k, classes, cv::TermCriteria( CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 100, 0.01 ), attempts, cv::KMEANS_PP_CENTERS, centers);
+    cv::kmeans(pixels, k, classes, cv::TermCriteria( cv::TermCriteria::MAX_ITER + cv::TermCriteria::EPS, 100, 0.01 ), attempts, cv::KMEANS_PP_CENTERS, centers);
     cv::Mat out = cv::Mat::zeros(m.second.rows, m.second.cols, m.second.type());
     out = out.reshape(1, m.second.rows*m.second.cols);
     for (int p = 0; p < out.rows ; p++) { centers.row(classes.at<int>(p)).copyTo(out.row(p)); }
@@ -1296,8 +1296,8 @@ struct timestamp_impl_ {
 
     value_type operator()( value_type m )
     {
-        cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
-        cv::putText( m.second, boost::posix_time::to_iso_string( get_timestamp_(m.first) ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
+        cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), cv::FILLED, cv::LINE_AA );
+        cv::putText( m.second, boost::posix_time::to_iso_string( get_timestamp_(m.first) ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, cv::LINE_AA );
         return m;
     }
 };
@@ -1360,8 +1360,8 @@ struct count_impl_
 
     value_type operator()( value_type m )
     {
-        cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 80, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), CV_FILLED, CV_AA );
-        cv::putText( m.second, boost::lexical_cast< std::string >( count++ ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
+        cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 80, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), cv::FILLED, cv::LINE_AA );
+        cv::putText( m.second, boost::lexical_cast< std::string >( count++ ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, cv::LINE_AA );
         return m;
     }
 };
@@ -1732,7 +1732,7 @@ static typename impl::filters< H >::value_type convert( typename impl::filters< 
         n.second += cv::Scalar::all( 1 );
         cv::log( n.second, n.second ); // todo: optional
     }
-    if( normalize ) { cv::normalize( n.second, n.second, 0, 1, CV_MINMAX ); }
+    if( normalize ) { cv::normalize( n.second, n.second, 0, 1, cv::NORM_MINMAX ); }
     return n;
 }
 
@@ -1777,7 +1777,7 @@ static typename impl::filters< H >::value_type convert( typename impl::filters< 
     q2.copyTo( q1 );
     tmp.copyTo( q2 );
 
-    if( normalize ) { cv::normalize( n.second, n.second, 0, 1, CV_MINMAX ); }
+    if( normalize ) { cv::normalize( n.second, n.second, 0, 1, cv::NORM_MINMAX ); }
     return n;
 }
 

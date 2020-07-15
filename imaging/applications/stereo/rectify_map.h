@@ -31,7 +31,7 @@
 #ifndef SNARK_IMAGING_STEREO_RECTIFY_MAP_H
 #define SNARK_IMAGING_STEREO_RECTIFY_MAP_H
 
-#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/calib3d.hpp>
 #include <Eigen/Core>
 
 namespace snark { namespace imaging {
