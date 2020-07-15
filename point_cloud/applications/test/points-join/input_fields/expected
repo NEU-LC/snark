@@ -1,0 +1,2 @@
+input_fields[0]/output="x,y,z,normal/x,normal/y,normal/z,radius,block,id"
+input_fields[0]/status=0
