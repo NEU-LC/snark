@@ -495,7 +495,12 @@ template < typename V > struct join_impl_
         options.assert_mutually_exclusive( "--use-cuda,--cuda,--all" );
         #endif
         grid_t grid = read_filter_block( self_join );
-        if( !block && !self_join && matching ) { std::cerr << "points-join: got no records from filter" << std::endl; return 0; }
+        const bool empty_filter = !block && !self_join && matching;
+        if( empty_filter )
+        {
+            if ( verbose ) { std::cerr << "points-join: got no records from filter" << std::endl; }
+            if ( !strict ) { return 0; }
+        }
         if( self_join ) { return 0; }
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
         use_radius = stdin_csv.has_field( "radius" );
@@ -518,6 +523,7 @@ template < typename V > struct join_impl_
         {
             const input_t* p = read_(); //const input_t* p = istream.read();
             if( !p ) { break; }
+            if( strict && empty_filter ) { return 1; }
             if( use_block )
             {
                 if( !block )
