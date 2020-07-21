@@ -1,4 +1,3 @@
-#include <opencv2/calib3d.hpp>
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
@@ -32,6 +31,7 @@
 #include <iostream>
 #include <sstream>
 #include <boost/bind.hpp>
+#include <opencv2/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
@@ -40,7 +40,7 @@
 #include "pinhole.h"
 
 namespace snark { namespace camera {
-    
+
 pinhole::config_t::config_t() : focal_length( 0 ), image_size( Eigen::Vector2i::Zero() ) {}
 
 void pinhole::config_t::validate()
@@ -51,7 +51,7 @@ void pinhole::config_t::validate()
 }
 
 template < typename V > V pinhole::config_t::distortion_t::as() const
-{ 
+{
     V v;
     v[0] = radial.k1;
     v[1] = radial.k2;
@@ -124,7 +124,7 @@ static double extrapolate_map( const float* first, unsigned int width, double va
 
 Eigen::Vector2d pinhole_to_distorted( const camera::pinhole& pinhole, const Eigen::Vector2d& p )
 {
-    return pinhole.config().tangentially_corrected( pinhole.config().radially_corrected( p ) ); 
+    return pinhole.config().tangentially_corrected( pinhole.config().radially_corrected( p ) );
 }
 
 // todo: temporarily parametrize on the frame required

@@ -1,4 +1,3 @@
-#include <opencv2/calib3d.hpp>
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
@@ -90,10 +89,10 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "output options" << std::endl;
     std::cerr << "    --output=<what>: what to output (default: all)" << std::endl;
-    std::cerr << "                     all: output intrinsics and offsets as json" << std::endl;  
+    std::cerr << "                     all: output intrinsics and offsets as json" << std::endl;
     std::cerr << "                     intrinsics: output pinhole parameters as csv" << std::endl;
-    std::cerr << "                     offsets: output pattern offsets as csv" << std::endl;  
-    std::cerr << "    --output-fields: outputs fields for the <what> set in output and then exits" << std::endl;    
+    std::cerr << "                     offsets: output pattern offsets as csv" << std::endl;
+    std::cerr << "    --output-fields: outputs fields for the <what> set in output and then exits" << std::endl;
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
     std::cerr << "    run on a set of calibration images" << std::endl;
@@ -130,7 +129,7 @@ template <> struct traits< ::output_t >
         v.apply( "pinhole", p.pinhole );
         v.apply( "total_average_error", p.total_average_error );
         v.apply( "offsets", p.offsets );
-    }    
+    }
 };
 
 template <> struct traits< offset_t >
@@ -141,7 +140,7 @@ template <> struct traits< offset_t >
         v.apply( "id", p.id );
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
-    }    
+    }
 };
 
 } } // namespace comma { namespace visiting {
@@ -215,7 +214,7 @@ static void calculate_poses( const std::vector< cv::Point3f >& pattern_corners
     for ( size_t i = 0; i < image_points.size(); i++ )
     {
         std::cerr << "image-pinhole-calibrate: calculating pose for pattern " << i << std::endl;
-        cv::Mat rvec, tvec;                
+        cv::Mat rvec, tvec;
         cv::solvePnP( pattern_corners, image_points[i], camera_matrix, distortion_coefficients, rvec, tvec );
         rvecs.push_back(rvec);
         tvecs.push_back(tvec);
@@ -247,7 +246,7 @@ int main( int ac, char** av )
             {
                 // todo: what to return here. maybe a sample config?
                 return 0;
-            } 
+            }
             else if (what == "intrinsics")
             {
                 std::cout << comma::join(comma::csv::names<snark::camera::pinhole::config_t>(),',') << std::endl;
@@ -272,18 +271,18 @@ int main( int ac, char** av )
             const std::vector< std::string >& s = comma::split( options.value< std::string >( "--pattern-size" ), ',' );
             if( s.size() != 2 ) { std::cerr << "image-pinhole-calibrate: expected --pattern-size=<rows>,<cols>, got: \"" << options.value< std::string >( "--size" ) << std::endl; return 1; }
             pattern_size = cv::Size(boost::lexical_cast<comma::uint32>(s[0]), boost::lexical_cast<comma::uint32>(s[1]));
-        } 
+        }
         else
         {
             pattern_size = cv::Size( options.value< int >( "--pattern-width,--width" ), options.value< int >( "--pattern-height,--height" ) );
-        } 
+        }
         std::string pattern_string = options.value< std::string >( "--pattern", "chessboard" );
         patterns::types pattern = pattern_string == "chessboard" ? patterns::chessboard
                                 : pattern_string == "circles-grid" ? patterns::circles_grid
                                 : pattern_string == "asymmetric-circles-grid" ? patterns::asymmetric_circles_grid
                                 : patterns::invalid;
         if( pattern == patterns::invalid ) { std::cerr << "image-pinhole-calibration: expected calibration pattern, got: \"" << pattern_string << "\"" << std::endl; }
-        float square_size = options.value< float >( "--pattern-square-size,--square-size", 1 ); 
+        float square_size = options.value< float >( "--pattern-square-size,--square-size", 1 );
         int flags = 0;
         if( options.exists( "--no-principal-point" ) ) { flags |= cv::CALIB_FIX_PRINCIPAL_POINT; }
         if( options.exists( "--no-tangential-distortion" ) ) { flags |= cv::CALIB_ZERO_TANGENT_DIST; }
@@ -330,7 +329,7 @@ int main( int ac, char** av )
             image_points.push_back( points );
             timestamps.push_back( pair.first );
             if( view )
-            { 
+            {
                 cv::drawChessboardCorners( pair.second, pattern_size, cv::Mat( points ), true );
                 cv::imshow( "calibration pattern", pair.second );
                 cv::waitKey( 1000 );
@@ -345,12 +344,12 @@ int main( int ac, char** av )
         std::vector< cv::Mat > rvecs;
         std::vector< cv::Mat > tvecs;
         double pixel_size = options.value( "--pixel-size", 1.0 );
-        if (options.exists("--config")) 
+        if (options.exists("--config"))
         {
             std::vector<std::string> file_path = comma::split(options.value<std::string>("--config"), ':');
             snark::camera::pinhole::config_t p = comma::read_json<snark::camera::pinhole::config_t>(file_path[0], file_path.size() > 1 ? file_path[1] : "");
             if ( !p.principal_point || !p.distortion ) { std::cerr << "image-pinhole-calibrate: failed to load all coefficients from " << file_path[0] << std::endl; }
-            
+
             // config overrides pixel size from command line?
             camera_matrix = p.camera_matrix();
             pixel_size = p.pixel_size().x();
@@ -360,13 +359,13 @@ int main( int ac, char** av )
             distortion_coefficients.at<double>(3) = p.distortion->tangential.p2;
             distortion_coefficients.at<double>(4) = p.distortion->radial.k3;
         }
-        
+
         if (options.exists("--offsets-only"))
         {
             if ( !options.exists("--config") ) { std::cerr << "image-pinhole-calibrate: --offsets-only requires pinhole config"; return 1; }
             calculate_poses( pattern_corners, image_points, camera_matrix, distortion_coefficients, rvecs, tvecs, output.total_average_error );
-        } 
-        else 
+        }
+        else
         {
             // set flag to use values from config
             if (options.exists("--config")) { flags |= cv::CALIB_USE_INTRINSIC_GUESS; }
@@ -401,12 +400,12 @@ int main( int ac, char** av )
         // output
         if ( what == "all" )
         {
-            
+
             comma::csv::ascii< std::pair< Eigen::Vector3d, Eigen::Vector3d > > ascii; // quick and dirty
             for( unsigned int i = 0; i < rvecs.size(); i++ ) { output.offsets.push_back( ascii.put( std::make_pair( cv_to_eigen( tvecs[i] ), cv_to_eigen( rvecs[i] ) ) ) ); }
             comma::write_json( output, std::cout ); // todo: write offsets as json array (currently it outputs vector
             if( verbose ) { std::cerr << "image-pinhole-calibrate: done" << std::endl; }
-        } 
+        }
         else if (what == "intrinsics")
         {
             comma::csv::options csv(options);

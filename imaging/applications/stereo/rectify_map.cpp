@@ -1,4 +1,3 @@
-#include <opencv2/calib3d.hpp>
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.
@@ -29,6 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <Eigen/Core>
+#include <opencv2/calib3d.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "rectify_map.h"
@@ -79,7 +79,7 @@ rectify_map::rectify_map ( const Eigen::Matrix3d& leftCamera, const Eigen::Matri
     cv::eigen2cv( I, m_rotation );
     m_imageSize.width = m_map11.cols;
     m_imageSize.height = m_map11.rows;
-    cv::eigen2cv( translation, m_translation );    
+    cv::eigen2cv( translation, m_translation );
 
     cv::stereoRectify( m_leftCamera, m_leftDistortion, m_rightCamera, m_rightDistortion, m_imageSize, m_rotation, m_translation,
                        m_R1, m_R2, m_P1, m_P2, m_Q );

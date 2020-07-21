@@ -1,4 +1,3 @@
-#include <opencv2/calib3d.hpp>
 // This file is provided in addition to snark and is not an integral
 // part of snark library.
 // Copyright (c) 2019 Vsevolod Vlaskine
@@ -58,6 +57,7 @@
 /// @author vsevolod vlaskine
 
 #include <fstream>
+#include <opencv2/calib3d.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <comma/base/exception.h>
 #include <comma/string/string.h>
@@ -87,7 +87,7 @@ remap< H >::remap( const std::string& filename, unsigned int width, unsigned int
 
 template < typename H >
 typename remap< H >::value_type remap< H >::operator()( value_type m ) const
-{ 
+{
     std::pair< H, cv::Mat > n;
     n.first = m.first;
     cv::remap( m.second, n.second, x_, y_, interpolation_ );
