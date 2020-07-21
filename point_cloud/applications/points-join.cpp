@@ -325,7 +325,7 @@ template <> struct traits< Eigen::Vector3d >
             std::cout << stdin_csv.delimiter;
             if( filter_csv.binary() ) { std::cout << filter_csv.format().bin_to_csv( &nearest.line[0], stdin_csv.delimiter, stdin_csv.precision ) << std::endl; }
             else { std::cout << nearest.line << std::endl; }
-        }        
+        }
     }
 };
 
@@ -417,7 +417,7 @@ template < typename V > struct join_impl_
     typedef typename traits< V >::grid_t grid_t;
     typedef typename traits< Eigen::Vector3d >::input_t input_t;
     static std::deque< filter_record_t > filter_points;
-    
+
     static grid_t read_filter_block( comma::csv::input_stream< filter_value_t >& istream )
     {
         filter_points.clear();
@@ -476,16 +476,15 @@ template < typename V > struct join_impl_
         static comma::csv::input_stream< filter_value_t > ifstream( ifs, filter_csv, filter_value_t() );
         return read_filter_block( ifstream );
     }
-    
+
     static void handle_record( const typename traits< Eigen::Vector3d >::input_t& r ) {}
-    
+
     static int run( const comma::command_line_options& options, bool self_join )
     {
         if( self_join ) { std::cerr << "points-join: self-join: todo" << std::endl; return 1; }
         // todo: self-join
         // todo: --ignore 0 distance (or --min-distance)
         // todo? --incremental or it belongs to points-calc?
-        options.assert_mutually_exclusive( "--all", "--size,--number-of-points,--number-of-nearest-points" );
         unsigned int size = options.value( "--size,--number-of-points,--number-of-nearest-points", 1 );
         strict = options.exists( "--strict" );
         permissive = options.exists( "--permissive" );
@@ -654,7 +653,7 @@ template < typename V > struct join_impl_
                     }
                 }
                 else
-                { 
+                {
                     if( nearest_map.empty() && !nearest ) { output_last( istream ); } else { ++discarded; }
                 }
             }
@@ -682,6 +681,9 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< point_input >( true ), ',' ) << std::endl; return 0; }
+        options.assert_mutually_exclusive( "--matching", "--not-matching" );
+        options.assert_mutually_exclusive( "--all", "--size,--number-of-points,--number-of-nearest-points" );
+        options.assert_mutually_exclusive( "--size,--all", "--matching,--not-matching" );
         verbose = options.exists( "--verbose,-v" );
         stdin_csv = comma::csv::options( options );
         if( stdin_csv.fields.empty() ) { stdin_csv.fields = "x,y,z"; }
@@ -690,7 +692,6 @@ int main( int ac, char** av )
         squared_radius = radius * radius;
         min_radius = options.value( "--radius-min,--min-radius", 0. );
         squared_min_radius = min_radius * min_radius;
-        options.assert_mutually_exclusive( "--matching,--not-matching" );
         matching = !options.exists( "--not-matching" );
         append_nearest = !options.exists( "--matching" ) && matching;
         matching_id = !options.exists( "--id-not-matching,--not-matching-id" );
