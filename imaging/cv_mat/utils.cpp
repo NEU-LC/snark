@@ -112,7 +112,7 @@ boost::unordered_map< std::string, unsigned int > fill_cvt_color_types_()
 {
     boost::unordered_map<std::string, unsigned int> types;
     //note RGB is exactly the same as BGR
-    types[ "CV_BGR2GRAY" ] = types[ "BGR,GRAY" ] = types[ "CV_RGB2GRAY" ] = types[ "RGB,GRAY" ] = CV_BGR2GRAY;
+    types[ "CV_BGR2GRAY" ] = types[ "BGR,GRAY" ] = types[ "cv::COLOR_RGB2GRAY" ] = types[ "RGB,GRAY" ] = CV_BGR2GRAY;
     types[ "CV_GRAY2BGR" ] = types[ "GRAY,BGR" ] = types[ "CV_GRAY2RGB" ] = types[ "GRAY,RGB" ] = CV_GRAY2BGR;
     types[ "CV_BGR2XYZ" ] = types[ "BGR,XYZ" ] = types[ "CV_RGB2XYZ" ] = types[ "RGB,XYZ" ] = CV_BGR2XYZ;
     types[ "CV_XYZ2BGR" ] = types[ "XYZ,BGR" ] = types[ "CV_XYZ2RGB" ] = types[ "XYZ,RGB" ] = CV_XYZ2BGR;
@@ -177,7 +177,7 @@ std::string make_filename( const boost::posix_time::ptime& t, const std::string&
 std::vector< int > imwrite_params( const std::string& type, const int quality )
 {
     std::vector< int > params;
-    if ( type == "jpg" ) { params.push_back( CV_IMWRITE_JPEG_QUALITY ); }
+    if ( type == "jpg" ) { params.push_back( cv::IMWRITE_JPEG_QUALITY ); }
     else { COMMA_THROW( comma::exception, "quality only supported for jpg images, not for \"" << type << "\" yet" ); }
     params.push_back( quality );
     return params;

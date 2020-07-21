@@ -32,7 +32,7 @@
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/calib3d.hpp>
 #include <tbb/parallel_for.h>
 #include <comma/base/exception.h>
 #include "unstride.h"

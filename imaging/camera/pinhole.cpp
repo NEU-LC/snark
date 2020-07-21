@@ -1,3 +1,4 @@
+#include <opencv2/calib3d.hpp>
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // All rights reserved.

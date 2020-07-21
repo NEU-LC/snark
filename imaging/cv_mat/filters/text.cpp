@@ -114,7 +114,7 @@ typename std::pair< H, cv::Mat > text< H >::operator()( typename std::pair< H, c
         const text_input* p = istream_->read();
         if( p ) { caption = *p; }
     }
-    if( !caption.text.empty() ) { cv::putText( m.second, caption.text, caption.origin, cv::FONT_HERSHEY_SIMPLEX, font_scale_, cv::Scalar( caption.colour * colour_scale_factor_( m.second.depth() ) ), 1, CV_AA ); }
+    if( !caption.text.empty() ) { cv::putText( m.second, caption.text, caption.origin, cv::FONT_HERSHEY_SIMPLEX, font_scale_, cv::Scalar( caption.colour * colour_scale_factor_( m.second.depth() ) ), 1, cv::LINE_AA ); }
     ++count_;
     return m;
 }

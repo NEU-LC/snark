@@ -1,3 +1,4 @@
+#include <opencv2/calib3d.hpp>
 // This file is provided in addition to snark and is not an integral
 // part of snark library.
 // Copyright (c) 2019 Vsevolod Vlaskine

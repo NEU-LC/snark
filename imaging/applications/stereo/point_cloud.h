@@ -31,7 +31,7 @@
 #ifndef SNARK_IMAGING_STEREO_POINT_CLOUD_H
 #define SNARK_IMAGING_STEREO_POINT_CLOUD_H
 
-#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/calib3d.hpp>
 
 namespace snark { namespace imaging {
 
