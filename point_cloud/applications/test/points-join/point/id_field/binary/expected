@@ -1,0 +1,17 @@
+binary/matching[0]/output=""
+binary/matching[0]/status=0
+binary/matching[1]/output="0,0,0,0,0,1,1,1"
+binary/matching[1]/status=0
+binary/matching[2]/output=""
+binary/matching[2]/status=0
+binary/matching[3]/output="0,0,0,0,0,1,-1,-1,1,1,-1,1,0,1,1,0,0"
+binary/matching[3]/status=0
+
+binary/not_matching[0]/output=""
+binary/not_matching[0]/status=0
+binary/not_matching[1]/output="0,0,0,0,1,1,1,1"
+binary/not_matching[1]/status=0
+binary/not_matching[2]/output=""
+binary/not_matching[2]/status=0
+binary/not_matching[3]/output="0,0,0,0,1,0,-1,-1,0,1,-1,0,0,1,0,0,0"
+binary/not_matching[3]/status=0

@@ -1,0 +1,2 @@
+without_radius_field[0]="( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) | csv-to-bin 3i | points-join-parallel --fields x,y <( ( echo 0,1; echo 0,2; echo 0,3 ) | csv-to-bin 2i )';fields=x,y;binary=2i' --binary 3i --radius 3 --all | csv-from-bin 5i | tr \'\\\n\' \';\'"
+with_radius_field[0]="( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) | csv-to-bin 3i | points-join-parallel --fields x,y,radius <( ( echo 0,1; echo 0,2; echo 0,3 ) | csv-to-bin 2i )';fields=x,y;binary=2i' --binary 3i --radius 3 --all | csv-from-bin 5i | tr \'\\\n\' \';\'"

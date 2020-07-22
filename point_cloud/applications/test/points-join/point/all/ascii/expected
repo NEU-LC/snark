@@ -1,0 +1,10 @@
+all/ascii[0]/output="0,0,0,0,0,1;0,0,0,0,0,2;0,0,0,0,0,3;"
+all/ascii[0]/status=0
+all/ascii[1]/output=""
+all/ascii[1]/status=1
+all/ascii[2]/output=""
+all/ascii[2]/status=1
+all/ascii[3]/output=""
+all/ascii[3]/status=1
+all/ascii[4]/output="0,0,0,0,0,2;0,0,0,0,0,3;"
+all/ascii[4]/status=0

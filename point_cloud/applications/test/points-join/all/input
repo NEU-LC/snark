@@ -1,5 +1,0 @@
-all[0]="( ( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --all | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
-all[1]="( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --all --size 1"
-all[2]="( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --all --matching"
-all[3]="( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --all --not-matching"
-all[4]="( ( echo 0,0,0 ) | points-join <( echo 0,0,1; echo 0,0,2; echo 0,0,3 ) --radius 5 --all --min-radius 1.5 | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"

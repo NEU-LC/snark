@@ -1,0 +1,2 @@
+not_matching[0]="( echo 0,0,1 | csv-to-bin 3i | points-join-parallel <( echo 0,0,1 | csv-to-bin 3i )';binary=3i' --radius 0.5 --not-matching --binary 3i | csv-from-bin 3i | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"
+not_matching[1]="( ( echo 0,0,0; echo 0,0,1; echo 0,0,2 ) | csv-to-bin 3i | points-join-parallel <( echo 0,0,1 | csv-to-bin 3i )';binary=3i' --radius 0.5 --not-matching --binary 3i | csv-from-bin 3i | tr \'\\\n\' \';\'; comma_status_ok || exit 1 )"

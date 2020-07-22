@@ -1,0 +1,6 @@
+triangles/ascii[0]="( echo 0,0,0; echo 1,1,1; echo 2,2,2 ) | points-join-parallel <( { echo 0,0,0,1,1,1,1,1,0; } )';fields=corners' --radius 2"
+triangles/ascii[1]="( echo 0,0,0; echo 1,1,1; echo 2,2,2 ) | points-join-parallel <( { echo 0,0,0,1,1,1,1,1,0; } )';fields=corners' --radius 2 --matching"
+triangles/ascii[2]="( echo 0,0,0; echo 1,1,1; echo 2,2,2 ) | points-join-parallel <( { echo 0,0,0,1,1,1,1,1,0; } )';fields=corners' --radius 2 --not-matching"
+triangles/ascii[3]="( echo 0,0,0; echo 1,1,1; echo 2,2,2 ) | points-join-parallel <( { echo 0,0,0,1,1,1,1,1,0; echo 1,1,1,2,2,2,2,1,2; } )';fields=corners' --radius 2 --size 1"
+triangles/ascii[4]="( echo 0,0,0; echo 1,1,1; echo 2,2,2 ) | points-join-parallel <( { echo 0,0,0,1,1,1,1,1,0; echo 1,1,1,2,2,2,2,1,2; } )';fields=corners' --radius 2 --size 2"
+triangles/ascii[5]="( echo 0,0,0; echo 1,1,1; echo 2,2,2 ) | points-join-parallel <( { echo 0,0,0,1,1,1,1,1,0; echo 1,1,1,2,2,2,2,1,2; echo 0,0,0,0.5,0.5,0.5,0.5,0,0; } )';fields=corners' --radius 2 --all"

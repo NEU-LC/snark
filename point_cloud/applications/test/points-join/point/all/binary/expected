@@ -1,0 +1,10 @@
+all/binary[0]/output="0,0,0,0,0,1;0,0,0,0,0,2;0,0,0,0,0,3;"
+all/binary[0]/status=0
+all/binary[1]/output=""
+all/binary[1]/status=1
+all/binary[2]/output=""
+all/binary[2]/status=1
+all/binary[3]/output=""
+all/binary[3]/status=1
+all/binary[4]/output="0,0,0,0,0,2;0,0,0,0,0,3;"
+all/binary[4]/status=0

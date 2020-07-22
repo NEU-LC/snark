@@ -1,0 +1,9 @@
+matching[0]="echo 0,0,0,0 | points-join-parallel <( echo 1,0,0,0 )';fields=id,x,y,z' --fields id,x,y,z --radius 10"
+matching[1]="echo 0,0,0,0 | points-join-parallel <( echo 0,1,1,1; echo 1,0,0,0 )';fields=id,x,y,z' --fields id,x,y,z --radius 10"
+matching[2]="echo 0,0,0,0 | points-join-parallel <( echo 1,0,-1,-1,0,1,-1,0,0,1 )';fields=id,corners' --fields id,x,y,z --radius 10"
+matching[3]="echo 0,0,0,0 | points-join-parallel <( echo 0,1,-1,-1,1,1,-1,1,0,1; echo 1,0,-1,-1,0,1,-1,0,0,1 )';fields=id,corners' --fields id,x,y,z --radius 10"
+
+not_matching[0]="echo 0,0,0,0 | points-join-parallel <( echo 0,0,0,0 )';fields=id,x,y,z' --fields id,x,y,z --radius 10 --not-matching-id"
+not_matching[1]="echo 0,0,0,0 | points-join-parallel <( echo 0,0,0,0; echo 1,1,1,1 )';fields=id,x,y,z' --fields id,x,y,z --radius 10 --not-matching-id"
+not_matching[2]="echo 0,0,0,0 | points-join-parallel <( echo 0,1,-1,-1,1,1,-1,1,0,1 )';fields=id,corners' --fields id,x,y,z --radius 10 --not-matching-id"
+not_matching[3]="echo 0,0,0,0 | points-join-parallel <( echo 0,1,-1,-1,1,1,-1,1,0,1; echo 1,0,-1,-1,0,1,-1,0,0,1 )';fields=id,corners' --fields id,x,y,z --radius 10 --not-matching-id"
