@@ -1608,7 +1608,6 @@ class max_impl_ // experimental, to debug
         std::deque< value_type > deque_; // use vector?
 };
 
-#if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
 template < typename H >
 class map_impl_
 {
@@ -1633,6 +1632,7 @@ class map_impl_
             }
         }
 
+        #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
         value_type operator()( value_type m ) // todo: support multiple channels
         {
             value_type n( m.first, cv::Mat( m.second.size(), cv::DataType< output_value_type >::type ) );
@@ -1666,7 +1666,42 @@ class map_impl_
             catch ( std::out_of_range ) { return value_type(); }
             return n;
         }
-
+        #else // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
+        value_type operator()( value_type m ) // todo: support multiple channels
+        {
+            value_type n( m.first, cv::Mat( m.second.size(), cv::traits::Type< output_value_type >::value ) );
+            try
+            {
+                switch( m.second.type() ) // quick and dirty; opencv really got their design wrong: type is known in runtime whereas handling types is a compile-time thing
+                {
+                    case cv::traits::Type< unsigned char >::value: apply_map_< unsigned char >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< unsigned char, 2 > >::value : apply_map_< cv::Vec< unsigned char, 2 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< unsigned char, 3 > >::value : apply_map_< cv::Vec< unsigned char, 3 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< unsigned char, 4 > >::value : apply_map_< cv::Vec< unsigned char, 4 > >( m.second, n.second ); break;
+                    case cv::traits::Type< comma::uint16 >::value : apply_map_< comma::uint16 >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< comma::uint16, 2 > >::value : apply_map_< cv::Vec< comma::uint16, 2 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< comma::uint16, 3 > >::value : apply_map_< cv::Vec< comma::uint16, 3 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< comma::uint16, 4 > >::value : apply_map_< cv::Vec< comma::uint16, 4 > >( m.second, n.second ); break;
+                    case cv::traits::Type< char >::value : apply_map_< char >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< char, 2 > >::value : apply_map_< cv::Vec< char, 2 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< char, 3 > >::value : apply_map_< cv::Vec< char, 3 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< char, 4 > >::value : apply_map_< cv::Vec< char, 4 > >( m.second, n.second ); break;
+                    case cv::traits::Type< comma::int16 >::value : apply_map_< comma::int16 >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< comma::int16, 2 > >::value : apply_map_< cv::Vec< comma::int16, 2 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< comma::int16, 3 > >::value : apply_map_< cv::Vec< comma::int16, 3 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< comma::int16, 4 > >::value : apply_map_< cv::Vec< comma::int16, 4 > >( m.second, n.second ); break;
+                    case cv::traits::Type< comma::int32 >::value : apply_map_< comma::int32 >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< comma::int32, 2 > >::value : apply_map_< cv::Vec< comma::int32, 2 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< comma::int32, 3 > >::value : apply_map_< cv::Vec< comma::int32, 3 > >( m.second, n.second ); break;
+                    case cv::traits::Type< cv::Vec< comma::int32, 4 > >::value : apply_map_< cv::Vec< comma::int32, 4 > >( m.second, n.second ); break;
+                    default: std::cerr << "map filter: expected integer cv type, got " << m.second.type() << std::endl; return value_type();
+                }
+            }
+            catch ( std::out_of_range ) { return value_type(); }
+            return n;
+        }
+        #endif // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
+        
     private:
         typedef std::unordered_map< key_type, output_value_type > map_t_;
         map_t_ map_;
@@ -1703,7 +1738,6 @@ class map_impl_
             }
         }
 };
-#endif // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
 
 template < typename H >
 static typename impl::filters< H >::value_type magnitude_impl_( typename impl::filters< H >::value_type m )
@@ -2717,25 +2751,24 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     {
         const std::vector< std::string >& s = comma::split( e[1], ',' );
         if( s.size() < 2 ) { COMMA_THROW( comma::exception, "expected blur=<blur_type>,<blur_type_parameters>" ); }
-
         blur_t params;
         params.blur_type = blur_t::from_string(s[0]);
-        if (s[0] == "box")
+        if( s[0] == "box" )
         {
             params.kernel_size.height = params.kernel_size.width = boost::lexical_cast< int >( s[1] );
         }
-        else if (s[0] == "gaussian")
+        else if( s[0] == "gaussian" )
         {
             if (s.size() != 3) { COMMA_THROW( comma::exception, "expected blur=gaussian,kernel_size,std" ); }
             params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
             params.std.x = params.std.y = boost::lexical_cast< double >( s[2] );
         }
-        else if (s[0] == "median")
+        else if( s[0] == "median" )
         {
             if (s.size() != 2) { COMMA_THROW( comma::exception, "blur=median,kernel_size" ); }
             params.neighbourhood_size = boost::lexical_cast< int >( s[1] );
         }
-        else if (s[0] == "bilateral")
+        else if( s[0] == "bilateral" )
         {
             if (s.size() != 4) // nsize,std_space,std_colour
             { COMMA_THROW( comma::exception, "blur=bilateral expected 3 parameters" ); }
@@ -2743,9 +2776,9 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             params.sigma_space = boost::lexical_cast< double >( s[2] );
             params.sigma_colour = boost::lexical_cast< double >( s[3] );
         }
-        else if (s[0] == "adaptive-bilateral")
+        else if( s[0] == "adaptive-bilateral" )
         {
-            if (s.size() != 4) { COMMA_THROW( comma::exception, "expected blur=adaptive-bilateral,kernel_size,std_space,std_colour_max" ); }
+            if( s.size() != 4 ) { COMMA_THROW( comma::exception, "expected blur=adaptive-bilateral,kernel_size,std_space,std_colour_max" ); }
             params.kernel_size.width = params.kernel_size.height = boost::lexical_cast< int >( s[1] );
             params.sigma_space = boost::lexical_cast< double >( s[2] );
             params.sigma_colour = boost::lexical_cast< double >( s[3] ); // max sigma color
@@ -2769,16 +2802,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if( e[0] == "convolution" ) { return std::make_pair( boost::bind< value_type_t >( filters::convolution< H >::make( e ), _1 ), true ); }
     if( e[0] == "map" ) // todo! refactor usage, especially csv option separators and equal sign; make optionally map for each channel separately
     {
-#if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "expected file name with the map, e.g. map=f.csv" ); }
         std::stringstream s; s << e[1]; for( std::size_t i = 2; i < e.size(); ++i ) { s << "=" << e[i]; }
         std::string map_filter_options = s.str();
         std::vector< std::string > items = comma::split( map_filter_options, '&' );
         bool permissive = std::find( items.begin()+1, items.end(), "permissive" ) != items.end();
         return std::make_pair( map_impl_ < H >( map_filter_options, permissive ), true );
-#else // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
-        COMMA_THROW( comma::exception, "map: opencv 3 support: todo" );
-#endif // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
     }
     if( e[0] == "inrange" )
     {
@@ -2816,8 +2845,8 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if ( e[0] == "shuffle" ) {
             std::set< std::string > permitted = { "r", "g", "b", "a" };
             for ( const auto & t : s ) {
-                if ( t.empty() ) continue;
-                if ( permitted.find( t ) != permitted.end() ) continue;
+                if ( t.empty() ) { continue; }
+                if ( permitted.find( t ) != permitted.end() ) { continue; }
                 COMMA_THROW( comma::exception, "shuffle operation allows only symbolic channel names (rgba) or empty fields, not '" << t << "'" );
             }
         }
