@@ -1,0 +1,278 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util ) || { echo "$scriptname: cannot source comma-application-util" >&2; exit 1; }
+
+default_source_port=2101
+default_protocol_version="1.0"
+default_config_path=/
+default_max_read=5
+
+function description()
+{
+    cat <<EOF
+--help,-h;                         output help
+--config=[<file>];                 config file with optional path, if given then the options will be populated from the config file first
+--username,-u=[<name>];            user name
+--password,-p=[<pass>];            login password
+--mountpoint,-m=[<mount>];         station id
+--output-port,-o=[<port>];         publish data on <port> (default: stdout)
+--bandwidth-monitor-port=[<port>]; monitor bandwidth on <port>
+--timeout=[<secs>];                restart if no data for timeout secs
+--nmea=[<source>];                 send nmea string derived from <source>
+--refresh=[<period>];              period to resend nmea string
+--max-read=[<n>];                  max times to read nmea source trying for GPGGA msg (default: $default_max_read)
+--protocol=[<version>];            protocol version; default=$default_protocol_version
+--verbose,-v;                      show http headers
+--dry-run;                         print ntrip pipeline and exit
+EOF
+}
+
+function usage()
+{
+cat <<EOF >&2
+
+ntrip protocol service
+
+Usage: $scriptname <host[:port]> [<options>]
+
+port defaults to $default_source_port
+
+Options
+EOF
+    description | sed 's/^/    /g' >&2
+    cat <<EOF >&2
+
+If mountpoint is not given the sourcetable for the service provider will be
+returned. This generally will not require a username and password.
+
+Possible options for nmea <source> are:
+    /dev/<device>
+    cmd;fields
+
+    /dev/<device> (e.g. /dev/gps)
+    Take nmea data from a device
+
+    cmd;fields (e.g. "nc localhost 60002;latitude,longitude")
+    Specify a command to generate position data and construct an NMEA sentence
+    <cmd> can include pipes but should not have semicolons.
+          One line is read from the output of <cmd>.
+    <fields> should be the fields supported by ntrip-csv-to-gpgga.
+    Run "ntrip-csv-to-gpgga -h" for details.
+
+If nmea source is a device (e.g. /dev/gps) then --max-read gives the maximum
+number of times this source will be read in one refresh period (--refresh) in
+an attempt to get a GPGGA message. This is to prevent this client from starving
+other readers of the device if there are no GPGGA messages present.
+
+Examples
+    --- Request data with authentication ---
+    $scriptname smartnetaus.com -m TMBL_NB -u <user> -p <pass>
+
+    --- Output to a port ---
+    $scriptname auscors.ga.gov.au -m PARK0 --output-port 5018
+
+    --- Monitor data from service ---
+    $scriptname <service> -m <mount> --output-port 5018 --monitor-port 8888
+
+    --- Use /dev/gps for the NMEA data, resend every 30s ---
+    $scriptname smartnetaus.com -m TMBL_NB --nmea=/dev/gps --refresh=30
+
+    --- Use published raw gps data to generate NMEA sentences ---
+    $scriptname smartnetaus.com -m TMBL_NB \\
+        --nmea="nc localhost 60000 | novatel-to-csv --geographic;timestamp,latitude,longitude,altitude"
+
+    --- Use published position data to generate NMEA sentences ---
+    $scriptname smartnetaus.com -m TMBL_NB \\
+        --nmea="nc localhost 60002;latitude,longitude"
+
+    --- Use a fixed position but update timestamp ---
+    $scriptname smartnetaus.com -m TMBL_NB \\
+        --nmea="echo -30,151,980;latitude,longitude,altitude"
+
+    --- Test the smartnetaus service ---
+    $scriptname -v smartnetaus.com:12103 --mountpoint TMBL_NB \\
+        --username <username> --password <password> \\
+        --nmea "echo -30,151,980;latitude,longitude,altitude" --refresh 30 \\
+        | hexdump
+
+EOF
+    exit
+}
+
+function say() { echo "$scriptname: $@" >&2; }
+function verbose() { (( options_verbose )) && say "$@"; }
+function die() { say "$@"; exit 1; }
+
+(( $( comma_options_has "--bash-completion" $@ ) )) && { description | comma_options_to_bash_completion; exit 0; }
+
+if (( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )); then
+    usage
+fi
+
+options="$( description | comma-options-to-name-value "$@" )"
+comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
+
+# populate options from config file
+if [[ $options_config ]]; then
+    IFS=: read config_file config_path <<< "$options_config"
+    config_path=${config_path:-$default_config_path}
+    comma_path_value_to_var --prefix=ntrip < <( name-value-get $config_path < $config_file )
+    options_host="$ntrip_source_url"
+    options_port="$ntrip_source_port"
+    options_mountpoint="$ntrip_source_mountpoint"
+    options_username="$ntrip_source_username"
+    options_password="$ntrip_source_password"
+    options_timeout="$ntrip_source_timeout"
+    options_protocol="$ntrip_source_protocol"
+    options_nmea="$ntrip_nmea_source"
+    options_refresh="$ntrip_nmea_refresh"
+    options_max_read="$ntrip_nmea_max_read"
+    options_output_port="$ntrip_port"
+    options_bandwidth_monitor_port="$ntrip_bandwidth_monitor_port"
+fi
+
+# populate options from command-line
+comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
+
+unnamed_options=( $( echo "$options" | grep -v '=' | sed 's/^"//g; s/"$//g' | tr '\n' ' ' ) )
+(( ${#unnamed_options[@]} == 0 )) && [[ ! $options_host ]] && die "require host"
+(( ${#unnamed_options[@]} > 1 )) && die "unexpected unnamed arguments: ${unnamed_options[@]}"
+(( ${#unnamed_options[@]} )) && options_host=${unnamed_options[0]}
+if [[ $options_host =~ : ]]; then
+    IFS=: read options_host options_port <<< $options_host
+fi
+
+# use default values if required
+options_protocol=${options_protocol:-$default_protocol_version}
+options_port=${options_port:-$default_source_port}
+options_max_read=${options_max_read:-$default_max_read}
+
+function sourcetable_filter()
+{
+    # Strip the HTTP header and the final line, output just the data
+    sed -e '1,/^\r$/d' -e '$d'
+}
+
+# The nmea sentence is considered valid if the checksum matches and it has a timestamp
+function nmea_sentence_valid()
+{
+    local nmea_sentence=$( echo $1 | sed 's/\s*$//' )
+    local checksum=${nmea_sentence: -2:2}
+    [[ $checksum == $( echo $nmea_sentence | nmea-checksum ) && ! $nmea_sentence =~ ^\$[A-Z]+,, ]]
+}
+
+function nmea_from_file()
+{
+    local type=$1
+
+    local line
+    local lines_read=0
+    local valid=0
+
+    while (( !valid && lines_read < options_max_read )); do
+        (( options_verbose )) && echo >&2
+        # if we don't get anything within the refresh period, timeout
+        # this is just to indicate that there is an issue reading the nmea source
+        read -t $options_refresh line < $options_nmea
+        (( $? > 128 )) && { say "read of $options_nmea timed out"; break; }
+        [[ $line ]] || continue
+        (( lines_read++ ))
+        if [[ ${line:0:3} == '$IN' ]]; then
+            nmea_sentence_valid $line || { say "invalid nmea sentence: \"$line\""; continue; }
+            # replace IN with GP, strip checksum and recalculate
+            line=$( echo $line | sed 's/^.//;s/[^,]*$//;s/^IN/GP/' | ntrip-csv-to-gpgga --fields=sentence )
+        fi
+        [[ $type && ${line:3:3} != $type ]] && { verbose "skipping ${line:1:5} message"; continue; }
+        nmea_sentence_valid $line || { say "invalid nmea sentence: \"$line\""; continue; }
+        valid=1
+    done
+    (( valid )) && echo $line || say "couldn't find a $type message in $lines_read lines from $options_nmea"
+}
+
+function nmea_gpgga()
+{
+    if [[ ${options_nmea:0:1} == "/" ]]; then
+        verbose "reading nmea data from $options_nmea"
+        nmea_from_file GGA
+    else
+        local cmd fields line
+        IFS=';' read cmd fields <<< $options_nmea
+        (( options_verbose )) && echo >&2
+        verbose "generating nmea data with command \"$cmd\""
+#         read line < <( eval "$cmd" )
+#         verbose "generating nmea data with input \"$line\""
+#         echo $line | ntrip-csv-to-gpgga --fields $fields
+        eval "$cmd" | ntrip-csv-to-gpgga --fields $fields | head -1
+    fi
+}
+
+function nmea_input()
+{
+    while : ; do
+        nmea_gpgga 
+        sleep $options_refresh
+    done
+}
+
+function publish_bandwidth_stats()
+{
+    io-bandwidth --window 10 2> >( io-publish tcp:$options_bandwidth_monitor_port )
+}
+
+(( options_verbose )) && { verbose_option="--verbose"; }
+[[ $options_mountpoint ]] && mountpoint_option="--mountpoint=$options_mountpoint"
+[[ $options_username ]]   && username_option="--username=$options_username"
+[[ $options_password ]]   && password_option="--password=$options_password"
+[[ $options_timeout ]]    && timeout_option="--timeout=$options_timeout"
+
+input_fn=true
+if [[ $options_nmea ]]; then
+    if [[ $options_refresh ]]; then
+        [[ $options_protocol == "1.0" ]] || die "--refresh only supported for Ntrip protocol 1.0"
+        input_fn=nmea_input
+    else
+        nmea_option="--nmea=$( nmea_gpgga )"
+    fi
+fi
+
+output_fn=cat
+# If no mountpoint is specified then we want the sourcetable
+[[ $options_mountpoint ]] || output_fn=sourcetable_filter
+[[ $options_output_port ]] && output_fn="socat -u - tcp-listen:$options_output_port,reuseaddr,fork"
+
+[[ $options_bandwidth_monitor_port ]] && bandwidth_fn=publish_bandwidth_stats || bandwidth_fn=cat
+
+if (( options_dry_run )); then
+    echo "$input_fn | ntrip-cat ${options_host}:${options_port} $mountpoint_option --protocol=$options_protocol $username_option $password_option $nmea_option $timeout_option $verbose_option | $bandwidth_fn | $output_fn"
+    exit
+fi
+
+# If ntrip-cat restarts, and is expecting nmea data on stdin, it won't receive
+# any until the next refresh cycle in nmea_input(). We short-circuit this by
+# explicitly setting the --nmea option on restarts.
+
+verbose "starting"
+
+shutdown=0
+
+$input_fn \
+    | while (( !shutdown )); do
+          # if we've set nmea_option, make sure it has a value before passing to ntrip-cat
+          if [[ -z $nmea_option || ${nmea_option#*=} != "" ]]; then
+              verbose "starting ntrip-cat"
+              ntrip-cat ${options_host}:${options_port} $mountpoint_option \
+                  --protocol=$options_protocol $username_option $password_option \
+                  $nmea_option $timeout_option $verbose_option
+              [[ $? == 0 ]] && shutdown=1
+              verbose "ntrip-cat exited"
+          fi
+          if (( !shutdown )); then
+              say "ntrip-cat exited - restarting..."
+              [[ $options_nmea ]] && nmea_option="--nmea=$( nmea_gpgga )"
+              sleep 0.5             # stop hard-loops if ntrip-cat is always failing
+          fi
+      done | $bandwidth_fn | $output_fn
+
+verbose "exiting"

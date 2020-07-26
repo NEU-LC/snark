@@ -1,0 +1,128 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+function usage()
+{
+cat <<EOF >&2
+
+Display status of ntrip services
+
+Usage: $scriptname <config>
+
+Examples:
+    $scriptname /usr/local/etc/shrimp.json
+
+    while : ; do
+        clear; $scriptname config.json | status-to-term; sleep 10
+    done
+
+EOF
+    exit
+}
+
+(( $# == 1 )) || { echo "$scriptname: require config file" >&2; exit 1; }
+
+[[ $1 =~ --help|-h ]] && usage
+
+config_file=$1
+
+function config_value()
+{
+    cat $config_file | name-value-get $1
+}
+
+function print_status()
+{
+    local label="$1"
+    local value="$2"
+    local good_value="$3"
+
+    if [[ $good_value == "neutral" ]]; then
+        status=2
+    else
+        local status=0
+        if [[ $good_value =~ ^\<|^\> ]]; then
+            if [[ $value ]]; then
+                (( $( echo "$value $good_value" | bc -l ) )) && status=1
+            fi
+        else
+            [[ $good_value && $value =~ $good_value ]] && status=1
+        fi
+    fi
+    echo $label,$value,$status
+}
+
+function nmea_source_status()
+{
+    local nmea_source=$1
+    local nmea_source_status="non-existent"
+    if [[ -e $nmea_source ]]; then
+        nmea_source_status="empty"
+        local nmea_string=$( cat $nmea_source | head -1 )
+        [[ $nmea_string ]] && nmea_source_status="good"
+    fi
+    echo $nmea_source_status
+}
+
+function service_status()
+{
+    service $1 status > /dev/null && echo "running" || echo "stopped"
+}
+
+function dgps_basestation()
+{
+    echo $( config_value dgps/basestation/address ):$( config_value dgps/basestation/port )
+}
+
+function ntrip_bandwidth_status()
+{
+    local port=$1
+    local status=0
+    if [[ $port ]]; then
+        local bandwidth=$( nc localhost $port | head -1 | csv-shuffle --fields $( io-bandwidth --output-fields ) --output bytes_per_second/window )
+        [[ $bandwidth ]] && status=$bandwidth
+    fi
+    echo $status
+}
+
+function novatel_dgps_id()
+{
+    # GenericNavPrintClient doesn't listen to SIGPIPE,
+    # so we use a FIFO which lets us kill it explicitly when we're done.
+    local fifo=/tmp/ntrip-status-fifo.$$
+    mkfifo $fifo || return
+    GenericNavPrintClient | stdbuf -oL grep ^DGPS > $fifo &
+
+    # We'd like to get the pid of GenericNavPrintClient but that's not
+    # available, so get the pid of the parent instead
+    local gnpc_ppid=$( ps o ppid= $! )
+
+    # We need to timeout because there may be no ^DGPS match in the input
+    local dgps_line=$( timeout 3s head -1 $fifo )
+    pkill -P $gnpc_ppid
+    rm $fifo
+    echo $dgps_line | cut -d' ' -f2 | sed -r "s/'(.*)'/\1/;s/^$/''/"
+}
+
+function good_novatel_dgps_id()
+{
+    [[ $( config_value dgps/basestation/address ) == "dgps.rose" ]] && echo 1 || echo 26
+}
+
+nmea_source=$( config_value ntrip/nmea/source | cut -d' ' -f1 )
+bandwidth_monitor_port=$( config_value ntrip/bandwidth_monitor_port )
+
+print_status "nmea source" "$nmea_source" neutral
+print_status "dgps basestation" $( dgps_basestation ) neutral
+print_status "ntrip bandwidth port" $bandwidth_monitor_port neutral
+
+print_status "nmea source status" $( nmea_source_status $nmea_source ) good
+
+ntrip_client_service_status=$( service_status ntrip-client )
+ntrip_service_running=$( [[ $ntrip_client_service_status == "running" ]] && echo 1 || echo 0 )
+print_status "ntrip-client service" $ntrip_client_service_status running
+print_status "ntrip-cat instances" $( pgrep -c ntrip-cat ) $( (( ntrip_service_running )) && echo 1 || echo 0 )
+print_status "ntrip bandwidth" "$( ntrip_bandwidth_status $bandwidth_monitor_port )" "$( (( ntrip_service_running )) && echo '> 200' || echo '0' )"
+print_status "dgps forwarder service" $( service_status dgpsForwarder ) running
+print_status "novatel dgps number" "$( novatel_dgps_id )" "$( good_novatel_dgps_id )"

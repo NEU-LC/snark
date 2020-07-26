@@ -1,0 +1,126 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+source $( type -p comma-application-util )
+
+default_delimiter=","
+input_fields="timestamp,latitude,longitude,fix_quality,num_satellites,hdop,altitude,height_of_geoid,last_dgps_update,dgps_station_id,sentence"
+output_fields="msg_type,timestamp,latitude/angle,latitude/hemisphere,longitude/angle,longitude/hemisphere,fix_quality,num_satellites,hdop,altitude/value,altitude/units,height_of_geoid/value,height_of_geoid/units,last_dgps_update,dgps_station_id,checksum"
+
+function description()
+{
+    cat <<EOF
+--help,-h;                  output help
+--fields=<fields>;          input field names
+--output-fields;            output field names
+--delimiter,-d=<delimiter>; default=$default_delimiter; delimiter
+
+EOF
+}
+
+function usage()
+{
+cat <<EOF >&2
+
+convert csv to NMEA GPGGA sentence
+
+Usage: cat input.csv | $scriptname <options>
+
+Options
+EOF
+    description | sed 's/^/    /g' >&2
+    cat <<EOF >&2
+Accepted fields are:
+EOF
+echo $input_fields | tr ',' '\n' | sed 's/^/    /'
+    cat <<EOF >&2
+
+    "sentence" is a special field name to indicate that the input is a complete
+    NMEA sentence except for the leading $ and trailing checksum.
+
+Examples
+    echo -30,45,100 | $scriptname --fields=latitude,longitude,altitude
+
+    echo "GPGGA,061437.10,3353.3709,S,15111.5814,E,5,07,0.9,48.33,M,20.71,M,01,0001" | $scriptname --fields=sentence
+
+    On one of the robots:
+    netcat localhost 60000 | novatel-gps-to-csv --geographic \\
+        | $scriptname --fields=timestamp,latitude,longitude,altitude
+
+EOF
+    exit
+}
+
+(( $( comma_options_has "--bash-completion" $@ ) )) && { description | comma_options_to_bash_completion; exit 0; }
+
+if (( $( comma_options_has "--help" $@ ) || $( comma_options_has "-h" $@ ) )); then
+    usage
+fi
+
+(( $( comma_options_has "--output-fields" $@ ) )) && { echo $output_fields; exit 0; }
+
+options_delimiter=$default_delimiter
+comma_path_value_to_var --prefix=options < <( description | comma-options-to-name-value $@ | grep '=' )
+
+function nmea_timestamp() { echo $1 | sed 's/.*T//'; }
+
+# NMEA format: ddmm.[fractions of minute]
+# e.g. 41d 24.896' N => 4124.896
+function nmea_latlon()
+{
+    local angle=$1
+    local is_longitude=$2
+    IFS=, read input degrees minutes <<< $( echo $1 | csv-eval --format d --fields=x "d=int(x);m=(x-int(x))*60" )
+    local format="%02d%07.4f,%s"
+    (( is_longitude )) && format="%03d%07.4f,%s"
+    local hemisphere
+    if (( degrees < 0 )); then
+        degrees=$(( -degrees ))
+        minutes=$( echo $minutes | sed 's/-//' )
+        (( is_longitude )) && hemisphere="W" || hemisphere="S"
+    else
+        (( is_longitude )) && hemisphere="E" || hemisphere="N"
+    fi
+    printf $format $degrees $minutes $hemisphere
+}
+
+# Each sentence begins with a '$' and ends with a carriage return/line feed sequence
+# Formatting of fields is given at http://aprs.gids.nl/nmea/#gga
+function write_gpgga()
+{
+    local fields="GPGGA"
+    fields+=",$( nmea_timestamp ${input[timestamp]} )"
+    fields+=",$( nmea_latlon ${input[latitude]} 0 )"
+    fields+=",$( nmea_latlon ${input[longitude]} 1 )"
+    fields+=",${input[fix_quality]}"
+    fields+=",$( printf '%02d' ${input[num_satellites]} )"
+    fields+=",${input[hdop]}"
+    fields+=",${input[altitude]},M,${input[height_of_geoid]},M"
+    fields+=",${input[last_dgps_update]},${input[dgps_station_id]}"
+    echo "\$${fields}*$( echo $fields | nmea-checksum )"
+}
+
+# initialize to default values
+declare -A input=(
+    [timestamp]=$( date -u +%Y%m%dT%H%M%S )
+    [latitude]=''
+    [longitude]=''
+    [fix_quality]=7
+    [num_satellites]=0
+    [hdop]=0
+    [altitude]=0
+    [height_of_geoid]=0
+    [last_dgps_update]=''
+    [dgps_station_id]=''
+    )
+
+while read input_line; do
+    # Load the input data into the associative array "input"
+    if [[ $options_fields == "sentence" ]]; then
+        echo "\$${input_line}*$( echo $input_line | nmea-checksum )"
+    else
+        eval "$( echo $input_line | name-value-from-csv --fields=$options_fields --delimiter=$options_delimiter | sed -r 's/(.*)=/input[\1]=/' )"
+        write_gpgga
+    fi
+done
