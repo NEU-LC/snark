@@ -1,7 +1,7 @@
 add_subdirectory( mavlink )
 add_subdirectory( nmea )
-add_subdirectory( trimble )
 add_subdirectory( ntrip )
+add_subdirectory( trimble )
 if( NOT WIN32 )
     add_subdirectory( advanced-navigation )
 endif( NOT WIN32 )

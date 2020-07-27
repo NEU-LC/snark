@@ -79,10 +79,6 @@ Examples
     --- Use /dev/gps for the NMEA data, resend every 30s ---
     $scriptname smartnetaus.com -m TMBL_NB --nmea=/dev/gps --refresh=30
 
-    --- Use published raw gps data to generate NMEA sentences ---
-    $scriptname smartnetaus.com -m TMBL_NB \\
-        --nmea="nc localhost 60000 | novatel-to-csv --geographic;timestamp,latitude,longitude,altitude"
-
     --- Use published position data to generate NMEA sentences ---
     $scriptname smartnetaus.com -m TMBL_NB \\
         --nmea="nc localhost 60002;latitude,longitude"
