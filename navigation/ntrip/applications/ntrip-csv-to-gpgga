@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright (c) 2016 The University of Sydney
+
 scriptname=$( basename $0 )
 
 source $( type -p comma-application-util )

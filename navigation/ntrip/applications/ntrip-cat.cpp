@@ -1,3 +1,5 @@
+// Copyright (c) 2016 The University of Sydney
+
 #include <iostream>
 #include <boost/archive/iterators/base64_from_binary.hpp>
 #include <boost/archive/iterators/transform_width.hpp>
