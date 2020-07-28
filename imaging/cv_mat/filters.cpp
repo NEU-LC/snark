@@ -1632,7 +1632,7 @@ class map_impl_
             }
         }
 
-        #if ( defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 ) || ( !defined( CV_VERSION_EPOCH ) && CV_VERSION_MAJOR == 3 && CV_VERSION_MINOR > 1 )
+        #if ( defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 ) || ( !defined( CV_VERSION_EPOCH ) && ( ( CV_VERSION_MAJOR == 3 && CV_VERSION_MINOR == 3 && CV_VERSION_REVISION > 1 ) || ( CV_VERSION_MAJOR == 3 && CV_VERSION_MINOR > 3 ) ) )
         value_type operator()( value_type m ) // todo: support multiple channels
         {
             value_type n( m.first, cv::Mat( m.second.size(), cv::DataType< output_value_type >::type ) );
@@ -1666,7 +1666,7 @@ class map_impl_
             catch ( std::out_of_range ) { return value_type(); }
             return n;
         }
-        #else // #if ( defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 ) || ( !defined( CV_VERSION_EPOCH ) && CV_VERSION_MAJOR == 3 && CV_VERSION_MINOR > 1 )
+        #else
         value_type operator()( value_type m ) // todo: support multiple channels
         {
             value_type n( m.first, cv::Mat( m.second.size(), cv::traits::Type< output_value_type >::value ) );
@@ -1700,7 +1700,7 @@ class map_impl_
             catch ( std::out_of_range ) { return value_type(); }
             return n;
         }
-        #endif // #if ( defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 ) || ( !defined( CV_VERSION_EPOCH ) && CV_VERSION_MAJOR == 3 && CV_VERSION_MINOR > 1 )
+        #endif
         
     private:
         typedef std::unordered_map< key_type, output_value_type > map_t_;
