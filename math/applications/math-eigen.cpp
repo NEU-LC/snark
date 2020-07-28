@@ -77,8 +77,7 @@ void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << "    fit plane: fit plane to dataset, output its mean and normal" << std::endl;
     std::cerr << "        fields" << std::endl;
-    std::cerr << "            block: block number; output eigen vectors and eigen values for each" << std::endl;
-    std::cerr << "                   contiguous block of samples with the same block id" << std::endl;
+    std::cerr << "            block: block number; fit plane for each contiguous block of samples with the same block id" << std::endl;
     std::cerr << "            data: sample data" << std::endl;
     std::cerr << "            default: data" << std::endl;
     std::cerr << "        output" << std::endl;
