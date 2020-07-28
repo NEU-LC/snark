@@ -3,12 +3,6 @@
 
 /// @authors vsevolod vlaskine, toby dunne, kent hu
 
-#include "../../math/geometry/polygon.h"
-#include "../../math/geometry/traits.h"
-#include "../../math/interval.h"
-#include "../../point_cloud/voxel_map.h"
-#include "../../visiting/eigen.h"
-
 #include <unistd.h>
 
 #include <algorithm>
@@ -24,6 +18,9 @@
 
 #include <boost/bind.hpp>
 #include <boost/optional.hpp>
+#include <tbb/task_scheduler_init.h>
+#include <tbb/pipeline.h>
+
 #include <comma/application/command_line_options.h>
 #include <comma/base/exception.h>
 #include <comma/base/last_error.h>
@@ -32,9 +29,11 @@
 #include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
 #include <comma/application/signal_flag.h>
-#include <tbb/task_scheduler_init.h>
-#include <tbb/pipeline.h>
-#include <Eigen/src/Core/Matrix.h>
+#include "../../math/geometry/polygon.h"
+#include "../../math/geometry/traits.h"
+#include "../../math/interval.h"
+#include "../../point_cloud/voxel_map.h"
+#include "../../visiting/eigen.h"
 
 #ifdef SNARK_USE_CUDA
 #include <cuda_runtime.h>
