@@ -1632,7 +1632,7 @@ class map_impl_
             }
         }
 
-        #if ( defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 ) || ( !defined( CV_VERSION_EPOCH ) && ( ( CV_VERSION_MAJOR == 3 && CV_VERSION_MINOR == 3 && CV_VERSION_REVISION != 1 ) || CV_VERSION_MAJOR != 3 || CV_VERSION_MINOR != 3 ) )
+        #if ( defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 ) || ( !defined( CV_VERSION_EPOCH ) && ( ( CV_VERSION_MAJOR == 3 && ( CV_VERSION_MINOR < 3 || ( CV_VERSION_MINOR == 3 && CV_VERSION_REVISION < 1 ) ) ) ) )
         value_type operator()( value_type m ) // todo: support multiple channels
         {
             value_type n( m.first, cv::Mat( m.second.size(), cv::DataType< output_value_type >::type ) );
