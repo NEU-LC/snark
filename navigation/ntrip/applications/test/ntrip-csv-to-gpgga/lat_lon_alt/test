@@ -1,0 +1,7 @@
+# Strip leading and trailing white-space, comments and blank lines
+sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sed -n '/^[[:alnum:]]/p' \
+    | ntrip-csv-to-gpgga --fields=timestamp,latitude,longitude,altitude,dgps_station_id \
+    | sed -r 's/\$(.*)\*(.*)/\1,\2/' \
+    | name-value-from-csv --prefix output --fields $( ntrip-csv-to-gpgga --output-fields ) --line-number
+
+# sed strips the leading $ and replaces the * that preceeds the checksum with ,
