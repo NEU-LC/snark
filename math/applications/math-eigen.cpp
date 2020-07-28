@@ -339,6 +339,8 @@ int main( int ac, char** av )
                     std::string s = boost::lexical_cast< std::string >( single_line_output ? *size * ( *size + 1 ) : ( *size + 1 ) );
                     output_csv.format( has_block ? s + "d,ui" : s + "d" );
                 }
+                output_csv.flush = csv.flush;
+                output_csv.precision = csv.precision;
                 boost::scoped_ptr< comma::csv::output_stream< snark::eigen::output_t > > ostream;
                 boost::scoped_ptr< comma::csv::output_stream< snark::eigen::single_line_output_t > > single_line_ostream;
                 if( single_line_output ) { single_line_ostream.reset( new comma::csv::output_stream< snark::eigen::single_line_output_t >( std::cout, output_csv ) ); }
@@ -413,6 +415,8 @@ int main( int ac, char** av )
                     std::string s = boost::lexical_cast< std::string >( *size );
                     output_csv.format( has_block ? s + "d," + s + "d,ui" : s + "d," + s + "d" );
                 }
+                output_csv.flush = csv.flush;
+                std::cout.precision( csv.precision );
                 comma::csv::output_stream< snark::eigen::fit_plane_output_t > ostream( std::cout, output_csv );
                 while( true )
                 {
