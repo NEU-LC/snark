@@ -3,6 +3,12 @@
 
 /// @authors vsevolod vlaskine, toby dunne, kent hu
 
+#include "../../math/geometry/polygon.h"
+#include "../../math/geometry/traits.h"
+#include "../../math/interval.h"
+#include "../../point_cloud/voxel_map.h"
+#include "../../visiting/eigen.h"
+
 #include <unistd.h>
 
 #include <algorithm>
@@ -26,11 +32,6 @@
 #include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
 #include <comma/application/signal_flag.h>
-#include <snark/math/geometry/polygon.h>
-#include <snark/math/geometry/traits.h>
-#include <snark/math/interval.h>
-#include <snark/point_cloud/voxel_map.h>
-#include <snark/visiting/eigen.h>
 #include <tbb/task_scheduler_init.h>
 #include <tbb/pipeline.h>
 #include <Eigen/src/Core/Matrix.h>
