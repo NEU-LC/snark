@@ -64,7 +64,17 @@ static void usage( bool more = false )
     std::cerr << "    --radius=<radius>: max lookup radius, required even if radius field is present" << std::endl;
     std::cerr << "    --radius-min,--min-radius=<radius>; default=0: min lookup radius, e.g. to filter out points on poor-man's self-join" << std::endl;
     std::cerr << "    --size,--number-of-points,--number-of-nearest-points=<number_of_points>; default=1: output up to a given number of nearest points in the given radius" << std::endl;
-    std::cerr << "    --strict: exit, if nearest point not found" << std::endl;
+    std::cerr << "    --strict: exit, if nearest point not found; may not exit immediately sometimes" << std::endl;
+    if( more )
+    {
+        std::cerr << "              if --parallel-threads is greater than 1, points-join may not always exit immediately on the current point but on the next input point" << std::endl;
+        std::cerr << "              the output will still be the same (the next input point will not be processed)" << std::endl;
+        std::cerr << "              if you require points-join to exit immediately consistently, then --parallel-threads should be set to 1" << std::endl;
+    }
+    else
+    {
+        std::cerr << "              for more help, use --verbose..." << std::endl;
+    }
     #ifdef SNARK_USE_CUDA
     std::cerr << "    --use-cuda,--cuda: experimental option; currently 40 times slower then normal operation, thus don't use it, yet" << std::endl;
     #endif
@@ -495,6 +505,14 @@ template < typename V > struct join_impl_
 
         auto parallel_threads = options.value( "--parallel-threads,--threads", tbb::task_scheduler_init::default_num_threads() );
         if( parallel_threads <= 0 ) { parallel_threads = tbb::task_scheduler_init::default_num_threads(); }
+        if( strict && stdin_csv.flush && parallel_threads != 1 )
+        {
+            std::cerr << "points-join: WARNING: --strict and --flush have been set with " << parallel_threads << " threads" << std::endl;
+            std::cerr << "                      as an implementation limitation, you may need to specify --threads=1, depending on your use case, for consistent behaviour:" << std::endl;
+            std::cerr << "                      - suppose you set --strict and --flush and expect that once there is a not matched input record, points-join exits immediately" << std::endl;
+            std::cerr << "                      - however, if --threads is not set to 1, points-join would exit once it reads the NEXT input record, which may not unexpected" << std::endl;
+            std::cerr << "                        when points-join is used for realtime or interactive data streams" << std::endl;
+        }
         const auto& parallel_chunk_size = stdin_csv.flush || !stdin_csv.binary() ? 1 : static_cast< std::size_t >( options.value( "--parallel-chunk-size,--chunk-size", 256 ) );
 
         typedef std::vector< std::pair< input_t, std::string > > input_container;
@@ -511,7 +529,7 @@ template < typename V > struct join_impl_
             for( std::size_t i = 0; i < parallel_chunk_size; ++i )
             {
                 static comma::signal_flag is_shutdown( comma::signal_flag::hard );
-                if( is_shutdown || std::cin.eof() || std::cin.bad() || !std::cin.good()) { fc.stop(); return {}; }
+                if( is_shutdown || std::cin.eof() || std::cin.bad() || !std::cin.good() ) { fc.stop(); return {}; }
                 if( !p ) { p = read_(); }
                 if( !p ) { break; }
                 read_next_filter_block = use_block && block && *block != p->block; // non-matching block, read next block in
@@ -697,15 +715,14 @@ template < typename V > struct join_impl_
                     pass_through();
                     break;
                 }
+                if( p->block == *block ) { continue; } // found matching block grid, start joining
                 if( matching )
                 {
                     if( strict ) { std::cerr << "points-join: record at " << p->value.x() << ',' << p->value.y() << ',' << p->value.z() << ": no matches found" << std::endl; return 1; }
                     while( p && p->block < *block ) { ++count; ++discarded; p = read_(); }
+                    continue;
                 }
-                else
-                {
-                    pass_through();
-                }
+                pass_through();
             }
             else
             {
@@ -751,7 +768,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< point_input >( true ), ',' ) << std::endl; return 0; }
         options.assert_mutually_exclusive( "--all", "--size,--number-of-points,--number-of-nearest-points" );
-        options.assert_mutually_exclusive( "--matching", "--not-matching");
+        options.assert_mutually_exclusive( "--matching,--strict", "--not-matching");
         options.assert_mutually_exclusive( "--size,--number-of-points,--number-of-nearest-points,--all", "--matching,--not-matching" );
         options.assert_mutually_exclusive( "--flush", "--parallel-chunk-size,--chunk-size" );
         strict = options.exists( "--strict" );
