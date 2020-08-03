@@ -87,7 +87,7 @@ namespace snark { namespace robosense {
     
 calculator::scan::scan( unsigned int max_number_of_missing_packets, bool accumulate )
     : max_number_of_missing_packets_( max_number_of_missing_packets )
-    , max_time_gap_( boost::posix_time::microseconds( msop::packet::data_t::block::firing_interval() * msop::packet::data_t::number_of_blocks * 1000000 ) * max_number_of_missing_packets )
+    , max_time_gap_( boost::posix_time::microseconds( int( msop::packet::data_t::block::firing_interval() * msop::packet::data_t::number_of_blocks * 1000000 ) ) * max_number_of_missing_packets )
     , estimated_max_angle_gap_( 0 )
     , accumulate_( accumulate )
     , current_( 0 )
@@ -230,7 +230,7 @@ calculator::point calculator::make_point( comma::uint32 scan, const boost::posix
 {
     calculator::point p;
     p.scan = scan;
-    p.t = t + boost::posix_time::microseconds( it->delay * 1000000 );
+    p.t = t + boost::posix_time::microseconds( int( it->delay * 1000000 ) );
     p.id = it->id;
     p.range = range( it->range, it->id, temperature );
     p.bearing = it->azimuth;
