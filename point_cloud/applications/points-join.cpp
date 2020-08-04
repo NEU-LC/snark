@@ -13,12 +13,12 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
 #include <boost/bind.hpp>
 #include <boost/optional.hpp>
-#include <tbb/task_scheduler_init.h>
 #include <tbb/pipeline.h>
 
 #include <comma/application/command_line_options.h>
@@ -58,7 +58,7 @@ static void usage( bool more = false )
     std::cerr << "    --input-fields: output input fields and exit" << std::endl;
     std::cerr << "    --matching: output only points that have a match, do not append nearest point; a convenience option" << std::endl;
     std::cerr << "    --not-matching: output only points that do not have a match, i.e. opposite of --matching" << std::endl;
-    std::cerr << "    --parallel-threads,--threads=<count>; default=" << tbb::task_scheduler_init::default_num_threads() << "; number of threads" << std::endl;
+    std::cerr << "    --parallel-threads,--threads=<count>; default=" << std::thread::hardware_concurrency() << "; number of threads" << std::endl;
     std::cerr << "    --parallel-chunk-size,--chunk-size=<size>; default=256: read input in chunks of <size> record; if --flush or ascii input, automatically set to --chunk-size=1" << std::endl;
     std::cerr << "    --permissive: discard invalid points or triangles and continue" << std::endl;
     std::cerr << "    --radius=<radius>: max lookup radius, required even if radius field is present" << std::endl;
@@ -503,8 +503,8 @@ template < typename V > struct join_impl_
             bool strict_and_nearest_point_not_found = false;
         };
 
-        auto parallel_threads = options.value( "--parallel-threads,--threads", tbb::task_scheduler_init::default_num_threads() );
-        if( parallel_threads <= 0 ) { parallel_threads = tbb::task_scheduler_init::default_num_threads(); }
+        auto parallel_threads = options.value( "--parallel-threads,--threads", std::thread::hardware_concurrency() );
+        if( parallel_threads <= 0 ) { parallel_threads = std::thread::hardware_concurrency(); }
         if( strict && stdin_csv.flush && parallel_threads != 1 )
         {
             std::cerr << "points-join: WARNING: --strict and --flush have been set with " << parallel_threads << " threads" << std::endl;

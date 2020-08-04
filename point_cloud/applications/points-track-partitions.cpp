@@ -97,7 +97,7 @@ template <> struct traits< input_t >
         v.apply( "block", p.block );
         v.apply( "id", p.id );
     }
-    
+
     template < typename Key, class Visitor >
     static void visit( const Key&, input_t& p, Visitor& v )
     {
@@ -171,7 +171,7 @@ static void match() // todo: refactor this bloody mess, once voxel grid is refac
     for( snark::voxel_map< voxel, 3 >::iterator it = voxels.second->begin(); it != voxels.second->end(); ++it )
     {
         comma::uint32 current_id = it->second.id();
-        boost::optional< comma::uint32 > previous_id;
+        boost::optional< comma::uint32 > previous_id = boost::none;
         snark::voxel_map< voxel, 3 >::const_iterator v = voxels.first->find( it->second.mean() );
         if( v != voxels.first->end() ) { previous_id = v->second.id(); }
         partitions[ current_id ].push_back( std::make_pair( &it->second, previous_id ) );
@@ -237,7 +237,7 @@ static void read_block_() // todo: implement generic reading block
             ::memcpy( &line[0], istream.binary().last(), csv.format().size() );
         }
         else
-        { 
+        {
             line = comma::join( istream.ascii().last(), csv.delimiter );
         }
         last = std::make_pair( *p, line );

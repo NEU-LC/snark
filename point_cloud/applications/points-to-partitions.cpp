@@ -14,7 +14,6 @@
 #include <sstream>
 #include <vector>
 #include <tbb/pipeline.h>
-#include <tbb/task_scheduler_init.h>
 #include <boost/array.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -99,7 +98,7 @@ struct input_t
     comma::uint32 block;
     const boost::optional< comma::uint32 >* id;
 
-    input_t() : point( 0, 0, 0 ), flag( true ), id( NULL ) {}
+    input_t() : point( 0, 0, 0 ), flag( true ), id( nullptr ) {}
 };
 
 namespace comma { namespace visiting {
@@ -138,7 +137,7 @@ struct block_t // quick and dirty, no optimization for now
 static comma::signal_flag is_shutdown;
 static boost::scoped_ptr< snark::tbb::bursty_reader< block_t* > > bursty_reader;
 
-static block_t* read_block_impl_( ::tbb::flow_control* flow = NULL )
+static block_t* read_block_impl_( ::tbb::flow_control* flow = nullptr )
 {
     static boost::array< block_t, 3 > blocks;
     static boost::optional< block_t::pair_t > last;
@@ -210,7 +209,7 @@ static void write_block_( block_t* block )
 
 static block_t* partition_( block_t* block )
 {
-    if( !block ) { return NULL; } // quick and dirty for now, only if --discard
+    if( !block ) { return nullptr; } // quick and dirty for now, only if --discard
     if( block->points->empty() ) { return block; }
     snark::math::closed_interval< double, 3 > extents;
     for( std::size_t i = 0; i < block->points->size(); ++i ) { extents.set_hull( block->points->operator[](i).first.point ); }
@@ -246,7 +245,7 @@ int main( int ac, char** av )
         const std::vector< std::string >& v = comma::split( resolution_string, ',' );
         switch( v.size() )
         {
-            case 1: { double r = boost::lexical_cast< double >( v[0] ); resolution = Eigen::Vector3d( r, r, r ); break; }
+            case 1: { auto r = boost::lexical_cast< double >( v[0] ); resolution = Eigen::Vector3d( r, r, r ); break; }
             case 3: resolution = comma::csv::ascii< Eigen::Vector3d >().get( v ); break;
             default: std::cerr << "points-to-partitions: expected resolution, got: \"" << resolution_string << "\"" << std::endl; return 1;
         }
