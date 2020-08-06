@@ -62,7 +62,9 @@ def main():
     if not args.message_type is None:
         package = '.'.join( args.message_type.split( '.' )[:-1] ) if args.package is None else args.package
         if len( package ) > 0: exec( 'import ' + package )
-    if args.topic is None and not args.dry_run and args.type is None: print >> sys.stderr, "ros-from-csv: please specify --topic"; sys.exit( 1 )
+    if args.topic is None and not args.dry_run and args.message_type is None:
+        print >> sys.stderr, "ros-from-csv: please specify --topic"
+        sys.exit( 1 )
     if args.message_type is None: message_type = rostopic.get_topic_class( args.topic )[0]
     else: exec( 'message_type = ' + args.message_type )
     message = message_type()
