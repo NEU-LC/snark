@@ -17,7 +17,7 @@ echo " input fields: $fields" >&2
 echo "output fields: $output_fields" >&2
 
 points-calc $args --fields="$fields" | tee $output_dir/raw \
-    | csv-shuffle --fields="$fields,$output_fields" --output="$output_fields" \
+    | csv-shuffle --fields="$( csv-fields clear <<< "$fields" ),$output_fields" --output="$output_fields" \
     | cat -n | sed 's#^ *#output[#;s#\t#]="#;s#$#"#'
 
 comma_status_ok || { echo "test failed" >&2; exit 1; }
