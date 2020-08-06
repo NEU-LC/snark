@@ -61,6 +61,7 @@ function csv_to_path_value()
 {
     local image=$1
     local what=$2
+    # quick and dirty, just to fix the bloody test
     cat "$image" \
         | csv-shuffle --fields="time,x,y,r,g,b" --output-fields="x,y,r,g,b" \
         | name-value-from-csv "x,y,channel[0],channel[1],channel[2]" --indices=x,y \
@@ -91,37 +92,31 @@ echo "blue=$blue"
 
 fields="t,x,y,b,g,r"
 
-btype="3ub"
 generate $nx $ny $timestamp \
-    | image-from-csv --fields=$fields --output="rows=$ny;cols=$nx;type=$btype" \
+    | image-from-csv --fields=$fields --output="rows=$ny;cols=$nx;type=3ub" \
     | cv-cat --output no-header "encode=png" > "$image_png"
 comma_status_ok || { echo "$scriptname: pipeline to create '$image_png' failed" >&2; exit 1 ; }
 
-cv-cat --file "$image_png" \
-    | image-to-csv > "$image_csv"
+cv-cat --file "$image_png" | image-to-csv > "$image_csv"
 comma_status_ok || { echo "$scriptname: pipeline to create '$image_csv' failed" >&2; exit 1 ; }
 
 otypes=( "3ub" "3i" "3f" "3d" )
 for otype in "${otypes[@]}" ; do
-
-for k in "${!formulae[@]}" ; do
-    formula=${formulae[$k]}
-    odir="$output_dir/$otype/$k"
-    mkdir -p "$odir" || { echo "$scriptname: cannot create directory '$odir'" >&2; exit 1 ; }
-
-    generate $nx $ny $timestamp \
-        | image-from-csv --fields=$fields --output="rows=$ny;cols=$nx;type=$btype" \
-        | ( cd "$odir"; cv-cat "convert-to=$otype;ratio=${formula};convert-to=$btype;file=png;null" )
-    comma_status_ok || { echo "$scriptname: pipeline to create '$odir/$timestamp.png' failed" >&2; exit 1 ; }
-    [[ -f "$odir/$timestamp.png" ]] || { echo "$scriptname: file '$odir/$timestamp.png' not found" >&2; exit 1; }
-
-    cv-cat --file "$odir/$timestamp.png" \
-        | image-to-csv > "$odir/$timestamp.csv"
-    comma_status_ok || { echo "$scriptname: pipeline to create '$odir/$timestamp.csv' failed" >&2; exit 1 ; }
-    [[ -f "$odir/$timestamp.csv" ]] || { echo "$scriptname: file '$odir/$timestamp.csv' not found" >&2; exit 1; }
-
-    opath=$( printf "formula[%d]" $k )
-    csv_to_path_value "$odir/$timestamp.csv" "$opath" || { echo "$scriptname: conversion of '$odir/$timestamp.csv' to path-value failed" >&2; exit 1 ; }
-done
-
+    for k in "${!formulae[@]}" ; do
+        formula=${formulae[$k]}
+        odir="$output_dir/$otype/$k"
+        mkdir -p "$odir" || { echo "$scriptname: cannot create directory '$odir'" >&2; exit 1 ; }
+        generate $nx $ny $timestamp \
+            | image-from-csv --fields=$fields --output="rows=$ny;cols=$nx;type=3ub" \
+            | ( cd "$odir"; cv-cat "convert-to=$otype;ratio=${formula};convert-to=3ub;file=png;null" )
+        comma_status_ok || { echo "$scriptname: pipeline to create '$odir/$timestamp.png' failed" >&2; exit 1 ; }
+        [[ -f "$odir/$timestamp.png" ]] || { echo "$scriptname: file '$odir/$timestamp.png' not found" >&2; exit 1; }
+        cv-cat --file "$odir/$timestamp.png" | image-to-csv > "$odir/$timestamp.csv"        
+        comma_status_ok || { echo "$scriptname: pipeline to create '$odir/$timestamp.csv' failed" >&2; exit 1 ; }
+        [[ -f "$odir/$timestamp.csv" ]] || { echo "$scriptname: file '$odir/$timestamp.csv' not found" >&2; exit 1; }
+        # todo: competely rewrite in a linear explicit way; for now quick and dirty, just to fix the bloody test
+        if (( $( head -n1 $odir/$timestamp.csv | csv-fields numbers --size ) == 4 )); then cat $odir/$timestamp.csv | csv-shuffle --fields t,x,y,r --output-fields t,x,y,r,r,r | sponge $odir/$timestamp.csv; fi
+        opath=$( printf "formula[%d]" $k )
+        csv_to_path_value "$odir/$timestamp.csv" "$opath" || { echo "$scriptname: conversion of '$odir/$timestamp.csv' to path-value failed" >&2; exit 1 ; }
+    done
 done
