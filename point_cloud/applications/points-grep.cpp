@@ -612,10 +612,11 @@ static point_t make_geometry( const Eigen::Vector2d& v ) { return { v.x(), v.y()
 
 static line_t make_geometry( const std::pair< Eigen::Vector2d, Eigen::Vector2d >& v )
 {
-//    line_t line;
-//    line.push_back( make_geometry( v.first ) ); // todo: watch performance
-//    line.push_back( make_geometry( v.second ) ); // todo: watch performance
-    return { make_geometry( v.first ), make_geometry( v.second ) };
+    line_t line;
+    line.push_back( make_geometry( v.first ) ); // todo: watch performance
+    line.push_back( make_geometry( v.second ) ); // todo: watch performance
+    return line;
+    //return { make_geometry( v.first ), make_geometry( v.second ) }; // does not compile with boost.1.58
 }
 
 template < typename T > static int run( const comma::csv::options& csv, const std::vector< polygon_t >& polygons, bool output_all, bool or_mode )

@@ -245,7 +245,7 @@ int main( int ac, char** av )
         const std::vector< std::string >& v = comma::split( resolution_string, ',' );
         switch( v.size() )
         {
-            case 1: { auto r = boost::lexical_cast< double >( v[0] ); resolution = Eigen::Vector3d( r, r, r ); break; }
+            case 1: { double r = boost::lexical_cast< double >( v[0] ); resolution = Eigen::Vector3d( r, r, r ); break; }
             case 3: resolution = comma::csv::ascii< Eigen::Vector3d >().get( v ); break;
             default: std::cerr << "points-to-partitions: expected resolution, got: \"" << resolution_string << "\"" << std::endl; return 1;
         }
