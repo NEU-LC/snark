@@ -1,0 +1,5 @@
+ascii[0]="echo 0,0,0 | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 1.1 --all --count"
+ascii[1]="echo 0,0,0 | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 1.1 --all --count-fast"
+
+binary[0]="echo 0,0,0 | csv-to-bin 3f | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 1.1 --all --count --binary 3f | csv-from-bin 3f,ui"
+binary[1]="echo 0,0,0 | csv-to-bin 3f | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 1.1 --all --count-fast --binary 3f | csv-from-bin 3f,ui"

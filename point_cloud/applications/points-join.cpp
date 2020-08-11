@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2019 Vsevolod Vlaskine
 // Copyright (c) 2020 Abyss Solutions
 
 /// @authors vsevolod vlaskine, toby dunne, kent hu
@@ -45,7 +46,6 @@ static void usage( bool more = false )
     std::cerr << std::endl;
     std::cerr << "join two point clouds by distance" << std::endl;
     std::cerr << std::endl;
-    std::cerr << std::endl;
     std::cerr << "usage: cat points.1.csv | points-join \"points.2.csv[;<csv options>]\" [<options>] > joined.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    if the second set is not given, for each point output the nearest point in the same set; todo" << std::endl;
@@ -53,6 +53,8 @@ static void usage( bool more = false )
     std::cerr << "options" << std::endl;
     std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
     std::cerr << "    --blocks-ordered: stdin and filter blocks are ordered and therefore missing filter blocks can be handled correctly" << std::endl;
+    std::cerr << "    --count: if --all, append to input just count of points in a given radius as 4-byte integer, not the points themselves" << std::endl;
+    std::cerr << "    --count-fast: same as --count, but instead of sphere, simply count all points in neighbouring voxels" << std::endl;
     std::cerr << "    --id-not-matching,--not-matching-id: if id field present in --fields, match only points with different ids" << std::endl;
     std::cerr << "                                         default: if id field present, match points with the same id" << std::endl;
     std::cerr << "    --input-fields: output input fields and exit" << std::endl;
@@ -473,15 +475,18 @@ template < typename V > struct join_impl_
         // todo? --incremental or it belongs to points-calc?
         if( verbose ) { std::cerr << "points-join: joining..." << std::endl; }
         if( self_join ) { std::cerr << "points-join: self-join: todo" << std::endl; return 1; }
-        const std::size_t size = options.value( "--size,--number-of-points,--number-of-nearest-points", 1 );
-        const bool blocks_ordered = options.exists( "--blocks-ordered" );
-        const bool all = options.exists( "--all" );
+        std::size_t size = options.value( "--size,--number-of-points,--number-of-nearest-points", 1 );
+        bool blocks_ordered = options.exists( "--blocks-ordered" );
+        bool all = options.exists( "--all" );
+        bool output_count = options.exists( "--count,--count-fast" );
+        bool fast = options.exists( "--count-fast" );
+        if( output_count && !all ) { std::cerr << "points-join: --count requires --all; please specify --all" << std::endl; return 1; }
         #ifdef SNARK_USE_CUDA
         use_cuda = options.exists( "--use-cuda,--cuda" );
         options.assert_mutually_exclusive( "--use-cuda,--cuda,--all" );
         #endif
         grid_t grid = read_filter_block( self_join );
-        const bool empty_filter_and_matching = !block && !self_join && matching;
+        bool empty_filter_and_matching = !block && !self_join && matching;
         if( empty_filter_and_matching && !strict ) { return 0; }
         if( self_join && use_radius ) { std::cerr << "points-join: self-join: radius field: not supported" << std::endl; return 1; }
         comma::csv::input_stream< input_t > istream( std::cin, stdin_csv ); // quick and dirty, don't mind self_join
@@ -494,7 +499,6 @@ template < typename V > struct join_impl_
             const std::string join_buffer;
             output_row_t( std::string left_buffer, std::string join_buffer ) : left_buffer( std::move( left_buffer ) ), join_buffer( std::move( join_buffer ) ) {}
         };
-
         struct output_container
         {
             std::vector< output_row_t > outputs;
@@ -502,7 +506,6 @@ template < typename V > struct join_impl_
             std::size_t discarded = 0;
             bool strict_and_nearest_point_not_found = false;
         };
-
         auto parallel_threads = options.value( "--parallel-threads,--threads", std::thread::hardware_concurrency() );
         if( parallel_threads <= 0 ) { parallel_threads = std::thread::hardware_concurrency(); }
         if( strict && stdin_csv.flush && parallel_threads != 1 )
@@ -514,7 +517,6 @@ template < typename V > struct join_impl_
             std::cerr << "                        when points-join is used for realtime or interactive data streams" << std::endl;
         }
         const auto& parallel_chunk_size = stdin_csv.flush || !stdin_csv.binary() ? 1 : static_cast< std::size_t >( options.value( "--parallel-chunk-size,--chunk-size", 256 ) );
-
         typedef std::vector< std::pair< input_t, std::string > > input_container;
         std::size_t count = 0;
         std::size_t discarded = 0;
@@ -559,26 +561,53 @@ template < typename V > struct join_impl_
                 typename grid_t::index_type i;
                 if( all )
                 {
-                    for( i[0] = index[0] - 1; i[0] <= index[0] + 1; ++i[0] )
+                    if( output_count )
                     {
-                        for( i[1] = index[1] - 1; i[1] <= index[1] + 1; ++i[1] )
+                        comma::uint32 c = 0;
+                        for( i[0] = index[0] - 1; i[0] <= index[0] + 1; ++i[0] )
                         {
-                            for( i[2] = index[2] - 1; i[2] <= index[2] + 1; ++i[2] )
+                            for( i[1] = index[1] - 1; i[1] <= index[1] + 1; ++i[1] )
                             {
-                                typename grid_t::iterator it = grid.find( i );
-                                if( it == grid.end() ) { continue; }
-                                #ifdef SNARK_USE_CUDA
-                                if( use_cuda ) { it->second.calculate_squared_norms( p.value ); }
-                                #endif
-                                auto voxel_map = it->second;
-                                for( std::size_t k = 0; k < voxel_map.records.size(); ++k )
+                                for( i[2] = index[2] - 1; i[2] <= index[2] + 1; ++i[2] )
                                 {
-                                    const boost::optional< std::pair< Eigen::Vector3d, double > >& q = voxel_map.nearest_to( p, k ); // todo: fix! currently, visiting each triangle 3 times
-                                    if( !q || q->second > current_squared_radius || q->second < squared_min_radius ) { continue; }
-                                    const std::string& join_line = voxel_map.records[k]->line;
-                                    if( stdin_csv.binary() ) { outputs.emplace_back( left_line, join_line ); continue; }
-                                    if( filter_csv.binary() ) { outputs.emplace_back( left_line, bin_to_csv_( join_line ) ); continue; }
-                                    outputs.emplace_back( left_line, join_line );
+                                    typename grid_t::iterator it = grid.find( i );
+                                    if( it == grid.end() ) { continue; }
+                                    const auto& voxel_map = it->second;
+                                    if( fast ) { c += voxel_map.records.size(); continue; }
+                                    for( std::size_t k = 0; k < voxel_map.records.size(); ++k )
+                                    {
+                                        const boost::optional< std::pair< Eigen::Vector3d, double > >& q = voxel_map.nearest_to( p, k ); // todo: fix! currently, visiting each triangle 3 times
+                                        if( q && q->second <= current_squared_radius && q->second >= squared_min_radius ) { ++c; }
+                                    }
+                                }
+                            }
+                        }
+                        const std::string join_line = stdin_csv.binary() ? std::string( reinterpret_cast< const char* >( &c ), 4 ): boost::lexical_cast< std::string >( c );
+                        outputs.emplace_back( left_line, join_line );
+                    }
+                    else
+                    {
+                        for( i[0] = index[0] - 1; i[0] <= index[0] + 1; ++i[0] )
+                        {
+                            for( i[1] = index[1] - 1; i[1] <= index[1] + 1; ++i[1] )
+                            {
+                                for( i[2] = index[2] - 1; i[2] <= index[2] + 1; ++i[2] )
+                                {
+                                    typename grid_t::iterator it = grid.find( i );
+                                    if( it == grid.end() ) { continue; }
+                                    #ifdef SNARK_USE_CUDA
+                                    if( use_cuda ) { it->second.calculate_squared_norms( p.value ); }
+                                    #endif
+                                    const auto& voxel_map = it->second;
+                                    for( std::size_t k = 0; k < voxel_map.records.size(); ++k )
+                                    {
+                                        const boost::optional< std::pair< Eigen::Vector3d, double > >& q = voxel_map.nearest_to( p, k ); // todo: fix! currently, visiting each triangle 3 times
+                                        if( !q || q->second > current_squared_radius || q->second < squared_min_radius ) { continue; }
+                                        const std::string& join_line = voxel_map.records[k]->line;
+                                        if( stdin_csv.binary() ) { outputs.emplace_back( left_line, join_line ); continue; }
+                                        if( filter_csv.binary() ) { outputs.emplace_back( left_line, bin_to_csv_( join_line ) ); continue; }
+                                        outputs.emplace_back( left_line, join_line );
+                                    }
                                 }
                             }
                         }
@@ -600,7 +629,7 @@ template < typename V > struct join_impl_
                                 #ifdef SNARK_USE_CUDA
                                 if( use_cuda ) { it->second.calculate_squared_norms( p.value ); }
                                 #endif
-                                auto voxel_map = it->second;
+                                const auto& voxel_map = it->second;
                                 if( size == 1 ) // have to handle size 1 separately due to poorer performance of std::map
                                 {
                                     for( std::size_t k = 0; k < voxel_map.records.size(); ++k )
@@ -783,12 +812,12 @@ int main( int ac, char** av )
         matching = !options.exists( "--not-matching" );
         append_nearest = !options.exists( "--matching" ) && matching;
         matching_id = !options.exists( "--id-not-matching,--not-matching-id" );
-        std::vector< std::string > unnamed = options.unnamed( "--all,--blocks-ordered,--id-not-matching,--not-matching-id,--matching,--not-matching,--strict,--permissive,--use-cuda,--cuda,--flush,--full-xpath,--verbose,-v", "-.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--all,--count,--count-fast,--fast,--blocks-ordered,--id-not-matching,--not-matching-id,--matching,--not-matching,--strict,--permissive,--use-cuda,--cuda,--flush,--full-xpath,--verbose,-v", "-.*" );
         if( unnamed.size() > 1 ) { std::cerr << "points-join: expected one file or stream to join, got: " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
         comma::name_value::parser parser( "filename", ';', '=', false );
         filter_csv = unnamed.empty() ? stdin_csv : parser.get< comma::csv::options >( unnamed[0] );
         if( filter_csv.fields.empty() ) { filter_csv.fields = "x,y,z"; }
-        if( append_nearest && stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
+        if( !options.exists( "--count,--count-fast" ) && append_nearest && stdin_csv.binary() && !filter_csv.binary() ) { std::cerr << "points-join: stdin stream binary and filter stream ascii: this combination is not supported" << std::endl; return 1; }
         const std::vector< std::string >& v = comma::split( filter_csv.fields, ',' );
         const std::vector< std::string >& w = comma::split( stdin_csv.fields, ',' );
         const std::vector< std::string > normal_strings = { "normal" };

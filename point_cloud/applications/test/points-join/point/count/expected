@@ -1,0 +1,9 @@
+ascii[0]/output="0,0,0,3"
+ascii[0]/status=0
+ascii[1]/output="0,0,0,4"
+ascii[1]/status=0
+
+binary[0]/output="0,0,0,3"
+binary[0]/status=0
+binary[1]/output="0,0,0,4"
+binary[1]/status=0
