@@ -4,27 +4,21 @@ import numpy
 import rosbag, rospy, rostopic
 import comma
 import datetime
-# import re # uncomment, if regex todo below is uncommented
 
 try:
     import rospy_message_converter
 except ImportError:
     msg = """
 cannot import rospy_message_converter module; usually you can install it as
-    sudo apt-get install ros-kinetic-rospy-message-converter
-(use your ROS distro name in place of kinetic). If the module is not available
+    sudo apt-get install ros-melodic-rospy-message-converter
+(use your ROS distro name in place of melodic). If the module is not available
 in your package manager, build and install the module manually.
 
-on ubuntu 18.04 ros melodic may not have ros-kinetic-rospy-message-converter packaged yet
 you can install it from source as:
 > git clone https://github.com/baalexander/rospy_message_converter.git
 > cd rospy_message_converter
-> git checkout 0.4.0
 > python setup.bash build
 > python setup.bash install
-
-versions of ros-kinetic-rospy-message-converter have broken backward compatibility
-see the fix in this code, look for 0.4.0
 """
     raise ImportError( msg )
 
@@ -64,9 +58,7 @@ def _ros_message_to_csv_record( message, lengths={}, ignore_variable_size_arrays
     # see Python programming FAQ why-do-lambdas-defined-in-a-loop-with-different-values-all-return-the-same-result
     # for the explanation of all the lambda signatures (and some function signatures in case of time)
     for field_name, field_type in message_fields:
-        #if mc.is_ros_binary_type( field_type, None ): # use this code once commit e846f546 of 2017-05-06 is released
-        #if re.search(mc.ros_binary_types_regexp, field_type) is not None: # this seems to be even a newer way? todo: try
-        if field_type in mc.ros_binary_types: # use this for tag 0.4.0
+        if mc.is_ros_binary_type( field_type, None ):
             ctor = lambda msg, field_name=field_name, field_type=field_type: mc._convert_to_ros_binary( field_type, getattr( msg, field_name ) )
             current_path = full_path( field_name )
             try:

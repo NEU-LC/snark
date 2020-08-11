@@ -37,7 +37,7 @@ def pretty_print( di, prefix ):
                     print '%s[%d]=%s' % ( prefix + k, n, str(e) )
                     n = n + 1
 
-lines = yaml.load_all( sys.stdin ) # this is a generator, not actual load to memory
+lines = yaml.load_all( sys.stdin, Loader=yaml.SafeLoader ) # this is a generator, not actual load to memory
 n = 0
 for l in lines:
     if l:
