@@ -31,7 +31,7 @@
 #include <RobotEye.h>
 #include <comma/base/exception.h>
 #include <comma/application/verbose.h>
-#include <opencv2/core/types_c.h>
+#include <opencv2/core.hpp>
 
 namespace snark { namespace ocular { namespace roboteye { 
 
