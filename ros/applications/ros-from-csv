@@ -62,7 +62,9 @@ def main():
     if not args.message_type is None:
         package = '.'.join( args.message_type.split( '.' )[:-1] ) if args.package is None else args.package
         if len( package ) > 0: exec( 'import ' + package )
-    if args.topic is None and not args.dry_run and args.type is None: print >> sys.stderr, "ros-from-csv: please specify --topic"; sys.exit( 1 )
+    if args.topic is None and not args.dry_run and args.message_type is None:
+        print >> sys.stderr, "ros-from-csv: please specify --topic"
+        sys.exit( 1 )
     if args.message_type is None: message_type = rostopic.get_topic_class( args.topic )[0]
     else: exec( 'message_type = ' + args.message_type )
     message = message_type()
@@ -87,7 +89,32 @@ def main():
     for records in istream:
         for record in records: # todo? try assigning the whole array at once? should be a better performance? but we may need to expand comma.csv.struct.assign() to make it working
             assign( record )
-            if args.dry_run: print message
-            else: publisher.publish( message )
+            if args.dry_run:
+                # Fix header.frame_id so it'll print correctly
+                #
+                # Strings are defined as numpy.string_ objects (fixed-width strings),
+                # but yaml.dump() (called by strify_message() in genpy/message.py) dumps
+                # them out as a large python object. strify_message() doesn't put in the
+                # correct indentation so the resulting string is not legal yaml.
+                #
+                # We can avoid this in most cases by setting the most common string
+                # attribute to a normal python string. We should really do this
+                # recursively to all numpy.string_ objects.
+                #
+                # Note that this issue does not occur when we are publishing.
+                #
+                # You can replicate the issue with:
+                # $ python
+                # >>> import numpy, yaml
+                # >>> yaml.dump( numpy.string_() )
+                #
+                # Tested with python-yaml version 3.12
+                try:
+                    message.header.frame_id = str( message.header.frame_id )
+                except:
+                    pass
+                print message
+            else:
+                publisher.publish( message )
 
 if __name__ == '__main__': main()

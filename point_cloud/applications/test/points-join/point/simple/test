@@ -4,5 +4,5 @@ source $( type -p comma-application-util ) || { echo "cannot source 'comma-appli
 
 comma_path_value_to_var
 
-echo -e "$input" | points-join-parallel --fields="$fields" <( echo -e "$filter" )";fields=$filter_fields" $options | name-value-from-csv point --prefix output -n -d @
+echo -e "$input" | points-join --fields="$fields" <( echo -e "$filter" )";fields=$filter_fields" $options | name-value-from-csv point --prefix output -n -d @
 comma_status_ok && echo 'result="success"' || echo 'result="failed"'

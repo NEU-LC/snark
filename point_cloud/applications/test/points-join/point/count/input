@@ -1,0 +1,11 @@
+ascii[0]="echo 0,0,0 | points-join <( echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 0.1 --all --count"
+ascii[1]="echo 0,0,0 | points-join <( echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 0.1 --all --count-fast"
+ascii[2]="echo 0,0,0 | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --min-radius 0.1 --radius 0.5 --all --count"
+ascii[3]="echo 0,0,0 | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 1.1 --all --count"
+ascii[4]="echo 0,0,0 | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 1.1 --all --count-fast"
+
+binary[0]="echo 0,0,0 | csv-to-bin 3f | points-join <( echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 0.5 --all --count --binary 3f | csv-from-bin 3f,ui"
+binary[1]="echo 0,0,0 | csv-to-bin 3f | points-join <( echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 0.5 --all --count-fast --binary 3f | csv-from-bin 3f,ui"
+binary[2]="echo 0,0,0 | csv-to-bin 3f | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --min-radius 0.1 --radius 0.5 --all --count --binary 3f | csv-from-bin 3f,ui"
+binary[3]="echo 0,0,0 | csv-to-bin 3f | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 1.1 --all --count --binary 3f | csv-from-bin 3f,ui"
+binary[4]="echo 0,0,0 | csv-to-bin 3f | points-join <( echo 0,0,0; echo 0,0,1; echo 0,1,0; echo 0,1,1 ) --radius 1.1 --all --count-fast --binary 3f | csv-from-bin 3f,ui"

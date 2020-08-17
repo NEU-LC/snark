@@ -46,7 +46,7 @@ struct input_point
 {
     Eigen::Vector3d point;
     comma::uint32 block;
-    
+
     input_point() : point( 0, 0, 0 ), block( 0 ) {}
 };
 
@@ -56,9 +56,9 @@ struct centroid
     Eigen::Vector3d mean;
     comma::uint32 size;
     comma::uint32 block;
-    
+
     centroid() : mean( 0, 0, 0 ), size( 0 ), block( 0 ) {}
-    
+
     void operator+=( const Eigen::Vector3d& point )
     {
         ++size;
@@ -113,7 +113,7 @@ std::ostream& operator<<( std::ostream& os, const boost::array< T, Size >& a )
     }
     return os;
 }
-    
+
 int main( int argc, char** argv )
 {
     try
@@ -165,7 +165,7 @@ int main( int argc, char** argv )
             output_csv.fields = "index,mean,size";
             if( csv.binary() ) { output_csv.format( "3ui,3d,ui" ); }
         }
-        if( vm.count( "resolution" ) == 0 ) { COMMA_THROW( comma::exception, "please specify --resolution" ); }        
+        if( vm.count( "resolution" ) == 0 ) { COMMA_THROW( comma::exception, "please specify --resolution" ); }
         Eigen::Vector3d origin;
         Eigen::Vector3d resolution;
         comma::csv::ascii< Eigen::Vector3d >().get( origin, origin_string );
@@ -174,7 +174,7 @@ int main( int argc, char** argv )
         comma::csv::output_stream< centroid > ostream( std::cout, output_csv );
         comma::signal_flag is_shutdown;
         unsigned int block = 0;
-        const input_point* last = NULL;
+        const input_point* last = nullptr;
         while( !is_shutdown && !std::cin.eof() && std::cin.good() )
         {
             snark::voxel_map< centroid, 3 > voxels( origin, resolution );
@@ -197,7 +197,7 @@ int main( int argc, char** argv )
 //                     snark::voxel_map< centroid, 3 >::index_type end = {{ it->first[0] + neighbourhood_radius + 1, it->first[1] + neighbourhood_radius + 1, it->first[2] + neighbourhood_radius + 1 }};
 //                     std::size_t size = 0;
 //                     Eigen::Vector3d mean( 0, 0, 0 );
-//                     for( index[0] = begin[0]; index[0] < end[0]; ++index[0] )                        
+//                     for( index[0] = begin[0]; index[0] < end[0]; ++index[0] )
 //                     {
 //                         for( index[1] = begin[1]; index[1] < end[1]; ++index[1] )
 //                         {
@@ -212,7 +212,7 @@ int main( int argc, char** argv )
 //                         }
 //                     }
 //                     //it->second.size = size;
-//                     
+//
 //                     //mean /= size;
 //                     //it->second.mean = mean;
 //                 }
@@ -231,9 +231,9 @@ int main( int argc, char** argv )
                 {
                     centroid c = it->second;
                     snark::voxel_map< centroid, 3 >::index_type index;
-                    snark::voxel_map< centroid, 3 >::index_type begin = {{ it->first[0] - neighbourhood_radius, it->first[1] - neighbourhood_radius, it->first[2] - neighbourhood_radius }};
-                    snark::voxel_map< centroid, 3 >::index_type end = {{ it->first[0] + neighbourhood_radius + 1, it->first[1] + neighbourhood_radius + 1, it->first[2] + neighbourhood_radius + 1 }};
-                    for( index[0] = begin[0]; index[0] < end[0]; ++index[0] )                        
+                    snark::voxel_map< centroid, 3 >::index_type begin = {{ static_cast<int>(it->first[0] - neighbourhood_radius), static_cast<int>(it->first[1] - neighbourhood_radius), static_cast<int>(it->first[2] - neighbourhood_radius) }};
+                    snark::voxel_map< centroid, 3 >::index_type end = {{ static_cast<int>(it->first[0] + neighbourhood_radius + 1), static_cast<int>(it->first[1] + neighbourhood_radius + 1), static_cast<int>(it->first[2] + neighbourhood_radius + 1) }};
+                    for( index[0] = begin[0]; index[0] < end[0]; ++index[0] )
                     {
                         for( index[1] = begin[1]; index[1] < end[1]; ++index[1] )
                         {
