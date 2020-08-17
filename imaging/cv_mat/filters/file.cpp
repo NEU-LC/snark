@@ -114,7 +114,7 @@ template < typename H >
 std::string file< H >::make_filename_( const boost::posix_time::ptime& t )
 {
     if( numbered_ ) { return boost::lexical_cast< std::string >( count_ ) + '.' + type_; }
-    if( use_filenames_ ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
+    if( !use_filenames_ ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
     if( filename_index_ >= filenames_.size() ) { return ""; }
     const std::string& filename = filenames_[filename_index_++];
     const auto& dirname = boost::filesystem::path( filename ).parent_path();
