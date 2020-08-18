@@ -47,7 +47,7 @@ file< H >::file( const get_timestamp_functor& get_timestamp
                , const boost::optional< int >& quality
                , bool do_index
                , bool numbered
-               , bool use_filenames
+               , bool force_filenames
                , const std::vector< std::string >& filenames
                , const std::vector< std::pair< unsigned int, unsigned int > >& ranges )
     : get_timestamp_( get_timestamp )
@@ -55,7 +55,7 @@ file< H >::file( const get_timestamp_functor& get_timestamp
     , quality_( quality )
     , do_index_( do_index )
     , numbered_( numbered )
-    , use_filenames_( use_filenames )
+    , force_filenames_( force_filenames )
     , index_( 0 )
     , filenames_( filenames )
     , filename_index_( 0 )
@@ -114,7 +114,7 @@ template < typename H >
 std::string file< H >::make_filename_( const boost::posix_time::ptime& t )
 {
     if( numbered_ ) { return boost::lexical_cast< std::string >( count_ ) + '.' + type_; }
-    if( !use_filenames_ ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
+    if( !force_filenames_ ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
     if( filename_index_ >= filenames_.size() ) { return ""; }
     const std::string& filename = filenames_[filename_index_++];
     const auto& dirname = boost::filesystem::path( filename ).parent_path();

@@ -50,7 +50,7 @@ class file
             , const boost::optional< int >& quality
             , bool do_index
             , bool numbered
-            , bool use_filenames
+            , bool force_filenames
             , const std::vector< std::string >& filenames = std::vector< std::string >()
             , const std::vector< std::pair< unsigned int, unsigned int > >& ranges = std::vector< std::pair< unsigned int, unsigned int > >() );
 
@@ -62,7 +62,7 @@ class file
         boost::optional< int > quality_;
         bool do_index_;
         bool numbered_;
-        bool use_filenames_;
+        bool force_filenames_;
         snark::cv_mat::serialization serialization_;
         boost::posix_time::ptime previous_timestamp_;
         unsigned int index_;

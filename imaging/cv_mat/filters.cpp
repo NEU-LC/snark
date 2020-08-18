@@ -2488,6 +2488,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         bool numbered = false;
         std::vector< std::string > filenames;
         std::vector< std::pair< unsigned int, unsigned int > > ranges;
+        bool force_filenames = false;
         for( unsigned int i = 1; i < s.size(); ++i )
         {
             if( s[i] == "index" )
@@ -2503,7 +2504,8 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
                 no_header = true;
             }
             else if( s[i].substr( 0, 10 ) == "filenames:" ) // quick and dirty
-            { 
+            {
+                force_filenames = true;
                 std::ifstream ifs( s[i].substr( 10 ) );
                 if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 10 ) << "'" ); }
                 while( ifs.good() && !ifs.eof() )
@@ -2550,7 +2552,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( numbered && do_index ) { COMMA_THROW( comma::exception, "numbered and index are mutually exclusive in 'file=" << e[1] << "'" ); }
         if( numbered && !filenames.empty() ) { COMMA_THROW( comma::exception, "numbered and filenames:... are mutually exclusive in 'file=" << e[1] << "'" ); }
         if( do_index && !filenames.empty() ) { COMMA_THROW( comma::exception, "index and filenames:... are mutually exclusive in 'file=" << e[1] << "'" ); }
-        return std::make_pair( boost::bind< value_type_t >( filters::file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, !filenames.empty(), filenames, ranges ), _1 ), false );
+        return std::make_pair( boost::bind< value_type_t >( filters::file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, force_filenames, filenames, ranges ), _1 ), false );
     }
     if( e[0] == "save" )
     {
