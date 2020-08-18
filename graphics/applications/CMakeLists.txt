@@ -4,11 +4,12 @@ SET( view_points view-points )
 SET( label_points label-points )
 
 set( build_view_points ON )
-set( build_label_points ON )
+set( snark_build_label_points ON CACHE BOOL "" )
+mark_as_advanced( snark_build_label_points )
 set( build_snark_graphics_test_pattern ON )
 
-if( NOT Qt3D_VERSION EQUAL 1 )
-    set( build_label_points OFF )
+if( snark_build_label_points AND NOT Qt3D_VERSION EQUAL 1 )
+    set( snark_build_label_points OFF CACHE BOOL "" FORCE )
     message( WARNING "\nQt ${snark_qt_version} doesn't support Qt3D lib\nlabel-points build is disabled" )
 endif()
 
@@ -23,7 +24,7 @@ ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
     SET( MOC_OPTIONS -DBOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION )
 ENDIF( QT_VERSION_MAJOR EQUAL 4 )
 
-if( build_label_points )
+if( snark_build_label_points )
     list( APPEND snark_graphics_applications_install_targets ${label_points} )
     SET( LABEL_POINTS_MOC_FILES label_pointsMoc label_points/MainWindow.h label_points/Actions.h label_points/Viewer.h label_points/Tools.h label_points/IdEdit.h )
 
