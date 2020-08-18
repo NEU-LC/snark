@@ -3,12 +3,12 @@ SET( dir ${SOURCE_CODE_BASE_DIR}/graphics/applications )
 SET( view_points view-points )
 SET( label_points label-points )
 
-set( build_view_points "TRUE" )
-set( build_label_points "TRUE" )
-set( build_snark_graphics_test_pattern "TRUE" )
+set( build_view_points ON )
+set( build_label_points ON )
+set( build_snark_graphics_test_pattern ON )
 
 if( NOT Qt3D_VERSION EQUAL 1 )
-    set( build_label_points "FALSE" )
+    set( build_label_points OFF )
     message( WARNING "\nQt ${snark_qt_version} doesn't support Qt3D lib\nlabel-points build is disabled" )
 endif()
 
