@@ -36,6 +36,9 @@
 #include "../reader.h"
 #include "../traits.h"
 
+const std::string default_address( "169.254.1.10" );
+const int default_port( 23 );
+
 static void bash_completion( unsigned int const ac, char const * const * av )
 {
     static const char* completion_options =
@@ -60,6 +63,8 @@ static void usage( bool verbose = false )
     std::cerr << "\nOptions:";
     std::cerr << "\n    --help,-h:             show this help";
     std::cerr << "\n    --verbose,-v:          more output to stderr";
+    std::cerr << "\n    --address=<ip>:        device address; default=" << default_address;
+    std::cerr << "\n    --port=<num>:          device port; default=" << default_port;
     std::cerr << "\n    --output-fields:       print output fields and exit";
     std::cerr << "\n    --output-format:       print output format and exit";
     std::cerr << "\n    --sample-data=[<dir>]; read saved data from <dir>";
@@ -96,9 +101,12 @@ struct app
         }
         else
         {
+            std::string address = options.value< std::string >( "--address", default_address );
+            int port = options.value< int >( "--port", default_port );
+
             snark::echodyne::radar radar;
 
-            radar.connect();
+            radar.connect( address, port );
             radar.set_time();
             radar.enable_buffer( channel );
 
