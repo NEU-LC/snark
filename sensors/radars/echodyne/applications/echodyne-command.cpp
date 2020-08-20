@@ -75,6 +75,8 @@ static void usage( bool verbose = false )
     std::cerr << "\nExamples:";
     std::cerr << "\n    echo \"*IDN?\" | " << comma::verbose.app_name();
     std::cerr << "\n    echo \"*TST?\" | " << comma::verbose.app_name();
+    std::cerr << "\n    echo \"ETH:IP?\" | " << comma::verbose.app_name();
+    std::cerr << "\n    echo \"ETH:IP <new-ip> <mask> <gw>\" | " << comma::verbose.app_name() << " --address <curr-ip>";
     std::cerr << "\n    echo -e \"API:ENABLE_BUFFER STATUS\\nAPI:SYS_STATE\" | " << comma::verbose.app_name() << " --autopause";
     std::cerr << "\n";
     std::cerr << std::endl;
