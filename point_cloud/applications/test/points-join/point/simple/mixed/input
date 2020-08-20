@@ -1,0 +1,4 @@
+input="0,0,0\n1,1,1"
+filter="0,0,0\n1,1,1"
+options="--radius=2"
+filter_binary="3ui"
