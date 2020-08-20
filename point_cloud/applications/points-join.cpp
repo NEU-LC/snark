@@ -253,7 +253,7 @@ static void write_( int fd, const std::string& buf ) { ::write_( fd, &buf[0], bu
 
 static void write_( int fd, char c ) { ::write_( fd, &c, sizeof( c ) ); }
 
-std::string bin_to_csv_( const std::string& filter_line ) { return filter_csv.format().bin_to_csv( &filter_line[0], stdin_csv.delimiter, stdin_csv.precision ); }
+static std::string bin_to_csv_( const std::string& filter_line ) { return filter_csv.format().bin_to_csv( &filter_line[0], stdin_csv.delimiter, stdin_csv.precision ); }
 
 template < typename V > struct traits;
 
