@@ -324,7 +324,7 @@ template <> struct traits< Eigen::Vector3d >
     {
         if( !append_nearest ) { return {}; }
         if( stdin_csv.binary() ) { return nearest.line; }
-        if( filter_csv.binary() ) { return ::bin_to_csv_( &nearest.line[0] ); }
+        if( filter_csv.binary() ) { return ::bin_to_csv_( nearest.line ); }
         return nearest.line;
     }
 };
@@ -397,7 +397,7 @@ template <> struct traits< snark::triangle >
             return line;
         }
         std::stringstream buffer;
-        buffer << ( filter_csv.binary() ? ::bin_to_csv_( &nearest.line[0] ) : nearest.line );
+        buffer << ( filter_csv.binary() ? ::bin_to_csv_( nearest.line ) : nearest.line );
         buffer << stdin_csv.delimiter << nearest_point.x() << stdin_csv.delimiter << nearest_point.y() << stdin_csv.delimiter << nearest_point.z();
         return buffer.str();
     }
