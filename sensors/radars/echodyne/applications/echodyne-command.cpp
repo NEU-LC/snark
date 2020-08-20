@@ -63,6 +63,8 @@ static void usage( bool verbose = false )
     std::cerr << "\nUser commands are defined in section 8 of the Echoflight User Manual";
     std::cerr << "\nParticularly useful commands include:";
     std::cerr << "\n    *IDN?  SYSPARAM?  *TST?  LIST        -  various info commands";
+    std::cerr << "\n    ETH:IP? ETH:IP                       -  get or set ip address";
+    std::cerr << "\n    RESET:SYSTEM                         -  reboot device";
     std::cerr << "\n    MODE:SEARCH:START  MODE:SEARCH:STOP  -  search";
     std::cerr << "\n    MODE:SWT:START     MODE:SWT:STOP     -  search while tracking";
     std::cerr << "\n";
