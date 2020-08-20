@@ -33,6 +33,9 @@
 #include <comma/application/signal_flag.h>
 #include "../radar.h"
 
+const std::string default_address( "169.254.1.10" );
+const int default_port( 23 );
+
 static void bash_completion( unsigned int const ac, char const * const * av )
 {
     static const char* completion_options =
@@ -51,13 +54,17 @@ static void usage( bool verbose = false )
     std::cerr << "\nUsage: cat commands.csv | " << comma::verbose.app_name() << " [<options>]";
     std::cerr << "\n";
     std::cerr << "\nOptions:";
-    std::cerr << "\n    --help,-h:     show this help";
-    std::cerr << "\n    --verbose,-v:  more output to stderr";
-    std::cerr << "\n    --autopause:   add a two second delay between commands";
+    std::cerr << "\n    --help,-h:       show this help";
+    std::cerr << "\n    --verbose,-v:    more output to stderr";
+    std::cerr << "\n    --address=<ip>:  device address; default=" << default_address;
+    std::cerr << "\n    --port=<num>:    device port; default=" << default_port;
+    std::cerr << "\n    --autopause:     add a two second delay between commands";
     std::cerr << "\n";
     std::cerr << "\nUser commands are defined in section 8 of the Echoflight User Manual";
     std::cerr << "\nParticularly useful commands include:";
     std::cerr << "\n    *IDN?  SYSPARAM?  *TST?  LIST        -  various info commands";
+    std::cerr << "\n    ETH:IP? ETH:IP                       -  get or set ip address";
+    std::cerr << "\n    RESET:SYSTEM                         -  reboot device";
     std::cerr << "\n    MODE:SEARCH:START  MODE:SEARCH:STOP  -  search";
     std::cerr << "\n    MODE:SWT:START     MODE:SWT:STOP     -  search while tracking";
     std::cerr << "\n";
@@ -70,6 +77,8 @@ static void usage( bool verbose = false )
     std::cerr << "\nExamples:";
     std::cerr << "\n    echo \"*IDN?\" | " << comma::verbose.app_name();
     std::cerr << "\n    echo \"*TST?\" | " << comma::verbose.app_name();
+    std::cerr << "\n    echo \"ETH:IP?\" | " << comma::verbose.app_name();
+    std::cerr << "\n    echo \"ETH:IP <new-ip> <mask> <gw>\" | " << comma::verbose.app_name() << " --address <curr-ip>";
     std::cerr << "\n    echo -e \"API:ENABLE_BUFFER STATUS\\nAPI:SYS_STATE\" | " << comma::verbose.app_name() << " --autopause";
     std::cerr << "\n";
     std::cerr << std::endl;
@@ -88,9 +97,11 @@ int main( int argc, char** argv )
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
         bool autopause = options.exists( "--autopause" );
+        std::string address = options.value< std::string >( "--address", default_address );
+        int port = options.value< int >( "--port", default_port );
 
         radar = std::make_unique< snark::echodyne::radar >();
-        radar->connect();
+        radar->connect( address, port );
 
         while( !is_shutdown && std::cin.good() )
         {
