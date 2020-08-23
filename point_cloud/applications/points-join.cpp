@@ -444,7 +444,7 @@ template < typename V > struct join_impl_
             p = istream.read();
             ++count;
         }
-        if( verbose ) { std::cerr << "points-join: loading " << filter_points.size() << " records from block " << *block << " into grid..." << std::endl; }
+        if( verbose ) { std::cerr << "points-join: loading " << filter_points.size() << " filter records of block " << *block << std::endl; }
         grid_t grid( extents.min(), resolution );
         for( std::size_t i = 0; i < filter_points.size(); ++i ) { if( !traits< V >::touch( grid, filter_points[i] ) && strict ) { COMMA_THROW(comma::exception, "filter point " << i << " is invalid; don't use --strict"); } }
         #ifdef SNARK_USE_CUDA
