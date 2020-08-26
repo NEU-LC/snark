@@ -39,7 +39,13 @@ add_executable( math-eigen math-eigen.cpp )
 target_link_libraries( math-eigen snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 install( TARGETS math-eigen RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
-add_executable( math-k-means math-k-means.cpp )
+if( USE_CUDA )
+    cuda_add_executable( math-k-means math-k-means.cpp math-k-means/math_k_means.cu ) # quick and dirty, simplistic for now
+else( USE_CUDA )
+    add_executable( math-k-means math-k-means.cpp )
+endif( USE_CUDA )
+
+#add_executable( math-k-means math-k-means.cpp )
 target_link_libraries( math-k-means snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} tbb )
 install( TARGETS math-k-means RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 

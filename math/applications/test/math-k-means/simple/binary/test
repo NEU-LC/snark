@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source $( type -p comma-application-util ) || { echo "cannot source 'comma-application-util'" >&2; exit 1; }
+
+comma_path_value_to_var
+
+echo -e "$input" | csv-to-bin 3d | math-k-means --fields="$fields" --binary 3d $options | csv-from-bin 6d,ui | cut -d, -f1-6 | name-value-from-csv point --prefix output -n -d @
+comma_status_ok && echo 'result="success"' || echo 'result="failed"'

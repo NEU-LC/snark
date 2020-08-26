@@ -80,7 +80,7 @@ void usage( bool verbose )
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: show this help; --help --verbose: more help" << std::endl;
     std::cerr << "    --max-iterations,--iterations=<n>: number of iterations for Lloyd's algorithm; default: 300" << std::endl;
-    std::cerr << "    --max-threads,--threads=<n>: maximum number of threads to run, if less than 0, set to number of cores in system (" << std::thread::hardware_concurrency() << ')' << "; default: -1" << std::endl;
+    std::cerr << "    --max-threads,--threads=<n>: maximum number of threads to run, if 0, set to number of cores in system (" << std::thread::hardware_concurrency() << ')' << "; default: 0" << std::endl;
     std::cerr << "    --number-of-clusters,--clusters=<n>: number of k-means cluster per block/all" << std::endl;
     std::cerr << "    --number-of-runs,--runs=<n>: number of times to run k-means, best run is one with lowest inertia (sum of distance of cluster points to cluster centroid); default: 10" << std::endl;
     std::cerr << "    --size=[<n>]: a hint of number of elements in the data vector; ignored, if data indices specified, e.g. data[0],data[1],data[2]" << std::endl;
@@ -297,7 +297,6 @@ static int run( const comma::command_line_options& options )
     size = options.optional< unsigned int >( "--size" );
     const auto tolerance = options.value< double >( "--tolerance", 1e-4 );
     if( tolerance <= 0 ) { std::cerr << "math-k-means: got --tolerance=" << tolerance << ", --tolerance should be greater than 0" << std::endl; return 1; }
-    k_means operation{ tolerance, max_iterations, number_of_runs, number_of_clusters };
     std::string first;
     if( !size )
     {
@@ -330,10 +329,11 @@ static int run( const comma::command_line_options& options )
     comma::csv::input_stream< input_t > istream( std::cin, csv );
     std::deque< std::pair< input_t, std::string > > inputs;
     if( !first.empty() ) { inputs.emplace_back( comma::csv::ascii< snark::k_means::input_t >( csv ).get( first ), first ); }
+    k_means operation{ tolerance, max_iterations, number_of_runs, number_of_clusters };
     while( istream.ready() || std::cin.good() )
     {
         const snark::k_means::input_t* p = istream.read();
-        if( !inputs.empty() && p && inputs.front().first.block != p->block )
+        if( ( !p || inputs.front().first.block != p->block ) && !inputs.empty() )
         {
             operation.run( inputs );
             inputs.clear();
@@ -341,7 +341,7 @@ static int run( const comma::command_line_options& options )
         if( !p ) { break; }
         inputs.emplace_back( *p, istream.last() );
     }
-    return inputs.empty() ? 0 : operation.run( inputs );
+    return 0;
 }
 
 } } // namespace snark { namespace k_means {
@@ -354,9 +354,8 @@ int main( int argc, char** argv )
         if( options.exists( "--input-fields" ) ) { std::cout << "data" << std::endl; return 0; }
         if( options.exists( "--output-fields" ) ) { std::cout << "data,centroid/data,centroid/id" << std::endl; return 0; }
         verbose = options.exists( "--verbose,-v" );
-        auto max_threads = options.value< int >( "--max-threads,--threads", -1 );
-        if( max_threads < 0 ) { max_threads = std::thread::hardware_concurrency(); }
-        // limit maximum available threads to application, let tbb control number of threads to use
+        auto max_threads = options.value< unsigned int >( "--max-threads,--threads", 0 );
+        if( max_threads == 0 ) { max_threads = std::thread::hardware_concurrency(); }
         tbb::global_control gc( tbb::global_control::max_allowed_parallelism, max_threads );
         return snark::k_means::run( options );
     }
