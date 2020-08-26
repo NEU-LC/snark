@@ -231,7 +231,7 @@ struct k_means {
                             }
                             return difference;
                         },
-                        std::plus<>()
+                        std::plus< double >()
                     );
                     if( difference < tolerance )
                     {
@@ -248,7 +248,7 @@ struct k_means {
                         for( size_t point = chunk.begin(); point < chunk.end(); ++point ) { score += ::squared_l2_distance( inputs[point].first.data, run_centroids[centroid_assignments[point]] ); }
                         return score;
                     },
-                    std::plus<>()
+                    std::plus< double >()
                 );
                 all_scores[run] = run_score;
                 all_centroids[run] = std::move( run_centroids );
