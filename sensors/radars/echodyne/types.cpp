@@ -75,7 +75,7 @@ detection_data_t::detection_data_t( const detec_header* header, const detec_data
     : t( from_echodyne_time( header->detec_time_days, header->detec_time_sec ))
     , power( data.power )
     , snr( data.snr )
-    , position( data.r, data.az, data.el )
+    , rbe( data.r, data.az, data.el )
     , vradial( data.vradial )
     , r_interp( data.r_interp )
     , detection_id( data.detection_ID )
