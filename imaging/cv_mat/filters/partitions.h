@@ -55,7 +55,7 @@ class reduce
 
         typedef boost::function< std::pair< H, cv::Mat >(std::pair< H, cv::Mat >) > functor_t;
 
-        static std::pair< functor_t, bool > make(const std::string &options);
+        static std::pair< functor_t, bool > make( const std::string &options );
 
         static std::string usage(unsigned int indent = 0);
 

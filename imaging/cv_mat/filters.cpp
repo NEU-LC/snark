@@ -1,30 +1,5 @@
 // Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, ORs
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2018 Vsevolod Vlaskine
 
 #include <algorithm>
 #include <fstream>
@@ -2460,11 +2435,11 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         for( unsigned int i = 0; i < v.size(); ++i ) { if( !v[i].empty() ) { p[i] = boost::lexical_cast< int >( v[i] ); } }
         return std::make_pair( boost::bind< value_type_t >( circle_impl_< H >, _1, drawing::circle( cv::Point( p[0], p[1] ), p[2], cv::Scalar( p[5], p[4], p[3] ), p[6], p[7], p[8] ) ), true );
     }
-    if( e[0] == "contraharmonic" ) { return filters::contraharmonic<H>::make( e.size() > 1 ? e[1] : ""); }
+    if( e[0] == "contraharmonic" ) { return filters::contraharmonic< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "pad" ) { return filters::pad::pad< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "hard-edge" ) { return filters::hard_edge< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "partition" ) { return filters::partitions::partition< H >::make( e.size() > 1 ? e[1] : "" ); }
-    if( e[0] == "partitions-reduce" ) { return filters::partitions::reduce<H>::make(e.size() > 1 ? e[1] : ""); }
+    if( e[0] == "partitions-reduce" ) { return filters::partitions::reduce< H >::make( e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "rectangle" || e[0] == "box" ) // todo: quick and dirty, implement using traits
     {
         boost::array< int, 10 > p = {{ 0, 0, 0, 0, 0, 0, 0, 1, 8, 0 }};
@@ -2478,82 +2453,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( s.size() != 2 ) { COMMA_THROW( comma::exception, "expected remove-speckles=<width>,<height>; got \"remove-speckles=" << e[1] << "\"" ); }
         return std::make_pair( boost::bind< value_type_t >( filters::remove_speckles< H >, _1, cv::Size2i( boost::lexical_cast< unsigned int >( s[0] ), boost::lexical_cast< unsigned int >( s[1] ) ) ), true );
     }
-    if( e[0] == "file" )
-    {
-        if( e.size() < 2 ) { COMMA_THROW( comma::exception, "file: expected file type like jpg, ppm, etc" ); }
-        std::vector< std::string > s = comma::split( e[1], ',' );
-        boost::optional< int > quality;
-        bool do_index = false;
-        bool no_header = false;
-        bool numbered = false;
-        std::vector< std::string > filenames;
-        std::vector< std::pair< unsigned int, unsigned int > > ranges;
-        bool force_filenames = false;
-        for( unsigned int i = 1; i < s.size(); ++i )
-        {
-            if( s[i] == "index" )
-            {
-                do_index = true;
-            }
-            else if( s[i] == "numbered" )
-            {
-                numbered = true;
-            }
-            else if( s[i] == "no-header" )
-            { 
-                no_header = true;
-            }
-            else if( s[i].substr( 0, 10 ) == "filenames:" ) // quick and dirty
-            {
-                force_filenames = true;
-                std::ifstream ifs( s[i].substr( 10 ) );
-                if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 10 ) << "'" ); }
-                while( ifs.good() && !ifs.eof() )
-                {
-                    std::string g;
-                    std::getline( ifs, g );
-                    if( comma::strip( g, " \t" ).empty() ) { continue; }
-                    filenames.push_back( g );
-                }
-                ifs.close();
-            }
-            else if( s[i].substr( 0, 7 ) == "frames:" ) // quick and dirty
-            { 
-                std::ifstream ifs( s[i].substr( 7 ) );
-                if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 7 ) << "'" ); }
-                while( ifs.good() && !ifs.eof() )
-                {
-                    std::string g;
-                    std::getline( ifs, g );
-                    if( comma::strip( g, " \t" ).empty() ) { continue; }
-                    auto f = boost::lexical_cast< unsigned int >( g );
-                    ranges.push_back( std::make_pair( f, f + 1 ) );
-                }
-                ifs.close();
-            }
-            else if( s[i].substr( 0, 7 ) == "ranges:" ) // quick and dirty
-            { 
-                std::ifstream ifs( s[i].substr( 7 ) );
-                if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 7 ) << "'" ); }
-                while( ifs.good() && !ifs.eof() )
-                {
-                    std::string g;
-                    std::getline( ifs, g );
-                    if( comma::strip( g, " \t" ).empty() ) { continue; }
-                    ranges.push_back( comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( g ) );
-                }
-                ifs.close();
-            }
-            else
-            {
-                quality = boost::lexical_cast< int >( s[i] );
-            }
-        }
-        if( numbered && do_index ) { COMMA_THROW( comma::exception, "numbered and index are mutually exclusive in 'file=" << e[1] << "'" ); }
-        if( numbered && !filenames.empty() ) { COMMA_THROW( comma::exception, "numbered and filenames:... are mutually exclusive in 'file=" << e[1] << "'" ); }
-        if( do_index && !filenames.empty() ) { COMMA_THROW( comma::exception, "index and filenames:... are mutually exclusive in 'file=" << e[1] << "'" ); }
-        return std::make_pair( boost::bind< value_type_t >( filters::file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, force_filenames, filenames, ranges ), _1 ), false );
-    }
+    if( e[0] == "file" ) { return filters::file< H >::make( get_timestamp, e.size() > 1 ? e[1] : "" ); }
     if( e[0] == "save" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "save: please specify filename" ); }
@@ -3415,18 +3315,7 @@ static std::string usage_impl_()
     oss << std::endl;
     oss << "    file read/write operations or generating images" << std::endl;
     oss << "        blank=<rows>,<cols>,<type>: create black image of a given size and type" << std::endl;
-    oss << "        file=<format>[,<quality>][,index][,numbered][,no-header][,filenames:<filenames>][,frames:<filename>][,ranges:<filename>]: write images to files with timestamp as name in the specified format; if input images have no timestamp, system time is used" << std::endl;
-    oss << "            <format>" << std::endl;
-    oss << "                - anything that opencv imwrite can take, e.g. jpg, ppm, png, tiff etc" << std::endl;
-    oss << "                - 'bin' to write image as binary in cv-cat format" << std::endl;
-    oss << "                - 'gz' to write image as compressed binary" << std::endl;
-    oss << "            <quality>: for jpg files only, compression quality from 0 (smallest) to 100 (best)" << std::endl;
-    oss << "            index: for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
-    oss << "            numbered: output filenames will look like 0.png, 1.png, etc, i.e. <filename>: <frame-number>.<extension>" << std::endl;
-    oss << "            no-header: makes sense only for 'bin' format; if present, write image without header" << std::endl;
-    oss << "            filenames:<filenames>: file containing list of filenames" << std::endl;
-    oss << "            frames:<filename>: file containing sorted list of desired frame numbers to save" << std::endl;
-    oss << "            ranges:<filename>: file containing sorted list of non-intersecting desired ranges of frame numbers to save as <begin>,<end> pairs, where <end> is not included" << std::endl;
+    oss << filters::file< boost::posix_time::ptime >::usage( 8 ) << std::endl;
     oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
     oss << "            supported file types by filename extension:" << std::endl;
     oss << "                - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;

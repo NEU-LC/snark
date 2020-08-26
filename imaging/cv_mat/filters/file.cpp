@@ -1,33 +1,8 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2019 Vsevolod Vlaskine
 
 #include <fstream>
+#include <sstream>
 #include <boost/filesystem/operations.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
@@ -35,6 +10,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <comma/base/exception.h>
+#include <comma/csv/ascii.h>
 #include "file.h"
 #include "../utils.h"
 
@@ -48,6 +24,7 @@ file< H >::file( const get_timestamp_functor& get_timestamp
                , bool do_index
                , bool numbered
                , bool force_filenames
+               , bool exit_if_done
                , const std::vector< std::string >& filenames
                , const std::vector< std::pair< unsigned int, unsigned int > >& ranges )
     : get_timestamp_( get_timestamp )
@@ -56,6 +33,7 @@ file< H >::file( const get_timestamp_functor& get_timestamp
     , do_index_( do_index )
     , numbered_( numbered )
     , force_filenames_( force_filenames )
+    , exit_if_done_( exit_if_done )
     , index_( 0 )
     , filenames_( filenames )
     , filename_index_( 0 )
@@ -75,14 +53,14 @@ typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, c
     if( !ranges_.empty() )
     {
         for( ; range_index_ < ranges_.size() && count_ >= ranges_[range_index_].second; ++range_index_ );
-        if( range_index_ == ranges_.size() ) { return m; } // todo? optionally exit on end of desired ranges
+        if( range_index_ == ranges_.size() ) { ++count_; return exit_if_done_ ? std::pair< H, cv::Mat >() : m; }
         if( count_ < ranges_[range_index_].first ) { ++count_; return m; }
     }
     boost::posix_time::ptime timestamp = get_timestamp_( m.first );
     index_ = timestamp == previous_timestamp_ ? index_ + 1 : 0;
     previous_timestamp_ = timestamp;
     const std::string& filename = make_filename_( timestamp );
-    if( filename.empty() ) { return m; } // todo? optionally exit on end of list of filenames
+    if( filename.empty() ) { ++count_; return exit_if_done_ ? std::pair< H, cv::Mat >() : m; }
     if( type_ == "bin" )
     {
         std::ofstream ofs( filename );
@@ -116,10 +94,116 @@ std::string file< H >::make_filename_( const boost::posix_time::ptime& t )
     if( numbered_ ) { return boost::lexical_cast< std::string >( count_ ) + '.' + type_; }
     if( !force_filenames_ ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
     if( filename_index_ >= filenames_.size() ) { return ""; }
-    const std::string& filename = filenames_[filename_index_++];
+    const std::string& filename = filenames_[ filename_index_++ ];
     const auto& dirname = boost::filesystem::path( filename ).parent_path();
     if( dirname.empty() || boost::filesystem::is_directory( dirname ) || boost::filesystem::create_directories( dirname ) ) { return filename; }
     COMMA_THROW( comma::exception, "failed to create directory '" << dirname << "' for file: '" << filename << "'" );
+}
+
+template < typename H >
+std::pair< typename file< H >::functor_t, bool > file< H >::make( boost::function< boost::posix_time::ptime( const H& ) > get_timestamp, const std::string& options )
+{
+    if( options.empty() ) { COMMA_THROW( comma::exception, "file: expected file type like jpg, ppm, etc" ); }
+    const std::vector< std::string >& s = comma::split( options, ',' );
+    boost::optional< int > quality;
+    bool do_index = false;
+    bool no_header = false;
+    bool numbered = false;
+    bool exit_if_done = false;
+    std::vector< std::string > filenames;
+    std::vector< std::pair< unsigned int, unsigned int > > ranges;
+    bool force_filenames = false;
+    for( unsigned int i = 1; i < s.size(); ++i )
+    {
+        if( s[i] == "index" )
+        {
+            do_index = true;
+        }
+        else if( s[i] == "numbered" )
+        {
+            numbered = true;
+        }
+        else if( s[i] == "no-header" )
+        { 
+            no_header = true;
+        }
+        else if( s[i] == "exit-if-done" )
+        { 
+            exit_if_done = true;
+        }
+        else if( s[i].substr( 0, 10 ) == "filenames:" ) // quick and dirty
+        {
+            force_filenames = true;
+            std::ifstream ifs( s[i].substr( 10 ) );
+            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 10 ) << "'" ); }
+            while( ifs.good() && !ifs.eof() )
+            {
+                std::string g;
+                std::getline( ifs, g );
+                if( comma::strip( g, " \t" ).empty() ) { continue; }
+                filenames.push_back( g );
+            }
+            ifs.close();
+        }
+        else if( s[i].substr( 0, 7 ) == "frames:" ) // quick and dirty
+        { 
+            std::ifstream ifs( s[i].substr( 7 ) );
+            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 7 ) << "'" ); }
+            while( ifs.good() && !ifs.eof() )
+            {
+                std::string g;
+                std::getline( ifs, g );
+                if( comma::strip( g, " \t" ).empty() ) { continue; }
+                auto f = boost::lexical_cast< unsigned int >( g );
+                ranges.push_back( std::make_pair( f, f + 1 ) );
+            }
+            ifs.close();
+        }
+        else if( s[i].substr( 0, 7 ) == "ranges:" ) // quick and dirty
+        { 
+            std::ifstream ifs( s[i].substr( 7 ) );
+            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "file: failed to open '" << s[i].substr( 7 ) << "'" ); }
+            while( ifs.good() && !ifs.eof() )
+            {
+                std::string g;
+                std::getline( ifs, g );
+                if( comma::strip( g, " \t" ).empty() ) { continue; }
+                ranges.push_back( comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( g ) );
+            }
+            ifs.close();
+        }
+        else
+        {
+            quality = boost::lexical_cast< int >( s[i] );
+        }
+    }
+    if( numbered && do_index ) { COMMA_THROW( comma::exception, "numbered and index are mutually exclusive in 'file=" << options << "'" ); }
+    if( numbered && !filenames.empty() ) { COMMA_THROW( comma::exception, "numbered and filenames:... are mutually exclusive in 'file=" << options << "'" ); }
+    if( do_index && !filenames.empty() ) { COMMA_THROW( comma::exception, "index and filenames:... are mutually exclusive in 'file=" << options << "'" ); }
+    if( filenames.empty() && ranges.empty() && exit_if_done ) { COMMA_THROW( comma::exception, "exit-if-done, but no filenames, frames, or ranges in 'file=" << options << "'" ); }
+    return std::make_pair( file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, force_filenames, exit_if_done, filenames, ranges ), false );
+}
+
+template < typename H >
+std::string file< H >::usage( unsigned int indent )
+{
+    std::ostringstream oss;
+    oss << indent << "file=<format>[,<quality>][,<options>]:" << std::endl;
+    oss << indent << "    write images to files with timestamp as name in the specified format; if input images have no timestamp, system time is used" << std::endl;
+    oss << indent << "    <format>" << std::endl;
+    oss << indent << "        - anything that opencv imwrite can take, e.g. jpg, ppm, png, tiff etc" << std::endl;
+    oss << indent << "        - 'bin' to write image as binary in cv-cat format" << std::endl;
+    oss << indent << "        - 'gz' to write image as compressed binary" << std::endl;
+    oss << indent << "    <quality>: for jpg files only, compression quality from 0 (smallest) to 100 (best)" << std::endl;
+    oss << indent << "    <options>" << std::endl;
+    oss << indent << "        exit-if-done: exit if filenames, ranges, or frames specified and the end of one of those lists is reached" << std::endl;
+    oss << indent << "        index: for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
+    oss << indent << "        no-header: makes sense only for 'bin' format; if present, write image without header" << std::endl;
+    oss << indent << "        numbered: output filenames will look like 0.png, 1.png, etc, i.e. <filename>: <frame-number>.<extension>" << std::endl;
+    oss << indent << "        filenames:<filenames>: file containing list of filenames" << std::endl;
+    oss << indent << "        frames:<filename>: file containing sorted list of desired frame numbers to save" << std::endl;
+    oss << indent << "        ranges:<filename>: file containing sorted list of non-intersecting desired ranges of frame numbers to save as <begin>,<end> pairs, where <end> is not included" << std::endl;
+    return oss.str();
 }
 
 template class file< boost::posix_time::ptime >;
