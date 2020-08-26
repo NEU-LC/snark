@@ -31,6 +31,8 @@
 
 namespace snark { namespace echodyne {
 
+const double deg_to_rad = 1.0d / 360.0d * 2.0d * M_PI;
+
 // Assumes system clock has been configured to be time since unix epoch
 boost::posix_time::ptime from_echodyne_time( uint32_t days, uint32_t ms )
 {
@@ -52,8 +54,8 @@ status_data_t::status_data_t( const sstat_data* data )
 
 rvmap_data_t::rvmap_data_t( const rvmap_header* header, const uint32_t* data_ )
     : t( from_echodyne_time( header->trig_day, header->trig_ms ))
-    , beam_az( header->beam_az )
-    , beam_el( header->beam_el )
+    , beam_az( header->beam_az * deg_to_rad )
+    , beam_el( header->beam_el * deg_to_rad )
     , dR( header->dR )
     , num_ranges( header->nRanges )
     , dV( header->dV )
@@ -75,7 +77,7 @@ detection_data_t::detection_data_t( const detec_header* header, const detec_data
     : t( from_echodyne_time( header->detec_time_days, header->detec_time_sec ))
     , power( data.power )
     , snr( data.snr )
-    , rbe( data.r, data.az, data.el )
+    , rbe( data.r, data.az * deg_to_rad, data.el * deg_to_rad )
     , vradial( data.vradial )
     , r_interp( data.r_interp )
     , detection_id( data.detection_ID )
@@ -86,7 +88,7 @@ track_data_t::track_data_t( const track_header* header, const track_data& data )
     : t( from_echodyne_time( header->sys_time_days, header->sys_time_ms ))
     , id( data.ID )
     , state( data.state )
-    , rbe( data.rest, data.azest, data.elest )
+    , rbe( data.rest, data.azest * deg_to_rad, data.elest * deg_to_rad )
     , position( data.xest, data.yest, data.zest )
     , velocity( data.velxest, data.velyest, data.velzest )
     , toca( from_echodyne_time( data.TOCA_days, data.TOCA_ms ))
@@ -107,7 +109,7 @@ meas_data_t::meas_data_t( const meas_header* header, const meas_data& data )
     , id( data.id )
     , type( data.type )
     , hyper_cube_reject( data.b_hyperCubeReject )
-    , rbe( data.r, data.az, data.el )
+    , rbe( data.r, data.az * deg_to_rad, data.el * deg_to_rad )
     , rcs( data.rcsEst )
     , vradial( data.vradial )
     , num_detections( data.nDetections )
