@@ -69,6 +69,14 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --output-format:       print output format and exit";
     std::cerr << "\n    --sample-data=[<dir>]; read saved data from <dir>";
     std::cerr << "\n";
+    std::cerr << "\nDetails:";
+    std::cerr << "\n    The radar publishes data on a fixed, known TCP ports. The ports are";
+    std::cerr << "\n        status:      29979";
+    std::cerr << "\n        rvmap:       29980";
+    std::cerr << "\n        detection:   29981";
+    std::cerr << "\n        track:       29982";
+    std::cerr << "\n        measurement: 29984";
+    std::cerr << "\n";
     std::cerr << "\nExamples:";
     std::cerr << "\n    " << comma::verbose.app_name() << " status | csv-from-bin $( " << comma::verbose.app_name() << " status --output-format )";
     std::cerr << "\n    " << comma::verbose.app_name() << " track --sample-data=/path/to/data";
