@@ -61,6 +61,7 @@ private:
     template< typename T > std::vector< T > output_packet();
 
     std::unique_ptr< bnet_interface > radar_;
+    bool connected;
 };
 
 // a single packet from the echodyne API might end up as multiple entries in the comma world
