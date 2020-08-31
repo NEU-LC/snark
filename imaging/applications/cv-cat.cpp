@@ -297,10 +297,10 @@ int main( int argc, char** argv )
             return 1;
         }
         const std::vector< std::string >& filter_strings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
-        std::string filters;
-        if( filter_strings.size() == 1 ) { filters = filter_strings[0]; }
+        std::string filters_string;
+        if( filter_strings.size() == 1 ) { filters_string = filter_strings[0]; }
         if( filter_strings.size() > 1 ) { std::cerr << "expected filters as a single name-value string; got: " << comma::join( filter_strings, ' ' ) << std::endl; return 1; }
-        if( filters.find( "encode" ) != filters.npos && !output_options.no_header ) { std::cerr << "cv-cat: warning: encoding image and not using no-header, are you sure?" << std::endl; }
+        if( filters_string.find( "encode" ) != filters_string.npos && !output_options.no_header ) { std::cerr << "cv-cat: warning: encoding image and not using no-header, are you sure?" << std::endl; }
         if( vm.count( "camera" ) ) { device = 0; }
         rate_limit rate( fps );
         cv::VideoCapture video_capture;
@@ -310,6 +310,8 @@ int main( int argc, char** argv )
         std::pair< boost::posix_time::ptime, cv::Mat > p;
         typedef snark::imaging::applications::pipeline_with_header pipeline_with_header;
         typedef snark::cv_mat::filters_with_header filters_with_header;
+        const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
+        const auto& filters = filters_with_header::make( filters_string, boost::bind( &get_timestamp_from_header, _1, input.header_binary() ), default_delay );
         if( vm.count( "file" ) )
         {
             if( !vm.count( "video" ) )
@@ -371,29 +373,8 @@ int main( int argc, char** argv )
             skip( number_of_frames_to_skip, input, rate );
             reader.reset( new snark::tbb::bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
-        const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
-        // todo! below is a very quick and dirty fix to exit on exceptions from filters_with_header::make()
-        //       problem
-        //           - at this point, reader thread already has started (it starts on contruction)
-        //           - therefore, the exception gets lost in the multithreaded context and cv-cat hangs
-        //       quick fix (below)
-        //           - add an extra try-catch clause (it is not entirely clear why now exceptions get successfully caught)
-        //           - on exception, use exit( 1 ) instead of return (since reader thread hangs on read)
-        //       proper fix (todo!)
-        //           - review correctness of bursty_reader class
-        //           - is there a better method? e.g. see pipeline in points-join: it seems to avoid problems of bursty_reader
-        //           - add bursty_reader::start() method, do not start in constructor
-        //           - git grep bursty_reader and add start() call
-        //           ? call bursty_reader::start() inside of pipeline_with_header constructor()
-        // pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.header_binary() ), default_delay ), *reader, number_of_threads );
-        // pipeline.run();
-        try
-        {
-            pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.header_binary() ), default_delay ), *reader, number_of_threads );
-            pipeline.run();
-        }
-        catch( std::exception& ex ) { std::cerr << "cv-cat: " << ex.what() << std::endl; exit( 1 ); }
-        catch( ... ) { std::cerr << "cv-cat : unknown exception" << std::endl; exit( 1 ); }
+        pipeline_with_header pipeline( output, filters, *reader, number_of_threads );
+        pipeline.run();
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;
     }
