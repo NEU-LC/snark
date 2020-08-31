@@ -4,6 +4,8 @@
 #include <fstream>
 #include <sstream>
 #include <boost/filesystem/operations.hpp>
+#include <boost/icl/interval.hpp>
+#include <boost/icl/interval_set.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
@@ -113,6 +115,7 @@ std::pair< typename file< H >::functor_t, bool > file< H >::make( boost::functio
     std::vector< std::string > filenames;
     std::vector< std::pair< unsigned int, unsigned int > > ranges;
     bool force_filenames = false;
+    bool ranges_union = false;
     for( unsigned int i = 1; i < s.size(); ++i )
     {
         if( s[i] == "index" )
@@ -169,8 +172,13 @@ std::pair< typename file< H >::functor_t, bool > file< H >::make( boost::functio
                 std::getline( ifs, g );
                 if( comma::strip( g, " \t" ).empty() ) { continue; }
                 ranges.push_back( comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( g ) );
+                if( ranges.back().first >= ranges.back().second ) { COMMA_THROW( comma::exception, "expected ranges, got [" << ranges.back().first << "," << ranges.back().second << ") in line " << ( ranges.size() - 1 ) << ", which is an invalid range" ); }
             }
             ifs.close();
+        }
+        else if( s[i].substr( 0, 12 ) == "ranges-union" || s[i].substr( 0, 5 ) == "union" ) // quick and dirty
+        {
+            ranges_union = true;
         }
         else
         {
@@ -181,6 +189,23 @@ std::pair< typename file< H >::functor_t, bool > file< H >::make( boost::functio
     if( numbered && !filenames.empty() ) { COMMA_THROW( comma::exception, "numbered and filenames:... are mutually exclusive in 'file=" << options << "'" ); }
     if( do_index && !filenames.empty() ) { COMMA_THROW( comma::exception, "index and filenames:... are mutually exclusive in 'file=" << options << "'" ); }
     if( filenames.empty() && ranges.empty() && exit_if_done ) { COMMA_THROW( comma::exception, "exit-if-done, but no filenames, frames, or ranges in 'file=" << options << "'" ); }
+    if( !ranges.empty() )
+    {
+        if( ranges_union )
+        {
+            boost::icl::interval_set< unsigned int > intervals;
+            for( const auto& range: ranges ) { intervals += boost::icl::interval< unsigned int >::right_open( range.first, range.second ); }
+            ranges.clear();
+            for( const auto& interval: intervals ) { ranges.push_back( std::make_pair( interval.lower(), interval.upper() ) ); }
+        }
+        else
+        {
+            for( unsigned int i = 1; i < ranges.size(); ++i )
+            {
+                if( ranges[i].first < ranges[i-1].second ) { COMMA_THROW( comma::exception, "expected sorted non-intersecting ranges, got [" << ranges[i-1].first << "," << ranges[i-1].second << ") followed by [" << ranges[i].first << "," << ranges[i].second << "); specify 'ranges-union' to flatten" ); }
+            }
+        }
+    }
     return std::make_pair( file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, force_filenames, exit_if_done, filenames, ranges ), false );
 }
 
@@ -200,9 +225,10 @@ std::string file< H >::usage( unsigned int indent )
     oss << indent << "        index: for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
     oss << indent << "        no-header: makes sense only for 'bin' format; if present, write image without header" << std::endl;
     oss << indent << "        numbered: output filenames will look like 0.png, 1.png, etc, i.e. <filename>: <frame-number>.<extension>" << std::endl;
-    oss << indent << "        filenames:<filenames>: file containing list of filenames" << std::endl;
-    oss << indent << "        frames:<filename>: file containing sorted list of desired frame numbers to save" << std::endl;
-    oss << indent << "        ranges:<filename>: file containing sorted list of non-intersecting desired ranges of frame numbers to save as <begin>,<end> pairs, where <end> is not included" << std::endl;
+    oss << indent << "        filenames:<filenames>: file with a list of filenames" << std::endl;
+    oss << indent << "        frames:<filename>: file with a sorted list of desired frame numbers to save" << std::endl;
+    oss << indent << "        ranges:<filename>: file with a sorted list of non-intersecting (but see ranges-union) desired ranges of frame numbers to save as <begin>,<end> pairs, where <end> is not included" << std::endl;
+    oss << indent << "        ranges-union,union: find union of ranges, even if they are not sorted and intersecting" << std::endl;
     return oss.str();
 }
 

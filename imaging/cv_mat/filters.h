@@ -85,6 +85,6 @@ struct filters
 typedef impl::filters< header_type > filters_with_header; // todo: a better name
 
 /// a helper: e.g. take CV_8UC3, return CV_8UC1
-int single_channel_type( int t );
+int single_channel_type( int t ); // todo: move to utils
 
 } }  // namespace snark { namespace cv_mat {

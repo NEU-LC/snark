@@ -1,31 +1,4 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -52,7 +25,6 @@
 
 typedef std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > pair;
 typedef snark::cv_mat::serialization serialization;
-using snark::tbb::bursty_reader;
 
 class rate_limit /// timer class, sleeping if faster than the specified fps
 {
@@ -148,14 +120,11 @@ static pair output_single_image( const std::pair< boost::posix_time::ptime, cv::
     static bool done = false;
     if( done ) { return pair(); }
     done = true;
-
     static comma::csv::binary< snark::cv_mat::serialization::header > default_binary( "t,3ui", "t,rows,cols,type" );
     static snark::cv_mat::serialization::header::buffer_t buffer( default_binary.format().size() );
-
     snark::cv_mat::serialization::header h( p.second );
     h.timestamp = p.first.is_not_a_date_time() ? boost::posix_time::microsec_clock::universal_time() : p.first;
     default_binary.put( h, &buffer[0] );
-
     return std::make_pair( buffer, p.second );
 }
 
@@ -309,8 +278,10 @@ int main( int argc, char** argv )
         if( vm.count( "discard" ) ) { discard = 1; }
         snark::cv_mat::serialization::options input_options = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( input_options_string );
         snark::cv_mat::serialization::options output_options = output_options_string.empty() ? input_options : comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( output_options_string );
-        if( input_options.no_header && !output_options.fields.empty() && input_options.fields != output_options.fields ) {
-            if( output_options.fields != snark::cv_mat::serialization::header::default_fields() ) {
+        if( input_options.no_header && !output_options.fields.empty() && input_options.fields != output_options.fields )
+        {
+            if( output_options.fields != snark::cv_mat::serialization::header::default_fields() )
+            {
                 std::cerr << "cv-cat: when --input has no-header option, --output fields can only be fields=" << snark::cv_mat::serialization::header::default_fields() << ", got: " << output_options.fields << std::endl; return 1;
             }
         }
@@ -319,23 +290,23 @@ int main( int argc, char** argv )
         if( output_options.fields.empty() ) { output_options.fields = input_options.fields; }
         if( !output_options.format.elements().empty() && input_options.format.string() != output_options.format.string() ) { std::cerr << "cv-cat: customised output header format not supported (todo); got: input format: \"" << input_options.format.string() << "\" output format: \"" << output_options.format.string() << "\"" << std::endl; return 1; }
         if( output_options.format.elements().empty() ) { output_options.format = input_options.format; };
-
         // This is needed because if binary is not set, serialization assumes standard fields and guess every field to be ui, very confusing for the user
-        if( !input_options.fields.empty() && has_custom_fields(input_options.fields) && input_options.format.elements().empty() ) {
-            std::cerr << "cv-cat: non default field detected in --input, please specify binary format for fields: " << input_options.fields << std::endl; return 1 ;
+        if( !input_options.fields.empty() && has_custom_fields( input_options.fields ) && input_options.format.elements().empty() )
+        {
+            std::cerr << "cv-cat: non default field detected in --input, please specify binary format for fields: " << input_options.fields << std::endl;
+            return 1;
         }
-
-        const std::vector< std::string >& filterStrings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
+        const std::vector< std::string >& filter_strings = boost::program_options::collect_unrecognized( parsed.options, boost::program_options::include_positional );
         std::string filters;
-        if( filterStrings.size() == 1 ) { filters = filterStrings[0]; }
-        if( filterStrings.size() > 1 ) { std::cerr << "expected filters as a single name-value string; got: " << comma::join( filterStrings, ' ' ) << std::endl; return 1; }
+        if( filter_strings.size() == 1 ) { filters = filter_strings[0]; }
+        if( filter_strings.size() > 1 ) { std::cerr << "expected filters as a single name-value string; got: " << comma::join( filter_strings, ' ' ) << std::endl; return 1; }
         if( filters.find( "encode" ) != filters.npos && !output_options.no_header ) { std::cerr << "cv-cat: warning: encoding image and not using no-header, are you sure?" << std::endl; }
         if( vm.count( "camera" ) ) { device = 0; }
         rate_limit rate( fps );
         cv::VideoCapture video_capture;
         snark::cv_mat::serialization input( input_options );
         snark::cv_mat::serialization output( output_options );
-        boost::scoped_ptr< bursty_reader< pair > > reader;
+        boost::scoped_ptr< snark::tbb::bursty_reader< pair > > reader;
         std::pair< boost::posix_time::ptime, cv::Mat > p;
         typedef snark::imaging::applications::pipeline_with_header pipeline_with_header;
         typedef snark::cv_mat::filters_with_header filters_with_header;
@@ -376,37 +347,57 @@ int main( int argc, char** argv )
                     if ( time_strings.size() == 2 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] ); }
                     else if ( time_strings.size() > 2 ){ p.first = boost::posix_time::from_iso_string( time_strings[0] + '.' + time_strings[1] ); }
                 }
-                reader.reset( new bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( p ) ), discard, capacity ) );
+                reader.reset( new snark::tbb::bursty_reader< pair >( boost::bind( &output_single_image, boost::cref( p ) ), discard, capacity ) );
             }
             else
             {
                 video_capture.open( name );
                 skip( number_of_frames_to_skip, video_capture, rate );
-                reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
+                reader.reset( new snark::tbb::bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard, capacity ) );
             }
         }
         else if( vm.count( "files" ) )
         {
-            reader.reset( new bursty_reader< pair >( boost::bind( &read_image_files, boost::cref( files ), boost::ref( rate ), vm.count( "timestamped" ) > 0, boost::ref( input ) ), discard, capacity ) );
+            reader.reset( new snark::tbb::bursty_reader< pair >( boost::bind( &read_image_files, boost::cref( files ), boost::ref( rate ), vm.count( "timestamped" ) > 0, boost::ref( input ) ), discard, capacity ) );
         }
         else if( vm.count( "camera" ) || vm.count( "id" ) )
         {
             video_capture.open( device );
             skip( number_of_frames_to_skip, video_capture, rate );
-            reader.reset( new bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard ) );
+            reader.reset( new snark::tbb::bursty_reader< pair >( boost::bind( &capture, boost::ref( video_capture ), boost::ref( rate ) ), discard ) );
         }
         else
         {
             skip( number_of_frames_to_skip, input, rate );
-            reader.reset( new bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
+            reader.reset( new snark::tbb::bursty_reader< pair >( boost::bind( &read, boost::ref( input ), boost::ref( rate ) ), discard, capacity ) );
         }
         const unsigned int default_delay = vm.count( "file" ) == 0 ? 1 : 200; // HACK to make view work on single files
-        pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.header_binary() ), default_delay ), *reader, number_of_threads );
-        pipeline.run();
+        // todo! below is a very quick and dirty fix to exit on exceptions from filters_with_header::make()
+        //       problem
+        //           - at this point, reader thread already has started (it starts on contruction)
+        //           - therefore, the exception gets lost in the multithreaded context and cv-cat hangs
+        //       quick fix (below)
+        //           - add an extra try-catch clause (it is not entirely clear why now exceptions get successfully caught)
+        //           - on exception, use exit( 1 ) instead of return (since reader thread hangs on read)
+        //       proper fix (todo!)
+        //           - review correctness of bursty_reader class
+        //           - is there a better method? e.g. see pipeline in points-join: it seems to avoid problems of bursty_reader
+        //           - add bursty_reader::start() method, do not start in constructor
+        //           - git grep bursty_reader and add start() call
+        //           ? call bursty_reader::start() inside of pipeline_with_header constructor()
+        // pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.header_binary() ), default_delay ), *reader, number_of_threads );
+        // pipeline.run();
+        try
+        {
+            pipeline_with_header pipeline( output, filters_with_header::make( filters, boost::bind( &get_timestamp_from_header, _1, input.header_binary() ), default_delay ), *reader, number_of_threads );
+            pipeline.run();
+        }
+        catch( std::exception& ex ) { std::cerr << "cv-cat: " << ex.what() << std::endl; exit( 1 ); }
+        catch( ... ) { std::cerr << "cv-cat : unknown exception" << std::endl; exit( 1 ); }
         if( vm.count( "stay" ) ) { while( !is_shutdown ) { boost::this_thread::sleep( boost::posix_time::seconds( 1 ) ); } }
         return 0;
     }
-    catch( std::exception& ex ) { std::cerr << argv[0] << ": " << ex.what() << std::endl; }
-    catch( ... ) { std::cerr << argv[0] << ": unknown exception" << std::endl; }
+    catch( std::exception& ex ) { std::cerr << "cv-cat: " << ex.what() << std::endl; }
+    catch( ... ) { std::cerr << "cv-cat : unknown exception" << std::endl; }
     return 1;
 }
