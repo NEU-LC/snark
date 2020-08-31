@@ -43,7 +43,7 @@ public:
     radar();
     ~radar();
 
-    void connect( const std::string& address="169.254.1.10", int port=23 );
+    void connect( const std::string& address="169.254.1.10", int port=23, const std::string& log_dir="." );
     void command( const std::string& cmd );
     void enable_buffer( mesa_data_t d_type ) { radar_->set_collect( d_type, true ); }
     void disable_buffer( mesa_data_t d_type ) { radar_->set_collect( d_type, false ); }

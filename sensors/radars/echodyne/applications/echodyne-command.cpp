@@ -35,6 +35,7 @@
 
 const std::string default_address( "169.254.1.10" );
 const int default_port( 23 );
+const std::string default_log_dir( "." );
 
 static void bash_completion( unsigned int const ac, char const * const * av )
 {
@@ -58,6 +59,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --verbose,-v:    more output to stderr";
     std::cerr << "\n    --address=<ip>:  device address; default=" << default_address;
     std::cerr << "\n    --port=<num>:    device port; default=" << default_port;
+    std::cerr << "\n    --log-dir=<dir>: directory for system logs; default=" << default_log_dir;
     std::cerr << "\n    --autopause:     add a two second delay between commands";
     std::cerr << "\n    --wait:          don't exit at end-of-input, but wait for ctrl-c";
     std::cerr << "\n";
@@ -100,11 +102,12 @@ int main( int argc, char** argv )
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
         std::string address = options.value< std::string >( "--address", default_address );
         int port = options.value< int >( "--port", default_port );
+        std::string log_dir = options.value< std::string >( "--log-dir", default_log_dir );
         bool autopause = options.exists( "--autopause" );
         bool wait = options.exists( "--wait" );
 
         radar = std::make_unique< snark::echodyne::radar >();
-        radar->connect( address, port );
+        radar->connect( address, port, log_dir );
 
         while( !is_shutdown && std::cin.good() )
         {
