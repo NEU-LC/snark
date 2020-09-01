@@ -1,31 +1,4 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /// @author vsevolod vlaskine
 
@@ -60,6 +33,10 @@
 #include <tbb/parallel_reduce.h>
 #include "../../visiting/traits.h"
 
+#ifdef SNARK_USE_CUDA
+#include "math-k-means/math_k_means.cuh"
+#endif
+
 void usage( bool verbose )
 {
     std::cerr << std::endl;
@@ -85,6 +62,9 @@ void usage( bool verbose )
     std::cerr << "    --number-of-runs,--runs=<n>: number of times to run k-means, best run is one with lowest inertia (sum of distance of cluster points to cluster centroid); default: 10" << std::endl;
     std::cerr << "    --size=[<n>]: a hint of number of elements in the data vector; ignored, if data indices specified, e.g. data[0],data[1],data[2]" << std::endl;
     std::cerr << "    --tolerance=<distance>: difference between two consecutive iteration centroid l2 norms to declare convergence and stop iterating in LLoyd's algorithm; default: 1e-4" << std::endl;
+#ifdef SNARK_USE_CUDA
+    std::cerr << "    --use-cuda,--cuda: experimental option" << std::endl;
+#endif
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
@@ -333,7 +313,7 @@ static int run( const comma::command_line_options& options )
     while( istream.ready() || std::cin.good() )
     {
         const snark::k_means::input_t* p = istream.read();
-        if( ( !p || inputs.front().first.block != p->block ) && !inputs.empty() )
+        if( !inputs.empty() && ( !p || inputs.front().first.block != p->block ) )
         {
             operation.run( inputs );
             inputs.clear();
@@ -357,6 +337,9 @@ int main( int argc, char** argv )
         auto max_threads = options.value< unsigned int >( "--max-threads,--threads", 0 );
         if( max_threads == 0 ) { max_threads = std::thread::hardware_concurrency(); }
         tbb::global_control gc( tbb::global_control::max_allowed_parallelism, max_threads );
+#ifdef SNARK_USE_CUDA
+        return options.exists( "--use-cuda,--cuda" ) ? snark::k_means::cuda::run_( options ) : snark::k_means::run( options );
+#endif
         return snark::k_means::run( options );
     }
     catch( std::exception& ex ) { std::cerr << "math-k-means: " << ex.what() << std::endl; }
