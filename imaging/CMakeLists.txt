@@ -2,7 +2,14 @@ SET( PROJECT "imaging" )
 SET( TARGET_NAME snark_${PROJECT} )
 SET( DIR ${SOURCE_CODE_BASE_DIR}/${PROJECT} )
 
-if ( ${Boost_VERSION_STRING} VERSION_LESS 1.66 AND CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND ${CXX_STANDARD_TO_USE} MATCHES "17" )
+
+# gcc implements a modified template matching algorithm in C++17
+# Boost ICL prior to version 1.66 is not compatible with this change.
+# For this version we revert to the old behaviour.
+if ( CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND
+     ${CXX_STANDARD_TO_USE} MATCHES "17" AND
+     ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION} VERSION_LESS 1.66
+     )
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-new-ttp-matching")
 endif()
 
