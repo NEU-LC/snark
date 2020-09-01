@@ -226,7 +226,7 @@ std::string file< H >::usage( unsigned int indent )
     oss << indent << "        no-header: makes sense only for 'bin' format; if present, write image without header" << std::endl;
     oss << indent << "        numbered: output filenames will look like 0.png, 1.png, etc, i.e. <filename>: <frame-number>.<extension>" << std::endl;
     oss << indent << "        filenames:<filenames>: file with a list of filenames" << std::endl;
-    oss << indent << "        frames:<filename>: file with a sorted list of desired frame numbers to save" << std::endl;
+    oss << indent << "        frames:<filename>: file with a sorted list of unique desired frame numbers to save" << std::endl;
     oss << indent << "        ranges:<filename>: file with a sorted list of non-intersecting (but see ranges-union) desired ranges of frame numbers to save as <begin>,<end> pairs, where <end> is not included" << std::endl;
     oss << indent << "        ranges-union,union: find union of ranges, even if they are not sorted and intersecting" << std::endl;
     return oss.str();
