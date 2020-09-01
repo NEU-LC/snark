@@ -1,31 +1,4 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2017 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "viewer.h"
 #include <iostream>
@@ -37,33 +10,51 @@
 #include <comma/visiting/apply.h>
 #endif
 
+#include <QGuiApplication>
+#include <QTimer>
+#include <QVector3D>
+
 namespace snark { namespace graphics { namespace view { namespace qopengl {
 
-std::ostream& operator<<(std::ostream& os, const QVector3D& v)
+std::ostream& operator<<( std::ostream& os, const QVector3D& v )
 {
-    return os<<v.x()<<","<<v.y()<<","<<v.z();
+    return os << v.x() << "," << v.y() << "," << v.z();
 }
 
-viewer::viewer(controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options, 
-               const QVector3D& arg_scene_center, double arg_scene_radius,QMainWindow* parent) : 
-    snark::graphics::qopengl::widget(background_color,camera_options,parent),
-    handler(handler),
-    scene_center(arg_scene_center),
-    scene_radius_fixed(false),
-    scene_center_fixed(false),
-    stdout_allowed(true)
+viewer::viewer( controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options,
+                const QVector3D& arg_scene_center, double arg_scene_radius,QMainWindow* parent ) :
+    snark::graphics::qopengl::widget( background_color, camera_options, parent ),
+    scene_center( arg_scene_center ),
+    handler( handler ),
+    scene_radius_fixed( false ),
+    scene_center_fixed( false ),
+    stdout_allowed( true ),
+    block_mode( false ),
+    block( 0 )
 {
-    scene_radius=arg_scene_radius;
+    scene_radius = arg_scene_radius;
     QTimer* timer = new QTimer( this );
     connect( timer, SIGNAL( timeout() ), this, SLOT( on_timeout() ) );
     timer->start( 40 );
 }
-void viewer::reset_handler(controller_base* h){ handler=h; }
-void viewer::init() { if(handler!=NULL) { handler->init(); } }
-void viewer::on_timeout() { if(handler!=NULL) { handler->tick(); } }
+void viewer::reset_handler( controller_base* h ){ handler = h; }
+void viewer::init() { if( handler != nullptr ) { handler->init(); } }
+void viewer::on_timeout() { if( handler != nullptr ) { handler->tick(); } }
+void viewer::paintGL()
+{
+    widget::paintGL();
+    if( output_camera_config && stdout_allowed ) { write_camera_config(std::cout); }
+    if( block_mode )
+    {
+        QPainter painter( this );
+        painter.setPen( Qt::gray );
+        painter.setFont( QFont( "Arial", 10 ));
+        painter.drawText( rect(), Qt::AlignLeft | Qt::AlignBottom, QString("block id: %1").arg( block ) );
+    }
+}
 void viewer::double_right_click(const boost::optional<QVector3D>& point)
 {
-    if(!stdout_allowed)
+    if( !stdout_allowed )
     {
         std::cerr << "point under mouse output is disabled when \"pass\" option is in use" << std::endl;
         return;
@@ -72,13 +63,20 @@ void viewer::double_right_click(const boost::optional<QVector3D>& point)
     Eigen::Vector3d p( point->x(), point->y(), point->z() );
     if( !m_offset ) { std::cerr << "warning: offset is not defined yet, wait until it is found first" << std::endl; return; }
     p += *m_offset;
-    std::cout << std::setprecision(16) << p.x() << "," << p.y() << "," << p.z() << std::endl;
+    std::cout << std::setprecision( 16 ) << p.x() << "," << p.y() << "," << p.z();
+    if( block_mode ) { std::cout << ',' << block; } // if( QGuiApplication::keyboardModifiers().testFlag( Qt::AltModifier ) || block_mode ) { std::cout << ',' << block; }
+    std::cout << std::endl;
 }
-void viewer::paintGL()
+void viewer::keyPressEvent( QKeyEvent *event )
 {
-    widget::paintGL();
-    if(output_camera_config && stdout_allowed) { write_camera_config(std::cout); }
+    if( !block_mode ) { return; } // key press used only for block
+    if( event->key() == Qt::Key_B )
+    {
+        if( event->modifiers() == ( Qt::AltModifier ) ) { ++block; }
+        if( event->modifiers() == ( Qt::AltModifier | Qt::ShiftModifier ) ) { --block; }
+    }
 }
+void viewer::toggle_block_mode( bool flag ) { block_mode = flag; }
 void viewer::update_view(const QVector3D& min, const QVector3D& max)
 {
     if(!scene_radius_fixed) { scene_radius = 0.5 * ( max - min ).length(); }
@@ -125,6 +123,6 @@ void viewer::write_camera_config(std::ostream& os)
     comma::visiting::apply( to_ptree ).to( camera );
     boost::property_tree::write_json( os, p );
 }
-    
+
 } } } } // namespace snark { namespace graphics { namespace view { namespace qopengl {
-    
+

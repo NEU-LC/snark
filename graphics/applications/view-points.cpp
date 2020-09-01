@@ -1,31 +1,4 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -83,7 +56,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --scene-radius --radius"
         " --title"
         " --z-is-up";
-   
+
     std::cout << completion_options << std::endl;
     exit( 0 );
 }
@@ -110,7 +83,7 @@ static void usage()
     #define qt55_unsupported_marker_end ""
 #endif
 
-    static const char * const usage_synopsis = 
+    static const char * const usage_synopsis =
         "\nview 3D point clouds:"
         "\nview points from given files/streams and stdin"
         "\n(see examples below for a quick start)"
@@ -122,8 +95,8 @@ static void usage()
         "\n"
         "\nusage: view-points [<options>] [<filenames>]"
         "\n";
-        
-    static const char * const usage_options = 
+
+    static const char * const usage_options =
         "\ninput data options"
         "\n    --colour,--color,-c <how>: how to colour points"
         "\n        <how>:"
@@ -246,8 +219,8 @@ static void usage()
         "\n    --z-is-up : z-axis is pointing up, default: pointing down ( north-east-down system )"
         qt55_unsupported_marker_end
         "\n";
-        
-    static const char * const usage_csv_options = 
+
+    static const char * const usage_csv_options =
         "\n"
         "\n    fields:"
         "\n        default: x,y,z"
@@ -265,14 +238,23 @@ static void usage()
         "\n"
         "\n    most of the options can be set for individual files (see examples)"
         "\n";
-        
-    static const char * const usage_examples = 
-        "\nmouse clicks:"
-        "\n    left press and hold: rotate the scene around the centre"
-        "\n    right press and hold: translate the scene"
-        "\n    double left click: change the centre of the scene"
-        "\n    double right click: output to stdout approximate coordinates of the clicked point"
-        "\n    scroll wheel: zoom"
+
+    static const char * const usage_examples =
+        "\nkey presses and mouse clicks:"
+        "\n    general controls"
+        "\n        left press and hold: rotate the scene around the centre"
+        "\n        right press and hold: translate the scene"
+        "\n        double left click: change the centre of the scene"
+        "\n        scroll wheel: zoom"
+        "\n"
+        "\n    console/stdout output"
+        "\n        default"
+        "\n            double right click: output to stdout approximate coordinates of the clicked point as x,y,z"
+        "\n        block mode"
+        "\n            alt + control + b: toggle block mode; if on, double right click always appends current block id"
+        "\n            alt + b: increment block id"
+        "\n            alt + shift + b: decrement block id"
+        "\n            double right click: output to stdout approximate coordinates of the clicked point as x,y,z,block"
         "\n"
         "\nexamples"
         "\n"
@@ -364,7 +346,7 @@ static void usage()
         << "\ncsv options\n"
         << comma::csv::options::usage()
         << usage_csv_options
-        << usage_examples 
+        << usage_examples
         #if Qt3D_VERSION==2
         << usage_qt55_warning
         #endif
@@ -427,7 +409,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
                                                              , const comma::csv::options& csv_options
                                                              , const std::string& properties = "" )
 {
-    //snark::graphics::view::color_t 
+    //snark::graphics::view::color_t
     QColor background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
     std::string shape = options.value< std::string >( "--shape", "point" );
     snark::graphics::view::Reader::reader_parameters param( csv_options
@@ -733,14 +715,14 @@ int main( int argc, char** argv )
                                                                                  , scene_center
                                                                                  , scene_radius
                                                                                  , options.exists( "--output-camera-config,--output-camera" ) ));
-        
+
 #elif Qt3D_VERSION==2
         double scene_radius=options.value<double>( "--scene-radius,--radius", 10 );
         QVector3D scene_center(0,0,0);
         boost::optional< std::string > s = options.optional< std::string >("--scene-center,--center");
         if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
 
-        std::shared_ptr<snark::graphics::view::controller> controller(new snark::graphics::view::controller(background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation, 
+        std::shared_ptr<snark::graphics::view::controller> controller(new snark::graphics::view::controller(background_color, camera_options, options.exists( "--exit-on-end-of-input" ), camera_csv, cameraposition, cameraorientation,
                                                      options.value<std::string>("--camera-config",""), scene_center, scene_radius, options.exists( "--output-camera-config,--output-camera" )));
         controller->viewer->scene_radius_fixed=options.exists("--scene-radius,--radius");
         controller->viewer->scene_center_fixed=options.exists("--scene-center,--center");
