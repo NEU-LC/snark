@@ -38,6 +38,7 @@
 
 const std::string default_address( "169.254.1.10" );
 const int default_port( 23 );
+const std::string default_log_dir( "." );
 
 static void bash_completion( unsigned int const ac, char const * const * av )
 {
@@ -65,9 +66,18 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --verbose,-v:          more output to stderr";
     std::cerr << "\n    --address=<ip>:        device address; default=" << default_address;
     std::cerr << "\n    --port=<num>:          device port; default=" << default_port;
+    std::cerr << "\n    --log-dir=<dir>:       directory for system logs; default=" << default_log_dir;
     std::cerr << "\n    --output-fields:       print output fields and exit";
     std::cerr << "\n    --output-format:       print output format and exit";
     std::cerr << "\n    --sample-data=[<dir>]; read saved data from <dir>";
+    std::cerr << "\n";
+    std::cerr << "\nDetails:";
+    std::cerr << "\n    The radar publishes data on a fixed, known TCP ports. The ports are";
+    std::cerr << "\n        status:      29979";
+    std::cerr << "\n        rvmap:       29980";
+    std::cerr << "\n        detection:   29981";
+    std::cerr << "\n        track:       29982";
+    std::cerr << "\n        measurement: 29984";
     std::cerr << "\n";
     std::cerr << "\nExamples:";
     std::cerr << "\n    " << comma::verbose.app_name() << " status | csv-from-bin $( " << comma::verbose.app_name() << " status --output-format )";
@@ -103,10 +113,11 @@ struct app
         {
             std::string address = options.value< std::string >( "--address", default_address );
             int port = options.value< int >( "--port", default_port );
+            std::string log_dir = options.value< std::string >( "--log-dir", default_log_dir );
 
             snark::echodyne::radar radar;
 
-            radar.connect( address, port );
+            radar.connect( address, port, log_dir );
             radar.set_time();
             radar.enable_buffer( channel );
 

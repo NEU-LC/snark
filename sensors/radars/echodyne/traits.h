@@ -110,7 +110,7 @@ template <> struct traits< snark::echodyne::detection_data_t >
         v.apply( "t", t.t );
         v.apply( "power", t.power );
         v.apply( "snr", t.snr );
-        v.apply( "position", t.position );
+        v.apply( "rbe", t.rbe );
         v.apply( "vradial", t.vradial );
         v.apply( "r_interp", t.r_interp );
         v.apply( "detection_id", t.detection_id );
@@ -123,7 +123,7 @@ template <> struct traits< snark::echodyne::detection_data_t >
         v.apply( "t", t.t );
         v.apply( "power", t.power );
         v.apply( "snr", t.snr );
-        v.apply( "position", t.position );
+        v.apply( "rbe", t.rbe );
         v.apply( "vradial", t.vradial );
         v.apply( "r_interp", t.r_interp );
         v.apply( "detection_id", t.detection_id );
