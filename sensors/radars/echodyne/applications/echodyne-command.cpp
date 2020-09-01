@@ -35,6 +35,7 @@
 
 const std::string default_address( "169.254.1.10" );
 const int default_port( 23 );
+const std::string default_log_dir( "." );
 
 static void bash_completion( unsigned int const ac, char const * const * av )
 {
@@ -58,7 +59,9 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --verbose,-v:    more output to stderr";
     std::cerr << "\n    --address=<ip>:  device address; default=" << default_address;
     std::cerr << "\n    --port=<num>:    device port; default=" << default_port;
+    std::cerr << "\n    --log-dir=<dir>: directory for system logs; default=" << default_log_dir;
     std::cerr << "\n    --autopause:     add a two second delay between commands";
+    std::cerr << "\n    --stay:          do not close at end of input stream";
     std::cerr << "\n";
     std::cerr << "\nUser commands are defined in section 8 of the Echoflight User Manual";
     std::cerr << "\nParticularly useful commands include:";
@@ -80,6 +83,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    echo \"ETH:IP?\" | " << comma::verbose.app_name();
     std::cerr << "\n    echo \"ETH:IP <new-ip> <mask> <gw>\" | " << comma::verbose.app_name() << " --address <curr-ip>";
     std::cerr << "\n    echo -e \"API:ENABLE_BUFFER STATUS\\nAPI:SYS_STATE\" | " << comma::verbose.app_name() << " --autopause";
+    std::cerr << "\n    echo \"MODE:SWT:START\" | " << comma::verbose.app_name() << " --stay";
     std::cerr << "\n";
     std::cerr << std::endl;
     exit( 0 );
@@ -96,12 +100,14 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
-        bool autopause = options.exists( "--autopause" );
         std::string address = options.value< std::string >( "--address", default_address );
         int port = options.value< int >( "--port", default_port );
+        std::string log_dir = options.value< std::string >( "--log-dir", default_log_dir );
+        bool autopause = options.exists( "--autopause" );
+        bool stay = options.exists( "--stay" );
 
         radar = std::make_unique< snark::echodyne::radar >();
-        radar->connect( address, port );
+        radar->connect( address, port, log_dir );
 
         while( !is_shutdown && std::cin.good() )
         {
@@ -110,6 +116,7 @@ int main( int argc, char** argv )
             radar->command( input );
         }
         if( is_shutdown ) { std::cerr << comma::verbose.app_name() << ": interrupted by signal" << std::endl; }
+        else if( stay ) { while( !is_shutdown ) { std::this_thread::sleep_for( 200ms ); } }
         return 0;
     }
     catch( std::exception& ex )

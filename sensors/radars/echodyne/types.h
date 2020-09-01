@@ -88,7 +88,7 @@ struct detection_data_t
     boost::posix_time::ptime t;
     float power;                        // dB
     float snr;                          // dB
-    range_bearing_elevation position;
+    range_bearing_elevation rbe;
     float vradial;                      // m/s
     float r_interp;                     // m
     uint32_t detection_id;

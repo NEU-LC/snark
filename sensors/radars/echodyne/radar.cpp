@@ -37,23 +37,25 @@
 namespace snark { namespace echodyne {
 
 radar::radar()
+    : connected( false )
 {
     radar_ = std::make_unique< bnet_interface >();
 }
 
 radar::~radar()
 {
-    if( radar_ )
+    if( connected )
     {
         comma::verbose << "disconnecting from radar" << std::endl;
         radar_->disconnect();
     }
 }
 
-void radar::connect( const std::string& address, int port )
+void radar::connect( const std::string& address, int port, const std::string& log_dir )
 {
     comma::verbose << "connecting to " << address << ":" << port << std::endl;
-    radar_->connect( address.c_str(), port, "" );
+    radar_->connect( address.c_str(), port, log_dir );
+    connected = true;
 }
 
 void radar::command( const std::string& cmd )
