@@ -81,7 +81,11 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::g
 
     auto modeMenu = menuBar()->addMenu( "Modes" );
     action = new ToggleAction( "Block Mode", boost::bind( &snark::graphics::view::viewer_t::toggle_block_mode, viewer, _1 ) );
-    action->setShortcut( QKeySequence("Ctrl+Alt+B") );
+    action->setShortcut( QKeySequence("Ctrl+B") );
+    action->setChecked( false );
+    modeMenu->addAction( action );
+    action = new ToggleAction( "Label Mode", boost::bind( &snark::graphics::view::viewer_t::toggle_label_mode, viewer, _1 ) );
+    action->setShortcut( QKeySequence("Ctrl+L") );
     action->setChecked( false );
     modeMenu->addAction( action );
 

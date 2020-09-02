@@ -1,18 +1,21 @@
 // Copyright (c) 2017 The University of Sydney
+// Copyright (c) 2020 Vsevolod Vlaskine
 
-#include "viewer.h"
-#include <iostream>
 #include <iomanip>
+#include <iostream>
+#include <boost/lexical_cast.hpp>
+#include <QGuiApplication>
+#include <QTimer>
+#include <QVector3D>
 #include "../../../qt5.5/qopengl/traits.h"
 #ifndef Q_MOC_RUN
 #include <boost/property_tree/json_parser.hpp>
 #include <comma/name_value/ptree.h>
 #include <comma/visiting/apply.h>
 #endif
+#include "viewer.h"
 
-#include <QGuiApplication>
-#include <QTimer>
-#include <QVector3D>
+
 
 namespace snark { namespace graphics { namespace view { namespace qopengl {
 
@@ -21,62 +24,131 @@ std::ostream& operator<<( std::ostream& os, const QVector3D& v )
     return os << v.x() << "," << v.y() << "," << v.z();
 }
 
-viewer::viewer( controller_base* handler, const color_t& background_color, const qt3d::camera_options& camera_options,
-                const QVector3D& arg_scene_center, double arg_scene_radius,QMainWindow* parent ) :
-    snark::graphics::qopengl::widget( background_color, camera_options, parent ),
-    scene_center( arg_scene_center ),
-    handler( handler ),
-    scene_radius_fixed( false ),
-    scene_center_fixed( false ),
-    stdout_allowed( true ),
-    block_mode( false ),
-    block( 0 )
+viewer::viewer( controller_base* handler
+              , const color_t& background_color
+              , const qt3d::camera_options& camera_options
+              , const QVector3D& arg_scene_center
+              , double arg_scene_radius,QMainWindow* parent )
+    : snark::graphics::qopengl::widget( background_color, camera_options, parent )
+    , scene_center( arg_scene_center )
+    , handler( handler )
+    , scene_radius_fixed( false )
+    , scene_center_fixed( false )
+    , stdout_allowed( true )
+    , mode( modes::none )
+    , block( 0 )
 {
     scene_radius = arg_scene_radius;
     QTimer* timer = new QTimer( this );
     connect( timer, SIGNAL( timeout() ), this, SLOT( on_timeout() ) );
     timer->start( 40 );
 }
+
 void viewer::reset_handler( controller_base* h ){ handler = h; }
+
 void viewer::init() { if( handler != nullptr ) { handler->init(); } }
+
 void viewer::on_timeout() { if( handler != nullptr ) { handler->tick(); } }
+
 void viewer::paintGL()
 {
     widget::paintGL();
     if( output_camera_config && stdout_allowed ) { write_camera_config(std::cout); }
-    if( block_mode )
+    switch( mode )
     {
-        QPainter painter( this );
-        painter.setPen( Qt::gray );
-        painter.setFont( QFont( "Arial", 10 ));
-        painter.drawText( rect(), Qt::AlignLeft | Qt::AlignBottom, QString("block id: %1").arg( block ) );
+        case modes::block:
+        {
+            QPainter painter( this );
+            painter.setPen( Qt::gray );
+            painter.setFont( QFont( "Arial", 10 ) );
+            painter.drawText( rect(), Qt::AlignLeft | Qt::AlignBottom, QString("block id: %1").arg( block ) );
+            break;
+        }
+        case modes::label:
+        {
+            QPainter painter( this );
+            painter.setPen( Qt::gray );
+            painter.setFont( QFont( "Arial", 10 ) );
+            painter.drawText( rect(), Qt::AlignLeft | Qt::AlignBottom, QString("label: %1").arg( '"' + QString::fromStdString( label ) + '"' ) );
+            break;
+        }
+        case modes::none:
+            break;
     }
 }
-void viewer::double_right_click(const boost::optional<QVector3D>& point)
+
+void viewer::double_right_click(const boost::optional< QVector3D >& point)
 {
-    if( !stdout_allowed )
-    {
-        std::cerr << "point under mouse output is disabled when \"pass\" option is in use" << std::endl;
-        return;
-    }
-    if( !point ) { std::cerr << "warning: no point found near the double right click" << std::endl; return; }
+    if( !stdout_allowed ) { std::cerr << "view-points: point under mouse output is disabled when --pass option is in use" << std::endl; return; }
+    if( !point ) { std::cerr << "view-points: warning: no point found near the double right click" << std::endl; return; }
     Eigen::Vector3d p( point->x(), point->y(), point->z() );
-    if( !m_offset ) { std::cerr << "warning: offset is not defined yet, wait until it is found first" << std::endl; return; }
+    if( !m_offset ) { std::cerr << "view-points: warning: offset is not defined yet, wait until it is found first" << std::endl; return; }
     p += *m_offset;
     std::cout << std::setprecision( 16 ) << p.x() << "," << p.y() << "," << p.z();
-    if( block_mode ) { std::cout << ',' << block; } // if( QGuiApplication::keyboardModifiers().testFlag( Qt::AltModifier ) || block_mode ) { std::cout << ',' << block; }
+    switch( mode )
+    {
+        case modes::block: std::cout << ',' << block; break;
+        case modes::label: std::cout << ",\"" << label << "\""; break;
+        case modes::none: break;
+    }
     std::cout << std::endl;
 }
+
 void viewer::keyPressEvent( QKeyEvent *event )
 {
-    if( !block_mode ) { return; } // key press used only for block
-    if( event->key() == Qt::Key_B )
+    switch( mode )
     {
-        if( event->modifiers() == ( Qt::AltModifier ) ) { ++block; }
-        if( event->modifiers() == ( Qt::AltModifier | Qt::ShiftModifier ) ) { --block; }
+        case modes::block:
+            if( event->modifiers() == Qt::ControlModifier || event->modifiers() == ( Qt::ControlModifier | Qt::ShiftModifier ) )
+            {
+                switch( event->key() )
+                {
+                    case Qt::Key_Plus: ++block; break;
+                    case Qt::Key_Minus: --block; break;
+                    case Qt::Key_C: block = 0; break;
+                    default: break;
+                }
+            }
+            else if( event->modifiers() == Qt::NoModifier )
+            {
+                const std::string& s = event->text().toStdString();
+                if( s.size() > 1 ) { std::cerr << "view-points: block mode: string longer than one character: '" << s << "'; unsupported; discarded for now" << std::endl; }
+                if( event->key() == Qt::Key_Minus )
+                {
+                    block = -block;
+                }
+                else
+                {
+                    try { block = block * 10 + boost::lexical_cast< unsigned int >( s ) * ( block < 0 ? -1 : 1 ); }
+                    catch( ... ) { std::cerr << "view-points: block mode: non-numeric key '" << s << "' discarded" << std::endl; }
+                }
+            }
+            break;
+        case modes::label:
+            if( event->modifiers() == Qt::ControlModifier )
+            {
+                switch( event->key() )
+                {
+                    case Qt::Key_C: label = ""; break;
+                    default: break;
+                }
+            }
+            else if( event->modifiers() == Qt::NoModifier || event->modifiers() == Qt::ShiftModifier )
+            {
+                const std::string& s = event->text().toStdString();
+                if( s.size() > 1 ) { std::cerr << "view-points: block mode: string longer than one character: '" << s << "'; unsupported; discarded for now" << std::endl; }
+                if( s == "," ) { std::cerr << "view-points: label mode: ',' not supported; discarded" << std::endl; }
+                if( s != "\n" ) { label += s; } // todo: more control on permitted characters
+            }
+            break;
+        case modes::none:
+            break;
     }
 }
-void viewer::toggle_block_mode( bool flag ) { block_mode = flag; }
+void viewer::toggle_block_mode( bool flag ) { mode = flag ? modes::block : mode == modes::block ? modes::none : mode; }
+
+void viewer::toggle_label_mode( bool flag ) { mode = flag ? modes::label : mode == modes::label ? modes::none : mode; }
+
 void viewer::update_view(const QVector3D& min, const QVector3D& max)
 {
     if(!scene_radius_fixed) { scene_radius = 0.5 * ( max - min ).length(); }
