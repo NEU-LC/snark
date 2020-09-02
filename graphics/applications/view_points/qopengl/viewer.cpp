@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <iostream>
 #include <boost/lexical_cast.hpp>
+#include <QChar>
 #include <QGuiApplication>
 #include <QTimer>
 #include <QVector3D>
@@ -112,15 +113,11 @@ void viewer::keyPressEvent( QKeyEvent *event )
             else if( event->modifiers() == Qt::NoModifier )
             {
                 const std::string& s = event->text().toStdString();
-                if( s.size() > 1 ) { std::cerr << "view-points: block mode: string longer than one character: '" << s << "'; unsupported; discarded for now" << std::endl; }
-                if( event->key() == Qt::Key_Minus )
+                switch( event->key() )
                 {
-                    block = -block;
-                }
-                else
-                {
-                    try { block = block * 10 + boost::lexical_cast< unsigned int >( s ) * ( block < 0 ? -1 : 1 ); }
-                    catch( ... ) { std::cerr << "view-points: block mode: non-numeric key '" << s << "' discarded" << std::endl; }
+                    case Qt::Key_Minus: block = -block; break;
+                    case Qt::Key_Backspace: block = block / 10; break;
+                    default: if( '0' <= s[0] && s[0] <= '9' ) { block = block * 10 + ( s[0] - '0' ) * ( block < 0 ? -1 : 1 ); } break;
                 }
             }
             break;
@@ -135,10 +132,13 @@ void viewer::keyPressEvent( QKeyEvent *event )
             }
             else if( event->modifiers() == Qt::NoModifier || event->modifiers() == Qt::ShiftModifier )
             {
-                const std::string& s = event->text().toStdString();
-                if( s.size() > 1 ) { std::cerr << "view-points: block mode: string longer than one character: '" << s << "'; unsupported; discarded for now" << std::endl; }
-                if( s == "," ) { std::cerr << "view-points: label mode: ',' not supported; discarded" << std::endl; }
-                if( s != "\n" ) { label += s; } // todo: more control on permitted characters
+                switch( event->key() )
+                {
+                    case Qt::Key_Backspace: if( !label.empty() ) { label.pop_back(); } break;
+                    case Qt::Key_Comma: label += "\\,"; break;
+                    case Qt::Key_QuoteDbl: label += "\\\""; break;
+                    default: if( event->text()[0].isPrint() ) { label += event->text().toStdString(); } break;
+                }
             }
             break;
         case modes::none:
