@@ -66,7 +66,7 @@ static void usage()
 #if Qt3D_VERSION==2
     static const char * const usage_qt55_warning =
         "\nWARNING: this version of view-points is compiled against Qt5.5+"
-        "\nIt will not be fully functional (yet)."
+        "\n         it is not be fully functional (yet)"
         "\n"
         "\nUnsupported features are shown in dimmed text in this help"
         "\n"
@@ -78,9 +78,13 @@ static void usage()
 
     #define qt55_unsupported_marker_start "\x1B[0;90m"
     #define qt55_unsupported_marker_end "\x1B[0m"
+    #define qtold_unsupported_marker_start
+    #define qtold_unsupported_marker_end
 #else
     #define qt55_unsupported_marker_start ""
     #define qt55_unsupported_marker_end ""
+    #define qtold_unsupported_marker_start "\x1B[0;90m"
+    #define qtold_unsupported_marker_end "\x1B[0m"
 #endif
 
     static const char * const usage_synopsis =
@@ -247,6 +251,7 @@ static void usage()
         "\n        double left click: change the centre of the scene"
         "\n        scroll wheel: zoom"
         "\n"
+        qtold_unsupported_marker_start
         "\n    console/stdout output"
         "\n        modes"
         "\n            default"
@@ -266,6 +271,7 @@ static void usage()
         "\n                ctrl + 'c': reset label to empty string"
         "\n                alpha-numeric and punctuation keys: append character to label"
         "\n                backspace: delete last charact"
+        qtold_unsupported_marker_end
         "\n"
         "\nexamples"
         "\n"
@@ -346,6 +352,22 @@ static void usage()
         "\n                 <( echo 0,0,3,0,1,3; echo 1,0,3,1,1,3; echo 2,0,3,2,1,3)\";shape=line;fields=first,second;label=line;color=red\"\\"
         "\n                 <( echo 2,0,4; echo 2,1,4; echo 3,1,4; echo 3,0,4)\";shape=lines;label=lines;color=green\"\\"
         "\n                 <( echo -1,-1,5,0,-2,5,1,-1,5 )\";shape=triangle;label=triangle;color=yellow\""
+        "\n"
+        qtold_unsupported_marker_start
+        "\n    double right click modes"
+        "\n        > mkfifo pipe"
+        "\n        > cat pipe | view-points <( csv-random make --type 2f | head -n10000 )';fields=x,y;color=yellow' \\"
+        "\n                                 '-;fields=x,y,z,label;weight=10;color=red' | tee pipe"
+        "\n        in view-points window"
+        "\n            - press ctrl-L to switch to label mode"
+        "\n            - type 'hello' on keyboard, observe label set to 'hello' in lower left corner"
+        "\n            - double right click on a couple of points; observe output on stdout and large red dots"
+        "\n              with the label 'hello' appear where you clicked"
+        "\n            - press ctrl-C or backspace to reset the label"
+        "\n            - type 'world' on keyboard, observe label set to 'world' in lower left corner"
+        "\n            - double right click on a couple of points; observe output on stdout and large red dots"
+        "\n              with the label 'world' appear where you clicked"
+        qtold_unsupported_marker_end
         "\n";
 
     std::cerr
