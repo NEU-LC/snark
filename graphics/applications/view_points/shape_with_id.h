@@ -26,7 +26,7 @@
 
 namespace snark { namespace graphics { namespace view {
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
 typedef std::shared_ptr<snark::graphics::qopengl::shape> gl_shape_ptr_t;
 struct gl_parameters
 {
@@ -70,7 +70,7 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
 {
     static const unsigned int size = 8;
         
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
         return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip(gl.point_size));
@@ -143,7 +143,7 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
 {
     static const unsigned int size = 2;
     
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
         return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::lines(gl.point_size));
@@ -182,7 +182,7 @@ struct Shapetraits< loop< Size > >
     static_assert( Size > 2, "expected size greater than 2" );
     static const unsigned int size = Size;
     
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
         return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::triangles(gl.fill));
@@ -243,7 +243,7 @@ struct Shapetraits< Ellipse< Size > >
 {
     static const unsigned int size = Size;
     
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
         return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop(gl.point_size));
@@ -299,7 +299,7 @@ struct Shapetraits< arc< Size > >
 
     static_assert( Size % 2 == 0, "expected even size" ); // quick and dirty: for simplicity support only only even sizes
     
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
         return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip(gl.point_size));
@@ -408,7 +408,7 @@ template <> struct draw_traits_< how_t::lines >
         if( size > 1 ) { painter->draw( QGL::Lines, size - 1, 1 ); }
     }
 };
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 
 template<typename T> struct how_traits
 {
@@ -447,7 +447,7 @@ struct Shapetraits< Eigen::Vector3d, How >
     static const unsigned int size = 1;
 
     
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
         return how_traits<How>::make_shape(gl);
@@ -482,7 +482,7 @@ template<>
 struct Shapetraits< axis >
 {
     static const unsigned int size = 6;
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     static gl_shape_ptr_t make_shape(const gl_parameters& gl)
     {
         return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::lines(gl.point_size));

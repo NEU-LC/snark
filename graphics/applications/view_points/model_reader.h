@@ -38,7 +38,7 @@
 #include "qt3d_v1/model.h"
 #include "qt3d_v1/ply_loader.h"
 
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 #include "qopengl/model.h"
 #endif
 
@@ -70,7 +70,7 @@ class model_reader : public Reader
 #if Qt3D_VERSION==1
         void render( Viewer& viewer, QGLPainter *painter );
         
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
     virtual void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base);
     virtual void update_view();
 #endif
@@ -83,7 +83,7 @@ class model_reader : public Reader
         qt3d_v1::model model;
         boost::optional< PlyLoader > m_plyLoader;
         
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
         qopengl::model model;
 #endif
         const std::string m_file;

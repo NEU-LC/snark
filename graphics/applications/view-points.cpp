@@ -24,7 +24,7 @@
 #endif
 #include "view_points/model_reader.h"
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
 #include "view_points/traits.h"
 #include "../qt5.5/qopengl/labels.h"
 #endif
@@ -63,7 +63,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
 
 static void usage()
 {
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     static const char * const usage_qt55_warning =
         "\nWARNING: this version of view-points is compiled against Qt5.5+"
         "\n         it is not be fully functional (yet)"
@@ -158,7 +158,7 @@ static void usage()
         "\n                                     options: options can be specified as command line option and/or in each stream (without -- prefix)"
         "\n                                         --length=<d>: length of each axis line"
         "\n                                         --labels=\"<x>:<y>:<z>\" colon separated list of axis labels, leave empty for no labels."
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
         "\n                                         --weight or --point-size can be used for line thickness"
 #endif
         "\n                                         by default each axis is painted with different colors x:red y:green z:blue; unless"
@@ -371,7 +371,7 @@ static void usage()
         "\n";
 
     std::cerr
-        #if Qt3D_VERSION==2
+        #if Qt3D_VERSION>=2
         << usage_qt55_warning
         #endif
         << usage_synopsis
@@ -380,7 +380,7 @@ static void usage()
         << comma::csv::options::usage()
         << usage_csv_options
         << usage_examples
-        #if Qt3D_VERSION==2
+        #if Qt3D_VERSION>=2
         << usage_qt55_warning
         #endif
         << std::endl;
@@ -566,7 +566,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         if( param.options.fields == "" ) { param.options.fields="point,orientation"; param.options.full_xpath = true; }
 #if Qt3D_VERSION==1
         auto image_options = make_image_options< snark::graphics::view::texture_reader::image_options >( shape );
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
         auto image_options = make_image_options< snark::graphics::view::image_options >( shape );
 #endif
         if( image_options.empty() ) // quick and dirty
@@ -576,7 +576,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
             if( !boost::filesystem::exists( m.filename ) ) { COMMA_THROW( comma::exception, "file does not exist: " << m.filename ); }
             std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::model_reader( param, m, colored, label ) );
             reader->show( show );
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
             std::cerr << "view-points: cad models are not supported yet for qt 5.5+ " << Qt3D_VERSION << " yet; todo" << std::endl;
             exit(1);
 #endif
@@ -586,7 +586,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         {
 #if Qt3D_VERSION==1
             std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::texture_reader( param, image_options ) );
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
             std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::image_reader( param, image_options ) );
 #endif
             reader->show( show );
@@ -749,7 +749,7 @@ int main( int argc, char** argv )
                                                                                  , scene_radius
                                                                                  , options.exists( "--output-camera-config,--output-camera" ) ));
 
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
         double scene_radius=options.value<double>( "--scene-radius,--radius", 10 );
         QVector3D scene_center(0,0,0);
         boost::optional< std::string > s = options.optional< std::string >("--scene-center,--center");

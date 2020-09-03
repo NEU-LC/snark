@@ -31,7 +31,7 @@
 
 #include "reader.h"
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
 #include "../../qt5.5/qopengl/textures.h"
 #endif
 
@@ -47,7 +47,7 @@ struct image_options
     image_options(const std::string& filename, double width, double height);
 };
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
 //TODO move this to qt3d_v2?
 struct image
 {
@@ -74,7 +74,7 @@ struct image_reader : public Reader
 #if Qt3D_VERSION==1
     void render( Viewer& viewer, QGLPainter *painter );
     
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
     virtual void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base);
     virtual void update_view();
 #endif
@@ -83,7 +83,7 @@ struct image_reader : public Reader
 protected:
     boost::scoped_ptr< comma::csv::input_stream< PointWithId > > stream;
     boost::scoped_ptr< comma::csv::passed< PointWithId > > passed;
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     std::shared_ptr<snark::graphics::qopengl::texture_shader> texture_shader;
     std::vector<std::unique_ptr<image_t>> images;
 #endif

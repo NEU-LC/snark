@@ -45,7 +45,7 @@
 #include "colored.h"
 #if Qt3D_VERSION==1
 #include <Qt3D/qglview.h>
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 #include <QQuaternion>
 #include "../../qt5.5/qopengl/viewer_base.h"
 #endif
@@ -116,7 +116,7 @@ class Reader : public reader_parameters
         friend class Viewer;
         virtual void render( Viewer& viewer, QGLPainter *painter ) = 0;
         
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
     friend class controller;
     virtual void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)=0;
     virtual void update_view()=0;

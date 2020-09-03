@@ -58,7 +58,7 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::g
 #if QT_VERSION >= 0x050000
 #if Qt3D_VERSION==1
     layout->addWidget( QWidget::createWindowContainer( viewer ), 0, 1 );
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
     layout->addWidget(viewer,0,1);
 #endif
 #else

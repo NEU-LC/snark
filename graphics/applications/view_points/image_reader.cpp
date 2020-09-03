@@ -36,7 +36,7 @@ image_options::image_options(const std::string& filename) : filename(filename), 
 image_options::image_options(const std::string& filename, double pixel_size) : filename(filename), size(0,pixel_size) { }
 image_options::image_options(const std::string& filename, double width, double height) : filename(filename), size(width,height) { }
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
 image::image(const image_options& options)
 {
     QImage qimage(options.filename.c_str());
@@ -59,7 +59,7 @@ snark::math::closed_interval<float,3> image::extents() const
 image_reader::image_reader( const reader_parameters& params, const std::vector< image_options >& io )
     : Reader( reader_parameters( params ), NULL, "", Eigen::Vector3d( 0, 1, 1 ) )
 {
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     for( unsigned int i = 0; i < io.size(); ++i ) { images.push_back(std::unique_ptr<image_t>(new image_t( io[i] ) )); }
 #endif
 }
@@ -111,7 +111,7 @@ void image_reader::render( Viewer& viewer, QGLPainter* painter )
     painter->modelViewMatrix().pop();
 }
 
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 void image_reader::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
 {
 //     std::cerr<<"image_reader::add_shaders"<<std::endl;

@@ -42,7 +42,7 @@
 #include "reader.h"
 #if Qt3D_VERSION==1
 #include "qt3d_v1/viewer.h"
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 #include "../../qt5.5/qopengl/labels.h"
 #endif
 
@@ -63,7 +63,7 @@ class ShapeReader : public shape_reader_base
         #endif
         bool empty() const;
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
 public:
     virtual void add_shaders(snark::graphics::qopengl::viewer_base* viewer_base);
     virtual void update_view();
@@ -84,7 +84,7 @@ private:
 
         ShapeWithId< S > sample_;
 };
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
 template< typename S, typename How >
 void ShapeReader< S, How >::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
 {

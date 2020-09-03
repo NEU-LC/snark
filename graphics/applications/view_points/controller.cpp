@@ -40,13 +40,13 @@
 #include <comma/visiting/apply.h>
 #endif
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
 
 namespace snark { namespace graphics { namespace view {
 
 void controller::add(std::unique_ptr<snark::graphics::view::Reader>&& reader)
 {
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     //TODO rename add_shaders to init
     reader->add_shaders(viewer.get());
 #endif
@@ -77,7 +77,7 @@ controller::controller(const color_t& background_color
 #if Qt3D_VERSION==1
 //     viewer=new viewer_t(background_color, camera_options, scene_center, scene_radius,parent);
     COMMA_THROW( comma::exception," not implemented ");
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
     viewer.reset(new viewer_t(this,background_color, camera_options, scene_center, scene_radius));
     viewer->output_camera_config=output_camera_config;
 #endif
@@ -166,7 +166,7 @@ void controller::read()
 
 void controller::update_view()
 {
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
     //update shapes
     viewer->begin_update();
     for(auto& i : readers)

@@ -48,7 +48,7 @@ typedef QColor4ub color_t;
 #define COLOR_GREEN Qt::green
 #define COLOR_BLUE  Qt::blue
 
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 
 typedef snark::graphics::qopengl::color_t color_t;
 
@@ -99,7 +99,7 @@ struct vertex_t
     vertex_t(const Eigen::Vector3f& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
     vertex_t(const Eigen::Vector3d& p,const QColor4ub& color) : position(p.x(),p.y(),p.z()), color(color) { }
 };
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 typedef qopengl::vertex_t vertex_t;
 #endif
 
@@ -107,7 +107,7 @@ typedef qopengl::vertex_t vertex_t;
 class Viewer;
 typedef Viewer viewer_t;
 
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 namespace qopengl {
 class viewer;
 } // namespace qopengl {

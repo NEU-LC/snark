@@ -32,7 +32,7 @@
 #if Qt3D_VERSION==1
 #include "qt3d_v1/viewer.h"
 
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 #include "qopengl/viewer.h"
 
 #endif
@@ -66,7 +66,7 @@ struct controller_traits<controller>
     static viewer_t* get_widget(std::shared_ptr<controller>& t) { return t.get(); }
 };
 
-#elif Qt3D_VERSION==2
+#elif Qt3D_VERSION>=2
 /**
  * manages readers and camera
  * contains a viewer which performs the rendering and is Qt3d version dependant

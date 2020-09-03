@@ -36,7 +36,7 @@
 
 namespace snark { namespace graphics { namespace view {
 
-#if Qt3D_VERSION==2
+#if Qt3D_VERSION>=2
 const color_t stock::red(255,0,0);
 const color_t stock::green(0,255,0);
 const color_t stock::blue(0,0,255);
