@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <array>
 #include <type_traits>
 #include <boost/array.hpp>
 #include <boost/optional.hpp>
@@ -71,13 +72,10 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
     static const unsigned int size = 8;
         
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip(gl.point_size));
-    }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::lines( gl.point_size ) ); }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<snark::math::closed_interval< double, 3 >>& s,const Eigen::Vector3d& offset)
+    static void update(shape_reader_base& reader, const ShapeWithId< snark::math::closed_interval< double, 3 > >& s, const Eigen::Vector3d& offset )
     {
         Eigen::Vector3f min = ( s.shape.min() - offset ).cast< float >();
         Eigen::Vector3f max = ( s.shape.max() - offset ).cast< float >();
@@ -93,23 +91,29 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
         reader.add_vertex( vertex_t( QVector3D( max.x(), max.y(), min.z() ), s.color ), s.block );
         #else
         reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
-        
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
-        
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
         #endif
 
         reader.extent_hull(snark::math::closed_interval< float, 3 >( min, max ));
@@ -183,10 +187,7 @@ struct Shapetraits< loop< Size > >
     static const unsigned int size = Size;
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::triangles(gl.fill));
-    }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::triangles( gl.fill ) ); }
 #endif
 
     static void update(shape_reader_base& reader, const ShapeWithId<loop< Size >>& s,const Eigen::Vector3d& offset)
@@ -448,10 +449,7 @@ struct Shapetraits< Eigen::Vector3d, How >
 
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return how_traits<How>::make_shape(gl);
-    }
+    static gl_shape_ptr_t make_shape(const gl_parameters& gl) { return how_traits<How>::make_shape( gl ); }
 #endif
 
     static void update(shape_reader_base& reader, const ShapeWithId<Eigen::Vector3d>& s,const Eigen::Vector3d& offset)
@@ -483,10 +481,7 @@ struct Shapetraits< axis >
 {
     static const unsigned int size = 6;
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::lines(gl.point_size));
-    }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::lines( gl.point_size ) ); }
 #endif
 
     static void update(shape_reader_base& reader, const ShapeWithId<axis>& s,const Eigen::Vector3d& offset)
