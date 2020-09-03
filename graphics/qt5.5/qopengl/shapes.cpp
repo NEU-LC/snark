@@ -7,13 +7,8 @@
 
 namespace snark { namespace graphics { namespace qopengl {
     
-shape::shape(GLenum mode):mode(mode),size_(0)
-{
-    
-}
-shape::~shape()
-{
-}
+shape::shape( GLenum mode, float weight ): mode( mode ), weight_( weight ), size_( 0 ) {}
+
 void shape::init()
 {
     initializeOpenGLFunctions();
@@ -33,7 +28,6 @@ void shape::init()
     vbo.release();
 }
 
-
 void shape::update( const vertex_t* data, std::size_t size )
 {
     QOpenGLVertexArrayObject::Binder binder( &vao );
@@ -43,37 +37,40 @@ void shape::update( const vertex_t* data, std::size_t size )
     vbo.release();
     size_ = size;
 }
+
+void shape::make_smooth()
+{
+    if( weight_ == 1 ) { return; }
+    glLineWidth( weight_ );
+    glEnable( GL_LINE_SMOOTH );
+}
+
 void shape::paint()
 {
     QOpenGLVertexArrayObject::Binder binder( &vao );
     glDrawArrays( mode, 0, size_ );
 }
-void shape::destroy()
-{
-    vbo.destroy();
-}
+
+void shape::destroy() { vbo.destroy(); }
+
+
 namespace shapes {
     
-point::point( float point_size ) : shape( GL_POINTS ), point_size( point_size ) {}
+point::point( float weight ) : shape( GL_POINTS, weight ) {}
 
 void point::paint()
 {
-    //disable GL_PROGRAM_POINT_SIZE
-    glHint( GL_POINT_SMOOTH_HINT, GL_NICEST );
-    if( point_size != 1 ) { glEnable( GL_POINT_SMOOTH ); } //circular point, otherwise draws square points
-    glPointSize( point_size );
+    glHint( GL_POINT_SMOOTH_HINT, GL_NICEST ); // disable GL_PROGRAM_POINT_SIZE
+    if( weight_ != 1 ) { glEnable( GL_POINT_SMOOTH ); } // circular point, otherwise draws square points
+    glPointSize( weight_ );
     shape::paint();
 }
 
-lines::lines( float line_width ) : shape( GL_LINES ),line_width( line_width ) {}
+lines::lines( float weight ) : shape( GL_LINES, weight ) {}
 
 void lines::paint()
 {
-    if( line_width != 1 )
-    {
-        glLineWidth( line_width );
-        glEnable( GL_LINE_SMOOTH );
-    }
+    shape::make_smooth();
     shape::paint();
 
 // //if not supported by vga
@@ -81,36 +78,29 @@ void lines::paint()
 // glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
 }
 
-line_strip::line_strip( float line_width ) : shape( GL_LINE_STRIP ),line_width( line_width ) {}
+line_strip::line_strip( float weight ) : shape( GL_LINE_STRIP, weight ) {}
 
 void line_strip::paint()
 {
-    if( line_width != 1 )
-    {
-        glLineWidth( line_width );
-        glEnable( GL_LINE_SMOOTH );
-    }
+    shape::make_smooth();
     shape::paint();
 }
 
-line_loop::line_loop(float line_width) : shape(GL_LINE_LOOP),line_width(line_width) { }
+line_loop::line_loop( float weight ) : shape( GL_LINE_LOOP, weight ) { }
 
 void line_loop::paint()
 {
-    if(line_width!=1)
-    {
-        glLineWidth(line_width);
-        glEnable(GL_LINE_SMOOTH);
-    }
+    shape::make_smooth();
     shape::paint();
 }
 
-triangles::triangles(bool fill) : shape(GL_TRIANGLES),fill(fill) { }
+triangles::triangles( bool fill ): shape( GL_TRIANGLES, 1. ), fill( fill ) {}
+
 void triangles::paint()
 {
-    glPolygonMode(GL_FRONT_AND_BACK,fill ? GL_FILL : GL_LINE);
+    glPolygonMode( GL_FRONT_AND_BACK,fill ? GL_FILL : GL_LINE );
     shape::paint();
-    glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 }
 
 } // namespace shapes {

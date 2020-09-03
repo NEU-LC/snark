@@ -190,7 +190,7 @@ static void usage()
         "\n                            note 1: just like for the cad models, the images will be pinned to the latest point in the stream"
         "\n                            note 2: specify id in fields to switch between multiple images, see examples below"
         "\n    --size <size>: render last <size> points (or other shapes)"
-        "\n                   default 2000000 for points, for 200000 for other shapes"
+        "\n                   default 2000000 for points, for 10000 for other shapes"
         "\n    --groups <csv>: include in group/s named in csv"
         "\n    --title <title>: title for source, defaults to filename"
         "\n                     if set to \"none\" don't show source in selection box"
@@ -444,35 +444,33 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
 {
     //snark::graphics::view::color_t
     QColor background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );
+    std::string color = options.value( "--color,--colour,-c", std::string() );
+    std::string label = options.value( "--label", std::string() );
     std::string shape = options.value< std::string >( "--shape", "point" );
+    bool show = true;
     snark::graphics::view::Reader::reader_parameters param( csv_options
                                                           , options.value( "--title", csv_options.filename )
                                                           , options.value( "--groups", std::string() )
-                                                          , options.value< std::size_t >( "--size", shape == "point" ? 2000000 : 200000 )
+                                                          , options.value( "--size", 0 ) // will be sorted out below based on shape
                                                           , options.value( "--point-size,--weight", 1u )
                                                           , options.exists( "--pass-through,--pass" )
                                                           , options.exists( "--fill" )
-                                                          , options.value<std::string>("--labels","")
-                                                          , options.value<double>("--length",1)
-                                                          , options.exists("--colour,--color,-c")
+                                                          , options.value( "--labels", std::string() )
+                                                          , options.value( "--length", 1. )
+                                                          , options.exists( "--colour,--color,-c" )
                                                           , options.value< unsigned int>( "--font-size", 16 ) );
-    std::string color = options.exists( "--colour" ) ? options.value< std::string >( "--colour" )
-                      : options.exists( "--color" ) ? options.value< std::string >( "--color" )
-                      : options.value< std::string >( "-c", "" );
-    std::string label = options.value( "--label", std::string() );
-    bool show = true;
-    if( properties != "" )
+    if( !properties.empty() )
     {
         comma::name_value::parser nameValue( "filename", ';', '=', false );
         param.options = nameValue.get( properties, csv_options );
         param.options.full_xpath = false;
         comma::name_value::map m( properties, "filename", ';', '=' );
+        shape = m.value( "shape", shape );
         param.size = m.value( "size", param.size );
         param.point_size = m.value( "point-size", param.point_size );
         param.point_size = m.value( "weight", param.point_size );
         param.title = m.value( "title", param.title.empty() ? param.options.filename : param.title );
         param.groups = m.value( "groups", param.groups );
-        shape = m.value( "shape", shape );
         if( m.exists( "colour" ) ) { color = m.value( "colour", color ); param.has_color=true; }
         else if( m.exists( "color" ) ) { color = m.value( "color", color ); param.has_color=true; }
         label = m.value( "label", label );
@@ -481,7 +479,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         param.fill = param.fill || m.exists( "fill" );
         param.labels=m.value("labels",param.labels);
         param.length=m.value("length",param.length);
-        if(param.options.has_field("id,scalar")) { param.has_color=true; }
+        if( param.options.has_field( "id,scalar" ) ) { param.has_color = true; }
         param.font_size=m.value("font-size",param.font_size);
     }
     if( param.pass_through )
@@ -489,6 +487,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         if( data_passed_through ) { COMMA_THROW( comma::exception, "only one input stream can be given \"pass-through\" option" ); }
         data_passed_through = true;
     }
+    if( param.size == 0 ) { param.size = shape == "point" ? 2000000 : 10000; }
     if( param.title == "none" ) { param.title = ""; }
     if( !show ) { std::cerr << "view-points: " << ( param.title.empty() ? param.options.filename : param.title )<< " will be hidden on startup; tick the box next to the name to make it visible" << std::endl; }
     snark::graphics::view::colored* colored = snark::graphics::view::color_from_string( color, param.options.fields, background_color );
@@ -520,7 +519,6 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     if( shape == "label" )
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z,label"; }
-        // TODO
     }
     else if( shape == "ellipse" )
     {

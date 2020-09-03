@@ -228,7 +228,7 @@ struct orientation // quick and dirty
 };
 
 template < std::size_t Size >
-struct Ellipse
+struct Ellipse // todo: quick and dirty, make size runtime variable
 {
     Eigen::Vector3d center;
     snark::graphics::view::orientation orientation;
@@ -244,20 +244,16 @@ struct Shapetraits< Ellipse< Size > >
     static const unsigned int size = Size;
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop(gl.point_size));
-    }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_loop( gl.point_size ) ); }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<Ellipse< Size >>& s,const Eigen::Vector3d& offset)
+    static void update( shape_reader_base& reader, const ShapeWithId< Ellipse < Size > >& s,const Eigen::Vector3d& offset )
     {
         Eigen::Vector3d c = s.shape.center - offset;
         const Eigen::Matrix3d& r = rotation_matrix::rotation( s.shape.orientation );
         static const double step = 3.14159265358979323846l * 2 / Size;
         double angle = 0;
-        // todo: use native opengl rotation and normals instead
-        for( std::size_t i = 0; i < Size; ++i, angle += step )
+        for( std::size_t i = 0; i < Size; ++i, angle += step ) // todo? use native opengl rotation and normals instead
         {
             Eigen::Vector3d v = r * Eigen::Vector3d( std::cos( angle ) * s.shape.major, std::sin( angle ) * s.shape.minor, 0 );
             Eigen::Vector3d p( v.x(), v.y(), v.z() );
@@ -270,10 +266,7 @@ struct Shapetraits< Ellipse< Size > >
     #if Qt3D_VERSION==1
     static void draw( QGLPainter* painter, unsigned int size, bool fill )
     {
-        for( unsigned int i = 0; i < size; i += Size )
-        {
-            painter->draw( QGL::LineLoop, Size, i );
-        }
+        for( unsigned int i = 0; i < size; i += Size ) { painter->draw( QGL::LineLoop, Size, i ); }
     }
     #endif
 
@@ -283,7 +276,7 @@ struct Shapetraits< Ellipse< Size > >
 };
 
 template < std::size_t Size >
-struct arc // todo: quick and dirty; generalize for ellipse; and maybe get rid of ellipse class
+struct arc // todo: quick and dirty; generalize for ellipse; and maybe get rid of ellipse class; todo: quick and dirty, make size runtime variable
 {
     Eigen::Vector3d begin;
     boost::optional< Eigen::Vector3d > middle;

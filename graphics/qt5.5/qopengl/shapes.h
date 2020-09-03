@@ -32,12 +32,11 @@ protected:
     QOpenGLBuffer vbo;
     friend class widget;
 public:
-    shape( GLenum mode = GL_POINTS );
-    virtual ~shape();
+    shape( GLenum mode, float weight ); // GL_POINTS
+    virtual ~shape() {}
     //this can only be called between begin_update and end_update
     //size: size of array e.g. update(v.data(),v.size())
-    virtual void update(const vertex_t* data, std::size_t size);    //write data to internal buffer
-public:
+    virtual void update( const vertex_t* data, std::size_t size );    //write data to internal buffer
     /// set true to draw, false to hide; call widget update to take effect
     bool visible;
 protected:
@@ -45,61 +44,46 @@ protected:
     virtual void init();    //create buffer
     virtual void paint();  //invoke glDraw*
     virtual void destroy();   //destroy buffer
+    void make_smooth();
     GLenum mode;
+    float weight_;
     std::size_t size_;
 private:
 };
 
 namespace shapes {
     
-class point : public shape
+struct point : public shape
 {
-public:
-    float point_size;
-    point( float point_size = 1 );
-protected:
+    point( float weight );
     void paint();
 };
 
 /// Two vertices per line. Vertices 0 and 1 are considered a line. Vertices 2 and 3 are considered a line, etc.
-class lines : public shape
+struct lines : public shape
 {
-public:
-    lines(float line_width=1);
-protected:
+    lines( float weight );
     void paint();
-private:
-    float line_width;
 };
 
 /// The adjacent vertices are considered lines. Vertice 0 and 1; then vertices 1 and 2, etc.
-class line_strip : public shape
+struct line_strip : public shape
 {
-public:
-    line_strip(float line_width=1);
-protected:
+    line_strip( float weight );
     void paint();
-private:
-    float line_width;
 };
 
 /// The adjacent vertices are considered lines (similar to line_strip) and then last vertice and first to close the loop
-class line_loop : public shape
+struct line_loop : public shape
 {
-public:
-    line_loop(float line_width=1);
-protected:
+    line_loop( float weight );
     void paint();
-private:
-    float line_width;
 };
 
-class triangles : public shape
+struct triangles : public shape
 {
-public:
     bool fill;
-    triangles(bool fill=false);
-protected:
+    triangles( bool fill = false );
     void paint();
 };
 
