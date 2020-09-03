@@ -2,8 +2,7 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_
+#pragma once
 
 #include <QCheckBox>
 #include <QMainWindow>
@@ -28,7 +27,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& controller );
+        MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& controller, const std::string& double_right_click_mode );
 
 private slots:
     void update_view();
@@ -66,5 +65,3 @@ class CheckBox : public QCheckBox // quick and dirty
 };
 
 } } } // namespace snark { namespace graphics { namespace view {
-
-#endif /*SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_MAINWINDOW_H_*/

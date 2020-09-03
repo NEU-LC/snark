@@ -8,19 +8,20 @@
 #else
 #include <QtGui>
 #endif
+#include <QFileDialog>
 #include <QFrame>
 #include <QLabel>
 #include <QLayout>
+#include <QShortcut>
+#include <comma/base/exception.h>
 #include "action.h"
 #include "main_window.h"
-#include <QFileDialog>
-#include <QShortcut>
 
 #include <fstream>
 
 namespace snark { namespace graphics { namespace view {
 
-MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& c )
+MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& c, const std::string& double_right_click_mode )
     : controller( c )
     , m_fileFrameVisible( controller->readers.size() > 1 )
 {
@@ -81,12 +82,12 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::g
 
     auto modeMenu = menuBar()->addMenu( "Modes" );
     action = new ToggleAction( "Block Mode", boost::bind( &snark::graphics::view::viewer_t::toggle_block_mode, viewer, _1 ) );
-    action->setShortcut( QKeySequence("Ctrl+B") );
-    action->setChecked( false );
+    action->setShortcut( QKeySequence( "Ctrl+B" ) );
+    action->setChecked( double_right_click_mode == "block" );
     modeMenu->addAction( action );
     action = new ToggleAction( "Label Mode", boost::bind( &snark::graphics::view::viewer_t::toggle_label_mode, viewer, _1 ) );
-    action->setShortcut( QKeySequence("Ctrl+L") );
-    action->setChecked( false );
+    action->setShortcut( QKeySequence( "Ctrl+L" ) );
+    action->setChecked( double_right_click_mode == "label" );
     modeMenu->addAction( action );
 
     viewer->setFocus();

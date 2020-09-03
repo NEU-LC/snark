@@ -37,6 +37,8 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --version"
         " --colour --color -c"
         " --exit-on-end-of-input"
+        " --double-right-click-mode"
+        " --click-mode"
         " --fill"
         " --font-size"
         " --label"
@@ -136,6 +138,7 @@ static void usage()
         "\n            default: stretched by elevation from cyan to magenta from 0:1"
         "\n"
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
+        "\n    --double-right-click-mode,--click-mode=<mode>; default: none; initial double right click mode; choices: 'block', 'label'"
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
         "\n    --fill: fill the shape; currently implemented only for triangles"
         "\n    --font-size=[<font-size>]: label font size; default: 16; also can be used with individual streams, e.g:"
@@ -670,8 +673,7 @@ int main( int argc, char** argv )
         if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
         comma::csv::options csv_options( argc, argv );
         csv_options.full_xpath = false;
-        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill"
-                , "-[^;].*" );
+        std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill", "-[^;].*" );
         snark::graphics::view::color_t  background_color( QColor( QString( options.value< std::string >( "--background-colour,--background-color", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > cameraposition;
@@ -698,10 +700,7 @@ int main( int argc, char** argv )
                 else
                 {
                     std::vector< std::string > vec = comma::split( v[i], '=' );
-                    if( vec.size() == 2 && vec[0] == "fov" )
-                    {
-                        camera_options.field_of_view = boost::lexical_cast< double >( vec[1] );
-                    }
+                    if( vec.size() == 2 && vec[0] == "fov" ) { camera_options.field_of_view = boost::lexical_cast< double >( vec[1] ); }
                 }
             }
         }
@@ -782,7 +781,9 @@ int main( int argc, char** argv )
             controller->inhibit_stdout();
             if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
-        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller );
+        std::string double_right_click_mode = options.value< std::string >( "--double-right-click-mode,--click-mode", "" );
+        if( !double_right_click_mode.empty() && double_right_click_mode != "none" && double_right_click_mode != "block" && double_right_click_mode != "label" ) { std::cerr << "view-points: expected double right click mode; got: '" << double_right_click_mode << "'" << std::endl; return 1; }
+        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller, double_right_click_mode );
         main_window.show();
         application.exec();
         return 0;       // We never actually reach this line because we raise SIGINT when closing

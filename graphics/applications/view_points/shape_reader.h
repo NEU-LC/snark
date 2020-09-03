@@ -42,8 +42,8 @@ protected:
     void update_shape();
     void update_labels();
 private:
-    std::shared_ptr<snark::graphics::qopengl::shape> shape;
-    std::shared_ptr<snark::graphics::qopengl::label_shader> label_shader;
+    std::shared_ptr< snark::graphics::qopengl::shape > shape;
+    std::shared_ptr< snark::graphics::qopengl::label_shader > label_shader;
 #endif
 
     private:
@@ -57,11 +57,11 @@ private:
 };
 #if Qt3D_VERSION>=2
 template< typename S, typename How >
-inline void ShapeReader< S, How >::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
+inline void ShapeReader< S, How >::add_shaders( snark::graphics::qopengl::viewer_base* viewer_base )
 {
-    shape=Shapetraits< S, How >::make_shape(gl_parameters(point_size,fill));
+    shape.reset( Shapetraits< S, How >::make_shape( gl_parameters( point_size, fill ) ) );
     viewer_base->add_shape(shape);
-    label_shader=std::shared_ptr<snark::graphics::qopengl::label_shader>(new snark::graphics::qopengl::label_shader());
+    label_shader = std::shared_ptr< snark::graphics::qopengl::label_shader >( new snark::graphics::qopengl::label_shader() );
     viewer_base->add_label_shader(label_shader);
 }
 template< typename S, typename How >

@@ -28,14 +28,16 @@
 namespace snark { namespace graphics { namespace view {
 
 #if Qt3D_VERSION>=2
-typedef std::shared_ptr<snark::graphics::qopengl::shape> gl_shape_ptr_t;
+    
+typedef snark::graphics::qopengl::shape shape_t;
+
 struct gl_parameters
 {
-    gl_parameters(unsigned point_size,bool fill) : point_size(point_size),fill(fill) { }
-    unsigned point_size;
+    gl_parameters( unsigned weight, bool fill ) : weight( weight ), fill( fill ) {}
+    unsigned weight;
     bool fill;
 };
-//static gl_shape_ptr_t make_shape(const gl_parameters& gl)
+
 #endif
 
 namespace detail {
@@ -66,13 +68,13 @@ struct how_t { struct points; struct lines; struct loop; }; // quick and dirty; 
 template < class S, typename How = how_t::points >
 struct Shapetraits {}; // quick and dirty
 
-template<>
+template <>
 struct Shapetraits< snark::math::closed_interval< double, 3 > >
 {
     static const unsigned int size = 24; // quick and dirty, really wasteful on memory; todo! specialised shape class for boxes
         
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::lines( gl.point_size ) ); }
+    static shape_t* make_shape( const gl_parameters& gl ) { return new snark::graphics::qopengl::shapes::lines( gl.weight ); }
 #endif
 
     static void update( shape_reader_base& reader, const ShapeWithId< snark::math::closed_interval< double, 3 > >& s, const Eigen::Vector3d& offset )
@@ -147,13 +149,10 @@ struct Shapetraits< std::pair< Eigen::Vector3d, Eigen::Vector3d > >
     static const unsigned int size = 2;
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::lines(gl.point_size));
-    }
+    static shape_t* make_shape( const gl_parameters& gl ) { return new snark::graphics::qopengl::shapes::lines( gl.weight ); }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<std::pair< Eigen::Vector3d, Eigen::Vector3d >>& s,const Eigen::Vector3d& offset)
+    static void update( shape_reader_base& reader, const ShapeWithId< std::pair< Eigen::Vector3d, Eigen::Vector3d > >& s, const Eigen::Vector3d& offset )
     {
         Eigen::Vector3f first = ( s.shape.first - offset ).cast< float >();
         Eigen::Vector3f second = ( s.shape.second - offset ).cast< float >();
@@ -186,10 +185,13 @@ struct Shapetraits< loop< Size > >
     static const unsigned int size = Size;
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::triangles( gl.fill ) ); }
+    static shape_t* make_shape( const gl_parameters& gl )
+    {
+        if( Size == 3 || gl.fill ) { return new snark::graphics::qopengl::shapes::triangles( gl.fill ); } else { return new snark::graphics::qopengl::shapes::line_loop( gl.weight, Size ); }
+    }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<loop< Size >>& s,const Eigen::Vector3d& offset)
+    static void update(shape_reader_base& reader, const ShapeWithId< loop< Size > >& s,const Eigen::Vector3d& offset)
     {
         for( unsigned int i = 0; i < Size; ++i )
         {
@@ -244,7 +246,7 @@ struct Shapetraits< Ellipse< Size > >
     static const unsigned int size = Size;
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_loop( gl.point_size, Size ) ); }
+    static shape_t* make_shape( const gl_parameters& gl ) { return new snark::graphics::qopengl::shapes::line_loop( gl.weight, Size ); }
 #endif
 
     static void update( shape_reader_base& reader, const ShapeWithId< Ellipse < Size > >& s,const Eigen::Vector3d& offset )
@@ -293,7 +295,7 @@ struct Shapetraits< arc< Size > >
     static_assert( Size % 2 == 0, "expected even size" ); // quick and dirty: for simplicity support only only even sizes
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_strip( gl.point_size, Size ) ); }
+    static shape_t* make_shape( const gl_parameters& gl ) { return new snark::graphics::qopengl::shapes::line_strip( gl.weight, Size ); }
 #endif
 
     static void update(shape_reader_base& reader, const ShapeWithId<arc< Size >>& s,const Eigen::Vector3d& offset)
@@ -400,24 +402,21 @@ template <> struct draw_traits_< how_t::lines >
 };
 #elif Qt3D_VERSION>=2
 
-template<typename T> struct how_traits
-{
-//     static gl_shape_ptr_t make_shape(const gl_parameters& gl) { return gl_shape_ptr_t(); }
-};
+template<typename T> struct how_traits {};
 
 template<> struct how_traits< how_t::points >
 {
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::point( gl.point_size ) ); }
+    static shape_t* make_shape( const gl_parameters& gl ) { return new snark::graphics::qopengl::shapes::point( gl.weight ); }
 };
 
 template<> struct how_traits< how_t::loop >
 {
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_loop( gl.point_size ) ); }
+    static shape_t* make_shape( const gl_parameters& gl ) { return new snark::graphics::qopengl::shapes::line_loop( gl.weight ); }
 };
 
 template <> struct how_traits< how_t::lines >
 {
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_strip( gl.point_size ) ); }
+    static shape_t* make_shape( const gl_parameters& gl ) { return new snark::graphics::qopengl::shapes::line_strip( gl.weight ); }
 };
 
 #endif
@@ -432,10 +431,10 @@ struct Shapetraits< Eigen::Vector3d, How >
 
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return how_traits<How>::make_shape( gl ); }
+    static shape_t* make_shape( const gl_parameters& gl ) { return how_traits< How >::make_shape( gl ); }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId<Eigen::Vector3d>& s,const Eigen::Vector3d& offset)
+    static void update( shape_reader_base& reader, const ShapeWithId< Eigen::Vector3d >& s,const Eigen::Vector3d& offset )
     {
         Eigen::Vector3d point = s.shape - offset;
         reader.add_vertex( vertex_t( point, s.color), s.block );
@@ -464,7 +463,7 @@ struct Shapetraits< axis >
 {
     static const unsigned int size = 6;
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::lines( gl.point_size ) ); }
+    static shape_t* make_shape( const gl_parameters& gl ) { return new snark::graphics::qopengl::shapes::lines( gl.weight ); }
 #endif
 
     static void update(shape_reader_base& reader, const ShapeWithId<axis>& s,const Eigen::Vector3d& offset)
@@ -499,10 +498,7 @@ struct Shapetraits< axis >
     }
 
     #if Qt3D_VERSION==1
-    static void draw( QGLPainter* painter, unsigned int size, bool fill )
-    {
-        painter->draw(QGL::Lines, size);
-    }
+    static void draw( QGLPainter* painter, unsigned int size, bool fill ) { painter->draw( QGL::Lines, size ); }
     #endif
 
     static const Eigen::Vector3d& somePoint( const axis& axis ) { return axis.position; }
@@ -655,6 +651,5 @@ struct traits< snark::graphics::view::axis >
         v.apply( "orientation", p.orientation );
     }
 };
-
 
 } } // namespace comma { namespace visiting {
