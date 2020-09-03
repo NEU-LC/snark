@@ -56,7 +56,7 @@ class point : public shape
 {
 public:
     float point_size;
-    point(float point_size=1);
+    point( float point_size = 1 );
 protected:
     void paint();
 };

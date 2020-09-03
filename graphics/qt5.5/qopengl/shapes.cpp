@@ -36,6 +36,7 @@ void shape::init()
 
 void shape::update( const vertex_t* data, std::size_t size )
 {
+    std::cerr << "--> shapes: a: update: size: " << size << std::endl;
     QOpenGLVertexArrayObject::Binder binder( &vao );
     vbo.bind();
     vbo.allocate( size * sizeof( vertex_t ) );
@@ -69,11 +70,10 @@ lines::lines( float line_width ) : shape( GL_LINES ),line_width( line_width ) {}
 
 void lines::paint()
 {
-    if(line_width!=1)
+    if( line_width != 1 )
     {
-//         std::cerr<<"lines::paint"
-        glLineWidth(line_width);
-        glEnable(GL_LINE_SMOOTH);
+        glLineWidth( line_width );
+        glEnable( GL_LINE_SMOOTH );
     }
     shape::paint();
 

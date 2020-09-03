@@ -69,13 +69,13 @@ struct Shapetraits {}; // quick and dirty
 template<>
 struct Shapetraits< snark::math::closed_interval< double, 3 > >
 {
-    static const unsigned int size = 8;
+    static const unsigned int size = 24; // quick and dirty, really wasteful on memory; todo! specialised shape class for boxes
         
 #if Qt3D_VERSION>=2
     static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::lines( gl.point_size ) ); }
 #endif
 
-    static void update(shape_reader_base& reader, const ShapeWithId< snark::math::closed_interval< double, 3 > >& s, const Eigen::Vector3d& offset )
+    static void update( shape_reader_base& reader, const ShapeWithId< snark::math::closed_interval< double, 3 > >& s, const Eigen::Vector3d& offset )
     {
         Eigen::Vector3f min = ( s.shape.min() - offset ).cast< float >();
         Eigen::Vector3f max = ( s.shape.max() - offset ).cast< float >();
@@ -92,31 +92,33 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
         #else
         reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
-        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
+        
         reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
         reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
+        
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( min.x(), max.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), min.y(), max.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), min.z() ), s.color ), s.block );
+        reader.add_vertex( vertex_t( Eigen::Vector3f( max.x(), max.y(), max.z() ), s.color ), s.block );
         #endif
 
-        reader.extent_hull(snark::math::closed_interval< float, 3 >( min, max ));
+        reader.extent_hull (snark::math::closed_interval< float, 3 >( min, max ) );
     }
 
     #if Qt3D_VERSION==1
@@ -125,11 +127,8 @@ struct Shapetraits< snark::math::closed_interval< double, 3 > >
         const boost::array< unsigned short, 8  > baseIndices = { { 0, 4, 1, 5, 2, 6, 3, 7 } };
         for( unsigned int i = 0; i < size; i += 8 )
         {
-            // 2 line loops
             painter->draw( QGL::LineLoop, 4, i );
             painter->draw( QGL::LineLoop, 4, i + 4 );
-
-            // 4 lines
             boost::array< unsigned short, 8  > lineIndices = baseIndices;
             for( unsigned int k = 0; k < lineIndices.size(); ++k ) { lineIndices[k] += i; }
             painter->draw( QGL::Lines, &lineIndices[0], 8 );

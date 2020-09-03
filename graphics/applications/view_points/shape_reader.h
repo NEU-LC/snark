@@ -1,37 +1,8 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 
 /// @author Vsevolod Vlaskine, Cedric Wohlleber
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPE_READER_H_
-#define SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPE_READER_H_
+#pragma once
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -86,7 +57,7 @@ private:
 };
 #if Qt3D_VERSION>=2
 template< typename S, typename How >
-void ShapeReader< S, How >::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
+inline void ShapeReader< S, How >::add_shaders(snark::graphics::qopengl::viewer_base* viewer_base)
 {
     shape=Shapetraits< S, How >::make_shape(gl_parameters(point_size,fill));
     viewer_base->add_shape(shape);
@@ -94,23 +65,21 @@ void ShapeReader< S, How >::add_shaders(snark::graphics::qopengl::viewer_base* v
     viewer_base->add_label_shader(label_shader);
 }
 template< typename S, typename How >
-void ShapeReader< S, How >::update_view()
+inline void ShapeReader< S, How >::update_view()
 {
     update_shape();
     update_labels();
 }
 template< typename S, typename How >
-void ShapeReader< S, How >::update_shape()
+inline void ShapeReader< S, How >::update_shape()
 {
-    if(shape)
-    {
-        shape->visible=m_show;
-        shape->update(buffer_.values().data(),buffer_.size());
-    }
+    if( !shape ) { return; }
+    shape->visible = m_show;
+    shape->update( buffer_.values().data(), buffer_.size() );
 }
 
 template< typename S, typename How >
-void ShapeReader< S, How >::update_labels()
+inline void ShapeReader< S, How >::update_labels()
 {
     label_shader->clear();
     label_shader->visible=m_show;
@@ -119,21 +88,19 @@ void ShapeReader< S, How >::update_labels()
     {
         if(!labels_.values()[i].text.empty())
         {
-            label_shader->labels.push_back(std::shared_ptr<snark::graphics::qopengl::label>(
-                new snark::graphics::qopengl::text_label( labels_.values()[i].position - m_offset, labels_.values()[i].text, labels_.values()[i].color, this->font_size )));
+            label_shader->labels.push_back(std::shared_ptr<snark::graphics::qopengl::label>( new snark::graphics::qopengl::text_label( labels_.values()[i].position - m_offset, labels_.values()[i].text, labels_.values()[i].color, this->font_size ) ) );
         }
     }
     if( !m_label.empty() )
     {
-        label_shader->labels.push_back(std::shared_ptr<snark::graphics::qopengl::label>(
-                new snark::graphics::qopengl::text_label( m_translation - m_offset, m_label, m_color, this->font_size )));
+        label_shader->labels.push_back(std::shared_ptr<snark::graphics::qopengl::label>( new snark::graphics::qopengl::text_label( m_translation - m_offset, m_label, m_color, this->font_size ) ) );
     }
     label_shader->update();
 }
 #endif
 
 template< typename S, typename How >
-ShapeReader< S, How >::ShapeReader( const reader_parameters& params, colored* c, const std::string& label, const S& sample  )
+inline ShapeReader< S, How >::ShapeReader( const reader_parameters& params, colored* c, const std::string& label, const S& sample  )
     : shape_reader_base( params, c, label, Shapetraits< S, How >::size )
     , sample_( sample )
 {
@@ -249,5 +216,3 @@ inline bool ShapeReader< S, How >::read_once()
 }
 
 } } } // namespace snark { namespace graphics { namespace view {
-
-#endif // SNARK_GRAPHICS_APPLICATIONS_VIEWPOINTS_SHAPE_READER_H_
