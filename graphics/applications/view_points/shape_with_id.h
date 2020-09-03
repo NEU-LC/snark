@@ -244,7 +244,7 @@ struct Shapetraits< Ellipse< Size > >
     static const unsigned int size = Size;
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_loop( gl.point_size ) ); }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_loop( gl.point_size, Size ) ); }
 #endif
 
     static void update( shape_reader_base& reader, const ShapeWithId< Ellipse < Size > >& s,const Eigen::Vector3d& offset )
@@ -293,10 +293,7 @@ struct Shapetraits< arc< Size > >
     static_assert( Size % 2 == 0, "expected even size" ); // quick and dirty: for simplicity support only only even sizes
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip(gl.point_size));
-    }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_strip( gl.point_size, Size ) ); }
 #endif
 
     static void update(shape_reader_base& reader, const ShapeWithId<arc< Size >>& s,const Eigen::Vector3d& offset)
@@ -407,26 +404,20 @@ template<typename T> struct how_traits
 {
 //     static gl_shape_ptr_t make_shape(const gl_parameters& gl) { return gl_shape_ptr_t(); }
 };
-template<> struct how_traits<how_t::points>
+
+template<> struct how_traits< how_t::points >
 {
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::point(gl.point_size));
-    }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::point( gl.point_size ) ); }
 };
-template<> struct how_traits<how_t::loop>
+
+template<> struct how_traits< how_t::loop >
 {
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_loop(gl.point_size));
-    }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_loop( gl.point_size ) ); }
 };
+
 template <> struct how_traits< how_t::lines >
 {
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl)
-    {
-        return gl_shape_ptr_t(new snark::graphics::qopengl::shapes::line_strip(gl.point_size));
-    }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return gl_shape_ptr_t( new snark::graphics::qopengl::shapes::line_strip( gl.point_size ) ); }
 };
 
 #endif
@@ -441,7 +432,7 @@ struct Shapetraits< Eigen::Vector3d, How >
 
     
 #if Qt3D_VERSION>=2
-    static gl_shape_ptr_t make_shape(const gl_parameters& gl) { return how_traits<How>::make_shape( gl ); }
+    static gl_shape_ptr_t make_shape( const gl_parameters& gl ) { return how_traits<How>::make_shape( gl ); }
 #endif
 
     static void update(shape_reader_base& reader, const ShapeWithId<Eigen::Vector3d>& s,const Eigen::Vector3d& offset)

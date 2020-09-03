@@ -7,7 +7,7 @@
 
 namespace snark { namespace graphics { namespace qopengl {
     
-shape::shape( GLenum mode, float weight ): mode( mode ), weight_( weight ), size_( 0 ) {}
+shape::shape( GLenum mode, float weight, unsigned int size ): mode( mode ), weight_( weight ), size_( size ), vertex_count_( 0 ) {}
 
 void shape::init()
 {
@@ -28,14 +28,14 @@ void shape::init()
     vbo.release();
 }
 
-void shape::update( const vertex_t* data, std::size_t size )
+void shape::update( const vertex_t* vertices, std::size_t vertex_count )
 {
     QOpenGLVertexArrayObject::Binder binder( &vao );
     vbo.bind();
-    vbo.allocate( size * sizeof( vertex_t ) );
-    vbo.write( 0, data, size * sizeof( vertex_t ) );
+    vbo.allocate( vertex_count * sizeof( vertex_t ) );
+    vbo.write( 0, vertices, vertex_count * sizeof( vertex_t ) );
     vbo.release();
-    size_ = size;
+    vertex_count_ = vertex_count;
 }
 
 void shape::make_smooth()
@@ -48,11 +48,17 @@ void shape::make_smooth()
 void shape::paint()
 {
     QOpenGLVertexArrayObject::Binder binder( &vao );
-    glDrawArrays( mode, 0, size_ );
+    if( size_ == 1 )
+    {
+        glDrawArrays( mode, 0, vertex_count_ );
+    }
+    else
+    {
+        for( unsigned int i = 0; i < vertex_count_; i += size_ ) { glDrawArrays( mode, i, size_ ); } // quick and dirty
+    }
 }
 
 void shape::destroy() { vbo.destroy(); }
-
 
 namespace shapes {
     
@@ -78,7 +84,7 @@ void lines::paint()
 // glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, lineWidthRange);
 }
 
-line_strip::line_strip( float weight ) : shape( GL_LINE_STRIP, weight ) {}
+line_strip::line_strip( float weight, unsigned int size ) : shape( GL_LINE_STRIP, weight, size ) {}
 
 void line_strip::paint()
 {
@@ -86,7 +92,7 @@ void line_strip::paint()
     shape::paint();
 }
 
-line_loop::line_loop( float weight ) : shape( GL_LINE_LOOP, weight ) { }
+line_loop::line_loop( float weight, unsigned int size ) : shape( GL_LINE_LOOP, weight, size ) { }
 
 void line_loop::paint()
 {
