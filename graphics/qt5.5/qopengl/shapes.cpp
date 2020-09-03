@@ -36,7 +36,6 @@ void shape::init()
 
 void shape::update( const vertex_t* data, std::size_t size )
 {
-    std::cerr << "--> shapes: a: update: size: " << size << std::endl;
     QOpenGLVertexArrayObject::Binder binder( &vao );
     vbo.bind();
     vbo.allocate( size * sizeof( vertex_t ) );
