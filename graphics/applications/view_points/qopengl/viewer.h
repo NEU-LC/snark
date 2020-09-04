@@ -35,17 +35,14 @@ public:
     bool scene_center_fixed;
     bool stdout_allowed;
     bool output_camera_config;
-    
-    struct modes { enum values { none, block, label }; };
-    modes::values mode;
-    comma::int32 block;
-    std::string label;
+    snark::graphics::view::click_mode click_mode;
 
     viewer( controller_base* handler
           , const color_t& background_color
           , const qt3d::camera_options& camera_options
           , const QVector3D& scene_center
           , double scene_radius
+          , const snark::graphics::view::click_mode& click_mode
           , QMainWindow* parent = nullptr );
     
     void reset_handler(controller_base* h = nullptr);

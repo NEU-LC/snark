@@ -25,6 +25,7 @@ viewer::viewer( controller_base* handler
               , const qt3d::camera_options& camera_options
               , const QVector3D& arg_scene_center
               , double arg_scene_radius
+              , const snark::graphics::view::click_mode& click_mode
               , QMainWindow* parent )
     : snark::graphics::qopengl::widget( background_color, camera_options, parent )
     , scene_center( arg_scene_center )
@@ -32,8 +33,7 @@ viewer::viewer( controller_base* handler
     , scene_radius_fixed( false )
     , scene_center_fixed( false )
     , stdout_allowed( true )
-    , mode( modes::none )
-    , block( 0 )
+    , click_mode( click_mode )
 {
     scene_radius = arg_scene_radius;
     QTimer* timer = new QTimer( this );
@@ -50,28 +50,11 @@ void viewer::on_timeout() { if( handler != nullptr ) { handler->tick(); } }
 void viewer::paintGL()
 {
     widget::paintGL();
-    if( output_camera_config && stdout_allowed ) { write_camera_config(std::cout); }
-    switch( mode )
-    {
-        case modes::block:
-        {
-            QPainter painter( this );
-            painter.setPen( Qt::gray );
-            painter.setFont( QFont( "Arial", 10 ) );
-            painter.drawText( rect(), Qt::AlignLeft | Qt::AlignBottom, QString("block: %1").arg( block ) );
-            break;
-        }
-        case modes::label:
-        {
-            QPainter painter( this );
-            painter.setPen( Qt::gray );
-            painter.setFont( QFont( "Arial", 10 ) );
-            painter.drawText( rect(), Qt::AlignLeft | Qt::AlignBottom, QString("label: %1").arg( '"' + QString::fromStdString( label ) + '"' ) );
-            break;
-        }
-        case modes::none:
-            break;
-    }
+    if( output_camera_config && stdout_allowed ) { write_camera_config( std::cout ); }
+    QPainter painter( this );
+    painter.setPen( Qt::gray );
+    painter.setFont( QFont( "Arial", 10 ) );
+    painter.drawText( rect(), Qt::AlignLeft | Qt::AlignBottom, QString::fromStdString( click_mode.double_right_click.to_info_string() ) );
 }
 
 void viewer::double_right_click(const boost::optional< QVector3D >& point)
@@ -81,69 +64,14 @@ void viewer::double_right_click(const boost::optional< QVector3D >& point)
     Eigen::Vector3d p( point->x(), point->y(), point->z() );
     if( !m_offset ) { std::cerr << "view-points: warning: offset is not defined yet, wait until it is found first" << std::endl; return; }
     p += *m_offset;
-    std::cout << std::setprecision( 16 ) << p.x() << "," << p.y() << "," << p.z();
-    switch( mode )
-    {
-        case modes::block: std::cout << ',' << block; break;
-        case modes::label: std::cout << ",\"" << label << "\""; break;
-        case modes::none: break;
-    }
-    std::cout << std::endl;
+    std::cout << std::setprecision( 16 ) << p.x() << "," << p.y() << "," << p.z() << click_mode.double_right_click.to_output_string() << std::endl;
 }
 
-void viewer::keyPressEvent( QKeyEvent *event )
-{
-    switch( mode )
-    {
-        case modes::block:
-            if( event->modifiers() == Qt::ControlModifier || event->modifiers() == ( Qt::ControlModifier | Qt::ShiftModifier ) )
-            {
-                switch( event->key() )
-                {
-                    case Qt::Key_Plus: ++block; break;
-                    case Qt::Key_Minus: --block; break;
-                    case Qt::Key_C: block = 0; break;
-                    default: break;
-                }
-            }
-            else if( event->modifiers() == Qt::NoModifier )
-            {
-                const std::string& s = event->text().toStdString();
-                switch( event->key() )
-                {
-                    case Qt::Key_Minus: block = -block; break;
-                    case Qt::Key_Backspace: block = block / 10; break;
-                    default: if( '0' <= s[0] && s[0] <= '9' ) { block = block * 10 + ( s[0] - '0' ) * ( block < 0 ? -1 : 1 ); } break;
-                }
-            }
-            break;
-        case modes::label:
-            if( event->modifiers() == Qt::ControlModifier )
-            {
-                switch( event->key() )
-                {
-                    case Qt::Key_C: label = ""; break;
-                    default: break;
-                }
-            }
-            else if( event->modifiers() == Qt::NoModifier || event->modifiers() == Qt::ShiftModifier )
-            {
-                switch( event->key() )
-                {
-                    case Qt::Key_Backspace: if( !label.empty() ) { label.pop_back(); } break;
-                    case Qt::Key_Comma: label += "\\,"; break;
-                    case Qt::Key_QuoteDbl: label += "\\\""; break;
-                    default: if( event->text()[0].isPrint() ) { label += event->text().toStdString(); } break;
-                }
-            }
-            break;
-        case modes::none:
-            break;
-    }
-}
-void viewer::toggle_block_mode( bool flag ) { mode = flag ? modes::block : mode == modes::block ? modes::none : mode; }
+void viewer::keyPressEvent( QKeyEvent *event ) { click_mode.double_right_click.on_key_press( event ); }
 
-void viewer::toggle_label_mode( bool flag ) { mode = flag ? modes::label : mode == modes::label ? modes::none : mode; }
+void viewer::toggle_block_mode( bool flag ) { click_mode.double_right_click.toggle( snark::graphics::view::click_mode::double_right_click_t::modes::block, flag ); }
+
+void viewer::toggle_label_mode( bool flag ) { click_mode.double_right_click.toggle( snark::graphics::view::click_mode::double_right_click_t::modes::label, flag ); }
 
 void viewer::update_view(const QVector3D& min, const QVector3D& max)
 {

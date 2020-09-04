@@ -103,12 +103,14 @@ static void usage()
 
     static const char * const usage_options =
         "\ninput data options"
+        qtold_unsupported_marker_start
         "\n    --click-mode=<mode>[;<options>]; click mode, currently only double right click behaviour is configurable"
         "\n        <mode>: mode; default: none; choices: 'block', 'label'"
         "\n        <options>: semicolon-separated options"
         "\n            labels=<choices>: comma-separated label values, first element will be the initial label value; default: any"
         "\n            blocks=<choices>: comma-separated block values, first element will be the initial block value; default: any"
         "\n        example: --click-mode='label;labels:hello,world'"
+        qtold_unsupported_marker_end
         "\n    --colour,--color,-c <how>: how to colour points"
         "\n        <how>:"
         "\n            colour maps"
@@ -688,13 +690,9 @@ int main( int argc, char** argv )
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill", "-[^;].*" );
         snark::graphics::view::color_t  background_color( QColor( QString( options.value< std::string >( "--background-colour,--background-color", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
-        boost::optional< Eigen::Vector3d > cameraposition;
-        boost::optional< Eigen::Vector3d > cameraorientation;
-        snark::graphics::qt3d::camera_options camera_options
-            ( options.exists( "--orthographic" )
-            , options.value< double >( "--fov", 45 )
-            , options.exists( "--z-is-up" ));
-
+        boost::optional< Eigen::Vector3d > camera_position;
+        boost::optional< Eigen::Vector3d > camera_orientation;
+        snark::graphics::qt3d::camera_options camera_options( options.exists( "--orthographic" ), options.value< double >( "--fov", 45 ), options.exists( "--z-is-up" ) );
         if( options.exists( "--camera" ) )
         {
             std::string camera = options.value< std::string >( "--camera" );
@@ -716,7 +714,6 @@ int main( int argc, char** argv )
                 }
             }
         }
-
         bool camera_position_from_stdin = false;
         QApplication application( argc, argv );
         if( options.exists( "--camera-position" ) )
@@ -727,11 +724,11 @@ int main( int argc, char** argv )
             try
             {
                 pose = parser.get< snark::graphics::view::point_with_orientation >( position );
-                cameraposition = pose.point;
-                cameraorientation = pose.orientation;
+                camera_position = pose.point;
+                camera_orientation = pose.orientation;
             }
             catch( ... ) {}
-            if( !cameraposition )
+            if( !camera_position )
             {
                 comma::name_value::parser parser( "filename", ';', '=', false );
                 try
@@ -745,62 +742,55 @@ int main( int argc, char** argv )
                 catch( ... ) {}
             }
         }
-#if Qt3D_VERSION==1
+        #if Qt3D_VERSION==1
         boost::optional< double > scene_radius = options.optional< double >( "--scene-radius,--radius" );
-        boost::optional< Eigen::Vector3d > scene_center;
-        boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
-        if( s ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',' ).get( *s ); }
-#endif
-        snark::graphics::view::click_mode click_mode( options.value< std::string >( "--click-mode", "none" ) );
-#if Qt3D_VERSION==1
+        #endif
+        QVector3D scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( options.value< std::string >( "--scene-center,--center", "0,0,0" ) );
+        #if Qt3D_VERSION==1
         std::shared_ptr< snark::graphics::view::Viewer > controller( new snark::graphics::view::Viewer( background_color
                                                                                                       , camera_options
                                                                                                       , options.exists( "--exit-on-end-of-input" )
                                                                                                       , camera_csv
-                                                                                                      , cameraposition
-                                                                                                      , cameraorientation
+                                                                                                      , camera_position
+                                                                                                      , camera_orientation
                                                                                                       , options.value< std::string >( "--camera-config", "" )
                                                                                                       , scene_center
                                                                                                       , scene_radius
                                                                                                       , options.exists( "--output-camera-config,--output-camera" ) ) );
 
-#elif Qt3D_VERSION>=2
-        double scene_radius=options.value< double >( "--scene-radius,--radius", 10 );
-        QVector3D scene_center( 0, 0, 0 );
-        boost::optional< std::string > s = options.optional< std::string >( "--scene-center,--center" );
-        if( s ) { scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( *s ); }
+        #elif Qt3D_VERSION>=2
+        double scene_radius = options.value< double >( "--scene-radius,--radius", 10 ); // todo: do something with the magic default
         std::shared_ptr< snark::graphics::view::controller > controller( new snark::graphics::view::controller( background_color
                                                                                                               , camera_options
                                                                                                               , options.exists( "--exit-on-end-of-input" )
                                                                                                               , camera_csv
-                                                                                                              , cameraposition
-                                                                                                              , cameraorientation
+                                                                                                              , camera_position
+                                                                                                              , camera_orientation
                                                                                                               , options.value< std::string >( "--camera-config", "" )
                                                                                                               , scene_center
                                                                                                               , scene_radius
-                                                                                                              , options.exists( "--output-camera-config,--output-camera" ) ) );
+                                                                                                              , options.exists( "--output-camera-config,--output-camera" )
+                                                                                                              , snark::graphics::view::click_mode( options.value< std::string >( "--click-mode", "none" ) ) ) );
         controller->viewer->scene_radius_fixed = options.exists( "--scene-radius,--radius" );
         controller->viewer->scene_center_fixed = options.exists( "--scene-center,--center" );
-#else
-#error Qt3D_VERSION must be 1 or 2
-#endif
+        #endif
         bool stdin_explicitly_defined = false;
         for( unsigned int i = 0; i < properties.size(); ++i )
         {
             if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
-            controller->add(make_reader( options, csv_options, properties[i] ));
+            controller->add( make_reader( options, csv_options, properties[i] ) );
         }
         if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
         {
             csv_options.filename = "-";
-            controller->add(make_reader( options, csv_options ));
+            controller->add( make_reader( options, csv_options ) );
         }
         if( data_passed_through )
         {
             controller->inhibit_stdout();
             if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
-        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller, click_mode );
+        snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller );
         main_window.show();
         application.exec();
         return 0;       // We never actually reach this line because we raise SIGINT when closing

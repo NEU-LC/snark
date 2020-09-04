@@ -1,31 +1,5 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2016 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2020 Vsevolod Vlaskine
 
 #include "controller.h"
 #include "reader.h"
@@ -47,8 +21,7 @@ namespace snark { namespace graphics { namespace view {
 void controller::add(std::unique_ptr<snark::graphics::view::Reader>&& reader)
 {
 #if Qt3D_VERSION>=2
-    //TODO rename add_shaders to init
-    reader->add_shaders( viewer.get() );
+    reader->add_shaders( viewer.get() ); //TODO rename add_shaders to init
 #endif
     readers.push_back( std::move( reader ) );
 }
@@ -62,13 +35,14 @@ void controller::init()
 controller::controller( const color_t& background_color
                       , const qt3d::camera_options& camera_options
                       , bool exit_on_end_of_input
-                      , boost::optional< comma::csv::options > camera_csv
-                      , boost::optional< Eigen::Vector3d > cameraposition
-                      , boost::optional< Eigen::Vector3d > cameraorientation
+                      , const boost::optional< comma::csv::options >& camera_csv
+                      , const boost::optional< Eigen::Vector3d >& cameraposition
+                      , const boost::optional< Eigen::Vector3d >& cameraorientation
                       , const std::string& camera_config_file_name
                       , const QVector3D& scene_center
                       , double scene_radius
-                      , bool output_camera_config )
+                      , bool output_camera_config
+                      , const snark::graphics::view::click_mode& click_mode )
     : m_lookAt( false )
     , m_cameraposition( cameraposition )
     , m_cameraorientation( cameraorientation )
@@ -78,37 +52,36 @@ controller::controller( const color_t& background_color
 //     viewer=new viewer_t(background_color, camera_options, scene_center, scene_radius,parent);
     COMMA_THROW( comma::exception," not implemented ");
 #elif Qt3D_VERSION>=2
-    viewer.reset( new viewer_t( this,background_color, camera_options, scene_center, scene_radius ) );
-    viewer->output_camera_config=output_camera_config;
+    viewer.reset( new viewer_t( this,background_color, camera_options, scene_center, scene_radius, click_mode ) );
+    viewer->output_camera_config = output_camera_config;
 #endif
-    if(!camera_config_file_name.empty()) { viewer->load_camera_config(camera_config_file_name); }
+    if(!camera_config_file_name.empty()) { viewer->load_camera_config( camera_config_file_name ); }
     if( camera_csv ) { m_cameraReader.reset( new CameraReader( *camera_csv ) ); }
     m_cameraFixed = m_cameraposition || m_cameraReader || !camera_config_file_name.empty();
 }
 
-controller::~controller()
-{
-    shutdown(false);
-}
+controller::~controller() { shutdown( false ); }
+
 void controller::inhibit_stdout() { viewer->stdout_allowed = false; }
-void controller::shutdown(bool kill)
+
+void controller::shutdown( bool kill )
 {
     m_shutdown = true;
-    if(kill)
+    if( kill )
     {
-    #ifdef WIN32
+        #ifdef WIN32
         ::raise( SIGTERM ); // according to windows docs, SIGINT does not work on windows
-    #else // #ifdef WIN32
+        #else // #ifdef WIN32
         ::raise( SIGINT ); // quick and dirty... or maybe not so dirty: to interrupt blocking read() in reader threads, if closed from qt window
-    #endif // #ifdef WIN32
+        #endif // #ifdef WIN32
     }
     if( m_cameraReader ) { m_cameraReader->shutdown(); }
-    for(auto& i : readers) { i->shutdown(); }
+    for( auto& i: readers ) { i->shutdown(); }
 }
 
 void controller::read()
 {
-//     if(viewer==NULL) return;
+//     if( viewer == NULL ) { return; }
     for( unsigned int i = 0; !viewer->m_offset && i < readers.size(); ++i )
     {
         if( readers[i]->empty() ) { continue; }

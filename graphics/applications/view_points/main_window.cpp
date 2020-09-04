@@ -21,7 +21,7 @@
 
 namespace snark { namespace graphics { namespace view {
 
-MainWindow::MainWindow( const std::string& title, const std::shared_ptr< snark::graphics::view::controller >& c, const click_mode& click )
+MainWindow::MainWindow( const std::string& title, const std::shared_ptr< snark::graphics::view::controller >& c )
     : controller( c )
     , m_fileFrameVisible( controller->readers.size() > 1 )
 {
@@ -56,15 +56,15 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr< snark::
     layout->setSpacing( 0 );
     layout->addWidget( m_fileFrame, 0, 0 );
     viewer_t* viewer = controller_traits< snark::graphics::view::controller >::get_widget( controller );
-#if QT_VERSION >= 0x050000
-#if Qt3D_VERSION==1
+    #if QT_VERSION >= 0x050000
+    #if Qt3D_VERSION==1
     layout->addWidget( QWidget::createWindowContainer( viewer ), 0, 1 );
-#elif Qt3D_VERSION>=2
+    #elif Qt3D_VERSION>=2
     layout->addWidget(viewer,0,1);
-#endif
-#else
+    #endif
+    #else
     layout->addWidget( viewer , 0, 1 );
-#endif
+    #endif
     layout->setColumnStretch( 0, 0 );
     layout->setColumnStretch( 1, 1 );
     frame->setLayout( layout );
@@ -80,15 +80,17 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr< snark::
     toggleFileFrame( m_fileFrameVisible );
     setWindowTitle( &title[0] );
 
+    #if Qt3D_VERSION>=2
     auto modeMenu = menuBar()->addMenu( "Modes" );
     action = new ToggleAction( "Block Mode", boost::bind( &snark::graphics::view::viewer_t::toggle_block_mode, viewer, _1 ) );
     action->setShortcut( QKeySequence( "Ctrl+B" ) );
-    action->setChecked( click.double_right_click.mode() == click_mode::double_right_click_t::modes::block );
+    action->setChecked( viewer->click_mode.double_right_click.mode() == click_mode::double_right_click_t::modes::block );
     modeMenu->addAction( action );
     action = new ToggleAction( "Label Mode", boost::bind( &snark::graphics::view::viewer_t::toggle_label_mode, viewer, _1 ) );
     action->setShortcut( QKeySequence( "Ctrl+L" ) );
-    action->setChecked( click.double_right_click.mode() == click_mode::double_right_click_t::modes::label );
+    action->setChecked( viewer->click_mode.double_right_click.mode() == click_mode::double_right_click_t::modes::label );
     modeMenu->addAction( action );
+    #endif
 
     viewer->setFocus();
 }
