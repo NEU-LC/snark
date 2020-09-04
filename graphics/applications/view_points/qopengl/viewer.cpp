@@ -62,7 +62,7 @@ void viewer::paintGL()
             QPainter painter( this );
             painter.setPen( Qt::gray );
             painter.setFont( QFont( "Arial", 10 ) );
-            painter.drawText( rect(), Qt::AlignLeft | Qt::AlignBottom, QString("block id: %1").arg( block ) );
+            painter.drawText( rect(), Qt::AlignLeft | Qt::AlignBottom, QString("block: %1").arg( block ) );
             break;
         }
         case modes::label:

@@ -27,7 +27,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& controller, const std::string& double_right_click_mode );
+        MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& controller, const std::string& click_mode );
 
 private slots:
     void update_view();

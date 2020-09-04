@@ -9,14 +9,15 @@
 #include <QMainWindow>
 #include <comma/base/types.h>
 #include "../../../qt5.5/qopengl/widget.h"
+#include "../click_mode.h"
 #include "../types.h"
 
 namespace snark { namespace graphics { namespace qt3d { class camera_options; } } }
 
-typedef snark::graphics::qopengl::color_t color_t;
-
 namespace snark { namespace graphics { namespace view { namespace qopengl {
 
+typedef snark::graphics::qopengl::color_t color_t;
+    
 /**
  * render and camera functions
  * qt3d v2 specific rednering, most functions are implemented in widget
@@ -62,7 +63,7 @@ protected:
     void init() Q_DECL_OVERRIDE;
     void paintGL() Q_DECL_OVERRIDE;
     void keyPressEvent( QKeyEvent *event ) Q_DECL_OVERRIDE;
-    void double_right_click(const boost::optional<QVector3D>& point) override;
+    void double_right_click( const boost::optional< QVector3D >& point ) override;
 
 private slots:
     void on_timeout();

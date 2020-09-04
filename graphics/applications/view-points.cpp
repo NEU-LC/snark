@@ -3,18 +3,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <comma/application/command_line_options.h>
-#include <comma/base/types.h>
-#include <comma/csv/options.h>
-#include <comma/csv/stream.h>
-#include <comma/csv/traits.h>
-#include <comma/name_value/parser.h>
-#include <comma/string/string.h>
-#include "../../visiting/eigen.h"
 #include <QApplication>
-#include "view_points/shape_reader.h"
-#include "view_points/main_window.h"
-#include "../qt3d/camera_options.h"
 #if Qt3D_VERSION==1
 #include "view_points/qt3d_v1/viewer.h"
 #include "view_points/qt3d_v1/texture_reader.h"
@@ -23,11 +12,21 @@
 #include "view_points/image_reader.h"
 #endif
 #include "view_points/model_reader.h"
-
 #if Qt3D_VERSION>=2
 #include "view_points/traits.h"
 #include "../qt5.5/qopengl/labels.h"
 #endif
+#include <comma/application/command_line_options.h>
+#include <comma/base/types.h>
+#include <comma/csv/options.h>
+#include <comma/csv/stream.h>
+#include <comma/csv/traits.h>
+#include <comma/name_value/parser.h>
+#include <comma/string/string.h>
+#include "../../visiting/eigen.h"
+#include "../qt3d/camera_options.h"
+#include "view_points/shape_reader.h"
+#include "view_points/main_window.h"
 #include "view_points/types.h"
 
 static void bash_completion( unsigned const ac, char const * const * av )
@@ -36,8 +35,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
         " --help -h"
         " --version"
         " --colour --color -c"
-        " --exit-on-end-of-input"
-        " --double-right-click-mode"
+//         " --exit-on-end-of-input"
         " --click-mode"
         " --fill"
         " --font-size"
@@ -104,6 +102,12 @@ static void usage()
 
     static const char * const usage_options =
         "\ninput data options"
+        "\n    --click-mode=<mode>[;<options>]; click mode, currently only double right click behaviour is configurable"
+        "\n        <mode>: mode; default: none; choices: 'block', 'label'"
+        "\n        <options>: semicolon-separated options"
+        "\n            labels=<choices>: comma-separated label values, first element will be the initial label value; default: any"
+        "\n            blocks=<choices>: comma-separated block values, first element will be the initial block value; default: any"
+        "\n        example: --click-mode='label;labels:hello,world'"
         "\n    --colour,--color,-c <how>: how to colour points"
         "\n        <how>:"
         "\n            colour maps"
@@ -138,7 +142,6 @@ static void usage()
         "\n            default: stretched by elevation from cyan to magenta from 0:1"
         "\n"
         "\n      hide: e.g. \"test.csv;hide\": hide the source, when shown first time (useful, when there are very many inputs"
-        "\n    --double-right-click-mode,--click-mode=<mode>; default: none; initial double right click mode; choices: 'block', 'label'"
         "\n    --exit-on-end-of-input: exit immediately on end of input stream"
         "\n    --fill: fill the shape; currently implemented only for triangles"
         "\n    --font-size=[<font-size>]: label font size; default: 16; also can be used with individual streams, e.g:"
@@ -262,24 +265,32 @@ static void usage()
         "\n"
         qtold_unsupported_marker_start
         "\n    console/stdout output"
-        "\n        modes"
+        "\n        click modes"
         "\n            default"
         "\n                double right click: output to stdout approximate coordinates of the clicked point as x,y,z"
         "\n            block"
         "\n                control + b: toggle block mode; if on, double right click always appends current block id"
         "\n                double right click: output to stdout approximate coordinates of the clicked point as x,y,z,block"
-        "\n                ctrl + shift + '+': increment block id"
-        "\n                ctrl + '-': decrement block id"
-        "\n                ctrl + 'c': reset block id"
-        "\n                '1' - '9': append digit to block id"
-        "\n                '-': toggle the sign of block id"
-        "\n                backspace: delete last digit"
+        "\n                if block choices not given in --click-mode"
+        "\n                    ctrl + shift + '+': increment block id"
+        "\n                    ctrl + '-': decrement block id"
+        "\n                    ctrl + 'c': reset block id"
+        "\n                    '1' - '9': append digit to block id"
+        "\n                    '-': toggle the sign of block id"
+        "\n                    backspace: delete last digit"
+        "\n                if block choices given in --click-mode"
+        "\n                    arrow up: move to the next block value"
+        "\n                    arrow down: move to the previous block value"
         "\n            label"
         "\n                control + l: toggle label mode; if on, double right click always appends current label"
         "\n                double right click: output to stdout approximate coordinates of the clicked point as x,y,z,label"
-        "\n                ctrl + 'c': reset label to empty string"
-        "\n                alpha-numeric and punctuation keys: append character to label"
-        "\n                backspace: delete last charact"
+        "\n                if label choices not given in --click-mode"
+        "\n                    ctrl + 'c': reset label to empty string"
+        "\n                    alpha-numeric and punctuation keys: append character to label"
+        "\n                    backspace: delete last charact"
+        "\n                if label choices given in --click-mode"
+        "\n                    arrow up: move to the next label value"
+        "\n                    arrow down: move to the previous label value"
         qtold_unsupported_marker_end
         "\n"
         "\nexamples"
