@@ -1,3 +1,6 @@
+set( PROJECT "ntrip" )
+set( TARGET_NAME snark_navigation_${PROJECT} )
+
 file( GLOB source   ${dir}/*.cpp)
 file( GLOB includes ${dir}/*.h)
 source_group( ${TARGET_NAME} FILES ${source} ${includes} )
