@@ -67,9 +67,10 @@ point::point( float weight ) : shape( GL_POINTS, weight ) {}
 void point::paint()
 {
     glHint( GL_POINT_SMOOTH_HINT, GL_NICEST ); // disable GL_PROGRAM_POINT_SIZE
-    if( weight_ != 1 ) { glEnable( GL_POINT_SMOOTH ); } // circular point, otherwise draws square points
+    if( weight_ > 1 ) { glEnable( GL_POINT_SMOOTH ); } // circular point, otherwise draws square points
     glPointSize( weight_ );
     shape::paint();
+    if( weight_ > 1 ) { glDisable( GL_POINT_SMOOTH ); }
 }
 
 lines::lines( float weight ) : shape( GL_LINES, weight ) {}
