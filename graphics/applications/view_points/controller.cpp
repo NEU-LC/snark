@@ -48,27 +48,27 @@ void controller::add(std::unique_ptr<snark::graphics::view::Reader>&& reader)
 {
 #if Qt3D_VERSION>=2
     //TODO rename add_shaders to init
-    reader->add_shaders(viewer.get());
+    reader->add_shaders( viewer.get() );
 #endif
-    readers.push_back(std::move(reader));
+    readers.push_back( std::move( reader ) );
 }
 
 void controller::init()
 {
     if( m_cameraReader ) { m_cameraReader->start(); }
-    for(auto& i : readers) { i->start(); }
+    for( auto& i : readers ) { i->start(); }
 }
 
-controller::controller(const color_t& background_color
-              , const qt3d::camera_options& camera_options
-              , bool exit_on_end_of_input
-              , boost::optional< comma::csv::options > camera_csv
-              , boost::optional< Eigen::Vector3d > cameraposition
-              , boost::optional< Eigen::Vector3d > cameraorientation
-              , const std::string& camera_config_file_name
-              , const QVector3D& scene_center
-              , double scene_radius
-              , bool output_camera_config)
+controller::controller( const color_t& background_color
+                      , const qt3d::camera_options& camera_options
+                      , bool exit_on_end_of_input
+                      , boost::optional< comma::csv::options > camera_csv
+                      , boost::optional< Eigen::Vector3d > cameraposition
+                      , boost::optional< Eigen::Vector3d > cameraorientation
+                      , const std::string& camera_config_file_name
+                      , const QVector3D& scene_center
+                      , double scene_radius
+                      , bool output_camera_config )
     : m_lookAt( false )
     , m_cameraposition( cameraposition )
     , m_cameraorientation( cameraorientation )
@@ -78,7 +78,7 @@ controller::controller(const color_t& background_color
 //     viewer=new viewer_t(background_color, camera_options, scene_center, scene_radius,parent);
     COMMA_THROW( comma::exception," not implemented ");
 #elif Qt3D_VERSION>=2
-    viewer.reset(new viewer_t(this,background_color, camera_options, scene_center, scene_radius));
+    viewer.reset( new viewer_t( this,background_color, camera_options, scene_center, scene_radius ) );
     viewer->output_camera_config=output_camera_config;
 #endif
     if(!camera_config_file_name.empty()) { viewer->load_camera_config(camera_config_file_name); }

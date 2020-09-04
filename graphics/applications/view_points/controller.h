@@ -46,6 +46,7 @@
 #include "boost/optional.hpp"
 #include "boost/scoped_ptr.hpp"
 #endif
+#include "click_mode.h"
 #include "camera_reader.h"
 #include "types.h"
 
@@ -71,21 +72,23 @@ struct controller_traits<controller>
  * manages readers and camera
  * contains a viewer which performs the rendering and is Qt3d version dependant
  */
-class controller : public  controller_base
+class controller : public controller_base
 {
 public:
-    std::shared_ptr<viewer_t> viewer;
+    std::shared_ptr< viewer_t > viewer;
     std::vector< std::unique_ptr< snark::graphics::view::Reader > > readers;
     
     /// @todo split into several constructors; make camera configuration a separate class
-    controller(const color_t& background_color, const qt3d::camera_options& camera_options, bool exit_on_end_of_input
+    controller( const color_t& background_color
+              , const qt3d::camera_options& camera_options
+              , bool exit_on_end_of_input
               , boost::optional< comma::csv::options > cameracsv //= boost::optional< comma::csv::options >()
               , boost::optional< Eigen::Vector3d > cameraposition //= boost::optional< Eigen::Vector3d >()
               , boost::optional< Eigen::Vector3d > cameraorientation //= boost::optional< Eigen::Vector3d >()
               , const std::string& camera_config_file_name //="" pass empty string, for not loading any config
               , const QVector3D& scene_center
               , double scene_radius
-              , bool output_camera_config = false);
+              , bool output_camera_config = false );
     ~controller();
     void inhibit_stdout();
     void shutdown(bool kill=true);

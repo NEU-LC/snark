@@ -21,7 +21,7 @@
 
 namespace snark { namespace graphics { namespace view {
 
-MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& c, const std::string& click_mode )
+MainWindow::MainWindow( const std::string& title, const std::shared_ptr< snark::graphics::view::controller >& c, const click_mode& click )
     : controller( c )
     , m_fileFrameVisible( controller->readers.size() > 1 )
 {
@@ -55,7 +55,7 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::g
     layout->setContentsMargins( 0, 0, 0, 0 );
     layout->setSpacing( 0 );
     layout->addWidget( m_fileFrame, 0, 0 );
-    viewer_t* viewer = controller_traits<snark::graphics::view::controller>::get_widget(controller);
+    viewer_t* viewer = controller_traits< snark::graphics::view::controller >::get_widget( controller );
 #if QT_VERSION >= 0x050000
 #if Qt3D_VERSION==1
     layout->addWidget( QWidget::createWindowContainer( viewer ), 0, 1 );
@@ -83,11 +83,11 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr<snark::g
     auto modeMenu = menuBar()->addMenu( "Modes" );
     action = new ToggleAction( "Block Mode", boost::bind( &snark::graphics::view::viewer_t::toggle_block_mode, viewer, _1 ) );
     action->setShortcut( QKeySequence( "Ctrl+B" ) );
-    action->setChecked( click_mode == "block" );
+    action->setChecked( click.double_right_click.mode() == click_mode::double_right_click_t::modes::block );
     modeMenu->addAction( action );
     action = new ToggleAction( "Label Mode", boost::bind( &snark::graphics::view::viewer_t::toggle_label_mode, viewer, _1 ) );
     action->setShortcut( QKeySequence( "Ctrl+L" ) );
-    action->setChecked( click_mode == "label" );
+    action->setChecked( click.double_right_click.mode() == click_mode::double_right_click_t::modes::label );
     modeMenu->addAction( action );
 
     viewer->setFocus();

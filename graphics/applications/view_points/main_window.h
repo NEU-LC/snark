@@ -6,7 +6,7 @@
 
 #include <QCheckBox>
 #include <QMainWindow>
-
+#include "click_mode.h"
 #include "controller.h"
 
 QT_BEGIN_NAMESPACE
@@ -27,7 +27,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& controller, const std::string& click_mode );
+        MainWindow( const std::string& title, const std::shared_ptr<snark::graphics::view::controller>& controller, const click_mode& click );
 
 private slots:
     void update_view();

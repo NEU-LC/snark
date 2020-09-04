@@ -16,20 +16,16 @@
 #endif
 #include "viewer.h"
 
-
-
 namespace snark { namespace graphics { namespace view { namespace qopengl {
 
-std::ostream& operator<<( std::ostream& os, const QVector3D& v )
-{
-    return os << v.x() << "," << v.y() << "," << v.z();
-}
+std::ostream& operator<<( std::ostream& os, const QVector3D& v ) { return os << v.x() << "," << v.y() << "," << v.z(); }
 
 viewer::viewer( controller_base* handler
               , const color_t& background_color
               , const qt3d::camera_options& camera_options
               , const QVector3D& arg_scene_center
-              , double arg_scene_radius,QMainWindow* parent )
+              , double arg_scene_radius
+              , QMainWindow* parent )
     : snark::graphics::qopengl::widget( background_color, camera_options, parent )
     , scene_center( arg_scene_center )
     , handler( handler )
