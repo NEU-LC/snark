@@ -1,0 +1,79 @@
+#!/usr/bin/expect
+
+if {$argc > 0} {
+    puts ""
+    puts "Emulate the command handler of an Echodyne radar"
+    puts ""
+    puts "Usage: echodyne-command-handler"
+    puts ""
+    puts "Listens on port 23 for Echodyne radar commands"
+    puts ""
+    puts "Supports the following:"
+    puts "    GETSERIAL"
+    puts "    SYS:TIME?"
+    puts "    SYS:TIME <days>,<milliseconds>"
+    puts ""
+    puts "See section 8 of the Echodyne User Manual for details"
+    puts ""
+    puts "Example"
+    puts "    In two separate terminals:"
+    puts "    $ sudo echodyne-command-handler"
+    puts "    $ echodyne-cat <channel> --address 127.0.0.1"
+    puts ""
+    puts "    will set-up echodyne-cat to read from the raw radar data port for <channel>"
+    puts ""
+    return 0
+}
+
+# never timeout
+set timeout -1
+
+# The radar listens for commands on tcp port 23
+spawn nc -lkC localhost 23
+
+# boot time is considered to be when this application starts
+global time_at_boot
+set time_at_boot [clock milliseconds]
+
+global time_offset
+set time_offset 0
+
+# Format time in elapsed seconds as echodyne sys:time
+# See User Manual section 8.9
+proc sys_time {milliseconds} {
+    set days [expr {int( $milliseconds / 86400000 )}]
+    set ms [expr {$milliseconds - $days * 86400000}]
+    return [list $days $ms]
+}
+
+proc time_since_boot {} {
+    global time_at_boot
+    return [expr {[clock milliseconds] - $time_at_boot}]
+}
+
+proc set_time_offset {days milliseconds} {
+    global time_offset
+    set time_offset [expr {$days * 86400000 + $milliseconds}]
+}
+
+proc get_time {} {
+    global time_offset
+    return [join [sys_time [expr {[time_since_boot] + $time_offset}] ] ","]
+}
+
+# Handle a subset of commands as defined in section 8 of the user manual
+expect {
+    GETSERIAL {
+        send -- "123456\rOK\r"
+        exp_continue
+    }
+    -ex "SYS:TIME?" {
+        send -- "[ get_time ]\rOK\r"
+        exp_continue
+    }
+    -indices -re {SYS:TIME ([0-9]+),([0-9]+)} {
+        set_time_offset $expect_out(1,string) $expect_out(2,string)
+        send -- "OK\r"
+        exp_continue
+    }
+}
