@@ -338,7 +338,7 @@ int main( int argc, char** argv )
         if( max_threads == 0 ) { max_threads = std::thread::hardware_concurrency(); }
         tbb::global_control gc( tbb::global_control::max_allowed_parallelism, max_threads );
 #ifdef SNARK_USE_CUDA
-        return options.exists( "--use-cuda,--cuda" ) ? snark::k_means::cuda::run_( options ) : snark::k_means::run( options );
+        return options.exists( "--use-cuda,--cuda" ) ? snark::k_means::cuda::run( options ) : snark::k_means::run( options );
 #endif
         return snark::k_means::run( options );
     }

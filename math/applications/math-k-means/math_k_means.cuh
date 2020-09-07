@@ -9,7 +9,7 @@
 
 namespace snark { namespace k_means { namespace cuda {
 
-int run_( const comma::command_line_options &options );
+int run( const comma::command_line_options &options );
 
 } } } // namespace snark { namespace k_means { namespace cuda
 #endif //SNARK_MATH_K_MEANS_CUH
