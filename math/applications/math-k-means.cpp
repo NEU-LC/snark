@@ -188,7 +188,7 @@ struct k_means {
     // refer to http://www.goldsborough.me/c++/python/cuda/2017/09/10/20-32-46-exploring_k-means_in_python,_c++_and_cuda/
     int run( const std::deque< std::pair< input_t, std::string> >& inputs ) const
     {
-        std::vector< size_t > all_scores( number_of_runs );  // keep track of score (sum of distance of points in cluster to cluster centroid) for each k means run
+        std::vector< double > all_scores( number_of_runs );  // keep track of score (sum of distance of points in cluster to cluster centroid) for each k means run
         std::vector< std::vector< data_t > > all_centroids( number_of_runs );
         std::vector< std::vector< comma::uint32 > > all_centroid_assignments( number_of_runs );
         tbb::parallel_for( tbb::blocked_range< unsigned int >( 0, number_of_runs ), [&]( const tbb::blocked_range< unsigned int >& chunk ) {
@@ -225,7 +225,7 @@ struct k_means {
                 }
                 double run_score = tbb::parallel_reduce( tbb::blocked_range< size_t >( 0, inputs.size() ), 0.0,
                     [&]( const tbb::blocked_range< size_t > chunk, double score ) -> double {
-                        for( size_t point = chunk.begin(); point < chunk.end(); ++point ) { score += ::squared_l2_distance( inputs[point].first.data, run_centroids[centroid_assignments[point]] ); }
+                        for( size_t point = chunk.begin(); point < chunk.end(); ++point ) { score += std::sqrt( ::squared_l2_distance( inputs[point].first.data, run_centroids[centroid_assignments[point]] ) ); }
                         return score;
                     },
                     std::plus< double >()
@@ -338,7 +338,7 @@ int main( int argc, char** argv )
         if( max_threads == 0 ) { max_threads = std::thread::hardware_concurrency(); }
         tbb::global_control gc( tbb::global_control::max_allowed_parallelism, max_threads );
 #ifdef SNARK_USE_CUDA
-        return options.exists( "--use-cuda,--cuda" ) ? snark::k_means::cuda::run( options ) : snark::k_means::run( options );
+        return options.exists( "--use-cuda,--cuda" ) ? snark::cuda::k_means::run( options ) : snark::k_means::run( options );
 #endif
         return snark::k_means::run( options );
     }

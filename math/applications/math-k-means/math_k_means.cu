@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <cfloat>
+#include <cmath>
 #include <exception>
 #include <iostream>
-#include <limits>
 #include <random>
 #include <string>
 #include <vector>
@@ -13,33 +13,39 @@
 #include <comma/csv/ascii.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>
-#include <comma/visiting/apply.h>
-#include <comma/visiting/visit.h>
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_reduce.h>
 
-__device__ float squared_l2_distance( size_t size, const float *vector_a, const float *vector_b )
+__device__ float squared_euclidean_distance( size_t size, const float *vector_a, const float *vector_b )
 {
-    float squared_l2_distance = 0;
-    for( size_t i = 0; i < size; ++i ) { squared_l2_distance += ( ( vector_a[i] - vector_b[i] ) * ( vector_a[i] - vector_b[i] ) ); }
-    return squared_l2_distance;
+    float squared_euclidean_distance = 0;
+    for( size_t i = 0; i < size; ++i )
+    {
+        squared_euclidean_distance += ( ( vector_a[i] - vector_b[i] ) * ( vector_a[i] - vector_b[i] ) );
+    }
+    return squared_euclidean_distance;
 }
 
-__global__ void assign_clusters( size_t nrows, size_t ncols, size_t dataframe_pitch, const float *__restrict__ dataframe,
-                                 unsigned int *__restrict__ assignments, const unsigned int k, size_t means_pitch,
-                                 const float *__restrict__ means, size_t new_sums_pitch, float *__restrict__ new_sums,
-                                 unsigned int *__restrict__ counts )
+__global__ void
+assign_clusters( size_t nrows, size_t ncols, size_t dataframe_pitch, const float *__restrict__ dataframe,
+                 unsigned int *__restrict__ assignments, const unsigned int k, size_t means_pitch,
+                 const float *__restrict__ means, size_t new_sums_pitch, float *__restrict__ new_sums,
+                 unsigned int *__restrict__ counts )
 {
     const unsigned int y = blockIdx.x * blockDim.x + threadIdx.x;
     if( y >= nrows ) { return; }
 
     // Make global loads once.
-    auto dataframe_row = reinterpret_cast< const float * >( reinterpret_cast< const char * >( dataframe ) + y * dataframe_pitch );
+    auto dataframe_row = reinterpret_cast< const float * >( reinterpret_cast< const char * >( dataframe ) +
+                                                            y * dataframe_pitch );
 
     unsigned int best_cluster = 0;
     float best_distance = FLT_MAX;
     for( unsigned int cluster = 0; cluster < k; ++cluster )
     {
-        auto means_row = reinterpret_cast< const float * >( reinterpret_cast< const char * >( means ) + cluster * means_pitch );
-        const float distance = squared_l2_distance( ncols, dataframe_row, means_row );
+        auto means_row = reinterpret_cast< const float * >( reinterpret_cast< const char * >( means ) +
+                                                            cluster * means_pitch );
+        const float distance = squared_euclidean_distance( ncols, dataframe_row, means_row );
         if( distance < best_distance )
         {
             best_distance = distance;
@@ -48,7 +54,8 @@ __global__ void assign_clusters( size_t nrows, size_t ncols, size_t dataframe_pi
     }
     unsigned int *assignments_row = assignments + y;
     *assignments_row = best_cluster;
-    auto new_sums_row = reinterpret_cast< float * >( reinterpret_cast< char * >( new_sums ) + best_cluster * new_sums_pitch );
+    auto new_sums_row = reinterpret_cast< float * >( reinterpret_cast< char * >( new_sums ) +
+                                                     best_cluster * new_sums_pitch );
     for( unsigned int i = 0; i < ncols; ++i ) { atomicAdd( &new_sums_row[i], dataframe_row[i] ); }
     atomicAdd( &counts[best_cluster], 1 );
 }
@@ -60,7 +67,8 @@ compute_new_means_and_reset( size_t ncols, size_t means_pitch, float *__restrict
     const unsigned int cluster = threadIdx.x;
     const auto count = static_cast< float >( max( 1u, counts[cluster] ));
     auto means_row = reinterpret_cast< float * >( reinterpret_cast< char * >( means ) + cluster * means_pitch );
-    auto new_sums_row = reinterpret_cast< float * >( reinterpret_cast< char * >( new_sums ) + cluster * new_sums_pitch );
+    auto new_sums_row = reinterpret_cast< float * >( reinterpret_cast< char * >( new_sums ) +
+                                                     cluster * new_sums_pitch );
     for( size_t i = 0; i < ncols; ++i )
     {
         means_row[i] = new_sums_row[i] / count;
@@ -69,100 +77,128 @@ compute_new_means_and_reset( size_t ncols, size_t means_pitch, float *__restrict
     counts[cluster] = 0;
 }
 
-namespace snark { namespace k_means { namespace cuda {
+namespace snark { namespace cuda { namespace k_means {
 
 static boost::optional< size_t > ncols;
+static comma::csv::options csv;
+static bool verbose;
 
 template < typename FloatingPoint >
 struct input_t
 {
-    std::vector< FloatingPoint > vector;
+    std::vector< FloatingPoint > data;
     unsigned int block = 0;
 
-    input_t() : vector( *ncols ) {};
+    input_t() : data( *ncols ) {};
 };
 
 namespace device {
-template < typename FloatingPoint >
-struct dataframe
+
+void check_errors()
 {
-    dataframe() = delete;
+    static cudaError_t err;
+    err = cudaGetLastError();
+    if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: error: " << cudaGetErrorString( err ) ) }
+}
 
-    dataframe( size_t nrows, size_t ncols ) : nrows( nrows ), ncols( ncols )
+void check_async_errors()
+{
+    static cudaError_t err;
+    err = cudaDeviceSynchronize();
+    if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: error: " << cudaGetErrorString( err ) ) }
+}
+
+template < typename Numeric >
+struct array
+{
+    array() = delete;
+
+    explicit array( size_t size ) : size( size )
     {
-        cudaError_t err = cudaMallocPitch( &data, &pitch, ncols * sizeof( FloatingPoint ), nrows );
-        if( err != cudaSuccess )
-        {
-            COMMA_THROW( comma::exception, "cuda: malloc failed -> " << cudaGetErrorString( err ) << ' ' << cudaGetErrorName( err ) );
-        }
-        err = cudaMemset2D( data, pitch, 0, ncols * sizeof( FloatingPoint ), nrows );
-        if( err != cudaSuccess )
-        {
-            cudaFree( data );
-            COMMA_THROW( comma::exception, "cuda: memset failed -> " << cudaGetErrorString( err ) << ' ' << cudaGetErrorName( err ) );
-        }
+        cudaError_t err = cudaMalloc( &data, bytes() );
+        if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: error: " << cudaGetErrorString( err ) ) }
     }
 
-    dataframe( size_t nrows, size_t ncols, const std::vector< FloatingPoint > &h_dataframe ) : nrows( nrows ), ncols( ncols )
+    array( size_t size, const std::vector< Numeric > &h_array ) : size( size )
     {
-        cudaError_t err = cudaMallocPitch( &data, &pitch, ncols * sizeof( FloatingPoint ), nrows );
-        if( err != cudaSuccess )
-        {
-            COMMA_THROW( comma::exception, "cuda: malloc failed -> " << cudaGetErrorString( err ) << ' ' << cudaGetErrorName( err ) );
-        }
-        to_device( h_dataframe );
+        cudaError_t err = cudaMalloc( &data, bytes() );
+        if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: error: " << cudaGetErrorString( err ) ) }
+        to_device( h_array );
     }
 
-    dataframe( const dataframe &other ) = delete;
+    array( const array &other ) = delete;
 
-    dataframe &operator=( const dataframe &other ) = delete;
+    array &operator=( const array &other ) = delete;
 
-    dataframe( dataframe &&other ) = delete;
+    array( array &&other ) = delete;
 
-    dataframe &operator=( dataframe &&other ) = delete;
+    array &operator=( array &&other ) = delete;
 
-    ~dataframe() { cudaFree( data ); }
+    ~array() { cudaFree( data ); }
 
-    size_t bytes() const { return sizeof( FloatingPoint ) * ncols * nrows; }
+    size_t bytes() const noexcept { return sizeof( Numeric ) * size; }
 
-    void to_device( const std::vector< FloatingPoint > &h_dataframe )
+    void fill( int value ) noexcept { cudaMemset( data, value, bytes() ); }
+
+    void to_device( const std::vector< Numeric > &h_array ) noexcept
     {
-        cudaError_t err = cudaMemcpy2D( data, pitch, h_dataframe.data(), ncols * sizeof( FloatingPoint ), ncols * sizeof( FloatingPoint ), nrows, cudaMemcpyHostToDevice );
-        if( err != cudaSuccess )
-        {
-            cudaFree( data );
-            COMMA_THROW( comma::exception, "cuda: memcpy failed -> " << cudaGetErrorString( err ) << ' ' << cudaGetErrorName( err ) );
-        }
+        cudaMemcpy( data, h_array.data(), bytes(), cudaMemcpyHostToDevice );
     }
 
-    void to_host( std::vector< FloatingPoint > &h_dataframe ) const
+    void to_host( std::vector< Numeric > &h_array ) const noexcept
     {
-        cudaError_t err = cudaMemcpy2D( h_dataframe.data(), ncols * sizeof( FloatingPoint ), data, pitch, ncols * sizeof( FloatingPoint ), nrows, cudaMemcpyDeviceToHost );
-        if( err != cudaSuccess )
-        {
-            cudaFree( data );
-            COMMA_THROW( comma::exception, "cuda: memcpy failed -> " << cudaGetErrorString( err ) << ' ' << cudaGetErrorName( err ) );
-        }
+        cudaMemcpy( h_array.data(), data, bytes(), cudaMemcpyDeviceToHost );
     }
 
-    friend std::ostream &operator<<( std::ostream &os, const dataframe &df )
+    Numeric *data = nullptr;
+    size_t size;
+};
+
+template < typename Numeric >
+struct matrix
+{
+    matrix() = delete;
+
+    matrix( size_t nrows, size_t ncols ) : nrows( nrows ), ncols( ncols )
     {
-        std::vector< FloatingPoint > h_data( df.nrows * df.ncols, 0 );
-        df.to_host( h_data );
-        for( size_t y = 0; y < df.nrows; ++y )
-        {
-            std::string s;
-            for( size_t x = 0; x < df.ncols; ++x )
-            {
-                os << s << h_data[y * df.ncols + x];
-                s = ' ';
-            }
-            os << '\n';
-        }
-        return os;
+        cudaError_t err = cudaMallocPitch( &data, &pitch, ncols * sizeof( Numeric ), nrows );
+        if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: error: " << cudaGetErrorString( err ) ) }
     }
 
-    FloatingPoint *data = nullptr;
+    matrix( size_t nrows, size_t ncols, const std::vector< Numeric > &h_matrix ) : nrows( nrows ), ncols( ncols )
+    {
+        cudaError_t err = cudaMallocPitch( &data, &pitch, ncols * sizeof( Numeric ), nrows );
+        if( err != cudaSuccess ) { COMMA_THROW( comma::exception, "cuda: error: " << cudaGetErrorString( err ) ) }
+        to_device( h_matrix );
+    }
+
+    matrix( const matrix &other ) = delete;
+
+    matrix &operator=( const matrix &other ) = delete;
+
+    matrix( matrix &&other ) = delete;
+
+    matrix &operator=( matrix &&other ) = delete;
+
+    ~matrix() { cudaFree( data ); }
+
+    size_t bytes() const noexcept { return sizeof( Numeric ) * ncols * nrows; }
+
+    void fill( int value ) noexcept { cudaMemset2D( data, pitch, value, ncols * sizeof( Numeric ), nrows ); }
+
+    void to_device( const std::vector< Numeric > &h_matrix ) noexcept
+    {
+        cudaMemcpy2D( data, pitch, h_matrix.data(), ncols * sizeof( Numeric ), ncols * sizeof( Numeric ), nrows,
+                      cudaMemcpyHostToDevice );
+    }
+
+    void to_host( std::vector< Numeric > &h_matrix ) const noexcept
+    {
+        cudaMemcpy2D( h_matrix.data(), ncols * sizeof( Numeric ), data, pitch, ncols * sizeof( Numeric ), nrows,
+                      cudaMemcpyDeviceToHost );
+    }
+
+    Numeric *data = nullptr;
     size_t nrows;
     size_t ncols;
     size_t pitch = 0;
@@ -184,37 +220,58 @@ struct k_means
             : tolerance( tolerance ), max_iterations( max_iterations ), number_of_runs( number_of_runs ),
               number_of_clusters( number_of_clusters ) {}
 
-    void run( std::vector< float > &h_dataframe, const std::vector< std::string > &input_lines ) const
+    std::vector< float > initialize_centroids( const std::vector< float > &h_matrix ) const
     {
-        const size_t nrows = h_dataframe.size() / *ncols;
-        device::dataframe< float > d_dataframe( nrows, *ncols, h_dataframe );
-        device::dataframe< unsigned int > d_assignments( 1, nrows );
-        device::dataframe< float > d_means( number_of_clusters, *ncols );
-        device::dataframe< float > d_sums( number_of_clusters, *ncols );
-        device::dataframe< unsigned int > d_counts( 1, number_of_clusters );
-
-        std::vector< unsigned int > h_assignments( 1 * nrows, 0 );
-        std::vector< float > h_means( number_of_clusters * *ncols, 0 );
-
-        std::mt19937 generator( std::random_device{}() );
-        std::vector< float > centroids( number_of_clusters * *ncols, 0 );
-        std::uniform_int_distribution< size_t > indices( 0, nrows - 1 );
-
-        constexpr unsigned int threads_per_block = 1024;
-        const unsigned int blocks_per_grid = ( nrows + threads_per_block - 1 ) / threads_per_block;
-        for( unsigned int runs = 0; runs < number_of_runs; ++runs )
+        static std::mt19937 generator( std::random_device{}() );
+        static std::vector< float > init_centroids( number_of_clusters * *ncols );
+        static std::uniform_int_distribution< size_t > indices( 0, h_matrix.size() / *ncols - 1 );
+        for( size_t cluster = 0; cluster < number_of_clusters; ++cluster )
         {
-            for( size_t y = 0; y < number_of_clusters; ++y )
+            for( size_t col = 0; col < *ncols; ++col )
             {
-                for( size_t x = 0; x < *ncols; ++x )
-                {
-                    centroids[y * *ncols + x] = h_dataframe[indices( generator ) * *ncols + x];
-                }
+                init_centroids[cluster * *ncols + col] = h_matrix[indices( generator ) * *ncols + col];
             }
-            d_means.to_device( centroids );
+        }
+        return init_centroids;
+    }
+
+    void run( const std::vector< float > &h_matrix, const std::vector< std::string > &input_lines ) const
+    {
+        const size_t nrows = h_matrix.size() / *ncols;
+
+        // device arrays/matrices
+        device::matrix< float > d_dataframe( nrows, *ncols, h_matrix );
+        device::matrix< float > d_means( number_of_clusters, *ncols );
+        device::matrix< float > d_sums( number_of_clusters, *ncols );
+        d_sums.fill( 0 );
+        device::array< unsigned int > d_assignments( nrows );
+        device::array< unsigned int > d_counts( number_of_clusters );
+        d_counts.fill( 0 );
+
+        // host vectors
+        std::vector< float > h_means( number_of_clusters * *ncols );
+        std::vector< unsigned int > h_assignments( 1 * nrows );
+
+        // save runs to choose best centroid
+        std::vector< double > all_scores;
+        std::vector< std::vector< float > > all_centroids;
+        std::vector< std::vector< unsigned int > > all_centroid_assignments;
+
+        cudaDeviceProp prop{};
+        cudaGetDeviceProperties( &prop, 0 );
+        device::check_errors();
+        if( verbose )
+        {
+            std::cerr << "math-k-means: cuda: using " << prop.maxThreadsPerBlock << " threads" << std::endl;
+        }
+        const unsigned int blocks_per_grid = ( nrows + prop.maxThreadsPerBlock - 1 ) / prop.maxThreadsPerBlock;
+        for( unsigned int run = 0; run < number_of_runs; ++run )
+        {
+
+            d_means.to_device( initialize_centroids( h_matrix ) );
             for( unsigned int iteration = 0; iteration < max_iterations; ++iteration )
             {
-                assign_clusters<<<blocks_per_grid, threads_per_block>>>(
+                assign_clusters<<<blocks_per_grid, prop.maxThreadsPerBlock>>>(
                         d_dataframe.nrows,
                         d_dataframe.ncols,
                         d_dataframe.pitch,
@@ -227,6 +284,8 @@ struct k_means
                         d_sums.data,
                         d_counts.data
                 );
+                device::check_errors();
+                device::check_async_errors();
                 compute_new_means_and_reset<<<1, number_of_clusters>>>(
                         *ncols,
                         d_means.pitch,
@@ -235,30 +294,83 @@ struct k_means
                         d_sums.data,
                         d_counts.data
                 );
-                cudaDeviceSynchronize();
+                device::check_errors();
+                device::check_async_errors();
             }
+            d_assignments.to_host( h_assignments );
+            d_means.to_host( h_means );
+            const double score = tbb::parallel_reduce( tbb::blocked_range< size_t >( 0, nrows ), 0.0,
+                                                    [&]( const tbb::blocked_range< size_t > chunk,
+                                                         double score ) -> double
+                                                    {
+                                                        for( size_t point = chunk.begin();
+                                                             point < chunk.end(); ++point )
+                                                        {
+                                                            const auto cluster_assignment = h_assignments[point];
+                                                            double temp = 0.0;
+                                                            for( size_t x = 0; x < *ncols; ++x )
+                                                            {
+                                                                temp += ( h_matrix[point * *ncols + x] -
+                                                                          h_means[cluster_assignment * *ncols + x] ) *
+                                                                        ( h_matrix[point * *ncols + x] -
+                                                                          h_means[cluster_assignment * *ncols + x] );
+                                                            }
+                                                            score += std::sqrt( temp );
+                                                        }
+                                                        return score;
+                                                    },
+                                                    std::plus< double >()
+            );
+            all_scores.push_back( score );
+            all_centroids.push_back( h_means );
+            all_centroid_assignments.push_back( h_assignments );
         }
-
-        d_assignments.to_host( h_assignments );
-        d_means.to_host( h_means );
-
-        for( size_t y = 0; y < nrows; ++y )
+        const auto &best_index = std::distance( all_scores.begin(),
+                                                std::min_element( all_scores.begin(), all_scores.end() ) );
+        if( verbose )
         {
-            const unsigned int cluster_assignment = h_assignments[y];
-            std::cout << input_lines[y];
-            for( size_t x = 0; x < *ncols; ++x )
+            std::cerr << "math-k-means: all scores" << std::endl;
+            std::cerr << "math-k-means:";
+            for( const auto score : all_scores ) { std::cerr << ' ' << score; }
+            std::cerr << std::endl;
+            std::cerr << "math-k-means: run " << best_index << " has best score of " << all_scores[best_index]
+                      << std::endl;
+        }
+        h_means = std::move( all_centroids[best_index] );
+        h_assignments = std::move( all_centroid_assignments[best_index] );
+        for( size_t row = 0; row < nrows; ++row )
+        {
+            const comma::uint32 cluster_assignment = h_assignments[row];
+            std::cout << input_lines[row];
+            if( csv.binary() )
             {
-                std::cout << ',' << h_means[cluster_assignment * ( *ncols ) + x];
+                for( size_t col = 0; col < *ncols; ++col )
+                {
+                    const auto point = static_cast< double >( h_means[cluster_assignment * *ncols + col] );
+                    std::cout.write( reinterpret_cast< const char * >( &point ), sizeof( point ) );
+                }
+                std::cout.write( reinterpret_cast< const char * >( &cluster_assignment ),
+                                 sizeof( cluster_assignment ) );
             }
-            std::cout << ',' << cluster_assignment << std::endl;
+            else
+            {
+                for( size_t col = 0; col < *ncols; ++col )
+                {
+                    const auto point = static_cast< double >( h_means[cluster_assignment * *ncols + col] );
+                    std::cout << csv.delimiter << point;
+                }
+                std::cout << csv.delimiter << cluster_assignment << std::endl;
+            }
+            if( csv.flush ) { std::cout.flush(); }
         }
     }
 };
 
 int run( const comma::command_line_options &options )
 {
-    if( options.exists( "--verbose,-v" ) ) { std::cerr << "math-k-means: running cuda version" << std::endl; }
-    comma::csv::options csv = comma::csv::options( options, "data" );
+    verbose = options.exists( "--verbose,-v" );
+    if( verbose ) { std::cerr << "math-k-means: running cuda version" << std::endl; }
+    csv = comma::csv::options( options, "data" );
     std::cout.precision( csv.precision );
     const auto max_iterations = options.value< unsigned int >( "--max-iterations,--iterations", 300 );
     if( max_iterations == 0 )
@@ -285,6 +397,10 @@ int run( const comma::command_line_options &options )
         std::cerr << "math-k-means: got --tolerance=" << tolerance << ", --tolerance should be greater than 0"
                   << std::endl;
         return 1;
+    }
+    if( options.exists( "--tolerance" ) && verbose )
+    {
+        std::cerr << "math-k-means: --tolerance specified, ignoring as --tolerance degrades performance" << std::endl;
     }
     std::string first;
     if( !ncols )
@@ -330,14 +446,14 @@ int run( const comma::command_line_options &options )
     if( !first.empty() )
     {
         auto p = comma::csv::ascii< input_t< float > >( csv ).get( first );
-        dataframe.insert( end( dataframe ), begin( p.vector ), end( p.vector ) );
+        dataframe.insert( end( dataframe ), begin( p.data ), end( p.data ) );
         blocks.emplace_back( p.block );
         input_lines.emplace_back( first );
     }
     k_means operation{ tolerance, max_iterations, number_of_runs, number_of_clusters };
     while( istream.ready() || std::cin.good() )
     {
-        const snark::k_means::cuda::input_t< float > *p = istream.read();
+        const snark::cuda::k_means::input_t< float > *p = istream.read();
         if( !blocks.empty() && ( !p || blocks.front() != p->block ) && !dataframe.empty() )
         {
             operation.run( dataframe, input_lines );
@@ -346,29 +462,29 @@ int run( const comma::command_line_options &options )
             input_lines.clear();
         }
         if( !p ) { break; }
-        dataframe.insert( end( dataframe ), begin( p->vector ), end( p->vector ) );
+        dataframe.insert( end( dataframe ), begin( p->data ), end( p->data ) );
         blocks.emplace_back( p->block );
         input_lines.emplace_back( istream.last() );
     }
     return 0;
 }
-} } } // namespace snark { namespace k_means { namespace cuda {
+} } } // namespace snark { namespace cuda { namespace k_means {
 
 namespace comma { namespace visiting {
 template <>
-struct traits< snark::k_means::cuda::input_t< float > >
+struct traits< snark::cuda::k_means::input_t< float > >
 {
     template < typename K, typename V >
-    static void visit( const K &, snark::k_means::cuda::input_t< float > &p, V &v )
+    static void visit( const K &, snark::cuda::k_means::input_t< float > &p, V &v )
     {
-        v.apply( "data", p.vector );
+        v.apply( "data", p.data );
         v.apply( "block", p.block );
     }
 
     template < typename K, typename V >
-    static void visit( const K &, const snark::k_means::cuda::input_t< float > &p, V &v )
+    static void visit( const K &, const snark::cuda::k_means::input_t< float > &p, V &v )
     {
-        v.apply( "data", p.vector );
+        v.apply( "data", p.data );
         v.apply( "block", p.block );
     }
 };
