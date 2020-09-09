@@ -62,7 +62,7 @@ static void bash_completion( unsigned const ac, char const * const * av )
     exit( 0 );
 }
 
-static void usage()
+static void usage( bool )
 {
 #if Qt3D_VERSION>=2
     static const char * const usage_qt55_warning =
@@ -534,7 +534,6 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     if( shape == "lines" ) // todo: get a better name
     {
         if( param.options.fields == "" ) { param.options.fields="x,y,z"; }
-
         std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader< Eigen::Vector3d, snark::graphics::view::how_t::lines >( param, colored, label, Eigen::Vector3d::Zero() ) );
         reader->show( show );
         return reader;
@@ -571,7 +570,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
     {
         if( param.options.fields == "" ) { param.options.fields="corners"; }
     }
-    else if(shape=="axis")
+    else if( shape=="axis" )
     {
         if( param.options.fields == "" ) { param.options.fields="position,orientation"; }
         std::vector< std::string > v = comma::split( param.options.fields, ',' );
@@ -663,7 +662,7 @@ std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::comma
         reader->show( show );
         return reader;
     }
-    else if(shape=="axis")
+    else if( shape == "axis" )
     {
         std::unique_ptr< snark::graphics::view::Reader > reader( new snark::graphics::view::ShapeReader<snark::graphics::view::axis>( param, colored, label ) );
         reader->show( show );
@@ -681,35 +680,33 @@ int main( int argc, char** argv )
 {
     try
     {
-        comma::command_line_options options( argc, argv );
+        comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
-        if( options.exists( "--version" )) { version(); exit(0); }
-        if( options.exists( "--help" ) || options.exists( "-h" ) ) { usage(); }
-        comma::csv::options csv_options( argc, argv );
-        csv_options.full_xpath = false;
+        if( options.exists( "--version" ) ) { version(); exit( 0 ); }
+        comma::csv::options csv_options( argc, argv, "", false );
         std::vector< std::string > properties = options.unnamed( "--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill", "-[^;].*" );
         snark::graphics::view::color_t  background_color( QColor( QString( options.value< std::string >( "--background-colour,--background-color", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > camera_position;
         boost::optional< Eigen::Vector3d > camera_orientation;
-        snark::graphics::qt3d::camera_options camera_options( options.exists( "--orthographic" ), options.value< double >( "--fov", 45 ), options.exists( "--z-is-up" ) );
+        snark::graphics::qt3d::camera_options camera_options( options.exists( "--orthographic" ), options.value< double >( "--fov", 45.0 ), options.exists( "--z-is-up" ) );
         if( options.exists( "--camera" ) )
         {
             std::string camera = options.value< std::string >( "--camera" );
-            std::vector< std::string > v = comma::split( camera, ';' );
-            for( std::size_t i = 0; i < v.size(); ++i )
+            std::vector< std::string > camera_fields = comma::split( camera, ';' );
+            for( const auto& field : camera_fields )
             {
-                if( v[i] == "orthographic" )
+                if( field == "orthographic" )
                 {
                     camera_options.orthographic = true;
                 }
-                else if( v[i] == "perspective" )
+                else if( field == "perspective" )
                 {
                     camera_options.orthographic = false;
                 }
                 else
                 {
-                    std::vector< std::string > vec = comma::split( v[i], '=' );
+                    std::vector< std::string > vec = comma::split( field, '=' );
                     if( vec.size() == 2 && vec[0] == "fov" ) { camera_options.field_of_view = boost::lexical_cast< double >( vec[1] ); }
                 }
             }
@@ -719,22 +716,22 @@ int main( int argc, char** argv )
         if( options.exists( "--camera-position" ) )
         {
             std::string position = options.value< std::string >( "--camera-position" );
-            comma::name_value::parser parser( "x,y,z,roll,pitch,yaw", ',', '=', false );
+            comma::name_value::parser camera_position_parser( "x,y,z,roll,pitch,yaw", ',', '=', false );
             snark::graphics::view::point_with_orientation pose;
             try
             {
-                pose = parser.get< snark::graphics::view::point_with_orientation >( position );
+                pose = camera_position_parser.get< snark::graphics::view::point_with_orientation >( position );
                 camera_position = pose.point;
                 camera_orientation = pose.orientation;
             }
             catch( ... ) {}
             if( !camera_position )
             {
-                comma::name_value::parser parser( "filename", ';', '=', false );
+                comma::name_value::parser file_parser( "filename", ';', '=', false );
                 try
                 {
                     std::cerr << " parse " << position << std::endl;
-                    camera_csv = parser.get< comma::csv::options >( position );
+                    camera_csv = file_parser.get< comma::csv::options >( position );
                     camera_csv->full_xpath = false;
                     if( camera_csv->fields.empty() ) { camera_csv->fields = "x,y,z,roll,pitch,yaw"; }
                     camera_position_from_stdin = camera_csv->filename == "-";
@@ -743,10 +740,9 @@ int main( int argc, char** argv )
             }
         }
         #if Qt3D_VERSION==1
-        boost::optional< double > scene_radius = options.optional< double >( "--scene-radius,--radius" );
-        #endif
-        QVector3D scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( options.value< std::string >( "--scene-center,--center", "0,0,0" ) );
-        #if Qt3D_VERSION==1
+        auto scene_radius = options.optional< double >( "--scene-radius,--radius" ); // todo: do something with the magic default
+        boost::optional< Eigen::Vector3d > scene_center;
+        if( options.exists( "--scene-center,--center") ) { scene_center = comma::csv::ascii< Eigen::Vector3d >( "x,y,z", ',').get( options.value< std::string >( "--scene-center,--center" ) ); }
         std::shared_ptr< snark::graphics::view::Viewer > controller( new snark::graphics::view::Viewer( background_color
                                                                                                       , camera_options
                                                                                                       , options.exists( "--exit-on-end-of-input" )
@@ -757,9 +753,9 @@ int main( int argc, char** argv )
                                                                                                       , scene_center
                                                                                                       , scene_radius
                                                                                                       , options.exists( "--output-camera-config,--output-camera" ) ) );
-
         #elif Qt3D_VERSION>=2
-        double scene_radius = options.value< double >( "--scene-radius,--radius", 10 ); // todo: do something with the magic default
+        double scene_radius = options.value( "--scene-radius,--radius", 10. );
+        QVector3D scene_center = comma::csv::ascii< QVector3D >( "x,y,z", ',' ).get( options.value< std::string >( "--scene-center,--center", "0,0,0" ) );
         std::shared_ptr< snark::graphics::view::controller > controller( new snark::graphics::view::controller( background_color
                                                                                                               , camera_options
                                                                                                               , options.exists( "--exit-on-end-of-input" )
@@ -775,10 +771,10 @@ int main( int argc, char** argv )
         controller->viewer->scene_center_fixed = options.exists( "--scene-center,--center" );
         #endif
         bool stdin_explicitly_defined = false;
-        for( unsigned int i = 0; i < properties.size(); ++i )
+        for( const auto& property : properties )
         {
-            if( comma::split( properties[i], ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
-            controller->add( make_reader( options, csv_options, properties[i] ) );
+            if( comma::split( property, ';' )[0] == "-" ) { stdin_explicitly_defined = true; }
+            controller->add( make_reader( options, csv_options, property ) );
         }
         if( !stdin_explicitly_defined && !options.exists( "--no-stdin" ) && !camera_position_from_stdin )
         {
@@ -792,7 +788,7 @@ int main( int argc, char** argv )
         }
         snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller );
         main_window.show();
-        application.exec();
+        QApplication::exec();
         return 0;       // We never actually reach this line because we raise SIGINT when closing
 
     }

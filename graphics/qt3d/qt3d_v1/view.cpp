@@ -38,8 +38,6 @@
 
 namespace snark { namespace graphics { namespace qt3d {
 
-static const double default_scene_radius = 10;
-
 /// constructor
 /// @param background_color background color
 /// @param fov camera field of view in degrees
@@ -54,7 +52,7 @@ view::view( const QColor4ub& background_color
     , scene_center_fixed_( scene_center )
     , m_z_up( camera_options.z_is_up )
     , scale_near_plane(false)
-    , scene_radius_( scene_radius ? *scene_radius : default_scene_radius )
+    , scene_radius_( scene_radius ? *scene_radius : 10 )
     , scene_radius_fixed_( scene_radius )
     , m_revolve( 0, 0, 0 )
     , m_show_coordinates( false )
