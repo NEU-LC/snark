@@ -31,7 +31,7 @@ if( NOT EXISTS ${Echodyne_API} )
 endif()
 
 include_directories( ${Echodyne_API}/include ${Echodyne_API}/bnet_interface/inc ${Echodyne_API}/bnet_reader/inc )
-link_directories( ${Echodyne_API}/bnet_interface/lib ${Echodyne_API}/bnet_plus/lib )
+link_directories( ${Echodyne_API}/bnet_interface/lib ${Echodyne_API}/bnet_reader/lib )
 
 install( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/radars/${PROJECT} )
 install(
