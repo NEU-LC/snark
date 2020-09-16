@@ -63,6 +63,9 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --autopause:     add a two second delay between commands";
     std::cerr << "\n    --stay:          do not close at end of input stream";
     std::cerr << "\n";
+    std::cerr << "\nNote that responses are sent to stderr. This allows echodyne-cat to issue";
+    std::cerr << "\ncommands without their response interfering with the data output.";
+    std::cerr << "\n";
     std::cerr << "\nUser commands are defined in section 8 of the Echoflight User Manual";
     std::cerr << "\nParticularly useful commands include:";
     std::cerr << "\n    *IDN?  SYSPARAM?  *TST?  LIST        -  various info commands";
