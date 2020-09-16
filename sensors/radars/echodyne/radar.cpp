@@ -36,9 +36,10 @@
 
 namespace snark { namespace echodyne {
 
-radar::radar()
+radar::radar( const std::string& log_dir )
     : connected( false )
 {
+    if( chdir( log_dir.c_str() ) != 0 ) { std::cerr << comma::verbose.app_name() << ": couldn't change to " << log_dir << std::endl; }
     radar_ = std::make_unique< bnet_interface >();
 }
 

@@ -109,7 +109,7 @@ int main( int argc, char** argv )
         bool autopause = options.exists( "--autopause" );
         bool stay = options.exists( "--stay" );
 
-        radar = std::make_unique< snark::echodyne::radar >();
+        radar = std::make_unique< snark::echodyne::radar >( log_dir );
         radar->connect( address, port, log_dir );
 
         while( !is_shutdown && std::cin.good() )

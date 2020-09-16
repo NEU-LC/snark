@@ -116,7 +116,7 @@ struct app
             int port = options.value< int >( "--port", default_port );
             std::string log_dir = options.value< std::string >( "--log-dir", default_log_dir );
 
-            snark::echodyne::radar radar;
+            snark::echodyne::radar radar( log_dir );
 
             radar.connect( address, port, log_dir );
             radar.set_time();

@@ -40,7 +40,7 @@ namespace snark { namespace echodyne {
 class radar
 {
 public:
-    radar();
+    radar( const std::string& log_dir="." );
     ~radar();
 
     void connect( const std::string& address="169.254.1.10", int port=23, const std::string& log_dir="." );
