@@ -26,6 +26,7 @@
       - qtbase5-dev 
       - qt5-default 
       - qt3d5-dev
+      # - libqt4-dev
       - libassimp-dev
       - python-opencv
       - libqt4-dev

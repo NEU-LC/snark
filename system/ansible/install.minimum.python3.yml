@@ -28,7 +28,6 @@
       - qt3d5-dev
       - libassimp-dev
       - python3-opencv
-      - libqt4-dev
       - python3-pip
 
   - pip:
