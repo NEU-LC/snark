@@ -75,6 +75,7 @@ void radar::command( const std::string& cmd )
         try { disable_buffer( snark::echodyne::mesa_data_from_string( cmd_words[1] )); }
         catch( std::invalid_argument& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
     }
+    else if( cmd == "CMD:SET_TIME" ) { set_time(); }
     else { send_command( cmd, true ); }
 }
 
