@@ -92,7 +92,7 @@ template< typename T >
 struct app
 {
     static std::string output_fields() { return comma::join( comma::csv::names< T >( true ), ',' ); }
-    static std::string output_format() { return comma::csv::format::value< T >(); }
+    static std::string output_format() { return comma::csv::format( comma::csv::format::value< T >()).collapsed_string(); }
 
     static int run( mesa_data_t channel, const comma::command_line_options& options )
     {
