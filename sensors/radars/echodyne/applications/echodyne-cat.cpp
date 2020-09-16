@@ -119,7 +119,6 @@ struct app
             snark::echodyne::radar radar( log_dir );
 
             radar.connect( address, port, log_dir );
-            radar.set_time();
             radar.enable_buffer( channel );
 
             while( !is_shutdown && std::cout.good() )
