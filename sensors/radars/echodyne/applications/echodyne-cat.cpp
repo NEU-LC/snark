@@ -28,6 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <chrono>
+#include <thread>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include "../../../../visiting/traits.h"
@@ -124,6 +125,7 @@ struct app
             while( !is_shutdown && std::cout.good() )
             {
                 radar.output< T >( channel, os );
+                std::this_thread::sleep_for( std::chrono::milliseconds( 50 ));
             }
         }
         if( is_shutdown ) { std::cerr << comma::verbose.app_name() << ": interrupted by signal" << std::endl; }
