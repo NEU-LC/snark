@@ -35,7 +35,7 @@
 
 const std::string default_address( "169.254.1.10" );
 const int default_port( 23 );
-const std::string default_log_dir( "." );
+const std::string default_log_dir( "/var/tmp" );
 
 static void bash_completion( unsigned int const ac, char const * const * av )
 {
