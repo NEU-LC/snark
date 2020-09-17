@@ -35,7 +35,7 @@
 
 const std::string default_address( "169.254.1.10" );
 const int default_port( 23 );
-const std::string default_log_dir( "." );
+const std::string default_log_dir( "/var/tmp" );
 
 static void bash_completion( unsigned int const ac, char const * const * av )
 {
@@ -63,10 +63,14 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --autopause:     add a two second delay between commands";
     std::cerr << "\n    --stay:          do not close at end of input stream";
     std::cerr << "\n";
+    std::cerr << "\nNote that responses are sent to stderr. This allows echodyne-cat to issue";
+    std::cerr << "\ncommands without their response interfering with the data output.";
+    std::cerr << "\n";
     std::cerr << "\nUser commands are defined in section 8 of the Echoflight User Manual";
     std::cerr << "\nParticularly useful commands include:";
     std::cerr << "\n    *IDN?  SYSPARAM?  *TST?  LIST        -  various info commands";
     std::cerr << "\n    ETH:IP? ETH:IP                       -  get or set ip address";
+    std::cerr << "\n    SYS:TIME?                            -  get the device time";
     std::cerr << "\n    RESET:SYSTEM                         -  reboot device";
     std::cerr << "\n    MODE:SEARCH:START  MODE:SEARCH:STOP  -  search";
     std::cerr << "\n    MODE:SWT:START     MODE:SWT:STOP     -  search while tracking";
@@ -77,9 +81,12 @@ static void usage( bool verbose = false )
     std::cerr << "\n    API:DISABLE_BUFFER buffer  -  disable a buffer for capture";
     std::cerr << "\n    API:SYS_STATE              -  show system state";
     std::cerr << "\n";
+    std::cerr << "\nAnd the following complex commands:";
+    std::cerr << "\n    CMD:SET_TIME               -  set the device time to system time";
+    std::cerr << "\n";
     std::cerr << "\nExamples:";
     std::cerr << "\n    echo \"*IDN?\" | " << comma::verbose.app_name();
-    std::cerr << "\n    echo \"*TST?\" | " << comma::verbose.app_name();
+    std::cerr << "\n    echo \"CMD:SET_TIME\" | " << comma::verbose.app_name();
     std::cerr << "\n    echo \"ETH:IP?\" | " << comma::verbose.app_name();
     std::cerr << "\n    echo \"ETH:IP <new-ip> <mask> <gw>\" | " << comma::verbose.app_name() << " --address <curr-ip>";
     std::cerr << "\n    echo -e \"API:ENABLE_BUFFER STATUS\\nAPI:SYS_STATE\" | " << comma::verbose.app_name() << " --autopause";
@@ -106,7 +113,7 @@ int main( int argc, char** argv )
         bool autopause = options.exists( "--autopause" );
         bool stay = options.exists( "--stay" );
 
-        radar = std::make_unique< snark::echodyne::radar >();
+        radar = std::make_unique< snark::echodyne::radar >( log_dir );
         radar->connect( address, port, log_dir );
 
         while( !is_shutdown && std::cin.good() )

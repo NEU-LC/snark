@@ -28,6 +28,7 @@
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <chrono>
+#include <thread>
 #include <comma/application/command_line_options.h>
 #include <comma/application/signal_flag.h>
 #include "../../../../visiting/traits.h"
@@ -38,7 +39,7 @@
 
 const std::string default_address( "169.254.1.10" );
 const int default_port( 23 );
-const std::string default_log_dir( "." );
+const std::string default_log_dir( "/var/tmp" );
 
 static void bash_completion( unsigned int const ac, char const * const * av )
 {
@@ -92,7 +93,7 @@ template< typename T >
 struct app
 {
     static std::string output_fields() { return comma::join( comma::csv::names< T >( true ), ',' ); }
-    static std::string output_format() { return comma::csv::format::value< T >(); }
+    static std::string output_format() { return comma::csv::format( comma::csv::format::value< T >()).collapsed_string(); }
 
     static int run( mesa_data_t channel, const comma::command_line_options& options )
     {
@@ -115,15 +116,15 @@ struct app
             int port = options.value< int >( "--port", default_port );
             std::string log_dir = options.value< std::string >( "--log-dir", default_log_dir );
 
-            snark::echodyne::radar radar;
+            snark::echodyne::radar radar( log_dir );
 
             radar.connect( address, port, log_dir );
-            radar.set_time();
             radar.enable_buffer( channel );
 
             while( !is_shutdown && std::cout.good() )
             {
                 radar.output< T >( channel, os );
+                std::this_thread::sleep_for( std::chrono::milliseconds( 50 ));
             }
         }
         if( is_shutdown ) { std::cerr << comma::verbose.app_name() << ": interrupted by signal" << std::endl; }
