@@ -380,16 +380,11 @@ static void usage( bool )
         "\n    double right click modes"
         "\n        > mkfifo pipe"
         "\n        > cat pipe | view-points <( csv-random make --type 2f | head -n10000 )';fields=x,y;color=yellow' \\"
-        "\n                                 '-;fields=x,y,z,label;weight=10;color=red' | tee pipe"
+        "\n                                 '-;fields=x,y,z,label;weight=10;color=red' --click-mode='label;labels=hello,world,moon' | tee pipe"
         "\n        in view-points window"
-        "\n            - press ctrl-L to switch to label mode"
-        "\n            - type 'hello' on keyboard, observe label set to 'hello' in lower left corner"
         "\n            - double right click on a couple of points; observe output on stdout and large red dots"
         "\n              with the label 'hello' appear where you clicked"
-        "\n            - press ctrl-C or backspace to reset the label"
-        "\n            - type 'world' on keyboard, observe label set to 'world' in lower left corner"
-        "\n            - double right click on a couple of points; observe output on stdout and large red dots"
-        "\n              with the label 'world' appear where you clicked"
+        "\n            - use up/down arrows to select labels"
         qtold_unsupported_marker_end
         "\n";
 
