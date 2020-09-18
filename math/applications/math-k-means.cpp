@@ -667,7 +667,7 @@ int main( int argc, char** argv )
         }
         if( options.exists( "--output-fields" ) )
         {
-            std::cout << "data,centroid/data,centroid/id" << std::endl;
+            std::cout << "data,centroid/id,centroid/data" << std::endl;
             return 0;
         }
         verbose = options.exists( "--verbose,-v" );
