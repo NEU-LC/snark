@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source $( type -p comma-application-util ) || { echo "cannot source 'comma-application-util'" >&2; exit 1; }
+
+comma_path_value_to_var
+
+echo -e "$input" | math-k-means $options | cut -d, -f1-3,5-7 | name-value-from-csv point --prefix output -n -d @
+comma_status_ok && echo 'result="success"' || echo 'result="failed"'
