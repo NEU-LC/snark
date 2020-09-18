@@ -370,7 +370,7 @@ struct k_means
 
 } // namespace snark {
 
-static std::string infer_size( unsigned int& size_ )
+static std::string get_size()
 {
     std::string first;
     const std::vector< std::string >& fields = comma::split( csv.fields, ',' );
@@ -386,7 +386,7 @@ static std::string infer_size( unsigned int& size_ )
             while( std::cin.good() && first.empty() ) { std::getline( std::cin, first ); }
             count = comma::split( first, csv.delimiter ).size(); // quick and dirty, wasteful
         }
-        size_ = count - fields.size() + 1;
+        size = count - fields.size() + 1;
     }
     else
     {
@@ -400,7 +400,7 @@ static std::string infer_size( unsigned int& size_ )
             }
         }
         if( max == 0 ) { COMMA_THROW( comma::exception, "please specify valid data fields" ) }
-        size_ = max;
+        size = max;
     }
     return first;
 }
@@ -410,7 +410,6 @@ static std::string infer_size( unsigned int& size_ )
 static int run_cuda_( const float tolerance, const unsigned int max_iterations, const unsigned int number_of_runs, const comma::uint32 number_of_clusters )
 {
     using namespace snark::cuda::k_means;
-    comma::csv::input_stream< input_t > istream( std::cin, csv );
     comma::uint32 block = 0;
     std::vector< float > dataframe;
     std::vector< std::string > input_lines;
@@ -422,7 +421,7 @@ static int run_cuda_( const float tolerance, const unsigned int max_iterations, 
     };
     if( !size )
     {
-        const auto& first_line = infer_size( *size );
+        const auto& first_line = get_size();
         set_input_values_( comma::csv::ascii< input_t >( csv ).get( first_line ), first_line );
     }
     auto write_centroids_only_ = [number_of_clusters]( const std::vector< float >& centroids, const comma::uint32 block )
@@ -475,6 +474,7 @@ static int run_cuda_( const float tolerance, const unsigned int max_iterations, 
     std::vector< float > centroids;
     std::vector< comma::uint32 > centroid_assignments;
     k_means operation{ tolerance, max_iterations, number_of_runs, number_of_clusters, *size };
+    comma::csv::input_stream< input_t > istream( std::cin, csv );
     while( istream.ready() || std::cin.good() )
     {
         const input_t* p = istream.read();
@@ -497,7 +497,6 @@ static int run_cuda_( const float tolerance, const unsigned int max_iterations, 
 static int run_( const double tolerance, const unsigned int max_iterations, const unsigned int number_of_runs, const comma::uint32 number_of_clusters )
 {
     using namespace snark::k_means;
-    comma::csv::input_stream< input_t > istream( std::cin, csv );
     std::deque< std::vector< double > > dataframe;
     std::deque< std::string > input_lines;
     comma::uint32 block = 0;
@@ -509,7 +508,7 @@ static int run_( const double tolerance, const unsigned int max_iterations, cons
     };
     if( !size )
     {
-        const auto& first_line = infer_size( *size );
+        const auto& first_line = get_size();
         set_input_values_( comma::csv::ascii< input_t >( csv ).get( first_line ), first_line );
     }
     auto write_centroids_only_ = [number_of_clusters]( const std::vector< std::vector< double > >& centroids, const comma::uint32 block )
@@ -555,6 +554,7 @@ static int run_( const double tolerance, const unsigned int max_iterations, cons
     std::vector< std::vector< double > > centroids;
     std::vector< comma::uint32 > centroid_assignments;
     k_means operation{ tolerance, max_iterations, number_of_runs, number_of_clusters };
+    comma::csv::input_stream< input_t > istream( std::cin, csv );
     while( istream.ready() || std::cin.good() )
     {
         const input_t* p = istream.read();
