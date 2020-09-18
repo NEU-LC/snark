@@ -466,11 +466,9 @@ static int run_cuda_( const float tolerance, const unsigned int max_iterations, 
             }
             else
             {
-                std::cout << csv.delimiter << centroid_assignment << std::endl;
-                for( size_t col = 0; col < *size; ++col )
-                {
-                    std::cout << csv.delimiter << static_cast< double >( centroids[centroid_assignment * *size + col] );
-                }
+                std::cout << csv.delimiter << centroid_assignment;
+                for( size_t col = 0; col < *size; ++col ) { std::cout << csv.delimiter << static_cast< double >( centroids[centroid_assignment * *size + col] ); }
+                std::cout << std::endl;
             }
         }
     };
@@ -548,8 +546,9 @@ static int run_( const double tolerance, const unsigned int max_iterations, cons
             }
             else
             {
-                std::cout << csv.delimiter << centroid_assignment << std::endl;
+                std::cout << csv.delimiter << centroid_assignment;
                 for( const auto point : centroid ) { std::cout << csv.delimiter << point; }
+                std::cout << std::endl;
             }
         }
     };
