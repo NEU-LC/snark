@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Kent Hu
+
+/// @author kent hu
+
 #pragma once
 
 #include <cuda_runtime_api.h>

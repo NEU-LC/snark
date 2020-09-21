@@ -1,6 +1,6 @@
-// Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2020 Kent Hu
 
-/// @author vsevolod vlaskine
+/// @author kent hu
 
 #include <algorithm>
 #include <cmath>
@@ -59,6 +59,10 @@ void usage( const bool verbose )
     std::cerr << "                    if no block field present: centroid/id,centroid/data" << std::endl;
     std::cerr << "    binary format: 64-bit floating-point for centroid/data, 32-bit unsigned integer for centroid/id" << std::endl;
     std::cerr << "options" << std::endl;
+#ifdef SNARK_USE_CUDA
+    std::cerr << "    --cuda: use gpu; ATTENTION: only 32-bit float precision currently implemented; if you need 64-bit float precision, run without --cuda" << std::endl;
+    std::cerr << "    --cuda-use-pitched,--use-pitched,--pitched: use pitched memory for 2d array (padded 2d array for memory coalescing; faster but uses more memory)" << std::endl;
+#endif
     std::cerr << "    --help,-h: show this help; --help --verbose: more help" << std::endl;
     std::cerr << "    --ignore-tolerance: ignore tolerance value used for early exit" << std::endl;
     std::cerr << "    --max-iterations,--iterations=<n>: number of iterations for Lloyd's algorithm; default: 300" << std::endl;
@@ -68,10 +72,6 @@ void usage( const bool verbose )
     std::cerr << "    --output-centroids,--centroids: output centroids only" << std::endl;
     std::cerr << "    --size=[<n>]: a hint of number of elements in the data vector; ignored, if data indices specified, e.g. data[0],data[1],data[2]" << std::endl;
     std::cerr << "    --tolerance=<distance>: difference between two consecutive iteration centroid l2 norms to declare convergence and stop iterating in LLoyd's algorithm; default: 1.0e-4" << std::endl;
-#ifdef SNARK_USE_CUDA
-    std::cerr << "    --use-cuda,--cuda: use gpu" << std::endl;
-    std::cerr << "    --use-pitched,--pitched: use pitched memory for 2d array (padded 2d array for memory coalescing; uses more memory)" << std::endl;
-#endif
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
@@ -606,9 +606,10 @@ static int run( const comma::command_line_options& options )
     }
     if( options.exists( "--ignore-tolerance" ) ) { tolerance = -1.0; }
 #ifdef SNARK_USE_CUDA
-    use_pitched = options.exists( "--use-pitched,--pitched" );
-    return options.exists( "--use-cuda,--cuda" ) ? run_cuda_( static_cast< float >( tolerance ), max_iterations, number_of_runs, number_of_clusters ) : run_( tolerance, max_iterations, number_of_runs, number_of_clusters );
+    use_pitched = options.exists( "--cuda-use-pitched,--use-pitched,--pitched" );
+    return options.exists( "--cuda" ) ? run_cuda_( static_cast< float >( tolerance ), max_iterations, number_of_runs, number_of_clusters ) : run_( tolerance, max_iterations, number_of_runs, number_of_clusters );
 #else
+    if( options.exists( "--cuda" ) ) { std::cerr << "math-k-means: given --cuda, but built without cuda support; run anyway, but may be slower than you expect" << std::endl; }
     return run_( tolerance, max_iterations, number_of_runs, number_of_clusters );
 #endif
 }

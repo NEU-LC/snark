@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Kent Hu
+
+/// @author kent hu
+
 #include "math_k_means.h"
 #include "device.h"
 
