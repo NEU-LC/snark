@@ -4,6 +4,7 @@ import numpy
 import rosbag, rospy, rostopic
 import comma
 import datetime
+import re
 
 try:
     import rospy_message_converter
@@ -101,7 +102,8 @@ def _ros_message_to_csv_record( message, lengths={}, ignore_variable_size_arrays
             element_t = 'timedelta64[us]'
         elif mc._is_field_type_an_array(field_type):
             ctor = lambda msg, field_name=field_name: getattr( msg, field_name )
-            m = mc.list_brackets.search( field_type )
+            list_brackets = re.compile( r'\[[^\]]*\]' )
+            m = list_brackets.search( field_type )
             size_string = m.group()[1:-1]
             size = 0 if size_string == '' else int( size_string )
             if size == 0 and ignore_variable_size_arrays: continue
