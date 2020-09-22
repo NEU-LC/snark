@@ -43,6 +43,18 @@ def from_csv_supported_types( v ):
     microseconds = numpy.int64( v )
     return rospy.Time( microseconds / 1000000, ( microseconds % 1000000 ) * 1000 )
 
+def is_binary_type( field_type ):
+    """
+    rospy_message_converter.is_ros_binary_type() was changed to an internal method in commit 6385e1a
+    https://github.com/uos/rospy_message_converter/commit/6385e1a5254e6ad984d7f93f7a4c05cc8b6a090b
+    is_binary_type() will handle both before and after variations.
+"""
+    from rospy_message_converter import message_converter as mc
+    try:
+        return mc._is_ros_binary_type( field_type )
+    except AttributeError:
+        return mc.is_ros_binary_type( field_type, None )
+
 def _ros_message_to_csv_record( message, lengths={}, ignore_variable_size_arrays = True, prefix='' ):
     """
     Private implementation of ros_message_to_csv_record. Called recursively.
@@ -58,7 +70,7 @@ def _ros_message_to_csv_record( message, lengths={}, ignore_variable_size_arrays
     # see Python programming FAQ why-do-lambdas-defined-in-a-loop-with-different-values-all-return-the-same-result
     # for the explanation of all the lambda signatures (and some function signatures in case of time)
     for field_name, field_type in message_fields:
-        if mc.is_ros_binary_type( field_type, None ):
+        if is_binary_type( field_type ):
             ctor = lambda msg, field_name=field_name, field_type=field_type: mc._convert_to_ros_binary( field_type, getattr( msg, field_name ) )
             current_path = full_path( field_name )
             try:
