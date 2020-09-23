@@ -314,12 +314,9 @@ struct k_means
     // refer to http://www.goldsborough.me/c++/python/cuda/2017/09/10/20-32-46-exploring_k-means_in_python,_c++_and_cuda/
     std::tuple< std::vector< std::vector< double > >, std::vector< comma::uint32 > > run_on_block( const std::deque< std::vector< double > >& dataframe ) const
     {
-        std::vector< double > all_scores;
-        all_scores.reserve( number_of_runs );
-        std::vector< std::vector< std::vector< double > > > all_centroids;
-        all_centroids.reserve( number_of_runs );
-        std::vector< std::vector< comma::uint32 > > all_centroid_assignments;
-        all_centroid_assignments.reserve( number_of_runs );
+        std::vector< double > all_scores( number_of_runs );
+        std::vector< std::vector< std::vector< double > > > all_centroids( number_of_runs );
+        std::vector< std::vector< comma::uint32 > > all_centroid_assignments( number_of_runs );
         tbb::parallel_for( tbb::blocked_range< unsigned int >( 0, number_of_runs ), [&]( const tbb::blocked_range< unsigned int >& chunk )
         {
             for( unsigned int run = chunk.begin(); run < chunk.end(); ++run )
@@ -331,19 +328,19 @@ struct k_means
                     centroid_assignments = assign_centroids( run_centroids, dataframe );
                     std::vector< std::vector< double > > new_centroids = update_centroids( centroid_assignments, dataframe );
                     if( tolerance < 0 ) { run_centroids = std::move( new_centroids ); continue; }
-                    double difference = tbb::parallel_reduce( tbb::blocked_range< comma::uint32 >( 0, number_of_clusters ), 0.0,
-                                                              [&]( const tbb::blocked_range< comma::uint32 > chunk, double difference ) -> double
-                                                              {
-                                                                  for( comma::uint32 centroid_i = chunk.begin(); centroid_i < chunk.end(); ++centroid_i )
-                                                                  {
-                                                                      difference += squared_euclidean_distance( run_centroids[centroid_i], new_centroids[centroid_i] );
-                                                                  }
-                                                                  return difference;
-                                                              },
-                                                              std::plus< double >()
+                    double summed_difference = tbb::parallel_reduce( tbb::blocked_range< comma::uint32 >( 0, number_of_clusters ), 0.0,
+                            [&]( const tbb::blocked_range< comma::uint32 > chunk, double difference ) -> double
+                            {
+                                for( comma::uint32 centroid_i = chunk.begin(); centroid_i < chunk.end(); ++centroid_i )
+                                {
+                                    difference += squared_euclidean_distance( run_centroids[centroid_i], new_centroids[centroid_i] );
+                                }
+                                return difference;
+                            },
+                            std::plus< double >()
                     );
                     run_centroids = std::move( new_centroids );
-                    if( difference < tolerance * tolerance ) { break; }
+                    if( summed_difference < tolerance * tolerance ) { break; }
                 }
                 double run_score = tbb::parallel_reduce( tbb::blocked_range< size_t >( 0, dataframe.size() ), 0.0,
                                                          [&]( const tbb::blocked_range< size_t > chunk, double score ) -> double
@@ -356,12 +353,13 @@ struct k_means
                                                          },
                                                          std::plus< double >()
                 );
-                all_scores.emplace_back( run_score );
-                all_centroids.emplace_back( std::move( run_centroids ) );
-                all_centroid_assignments.emplace_back( std::move( centroid_assignments ) );
+                all_scores[run] = run_score;
+                all_centroids[run] = std::move( run_centroids );
+                all_centroid_assignments[run] = std::move( centroid_assignments );
             }
         } );
-        const auto& best_index = std::distance( all_scores.begin(), std::min_element( all_scores.begin(), all_scores.end() ) );
+        const std::vector< double >::iterator& min_element = std::min_element( all_scores.begin(), all_scores.end() );
+        const auto best_index = std::distance( all_scores.begin(), min_element );
         return std::make_pair( all_centroids[best_index], all_centroid_assignments[best_index] );
     }
 };
@@ -530,7 +528,8 @@ static int run_( const double tolerance, const unsigned int max_iterations, cons
             }
         }
     };
-    auto write_lines_ = []( const std::deque< std::string >& input_lines, const std::vector< std::vector< double > >& centroids,
+    auto write_lines_ = []( const std::deque< std::string >& input_lines,
+                            const std::vector< std::vector< double > >& centroids,
                             const std::vector< comma::uint32 >& centroid_assignments )
     {
         for( size_t i = 0; i < centroid_assignments.size(); ++i )
