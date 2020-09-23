@@ -582,30 +582,14 @@ static int run( const comma::command_line_options& options )
     use_block = csv.has_field( "block" );
     seed = options.optional< std::mt19937::result_type >( "--seed" );
     const auto max_iterations = options.value< unsigned int >( "--max-iterations,--iterations", 300 );
-    if( max_iterations == 0 )
-    {
-        std::cerr << "math-k-means: got --max-iterations=0, --max-iterations should be at least 1" << std::endl;
-        return 1;
-    }
+    if( max_iterations == 0 ) { std::cerr << "math-k-means: got --max-iterations=0, --max-iterations should be at least 1" << std::endl; return 1; }
     const auto number_of_clusters = options.value< comma::uint32 >( "--number-of-clusters,--clusters" );
-    if( number_of_clusters == 0 )
-    {
-        std::cerr << "math-k-means: got --number-of-clusters=0, --number-of-clusters should be at least 1" << std::endl;
-        return 1;
-    }
+    if( number_of_clusters == 0 ) { std::cerr << "math-k-means: got --number-of-clusters=0, --number-of-clusters should be at least 1" << std::endl; return 1; }
     const auto number_of_runs = options.value< unsigned int >( "--number-of-runs,--runs", 10 );
-    if( number_of_runs == 0 )
-    {
-        std::cerr << "math-k-means: got --number-of-runs=0, --number-of-runs should be at least 1" << std::endl;
-        return 1;
-    }
+    if( number_of_runs == 0 ) { std::cerr << "math-k-means: got --number-of-runs=0, --number-of-runs should be at least 1" << std::endl; return 1; }
     size = options.optional< unsigned int >( "--size" );
     auto tolerance = options.value< double >( "--tolerance", 1.0e-4 );
-    if( tolerance <= 0 )
-    {
-        std::cerr << "math-k-means: got --tolerance=" << tolerance << ", --tolerance should be greater than 0" << std::endl;
-        return 1;
-    }
+    if( tolerance <= 0 ) { std::cerr << "math-k-means: got --tolerance=" << tolerance << ", --tolerance should be greater than 0" << std::endl; return 1; }
     if( options.exists( "--ignore-tolerance" ) ) { tolerance = -1.0; }
 #ifdef SNARK_USE_CUDA
     use_pitched = options.exists( "--cuda-use-pitched,--use-pitched,--pitched" );
@@ -663,19 +647,15 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv, usage );
-        if( options.exists( "--input-fields" ) )
-        {
-            std::cout << "data" << std::endl;
-            return 0;
-        }
-        if( options.exists( "--output-fields" ) )
-        {
-            std::cout << "data,centroid/id,centroid/data" << std::endl;
-            return 0;
-        }
+        if( options.exists( "--input-fields" ) ) { std::cout << "data" << std::endl; return 0; }
+        if( options.exists( "--output-fields" ) ) { std::cout << "data,centroid/id,centroid/data" << std::endl; return 0; }
         verbose = options.exists( "--verbose,-v" );
-        auto max_threads = options.value< unsigned int >( "--max-threads,--threads", 0 );
-        if( max_threads == 0 ) { max_threads = std::thread::hardware_concurrency(); }
+        auto max_threads = options.value< unsigned int >( "--max-threads,--threads", std::thread::hardware_concurrency() );
+        if( max_threads <= 1 )
+        { 
+            std::cerr << "math-k-means: warning: you set or std::thread::hardware_concurrency returned " << max_threads << "; will not explicitly call tbb::global_control::max_allowed_parallelism(); everything still will work, but multithreading may not be set to what you expected" << std::endl;
+            return run( options );
+        }
         tbb::global_control gc( tbb::global_control::max_allowed_parallelism, max_threads );
         return run( options );
     }
