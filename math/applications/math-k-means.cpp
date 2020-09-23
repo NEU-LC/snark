@@ -70,6 +70,7 @@ void usage( const bool verbose )
     std::cerr << "    --number-of-clusters,--clusters=<n>: number of k-means cluster per block/all" << std::endl;
     std::cerr << "    --number-of-runs,--runs=<n>: number of times to run k-means, best run is one with lowest inertia (sum of distance of cluster points to cluster centroid); default: 10" << std::endl;
     std::cerr << "    --output-centroids,--centroids: output centroids only" << std::endl;
+    std::cerr << "    --seed=[<seed>]: use seed for random initialization of centroids" << std::endl;
     std::cerr << "    --size=[<n>]: a hint of number of elements in the data vector; ignored, if data indices specified, e.g. data[0],data[1],data[2]" << std::endl;
     std::cerr << "    --tolerance=<distance>: difference between two consecutive iteration centroid l2 norms to declare convergence and stop iterating in LLoyd's algorithm; default: 1.0e-4" << std::endl;
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
@@ -86,6 +87,7 @@ void usage( const bool verbose )
 static comma::csv::options csv;
 static boost::optional< unsigned int > size = boost::none;
 static bool output_centroids = false;
+static boost::optional< std::mt19937::result_type > seed = boost::none;
 static bool use_block = false;
 #ifdef SNARK_USE_CUDA
 static bool use_pitched = false;
@@ -195,7 +197,7 @@ public:
 private:
     std::vector< float > initialize_centroids( const std::vector< float >& h_matrix ) const
     {
-        static std::mt19937 generator( std::random_device{}() );
+        static std::mt19937 generator( seed.is_initialized() ? *seed : std::random_device{}() );
         static std::vector< float > init_centroids( number_of_clusters_* ncols_ );
         static std::uniform_int_distribution< size_t > indices( 0, h_matrix.size() / ncols_ - 1 );
         for( size_t cluster = 0; cluster < number_of_clusters_; ++cluster )
@@ -253,7 +255,7 @@ struct k_means
 
     std::vector< std::vector< double > > initialize_centroids( const std::deque< std::vector< double > >& dataframe ) const
     {
-        static std::mt19937 generator( std::random_device{}() );
+        static std::mt19937 generator( seed.is_initialized() ? *seed : std::random_device{}() );
         std::vector< std::vector< double > > centroids( number_of_clusters );
         std::uniform_int_distribution< size_t > indices( 0, dataframe.size() - 1 );
         std::generate( centroids.begin(), centroids.end(), [&]() { return dataframe[indices( generator )]; } );
@@ -420,7 +422,7 @@ static int run_cuda_( const float tolerance, const unsigned int max_iterations, 
     if( !size )
     {
         const auto& first_line = get_size();
-        set_input_values_( comma::csv::ascii< input_t >( csv ).get( first_line ), first_line );
+        if( !first_line.empty() ) { set_input_values_( comma::csv::ascii< input_t >( csv ).get( first_line ), first_line ); }
     }
     auto write_centroids_only_ = [number_of_clusters]( const std::vector< float >& centroids, const comma::uint32 block )
     {
@@ -507,7 +509,7 @@ static int run_( const double tolerance, const unsigned int max_iterations, cons
     if( !size )
     {
         const auto& first_line = get_size();
-        set_input_values_( comma::csv::ascii< input_t >( csv ).get( first_line ), first_line );
+        if( !first_line.empty()) { set_input_values_( comma::csv::ascii< input_t >( csv ).get( first_line ), first_line ); }
     }
     auto write_centroids_only_ = [number_of_clusters]( const std::vector< std::vector< double > >& centroids, const comma::uint32 block )
     {
@@ -576,8 +578,9 @@ static int run( const comma::command_line_options& options )
 {
     output_centroids = options.exists( "--output-centroids,--centroids" );
     csv = comma::csv::options( options, "data" );
-    use_block = csv.has_field( "block" );
     std::cout.precision( csv.precision );
+    use_block = csv.has_field( "block" );
+    seed = options.optional< std::mt19937::result_type >( "--seed" );
     const auto max_iterations = options.value< unsigned int >( "--max-iterations,--iterations", 300 );
     if( max_iterations == 0 )
     {

@@ -4,5 +4,5 @@ source $( type -p comma-application-util ) || { echo "cannot source 'comma-appli
 
 comma_path_value_to_var
 
-echo -e "$input" | csv-to-bin 3d | math-k-means --binary 3d $options | csv-from-bin 3d,ui,3d | cut -d, -f1-3,5-7 | name-value-from-csv point --prefix output -n -d @
+echo -e "$input" | csv-to-bin 3ub | math-k-means --binary 3ub $options | csv-from-bin 3ub,ui,3d | name-value-from-csv point --prefix output -n -d @
 comma_status_ok && echo 'result="success"' || echo 'result="failed"'
