@@ -42,7 +42,7 @@ def main():
     parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--message-type', '--type', help = 'message type, useful for debugging', type = str )
     parser.add_argument( '--output-fields', help = 'output input csv fields and exit', action = 'store_true' )
-    parser.add_argument( '--output-format', help='print output format for binary and exit', action='store_true' )
+    parser.add_argument( '--output-format', help='output format for input fields and exit', action='store_true' )
     parser.add_argument( '--package', '--import', help = 'if --type specified, package to import', type = str )
     parser.add_argument( '--verbose', '-v', help = 'chat more', action = 'store_true' )
     comma.csv.add_options( parser )
