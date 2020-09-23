@@ -1,0 +1,5 @@
+simple/ascii[0]="echo -e '0,0,0\n1,1,1\n2,2,2' | math-k-means --clusters 3 --seed 0 --threads 1 | cut -d, -f1-3,5-7"
+simple/binary[0]="echo -e '0,0,0\n1,1,1\n2,2,2' | csv-to-bin 3ub | math-k-means --clusters 3 --seed 0 --threads 1 --binary 3ub | csv-from-bin 3ub,ui,3d | cut -d, -f1-3,5-7"
+
+simple/cuda/ascii[0]="echo -e '0,0,0\n1,1,1\n2,2,2' | math-k-means --clusters 3 --seed 0 --cuda | cut -d, -f1-3,5-7"
+simple/cuda/binary[0]="echo -e '0,0,0\n1,1,1\n2,2,2' | csv-to-bin 3ub | math-k-means --clusters 3 --seed 0 --binary 3ub --cuda | csv-from-bin 3ub,ui,3d | cut -d, -f1-3,5-7"

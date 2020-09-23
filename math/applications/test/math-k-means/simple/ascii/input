@@ -1,2 +1,0 @@
-input="0,0,0\n1,1,1\n2,2,2"
-options="--number-of-clusters=3 --seed=0"
