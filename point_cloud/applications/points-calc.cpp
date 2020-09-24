@@ -30,6 +30,7 @@
 #include "points-calc/thin.h"
 #include "points-calc/triangles.h"
 #include "points-calc/vector_calc.h"
+#include "points-calc/visit.h"
 
 static comma::csv::options csv;
 static bool verbose;
@@ -89,6 +90,7 @@ static void usage( bool verbose = false )
     std::cerr << "    trajectory-partition" << std::endl;
     std::cerr << "    trajectory-thin" << std::endl;
     std::cerr << "    triangles-discretise,triangles-discretize" << std::endl;
+    std::cerr << "    visit" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
     std::cerr << "general options" << std::endl;
@@ -338,6 +340,7 @@ static void usage( bool verbose = false )
     std::cerr << "                --do-not-accumulate: do not accumulate distance travelled from the last point, just measure distance to the last point directly" << std::endl;
     std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
     std::cerr << std::endl;
+    std::cerr << snark::points_calc::visit::traits::usage() << std::endl;
     std::cerr << std::endl;
 //     std::cerr << "        trajectory-partitions-match" << std::endl;
 //     std::cerr << "            read input, append partition ids based on a rule or heuristic (see options below)" << std::endl;
@@ -1317,6 +1320,7 @@ int main( int ac, char** av )
         if( operation == "plane-intersection" ) { snark::points_calc::plane_intersection::traits::process(options, csv); return 0; }
         if( operation == "triangles-area" || operation == "triangles-discretize" ) { return run< snark::points_calc::triangles::area::traits >( options ); }
         if( operation == "triangles-discretise" || operation == "triangles-discretize" ) { return run< snark::points_calc::triangles::discretise::traits >( options ); }
+        if( operation == "visit" ) { return run< snark::points_calc::visit::traits >( options ); }
         if( operation == "distance" || operation == "trajectory-distance" )
         {
             if( options.exists("--output-fields" )){ std::cout << "distance" << std::endl; return 0; }
