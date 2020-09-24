@@ -28,6 +28,8 @@ std::string traits::usage()
         << "            --trajectory=<filename>[;<csv-options>]; todo\n"
         << "            --trajectory-field-of-view,--trajectory-fov,--fov=<angle>; default=3.14159265359; todo\n"
         << "            --trajectory-smoothen=<steps>; default=1; todo\n"
+        << "            --unvisited-id,--unvisited=<id>; default=0\n"
+        << "            --visited-id,--visited=<id>; default=1\n"
         << std::endl
         << "        examples\n"
         << "            todo\n"
@@ -48,9 +50,9 @@ struct record
 {
     visit::input input;
     std::string buffer;
-    bool visited;
+    comma::uint32 visited_id;
     
-    record( const visit::input& input = visit::input(), const std::string& buffer = std::string() ): input( input ), buffer( buffer ), visited( false ) {}
+    record( const visit::input& input = visit::input(), const std::string& buffer = std::string(), comma::uint32 visited_id = 0 ): input( input ), buffer( buffer ), visited_id( visited_id ) {}
 };
 
 } } } // namespace snark { namespace points_calc { namespace visit {
@@ -82,7 +84,7 @@ std::string traits::input_fields() { return comma::join( comma::csv::names< snar
 
 std::string traits::input_format() { return comma::csv::format::value< snark::points_calc::visit::input >(); }
 
-std::string traits::output_fields() { return "visited"; }
+std::string traits::output_fields() { return "visited/id"; }
 
 std::string traits::output_format() { return "ui"; }
 
@@ -101,20 +103,29 @@ int traits::run( const comma::command_line_options& options )
     std::deque< input > seeds; // todo
     unsigned int seed_index = 0;
     std::deque< input* > queue; // todo
+    bool match_id = csv.has_field( "id" );
+    comma::uint32 unvisited_id = options.value( "--unvisited-id,--unvisited", 0 );
+    comma::uint32 visited_id = options.value( "--visited-id,--visited", 1 ); // todo: set as default in seed feed
     auto output_block = [&]()
     {
         for( const auto& r: records )
         {
             std::cout.write( &r.buffer[0], r.buffer.size() );
-            if( csv.binary() ) { char v = r.visited; std::cout.write( &v, 1 ); }
-            else { std::cout << csv.delimiter << r.visited << std::endl; }
+            if( csv.binary() ) { std::cout.write( reinterpret_cast< const char* >( &r.visited_id ), 4 ); }
+            else { std::cout << csv.delimiter << r.visited_id << std::endl; }
         }
         if( csv.flush ) { std::cout.flush(); }
     };
-    auto skip = [&]( const record& r, const visit::input& i )->bool
+    auto visit_record = [&]( record& r, const visit::input& i )
     {
-        if( r.visited ) { return false; }
-        COMMA_THROW( comma::exception, "todo" );
+        if( r.visited_id != unvisited_id ) { return; }
+        if( match_id && r.input.id != i.id ) { return; }            
+            
+        // todo: trajectory direction
+        // todo: trajectory fov
+        
+        r.input.id = r.visited_id = i.id;
+        queue.push_back( &r.input );
     };
     auto visit_at = [&]( const visit::input& input )
     {
@@ -127,13 +138,7 @@ int traits::run( const comma::command_line_options& options )
                 for( i[2] = it->first[2] - 1; i[2] < it->first[2] + 2; ++i[2] )
                 {
                     auto git = voxels.find( i );
-                    if( git == voxels.end() ) { continue; }
-                    for( auto& r: git->second )
-                    {
-                        if( skip( *r, input ) ) { continue; }
-                        r->visited = true;
-                        queue.push_back( &r->input );
-                    }
+                    if( git != voxels.end() ) { for( auto& r: git->second ) { visit_record( *r, input ); } }
                 }
             }
         }
@@ -159,7 +164,7 @@ int traits::run( const comma::command_line_options& options )
         const input* p = istream.read();
         if( !p || ( !records.empty() && records[0].input.block != p->block ) ) { handle_block(); }
         if( !p ) { break; }
-        records.push_back( record( *p, istream.last() ) );
+        records.push_back( record( *p, istream.last(), unvisited_id ) );
         auto voxel = voxels.touch_at( records.back().input.point );
         voxel->second.push_back( &records.back() );
     }
