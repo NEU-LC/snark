@@ -106,6 +106,10 @@ int traits::run( const comma::command_line_options& options )
     bool match_id = csv.has_field( "id" );
     comma::uint32 unvisited_id = options.value( "--unvisited-id,--unvisited", 0 );
     comma::uint32 visited_id = options.value( "--visited-id,--visited", 1 ); // todo: set as default in seed feed
+    
+    // todo: seed stream
+    // todo: trajectory options
+    
     auto output_block = [&]()
     {
         for( const auto& r: records )
