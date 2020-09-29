@@ -2,13 +2,18 @@
 
 /// @author vsevolod vlaskine
 
+#include <cmath>
 #include <deque>
 #include <fstream>
 #include <sstream>
+#include <tuple>
 #include <Eigen/Core>
 #include <comma/base/exception.h>
 #include <comma/base/types.h>
 #include <comma/csv/stream.h>
+#include <comma/csv/traits.h>
+#include <comma/io/stream.h>
+#include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include "../../../point_cloud/voxel_map.h"
 #include "../../../visiting/eigen.h"
@@ -20,14 +25,12 @@ std::string traits::usage()
 {
     std::ostringstream oss;
     oss
-        << "    visit: ...\n"
+        << "    visit: todo...\n"
         << "        default input fields: \"x,y,z\"\n"
         << "        options\n"
-        << "            --at=<filename>[;<csv-options>]; todo\n"
+        << "            --at=<filename>[;<csv-options>]; seed points from which visiting starts\n"
         << "            --radius=[<meters>]; todo\n"
-        << "            --trajectory=<filename>[;<csv-options>]; todo\n"
-        << "            --trajectory-field-of-view,--trajectory-fov,--fov=<angle>; default=3.14159265359; todo\n"
-        << "            --trajectory-smoothen=<steps>; default=1; todo\n"
+        << "            --field-of-view,--fov=<radians>; default=3.14159265359; todo\n"
         << "            --unvisited-id,--unvisited=<id>; default=0\n"
         << "            --visited-id,--visited=<id>; default=1\n"
         << std::endl
@@ -40,10 +43,11 @@ std::string traits::usage()
 struct input
 {
     Eigen::Vector3d point;
+    Eigen::Vector3d normal;
     comma::uint32 block;
     comma::uint32 id;
-    
-    input(): point( 0, 0, 0 ), block( 0 ), id( 0 ) {}
+    input( const Eigen::Vector3d& point = Eigen::Vector3d( 0, 0, 0 ), const Eigen::Vector3d& normal = Eigen::Vector3d( 0, 0, 0 ), comma::uint32 block = 0, comma::uint32 id = 0 ): point( point ), normal( normal ), block( block ), id( id ) {}
+    input( comma::uint32 id ): point( 0, 0, 0 ), normal( 0, 0, 0 ), block( 0 ), id( id ) {}
 };
 
 struct record
@@ -64,6 +68,7 @@ template <> struct traits< snark::points_calc::visit::input >
     template < typename K, typename V > static void visit( const K&, snark::points_calc::visit::input& p, V& v )
     {
         v.apply( "point", p.point );
+        v.apply( "normal", p.normal );
         v.apply( "block", p.block );
         v.apply( "id", p.id );
     }
@@ -71,6 +76,7 @@ template <> struct traits< snark::points_calc::visit::input >
     template < typename K, typename V > static void visit( const K&, const snark::points_calc::visit::input& p, V& v )
     {
         v.apply( "point", p.point );
+        v.apply( "normal", p.normal );
         v.apply( "block", p.block );
         v.apply( "id", p.id );
     }
@@ -92,24 +98,38 @@ typedef std::deque< visit::record* > voxel_t; // todo: watch performance
 
 int traits::run( const comma::command_line_options& options )
 {
-    comma::csv::options csv( options, "x,y,z" );
-    csv.full_xpath = false;
-    if( csv.has_field( "block" ) ) { COMMA_THROW( comma::exception, "block field support: todo" ); }
-    comma::csv::input_stream< input > istream( std::cin, csv );
+    comma::uint32 unvisited_id = options.value( "--unvisited-id,--unvisited", 0 );
+    comma::uint32 visited_id = options.value( "--visited-id,--visited", 1 );
+    auto handle_fields = [&]( const std::string& fields ) -> std::pair< std::string, bool >
+    {
+        if( fields.empty() ) { return std::make_pair( std::string( "point/x,point/y,point/z" ), false ); }
+        auto v = comma::split( fields, ',' );
+        bool has_normal = false;
+        for( auto& f: v )
+        {
+            if( f == "normal" || f == "normal/x" || f == "normal/y" || f == "normal/z" ) { has_normal = true; }
+            else if( f == "x" || f == "y" || f == "z" ) { f = "point/" + f; }
+        }
+        return std::make_pair( comma::join( v, ',' ), has_normal );
+    };
+    comma::csv::options csv( options );
+    bool stdin_has_normal = false;
+    std::tie( csv.fields, stdin_has_normal ) = handle_fields( csv.fields );
+    comma::csv::input_stream< input > istream( std::cin, csv, input( unvisited_id ) );
     double radius = options.value< double >( "--radius" );
     std::deque< record > records;
     typedef snark::voxel_map< voxel_t, 3 > voxels_t;
     voxels_t voxels( Eigen::Vector3d( radius, radius, radius ) );
-    std::deque< input > seeds; // todo
-    unsigned int seed_index = 0;
     std::deque< input* > queue; // todo
     bool match_id = csv.has_field( "id" );
-    comma::uint32 unvisited_id = options.value( "--unvisited-id,--unvisited", 0 );
-    comma::uint32 visited_id = options.value( "--visited-id,--visited", 1 ); // todo: set as default in seed feed
-    
-    // todo: seed stream
-    // todo: trajectory options
-    
+    std::string at_options = options.value< std::string >( "--at" );
+    comma::csv::options at_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( at_options );
+    bool at_has_normal = false;
+    std::tie( at_csv.fields, stdin_has_normal ) = handle_fields( at_csv.fields );
+    comma::io::istream is( at_csv.filename, at_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
+    comma::csv::input_stream< input > at_stream( *is, at_csv, input( visited_id ) );
+    double fov = options.value( "--field-of-view,--fov", M_PI );
+    input origin;
     auto output_block = [&]()
     {
         for( const auto& r: records )
@@ -124,9 +144,12 @@ int traits::run( const comma::command_line_options& options )
     {
         if( r.visited_id != unvisited_id ) { return; }
         if( match_id && r.input.id != i.id ) { return; }            
-            
-        // todo: trajectory direction
-        // todo: trajectory fov
+
+        
+        
+        // todo: fov
+        
+        
         
         r.input.id = r.visited_id = i.id;
         queue.push_back( &r.input );
@@ -149,19 +172,28 @@ int traits::run( const comma::command_line_options& options )
     };
     auto handle_block = [&]()
     {
-        for( seed_index = 0; seed_index < seeds.size(); ++seed_index )
+        static boost::optional< input > last;
+        if( last )
         {
-            queue.push_back( &seeds[ seed_index ] );
-            while( !queue.empty() )
-            {
-                visit_at( *queue.front() );
-                queue.pop_front();
-            }
         }
+        while( at_stream.ready() || is->good() )
+        {
+            //if(  )
+            //if(  )
+        }
+        
+//         for( seed_index = 0; seed_index < seeds.size(); ++seed_index )
+//         {
+//             queue.push_back( &seeds[ seed_index ] );
+//             while( !queue.empty() )
+//             {
+//                 visit_at( *queue.front() );
+//                 queue.pop_front();
+//             }
+//         }
         output_block();
         voxels.clear();
         records.clear();
-        seeds.clear();
     };
     while( istream.ready() || std::cin.good() )
     {
