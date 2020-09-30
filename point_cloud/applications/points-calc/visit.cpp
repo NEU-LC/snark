@@ -172,12 +172,13 @@ int traits::run( const comma::command_line_options& options )
     };
     auto handle_block = [&]()
     {
-        static boost::optional< input > last;
-        if( last )
-        {
-        }
+        static std::deque< input > seeds;
+        // todo: if( last ) { queue.push_back( *last ); }
         while( at_stream.ready() || is->good() )
         {
+            const input* p = at_stream.read();
+            if( !p ) { break; }
+            //if( 
             //if(  )
             //if(  )
         }
