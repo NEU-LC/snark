@@ -29,8 +29,8 @@ std::string traits::usage()
         << "        default input fields: \"x,y,z\"\n"
         << "        options\n"
         << "            --at=<filename>[;<csv-options>]; seed points from which visiting starts\n"
-        << "            --radius=[<meters>]; todo\n"
-        << "            --field-of-view,--fov=<radians>; default=3.14159265359; todo\n"
+        << "            --radius=[<meters>]; how far to visit\n"
+        << "            --field-of-view,--fov=<radians>; default=3.14159265359; at which fields of view to visit\n"
         << "            --unvisited-id,--unvisited=<id>; default=0\n"
         << "            --visited-id,--visited=<id>; default=1\n"
         << std::endl
@@ -120,7 +120,7 @@ int traits::run( const comma::command_line_options& options )
     std::deque< record > records;
     typedef snark::voxel_map< voxel_t, 3 > voxels_t;
     voxels_t voxels( Eigen::Vector3d( radius, radius, radius ) );
-    std::deque< input* > queue; // todo
+    std::deque< const input* > queue; // todo
     bool match_id = csv.has_field( "id" );
     std::string at_options = options.value< std::string >( "--at" );
     comma::csv::options at_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( at_options );
@@ -144,10 +144,10 @@ int traits::run( const comma::command_line_options& options )
     {
         if( r.visited_id != unvisited_id ) { return; }
         if( match_id && r.input.id != i.id ) { return; }            
-
+        //if( i.point -  )
         
         
-        // todo: fov
+        // todo: fov, radius
         
         
         
@@ -172,26 +172,24 @@ int traits::run( const comma::command_line_options& options )
     };
     auto handle_block = [&]()
     {
-        static std::deque< input > seeds;
-        // todo: if( last ) { queue.push_back( *last ); }
+        static boost::optional< input > last;
+        auto visit_all_at = [&]( const visit::input& input )
+        {
+            visit_at( input );
+            while( !queue.empty() )
+            {
+                visit_at( *queue.front() );
+                queue.pop_front();
+            }
+        };
+        if( last ) { visit_all_at( *last ); }
         while( at_stream.ready() || is->good() )
         {
             const input* p = at_stream.read();
             if( !p ) { break; }
-            //if( 
-            //if(  )
-            //if(  )
+            if( p->block != records[0].input.block ) { last = *p; break; } // todo: matching block management
+            visit_all_at( *p );
         }
-        
-//         for( seed_index = 0; seed_index < seeds.size(); ++seed_index )
-//         {
-//             queue.push_back( &seeds[ seed_index ] );
-//             while( !queue.empty() )
-//             {
-//                 visit_at( *queue.front() );
-//                 queue.pop_front();
-//             }
-//         }
         output_block();
         voxels.clear();
         records.clear();
