@@ -56,6 +56,7 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr< snark::
     layout->setSpacing( 0 );
     layout->addWidget( m_fileFrame, 0, 0 );
     viewer_t* viewer = controller_traits< snark::graphics::view::controller >::get_widget( controller );
+
     #if QT_VERSION >= 0x050000
     #if Qt3D_VERSION==1
     layout->addWidget( QWidget::createWindowContainer( viewer ), 0, 1 );
@@ -188,26 +189,23 @@ void MainWindow::updateFileFrame() // quick and dirty
 void MainWindow::update_view()
 {
     controller->update_view();
+    controller_traits< snark::graphics::view::controller >::get_widget( controller )->setFocus();
+    
 }
+
 void MainWindow::toggleFileFrame( bool visible )
 {
     m_fileFrameVisible = visible;
     if( visible ) { m_fileFrame->show(); } else { m_fileFrame->hide(); }
 }
 
-void MainWindow::closeEvent( QCloseEvent * )
-{
-    controller->shutdown();
-}
+void MainWindow::closeEvent( QCloseEvent * ) { controller->shutdown(); }
 
 void MainWindow::load_camera_config()
 {
     QString filename=QFileDialog::getOpenFileName(this,"Load Camera Config");
 //     std::cerr<<"MainWindow::load_camera_config "<<filename<<std::endl;
-    if(!filename.isNull())
-    {
-        controller->load_camera_config(filename.toStdString());
-    }
+    if( !filename.isNull() ) { controller->load_camera_config(filename.toStdString()); }
 }
 
 void MainWindow::save_camera_config()

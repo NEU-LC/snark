@@ -130,10 +130,7 @@ void controller::read()
             viewer->look_at_center();
         }
     }
-    if( need_update )
-    {
-        update_view();
-    }
+    if( need_update ) { update_view(); }
     if( m_shutdown && m_exit_on_end_of_input ) { shutdown(); }
 }
 
@@ -142,22 +139,15 @@ void controller::update_view()
 #if Qt3D_VERSION>=2
     //update shapes
     viewer->begin_update();
-    for(auto& i : readers)
-    {
-        i->update_view();
-    }
+    for( auto& i : readers ) { i->update_view(); }
     viewer->end_update();
 #endif
     viewer->update();
 }
-void controller::load_camera_config(const std::string& file_name)
-{
-    viewer->load_camera_config(file_name);
-}
-void controller::write_camera_config(std::ostream& os)
-{
-    viewer->write_camera_config(os);
-}
+
+void controller::load_camera_config( const std::string& file_name ) { viewer->load_camera_config(file_name); }
+
+void controller::write_camera_config( std::ostream& os ) { viewer->write_camera_config(os); }
 
 } } } // namespace snark { namespace graphics { namespace view {
 

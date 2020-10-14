@@ -67,25 +67,21 @@ static const char *fragment_shader_source = R"(
 )";
 
 widget::widget(const color_t& background_color, const qt3d::camera_options& camera_options, QWidget *parent )
-    : QOpenGLWidget( parent ), program_( 0 ), 
-    camera(camera_options.orthographic,camera_options.field_of_view,QVector3D(0,0,camera_options.z_is_up?1:-1)) ,
-    scene_radius(10), background_color(background_color)
+    : QOpenGLWidget( parent )
+    , program_( 0 )
+    , camera( camera_options.orthographic
+            , camera_options.field_of_view
+            , QVector3D( 0, 0, camera_options.z_is_up ? 1 : -1 ) )
+            , scene_radius( 10 )
+            , background_color( background_color )
 {
-}
-widget::~widget()
-{
-    cleanup();
 }
 
-QSize widget::minimumSizeHint() const
-{
-    return QSize( 50, 50 );
-}
+widget::~widget() { cleanup(); }
 
-QSize widget::sizeHint() const
-{
-    return QSize( 400, 400 );
-}
+QSize widget::minimumSizeHint() const { return QSize( 50, 50 ); }
+
+QSize widget::sizeHint() const { return QSize( 400, 400 ); }
 
 void widget::cleanup()
 {
@@ -103,32 +99,21 @@ void widget::cleanup()
     doneCurrent();
 }
 
-void widget::begin_update()
-{
-    makeCurrent();
-}
-void widget::end_update()
-{
-    doneCurrent();
-}
+void widget::begin_update() { makeCurrent(); }
 
-void widget::add_shape(const std::shared_ptr<shape>& shape)
-{
-    shapes.push_back(shape);
-}
-void widget::add_label_shader(const std::shared_ptr<label_shader>& label_shader)
+void widget::end_update() { doneCurrent(); }
+
+void widget::add_shape(const std::shared_ptr<shape>& shape) { shapes.push_back(shape); }
+
+void widget::add_label_shader( const std::shared_ptr<label_shader>& label_shader )
 {
     label_shader->scaled=camera.orthographic;
     label_shaders.push_back(label_shader);
 }
-void widget::add_texture_shader(const std::shared_ptr<texture_shader>& texture_shader)
-{
-    texture_shaders.push_back(texture_shader);
-}
-void widget::add_mesh_shader(const std::shared_ptr<mesh_shader>& mesh_shader)
-{
-    mesh_shaders.push_back(mesh_shader);
-}
+
+void widget::add_texture_shader( const std::shared_ptr<texture_shader>& texture_shader ) { texture_shaders.push_back( texture_shader ); }
+
+void widget::add_mesh_shader( const std::shared_ptr<mesh_shader>& mesh_shader ) { mesh_shaders.push_back(mesh_shader); }
 
 void widget::initializeGL()
 {
@@ -210,15 +195,9 @@ void widget::set_far_plane(float f)
     update();
 }
 
-void widget::resizeGL( int w, int h )
-{
-    camera.update_projection(size());
-}
+void widget::resizeGL( int w, int h ) { camera.update_projection( size() ); }
 
-void widget::mousePressEvent( QMouseEvent *event )
-{
-    last_pos_ = event->pos();
-}
+void widget::mousePressEvent( QMouseEvent *event ) { last_pos_ = event->pos(); }
 
 void widget::mouseMoveEvent( QMouseEvent *event )
 {

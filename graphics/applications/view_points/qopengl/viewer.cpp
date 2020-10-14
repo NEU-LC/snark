@@ -89,6 +89,7 @@ void viewer::look_at_center()
     camera.set_orientation(3*M_PI/4, -M_PI/4, -M_PI/4);
     camera.set_position(QVector3D(0,0,-2.6*scene_radius));
 }
+
 void viewer::set_camera_position(const Eigen::Vector3d& position, const Eigen::Vector3d& orientation)
 {
     Eigen::Vector3d p = position - *m_offset;
@@ -105,6 +106,7 @@ void viewer::set_camera_position(const Eigen::Vector3d& position, const Eigen::V
     camera.set_orientation(orientation.x(),orientation.y(),orientation.z());
     camera.set_position(QVector3D(0,0,-p.norm()));    //camera is in 0,0,-z in world coordinate
 }
+
 void viewer::load_camera_config(const std::string& file_name)
 {
     boost::property_tree::ptree camera_config;
@@ -112,6 +114,7 @@ void viewer::load_camera_config(const std::string& file_name)
     comma::from_ptree from_ptree( camera_config, true );
     comma::visiting::apply( from_ptree ).to( camera );
 }
+
 void viewer::write_camera_config(std::ostream& os)
 {
     boost::property_tree::ptree p;

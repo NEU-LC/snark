@@ -90,9 +90,7 @@ protected:
     void mouseMoveEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
     void mouseDoubleClickEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
     void wheelEvent( QWheelEvent *event ) Q_DECL_OVERRIDE;
-    
-//     void set_near_plane(float near_plane);
-    void set_far_plane(float f);
+    void set_far_plane( float f ); // void set_near_plane(float near_plane);
 
 protected:
     void update_projection();
