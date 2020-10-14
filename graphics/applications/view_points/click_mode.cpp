@@ -88,6 +88,8 @@ void click_mode::double_right_click_t::on_key_press( QKeyEvent* event )
                     switch( event->key() )
                     {
                         case Qt::Key_Minus: block_ = -block_; break;
+                        case Qt::Key_Up: ++block_; break;
+                        case Qt::Key_Down: --block_; break;
                         case Qt::Key_Backspace: block_ = block_ / 10; break;
                         default: if( '0' <= s[0] && s[0] <= '9' ) { block_ = block_ * 10 + ( s[0] - '0' ) * ( block_ < 0 ? -1 : 1 ); } break;
                     }

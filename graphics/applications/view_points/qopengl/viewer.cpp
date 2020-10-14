@@ -67,7 +67,11 @@ void viewer::double_right_click(const boost::optional< QVector3D >& point)
     std::cout << std::setprecision( 16 ) << p.x() << "," << p.y() << "," << p.z() << click_mode.double_right_click.to_output_string() << std::endl;
 }
 
-void viewer::keyPressEvent( QKeyEvent *event ) { click_mode.double_right_click.on_key_press( event ); }
+void viewer::keyPressEvent( QKeyEvent *event )
+{
+    click_mode.double_right_click.on_key_press( event );
+    update();
+}
 
 void viewer::toggle_block_mode( bool flag ) { click_mode.double_right_click.toggle( snark::graphics::view::click_mode::double_right_click_t::modes::block, flag ); }
 
@@ -75,8 +79,8 @@ void viewer::toggle_label_mode( bool flag ) { click_mode.double_right_click.togg
 
 void viewer::update_view(const QVector3D& min, const QVector3D& max)
 {
-    if(!scene_radius_fixed) { scene_radius = 0.5 * ( max - min ).length(); }
-    if(!scene_center_fixed) { scene_center = 0.5 * ( min + max ); }
+    if( !scene_radius_fixed ) { scene_radius = 0.5 * ( max - min ).length(); }
+    if( !scene_center_fixed ) { scene_center = 0.5 * ( min + max ); }
 //     std::cerr<<"viewer::update_view "<<min<<" "<<max<<"; "<<scene_radius<<"; "<<scene_center<<std::endl;
 //     update the position of the far plane so that the full scene is displayed
     set_far_plane(4.6*scene_radius);
