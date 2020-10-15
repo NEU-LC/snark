@@ -54,9 +54,15 @@ MainWindow::MainWindow( const std::string& title, const std::shared_ptr< snark::
     QGridLayout* layout = new QGridLayout;
     layout->setContentsMargins( 0, 0, 0, 0 );
     layout->setSpacing( 0 );
+    
+    //QScrollArea* area = new QScrollArea( this );
+    //area->setWidget( m_fileFrame );
+    //area->show();
+    
     layout->addWidget( m_fileFrame, 0, 0 );
+    
     viewer_t* viewer = controller_traits< snark::graphics::view::controller >::get_widget( controller );
-
+    
     #if QT_VERSION >= 0x050000
     #if Qt3D_VERSION==1
     layout->addWidget( QWidget::createWindowContainer( viewer ), 0, 1 );
