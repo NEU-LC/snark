@@ -65,9 +65,9 @@ static void usage( bool more = false )
     std::cerr << "                                        LIMITATION: if the input data stream is intermittent, i.e. there are intervals of idleness" << std::endl;
     std::cerr << "                                                    between batches of points, points-join may start taking 100% of CPU" << std::endl;
     std::cerr << "                                                    this is due to how multithreading is implemented (most likely a design" << std::endl;
-    std::cerr << "                                                    bug/drawback in TBB)" << std::endl;
-    std::cerr << "                                                    we are trying to fix it, but meanwhile, if it becomes a problem" << std::endl;
-    std::cerr << "                                                    use --threads=1: you will lose parallelisation, but avoid constant 100% of CPU load" << std::endl;
+    std::cerr << "                                                    bug/drawback in TBB: see e.g:" << std::endl;
+    std::cerr << "                                                    https://community.intel.com/t5/Intel-oneAPI-Threading-Building/tbb-pipeline-instance-using-excessive-CPU-when-idle/td-p/891491)" << std::endl;
+    std::cerr << "                                                    we are trying to fix it, but in vain so far" << std::endl;
     std::cerr << "    --parallel-chunk-size,--chunk-size=<size>; default=256: read input in chunks of <size> record; if --flush or ascii input, automatically set to --chunk-size=1" << std::endl;
     std::cerr << "    --permissive: discard invalid points or triangles and continue" << std::endl;
     std::cerr << "    --radius=<radius>: max lookup radius, required even if radius field is present" << std::endl;
