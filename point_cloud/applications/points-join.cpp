@@ -49,6 +49,7 @@ static void usage( bool more = false )
     std::cerr << "usage: cat points.1.csv | points-join \"points.2.csv[;<csv options>]\" [<options>] > joined.csv" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    if the second set is not given, for each point output the nearest point in the same set; todo" << std::endl;
+    std::cerr << "                " << std::endl;
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --all: output all points in the given radius instead of the nearest" << std::endl;
@@ -61,6 +62,12 @@ static void usage( bool more = false )
     std::cerr << "    --matching: output only points that have a match, do not append nearest point; a convenience option" << std::endl;
     std::cerr << "    --not-matching: output only points that do not have a match, i.e. opposite of --matching" << std::endl;
     std::cerr << "    --parallel-threads,--threads=<count>; default=" << std::thread::hardware_concurrency() << "; number of threads" << std::endl;
+    std::cerr << "                                        LIMITATION: if the input data stream is intermittent, i.e. there are intervals of idleness" << std::endl;
+    std::cerr << "                                                    between batches of points, points-join may start taking 100% of CPU" << std::endl;
+    std::cerr << "                                                    this is due to how multithreading is implemented (most likely a design" << std::endl;
+    std::cerr << "                                                    bug/drawback in TBB)" << std::endl;
+    std::cerr << "                                                    we are trying to fix it, but meanwhile, if it becomes a problem" << std::endl;
+    std::cerr << "                                                    use --threads=1: you will lose parallelisation, but avoid constant 100% of CPU load" << std::endl;
     std::cerr << "    --parallel-chunk-size,--chunk-size=<size>; default=256: read input in chunks of <size> record; if --flush or ascii input, automatically set to --chunk-size=1" << std::endl;
     std::cerr << "    --permissive: discard invalid points or triangles and continue" << std::endl;
     std::cerr << "    --radius=<radius>: max lookup radius, required even if radius field is present" << std::endl;
