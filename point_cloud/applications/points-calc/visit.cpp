@@ -25,7 +25,7 @@ std::string traits::usage()
 {
     std::ostringstream oss;
     oss
-        << "    visit: todo...\n"
+        << "    visit: implementation in progress...\n"
         << "        default input fields: \"x,y,z\"\n"
         << "        options\n"
         << "            --at=<filename>[;<csv-options>]; seed points from which visiting starts\n"
@@ -39,7 +39,14 @@ std::string traits::usage()
         << "            --visited-id,--visited=<id>; default=1\n"
         << std::endl
         << "        examples\n"
-        << "            todo\n"
+        << "            csv-paste line-number --size 100 \\\n"
+        << "                | csv-paste - line-number --index --size 100 value=0  \\\n"
+        << "                | head -n10000  \\\n"
+        << "                | points-calc visit --at <( echo 50,50,0,1,0,0; echo 60,50,0,0,1,0 )';fields=x,y,z,normal' \\\n"
+        << "                                    --resolution 1 \\\n"
+        << "                                    --fov $( math-deg2rad 20 ) \\\n"
+        << "                                    --radius 20  \\\n"
+        << "                | view-points '-;fields=x,y,z,id' \\\n"
         << std::endl;
     return oss.str();
 }
@@ -139,7 +146,6 @@ int traits::run( const comma::command_line_options& options )
     double fov = boost::lexical_cast< double >( s[0] );
     double fov_threshold = std::cos( fov / 2 );
     bool fov_relative = false;
-    std::cerr << "--> at_has_normal: " << at_has_normal << " fov_threshold: " << fov_threshold << std::endl;
     switch( s.size() )
     {
         case 1:
@@ -169,10 +175,10 @@ int traits::run( const comma::command_line_options& options )
         if( r.visited_id != unvisited_id ) { return; }
         if( match_id && r.input.id != i.id ) { return; }
         if( radius && ( r.input.point - origin.point ).squaredNorm() > squared_radius ) { return; }
-        const auto& d = i.point - r.input.point;
+        const auto& d = r.input.point - i.point;
         if( d.squaredNorm() > squared_resolution ) { return; }
-        if( fov_relative ) { if( stdin_has_normal && i.normal.normalized().dot( d.normalized() ) < fov_threshold ) { return; } }
-        else if( at_has_normal && origin.normal.normalized().dot( d.normalized() ) < fov_threshold ) { return; }
+        if( fov_relative ) { if( ( stdin_has_normal ? i : origin ).normal.normalized().dot( d.normalized() ) < fov_threshold ) { return; } } // todo! fix
+        else { if( at_has_normal && origin.normal.normalized().dot( ( r.input.point - origin.point ).normalized() ) <= fov_threshold ) { return; } }
         r.input.id = r.visited_id = i.id;
         queue.push_back( &r.input );
     };
