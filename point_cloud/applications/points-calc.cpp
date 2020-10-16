@@ -90,7 +90,7 @@ static void usage( bool verbose = false )
     std::cerr << "    trajectory-partition" << std::endl;
     std::cerr << "    trajectory-thin" << std::endl;
     std::cerr << "    triangles-discretise,triangles-discretize" << std::endl;
-    std::cerr << "    visit" << std::endl;
+    std::cerr << "    visit: todo" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
     std::cerr << "general options" << std::endl;
@@ -340,7 +340,7 @@ static void usage( bool verbose = false )
     std::cerr << "                --do-not-accumulate: do not accumulate distance travelled from the last point, just measure distance to the last point directly" << std::endl;
     std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
     std::cerr << std::endl;
-    std::cerr << snark::points_calc::visit::traits::usage() << std::endl;
+    //std::cerr << snark::points_calc::visit::traits::usage() << std::endl;
     std::cerr << std::endl;
 //     std::cerr << "        trajectory-partitions-match" << std::endl;
 //     std::cerr << "            read input, append partition ids based on a rule or heuristic (see options below)" << std::endl;
