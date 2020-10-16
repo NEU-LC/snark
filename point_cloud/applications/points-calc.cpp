@@ -340,7 +340,7 @@ static void usage( bool verbose = false )
     std::cerr << "                --do-not-accumulate: do not accumulate distance travelled from the last point, just measure distance to the last point directly" << std::endl;
     std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
     std::cerr << std::endl;
-    //std::cerr << snark::points_calc::visit::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::visit::traits::usage() << std::endl;
     std::cerr << std::endl;
     vector_calc::usage();
     exit( 0 );

@@ -30,7 +30,7 @@ std::string traits::usage()
         << "        options\n"
         << "            --at=<filename>[;<csv-options>]; seed points from which visiting starts\n"
         << "            --radius=[<meters>]; how far to visit\n"
-        << "            --field-of-view,--fov=<radians>; default=3.14159265359[,relative]; at which fields of view to visit\n"
+        << "            --field-of-view,--fov=<radians>[,relative]; default=3.141592653589793; do not visit input points outside of field of view\n"
         << "                relative: angle calculated between normal at the current input point and direction from the current\n"
         << "                          input point to next-searched input point (\"search direction\")\n"
         << "                default (\"absolute\"): angle calculated between normal at the last 'at' point and \"search direction\"\n"
@@ -120,6 +120,7 @@ int traits::run( const comma::command_line_options& options )
     std::tie( csv.fields, stdin_has_normal ) = handle_fields( csv.fields );
     comma::csv::input_stream< input > istream( std::cin, csv, input( unvisited_id ) );
     double radius = options.value< double >( "--radius" );
+    double square_radius = radius * radius;
     std::deque< record > records;
     typedef snark::voxel_map< voxel_t, 3 > voxels_t;
     voxels_t voxels( Eigen::Vector3d( radius, radius, radius ) );
@@ -131,21 +132,24 @@ int traits::run( const comma::command_line_options& options )
     std::tie( at_csv.fields, stdin_has_normal ) = handle_fields( at_csv.fields );
     comma::io::istream is( at_csv.filename, at_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< input > at_stream( *is, at_csv, input( visited_id ) );
+    bool has_fov = options.exists( "--field-of-view,--fov" ); // quick and dirty
     const auto& s = comma::split( options.value( "--field-of-view,--fov", boost::lexical_cast< std::string >( M_PI ) ), ',', true );
     double fov = boost::lexical_cast< double >( s[0] );
+    double fov_threshold = std::cos( fov / 2 );
     bool fov_relative = false;
     switch( s.size() )
     {
         case 1:
+            if( has_fov && !at_has_normal ) { COMMA_THROW( comma::exception, "points-calc visit: if field of view absolute, --at fields should have normal" ); }
             fov_relative = false;
             break;
         case 2:
-            if( s[1] == "relative" ) { fov_relative = true; break; }
-            std::cerr << "points-calc visit: expected: --field-of-view=<angle>[,relative]; got: '" << options.value< std::string >( "--field-of-view,--fov" ) << "'" << std::endl;
-            return 1;
+            if( s[1] != "relative" ) { COMMA_THROW( comma::exception, "points-calc visit: expected: --field-of-view=<angle>[,relative]; got: '" << options.value< std::string >( "--field-of-view,--fov" ) << "'" ); }
+            fov_relative = true;
+            if( at_has_normal ) { break; }
+            COMMA_THROW( comma::exception, "points-calc visit: if field of view relative, input fields should have normal" );
         default:
-            std::cerr << "points-calc visit: expected: --field-of-view=<angle>[,relative]; got: '" << options.value< std::string >( "--field-of-view,--fov" ) << "'" << std::endl;
-            return 1;
+            COMMA_THROW( comma::exception, "points-calc visit: expected: --field-of-view=<angle>[,relative]; got: '" << options.value< std::string >( "--field-of-view,--fov" ) << "'" );
     }
     input origin;
     auto output_block = [&]()
@@ -161,14 +165,10 @@ int traits::run( const comma::command_line_options& options )
     auto visit_record = [&]( record& r, const visit::input& i )
     {
         if( r.visited_id != unvisited_id ) { return; }
-        if( match_id && r.input.id != i.id ) { return; }            
-        //if( i.point -  )
-        
-        
-        // todo: fov, radius
-        
-        
-        
+        if( match_id && r.input.id != i.id ) { return; }
+        const auto& d = i.point - r.input.point;
+        if( d.squaredNorm() > square_radius ) { return; }
+        if( has_fov && ( fov_relative ? i.normal : origin.normal ).normalized().dot( d.normalized() ) < fov_threshold ) { return; }
         r.input.id = r.visited_id = i.id;
         queue.push_back( &r.input );
     };
@@ -205,6 +205,7 @@ int traits::run( const comma::command_line_options& options )
         {
             const input* p = at_stream.read();
             if( !p ) { break; }
+            origin = *p; // quick and dirty
             if( p->block != records[0].input.block ) { last = *p; break; } // todo: matching block management
             visit_all_at( *p );
         }
