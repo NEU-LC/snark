@@ -132,18 +132,17 @@ int traits::run( const comma::command_line_options& options )
     std::string at_options = options.value< std::string >( "--at" );
     comma::csv::options at_csv = comma::name_value::parser( "filename", ';', '=', false ).get< comma::csv::options >( at_options );
     bool at_has_normal = false;
-    std::tie( at_csv.fields, stdin_has_normal ) = handle_fields( at_csv.fields );
+    std::tie( at_csv.fields, at_has_normal ) = handle_fields( at_csv.fields );
     comma::io::istream is( at_csv.filename, at_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< input > at_stream( *is, at_csv, input( visited_id ) );
-    bool has_fov = options.exists( "--field-of-view,--fov" ); // quick and dirty
     const auto& s = comma::split( options.value( "--field-of-view,--fov", boost::lexical_cast< std::string >( M_PI ) ), ',', true );
     double fov = boost::lexical_cast< double >( s[0] );
     double fov_threshold = std::cos( fov / 2 );
     bool fov_relative = false;
+    std::cerr << "--> at_has_normal: " << at_has_normal << " fov_threshold: " << fov_threshold << std::endl;
     switch( s.size() )
     {
         case 1:
-            if( has_fov && !at_has_normal ) { COMMA_THROW( comma::exception, "points-calc visit: if field of view absolute, --at fields should have normal" ); }
             fov_relative = false;
             break;
         case 2:
@@ -172,7 +171,8 @@ int traits::run( const comma::command_line_options& options )
         if( radius && ( r.input.point - origin.point ).squaredNorm() > squared_radius ) { return; }
         const auto& d = i.point - r.input.point;
         if( d.squaredNorm() > squared_resolution ) { return; }
-        if( has_fov && ( fov_relative ? i.normal : origin.normal ).normalized().dot( d.normalized() ) < fov_threshold ) { return; }
+        if( fov_relative ) { if( stdin_has_normal && i.normal.normalized().dot( d.normalized() ) < fov_threshold ) { return; } }
+        else if( at_has_normal && origin.normal.normalized().dot( d.normalized() ) < fov_threshold ) { return; }
         r.input.id = r.visited_id = i.id;
         queue.push_back( &r.input );
     };
