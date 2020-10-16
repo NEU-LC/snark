@@ -30,6 +30,7 @@ std::string traits::usage()
         << "        options\n"
         << "            --at=<filename>[;<csv-options>]; seed points from which visiting starts\n"
         << "            --radius=[<meters>]; how far to visit\n"
+        << "            --resolution=<meters>; ignore points farther away the current search point than <meters>\n"
         << "            --field-of-view,--fov=<radians>[,relative]; default=3.141592653589793; do not visit input points outside of field of view\n"
         << "                relative: angle calculated between normal at the current input point and direction from the current\n"
         << "                          input point to next-searched input point (\"search direction\")\n"
@@ -119,11 +120,13 @@ int traits::run( const comma::command_line_options& options )
     bool stdin_has_normal = false;
     std::tie( csv.fields, stdin_has_normal ) = handle_fields( csv.fields );
     comma::csv::input_stream< input > istream( std::cin, csv, input( unvisited_id ) );
-    double radius = options.value< double >( "--radius" );
-    double square_radius = radius * radius;
+    boost::optional< double > radius = options.optional< double >( "--radius" );
+    double squared_radius = radius ? *radius * *radius : 0;
+    double resolution = options.value< double >( "--resolution" );
+    double squared_resolution = resolution * resolution;
     std::deque< record > records;
     typedef snark::voxel_map< voxel_t, 3 > voxels_t;
-    voxels_t voxels( Eigen::Vector3d( radius, radius, radius ) );
+    voxels_t voxels( Eigen::Vector3d( resolution, resolution, resolution ) );
     std::deque< const input* > queue; // todo
     bool match_id = csv.has_field( "id" );
     std::string at_options = options.value< std::string >( "--at" );
@@ -166,8 +169,9 @@ int traits::run( const comma::command_line_options& options )
     {
         if( r.visited_id != unvisited_id ) { return; }
         if( match_id && r.input.id != i.id ) { return; }
+        if( radius && ( r.input.point - origin.point ).squaredNorm() > squared_radius ) { return; }
         const auto& d = i.point - r.input.point;
-        if( d.squaredNorm() > square_radius ) { return; }
+        if( d.squaredNorm() > squared_resolution ) { return; }
         if( has_fov && ( fov_relative ? i.normal : origin.normal ).normalized().dot( d.normalized() ) < fov_threshold ) { return; }
         r.input.id = r.visited_id = i.id;
         queue.push_back( &r.input );
