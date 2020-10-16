@@ -25,7 +25,7 @@ std::string traits::usage()
 {
     std::ostringstream oss;
     oss
-        << "    visit: implementation in progress...\n"
+        << "    visit\n"
         << "        default input fields: \"x,y,z\"\n"
         << "        options\n"
         << "            --at=<filename>[;<csv-options>]; seed points from which visiting starts\n"
@@ -66,8 +66,9 @@ struct record
     visit::input input;
     std::string buffer;
     comma::uint32 visited_id;
+    comma::uint32 visited_by;
     
-    record( const visit::input& input = visit::input(), const std::string& buffer = std::string(), comma::uint32 visited_id = 0 ): input( input ), buffer( buffer ), visited_id( visited_id ) {}
+    record( const visit::input& input = visit::input(), const std::string& buffer = std::string(), comma::uint32 visited_id = 0 ): input( input ), buffer( buffer ), visited_id( visited_id ), visited_by( 0 ) {}
 };
 
 } } } // namespace snark { namespace points_calc { namespace visit {
@@ -160,6 +161,7 @@ int traits::run( const comma::command_line_options& options )
             COMMA_THROW( comma::exception, "points-calc visit: expected: --field-of-view=<angle>[,relative]; got: '" << options.value< std::string >( "--field-of-view,--fov" ) << "'" );
     }
     input origin;
+    unsigned int visited_by = 0; // uber-quick and dirty
     auto output_block = [&]()
     {
         for( const auto& r: records )
@@ -172,7 +174,7 @@ int traits::run( const comma::command_line_options& options )
     };
     auto visit_record = [&]( record& r, const visit::input& i )
     {
-        if( r.visited_id != unvisited_id ) { return; }
+        if( r.visited_by == visited_by && r.visited_id != unvisited_id ) { return; }
         if( match_id && r.input.id != i.id ) { return; }
         if( radius && ( r.input.point - origin.point ).squaredNorm() > squared_radius ) { return; }
         const auto& d = r.input.point - i.point;
@@ -180,6 +182,7 @@ int traits::run( const comma::command_line_options& options )
         if( fov_relative ) { if( ( stdin_has_normal ? i : origin ).normal.normalized().dot( d.normalized() ) < fov_threshold ) { return; } } // todo! fix
         else { if( at_has_normal && origin.normal.normalized().dot( ( r.input.point - origin.point ).normalized() ) <= fov_threshold ) { return; } }
         r.input.id = r.visited_id = i.id;
+        r.visited_by = visited_by;
         queue.push_back( &r.input );
     };
     auto visit_at = [&]( const visit::input& input )
@@ -210,6 +213,7 @@ int traits::run( const comma::command_line_options& options )
                 queue.pop_front();
             }
         };
+        visited_by = 0; // uber-quick and dirty
         if( last ) { visit_all_at( *last ); }
         while( at_stream.ready() || is->good() )
         {
@@ -218,6 +222,7 @@ int traits::run( const comma::command_line_options& options )
             origin = *p; // quick and dirty
             if( p->block != records[0].input.block ) { last = *p; break; } // todo: matching block management
             visit_all_at( *p );
+            ++visited_by; // uber-quick and dirty
         }
         output_block();
         voxels.clear();
