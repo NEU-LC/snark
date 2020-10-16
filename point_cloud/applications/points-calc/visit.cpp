@@ -30,7 +30,10 @@ std::string traits::usage()
         << "        options\n"
         << "            --at=<filename>[;<csv-options>]; seed points from which visiting starts\n"
         << "            --radius=[<meters>]; how far to visit\n"
-        << "            --field-of-view,--fov=<radians>; default=3.14159265359; at which fields of view to visit\n"
+        << "            --field-of-view,--fov=<radians>; default=3.14159265359[,relative]; at which fields of view to visit\n"
+        << "                relative: angle calculated between normal at the current input point and direction from the current\n"
+        << "                          input point to next-searched input point (\"search direction\")\n"
+        << "                default (\"absolute\"): angle calculated between normal at the last 'at' point and \"search direction\"\n"
         << "            --unvisited-id,--unvisited=<id>; default=0\n"
         << "            --visited-id,--visited=<id>; default=1\n"
         << std::endl
@@ -128,7 +131,22 @@ int traits::run( const comma::command_line_options& options )
     std::tie( at_csv.fields, stdin_has_normal ) = handle_fields( at_csv.fields );
     comma::io::istream is( at_csv.filename, at_csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii );
     comma::csv::input_stream< input > at_stream( *is, at_csv, input( visited_id ) );
-    double fov = options.value( "--field-of-view,--fov", M_PI );
+    const auto& s = comma::split( options.value( "--field-of-view,--fov", boost::lexical_cast< std::string >( M_PI ) ), ',', true );
+    double fov = boost::lexical_cast< double >( s[0] );
+    bool fov_relative = false;
+    switch( s.size() )
+    {
+        case 1:
+            fov_relative = false;
+            break;
+        case 2:
+            if( s[1] == "relative" ) { fov_relative = true; break; }
+            std::cerr << "points-calc visit: expected: --field-of-view=<angle>[,relative]; got: '" << options.value< std::string >( "--field-of-view,--fov" ) << "'" << std::endl;
+            return 1;
+        default:
+            std::cerr << "points-calc visit: expected: --field-of-view=<angle>[,relative]; got: '" << options.value< std::string >( "--field-of-view,--fov" ) << "'" << std::endl;
+            return 1;
+    }
     input origin;
     auto output_block = [&]()
     {
