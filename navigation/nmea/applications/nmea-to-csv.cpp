@@ -100,7 +100,7 @@ struct output
         ::position position; // todo: make optional? or simply check for zeroes?
         ::orientation orientation; // todo: make optional? or simply check for zeroes?
         comma::uint32 number_of_satellites;
-        unsigned char quality;
+        comma::int32 quality;
 
         data() : number_of_satellites( 0 ), quality( 0 ) {}
     };
