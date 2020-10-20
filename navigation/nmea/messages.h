@@ -68,7 +68,7 @@ struct gga : message
 {
     static const std::string type;
     
-    struct quality_t { enum values { fix_not_valid = 0, gps_fix = 1, differential_gps_fix = 2, real_time_kinematic_fixed_integers = 4, real_time_kinematic_float_integers = 5 }; };
+    struct quality_t { enum values { fix_not_valid = 0, gps_fix = 1, differential_gps_fix = 2, real_time_kinematic_fixed_integers = 4, real_time_kinematic_float_integers = 5, estimated = 6, manual_input = 7, simulation = 8 }; };
 
     nmea::messages::time time;
     nmea::messages::coordinates coordinates;
