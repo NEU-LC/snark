@@ -30,6 +30,95 @@
 /**
  * Created by vrushali on 15/10/15.
  */
+/*
+  Creates a form with <n> text fields and three buttons marked Start, Stop and Clear
+
+  ╭───────────────────────────────╮
+  │                               │
+  │ field-1   [ value-1 ]         │
+  │ field-1   [ value-1 ]         │
+  │ ...                           │
+  │ ╭───────╮ ╭───────╮ ╭───────╮ │
+  │ │ Start │ │ Stop  │ │ Clear │ │
+  │ ╰───────╯ ╰───────╯ ╰───────╯ │
+  │ [ status ]                    │
+  ╰───────────────────────────────╯
+
+  There is an optional Output field that appears above the status line if there
+  is an "output" field in the GET response.
+
+  Start and Stop submit the form; Clear clears the text entry fields
+
+  frontend.json:
+  "log":
+  {
+      "type": "start_stop",
+      "form":
+      {
+          "fields":
+          {
+              <field-1>: <value-1>,
+              <field-2>: <value-2>,
+              ...
+          }
+      }
+  }
+
+  backend.json:
+  "log"
+  {
+      "command": <handler>
+  }
+
+  When Start or Stop is selected, the following request is sent:
+
+  "GET /log?_=<request-id>&command=<start|stop>&<field-1>=<http-escaped-value-1>&<field-2>=<http-escaped-value-2>&... HTTP/1.1"
+
+  The same request is sent on every refresh, without the command field.
+
+  In normal handling this is process by the snark-webframes service which then
+  calls the configured handler application with the data passed on stdin as:
+
+  command=<start|stop>
+  <field-1>=<value-1>
+  <field-2>=<value-2>
+  ...
+
+  In response to the GET request the frontend expects to receive a JSON message with:
+  {
+      "status":
+      {
+          "code": <0|1>,            // 0 = success
+          "message": <string>
+      },
+      "running":
+      {
+          "status": <0|1>           // 1 = running
+      },
+      "fields":
+      {
+          <field-1>: <value-1>,
+          ...
+      },
+      "output": <string>
+  }
+
+  All the fields are optional.
+
+  status.message is placed in the status text field, coloured according to status.code.
+  There is a default message of "Success" or "Error" depending on status.code.
+  If status.code = 1 (error) the panel is disabled until the error is cleared.
+
+  When running.status = 1 the Start and Clear buttons are disabled; otherwise Stop is disabled.
+
+  Also when running.status = 1, any values set in the fields record are applied
+  to the input field of the same name. This allows these fields to be updated to
+  reflect some external behaviour (e.g. a value set by the logging program).
+
+  If included, the contents of the "output" field, which can be multi-line is
+  placed in a text box above the status field.
+
+ */
 define('StartStopFeed', ["jquery", "Feed"], function ($) {
         var Feed = require('Feed');
         var StartStopFeed = function (feed_name, feed_path, config) {
