@@ -68,7 +68,7 @@ static void usage( bool verbose )
     std::cerr << std::endl;
     std::cerr << std::endl;
     std::cerr << "fields" << std::endl;
-    std::cerr << "    default: t,latitude,longitude,z,roll,pitch,yaw,number_of_satellites" << std::endl;
+    std::cerr << "    default: t,latitude,longitude,z,roll,pitch,yaw,number_of_satellites,quality" << std::endl;
     std::cerr << std::endl;
     if( verbose ) { std::cerr << std::endl << "binary options" << std::endl << comma::csv::options::usage() << std::endl; }
     exit( 0 );
@@ -100,8 +100,9 @@ struct output
         ::position position; // todo: make optional? or simply check for zeroes?
         ::orientation orientation; // todo: make optional? or simply check for zeroes?
         comma::uint32 number_of_satellites;
+        comma::int32 quality;
 
-        data() : number_of_satellites( 0 ) {}
+        data() : number_of_satellites( 0 ), quality( 0 ) {}
     };
 
     typedef snark::timestamped< data > type;
@@ -148,6 +149,7 @@ template <> struct traits< output::data >
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
         v.apply( "number_of_satellites", p.number_of_satellites );
+        v.apply( "quality", p.quality );
     }
 
     template < typename Key, class Visitor > static void visit( const Key&, const output::data& p, Visitor& v )
@@ -155,6 +157,7 @@ template <> struct traits< output::data >
         v.apply( "position", p.position );
         v.apply( "orientation", p.orientation );
         v.apply( "number_of_satellites", p.number_of_satellites );
+        v.apply( "quality", p.quality );
     }
 };
 
@@ -210,6 +213,7 @@ bool handle( const nmea::messages::gga& v )
     output_.data.position.coordinates = v.coordinates();
     output_.data.position.z = v.orthometric_height;
     output_.data.number_of_satellites = v.satellites_in_use;
+    output_.data.quality = v.quality;
     return valid_time;
 }
 
@@ -270,7 +274,7 @@ int main( int ac, char** av )
                 if( v[i] == "latitude" || v[i] == "longitude" ) { v[i] = "data/position/coordinates/" + v[i]; }
                 else if( v[i] == "z" ) { v[i] = "data/position/" + v[i]; }
                 if( v[i] == "roll" || v[i] == "pitch" || v[i] == "yaw" ) { v[i] = "data/orientation/" + v[i]; }
-                else if( v[i] == "number_of_satellites" ) { v[i] = "data/" + v[i]; }
+                else if( v[i] == "number_of_satellites" || v[i] == "quality" ) { v[i] = "data/" + v[i]; }
             }
             csv.fields = comma::join( v, ',' );
         }

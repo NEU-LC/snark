@@ -125,8 +125,9 @@ static void usage( bool )
         "\n"
         "\n            colour by id"
         "\n                - if there is \"id\" field in --fields, colour by id, with or without scalar (see section <fields>)"
-        "\n                - or specify cyclic colour wheel explicitly (see fixed colour above), e.g: if --color=red,green,blue,"
-        "\n                  0 id will be red, 1 green, 2 blue, 3 red again"
+        "\n                - or specify cyclic colour wheel explicitly (see fixed colour above), e.g: if --color=red,green,blue"
+        "\n                  e.g: if --color=red,green,blue, then 0 id will be red, 1 green, 2 blue, 3 red again"
+        "\n                  you can specify colours as RGB, too, e.g: --color=red,255|255|0,blue"
         "\n                - or specify color map explicitly: e.g. --color=0:red,5:blue,default:grey"
         "\n"
         "\n            colour by elevation"
@@ -458,8 +459,8 @@ static bool data_passed_through = false;
 
 // quick and dirty, todo: a proper structure, as well as a visitor for command line options
 std::unique_ptr< snark::graphics::view::Reader > make_reader( const comma::command_line_options& options
-                                                             , const comma::csv::options& csv_options
-                                                             , const std::string& properties = "" )
+                                                            , const comma::csv::options& csv_options
+                                                            , const std::string& properties = "" )
 {
     //snark::graphics::view::color_t
     QColor background_color( QColor( QString( options.value< std::string >( "--background-colour", "#000000" ).c_str() ) ) );

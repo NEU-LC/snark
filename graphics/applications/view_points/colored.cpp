@@ -1,32 +1,4 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 
 /// @author Vsevolod Vlaskine
 
@@ -58,25 +30,22 @@ static color_t color_from_name( const std::string& name )
     else if( name == "sky" )     { return color_t( 128, 128, 255 ); }
     else
     {
-        const std::vector< std::string >& v = comma::split( name, ',' );
-        try
+        auto split = []( const std::string& s, char delimiter )
         {
-            switch( v.size() )
+            const std::vector< std::string >& v = comma::split( s, delimiter );
+            try
             {
-                case 3: return color_t( boost::lexical_cast< int >( v[0] )
-                                      , boost::lexical_cast< int >( v[1] )
-                                      , boost::lexical_cast< int >( v[2] ) );
-                case 4: return color_t( boost::lexical_cast< int >( v[0] )
-                                      , boost::lexical_cast< int >( v[1] )
-                                      , boost::lexical_cast< int >( v[2] )
-                                      , boost::lexical_cast< int >( v[3] ) );
-                default: COMMA_THROW( comma::exception, "expected color, got " << name );
+                switch( v.size() )
+                {
+                    case 3: return color_t( boost::lexical_cast< int >( v[0] ), boost::lexical_cast< int >( v[1] ), boost::lexical_cast< int >( v[2] ) );
+                    case 4: return color_t( boost::lexical_cast< int >( v[0] ), boost::lexical_cast< int >( v[1] ), boost::lexical_cast< int >( v[2] ), boost::lexical_cast< int >( v[3] ) );
+                    default: COMMA_THROW( comma::exception, "expected color as rgb or rgba, got '" << s << "'" );
+                }
             }
-        }
-        catch( ... )
-        {
-            COMMA_THROW( comma::exception, "expected color, got " << name );
-        }
+            catch( std::exception& ex ) { COMMA_THROW( comma::exception, "expected color, got '" << s << "'" << "(" << ex.what() << ")" ); }
+            catch( ... ) { COMMA_THROW( comma::exception, "expected color, got '" << s << "' (unknown exception)" ); }
+        };
+        try { return split( name, '|' ); } catch ( ... ) { return split( name, ',' ); }
     }
 }
 
@@ -300,130 +269,117 @@ colored* color_from_string( const std::string& t, const std::string& fields, con
         if( f[i] == "b" ) { b = true; }
         if( f[i] == "a" ) { a = true; }
     }
+    if( has_id )
+    {
+        if( has_scalar )
+        {
+            const std::vector< std::string >& v = comma::split( comma::split( s, ',' )[0], ':' );
+            if( v.size() != 2 ) { COMMA_THROW( comma::exception, "expected range (-5:20), got " << s ); }
+            double from = boost::lexical_cast< double >( v[0] );
+            double to = boost::lexical_cast< double >( v[1] );
+            return new by_id( backgroundcolor, from, to );
+        }
+        if( t.empty() ) { return new by_id( backgroundcolor ); }
+        const std::vector< std::string >& v = comma::split( t, ',' );
+        std::unordered_map< comma::uint32, color_t > colors;
+        bool cyclic = false;
+        bool not_cyclic = false;
+        color_t default_color = color_from_name( "grey" );
+        for( unsigned int i = 0; i < v.size(); ++i )
+        {
+            const std::vector< std::string >& w = comma::split( v[i], ':' );
+            switch( w.size() )
+            {
+                case 1:
+                    cyclic = true;
+                    colors[i] = color_from_name( w[0] );
+                    break;
+                case 2:
+                    not_cyclic = true;
+                    if( w[0] == "default" ) { default_color = color_from_name( w[1] ); }
+                    else { colors[ boost::lexical_cast< comma::uint32 >( w[0] ) ] = color_from_name( w[1] ); }
+                    break;
+                default:
+                    COMMA_THROW( comma::exception, "expected color definition; got --color='" << s << "'" );
+            }
+        }
+        if( cyclic && not_cyclic ) { COMMA_THROW( comma::exception, "expected either color list or color map; got --color='" << s << "'" ); }
+        return new by_id_color_map( colors, default_color, cyclic );
+    }
+    if( r || g || b || a ) { return new by_rgb; }
+    if( has_scalar )
+    {
+        color_t from_color, to_color;
+        double from = 0;
+        double to = 0;
+        boost::optional< snark::render::colour_map::values > map;
+        std::vector< std::string > v = comma::split( s, ',' );
+        switch( v.size() )
+        {
+            case 1:
+            {
+                std::vector< std::string > w = comma::split( v[0], ':' );
+                switch( w.size() )
+                {
+                    case 1:
+                        if( w[0] == "green" ) { map = snark::render::colour_map::constant( 0, 255, 0 ); }
+                        else if( w[0] == "red" ) { map = snark::render::colour_map::constant( 255, 0, 0 ); }
+                        else if( w[0] == "hot" ) { map = snark::render::colour_map::temperature( 96, 96 ); }
+                        else if( w[0] == "jet" ) { map = snark::render::colour_map::jet(); }
+                        else { COMMA_THROW( comma::exception, "expected colour map, got: " << s ); }
+                        break;
+                    case 2:
+                        if( w[0][0] >= 'a' && w[0][0] <= 'z' )
+                        {
+                            from_color = color_from_name( w[0] );
+                            to_color = color_from_name( w[1] );
+                        }
+                        else
+                        {
+                            from_color = color_from_name( "cyan" );
+                            to_color = color_from_name( "magenta" );
+                            from = boost::lexical_cast< double >( w[0] );
+                            to = boost::lexical_cast< double >( w[1] );
+                        }
+                        break;
+                    default:
+                        COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
+                }
+                break;
+            }
+            case 2:
+            {
+                std::vector< std::string > w = comma::split( v[0], ':' );
+                from = boost::lexical_cast< double >( w[0] );
+                to = boost::lexical_cast< double >( w[1] );
+                w = comma::split( v[1], ':' );
+                switch( w.size() )
+                {
+                    case 1:
+                        if( w[0] == "green" ) { map = snark::render::colour_map::constant( 0, 255, 0 ); }
+                        else if( w[0] == "red" ) { map = snark::render::colour_map::constant( 255, 0, 0 ); }
+                        else if( w[0] == "hot" ) { map = snark::render::colour_map::temperature( 96, 96 ); }
+                        else if( w[0] == "jet" ) { map = snark::render::colour_map::jet(); }
+                        else { COMMA_THROW( comma::exception, "expected colour map, got: " << s ); }
+                        break;
+                    case 2:
+                        from_color = color_from_name( w[0] );
+                        to_color = color_from_name( w[1] );
+                        break;
+                    default:
+                        COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
+                }
+                break;
+            }
+            default:
+                COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
+        }
+        return map ? new by_scalar( from, to, *map ) : new by_scalar( from, to, from_color, to_color );
+    }
     colored* c;
     try
     {
-        if( has_id )
-        {
-            if( has_scalar )
-            {
-                const std::vector< std::string >& v = comma::split( comma::split( s, ',' )[0], ':' );
-                if( v.size() != 2 ) { COMMA_THROW( comma::exception, "expected range (-5:20), got " << s ); }
-                double from = boost::lexical_cast< double >( v[0] );
-                double to = boost::lexical_cast< double >( v[1] );
-                c = new by_id( backgroundcolor, from, to );
-            }
-            else if( t.empty() )
-            {
-                c = new by_id( backgroundcolor );
-            }
-            else
-            {
-                const std::vector< std::string >& v = comma::split( t, ',' );
-                std::unordered_map< comma::uint32, color_t > colors;
-                bool cyclic = false;
-                bool not_cyclic = false;
-                color_t default_color = color_from_name( "grey" );
-                for( unsigned int i = 0; i < v.size(); ++i )
-                {
-                    const std::vector< std::string >& w = comma::split( v[i], ':' );
-                    switch( w.size() )
-                    {
-                        case 1:
-                            cyclic = true;
-                            colors[i] = color_from_name( w[0] );
-                            break;
-                        case 2:
-                            not_cyclic = true;
-                            if( w[0] == "default" ) { default_color = color_from_name( w[1] ); }
-                            else { colors[ boost::lexical_cast< comma::uint32 >( w[0] ) ] = color_from_name( w[1] ); }
-                            break;
-                        default: COMMA_THROW( comma::exception, "expected color definition; got --color='" << s << "'" );
-                    }
-                }
-                if( cyclic && not_cyclic ) { COMMA_THROW( comma::exception, "expected either color list or color map; got --color='" << s << "'" ); }
-                c = new by_id_color_map( colors, default_color, cyclic );
-            }
-        }
-        else if( r || g || b || a )
-        {
-            c = new by_rgb;
-        }
-        else if( has_scalar )
-        {
-            color_t from_color, to_color;
-            double from = 0;
-            double to = 0;
-            boost::optional< snark::render::colour_map::values > map;
-
-            std::vector< std::string > v = comma::split( s, ',' );
-            switch( v.size() )
-            {
-                case 1:
-                    {
-                        std::vector< std::string > w = comma::split( v[0], ':' );
-                        switch( w.size() )
-                        {
-                            case 1:
-                                if( w[0] == "green" ) { map = snark::render::colour_map::constant( 0, 255, 0 ); }
-                                else if( w[0] == "red" ) { map = snark::render::colour_map::constant( 255, 0, 0 ); }
-                                else if( w[0] == "hot" ) { map = snark::render::colour_map::temperature( 96, 96 ); }
-                                else if( w[0] == "jet" ) { map = snark::render::colour_map::jet(); }
-                                else { COMMA_THROW( comma::exception, "expected colour map, got: " << s ); }
-                                break;
-                            case 2:
-                                if( w[0][0] >= 'a' && w[0][0] <= 'z' )
-                                {
-                                    from_color = color_from_name( w[0] );
-                                    to_color = color_from_name( w[1] );
-                                }
-                                else
-                                {
-                                    from_color = color_from_name( "cyan" );
-                                    to_color = color_from_name( "magenta" );
-                                    from = boost::lexical_cast< double >( w[0] );
-                                    to = boost::lexical_cast< double >( w[1] );
-                                }
-                                break;
-                            default:
-                                COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
-                        }
-                        break;
-                    }
-                case 2:
-                    {
-                        std::vector< std::string > w = comma::split( v[0], ':' );
-                        from = boost::lexical_cast< double >( w[0] );
-                        to = boost::lexical_cast< double >( w[1] );
-                        w = comma::split( v[1], ':' );
-                        switch( w.size() )
-                        {
-                            case 1:
-                                if( w[0] == "green" ) { map = snark::render::colour_map::constant( 0, 255, 0 ); }
-                                else if( w[0] == "red" ) { map = snark::render::colour_map::constant( 255, 0, 0 ); }
-                                else if( w[0] == "hot" ) { map = snark::render::colour_map::temperature( 96, 96 ); }
-                                else if( w[0] == "jet" ) { map = snark::render::colour_map::jet(); }
-                                else { COMMA_THROW( comma::exception, "expected colour map, got: " << s ); }
-                                break;
-                            case 2:
-                                from_color = color_from_name( w[0] );
-                                to_color = color_from_name( w[1] );
-                                break;
-                            default:
-                                COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
-                        }
-                        break;
-                    }
-                default:
-                    COMMA_THROW( comma::exception, "expected range (e.g. -5:20,red:blue or 3:10), or colour map name, got " << s );
-            }
-            c = map ? new by_scalar( from, to, *map )
-                    : new by_scalar( from, to, from_color, to_color );
-        }
-        else
-        {
-            c = new fixed( s );
-        }
+        c = new fixed( s );
     }
     catch( ... )
     {
