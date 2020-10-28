@@ -80,11 +80,11 @@ struct vector_calc
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        scale: calculate multiplication of scalar and vector;output vector" << std::endl;
-        std::cerr << "            input fields:  v,a (scalar)" << std::endl;
+        std::cerr << "            input fields:  v,scalar" << std::endl;
         std::cerr << "            --v=<x>,<y>,<z>: default value for vector" << std::endl;
-        std::cerr << "            --scalar: default value for a" << std::endl;
+        std::cerr << "            --scalar: default value for scalar" << std::endl;
         std::cerr << "            --invert: invert the scalar first and then multiply it by vector" << std::endl;
-        std::cerr << "                      i.e. (1/a)*v" << std::endl;
+        std::cerr << "                      i.e. (1/scalar)*v" << std::endl;
         std::cerr << std::endl;
         std::cerr << "        subtract: subtract two vectors: u - v " << std::endl;
         std::cerr << "            input fields: v, u" << std::endl;
@@ -105,7 +105,7 @@ struct vector_calc
     }
     static bool has_operation(const std::string& operation)
     {
-        return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale") || (operation=="add") || 
+        return (operation=="cross") || (operation=="dot") || (operation=="norm") || (operation=="scale") || (operation=="add") ||
             (operation=="subtract") || (operation=="normal") || (operation=="normalize");
     }
     static void process(const std::string& operation, const comma::command_line_options& options, const comma::csv::options& csv)
@@ -198,7 +198,7 @@ struct vector_calc
     template< typename input_t, typename output_t > struct operation_traits< input_t, output_t, false >
     {
         static void write( comma::csv::input_stream< input_t >& is, comma::csv::output_stream< output_t >& os, const output_t& r )
-        { 
+        {
             static comma::csv::tied< input_t, output_t > tied( is, os );
             tied.append( r );
         }
@@ -384,4 +384,4 @@ template <> struct traits< vector_calc::scalar >
 };
 
 } } // namespace comma { namespace visiting {
-    
+
