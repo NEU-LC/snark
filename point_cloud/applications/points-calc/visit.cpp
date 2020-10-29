@@ -20,21 +20,21 @@
 #include "visit.h"
 
 namespace snark { namespace points_calc { namespace visit {
- 
+
 std::string traits::usage()
 {
     std::ostringstream oss;
     oss << "    visit\n"
-        << "        default input fields: \"x,y,z\"\n"
+        << "        default input fields: \"x,y,z\" or \"point/x,point/y,point/z\" ('x' and 'point/x' both ok)\n"
         << "        options\n"
         << "            --at=<filename>[;<csv-options>]; seed points from which visiting starts\n"
-        << "            --radius=[<meters>]; how far to visit\n"
-        << "            --resolution=<meters>; ignore points farther away the current search point than <meters>\n"
         << "            --field-of-view,--fov=<radians>[,relative]; default=3.141592653589793; do not visit input points outside of field of view\n"
         << "                relative: angle calculated between normal at the current input point and direction from the current\n"
         << "                          input point to next-searched input point (\"search direction\")\n"
         << "                          limitation: relative works for input points with normals only for now\n"
         << "                default (\"absolute\"): angle calculated between normal at the last 'at' point and \"search direction\"\n"
+        << "            --radius=[<meters>]; how far to visit\n"
+        << "            --resolution=<meters>; ignore points farther away the current search point than <meters>\n"
         << "            --unvisited-id,--unvisited=<id>; default=0\n"
         << "            --visited-id,--visited=<id>; default=1\n"
         << std::endl
@@ -65,14 +65,14 @@ struct record
     std::string buffer;
     comma::uint32 visited_id;
     comma::uint32 visited_by;
-    
+
     record( const visit::input& input = visit::input(), const std::string& buffer = std::string(), comma::uint32 visited_id = 0 ): input( input ), buffer( buffer ), visited_id( visited_id ), visited_by( 0 ) {}
 };
 
 } } } // namespace snark { namespace points_calc { namespace visit {
 
 namespace comma { namespace visiting {
-    
+
 template <> struct traits< snark::points_calc::visit::input >
 {
     template < typename K, typename V > static void visit( const K&, snark::points_calc::visit::input& p, V& v )
@@ -96,7 +96,7 @@ template <> struct traits< snark::points_calc::visit::input >
 
 namespace snark { namespace points_calc { namespace visit {
 
-std::string traits::input_fields() { return comma::join( comma::csv::names< snark::points_calc::visit::input >( false ), ',' ); }
+std::string traits::input_fields() { return comma::join( comma::csv::names< snark::points_calc::visit::input >( true ), ',' ); }
 
 std::string traits::input_format() { return comma::csv::format::value< snark::points_calc::visit::input >(); }
 
