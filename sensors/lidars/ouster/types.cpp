@@ -46,8 +46,11 @@ output_data_block_t::output_data_block_t( double azimuth_encoder_angle
     , reflectivity( data_block.reflectivity() )
     , ambient( data_block.noise() )
 {
+    // Turn the left-hand curl bearing orientation into right-hand curl,
+    // and switch from lidar frame to sensor frame.
+    // See §4.1 Sensor Coordinate Frame in the Software User Guide
     range = static_cast< double >( data_block.range() & 0x000FFFFF ) / 1000;
-    bearing = M_PI * 2 - ( azimuth_encoder_angle + beam_angle_lut[ channel ].azimuth );
+    bearing = M_PI * 2 - ( azimuth_encoder_angle + beam_angle_lut[ channel ].azimuth ) - M_PI;
     elevation = beam_angle_lut[ channel ].altitude;
 }
 

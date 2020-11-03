@@ -50,6 +50,15 @@ void usage( bool verbose )
     std::cerr << "\n    sensor still returns 64 channels of data, however three out of four have";
     std::cerr << "\n    zero signal. This driver filters out those channels.";
     std::cerr << "\n";
+    std::cerr << "\nOrientation:";
+    std::cerr << "\n    The Software User Guide in §4.1 Sensor Coordinate Frame describes the sensor";
+    std::cerr << "\n    frame as x forward, y left and z up; with the connector attached to -ve x.";
+    std::cerr << "\n    This driver follows that convention.";
+    std::cerr << "\n";
+    std::cerr << "\n    The Software User Guide describes the bearing as left-hand curl. This is";
+    std::cerr << "\n    modified in the output to be right-hand curl (increasing anti-clockwise";
+    std::cerr << "\n    looking from above) to be compatible with other snark tools.";
+    std::cerr << "\n";
     std::cerr << "\nIssues:";
     std::cerr << "\n    Minimum range appears to be 700mm";
     std::cerr << "\n";
