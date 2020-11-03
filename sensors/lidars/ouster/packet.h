@@ -13,7 +13,10 @@ namespace snark { namespace ouster { namespace OS1 {
 const comma::uint32 packet_status_good = 0xffffffff;
 const comma::uint32 packet_status_bad = 0;
 
-const std::size_t pixels_per_column = 64; // TODO: determine from config, to support 16 beam lidar
+// Note that both the 64 and 16 beam lidar have the same raw packet structure,
+// with 64 channels of data. For the 16 beam channel 1, containing signal and
+// reflectivity values, is zero for all non-existent beams.
+const std::size_t pixels_per_column = 64;
 const unsigned int encoder_ticks_per_rev = 90112;
 
 struct data_block_t : public comma::packed::packed_struct< data_block_t, 12 >
