@@ -71,6 +71,9 @@ void usage( bool verbose )
     std::cerr << "\n                      --output signal \\";
     std::cerr << "\n        | cv-cat --input=\"rows=64;cols=1024;no-header;type=CV_16UC1\" \\";
     std::cerr << "\n                \"scale=60;resize=1.0,2.0;view;null\"";
+    std::cerr << "\n";
+    std::cerr << "\nsee also:";
+    std::cerr << "\n    ouster-help  ouster-to-csv";
     std::cerr << "\n" << std::endl;
 }
 

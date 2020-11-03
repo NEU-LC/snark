@@ -133,6 +133,9 @@ EOF
         cat <<EOF >&2
 For more detailed help, including examples, add the --verbose flag.
 
+see also:
+    ouster-help  ouster-to-csv
+
 EOF
     fi
     exit 0

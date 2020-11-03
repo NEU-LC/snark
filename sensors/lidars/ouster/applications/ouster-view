@@ -39,6 +39,9 @@ examples:
     ouster-cat lidar | ouster-to-csv lidar | $scriptname
     cat *.bin | ouster-to-csv lidar | $scriptname --speed=1
 
+see also:
+    ouster-help  ouster-cat  ouster-to-csv
+
 EOF
     exit 0
 }
