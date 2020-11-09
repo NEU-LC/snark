@@ -93,7 +93,7 @@ def _ros_message_to_csv_record( message, lengths={}, ignore_variable_size_arrays
         elif field_type == 'time':
             def ctor( msg, field_name=field_name ):
                 ts = getattr( msg, field_name )
-                return numpy.datetime64( datetime.datetime.fromtimestamp( ts.secs + 1.0e-9 * ts.nsecs ) )
+                return numpy.datetime64( datetime.datetime.utcfromtimestamp( ts.secs + 1.0e-9 * ts.nsecs ) )
             element_t = 'datetime64[us]'
         elif field_type == 'duration':
             def ctor( msg, field_name=field_name ):
