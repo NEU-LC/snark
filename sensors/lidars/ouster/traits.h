@@ -12,49 +12,6 @@
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::ouster::OS1::parameters_t >
-{
-    template < typename Key, class Visitor >
-    static void visit( const Key&, snark::ouster::OS1::parameters_t& t, Visitor& v )
-    {
-        v.apply( "auto_start_flag", t.auto_start_flag );
-        v.apply( "tcp_port", t.tcp_port );
-        v.apply( "udp_ip", t.udp_ip );
-        v.apply( "udp_port_lidar", t.udp_port_lidar );
-        v.apply( "udp_port_imu", t.udp_port_imu );
-        v.apply( "timestamp_mode", t.timestamp_mode );
-        v.apply( "pps_out_mode", t.pps_out_mode );
-        v.apply( "pps_out_polarity", t.pps_out_polarity );
-        v.apply( "pps_rate", t.pps_rate );
-        v.apply( "pps_angle", t.pps_angle );
-        v.apply( "pps_pulse_width", t.pps_pulse_width );
-        v.apply( "pps_in_polarity", t.pps_in_polarity );
-        v.apply( "lidar_mode", t.lidar_mode );
-        v.apply( "pulse_mode", t.pulse_mode );
-        v.apply( "window_rejection_enable", t.window_rejection_enable );
-    }
-
-    template < typename Key, class Visitor >
-    static void visit( const Key&, const snark::ouster::OS1::parameters_t& t, Visitor& v )
-    {
-        v.apply( "auto_start_flag", t.auto_start_flag );
-        v.apply( "tcp_port", t.tcp_port );
-        v.apply( "udp_ip", t.udp_ip );
-        v.apply( "udp_port_lidar", t.udp_port_lidar );
-        v.apply( "udp_port_imu", t.udp_port_imu );
-        v.apply( "timestamp_mode", t.timestamp_mode );
-        v.apply( "pps_out_mode", t.pps_out_mode );
-        v.apply( "pps_out_polarity", t.pps_out_polarity );
-        v.apply( "pps_rate", t.pps_rate );
-        v.apply( "pps_angle", t.pps_angle );
-        v.apply( "pps_pulse_width", t.pps_pulse_width );
-        v.apply( "pps_in_polarity", t.pps_in_polarity );
-        v.apply( "lidar_mode", t.lidar_mode );
-        v.apply( "pulse_mode", t.pulse_mode );
-        v.apply( "window_rejection_enable", t.window_rejection_enable );
-    }
-};
-
 template <> struct traits< snark::ouster::OS1::beam_intrinsics_t >
 {
     template < typename Key, class Visitor >
@@ -107,8 +64,6 @@ template <> struct traits< snark::ouster::OS1::config_t >
     template < typename Key, class Visitor >
     static void visit( const Key&, snark::ouster::OS1::config_t& t, Visitor& v )
     {
-        v.apply( "parameters", t.parameters );
-        v.apply( "prod_sn", t.serial_number );
         v.apply( "beam_intrinsics", t.beam_intrinsics );
         v.apply( "imu_intrinsics", t.imu_intrinsics );
         v.apply( "lidar_intrinsics", t.lidar_intrinsics );
@@ -117,8 +72,6 @@ template <> struct traits< snark::ouster::OS1::config_t >
     template < typename Key, class Visitor >
     static void visit( const Key&, const snark::ouster::OS1::config_t& t, Visitor& v )
     {
-        v.apply( "parameters", t.parameters );
-        v.apply( "prod_sn", t.serial_number );
         v.apply( "beam_intrinsics", t.beam_intrinsics );
         v.apply( "imu_intrinsics", t.imu_intrinsics );
         v.apply( "lidar_intrinsics", t.lidar_intrinsics );
