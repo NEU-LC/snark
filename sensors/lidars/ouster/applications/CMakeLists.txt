@@ -1,6 +1,6 @@
 # Copyright (c) 2019 The University of Sydney
 
-install( PROGRAMS ouster-cat ouster-help ouster-view
+install( PROGRAMS ouster-cat ouster-view
          DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} )
 
 source_group( ouster-align FILES ouster-align.cpp )

@@ -73,7 +73,7 @@ void usage( bool verbose )
     std::cerr << "\n                \"scale=60;resize=1.0,2.0;view;null\"";
     std::cerr << "\n";
     std::cerr << "\nsee also:";
-    std::cerr << "\n    ouster-help  ouster-to-csv";
+    std::cerr << "\n    ouster-to-csv";
     std::cerr << "\n" << std::endl;
 }
 

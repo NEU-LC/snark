@@ -113,7 +113,7 @@ void usage( bool verbose )
     }
     std::cerr << "\n";
     std::cerr << "\nSee also:";
-    std::cerr << "\n    ouster-help  ouster-cat";
+    std::cerr << "\n    ouster-cat";
     std::cerr << "\n" << std::endl;
 }
 

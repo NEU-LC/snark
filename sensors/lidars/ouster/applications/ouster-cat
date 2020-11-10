@@ -134,7 +134,7 @@ EOF
 For more detailed help, including examples, add the --verbose flag.
 
 see also:
-    ouster-help  ouster-to-csv
+    ouster-to-csv
 
 EOF
     fi
