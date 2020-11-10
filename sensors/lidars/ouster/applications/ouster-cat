@@ -118,10 +118,10 @@ examples:
     $scriptname imu
 
     --- logging ---
-    block_size=\$(( \$( csv-size \$( $scriptname lidar --output-format ) ) * 16 ))
+    block_size=\$(( \$( $scriptname lidar --output-format | csv-format size ) * 16 ))
     $scriptname lidar | csv-split --size \$block_size --period 60
 
-    block_size=\$( csv-size \$( $scriptname imu --output-format ) )
+    block_size=\$( $scriptname imu --output-format | csv-format size )
     $scriptname imu | csv-split --size \$imu_block_size  --period 60
 
     --- alerts ---
@@ -193,9 +193,9 @@ function output_format()
 function packet_size()
 {
     case $1 in
-        lidar) echo $(( $azimuth_blocks_per_packet * $( csv-size $( output_format lidar ) ) )) ;;
-        imu)   csv-size $( output_format imu ) ;;
-        *) die "invalid operation: $1"
+        lidar) echo $(( $azimuth_blocks_per_packet * $( output_format lidar | csv-format size ) )) ;;
+        imu)   output_format imu | csv-format size ;;
+        *)     die "invalid operation: $1"
     esac
 }
 

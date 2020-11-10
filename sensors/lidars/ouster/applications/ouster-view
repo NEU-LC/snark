@@ -78,7 +78,7 @@ play_cmd=cat
 records_per_frame=$(( options_columns * options_beams ))
 ouster-align --columns $options_columns \
     | $play_cmd \
-    | io-publish local:$socket_file --size $( csv-size $format ) --multiplier $records_per_frame &
+    | io-publish local:$socket_file --size $( echo $format | csv-format size ) --multiplier $records_per_frame &
 wait_for $socket_file
 
 io-cat local:$socket_file \
