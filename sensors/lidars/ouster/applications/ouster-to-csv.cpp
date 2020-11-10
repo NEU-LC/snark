@@ -59,8 +59,6 @@ void usage( bool verbose )
     std::cerr << "\n    modified in the output to be right-hand curl (increasing anti-clockwise";
     std::cerr << "\n    looking from above) to be compatible with other snark tools.";
     std::cerr << "\n";
-    std::cerr << "\nIssues:";
-    std::cerr << "\n    Minimum range appears to be 700mm";
     std::cerr << "\n";
     if( verbose )
     {
@@ -89,14 +87,6 @@ void usage( bool verbose )
         std::cerr << "\n        | csv-shuffle --fields $fields --binary $format --output $data_field \\";
         std::cerr << "\n        | cv-cat --input=\"rows=64;cols=1024;no-header;type=CV_16UC1\" \\";
         std::cerr << "\n                 \"flip;brightness=60;resize=1.0,2.0;view;null\"";
-        std::cerr << "\n";
-        std::cerr << "\n    --- time ---";
-        std::cerr << "\n    usually ptp synchronized time will be used (timestamp_mode set to";
-        std::cerr << "\n    TIME_FROM_PTP_1588) but if only time from power-on has been recorded";
-        std::cerr << "\n    (timestamp_mode=TIME_FROM_INTERNAL_OSC) then a log file can be roughly";
-        std::cerr << "\n    corrected with:";
-        std::cerr << "\n    start=$( basename $( ls *.bin | head -1 ) | csv-time --to seconds )";
-        std::cerr << "\n    cat *.bin | ouster-to-csv lidar | csv-time-delay --binary $format $start";
         std::cerr << "\n";
         std::cerr << "\n    --- intrinsic calibration ---";
         std::cerr << "\n    frame=$( ouster-to-csv lidar --output-frame )";
