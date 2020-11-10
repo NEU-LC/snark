@@ -56,8 +56,8 @@ function die() { say "$@"; exit 1; }
 options="$( description | comma-options-to-name-value "$@" )"
 comma_path_value_to_var --prefix=options < <( echo "$options" | grep '=' )
 
-fields=$( ouster-to-csv lidar --output-fields )
-format=$( ouster-to-csv lidar --output-format )
+fields=$( ouster-align --output-fields )
+format=$( ouster-align --output-format )
 
 function wait_for
 {
