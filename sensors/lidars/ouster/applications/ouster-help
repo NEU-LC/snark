@@ -18,7 +18,7 @@ The following applications are available. Use <app_name> --help for details.
     ouster-to-csv - takes raw data and converts to more structured csv
                     (in binary). Works with both lidar and imu data
 
-    ouster-align  - corrects for the small offsets in each beam
+    ouster-align  - corrects for the small offsets in each beam to align images
 
     ouster-cv     - outputs a set of image fields as a single OpenCV image
 
@@ -48,8 +48,8 @@ Examples:
     ouster-cat lidar | ouster-to-csv | ouster-align | ouster-cv \\
         | cv-cat "scale=60;resize=1.0,2.0;view;null"
 
-    There are many more examples contained in the help of each application. For
-    instance, try:
+    There are many more examples contained in the help of each application.
+    For instance, try:
 
     ouster-to-csv --help --verbose
     ouster-cv --help
