@@ -86,7 +86,4 @@ io-cat local:$socket_file \
     | cv-cat "brightness=60;resize=1.0,2.0;view;null" &
 
 io-cat local:$socket_file \
-    | points-to-cartesian --fields $fields --binary $format --append \
-    | points-frame --from $( ouster-to-csv lidar --config $options_config --output-frame ) \
-                   --fields $fields,x,y,z --binary $format,3d \
-    | view-points --fields $fields,x,y,z --binary $format,3d --z-is-up --exit-on-end-of-input
+    | view-points --fields $fields --binary $format --z-is-up --exit-on-end-of-input

@@ -42,8 +42,7 @@ Examples:
     format=\$( ouster-to-csv lidar --output-format )
 
     ouster-cat lidar | ouster-to-csv lidar \\
-        | points-to-cartesian --append --fields \$fields --binary \$format \\
-        | view-points --fields \$fields,x,y,z --binary \$format,3d
+        | view-points --fields \$fields --binary \$format
 
     ouster-cat lidar | ouster-to-csv | ouster-align | ouster-cv \\
         | cv-cat "scale=60;resize=1.0,2.0;view;null"

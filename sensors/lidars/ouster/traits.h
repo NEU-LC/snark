@@ -235,6 +235,9 @@ template <> struct traits< snark::ouster::output_data_block_t >
         v.apply( "signal", t.signal );
         v.apply( "reflectivity", t.reflectivity );
         v.apply( "ambient", t.ambient );
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
     }
 
     template < typename Key, class Visitor >
@@ -247,6 +250,9 @@ template <> struct traits< snark::ouster::output_data_block_t >
         v.apply( "signal", t.signal );
         v.apply( "reflectivity", t.reflectivity );
         v.apply( "ambient", t.ambient );
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
     }
 };
 
