@@ -52,12 +52,12 @@ input_converter=${input_converter:-"cat"}
 cat "$input_csv" \
     | $input_head \
     | $input_converter \
-    | ros-from-csv "$input_topic" --type "$input_type" $input_args --dry \
+    | ros-from-csv --topic "$input_topic" --type "$input_type" $input_args --dry \
     | sed '/^position_covariance_type:/a---' \
     | format_output \
     | sort
 
-fields=$( cat "$input_csv" | ros-from-csv "$input_topic" --type "$input_type" $input_args --output-fields )
+fields=$( cat "$input_csv" | ros-from-csv --topic "$input_topic" --type "$input_type" $input_args --output-fields )
 output_fields=$( echo "$fields" | csv-fields rename --fields "header/stamp" --to "time/seconds" )
 cat "$input_csv" \
     | $input_head \
