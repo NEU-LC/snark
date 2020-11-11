@@ -540,6 +540,7 @@ macro( configure_testing build_option module_dir )
     endif()
 endmacro()
 
+configure_testing( snark_build_ros ros/applications/test )
 configure_testing( snark_build_sensors_ouster sensors/lidars/ouster )
 
 # Package
