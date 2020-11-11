@@ -14,7 +14,7 @@ function number_lines()
     cat -n | awk '{ $1=$1-1; print $0; }' | sed 's/^/output[/;s/ /]="/;s/$/"/'
 }
 
-ros-to-csv "$input_topic" --bag "$input_bag" $input_args \
+ros-to-csv --topic "$input_topic" --bag "$input_bag" $input_args \
     | if [[ -n "$input_output_format" ]] ; then csv-from-bin "$input_output_format" ; else cat; fi \
     | if [[ -n "$input_output_lines" ]] ; then head -n $input_output_lines ; else cat ; fi \
     | number_lines
