@@ -1,31 +1,4 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /// @author vsevolod vlaskine
 
@@ -71,12 +44,20 @@ static void usage( bool verbose )
     if( verbose ) { std::cerr << std::endl << "csv options" << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     std::cerr << "examples" << std::endl;
-    std::cerr << "    graph defined by edges only; find best path from node 1 to node 100" << std::endl;
-    std::cerr << "        ( echo 1 ; echo 100 ; ) | graph-search --edges=\"edges.csv\"" << std::endl;
+    std::cerr << "    graph defined by edges only; find best path from node 0 to node 4" << std::endl;
+    std::cerr << "        > cat <<eof > simple-edges.csv" << std::endl;
+    std::cerr << "        0,1" << std::endl;
+    std::cerr << "        1,2" << std::endl;
+    std::cerr << "        2,3" << std::endl;
+    std::cerr << "        3,4" << std::endl;
+    std::cerr << "        0,2" << std::endl;
+    std::cerr << "        2,4" << std::endl;
+    std::cerr << "        eof" << std::endl;
+    std::cerr << "        > ( echo 0 ; echo 4 ) | graph-search --edges=\"simple-edges.csv\"" << std::endl;
     std::cerr << "    find best path from node 1 to node 100" << std::endl;
-    std::cerr << "        ( echo 1 ; echo 100 ; ) | graph-search --nodes=\"nodes.csv\" --edges=\"edges.csv\"" << std::endl;
+    std::cerr << "        > ( echo 1 ; echo 100 ; ) | graph-search --nodes=\"nodes.csv\" --edges=\"edges.csv\"" << std::endl;
     std::cerr << "    find best path by euclidean distance between the nodes" << std::endl;
-    std::cerr << "        ( echo 1 ; echo 100 ; ) | graph-search --nodes=\"nodes.csv;fields=x,y,z,id\" --edges=\"edges.csv\"" << std::endl;
+    std::cerr << "        > ( echo 1 ; echo 100 ; ) | graph-search --nodes=\"nodes.csv;fields=x,y,z,id\" --edges=\"edges.csv\"" << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -86,7 +67,6 @@ struct node
     Eigen::Vector3d position;
     double cost;
     std::string record;
-    
     node() : position( 0, 0, 0 ), cost( std::numeric_limits< double >::max() ) {}
     node( const Eigen::Vector3d& position, double cost = std::numeric_limits< double >::max() ) : position( position ), cost( cost ) {}
 };
@@ -94,8 +74,7 @@ struct node
 struct edge
 {
     double cost;
-    
-    edge() : cost( 0 ) {}
+    edge() : cost( 1 ) {}
 };
 
 struct record { comma::uint32 id; };
@@ -120,14 +99,12 @@ template <> struct traits< node >
 template <> struct traits< edge >
 {
     template < typename K, typename V > static void visit( const K&, edge& n, V& v ) { v.apply( "cost", n.cost ); }
-    
     template < typename K, typename V > static void visit( const K&, const edge& n, V& v ) { v.apply( "cost", n.cost ); }
 };
 
 template <> struct traits< record >
 {
     template < typename K, typename V > static void visit( const K&, record& n, V& v ) { v.apply( "id", n.id ); }
-    
     template < typename K, typename V > static void visit( const K&, const record& n, V& v ) { v.apply( "id", n.id ); }
 };
     
@@ -218,8 +195,8 @@ static void forward_search( vertex_descriptor source )
 static std::pair< vertex_descriptor, vertex_descriptor > forward_search( comma::uint32 source_id, boost::optional< comma::uint32 > target_id = boost::none )
 {
     reset_graph();
-    vertex_descriptor source = NULL;
-    vertex_descriptor target = NULL;
+    vertex_descriptor source = nullptr;
+    vertex_descriptor target = nullptr;
     for( std::pair< vertex_iterator, vertex_iterator > d = boost::vertices( graph ); d.first != d.second && ( !source || ( target_id && !target ) ); ++d.first )
     {
         if( graph[ *d.first ].id == source_id ) { source = *d.first; }
@@ -258,7 +235,7 @@ int main( int ac, char** av )
         }
         comma::csv::options edge_csv = comma::name_value::parser( "filename", ';' ).get< comma::csv::options >( options.value< std::string >( "--edges" ) );
         edge_csv.full_xpath = true;
-        if( by_distance && edge_csv.fields.empty() ) { edge_csv.fields = "source,target"; }
+        if( edge_csv.fields.empty() ) { edge_csv.fields = "source,target"; } //if( by_distance && edge_csv.fields.empty() ) { edge_csv.fields = "source,target"; }
         load_( graph, node_csv, edge_csv );
         if( node_csv ) { load_records_( records, *node_csv ); }
         boost::optional< unsigned int > source_id = options.optional< unsigned int >( "--start,--start-id,--from,--source,--origin" );
