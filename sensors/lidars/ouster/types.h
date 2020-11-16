@@ -13,8 +13,10 @@ namespace snark { namespace ouster {
 
 struct transform_t
 {
-    Eigen::Translation3d translation;
+    Eigen::Vector3d translation;
     snark::roll_pitch_yaw rotation;
+
+    transform_t() {}
 
     transform_t( const Eigen::Vector3d& translation_, const snark::roll_pitch_yaw& rotation_ )
         : translation( translation_ )
@@ -52,6 +54,9 @@ struct output_data_block_t
     comma::uint16 signal;
     comma::uint16 reflectivity;
     comma::uint16 ambient;
+    double x;
+    double y;
+    double z;
 
     output_data_block_t()
         : channel( 0 )
@@ -61,12 +66,14 @@ struct output_data_block_t
         , signal( 0 )
         , reflectivity( 0 )
         , ambient( 0 )
+        , x( 0 ), y( 0 ), z( 0 )
     {}
 
     output_data_block_t( double azimuth_encoder_angle
                        , const OS1::data_block_t& data_block
                        , comma::uint16 channel
-                       , const OS1::beam_angle_lut_t& beam_angle_lut );
+                       , const OS1::beam_angle_lut_t& beam_angle_lut
+                       , const transform_t& lidar_transform );
 };
 
 struct output_lidar_t

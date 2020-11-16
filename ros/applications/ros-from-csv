@@ -22,11 +22,11 @@ help_examples = """
 examples
     forward ros messages (e.g. to illustrate the principle or debug), start with trying --dry-run
         forward with buffering
-            ros-to-csv some-topic | ros-from-csv some-topic
+            ros-to-csv --topic some-topic | ros-from-csv --topic some-topic
         forward without buffering
-            ros-to-csv some-topic | ros-from-csv some-topic --flush
+            ros-to-csv --topic some-topic | ros-from-csv --topic some-topic --flush
         print to stdout
-            ros-to-csv some-topic | ros-from-csv some-topic --flush --dry-run
+            ros-to-csv --topic some-topic | ros-from-csv --topic some-topic --flush --dry-run
         
     using message types offline, try it
         imply package from message type
@@ -38,12 +38,12 @@ examples
 
 def main():
     parser = argparse.ArgumentParser( description = help_description, epilog = help_examples, formatter_class = argparse.RawDescriptionHelpFormatter, conflict_handler = 'resolve' )
-    parser.add_argument( 'topic', nargs = '?', help = 'topic', type = str )
     parser.add_argument( '--index-output-fields', help='output array fields with indices, e.g., output "array[0],array[1],array[2]", not "array"', action='store_true' )
     parser.add_argument( '--message-type', '--type', help = 'message type, useful for debugging', type = str )
     parser.add_argument( '--output-fields', help = 'output input csv fields and exit', action = 'store_true' )
     parser.add_argument( '--output-format', help='output format for input fields and exit', action='store_true' )
     parser.add_argument( '--package', '--import', help = 'if --type specified, package to import', type = str )
+    parser.add_argument( '--topic', nargs='?', help='topic', type=str )
     parser.add_argument( '--verbose', '-v', help = 'chat more', action = 'store_true' )
     comma.csv.add_options( parser )
     # to override format and binary

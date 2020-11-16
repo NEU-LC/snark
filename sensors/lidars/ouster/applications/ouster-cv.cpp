@@ -50,6 +50,9 @@ void usage( bool verbose )
     std::cerr << "\n    cat *.bin | ouster-to-csv lidar | ouster-align \\";
     std::cerr << "\n        | ouster-cv --output signal,ambient \\";
     std::cerr << "\n        | cv-cat \"scale=60;resize=1.0,2.0;view;null\"";
+    std::cerr << "\n";
+    std::cerr << "\nsee also:";
+    std::cerr << "\n    ouster-to-csv  ouster-align";
     std::cerr << "\n" << std::endl;
 }
 

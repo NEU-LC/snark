@@ -118,10 +118,10 @@ examples:
     $scriptname imu
 
     --- logging ---
-    block_size=\$(( \$( csv-size \$( $scriptname lidar --output-format ) ) * 16 ))
+    block_size=\$(( \$( $scriptname lidar --output-format | csv-format size ) * 16 ))
     $scriptname lidar | csv-split --size \$block_size --period 60
 
-    block_size=\$( csv-size \$( $scriptname imu --output-format ) )
+    block_size=\$( $scriptname imu --output-format | csv-format size )
     $scriptname imu | csv-split --size \$imu_block_size  --period 60
 
     --- alerts ---
@@ -132,6 +132,9 @@ EOF
     else
         cat <<EOF >&2
 For more detailed help, including examples, add the --verbose flag.
+
+see also:
+    ouster-to-csv
 
 EOF
     fi
@@ -165,7 +168,7 @@ function output_fields()
     case $1 in
         lidar)
             local channel_fields=$( seq -w 0 63 | sed 's/^/channel_/' | while read line; do seq 0 2 | sed "s/^/${line}_data_/"; done | tr '\n' , | sed 's/,$//' )
-            echo "timestamp,measurement_id,encoder_count,$channel_fields,packet_status"
+            echo "timestamp,measurement_id,frame_id,encoder_count,$channel_fields,packet_status"
             ;;
         imu)
             echo $( echo start,acceleration,gyro | prefix time ),$( echo x,y,z | prefix acceleration ),$( echo -n x,y,z | prefix angular_acceleration )
@@ -180,7 +183,7 @@ function output_fields()
 function output_format()
 {
     case $1 in
-        lidar) echo "ul,2ui,192ui,ui" ;;
+        lidar) echo "ul,2uw,ui,192ui,ui" ;;
         imu)   echo "3ul,3ui,3ui" ;;
         alerts|stream_alerts) echo "t,ul,s[128],s[128],s[256]" ;;
         *) die "invalid operation: $1"
@@ -190,9 +193,9 @@ function output_format()
 function packet_size()
 {
     case $1 in
-        lidar) echo $(( $azimuth_blocks_per_packet * $( csv-size $( output_format lidar ) ) )) ;;
-        imu)   csv-size $( output_format imu ) ;;
-        *) die "invalid operation: $1"
+        lidar) echo $(( $azimuth_blocks_per_packet * $( output_format lidar | csv-format size ) )) ;;
+        imu)   output_format imu | csv-format size ;;
+        *)     die "invalid operation: $1"
     esac
 }
 

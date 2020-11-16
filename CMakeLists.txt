@@ -529,6 +529,20 @@ if(snark_build_ros)
     add_subdirectory(ros)
 endif()
 
+# Testing
+macro( configure_testing build_option module_dir )
+    if( ${build_option} )
+        file( REMOVE ${CMAKE_SOURCE_DIR}/${module_dir}/disabled )
+    else()
+        if( NOT EXISTS ${CMAKE_SOURCE_DIR}/${module_dir}/disabled )
+            file( WRITE ${CMAKE_SOURCE_DIR}/${module_dir}/disabled "tests disabled by build configuration\n" )
+        endif()
+    endif()
+endmacro()
+
+configure_testing( snark_build_ros ros/applications/test )
+configure_testing( snark_build_sensors_ouster sensors/lidars/ouster )
+
 # Package
 #the following set up optional parameters for cpack
 SET(CPACK_PACKAGE_NAME "snark")

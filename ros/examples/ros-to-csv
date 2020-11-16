@@ -11,7 +11,7 @@ execfile('/usr/local/bin/ros_msg_to_csv')
 help_description='listen to a ros topic, convert the data to csv and write to stdout'
 help_example="""
 example
-    ros-to-csv /laser/points | view-points --fields t,,x,y,z
+    ros-to-csv --topic /laser/points | view-points --fields t,,x,y,z
 
 """
 

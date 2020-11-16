@@ -2,6 +2,7 @@
 // Copyright (c) 2020 Mission Systems Pty Ltd
 
 #include "types.h"
+#include "../../../math/range_bearing_elevation.h"
 #include "../../../math/rotation_matrix.h"
 #include "../../../timing/time.h"
 
@@ -16,7 +17,7 @@ static boost::posix_time::ptime convert_timestamp( comma::uint64 timestamp )
 transform_t::transform_t( std::vector< double >& transform_vector )
 {
     Eigen::Matrix4d mat = Eigen::Map< Eigen::Matrix< double, 4, 4, Eigen::RowMajor > >( transform_vector.data() );
-    translation = Eigen::Translation3d( mat.block< 3, 1 >( 0, 3 ) * 0.001 );
+    translation = Eigen::Vector3d( mat.block< 3, 1 >( 0, 3 ) * 0.001 );
     Eigen::Matrix3d rotation_matrix = mat.block< 3, 3 >( 0, 0 );
     rotation = snark::rotation_matrix( rotation_matrix ).roll_pitch_yaw();
 }
@@ -40,15 +41,29 @@ output_azimuth_block_t::output_azimuth_block_t( const OS1::azimuth_block_t& azim
 output_data_block_t::output_data_block_t( double azimuth_encoder_angle
                                         , const OS1::data_block_t& data_block
                                         , comma::uint16 channel
-                                        , const OS1::beam_angle_lut_t& beam_angle_lut )
+                                        , const OS1::beam_angle_lut_t& beam_angle_lut
+                                        , const transform_t& lidar_transform )
     : channel( channel )
     , signal( data_block.signal() )
     , reflectivity( data_block.reflectivity() )
     , ambient( data_block.noise() )
 {
+    // See §4.1 Sensor Coordinate Frame in the Software User Guide
     range = static_cast< double >( data_block.range() & 0x000FFFFF ) / 1000;
     bearing = M_PI * 2 - ( azimuth_encoder_angle + beam_angle_lut[ channel ].azimuth );
     elevation = beam_angle_lut[ channel ].altitude;
+
+    // The transform to go from lidar to sensor frame is encoded in the
+    // lidar_to_sensor_transform field from get_lidar_intrinsics, but we know from
+    // the documentation that it's a 180° rotation about Z and that will never change.
+    //
+    // We also know that it's a translation in the Z axis of 36.180mm but that might
+    // change so we take that number from the config that the device provides to us.
+
+    Eigen::Vector3d cartesian = snark::range_bearing_elevation( range, bearing - M_PI, elevation ).to_cartesian() + lidar_transform.translation;
+    x = cartesian[0];
+    y = cartesian[1];
+    z = cartesian[2];
 }
 
 output_imu_t::output_imu_t( const OS1::imu_block_t& imu_block )
