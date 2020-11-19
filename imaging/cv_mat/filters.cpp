@@ -28,7 +28,8 @@
 #include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
-#if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
+#include <opencv2/core/version.hpp> // pain
+#if defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 // pain
 #include <opencv2/contrib/contrib.hpp>
 #endif // #if (defined(CV_VERSION_EPOCH) && CV_VERSION_EPOCH == 2)
 #include <tbb/parallel_for.h>
@@ -1100,12 +1101,19 @@ public:
     unsigned int delay;
     std::string suffix;
 
-    view_impl_< H >( const typename impl::filters< H >::get_timestamp_functor& get_timestamp, const std::string& name, unsigned int delay,const std::string& suffix )
+    view_impl_< H >( const typename impl::filters< H >::get_timestamp_functor& get_timestamp, const std::string& title, unsigned int delay,const std::string& suffix )
         : get_timestamp( get_timestamp )
-        , name( make_name_( name ) )
+        , name( make_name_() )
         , delay( delay )
         , suffix( suffix )
     {
+        #if defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 // pain
+            cv::namedWindow( title.empty() ? &name[0] : &title[0] );
+        #else
+            cv::namedWindow( &name[0], cv::WINDOW_AUTOSIZE | cv::WINDOW_GUI_NORMAL );
+            std::string t = title.empty() ? std::string( "view" ) : title;
+            cv::setWindowTitle( &name[0], &t[0] );
+        #endif
     }
     
     typename impl::filters< H >::value_type operator()( typename impl::filters< H >::value_type m )
@@ -1119,13 +1127,7 @@ public:
     }
     
 private:
-    static std::string make_name_( const std::string& name ) // quick and dirty
-    {
-        static unsigned int count = 0;
-        const std::string& n = name.empty() ? boost::lexical_cast< std::string >( count ) : name;
-        ++count;
-        return n;
-    }
+    static std::string make_name_() { static unsigned int count = 0; return "view_" + boost::lexical_cast< std::string >( count++ ); } // quick and dirty
 };
 
 namespace drawing {
@@ -1271,8 +1273,13 @@ struct timestamp_impl_ {
 
     value_type operator()( value_type m )
     {
-        cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), cv::FILLED, cv::LINE_AA );
-        cv::putText( m.second, boost::posix_time::to_iso_string( get_timestamp_(m.first) ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, cv::LINE_AA );
+        #if defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 // pain
+            cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), 1, CV_AA );
+            cv::putText( m.second, boost::posix_time::to_iso_string( get_timestamp_(m.first) ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
+        #else
+            cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 228, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), cv::FILLED, cv::LINE_AA );
+            cv::putText( m.second, boost::posix_time::to_iso_string( get_timestamp_(m.first) ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, cv::LINE_AA );
+        #endif
         return m;
     }
 };
@@ -1335,8 +1342,13 @@ struct count_impl_
 
     value_type operator()( value_type m )
     {
-        cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 80, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), cv::FILLED, cv::LINE_AA );
-        cv::putText( m.second, boost::lexical_cast< std::string >( count++ ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, cv::LINE_AA );
+        #if defined( CV_VERSION_EPOCH ) && CV_VERSION_EPOCH == 2 // pain
+            cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 80, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), 1, CV_AA );
+            cv::putText( m.second, boost::lexical_cast< std::string >( count++ ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, CV_AA );
+        #else
+            cv::rectangle( m.second, cv::Point( 5, 5 ), cv::Point( 80, 25 ), cv::Scalar( 0xffff, 0xffff, 0xffff ), cv::FILLED, cv::LINE_AA );
+            cv::putText( m.second, boost::lexical_cast< std::string >( count++ ), cv::Point( 10, 20 ), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar( 0, 0, 0 ), 1, cv::LINE_AA );
+        #endif
         return m;
     }
 };
