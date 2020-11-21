@@ -210,9 +210,10 @@ std::pair< typename file< H >::functor_t, bool > file< H >::make( boost::functio
 }
 
 template < typename H >
-std::string file< H >::usage( unsigned int indent )
+std::string file< H >::usage( unsigned int i )
 {
     std::ostringstream oss;
+    std::string indent( i, ' ' );
     oss << indent << "file=<format>[,<quality>][,<options>]:" << std::endl;
     oss << indent << "    write images to files with timestamp as name in the specified format; if input images have no timestamp, system time is used" << std::endl;
     oss << indent << "    <format>" << std::endl;

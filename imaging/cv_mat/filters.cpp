@@ -3337,7 +3337,7 @@ static std::string usage_impl_()
     oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;
     oss << "            log=<dirname>,period:<seconds>: write images to files in a given directory, each file containing frames for a given period of time" << std::endl;
     oss << "                                            e.g. for log=tmp,period:1.5 each file will contain 1.5 seconds worth of images" << std::endl;
-    oss << "            log=<options>,index: write index file, describing file number and offset of each frame" << std::endl;
+    oss << "            log=<options>,index: write binary index file, with format t,uw,ul and fields: timestamp, file number, and offset of each frame" << std::endl;
     oss << "        save=<filename>[,<quality>][,index][,no-header]: write images to files with timestamp as name in the specified format. <filename>: <base>.<format>: bin|jpg|ppm|png|tiff...; if no timestamp, system time is used" << std::endl;
     oss << "            <format>: anything that opencv imwrite can take or 'bin' to write image as binary in cv-cat format" << std::endl;
     oss << "            <quality>: for jpg files, compression quality from 0 (smallest) to 100 (best)" << std::endl;
