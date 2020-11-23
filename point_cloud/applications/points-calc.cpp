@@ -1301,7 +1301,7 @@ int main( int ac, char** av )
         if( operation == "plane-intersection-with-trajectory" ) { return run< snark::points_calc::plane_intersection_with_trajectory::traits >( options ); }
         if( vector_calc::has_operation( operation ) ) { vector_calc::process(operation, options, csv); return 0; }
         if( operation == "plane-intersection" ) { snark::points_calc::plane_intersection::traits::process(options, csv); return 0; }
-        if( operation == "triangles-area" || operation == "triangles-discretize" ) { return run< snark::points_calc::triangles::area::traits >( options ); }
+        if( operation == "triangles-area" ) { return run< snark::points_calc::triangles::area::traits >( options ); }
         if( operation == "triangles-discretise" || operation == "triangles-discretize" ) { return run< snark::points_calc::triangles::discretise::traits >( options ); }
         if( operation == "visit" ) { return run< snark::points_calc::visit::traits >( options ); }
         if( operation == "distance" || operation == "trajectory-distance" )
