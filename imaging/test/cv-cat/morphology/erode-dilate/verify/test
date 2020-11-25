@@ -46,7 +46,7 @@ comma_status_ok || exit 1
 
 cv-cat --file "$output_dir/square.png" "$input_operation;encode=png" --output no-header > "$output_dir/result.png"
 comma_status_ok || exit 1
-cv-cat --file "$output_dir/result.png" | image-to-csv | csv-shuffle --fields=t,x,y,r,g,b --output-fields=x,y,r > "$output_dir/result.csv"
+cv-cat --file "$output_dir/result.png" | image-to-csv | csv-shuffle --fields=t,x,y,v --output-fields=x,y,v > "$output_dir/result.csv"
 comma_status_ok || exit 1
 cat "$output_dir/result.csv" \
     | name-value-from-csv x,y,v --prefix="result" --indices x,y \
