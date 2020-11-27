@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2020 Vsevolod Vlaskine
 
 /// @author vsevolod vlaskine
 
@@ -89,8 +90,9 @@ static void usage( bool verbose = false )
     std::cerr << "    trajectory-cumulative-discretise,cumulative-discretise,cumulative-discretize,sample" << std::endl;
     std::cerr << "    trajectory-partition" << std::endl;
     std::cerr << "    trajectory-thin" << std::endl;
+    std::cerr << "    triangles-area" << std::endl;
     std::cerr << "    triangles-discretise,triangles-discretize" << std::endl;
-    std::cerr << "    visit: todo" << std::endl;
+    std::cerr << "    visit" << std::endl;
     vector_calc::usage_list_operations();
     std::cerr << std::endl;
     std::cerr << "general options" << std::endl;
@@ -339,6 +341,10 @@ static void usage( bool verbose = false )
     std::cerr << "            options:" << std::endl;
     std::cerr << "                --do-not-accumulate: do not accumulate distance travelled from the last point, just measure distance to the last point directly" << std::endl;
     std::cerr << "                --resolution=<distance>: minimum distance between points" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << snark::points_calc::triangles::area::traits::usage() << std::endl;
+    std::cerr << std::endl;
+    std::cerr << snark::points_calc::triangles::discretise::traits::usage() << std::endl;
     std::cerr << std::endl;
     std::cerr << snark::points_calc::visit::traits::usage() << std::endl;
     std::cerr << std::endl;
