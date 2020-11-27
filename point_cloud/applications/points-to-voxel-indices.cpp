@@ -1,31 +1,4 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <limits>
 #include <boost/array.hpp>
@@ -144,7 +117,14 @@ int main( int argc, char** argv )
             if( end_string.empty() && extents_string.empty() ) { std::cerr << "points-to-voxel-indices: if using --enumerate, please specify --extents" << std::endl; return 1; }
             if( !end_string.empty() && !extents_string.empty() ) { std::cerr << "points-to-voxel-indices: --end and --extents are mutually exclusive" << std::endl; return 1; }
             Eigen::Vector3d end;
-            if( !extents_string.empty() )
+            if( extents_string.empty() )
+            {
+                comma::csv::ascii< Eigen::Vector3d >().get( end, end_string );
+                if(    comma::math::less( end.x(), origin.x() )
+                    || comma::math::less( end.y(), origin.y() )
+                    || comma::math::less( end.z(), origin.z() ) ) { std::cerr << "points-to-voxel-indices: expected end greater or equal to origin " << origin.x() << "," << origin.y() << "," << origin.z() << "; got: " << end.x() << "," << end.y() << "," << end.z() << std::endl; return 1; }
+            }
+            else
             {
                 Eigen::Vector3d extents;
                 comma::csv::ascii< Eigen::Vector3d >().get( extents, extents_string );
@@ -152,13 +132,6 @@ int main( int argc, char** argv )
                     || comma::math::less( extents.y(), 0 )
                     || comma::math::less( extents.z(), 0 ) ) { std::cerr.precision( 16 ); std::cerr << "points-to-voxel-indices: expected extents greater or equal to 0,0,0; got: " << extents.x() << "," << extents.y() << "," << extents.z() << std::endl; return 1; }
                 end = origin + extents;
-            }
-            else
-            {
-                comma::csv::ascii< Eigen::Vector3d >().get( end, end_string );
-                if(    comma::math::less( end.x(), origin.x() )
-                    || comma::math::less( end.y(), origin.y() )
-                    || comma::math::less( end.z(), origin.z() ) ) { std::cerr << "points-to-voxel-indices: expected end greater or equal to origin " << origin.x() << "," << origin.y() << "," << origin.z() << "; got: " << end.x() << "," << end.y() << "," << end.z() << std::endl; return 1; }
             }
             size = snark::voxel_map< input_point, 3 >::index_of( end, origin, resolution );
             for( unsigned int k = 0; k < size.size(); size[k] += 1, ++k ); // to position beyond the last voxel
@@ -187,24 +160,22 @@ int main( int argc, char** argv )
                 if( csv.flush ) { std::cout.flush(); }
                 ++count;
             }
+            return 0;
         }
-        else
+        while( !std::cin.eof() && std::cin.good() )
         {
-            while( !std::cin.eof() && std::cin.good() )
-            {
-                const input_point* point = istream.read();
-                if( !point ) { break; }
-                index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
-                if( discard && !is_inside_( index, size ) ) { ++count; continue; }
-                if( output_number ) { enumeration_index::validate( index, size, *point ); }
-                std::cout << comma::join( istream.ascii().last(), csv.delimiter )
-                          << csv.delimiter << index[0]
-                          << csv.delimiter << index[1]
-                          << csv.delimiter << index[2];
-                if( output_number ) { std::cout << csv.delimiter << enumeration_index( index, size ).value; }
-                std::cout << std::endl;
-                ++count;
-            }
+            const input_point* point = istream.read();
+            if( !point ) { break; }
+            index_type index = snark::voxel_map< input_point, 3 >::index_of( *point, origin, resolution );
+            if( discard && !is_inside_( index, size ) ) { ++count; continue; }
+            if( output_number ) { enumeration_index::validate( index, size, *point ); }
+            std::cout << comma::join( istream.ascii().last(), csv.delimiter )
+                        << csv.delimiter << index[0]
+                        << csv.delimiter << index[1]
+                        << csv.delimiter << index[2];
+            if( output_number ) { std::cout << csv.delimiter << enumeration_index( index, size ).value; }
+            std::cout << std::endl;
+            ++count;
         }
         return 0;
     }
