@@ -87,7 +87,8 @@ static void usage( bool verbose = false )
     std::cerr << "    thin" << std::endl;
     std::cerr << "    trajectory-chord,chord" << std::endl;
     std::cerr << "    trajectory-cumulative-distance,cumulative-distance" << std::endl;
-    std::cerr << "    trajectory-cumulative-discretise,cumulative-discretise,cumulative-discretize,sample" << std::endl;
+    std::cerr << "    trajectory-cumulative-discretise,trajectory-cumulative-discretize,cumulative-discretise,cumulative-discretize,sample" << std::endl;
+    std::cerr << "    trajectory-discretize,trajectory-discretise,discretize,discretise" << std::endl;
     std::cerr << "    trajectory-partition" << std::endl;
     std::cerr << "    trajectory-thin" << std::endl;
     std::cerr << "    triangles-area" << std::endl;
@@ -294,7 +295,7 @@ static void usage( bool verbose = false )
     std::cerr << "            input fields: " << comma::join( comma::csv::names< point_with_block >( false ), ',' ) << std::endl;
     std::cerr << "            default input fields: " << comma::join( comma::csv::names< Eigen::Vector3d >( false ), ',' ) << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        trajectory-cumulative-discretise, cumulative-discretise, cumulative-discretize, sample" << std::endl;
+    std::cerr << "        trajectory-cumulative-discretise, trajectory-cumulative-discretize, cumulative-discretise, cumulative-discretize, sample" << std::endl;
     std::cerr << "            read input data and discretise intervals with --step along the whole" << std::endl;
     std::cerr << "            trajectory" << std::endl;
     std::cerr << std::endl;
@@ -303,7 +304,7 @@ static void usage( bool verbose = false )
     std::cerr << "            options" << std::endl;
     std::cerr << "                --step=<step>: linear step of discretisation" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "        trajectory-discretise, discretise, discretize" << std::endl;
+    std::cerr << "        trajectory-discretise, trajectory-discretize, discretise, discretize" << std::endl;
     std::cerr << "            read input data and discretise intervals between adjacent points" << std::endl;
     std::cerr << "            with --step; skip discretised points that are closer to the end of" << std::endl;
     std::cerr << "            the interval than --tolerance" << std::endl;
@@ -1420,7 +1421,7 @@ int main( int ac, char** av )
             return 0;
         }
         if( operation == "thin" ) { return run< snark::points_calc::thin::traits >( options ); }
-        if( operation == "trajectory-discretise" || operation == "discretise" || operation == "discretize" )
+        if( operation == "trajectory-discretise" || operation == "trajectory-discretize" || operation == "discretise" || operation == "discretize" )
         {
             double step = options.value< double >( "--step" );
             if( step <= 0 ) { std::cerr << "points-calc: expected positive step, got " << step << std::endl; return 1; }
@@ -1431,10 +1432,7 @@ int main( int ac, char** av )
             trajectory_discretise( step, tolerance );
             return 0;
         }
-        if( operation == "trajectory-cumulative-discretise" || operation == "cumulative-discretise" || operation == "cumulative-discretize" || operation == "sample" )
-        {
-            return trajectory_cumulative_discretise( options );
-        }
+        if( operation == "trajectory-cumulative-discretise" || operation == "trajectory-cumulative-discretize" || operation == "cumulative-discretise" || operation == "cumulative-discretize" || operation == "sample" ) { return trajectory_cumulative_discretise( options ); }
         if( operation == "local-max" || operation == "local-min" ) // todo: if( operation == "local-calc" ? )
         {
             double sign = operation == "local-max" ? 1 : -1;
