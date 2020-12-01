@@ -138,24 +138,24 @@ int traits::run( const comma::command_line_options& options )
                     {
                         if( dead.find( i ) != dead.end() || voxels[next].find( i ) != voxels[next].end() ) { continue; }
                         voxels_t::index_type j;
-                        double sum = -v.second;
+                        double sum = 0;
                         for( j[0] = i[0] - 1; j[0] < i[0] + 2; ++j[0] )
                         {
                             for( j[1] = i[1] - 1; j[1] < i[1] + 2; ++j[1] )
                             {
                                 for( j[2] = i[2] - 1; j[2] < i[2] + 2; ++j[2] )
                                 {
+                                    if( i == j ) { continue; } // quick and dirty
                                     auto c = voxels[current].find( j );
-                                    if( c == voxels[current].end() ) { continue; }
-                                    sum += c->second;
-                                    double s = sum < procreation_threshold || sum > stability_threshold ? -step : ( sum - procreation_threshold ) < ( stability_threshold - sum ) ? step : 0;
-                                    double new_value = v.second + s;
-                                    if( new_value <= 0 ) { continue; }
-                                    voxels[next][i] = std::min( new_value, max_vitality );
-                                    changed = true;
+                                    if( c != voxels[current].end() ) { sum += c->second; }
                                 }
                             }
                         }
+                        double s = sum < procreation_threshold || sum > stability_threshold ? -step : ( sum - procreation_threshold ) < ( stability_threshold - sum ) ? step : 0;
+                        double new_value = v.second + s;
+                        if( new_value <= 0 ) { continue; }
+                        voxels[next][i] = std::min( new_value, max_vitality );
+                        changed = true;
                     }
                 }
             }
