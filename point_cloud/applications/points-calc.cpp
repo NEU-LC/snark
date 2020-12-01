@@ -23,6 +23,7 @@
 #include "../../visiting/eigen.h"
 #include "../../visiting/traits.h"
 #include "points-calc/frame.h"
+#include "points-calc/life.h"
 #include "points-calc/lines_nearest.h"
 #include "points-calc/plane_intersection.h"
 #include "points-calc/plane_intersection_with_trajectory.h"
@@ -1302,6 +1303,7 @@ int main( int ac, char** av )
         if( operations.size() != 1 ) { std::cerr << "points-calc: expected one operation, got " << operations.size() << ": " << comma::join( operations, ' ' ) << std::endl; return 1; }
         const std::string& operation = operations[0];
         if( operation == "frame-integrate" || operation == "integrate-frame" ) { return run< snark::points_calc::frame::integrate::traits >( options ); }
+        if( operation == "life" ) { return run< snark::points_calc::life::traits >( options ); }
         if( operation == "lines-nearest" ) { return run< snark::points_calc::lines_nearest::traits >( options ); }
         if( operation == "project-onto-line" ) { return run< snark::points_calc::project::onto_line::traits >( options ); }
         if( operation == "project-onto-plane" ) { return run< snark::points_calc::project::onto_plane::traits >( options ); }
