@@ -28,7 +28,11 @@ std::string traits::usage()
         << "            --todo\n"
         << std::endl
         << "        examples\n"
-        << "            todo \\\n"
+        << "            still trying to find good parameters \\\n"
+        << "                ( echo 0,0,0; echo 0,0,1; echo 0,0,2 ) \\\n"
+        << "                    | csv-to-bin 3f \\\n"
+        << "                    | points-calc life --procreation 3 --step 1 --binary 3f \\\n"
+        << "                    | view-points '-;fields=x,y,z,,block;color=yellow;binary=4d,ui' --orthographic --scene-radius 100\n"
         << std::endl;
     return oss.str();
 }
@@ -125,8 +129,11 @@ int traits::run( const comma::command_line_options& options )
     {
         changed = false;
         unsigned int next = 1 - current;
-        for( auto v: voxels[current] ) { ostream.write( output( point( Eigen::Vector3d( v.first[0], v.first[1], v.first[2] ), v.second ), block ) ); }
-        snark::voxel_map< double, 3 > dead( Eigen::Vector3d( 1, 1, 1 ) );
+        voxels[next].clear();
+        for( auto v: voxels[current] )
+        {
+            if( v.second > 0 ) { ostream.write( output( point( Eigen::Vector3d( v.first[0], v.first[1], v.first[2] ), v.second ), block ) ); std::cout.flush(); }
+        }
         for( auto v: voxels[current] ) // todo? quick and dirty, watch performance
         {
             voxels_t::index_type i;
@@ -136,7 +143,7 @@ int traits::run( const comma::command_line_options& options )
                 {
                     for( i[2] = v.first[2] - 1; i[2] < v.first[2] + 2; ++i[2] )
                     {
-                        if( dead.find( i ) != dead.end() || voxels[next].find( i ) != voxels[next].end() ) { continue; }
+                        if( voxels[next].find( i ) != voxels[next].end() ) { continue; }
                         voxels_t::index_type j;
                         double sum = 0;
                         for( j[0] = i[0] - 1; j[0] < i[0] + 2; ++j[0] )
@@ -151,15 +158,13 @@ int traits::run( const comma::command_line_options& options )
                                 }
                             }
                         }
-                        double s = sum < procreation_threshold || sum > stability_threshold ? -step : ( sum - procreation_threshold ) < ( stability_threshold - sum ) ? step : 0;
+                        double s = sum < procreation_threshold || sum > stability_threshold ? -step : ( sum - procreation_threshold ) < ( stability_threshold - sum ) ? step : 0; // todo? optionally linearly changing step?
                         double new_value = v.second + s;
-                        if( new_value <= 0 ) { continue; }
-                        voxels[next][i] = std::min( new_value, max_vitality );
+                        voxels[next][i] = std::max( std::min( new_value, max_vitality ), 0. );
                         changed = true;
                     }
                 }
             }
-            voxels[current].clear();
         }
         ++block;
     }

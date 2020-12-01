@@ -174,6 +174,7 @@ static void usage( bool verbose = false )
     std::cerr << "            --discard: discards records that are outliers; output: same as input" << std::endl;
     std::cerr << std::endl;
     std::cerr << snark::points_calc::frame::integrate::traits::usage() << std::endl;
+    std::cerr << snark::points_calc::life::traits::usage() << std::endl;
     std::cerr << snark::points_calc::lines_nearest::traits::usage() << std::endl;
     std::cerr << "    local-min, local-max: deprecated, use nearest-min, nearest-max;" << std::endl;
     std::cerr << "        output local minimums or maximums inside of given radius" << std::endl;
