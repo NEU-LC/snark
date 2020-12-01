@@ -107,6 +107,7 @@ int traits::run( const comma::command_line_options& options )
     double stability_threshold = options.value( "--stability-threshold,--stability,--extinction-threshold,--extinction", 4.0 );
     double max_vitality = options.value( "--max-vitality,--vitality", 1.0 );
     double step = options.value( "--step", 1.0 );
+    bool verbose = options.exists( "--verbose,-v" );
     comma::csv::options csv( options, "x,y,z" );
     csv.full_xpath = false;
     comma::csv::options output_csv;
@@ -132,10 +133,14 @@ int traits::run( const comma::command_line_options& options )
         voxels[next].clear();
         for( auto v: voxels[current] )
         {
-            if( v.second > 0 ) { ostream.write( output( point( Eigen::Vector3d( v.first[0], v.first[1], v.first[2] ), v.second ), block ) ); std::cout.flush(); }
+            ostream.write( output( point( Eigen::Vector3d( v.first[0], v.first[1], v.first[2] ), v.second ), block ) );
+            if( csv.flush ) { std::cout.flush(); }
         }
+        if( verbose ) { std::cerr << "pointc-calc: life: generation: " << block << " size: " << voxels[current].size() << std::endl; }
+        voxels_t dead( Eigen::Vector3d( 1, 1, 1 ) ); // quick and dirty: todo
         for( auto v: voxels[current] ) // todo? quick and dirty, watch performance
         {
+            if( is_shutdown ) { break; }
             voxels_t::index_type i;
             for( i[0] = v.first[0] - 1; i[0] < v.first[0] + 2; ++i[0] )
             {
@@ -143,7 +148,7 @@ int traits::run( const comma::command_line_options& options )
                 {
                     for( i[2] = v.first[2] - 1; i[2] < v.first[2] + 2; ++i[2] )
                     {
-                        if( voxels[next].find( i ) != voxels[next].end() ) { continue; }
+                        if( dead.find( i ) != dead.end() || voxels[next].find( i ) != voxels[next].end() ) { continue; }
                         voxels_t::index_type j;
                         double sum = 0;
                         for( j[0] = i[0] - 1; j[0] < i[0] + 2; ++j[0] )
@@ -160,7 +165,8 @@ int traits::run( const comma::command_line_options& options )
                         }
                         double s = sum < procreation_threshold || sum > stability_threshold ? -step : ( sum - procreation_threshold ) < ( stability_threshold - sum ) ? step : 0; // todo? optionally linearly changing step?
                         double new_value = v.second + s;
-                        voxels[next][i] = std::max( std::min( new_value, max_vitality ), 0. );
+                        if( new_value <= 0 ) { dead[i] = 0; }
+                        ( new_value <= 0 ? dead[i] : voxels[next][i] ) = std::min( new_value, max_vitality );
                         changed = true;
                     }
                 }
