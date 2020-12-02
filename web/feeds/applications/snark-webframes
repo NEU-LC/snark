@@ -45,6 +45,7 @@ import shlex
 import threading
 
 script_name = sys.argv[0].split('/')[-1]
+DEFAULT_HOST = ''
 DEFAULT_PORT = 7000
 DEFAULT_TIMEOUT = 10
 HTTP_PLAIN_TEXT = 'text/plain'
@@ -304,14 +305,15 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
 
 
 parser = argparse.ArgumentParser( description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter, add_help=False )
-parser.add_argument( '-h', '--help', help='show this help message and exit', action='store_true' )
+parser.add_argument( '--help', '-h', help='show this help message and exit', action='store_true' )
 parser.add_argument( '--config', help='web backend config file' )
-parser.add_argument( '--robot-config', help='robot config file' )
+parser.add_argument( '--dry-run', help='don\'t execute, just read config and print name=commands;content_type and exit', action='store_true' )
+parser.add_argument( '--host', help='host for http requests', type=str, default=DEFAULT_HOST )
 parser.add_argument( '--publish-config', help='publish config file', default=None )
 parser.add_argument( '--port', help='port number for http requests', type=int, default=DEFAULT_PORT )
+parser.add_argument( '--robot-config', help='robot config file' )
 parser.add_argument( '--timeout', help='default timeout for frame commands', type=float, default=DEFAULT_TIMEOUT )
-parser.add_argument( '-v', '--verbose', help='verbose logging', action='store_true' )
-parser.add_argument( '--dry-run', help='don\'t execute, just read config and print name=commands;content_type and exit', action='store_true' )
+parser.add_argument( '--verbose', '-v', help='verbose logging', action='store_true' )
 args = parser.parse_args()
 
 if args.help:
@@ -355,7 +357,7 @@ signal.signal( signal.SIGHUP, trap )
 
 class async_http_server( SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer ): pass
 
-async_http_server( ( '', args.port ), handler ).serve_forever()
+async_http_server( ( args.host, args.port ), handler ).serve_forever()
 
 
 

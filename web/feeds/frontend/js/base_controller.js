@@ -665,13 +665,18 @@ define('base_controller', ['jquery', "jquery_timeago",
             }
             if (!('url' in config)) {
                 var host;
-                if (!globals.host.startsWith("http://")) {
-                    globals.host = "http://" + globals.host;
-                }
-                if (is_host_contains_port(globals.host)) {
+                if (globals.host[0] === '/') {
+                    // This is a relative path.
                     host = globals.host;
                 } else {
-                    host = globals.host + ":" + globals.port;
+                    if (!globals.host.startsWith("http://")) {
+                        globals.host = "http://" + globals.host;
+                    }
+                    if (is_host_contains_port(globals.host)) {
+                        host = globals.host;
+                    } else {
+                        host = globals.host + ":" + globals.port;
+                    }
                 }
                 // if (globals.host.indexOf(":") > 0) {
                 //     host = globals.host;
