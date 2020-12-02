@@ -52,6 +52,7 @@ std::string traits::usage()
         << "                ( echo 0,0,0; echo 1,0,0; echo 2,0,0; echo 0,1,0; echo 0,2,0; echo 0,0,1; echo 0,0,2 ) | points-calc life --procreation 4 --extinction 5 --step 2 --vitality 3 -v | view-points '-;fields=x,y,z,,block;color=yellow' --orthographic --scene-radius 100\n"
         << "                ( echo 0,0,0; echo 1,0,0; echo 2,0,0; echo 0,1,0; echo 0,2,0 ) | points-calc life --procreation 2 --extinction 5 --step 3 --vitality 5 -v | view-points '-;fields=x,y,z,,block;color=yellow' --orthographic --scene-radius 100\n"
         << "                ( echo 0,0,0; echo 1,0,0; echo 2,0,0; echo 0,1,0; echo 0,2,0 ) | points-calc life --procreation 2 --extinction 6 --step 3 --vitality 5 -v | view-points '-;fields=x,y,z,,block;color=yellow' --orthographic --scene-radius 100\n"
+        << "                ( echo 0,0,0; echo 1,0,0; echo 2,0,0; echo 0,1,1; echo 0,2,2 ) | points-calc life --procreation 2 --extinction 5 --step 3 --vitality 5 -v | view-points '-;fields=x,y,z,,block;color=yellow' --orthographic --scene-radius 100\n"
         << std::endl;
     return oss.str();
 }
