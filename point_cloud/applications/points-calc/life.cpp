@@ -126,7 +126,8 @@ int traits::run( const comma::command_line_options& options )
         voxels[0].touch_at( p->coordinates )->second = p->weight; // quick and dirty
     }
     bool changed = true;
-    for( unsigned int current = 0; !is_shutdown && !voxels[current].empty() && changed; current = 1 - current )
+    unsigned int current = 0;
+    for( current = 0; !is_shutdown && !voxels[current].empty() && changed; current = 1 - current )
     {
         changed = false;
         unsigned int next = 1 - current;
@@ -164,8 +165,8 @@ int traits::run( const comma::command_line_options& options )
                             }
                         }
                         double s = sum < procreation_threshold || sum > stability_threshold ? -step : ( sum - procreation_threshold ) < ( stability_threshold - sum ) ? step : 0; // todo? optionally linearly changing step?
-                        double new_value = v.second + s;
-                        if( new_value <= 0 ) { dead[i] = 0; }
+                        auto n = voxels[current].find( i );
+                        double new_value = ( n == voxels[current].end() ? 0 : n->second ) + s;
                         ( new_value <= 0 ? dead[i] : voxels[next][i] ) = std::min( new_value, max_vitality );
                         changed = true;
                     }
@@ -173,6 +174,12 @@ int traits::run( const comma::command_line_options& options )
             }
         }
         ++block;
+    }
+    if( verbose )
+    { 
+        if( is_shutdown ) { std::cerr << "pointc-calc: life: caught signal" << std::endl; }
+        else if( voxels[current].empty() ) { std::cerr << "pointc-calc: life: generation: " << block << " size: " << 0 << std::endl; }
+        else if( !changed ) { std::cerr << "pointc-calc: life: generation: " << block << " stabilised" << std::endl; }
     }
     return 0;
 }
