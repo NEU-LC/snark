@@ -12,7 +12,6 @@
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
 #include <comma/io/stream.h>
-#include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include "../../../point_cloud/voxel_map.h"
@@ -21,29 +20,50 @@
 
 namespace snark { namespace points_calc { namespace life {
 
+    
+//     comma::uint32 procreation_threshold = options.value( "--procreation-threshold,--procreation", 7 );
+//     comma::uint32 stability_threshold = options.value( "--stability-threshold,--stability,--extinction-threshold,--extinction", 12 );
+//     comma::uint32 max_vitality = options.value( "--max-vitality,--vitality", 1 );
+//     comma::uint32 step = options.value( "--step", 1 );
+    
 std::string traits::usage()
 {
     std::ostringstream oss;
     oss << "    life\n"
         << "        options\n"
-        << "            --todo\n"
+        << "            --procreation-threshold,--procreation=<value>; default=7\n"
+        << "            --max-vitality,--vitality=<value>; default=1\n"
+        << "            --stability-threshold,--stability,--extinction-threshold,--extinction=<value>; default=12\n"
+        << "            --step=<value>; default=1\n"
         << std::endl
         << "        examples\n"
-        << "            still trying to find good parameters \\\n"
-        << "                ( echo 0,0,0; echo 0,0,1; echo 0,0,2 ) \\\n"
-        << "                    | csv-to-bin 3f \\\n"
-        << "                    | points-calc life --procreation 7 --extinction 12 --step 1 --binary 3f \\\n"
-        << "                    | view-points '-;fields=x,y,z,,block;color=yellow;binary=4d,ui' --orthographic --scene-radius 100\n"
+        << "            basics parameters \\\n"
+        << "                csv-paste 'line-number;size=8' 'line-number;size=8;index' value=0 --head 64 \\\n"
+        << "                    | points-calc life --verbose \\\n"
+        << "                    | view-points '-;fields=x,y,z,,block;color=yellow' --orthographic --scene-radius 100\n"
+        << "            run binary; set max vitality; output diagonal cross-section \\\n"
+        << "                csv-paste 'line-number;size=8' 'line-number;size=8;index' value=0 --head 64 \\\n"
+        << "                    | csv-to-bin 3i \\\n"
+        << "                    | points-calc life --procreation 7 --extinction 12 --step 1 --max-vitality 4 --binary 3i --verbose \\\n"
+        << "                    | csv-eval --fields x,y,z,w,b --binary 3i,2ui --output-if 'x==y' \\\n"
+        << "                    | view-points '-;fields=x,y,z,,block;color=yellow;binary=3i,2ui' --orthographic --scene-radius 100\n"
+        << "            slightly less symmetrical stuff\n"
+        << "                ( csv-paste line-number value=0,0 --head 10; csv-paste value=0 line-number value=0 --head 10 ) \\\n"
+        << "                    | csv-to-bin 3i  \\\n"
+        << "                    | points-calc life --procreation 4 --extinction 5 --binary 3i  -v  \\\n"
+        << "                    | view-points '-;fields=x,y,z,,block;color=yellow;binary=3i,2ui' --orthographic --scene-radius 100\n"
         << std::endl;
     return oss.str();
 }
 
+typedef snark::voxel_map< comma::uint32, 3 > voxels_t;
+
 struct point
 {
-    Eigen::Vector3d coordinates;
-    double weight;
+    voxels_t::index_type index;
+    comma::uint32 weight;
     
-    point( const Eigen::Vector3d& coordinates = Eigen::Vector3d( 0, 0, 0 ), double weight = 1 ): coordinates( coordinates ), weight( weight ) {}
+    point( const voxels_t::index_type& index = voxels_t::index_type{{ 0, 0, 0 }}, comma::uint32 weight = 1 ): index( index ), weight( weight ) {}
 };
 
 typedef point input;
@@ -64,13 +84,13 @@ template <> struct traits< snark::points_calc::life::point >
 {
     template < typename K, typename V > static void visit( const K&, snark::points_calc::life::point& p, V& v )
     {
-        v.apply( "coordinates", p.coordinates );
+        v.apply( "index", p.index );
         v.apply( "weight", p.weight );
     }
 
     template < typename K, typename V > static void visit( const K&, const snark::points_calc::life::point& p, V& v )
     {
-        v.apply( "coordinates", p.coordinates );
+        v.apply( "index", p.index );
         v.apply( "weight", p.weight );
     }
 };
@@ -104,12 +124,12 @@ std::string traits::output_format() { return comma::csv::format::value< snark::p
 
 int traits::run( const comma::command_line_options& options )
 {
-    double procreation_threshold = options.value( "--procreation-threshold,--procreation", 3.0 );
-    double stability_threshold = options.value( "--stability-threshold,--stability,--extinction-threshold,--extinction", 4.0 );
-    double max_vitality = options.value( "--max-vitality,--vitality", 1.0 );
-    double step = options.value( "--step", 1.0 );
+    comma::uint32 procreation_threshold = options.value( "--procreation-threshold,--procreation", 7 );
+    comma::uint32 stability_threshold = options.value( "--stability-threshold,--stability,--extinction-threshold,--extinction", 12 );
+    comma::uint32 max_vitality = options.value( "--max-vitality,--vitality", 1 );
+    comma::uint32 step = options.value( "--step", 1 );
     bool verbose = options.exists( "--verbose,-v" );
-    comma::csv::options csv( options, "x,y,z" );
+    comma::csv::options csv( options, "index" );
     csv.full_xpath = false;
     comma::csv::options output_csv;
     output_csv.full_xpath = false;
@@ -117,14 +137,13 @@ int traits::run( const comma::command_line_options& options )
     unsigned int block = 0;
     comma::csv::input_stream< input > istream( std::cin, csv );
     comma::csv::output_stream< output > ostream( std::cout, output_csv );
-    typedef snark::voxel_map< double, 3 > voxels_t;
     std::array< voxels_t, 2 > voxels = {{ voxels_t( Eigen::Vector3d( 1, 1, 1 ) ), voxels_t( Eigen::Vector3d( 1, 1, 1 ) ) }};
     comma::signal_flag is_shutdown;
     while( istream.ready() || std::cin.good() || is_shutdown )
     {
         const input* p = istream.read();
         if( !p ) { break; }
-        voxels[0].touch_at( p->coordinates )->second = p->weight; // quick and dirty
+        voxels[0][ p->index ] = p->weight;
     }
     bool changed = true;
     unsigned int current = 0;
@@ -135,7 +154,7 @@ int traits::run( const comma::command_line_options& options )
         voxels[next].clear();
         for( auto v: voxels[current] )
         {
-            ostream.write( output( point( Eigen::Vector3d( v.first[0], v.first[1], v.first[2] ), v.second ), block ) );
+            ostream.write( output( point( v.first, v.second ), block ) );
             if( csv.flush ) { std::cout.flush(); }
         }
         if( verbose ) { std::cerr << "pointc-calc: life: generation: " << block << " size: " << voxels[current].size() << std::endl; }
@@ -152,7 +171,7 @@ int traits::run( const comma::command_line_options& options )
                     {
                         if( dead.find( i ) != dead.end() || voxels[next].find( i ) != voxels[next].end() ) { continue; }
                         voxels_t::index_type j;
-                        double sum = 0;
+                        comma::int32 sum = 0;
                         for( j[0] = i[0] - 1; j[0] < i[0] + 2; ++j[0] )
                         {
                             for( j[1] = i[1] - 1; j[1] < i[1] + 2; ++j[1] )
@@ -165,12 +184,12 @@ int traits::run( const comma::command_line_options& options )
                                 }
                             }
                         }
-                        double s = sum < procreation_threshold || sum > stability_threshold ? -step : ( sum - procreation_threshold ) < ( stability_threshold - sum ) ? step : 0; // todo? optionally linearly changing step?
+                        comma::int32 s = sum < int( procreation_threshold ) || sum > int( stability_threshold ) ? -step : ( sum - procreation_threshold ) < ( stability_threshold - sum ) ? step : 0; // todo? optionally linearly changing step?
                         auto c = voxels[current].find( i );
-                        double old_value = ( c == voxels[current].end() ? 0 : c->second );
-                        double new_value = old_value + s;
-                        ( comma::math::less( 0, new_value ) ? voxels[next][i] : dead[i] ) = std::min( new_value, max_vitality );
-                        changed = changed || !comma::math::equal( old_value, new_value );
+                        comma::int32 old_value = ( c == voxels[current].end() ? 0 : c->second );
+                        comma::int32 new_value = old_value + s;
+                        ( new_value > 0 ? voxels[next][i] : dead[i] ) = std::min( comma::uint32( new_value ), max_vitality );
+                        changed = changed || old_value != new_value;
                     }
                 }
             }
