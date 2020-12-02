@@ -31,7 +31,7 @@ std::string traits::usage()
         << "            still trying to find good parameters \\\n"
         << "                ( echo 0,0,0; echo 0,0,1; echo 0,0,2 ) \\\n"
         << "                    | csv-to-bin 3f \\\n"
-        << "                    | points-calc life --procreation 3 --step 1 --binary 3f \\\n"
+        << "                    | points-calc life --procreation 6 --extinction 10 --step 0.1 --binary 3f \\\n"
         << "                    | view-points '-;fields=x,y,z,,block;color=yellow;binary=4d,ui' --orthographic --scene-radius 100\n"
         << std::endl;
     return oss.str();
