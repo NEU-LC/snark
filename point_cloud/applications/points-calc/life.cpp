@@ -12,6 +12,7 @@
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
 #include <comma/io/stream.h>
+#include <comma/math/compare.h>
 #include <comma/name_value/parser.h>
 #include <comma/string/string.h>
 #include "../../../point_cloud/voxel_map.h"
@@ -31,7 +32,7 @@ std::string traits::usage()
         << "            still trying to find good parameters \\\n"
         << "                ( echo 0,0,0; echo 0,0,1; echo 0,0,2 ) \\\n"
         << "                    | csv-to-bin 3f \\\n"
-        << "                    | points-calc life --procreation 6 --extinction 10 --step 0.1 --binary 3f \\\n"
+        << "                    | points-calc life --procreation 7 --extinction 12 --step 1 --binary 3f \\\n"
         << "                    | view-points '-;fields=x,y,z,,block;color=yellow;binary=4d,ui' --orthographic --scene-radius 100\n"
         << std::endl;
     return oss.str();
@@ -165,10 +166,11 @@ int traits::run( const comma::command_line_options& options )
                             }
                         }
                         double s = sum < procreation_threshold || sum > stability_threshold ? -step : ( sum - procreation_threshold ) < ( stability_threshold - sum ) ? step : 0; // todo? optionally linearly changing step?
-                        auto n = voxels[current].find( i );
-                        double new_value = ( n == voxels[current].end() ? 0 : n->second ) + s;
-                        ( new_value <= 0 ? dead[i] : voxels[next][i] ) = std::min( new_value, max_vitality );
-                        changed = true;
+                        auto c = voxels[current].find( i );
+                        double old_value = ( c == voxels[current].end() ? 0 : c->second );
+                        double new_value = old_value + s;
+                        ( comma::math::less( 0, new_value ) ? voxels[next][i] : dead[i] ) = std::min( new_value, max_vitality );
+                        changed = changed || !comma::math::equal( old_value, new_value );
                     }
                 }
             }
