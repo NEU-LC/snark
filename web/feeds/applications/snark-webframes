@@ -308,7 +308,9 @@ parser = argparse.ArgumentParser( description=description, epilog=epilog, format
 parser.add_argument( '--help', '-h', help='show this help message and exit', action='store_true' )
 parser.add_argument( '--config', help='web backend config file' )
 parser.add_argument( '--dry-run', help='don\'t execute, just read config and print name=commands;content_type and exit', action='store_true' )
-parser.add_argument( '--host', help='host for http requests', type=str, default=DEFAULT_HOST )
+parser.add_argument( '--host', help='host for http requests. If host is blank (the default) the server will listen on all '
+    'interfaces, making the service available to other machines on the network. Set to "localhost" to make the service only '
+    'available on the machine on which the server is running.', type=str, default=DEFAULT_HOST )
 parser.add_argument( '--publish-config', help='publish config file', default=None )
 parser.add_argument( '--port', help='port number for http requests', type=int, default=DEFAULT_PORT )
 parser.add_argument( '--robot-config', help='robot config file' )
