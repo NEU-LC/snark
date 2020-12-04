@@ -126,8 +126,8 @@ struct hdl64_s2_fw_v48
     {
         if(laser<0 ||laser>=lasers_per_block) { COMMA_THROW( comma::exception, "laser id out of range" << laser ); }
         if(block<0||block>=block_count) { COMMA_THROW(comma::exception, "block id out of range"<<block ); }
-        double delay = (time_table[block][laser] ) + timestamps::ethernetOutputDuration * 1e6;
-        return boost::posix_time::microseconds( delay);
+        double delay = ( time_table[block][laser] ) + timestamps::ethernetOutputDuration * 1e6;
+        return boost::posix_time::microseconds( ( long long )( delay ) );
     }
     static double azimuth(const hdl64::packet& packet, unsigned int block, unsigned int laser, double angularSpeed )
     {
