@@ -110,7 +110,7 @@ inline laser_return* stream< S >::read()
         laser_return_.azimuth = v.azimuth;
         laser_return_.intensity = v.reflectivity;
         laser_return_.range = v.range;
-        laser_return_.timestamp = timestamp_ + boost::posix_time::microseconds( v.delay );
+        laser_return_.timestamp = timestamp_ + boost::posix_time::microseconds( ( long long )( v.delay ) );
         ++puck_packet_iterator_;
         if( puck_packet_iterator_.done() ) { buffer_ = NULL; }
         bool valid = !comma::math::equal( laser_return_.range, 0 );
