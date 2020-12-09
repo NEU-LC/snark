@@ -110,8 +110,10 @@ if [[ $input_mode == "binary" ]]; then
 fi
 
 transform_with_error=$( cat combined.csv | $binary_input_transform \
-    | points-align --verbose $input_args $binary_option --fields=$combined_fields --output-error )
+    | points-align --verbose $input_args $binary_option --fields=$combined_fields --output-error \
+    | sed 's/-nan/nan/g' )
 echo "exit_code=$?"
+echo "transform_with_error=$transform_with_error" >&2
 
 output_fields=$( points-align --output-fields --output-error --fields=$combined_fields )
 
