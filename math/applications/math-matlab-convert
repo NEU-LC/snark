@@ -39,7 +39,7 @@ def bash_completion (parser):
 
 def parse_args():
     description="""
-convert to and from Matlab save files
+convert to and from matlab save files
 """
 
     epilog="""
@@ -111,6 +111,7 @@ def step_down( mat ):
 
 # convert python version of matlab data to fundamental python data types
 def traverse( mat, path="", sep="" ):
+    print( "--> on path: '{}'".format( path ), file = sys.stderr )
     listing = ( sep != "" )
     if is_compound( mat ):
         if isinstance(mat,numpy.ndarray):
@@ -120,7 +121,7 @@ def traverse( mat, path="", sep="" ):
                 ix=0
                 ls=list()
                 while ix < mat.size:
-                    ls.append( traverse(mat.flat[ix], "%s[%d]" % (path,ix), sep) )
+                    ls.append( traverse( mat.flat[ix], "%s[%d]" % ( path, ix ), sep ) )
                     ix+=1
                 return ls
         if ( sys.version_info.major < 2 and isinstance( mat, unicode ) ) or ( sys.version_info.major >= 2 and str( type( mat ) ) == "<type 'unicode'>" ): # lame; todo: simplify
