@@ -16,6 +16,10 @@ if(snark_build_sensors_cepton)
     add_subdirectory(cepton)
 endif()
 
+if( snark_build_sensors_innovusion )
+    add_subdirectory( innovusion )
+endif()
+
 if( snark_build_sensors_ouster )
     add_subdirectory( ouster )
 endif()
