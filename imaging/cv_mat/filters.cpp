@@ -2172,12 +2172,12 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             if( s.front() == "average" ) { return std::make_pair(  boost::bind< value_type_t >( accumulated::average< H >(), _1 ), false ); }
             if( s.front() == "moving-average" )
             { 
-                if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: error please provide window size for " << s.front() ); }
+                if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: moving-average: please specify window size" ); }
                 return std::make_pair(  boost::bind< value_type_t >( accumulated::moving_average< H >( boost::lexical_cast< comma::uint32 >(s[1]) ), _1 ), false ); 
             }
             if( s.front() == "ema" )
             { 
-                if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: error please provide alpha value for " << s.front() ); }
+                if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: ema: please specify alpha" ); }
                 return std::make_pair( boost::bind< value_type_t >( accumulated::ema< H >( boost::lexical_cast< float >(s[1]), s.size() < 3 ? 1 : boost::lexical_cast< comma::uint32 >(s[2]) ), _1 ), false ); 
             }
             if( s.front() == "min" ) { return std::make_pair( boost::bind< value_type_t >( accumulated::min< H >(), _1 ), false ); }
@@ -3134,14 +3134,13 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
                 case 3: filters = { "transpose", "flip" };  break;
                 default: break;
             }
-            // They are all parallel=true
-            for( std::string s : filters ) { f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( { s }, get_timestamp, default_delay ) ) ); }
+            for( std::string s : filters ) { f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( { s }, get_timestamp, default_delay ) ) ); } // they are all parallel=true
         }
         else
         {
             f.push_back( filter_type( make_filter< cv::Mat, H >::make_filter_functor( e, get_timestamp, default_delay ) ) );
         }
-        modified = e[0] != "view" && e[0] != "tee" && e[0] != "split" && e[0] !="unpack12"; // do we even need it?
+        modified = e[0] != "view" && e[0] != "tee" && e[0] != "split" && e[0] != "unpack12"; // do we even need it?
     }
     return f;
 }
