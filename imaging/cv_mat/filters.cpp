@@ -1,5 +1,32 @@
+// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
 // Copyright (c) 2018 Vsevolod Vlaskine
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. Neither the name of the University of Sydney nor the
+//    names of its contributors may be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
+// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
+// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
 #include <fstream>
@@ -2178,15 +2205,15 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
             if( s.front() == "ema" )
             { 
                 if( s.size() < 2 ){ COMMA_THROW(comma::exception, "accumulated: ema: please specify alpha" ); }
-                return std::make_pair( boost::bind< value_type_t >( accumulated::ema< H >( boost::lexical_cast< float >(s[1]), s.size() < 3 ? 1 : boost::lexical_cast< comma::uint32 >(s[2]) ), _1 ), false ); 
+                return std::make_pair( boost::bind< value_type_t >( accumulated::ema< H >( boost::lexical_cast< float >( s[1] ), s.size() < 3 ? 1 : boost::lexical_cast< comma::uint32 >( s[2] ) ), _1 ), false ); 
             }
             if( s.front() == "min" ) { return std::make_pair( boost::bind< value_type_t >( accumulated::min< H >(), _1 ), false ); }
             if( s.front() == "max" ) { return std::make_pair( boost::bind< value_type_t >( accumulated::max< H >(), _1 ), false ); }
-            COMMA_THROW(comma::exception, "accumulated: unrecognised operation: " << s.front());
+            COMMA_THROW( comma::exception, "accumulated: expected operation; got: '" << s.front() << "'" );
         }
         catch( boost::bad_lexical_cast& bc )
         {
-            COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": failed to cast filter parameter(s): " << bc.what());
+            COMMA_THROW(comma::exception, "accumulated=" << s.front() << ": expected a number as filter parameter, got: '" << bc.what() << "'" );
         }
     }
     if( e[0] == "balance-white" ) { return std::make_pair( filters::balance_white< H >(), false ); }
@@ -3179,11 +3206,11 @@ static std::string usage_impl_()
     oss << "            <operation>" << std::endl;
     oss << "                 average: pixelwise average using all images from the beginning of the stream" << std::endl;
     oss << "                 ema,<alpha>[,<spin_up>]: pixelwise exponential moving average" << std::endl;
-    oss << "                     <alpha>: range: between 0 and 1.0, larger value will retain more historical data." << std::endl;
-    oss << "                     <spin_up>: default = 1;" << std::endl;
-    oss << "                     formula: ema += (new_pixel_value - ema) * <alpha>" << std::endl;
-    oss << "                 min: image minimum" << std::endl;
-    oss << "                 max: image maximum" << std::endl;
+    oss << "                     <alpha>: range: between 0 and 1.0, larger value will retain more historical data" << std::endl;
+    oss << "                     <spin-up>: default = 1; for details see https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average" << std::endl;
+    oss << "                     formula: ema += ( new_pixel_value - ema ) * <alpha>" << std::endl;
+    oss << "                 min: pixelwise image minimum" << std::endl;
+    oss << "                 max: pixelwise image maximum" << std::endl;
     oss << "                 moving-average,<window>: pixelwise moving average" << std::endl;
     oss << "                     <window>: number of images in sliding window" << std::endl;
     oss << "        bayer=<mode>: convert from bayer, <mode>=1-4 (see also convert-color)" << std::endl;

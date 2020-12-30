@@ -87,17 +87,17 @@ static void iterate_by_input_type( const cv::Mat& m, cv::Mat& result, const appl
         case CV_32S: divide_by_rows< H, CV_32S >( m, result, fn, count ); break;
         case CV_32F: divide_by_rows< H, CV_32F >( m, result, fn, count ); break;
         case CV_64F: divide_by_rows< H, CV_64F >( m, result, fn, count ); break;
-        default: COMMA_THROW( comma::exception, "accumulated: unrecognised output image type " << otype );
+        default: COMMA_THROW( comma::exception, "accumulated: expected output image type; got: " << otype );
     }
 }
 
 } // namespace impl {
 
 template < typename H >
-ema< H >::ema( float alpha, comma::uint32 spin_up_size ) : count_(0), alpha_(alpha), spin_up_(spin_up_size)
+ema< H >::ema( float alpha, comma::uint32 spin_up_size ) : count_( 0 ), alpha_( alpha ), spin_up_( spin_up_size )
 {
-    if( spin_up_ == 0 ) { COMMA_THROW(comma::exception, "accumulated=ema: error please specify spin up value greater than 0"); }
-    if( alpha_ <= 0 || alpha_ >= 1.0 ) { COMMA_THROW(comma::exception, "accumulated: please specify ema alpha in the range 0 < alpha < 1.0, got " << alpha_ ); }
+    if( spin_up_ == 0 ) { COMMA_THROW( comma::exception, "accumulated=ema: expected positive spin-up value; got 0" ); }
+    if( alpha_ <= 0 || alpha_ >= 1.0 ) { COMMA_THROW( comma::exception, "accumulated=ema: expected alpha between 0 and 1; got " << alpha_ ); }
 }
 
 template < typename H >
@@ -105,7 +105,7 @@ typename average< H >::value_type average< H >::operator()( const typename avera
 {
     ++count_;
     // This filter is not run in parallel, no locking required
-    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
+    if( result_.empty() ) { result_ = cv::Mat::zeros( n.second.rows, n.second.cols, CV_MAKETYPE( CV_32F, n.second.channels() ) ); }
     
     filters::iterate_by_input_type< H >(n.second, result_, [](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) { return avg + (in - avg)/count; } , count_);
     
@@ -117,21 +117,21 @@ typename average< H >::value_type average< H >::operator()( const typename avera
 template < typename H >
 typename ema< H >::value_type ema< H >::operator()( const typename ema< H >::value_type& n )
 {
-    ++count_;
-    
-    if( count_ == 1 ) { n.second.convertTo( result_, CV_MAKETYPE(CV_32F, n.second.channels()) ); }
-    else { 
-        // if count < spin_up then do normal average
-        filters::iterate_by_input_type< H >(n.second, result_, 
-            [this](float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col) { 
-                if( count <= spin_up_ ) { return (avg + (in - avg)/count); } else {  return avg + (in - avg) * alpha_; } 
-            },
-            count_); 
+    ++count_;    
+    if( count_ == 1 )
+    {
+        n.second.convertTo( result_, CV_MAKETYPE( CV_32F, n.second.channels() ) );
     }
-    
+    else // if count < spin_up then do normal average
+    {
+        filters::iterate_by_input_type< H >( n.second
+                                           , result_
+                                           , [ this ]( float in, float avg, comma::uint64 count, comma::uint32 row, comma::uint32 col ) { return avg + ( in - avg ) * ( count <= spin_up_ ? 1. / count : alpha_ ); }
+                                           , count_ ); 
+    }
     cv::Mat output; // copy as result_ will be changed next iteration
-    result_.convertTo(output, n.second.type());
-    return value_type(n.first, output); 
+    result_.convertTo( output, n.second.type() );
+    return value_type( n.first, output ); 
 }
 
 template < int DepthIn >
