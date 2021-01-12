@@ -34,9 +34,12 @@
 
 #include <iostream>
 #include <boost/shared_ptr.hpp>
-#include <QtCharts/QChartView>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMainWindow>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QScatterSeries>
+#include <QtCharts/QSplineSeries>
+#include <QtCharts/QChartView>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
@@ -128,11 +131,37 @@ QT_CHARTS_USE_NAMESPACE
 static snark::graphics::plotting::series* make_series( const snark::graphics::plotting::series::config_t& config, QChart* chart )
 {
     if( config.shape == "line" || config.shape.empty() ) { return new snark::graphics::plotting::series( new QLineSeries( chart ), config ); }
-    if( config.shape == "curve" ) { std::cerr << "csv-plot: shape 'curve': todo" << std::endl; exit( 1 ); }
-    if( config.shape == "scatter" ) { std::cerr << "csv-plot: shape 'scatter': todo" << std::endl; exit( 1 ); }
+    if( config.shape == "spline" ) { return new snark::graphics::plotting::series( new QSplineSeries( chart ), config ); }
+    if( config.shape == "scatter" ) { return new snark::graphics::plotting::series( new QScatterSeries( chart ), config ); }
     std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.shape << "\"" << std::endl;
     exit( 1 );
 }
+
+// todo
+// ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size?
+// - move main window to separate file
+// - modes of input: multiple x,y fields in a single record
+// - span policies
+//   - autoscaling
+//   - autoscrolling
+// - zoom
+// - save as png
+// - chart types
+//   - spline: style
+//   - scatter: style; derive from series? series -> base class?
+//   - chart types other than xy, e.g. pie chart
+//   - 2.5d charts
+// - axes properties
+// - series properties
+//   - title
+//   - target chart
+// - layouts
+//   - title
+//   - multiple charts
+//   - support multi-window
+//   - grid layout
+//   - tabs layout
+// ? styles
 
 int main( int ac, char** av )
 {
@@ -148,7 +177,7 @@ int main( int ac, char** av )
         boost::optional< unsigned int > stdin_index;
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         QApplication a( ac, av );
-        QMainWindow window; // todo: move main window to separate file; support chart types other than xy; support multiple charts; support multi-window, charts layouts, etc
+        QMainWindow window;
         snark::graphics::plotting::chart* chart = new snark::graphics::plotting::xy_chart( options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 25 ) ) ); // todo? update streams and charts at variable rates?
         chart->setTitle( "test chart" );
         chart->legend()->hide();

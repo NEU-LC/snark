@@ -101,7 +101,7 @@ bool series::update()
     if( buffers_.changed() )
     {
         series_todo->clear();
-        for( auto& e: buffers_.points.values() ) { series_todo->append( e ); } // todo! super-quick and dirty; massively inefficient
+        for( unsigned int i = 0; i < buffers_.points.size(); ++i ) { series_todo->append( buffers_.points.values()[i] ); } // todo! super-quick and dirty; massively inefficient
     }
     buffers_.mark_seen();
     return changed;
