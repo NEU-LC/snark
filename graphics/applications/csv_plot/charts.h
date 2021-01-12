@@ -7,7 +7,7 @@
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
 #include <boost/ptr_container/ptr_vector.hpp>
-#include "stream.h"
+#include "series.h"
 
 QT_USE_NAMESPACE
 QT_CHARTS_USE_NAMESPACE
@@ -19,8 +19,8 @@ class chart: public QChart
     Q_OBJECT
     public:
         chart( double timeout, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
-        virtual ~chart();
-        void push_back( stream* r );
+        virtual ~chart() {}
+        void push_back( plotting::series* r );
         void start();
         void shutdown();
 
@@ -34,8 +34,8 @@ class chart: public QChart
         QTimer timer_;
         QtCharts::QValueAxis *x_axis_;
         QtCharts::QValueAxis *y_axis_;
-        QtCharts::QLineSeries *series_; // todo
-        boost::ptr_vector< stream > streams_;
+        QtCharts::QLineSeries *qtseries_; // todo
+        boost::ptr_vector< plotting::series > series_;
         double timeout_;
 };
 

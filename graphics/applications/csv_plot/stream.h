@@ -36,7 +36,6 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <QColor>
-#include <Eigen/Core>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
 #include <comma/csv/stream.h>

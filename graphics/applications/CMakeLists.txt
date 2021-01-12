@@ -114,6 +114,7 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
     if( NOT QWT_FOUND )
         message( FATAL_ERROR "csv-plot requires Qwt library" )
     endif()
+    find_package( Qt5 REQUIRED COMPONENTS Core Gui Widgets Charts )
     if( QT_VERSION_MAJOR GREATER 4 )
         if( QWT_MAJOR_VERSION LESS 6 OR ( QWT_MAJOR_VERSION EQUAL 6 AND QWT_MINOR_VERSION LESS 1 ))
             message( FATAL_ERROR "\nQt version ${snark_qt_version} requires Qwt version 6.1 or above, found version ${QWT_VERSION_STRING}.\nUpgrade Qwt library or disable the building of csv-plot." )
@@ -137,7 +138,7 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
     IF( QT_VERSION_MAJOR EQUAL 4 )
         TARGET_LINK_LIBRARIES( csv-plot ${QT_LIBRARIES} ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} ${OPENGL_LIBRARY} ) #profiler )
     ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
-        TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} Qt5::Widgets Qt5Charts ) #profiler )
+        TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} Qt5::Widgets Qt5::Charts ) #profiler )
     ENDIF( QT_VERSION_MAJOR EQUAL 4 )
     
     INSTALL( TARGETS csv-plot RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
