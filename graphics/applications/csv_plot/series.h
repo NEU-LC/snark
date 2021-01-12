@@ -6,6 +6,9 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <QColor>
+#include <QPointF>
+#include <QtCharts/QChart>
+#include <QtCharts/QValueAxis>
 #include <QtCharts/QXYSeries>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
@@ -20,7 +23,7 @@ QT_CHARTS_USE_NAMESPACE
 
 namespace snark { namespace graphics { namespace plotting {
 
-class series
+class series // todo: if series other than xyseries required, create series baseclass and derive from it xyseries, xyzseries, etc
 {
     public:
         struct config_t
@@ -42,14 +45,15 @@ class series
         comma::synchronized< points_t > points; // quick and dirty
 
         template < typename S = QXYSeries >
-        series( const config_t& config );
+        series( const config_t& config, QChart* chart );
         void start();
         bool is_shutdown() const;
         bool is_stdin() const;
         void shutdown();
         bool update();
-        QtCharts::QXYSeries* operator()() { return series_; }
-        const QtCharts::QXYSeries* operator()() const { return series_; }
+        QtCharts::QXYSeries* series_todo; // todo: once stream phased out, rename series class to stream and this member to series
+        QtCharts::QValueAxis* x_axis; // quick and dirty
+        QtCharts::QValueAxis* y_axis; // quick and dirty
 
     protected:
         bool is_shutdown_;
@@ -62,15 +66,13 @@ class series
         void read_();
         struct buffers_t_
         {
-            block_buffer< double > x; // todo: buffer value type
-            block_buffer< double > y;
+            block_buffer< QPointF > points;
             buffers_t_( comma::uint32 size );
             void add( const point& p );
             bool changed() const;
             void mark_seen();
         };
         buffers_t_ buffers_;
-        QtCharts::QXYSeries* series_;
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {

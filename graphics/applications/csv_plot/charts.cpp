@@ -6,37 +6,19 @@
 #include <QtCore/QRandomGenerator>
 #include <QtCore/QDebug>
 #include "charts.h"
+#include "series.h"
 
 namespace snark { namespace graphics { namespace plotting {
 
-chart::chart( double timeout, QGraphicsItem *parent, Qt::WindowFlags window_flags )
-    : QChart( QChart::ChartTypeCartesian, parent, window_flags )
-    , x_axis_( new QValueAxis() )
-    , y_axis_( new QValueAxis() )
-    , qtseries_( 0 )
-    , timeout_( timeout )
+chart::chart( float timeout, QGraphicsItem *parent, Qt::WindowFlags window_flags ): QChart( QChart::ChartTypeCartesian, parent, window_flags )
 {
-    qtseries_ = new QLineSeries( this ); // qtseries_ = new QSplineSeries( this ); // todo
-    QPen pen( Qt::red ); // todo
-    pen.setWidth( 3 ); // todo
-    qtseries_->setPen( pen );
-    qtseries_->append( 0, 0 ); // todo
-    addSeries( qtseries_ );
-    addAxis( x_axis_, Qt::AlignBottom );
-    addAxis( y_axis_, Qt::AlignLeft );
-    qtseries_->attachAxis( x_axis_ );
-    qtseries_->attachAxis( y_axis_ );
-    x_axis_->setTickCount( 5 ); // todo
-    x_axis_->setRange( 0, 10 ); // todo
-    y_axis_->setRange( -5, 10 ); // todo
     QObject::connect( &timer_, &QTimer::timeout, this, &chart::update );
+    timer_.setInterval( ( unsigned int )( timeout * 1000 ) );
 }
 
-void chart::start()
-{
-    timer_.setInterval( ( unsigned int )( timeout_ * 1000 ) );
-    timer_.start();
-}
+chart::~chart() { shutdown(); }
+
+void chart::start() { timer_.start(); }
 
 void chart::shutdown()
 {
@@ -46,38 +28,23 @@ void chart::shutdown()
 
 void chart::update()
 {
-    bool changed = false;
     bool all_shutdown = true;
     for( unsigned int i = 0; i < series_.size(); ++i )
     {
-        if( series_[i].update() ) { changed = true; }
+        series_[i].update();
         if( !series_[i].is_shutdown() ) { all_shutdown = false; }
     }
-    if( changed ) { update_(); }
     if( all_shutdown ) { timer_.stop(); }
 }
 
-line_chart::line_chart( double timeout, QGraphicsItem *parent, Qt::WindowFlags window_flags )
-    : chart( timeout, parent, window_flags )
-{
-}
+xy_chart::xy_chart( float timeout, QGraphicsItem *parent, Qt::WindowFlags window_flags ): chart( timeout, parent, window_flags ) {}
 
-void line_chart::update_()
+void xy_chart::push_back( plotting::series* s )
 {
-    // todo
+    series_.push_back( s );
+    addSeries( s->series_todo );
+    addAxis( s->x_axis, Qt::AlignBottom );
+    addAxis( s->y_axis, Qt::AlignLeft );
 }
-
-// void chart::update()
-// {
-//     std::cerr << "--> tick" << std::endl;
-//     qreal x = plotArea().width() / m_axisX->tickCount();
-//     qreal y = (m_axisX->max() - m_axisX->min()) / m_axisX->tickCount();
-//     m_x += y;
-//     m_y = QRandomGenerator::global()->bounded(5) - 2.5;
-//     series_->append(m_x, m_y);
-//     scroll(x, 0);
-//     if (m_x == 100)
-//         .stop();
-// }
 
 } } } // namespace snark { namespace graphics { namespace plotting {

@@ -32,8 +32,11 @@ series::config_t::config_t( const comma::command_line_options& options )
     if( !color_name.empty() ) { color = QColor( hex_color_( color_name ) ); }
 }
 
-template < typename S > series::series( const typename series::config_t& config )
+template < typename S > series::series( const typename series::config_t& config, QChart* chart )
     : config( config )
+    , series_todo( new S( chart ) )
+    , x_axis( new QValueAxis )
+    , y_axis( new QValueAxis )
     , is_shutdown_( false )
     , is_stdin_( config.csv.filename == "-" )
     , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
@@ -41,25 +44,24 @@ template < typename S > series::series( const typename series::config_t& config 
     , count_( 0 )
     , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
     , buffers_( config.size )
-    , series_( new S() )
 {
+    QPen pen( config.color );
+    pen.setWidth( config.weight );
+    series_todo->setPen( pen );
+    series_todo->attachAxis( x_axis );
+    series_todo->attachAxis( y_axis );
+    x_axis->setTickCount( 5 ); // todo!
+    x_axis->setRange( 0, 10 ); // todo!
+    y_axis->setRange( -5, 10 ); // todo!
 }
 
-series::buffers_t_::buffers_t_( comma::uint32 size ) : x( size ), y( size ) {}
+series::buffers_t_::buffers_t_( comma::uint32 size ) : points( size ) {}
 
-void series::buffers_t_::add( const point& p )
-{
-    x.add( p.coordinates.x(), p.block );
-    y.add( p.coordinates.y(), p.block );
-}
+void series::buffers_t_::add( const point& p ) { points.add( QPointF( p.coordinates.x(), p.coordinates.y() ), p.block ); }
 
-bool series::buffers_t_::changed() const { return x.changed(); }
+bool series::buffers_t_::changed() const { return points.changed(); }
 
-void series::buffers_t_::mark_seen()
-{
-    x.mark_seen();
-    y.mark_seen();
-}
+void series::buffers_t_::mark_seen() { points.mark_seen(); }
 
 void series::start() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::series::read_, boost::ref( *this ) ) ) ); }
 
@@ -93,15 +95,16 @@ bool series::update()
     points_t p;
     {
         comma::synchronized< points_t >::scoped_transaction t( points );
-        p = *t; // quick and dirty, watch performance?
-        t->clear(); // hm...
+        p = *t; // todo! quick and dirty, potentially massive copy; watch performance!
+        t->clear();
     }
     if( p.empty() ) { return false; }
-    for( std::size_t i = 0; i < p.size(); ++i ) { buffers_.add( p[i] ); }
+    for( auto& e: p ) { buffers_.add( e ); }
     bool changed = buffers_.changed();
     if( buffers_.changed() )
     {
-        // todo: update series_
+        series_todo->clear();
+        for( auto& e: buffers_.points.values() ) { series_todo->append( e ); } // todo! super-quick and dirty; massively inefficient
     }
     buffers_.mark_seen();
     return changed;

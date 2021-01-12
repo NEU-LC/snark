@@ -18,9 +18,9 @@ class chart: public QChart
 {
     Q_OBJECT
     public:
-        chart( double timeout, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
-        virtual ~chart() {}
-        void push_back( plotting::series* r );
+        chart( float timeout, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
+        virtual ~chart();
+        virtual void push_back( plotting::series* r ) = 0;
         void start();
         void shutdown();
 
@@ -28,25 +28,18 @@ class chart: public QChart
         void update();
         
     protected:
-        virtual void update_() = 0;
-
+        boost::ptr_vector< plotting::series > series_;
+        
     private:
         QTimer timer_;
-        QtCharts::QValueAxis *x_axis_;
-        QtCharts::QValueAxis *y_axis_;
-        QtCharts::QLineSeries *qtseries_; // todo
-        boost::ptr_vector< plotting::series > series_;
-        double timeout_;
 };
 
-class line_chart: public chart
+class xy_chart: public chart
 {
     Q_OBJECT
     public:
-        line_chart( double timeout, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
-
-    protected:
-        void update_();
+        xy_chart( float timeout, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
+        void push_back( plotting::series* s );
 };
 
 } } } // namespace snark { namespace graphics { namespace plotting {
