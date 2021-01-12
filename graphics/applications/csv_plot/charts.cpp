@@ -7,6 +7,8 @@
 #include <QtCore/QDebug>
 #include "charts.h"
 
+#include <iostream>
+
 namespace snark { namespace graphics { namespace plotting {
 
 chart::chart( float timeout, QGraphicsItem *parent, Qt::WindowFlags window_flags ): QChart( QChart::ChartTypeCartesian, parent, window_flags )
@@ -17,7 +19,11 @@ chart::chart( float timeout, QGraphicsItem *parent, Qt::WindowFlags window_flags
 
 chart::~chart() { shutdown(); }
 
-void chart::start() { timer_.start(); }
+void chart::start()
+{
+    for( unsigned int i = 0; i < series_.size(); ++i ) { series_[i].start(); }
+    timer_.start();
+}
 
 void chart::shutdown()
 {

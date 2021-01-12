@@ -29,8 +29,7 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_POINT_H_
-#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_POINT_H_
+#pragma once
 
 #include <Eigen/Core>
 #include <QColor>
@@ -43,8 +42,8 @@ struct point
     Eigen::Vector2d coordinates;
     QColor color;
     comma::uint32 block;
+    
+    point(): coordinates( Eigen::Vector2d::Zero() ), block( 0 ) {}
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {
-
-#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_POINT_H_

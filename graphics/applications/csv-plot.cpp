@@ -40,6 +40,7 @@
 #include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
+#include <comma/string/string.h>
 #include <comma/name_value/parser.h>
 #include "csv_plot/charts.h"
 #include "csv_plot/traits.h"
@@ -60,8 +61,10 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: help, --help --verbose: more help" << std::endl;
-    std::cerr << "    --frames-per-second,--fps=<value>: how often to update chart(s)" << std::endl;
-    std::cerr << "    --timeout=<seconds>, default: 25" << std::endl;
+    std::cerr << "    --frames-per-second,--fps=<value>; default=25; how often to update chart(s)" << std::endl;
+    std::cerr << "    --input-fields; output possible input fields and exit" << std::endl;
+    std::cerr << "    --pass; todo" << std::endl;
+    std::cerr << "    --timeout=<seconds>; how often to update, overrides --fps" << std::endl;
     std::cerr << "    --no-stdin: don't try to read from stdin" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
     std::cerr << std::endl;    
@@ -137,13 +140,16 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         bool verbose = options.exists( "--verbose,-v" );
+        if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::point >( false ), ',' ) << std::endl; return 0; }
         snark::graphics::plotting::series::config_t config( options );
+        config.csv.full_xpath = false;
+        if( config.csv.fields.empty() ) { config.csv.fields = "x,y"; }
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index;
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         QApplication a( ac, av );
         QMainWindow window; // todo: move main window to separate file; support chart types other than xy; support multiple charts; support multi-window, charts layouts, etc
-        snark::graphics::plotting::chart* chart = new snark::graphics::plotting::xy_chart( options.value( "--frames-per-second,--fps", 25 ) ); // todo? update streams and charts at variable rates?
+        snark::graphics::plotting::chart* chart = new snark::graphics::plotting::xy_chart( options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 25 ) ) ); // todo? update streams and charts at variable rates?
         chart->setTitle( "test chart" );
         chart->legend()->hide();
         chart->setAnimationOptions( QChart::AllAnimations );

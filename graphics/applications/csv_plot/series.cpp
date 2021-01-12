@@ -5,6 +5,8 @@
 #include "series.h"
 #include "traits.h"
 
+#include <iostream>
+
 namespace snark { namespace graphics { namespace plotting {
 
 static const char* hex_color_( const std::string& c )
@@ -78,6 +80,7 @@ void series::read_()
         if( !p ) { break; }
         point q = *p;
         if( !has_x_ ) { q.coordinates.x() = count_; }
+        std::cerr << "series: b: " << q.coordinates.x() << "," << q.coordinates.y() << std::endl;
         ++count_;
         comma::synchronized< points_t >::scoped_transaction( points )->push_back( q );
     }
