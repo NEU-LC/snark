@@ -29,8 +29,7 @@
 
 /// @author Vsevolod Vlaskine
 
-#ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_TRAITS_H_
-#define SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_TRAITS_H_
+#pragma once
 
 #include "../../../visiting/eigen.h"
 #include "point.h"
@@ -108,5 +107,3 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
 };
 
 } } // namespace comma { namespace visiting {
-
-#endif // #ifndef SNARK_GRAPHICS_APPLICATIONS_CSV_PLOT_TRAITS_H_

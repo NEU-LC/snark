@@ -120,9 +120,10 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
         endif()
     endif()
 
-    SET( CSV_PLOT_MOC_FILES csv_plot_moc csv_plot/plot.h ) #SET( CSV_PLOT_MOC_FILES csv_plot_Moc csv_plot/main_window.h csv_plot/plot.h )
+    SET( CSV_PLOT_MOC_FILES csv_plot_moc csv_plot/plot.h csv_plot/charts.h ) #SET( CSV_PLOT_MOC_FILES csv_plot_Moc csv_plot/main_window.h csv_plot/plot.h )
     IF( QT_VERSION_MAJOR EQUAL 4 )
         QT4_WRAP_CPP( ${CSV_PLOT_MOC_FILES} OPTIONS ${MOC_OPTIONS} )
+        #message( FATAL_ERROR "csv-plot: not implemented for Qt4" )
     ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
         QT5_WRAP_CPP( ${CSV_PLOT_MOC_FILES} OPTIONS ${MOC_OPTIONS} )
     ENDIF( QT_VERSION_MAJOR EQUAL 4 )
@@ -136,7 +137,7 @@ if( snark_build_graphics_csv_plot ) # todo: make sure it works for qt5
     IF( QT_VERSION_MAJOR EQUAL 4 )
         TARGET_LINK_LIBRARIES( csv-plot ${QT_LIBRARIES} ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} ${OPENGL_LIBRARY} ) #profiler )
     ELSEIF( QT_VERSION_MAJOR EQUAL 5 )
-        TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} Qt5::Widgets ) #profiler )
+        TARGET_LINK_LIBRARIES( csv-plot ${comma_ALL_LIBRARIES} ${QWT_LIBRARIES} Qt5::Widgets Qt5Charts ) #profiler )
     ENDIF( QT_VERSION_MAJOR EQUAL 4 )
     
     INSTALL( TARGETS csv-plot RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
