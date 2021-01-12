@@ -8,7 +8,6 @@
 #include <QColor>
 #include <QPointF>
 #include <QtCharts/QChart>
-#include <QtCharts/QValueAxis>
 #include <QtCharts/QXYSeries>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
@@ -40,20 +39,18 @@ class series // todo: if series other than xyseries required, create series base
             config_t( const comma::command_line_options& options );
         };
         
+        QtCharts::QXYSeries* series_todo; // todo: once stream phased out, rename series class to stream and this member to series
         const config_t config;
         typedef std::deque< graphics::plotting::point > points_t;
         comma::synchronized< points_t > points; // quick and dirty
 
-        template < typename S = QXYSeries >
-        series( const config_t& config, QChart* chart );
+        series( QXYSeries* s, const config_t& config );
         void start();
         bool is_shutdown() const;
         bool is_stdin() const;
         void shutdown();
         bool update();
-        QtCharts::QXYSeries* series_todo; // todo: once stream phased out, rename series class to stream and this member to series
-        QtCharts::QValueAxis* x_axis; // quick and dirty
-        QtCharts::QValueAxis* y_axis; // quick and dirty
+        
 
     protected:
         bool is_shutdown_;

@@ -1,6 +1,7 @@
 // Copyright (c) 2021 Vsevolod Vlaskine
 
 #include <boost/bind.hpp>
+#include <QtCharts/QXYSeries>
 #include "series.h"
 #include "traits.h"
 
@@ -24,7 +25,7 @@ series::config_t::config_t( const comma::command_line_options& options )
     : csv( options )
     , size( options.value( "--size,-s,--tail", 10000 ) )
     , color_name( options.value< std::string >( "--color,--colour", "black" ) )
-    , shape( options.value< std::string >( "--shape,--type", "curve" ) )
+    , shape( options.value< std::string >( "--shape,--type", "line" ) )
     , style( options.value< std::string >( "--style", "" ) )
     , weight( options.value( "--weight", 0.0 ) )
 {
@@ -32,11 +33,9 @@ series::config_t::config_t( const comma::command_line_options& options )
     if( !color_name.empty() ) { color = QColor( hex_color_( color_name ) ); }
 }
 
-template < typename S > series::series( const typename series::config_t& config, QChart* chart )
-    : config( config )
-    , series_todo( new S( chart ) )
-    , x_axis( new QValueAxis )
-    , y_axis( new QValueAxis )
+series::series( QXYSeries* s, const config_t& config )
+    : series_todo( s )
+    , config( config )
     , is_shutdown_( false )
     , is_stdin_( config.csv.filename == "-" )
     , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
@@ -48,11 +47,6 @@ template < typename S > series::series( const typename series::config_t& config,
     QPen pen( config.color );
     pen.setWidth( config.weight );
     series_todo->setPen( pen );
-    series_todo->attachAxis( x_axis );
-    series_todo->attachAxis( y_axis );
-    x_axis->setTickCount( 5 ); // todo!
-    x_axis->setRange( 0, 10 ); // todo!
-    y_axis->setRange( -5, 10 ); // todo!
 }
 
 series::buffers_t_::buffers_t_( comma::uint32 size ) : points( size ) {}

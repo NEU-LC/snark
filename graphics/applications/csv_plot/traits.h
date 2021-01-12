@@ -33,7 +33,7 @@
 
 #include "../../../visiting/eigen.h"
 #include "point.h"
-#include "stream.h"
+#include "series.h"
 
 namespace comma { namespace visiting {
 
@@ -82,9 +82,9 @@ template <> struct traits< snark::graphics::plotting::point >
     }
 };
 
-template <> struct traits< snark::graphics::plotting::stream::config_t >
+template <> struct traits< snark::graphics::plotting::series::config_t >
 {
-    template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::stream::config_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::series::config_t& t, V& v )
     {
         v.apply( "csv", t.csv );
         v.apply( "size", t.size );
@@ -95,7 +95,7 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
         v.apply( "weight", t.weight );
     }
 
-    template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v )
+    template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::series::config_t& t, V& v )
     {
         v.apply( "csv", t.csv );
         v.apply( "size", t.size );

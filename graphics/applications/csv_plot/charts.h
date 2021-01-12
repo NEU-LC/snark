@@ -23,6 +23,7 @@ class chart: public QChart
         virtual void push_back( plotting::series* r ) = 0;
         void start();
         void shutdown();
+        const boost::ptr_vector< plotting::series >& series() const { return series_; }
 
     public slots:
         void update();
@@ -40,6 +41,10 @@ class xy_chart: public chart
     public:
         xy_chart( float timeout, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
         void push_back( plotting::series* s );
+        
+    private:
+        QtCharts::QValueAxis* x_axis_;
+        QtCharts::QValueAxis* y_axis_;
 };
 
 } } } // namespace snark { namespace graphics { namespace plotting {
