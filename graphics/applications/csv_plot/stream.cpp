@@ -111,9 +111,9 @@ bool stream::update()
         {
             series->append( buffers_.points.values()[i] );
             if( extents_.first.x() > buffers_.points.values()[i].x() ) { extents_.first.setX( buffers_.points.values()[i].x() ); }
-            else if( extents_.second.x() < buffers_.points.values()[i].x() ) { extents_.second.setX( buffers_.points.values()[i].x() ); }
+            if( extents_.second.x() < buffers_.points.values()[i].x() ) { extents_.second.setX( buffers_.points.values()[i].x() ); }
             if( extents_.first.y() > buffers_.points.values()[i].y() ) { extents_.first.setY( buffers_.points.values()[i].y() ); }
-            else if( extents_.second.y() < buffers_.points.values()[i].y() ) { extents_.second.setY( buffers_.points.values()[i].y() ); }
+            if( extents_.second.y() < buffers_.points.values()[i].y() ) { extents_.second.setY( buffers_.points.values()[i].y() ); }
         } 
     }
     buffers_.mark_seen();
