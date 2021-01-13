@@ -79,9 +79,14 @@ void xy_chart::update_()
     // todo: fixed range
     if( extents_ )
     {
-        if( scroll_ ) // quick and dirty
+        if( scroll_ ) // todo! quick and dirty; improve
         {
-            COMMA_THROW( comma::exception, "scroll: todo" );
+            double mx = ( extents_->second.x() - extents_->first.x() ) * 0.1;
+            double my = ( extents_->second.y() - extents_->first.y() ) * 0.1;
+            x_axis_->setMin( extents_->first.x() - mx );
+            x_axis_->setMax( extents_->second.x() + mx );
+            y_axis_->setMin( extents_->first.y() - my );
+            y_axis_->setMax( extents_->second.y() + my );
         }
         else
         {

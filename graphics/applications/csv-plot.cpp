@@ -66,7 +66,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --help,-h: help, --help --verbose: more help" << std::endl;
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
     std::cerr << "    --input-fields; output possible input fields and exit" << std::endl;
-    std::cerr << "    --pass; todo" << std::endl;
+    std::cerr << "    --pass-through,--pass; todo: output to stdout the first stream on the command line" << std::endl;
     std::cerr << "    --timeout=<seconds>; how often to update, overrides --fps" << std::endl;
     std::cerr << "    --no-stdin: don't try to read from stdin" << std::endl;
     std::cerr << "    --verbose,-v: more output" << std::endl;
@@ -75,6 +75,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --color=<color>: plot color: black, white, red, green, blue" << std::endl;
     std::cerr << "                                 yellow, cyan, magenta, grey" << std::endl;
     std::cerr << "                                 or #rrggbb, e.g. #ff00ff" << std::endl;
+    std::cerr << "    --scroll: if present, chart axes get adjusted to where the data is" << std::endl;
     std::cerr << "    --shape=<what>: line (default)" << std::endl;
     std::cerr << "                    todo: more shapes" << std::endl;
     std::cerr << "    --size,-s,--tail=<n>: plot last <n> records of stream; default 10000" << std::endl;
@@ -116,11 +117,17 @@ static void usage( bool verbose = false )
         std::cerr << std::endl;
         std::cerr << "    plot block by block" << std::endl;
         std::cerr << "        netcat localhost 12345 | csv-plot --fields=x,y,block" << std::endl;
+        std::cerr << std::endl;
         std::cerr << "    xy chart with multiple inputs block by block with different shapes" << std::endl;
         std::cerr << "        csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
         std::cerr << "            | csv-plot '-;fields=block,x,y;color=red;weight=2' \\" << std::endl;
         std::cerr << "                       <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=blue;weight=2;shape=spline' \\" << std::endl;
         std::cerr << "                       <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=green;weight=2;shape=scatter'" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "    xy chart with sliding window on endless series with 2 frames per second refresh, using --scroll" << std::endl;
+        std::cerr << "        csv-random make --type f --range=0,20 | csv-paste line-number - | csv-repeat --pace --period 0.1 \\" << std::endl;
+        std::cerr << "            | csv-plot --fps 2 --scroll '-;color=red;weight=2;size=40' \\" << std::endl;
+        std::cerr << "                       <( csv-random make --seed 1234 --type f --range=0,30 | csv-paste line-number - | csv-repeat --pace --period 0.1 )';color=blue;weight=2;size=50'" << std::endl;
         std::cerr << std::endl;
     }
     else
@@ -146,15 +153,15 @@ static snark::graphics::plotting::stream* make_streams( const snark::graphics::p
 // todo
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
 // ? qt, qtcharts: static layout configuration files?
-// - span policies
-//   - autoscaling
-//   - autoscrolling
 // - move main window to separate file
 // - --stream-config
 // - input
+//   - t as x axis (QtCharts::QDateTimeAxis?)
 //   - multiple x,y fields in a single record
 //     - -> multiple series with different properties (also different targets)
 //     - allow common x, e.g. if series[0]/x not present, look for x field; series[1]/x present, overrules common x
+//     - support t field as well
+// - --pass-through
 // - zoom
 // - save as
 //   - png
@@ -170,6 +177,8 @@ static snark::graphics::plotting::stream* make_streams( const snark::graphics::p
 //   - extents policies
 //     - fixed
 //     - auto-adjust
+//     - label
+//   - t markers on x axis (QtCharts::QDateTimeAxis?)
 // - series properties
 //   - properties as policy templated on qt series?
 //   - title
@@ -184,6 +193,9 @@ static snark::graphics::plotting::stream* make_streams( const snark::graphics::p
 //   - support multi-window
 //   - grid layout
 //   - tabs layout
+// - span policies
+//   - better autoscaling
+//   - better autoscrolling
 
 int main( int ac, char** av )
 {
@@ -195,7 +207,7 @@ int main( int ac, char** av )
         snark::graphics::plotting::stream::config_t config( options );
         config.csv.full_xpath = false;
         if( config.csv.fields.empty() ) { config.csv.fields = "x,y"; }
-        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush", "--.*,-[a-z].*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         QApplication a( ac, av );
@@ -203,7 +215,7 @@ int main( int ac, char** av )
         snark::graphics::plotting::chart* chart = new snark::graphics::plotting::xy_chart( options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ) ); // todo? update streams and charts at variable rates?
         chart->setTitle( "test chart" );
         chart->legend()->hide();
-        chart->setAnimationOptions( QChart::AllAnimations ); // todo? make configurable?
+        chart->setAnimationOptions( QChart::SeriesAnimations ); // chart->setAnimationOptions( QChart::AllAnimations ); // todo? make configurable?
         QChartView chartView( chart );
         chartView.setRenderHint( QPainter::Antialiasing );
         if( options.exists( "--no-stdin" ) ) { if( stdin_index ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
