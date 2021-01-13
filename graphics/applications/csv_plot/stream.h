@@ -22,7 +22,7 @@ QT_CHARTS_USE_NAMESPACE
 
 namespace snark { namespace graphics { namespace plotting {
 
-class series // todo: if series other than xyseries required, create series baseclass and derive from it xyseries, xyzseries, etc
+class stream // todo: if stream other than xy stream required, create stream baseclass and derive from it xy stream, xyz stream, etc
 {
     public:
         struct config_t
@@ -39,18 +39,19 @@ class series // todo: if series other than xyseries required, create series base
             config_t( const comma::command_line_options& options );
         };
         
-        QtCharts::QXYSeries* series_todo; // todo: once stream phased out, rename series class to stream and this member to series
+        QtCharts::QXYSeries* series;
         const config_t config;
         typedef std::deque< graphics::plotting::point > points_t;
         comma::synchronized< points_t > points; // quick and dirty
 
-        series( QXYSeries* s, const config_t& config );
+        stream( QXYSeries* s, const config_t& config );
         void start();
         bool is_shutdown() const;
         bool is_stdin() const;
         void shutdown();
         bool update();
-        
+        std::pair< QPointF, QPointF > extents() const { return extents_; }
+        unsigned int size() const { return size_; }
 
     protected:
         bool is_shutdown_;
@@ -70,6 +71,8 @@ class series // todo: if series other than xyseries required, create series base
             void mark_seen();
         };
         buffers_t_ buffers_;
+        unsigned int size_;
+        std::pair< QPointF, QPointF > extents_;
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {

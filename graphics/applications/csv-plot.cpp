@@ -128,40 +128,47 @@ static void usage( bool verbose = false )
 QT_USE_NAMESPACE
 QT_CHARTS_USE_NAMESPACE
 
-static snark::graphics::plotting::series* make_series( const snark::graphics::plotting::series::config_t& config, QChart* chart )
+static snark::graphics::plotting::stream* make_streams( const snark::graphics::plotting::stream::config_t& config, QChart* chart )
 {
-    if( config.shape == "line" || config.shape.empty() ) { return new snark::graphics::plotting::series( new QLineSeries( chart ), config ); }
-    if( config.shape == "spline" ) { return new snark::graphics::plotting::series( new QSplineSeries( chart ), config ); }
-    if( config.shape == "scatter" ) { return new snark::graphics::plotting::series( new QScatterSeries( chart ), config ); }
+    if( config.shape == "line" || config.shape.empty() ) { return new snark::graphics::plotting::stream( new QLineSeries( chart ), config ); }
+    if( config.shape == "spline" ) { return new snark::graphics::plotting::stream( new QSplineSeries( chart ), config ); }
+    if( config.shape == "scatter" ) { return new snark::graphics::plotting::stream( new QScatterSeries( chart ), config ); }
     std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.shape << "\"" << std::endl;
     exit( 1 );
 }
 
 // todo
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size?
+// ? qt, qtcharts: static layout configuration files?
 // - move main window to separate file
-// - modes of input: multiple x,y fields in a single record
+// - input
+//   - multiple x,y fields in a single record -> multiple series
 // - span policies
 //   - autoscaling
 //   - autoscrolling
 // - zoom
 // - save as png
-// - chart types
-//   - spline: style
-//   - scatter: style; derive from series? series -> base class?
-//   - chart types other than xy, e.g. pie chart
-//   - 2.5d charts
+// - chart
+//   - types
+//     - chart types other than xy, e.g. pie chart
+//     - 2.5d charts
+//   - properties
+//     - title
 // - axes properties
+//   - extents policies
+//     - fixed
+//     - auto-adjust
 // - series properties
 //   - title
 //   - target chart
+//   - spline: style
+//   - scatter: style; derive from series? series -> base class?
 // - layouts
 //   - title
 //   - multiple charts
 //   - support multi-window
 //   - grid layout
 //   - tabs layout
-// ? styles
 
 int main( int ac, char** av )
 {
@@ -170,7 +177,7 @@ int main( int ac, char** av )
         comma::command_line_options options( ac, av, usage );
         bool verbose = options.exists( "--verbose,-v" );
         if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::point >( false ), ',' ) << std::endl; return 0; }
-        snark::graphics::plotting::series::config_t config( options );
+        snark::graphics::plotting::stream::config_t config( options );
         config.csv.full_xpath = false;
         if( config.csv.fields.empty() ) { config.csv.fields = "x,y"; }
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush", "--.*,-[a-z].*" );
@@ -185,9 +192,9 @@ int main( int ac, char** av )
         QChartView chartView( chart );
         chartView.setRenderHint( QPainter::Antialiasing );
         if( options.exists( "--no-stdin" ) ) { if( stdin_index ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
-        else if( !stdin_index ) { config.csv.filename = "-"; chart->push_back( make_series( config, chart ) ); }
-        for( unsigned int i = 0; i < unnamed.size(); ++i ) { chart->push_back( make_series( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ), chart ) ); }
-        if( verbose ) { std::cerr << "csv-plot: got " << chart->series().size() << " input stream(s)" << std::endl; }
+        else if( !stdin_index ) { config.csv.filename = "-"; chart->push_back( make_streams( config, chart ) ); }
+        for( unsigned int i = 0; i < unnamed.size(); ++i ) { chart->push_back( make_streams( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ), chart ) ); }
+        if( verbose ) { std::cerr << "csv-plot: got " << chart->streams().size() << " input stream(s)" << std::endl; }
         window.setCentralWidget( &chartView );
         window.resize( 800, 600 ); // todo: make configurable
         chart->start();

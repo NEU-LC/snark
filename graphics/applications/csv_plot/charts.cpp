@@ -21,24 +21,33 @@ chart::~chart() { shutdown(); }
 
 void chart::start()
 {
-    for( unsigned int i = 0; i < series_.size(); ++i ) { series_[i].start(); }
+    for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].start(); }
     timer_.start();
 }
 
 void chart::shutdown()
 {
     timer_.stop();
-    for( unsigned int i = 0; i < series_.size(); ++i ) { series_[i].shutdown(); }
+    for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].shutdown(); }
 }
 
 void chart::update()
 {
     bool all_shutdown = true;
-    for( unsigned int i = 0; i < series_.size(); ++i )
+    auto extents = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) );
+    for( unsigned int i = 0; i < streams_.size(); ++i )
     {
-        series_[i].update();
-        if( !series_[i].is_shutdown() ) { all_shutdown = false; }
+        streams_[i].update();
+        if( !streams_[i].is_shutdown() ) { all_shutdown = false; }
+        if( streams_[i].size() > 0 )
+        {
+            if( extents.first.x() > streams_[i].extents().first.x() ) { extents.first.setX( streams_[i].extents().first.x() ); }
+            else if( extents.second.x() < streams_[i].extents().second.x() ) { extents.second.setX( streams_[i].extents().second.x() ); }
+            if( extents.first.y() > streams_[i].extents().first.y() ) { extents.first.setY( streams_[i].extents().first.y() ); }
+            else if( extents.second.y() < streams_[i].extents().second.y() ) { extents.second.setY( streams_[i].extents().second.y() ); }
+        }
     }
+    // todo: apply extents to axis ranges
     if( all_shutdown ) { timer_.stop(); }
 }
 
@@ -54,12 +63,12 @@ xy_chart::xy_chart( float timeout, QGraphicsItem *parent, Qt::WindowFlags window
     y_axis_->setRange( -5, 10 ); // todo!
 }
 
-void xy_chart::push_back( plotting::series* s )
+void xy_chart::push_back( plotting::stream* s )
 {
-    series_.push_back( s );
-    addSeries( s->series_todo );
-    s->series_todo->attachAxis( x_axis_ );
-    s->series_todo->attachAxis( y_axis_ );
+    streams_.push_back( s );
+    addSeries( s->series );
+    s->series->attachAxis( x_axis_ );
+    s->series->attachAxis( y_axis_ );
 }
 
 } } } // namespace snark { namespace graphics { namespace plotting {
