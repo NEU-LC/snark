@@ -104,17 +104,19 @@ bool stream::update()
     static_assert( sizeof( qreal ) == 8 );
     size_ = buffers_.points.size();
     extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) );
+    auto append = [&]( unsigned int i )
+    {
+        series->append( buffers_.points.values()[i] );
+        if( extents_.first.x() > buffers_.points.values()[i].x() ) { extents_.first.setX( buffers_.points.values()[i].x() ); }
+        if( extents_.second.x() < buffers_.points.values()[i].x() ) { extents_.second.setX( buffers_.points.values()[i].x() ); }
+        if( extents_.first.y() > buffers_.points.values()[i].y() ) { extents_.first.setY( buffers_.points.values()[i].y() ); }
+        if( extents_.second.y() < buffers_.points.values()[i].y() ) { extents_.second.setY( buffers_.points.values()[i].y() ); }
+    };
     if( buffers_.changed() )
     {
         series->clear();
-        for( unsigned int i = 0; i < buffers_.points.size(); ++i ) // todo! super-quick and dirty; massively inefficient
-        {
-            series->append( buffers_.points.values()[i] );
-            if( extents_.first.x() > buffers_.points.values()[i].x() ) { extents_.first.setX( buffers_.points.values()[i].x() ); }
-            if( extents_.second.x() < buffers_.points.values()[i].x() ) { extents_.second.setX( buffers_.points.values()[i].x() ); }
-            if( extents_.first.y() > buffers_.points.values()[i].y() ) { extents_.first.setY( buffers_.points.values()[i].y() ); }
-            if( extents_.second.y() < buffers_.points.values()[i].y() ) { extents_.second.setY( buffers_.points.values()[i].y() ); }
-        } 
+        for( unsigned int i = buffers_.points.begin(); i < buffers_.points.size(); ++i ) { append( i ); }
+        for( unsigned int i = 0; i < buffers_.points.begin(); ++i ) { append( i ); }
     }
     buffers_.mark_seen();
     return changed;

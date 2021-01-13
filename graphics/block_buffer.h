@@ -69,8 +69,11 @@ class block_buffer
         /// return current size of the buffer that is ready for reading
         unsigned int size() const;
 
-        /// return current offset in the buffer that is ready for reading
+        /// return current buffer index that is ready for reading
         unsigned int index() const;
+        
+        /// return current offset in the buffer that is ready for reading
+        unsigned int begin() const;
         
         /// return true, if data has changed since seen last time
         bool changed() const;
@@ -80,8 +83,9 @@ class block_buffer
 
     protected:
         unsigned int read_block_;
-        unsigned int write_block_;
+        unsigned int read_begin_;        
         unsigned int read_size_;
+        unsigned int write_block_;
         unsigned int write_end_;
         unsigned int write_size_;
         unsigned int block_;
@@ -92,8 +96,9 @@ class block_buffer
 template < typename T, typename Storage >
 inline block_buffer< T, Storage >::block_buffer( std::size_t size )
     : read_block_( 0 )
-    , write_block_( 0 )
+    , read_begin_( 0 )
     , read_size_( 0 )
+    , write_block_( 0 )
     , write_end_( 0 )
     , write_size_( 0 )
     , block_( 0 )
@@ -110,9 +115,14 @@ inline void block_buffer< T, Storage >::add( const T& t, unsigned int block )
     block_ = block;
     values_[write_block_][write_end_] = t;
     if( write_size_ < values_[0].size() ) { ++write_size_; }
-    if( read_block_ == write_block_ ) { read_size_ = write_size_; changed_ = true; }
     ++write_end_;
     if( write_end_ == values_[0].size() ) { write_end_ = 0; }
+    if( read_block_ == write_block_ )
+    { 
+        read_begin_ = write_size_ == values_[0].size() ? write_end_ : 0;
+        read_size_ = write_size_;
+        changed_ = true;
+    }
 }
 
 template < typename T, typename Storage >
@@ -124,6 +134,7 @@ inline void block_buffer< T, Storage >::toggle()
     if( read_block_ == write_block_ )
     {
         read_block_ = 1 - read_block_;
+        read_begin_ = write_size_ == values_[0].size() ? write_end_ : 0;
         read_size_ = write_size_;
     }
     write_end_ = 0;
@@ -138,6 +149,9 @@ inline unsigned int block_buffer< T, Storage >::size() const { return read_size_
 
 template < typename T, typename Storage >
 inline unsigned int block_buffer< T, Storage >::index() const { return read_block_; }
+
+template < typename T, typename Storage >
+inline unsigned int block_buffer< T, Storage >::begin() const { return read_begin_; }
 
 template < typename T, typename Storage >
 inline bool block_buffer< T, Storage >::changed() const { return changed_; }

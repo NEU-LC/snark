@@ -33,9 +33,10 @@ class stream // todo: if stream other than xy stream required, create stream bas
             std::string shape;
             std::string style;
             float weight;
+            bool scroll; // todo! a better name!
             QColor color;
             
-            config_t() : size( 10000 ) {} // arbitrary
+            config_t() : size( 10000 ), scroll( false ) {}
             config_t( const comma::command_line_options& options );
         };
         

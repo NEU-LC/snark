@@ -1,5 +1,6 @@
 // Copyright (c) 2021 Vsevolod Vlaskine
 
+#include <comma/base/exception.h>
 #include <comma/math/compare.h>
 #include "charts.h"
 
@@ -52,6 +53,7 @@ xy_chart::xy_chart( float timeout, QGraphicsItem *parent, Qt::WindowFlags window
     : chart( timeout, parent, window_flags )
     , x_axis_( new QValueAxis )
     , y_axis_( new QValueAxis )
+    , scroll_( false )
 {
     addAxis( x_axis_, Qt::AlignBottom );
     addAxis( y_axis_, Qt::AlignLeft );
@@ -66,6 +68,7 @@ void xy_chart::push_back( plotting::stream* s )
     addSeries( s->series );
     s->series->attachAxis( x_axis_ );
     s->series->attachAxis( y_axis_ );
+    if( s->config.scroll ) { scroll_ = true; } // quick and dirty
 }
 
 void xy_chart::update_()
@@ -76,12 +79,19 @@ void xy_chart::update_()
     // todo: fixed range
     if( extents_ )
     {
-        double mx = ( x_axis_->max() - x_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
-        double my = ( y_axis_->max() - y_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
-        if( x_axis_->min() > extents_->first.x() ) { x_axis_->setMin( extents_->first.x() - mx ); }
-        if( x_axis_->max() < extents_->second.x() ) { x_axis_->setMax( extents_->second.x() + mx ); }
-        if( y_axis_->min() > extents_->first.y() ) { y_axis_->setMin( extents_->first.y() - my ); }
-        if( y_axis_->max() < extents_->second.y() ) { y_axis_->setMax( extents_->second.y() + my ); }
+        if( scroll_ ) // quick and dirty
+        {
+            COMMA_THROW( comma::exception, "scroll: todo" );
+        }
+        else
+        {
+            double mx = ( x_axis_->max() - x_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
+            double my = ( y_axis_->max() - y_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
+            if( x_axis_->min() > extents_->first.x() ) { x_axis_->setMin( extents_->first.x() - mx ); }
+            if( x_axis_->max() < extents_->second.x() ) { x_axis_->setMax( extents_->second.x() + mx ); }
+            if( y_axis_->min() > extents_->first.y() ) { y_axis_->setMin( extents_->first.y() - my ); }
+            if( y_axis_->max() < extents_->second.y() ) { y_axis_->setMax( extents_->second.y() + my ); }
+        }
     }
 }
 

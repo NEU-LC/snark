@@ -147,6 +147,7 @@ static snark::graphics::plotting::stream* make_streams( const snark::graphics::p
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size?
 // ? qt, qtcharts: static layout configuration files?
 // - move main window to separate file
+// - --stream-config
 // - input
 //   - multiple x,y fields in a single record -> multiple series
 // - span policies
@@ -165,10 +166,13 @@ static snark::graphics::plotting::stream* make_streams( const snark::graphics::p
 //     - fixed
 //     - auto-adjust
 // - series properties
+//   - properties as policy templated on qt series?
 //   - title
 //   - target chart
 //   - spline: style
 //   - scatter: style; derive from series? series -> base class?
+//     - marker color
+//     - marker shape
 // - layouts
 //   - title
 //   - multiple charts
@@ -187,14 +191,14 @@ int main( int ac, char** av )
         config.csv.full_xpath = false;
         if( config.csv.fields.empty() ) { config.csv.fields = "x,y"; }
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush", "--.*,-[a-z].*" );
-        boost::optional< unsigned int > stdin_index;
+        boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         QApplication a( ac, av );
         QMainWindow window;
         snark::graphics::plotting::chart* chart = new snark::graphics::plotting::xy_chart( options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 25 ) ) ); // todo? update streams and charts at variable rates?
         chart->setTitle( "test chart" );
         chart->legend()->hide();
-        chart->setAnimationOptions( QChart::AllAnimations );
+        chart->setAnimationOptions( QChart::AllAnimations ); // todo? make configurable?
         QChartView chartView( chart );
         chartView.setRenderHint( QPainter::Antialiasing );
         if( options.exists( "--no-stdin" ) ) { if( stdin_index ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }

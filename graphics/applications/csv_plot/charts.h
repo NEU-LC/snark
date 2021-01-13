@@ -51,6 +51,7 @@ class xy_chart: public chart
     private:
         QtCharts::QValueAxis* x_axis_;
         QtCharts::QValueAxis* y_axis_;
+        bool scroll_; // todo! a better name!
 };
 
 } } } // namespace snark { namespace graphics { namespace plotting {
