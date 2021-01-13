@@ -64,7 +64,7 @@ static void usage( bool verbose = false )
     std::cerr << std::endl;
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: help, --help --verbose: more help" << std::endl;
-    std::cerr << "    --frames-per-second,--fps=<value>; default=25; how often to update chart(s)" << std::endl;
+    std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
     std::cerr << "    --input-fields; output possible input fields and exit" << std::endl;
     std::cerr << "    --pass; todo" << std::endl;
     std::cerr << "    --timeout=<seconds>; how often to update, overrides --fps" << std::endl;
@@ -144,23 +144,28 @@ static snark::graphics::plotting::stream* make_streams( const snark::graphics::p
 }
 
 // todo
-// ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size?
+// ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
 // ? qt, qtcharts: static layout configuration files?
-// - move main window to separate file
-// - --stream-config
-// - input
-//   - multiple x,y fields in a single record -> multiple series
 // - span policies
 //   - autoscaling
 //   - autoscrolling
+// - move main window to separate file
+// - --stream-config
+// - input
+//   - multiple x,y fields in a single record
+//     - -> multiple series with different properties (also different targets)
+//     - allow common x, e.g. if series[0]/x not present, look for x field; series[1]/x present, overrules common x
 // - zoom
-// - save as png
+// - save as
+//   - png
+//   ? save all windows
 // - chart
 //   - types
-//     - chart types other than xy, e.g. pie chart
 //     - 2.5d charts
+//     ? chart types other than xy, e.g. pie chart
 //   - properties
 //     - title
+//     ? legend
 // - axes properties
 //   - extents policies
 //     - fixed
@@ -169,7 +174,7 @@ static snark::graphics::plotting::stream* make_streams( const snark::graphics::p
 //   - properties as policy templated on qt series?
 //   - title
 //   - target chart
-//   - spline: style
+//   - spline: style?
 //   - scatter: style; derive from series? series -> base class?
 //     - marker color
 //     - marker shape
@@ -195,7 +200,7 @@ int main( int ac, char** av )
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         QApplication a( ac, av );
         QMainWindow window;
-        snark::graphics::plotting::chart* chart = new snark::graphics::plotting::xy_chart( options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 25 ) ) ); // todo? update streams and charts at variable rates?
+        snark::graphics::plotting::chart* chart = new snark::graphics::plotting::xy_chart( options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ) ); // todo? update streams and charts at variable rates?
         chart->setTitle( "test chart" );
         chart->legend()->hide();
         chart->setAnimationOptions( QChart::AllAnimations ); // todo? make configurable?

@@ -40,7 +40,7 @@ class stream // todo: if stream other than xy stream required, create stream bas
             config_t( const comma::command_line_options& options );
         };
         
-        QtCharts::QXYSeries* series;
+        QtCharts::QXYSeries* series; // todo: array of series supporting multiple feeds from the same stream, potentially targeting multiple charts
         const config_t config;
         typedef std::deque< graphics::plotting::point > points_t;
         comma::synchronized< points_t > points; // quick and dirty
