@@ -116,6 +116,12 @@ static void usage( bool verbose = false )
         std::cerr << std::endl;
         std::cerr << "    plot block by block" << std::endl;
         std::cerr << "        netcat localhost 12345 | csv-plot --fields=x,y,block" << std::endl;
+        std::cerr << "    xy chart with multiple inputs block by block with different shapes" << std::endl;
+        std::cerr << "        csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
+        std::cerr << "            | csv-plot '-;fields=block,x,y;color=red;weight=2' \\" << std::endl;
+        std::cerr << "                       <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=blue;weight=2;shape=spline' \\" << std::endl;
+        std::cerr << "                       <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=green;weight=2;shape=scatter'" << std::endl;
+        std::cerr << std::endl;
     }
     else
     {
