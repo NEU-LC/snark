@@ -31,7 +31,6 @@ class chart: public QChart
         
     protected:
         boost::ptr_vector< plotting::stream > streams_;
-        boost::optional< std::pair< QPointF, QPointF > > extents_;
         virtual void update_() {}
         
     private:
@@ -49,6 +48,7 @@ class xy_chart: public chart
         void update_();
         
     private:
+        boost::optional< std::pair< QPointF, QPointF > > extents_;
         QtCharts::QValueAxis* x_axis_;
         QtCharts::QValueAxis* y_axis_;
         bool scroll_; // todo! a better name!

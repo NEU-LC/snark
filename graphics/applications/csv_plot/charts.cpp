@@ -31,19 +31,10 @@ void chart::shutdown()
 void chart::update()
 {
     bool all_shutdown = true;
-    extents_.reset();
     for( unsigned int i = 0; i < streams_.size(); ++i )
     {
         streams_[i].update();
         if( !streams_[i].is_shutdown() ) { all_shutdown = false; }
-        if( streams_[i].size() > 0 )
-        {
-            if( !extents_ ) { extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) ); }
-            if( extents_->first.x() > streams_[i].extents().first.x() ) { extents_->first.setX( streams_[i].extents().first.x() ); }
-            if( extents_->second.x() < streams_[i].extents().second.x() ) { extents_->second.setX( streams_[i].extents().second.x() ); }
-            if( extents_->first.y() > streams_[i].extents().first.y() ) { extents_->first.setY( streams_[i].extents().first.y() ); }
-            if( extents_->second.y() < streams_[i].extents().second.y() ) { extents_->second.setY( streams_[i].extents().second.y() ); }
-        }
     }
     update_();
     if( all_shutdown ) { timer_.stop(); }
@@ -77,26 +68,34 @@ void xy_chart::update_()
     // todo: add configurable margins
     // todo: handle various range policies
     // todo: fixed range
-    if( extents_ )
+    extents_.reset();
+    for( unsigned int i = 0; i < streams_.size(); ++i )
     {
-        if( scroll_ ) // todo! quick and dirty; improve
-        {
-            double mx = ( extents_->second.x() - extents_->first.x() ) * 0.1;
-            double my = ( extents_->second.y() - extents_->first.y() ) * 0.1;
-            x_axis_->setMin( extents_->first.x() - mx );
-            x_axis_->setMax( extents_->second.x() + mx );
-            y_axis_->setMin( extents_->first.y() - my );
-            y_axis_->setMax( extents_->second.y() + my );
-        }
-        else
-        {
-            double mx = ( x_axis_->max() - x_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
-            double my = ( y_axis_->max() - y_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
-            if( x_axis_->min() > extents_->first.x() ) { x_axis_->setMin( extents_->first.x() - mx ); }
-            if( x_axis_->max() < extents_->second.x() ) { x_axis_->setMax( extents_->second.x() + mx ); }
-            if( y_axis_->min() > extents_->first.y() ) { y_axis_->setMin( extents_->first.y() - my ); }
-            if( y_axis_->max() < extents_->second.y() ) { y_axis_->setMax( extents_->second.y() + my ); }
-        }
+        if( streams_[i].size() == 0 ) { continue; }
+        if( !extents_ ) { extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) ); }
+        if( extents_->first.x() > streams_[i].extents().first.x() ) { extents_->first.setX( streams_[i].extents().first.x() ); }
+        if( extents_->second.x() < streams_[i].extents().second.x() ) { extents_->second.setX( streams_[i].extents().second.x() ); }
+        if( extents_->first.y() > streams_[i].extents().first.y() ) { extents_->first.setY( streams_[i].extents().first.y() ); }
+        if( extents_->second.y() < streams_[i].extents().second.y() ) { extents_->second.setY( streams_[i].extents().second.y() ); }
+    }
+    if( !extents_ ) { return; }
+    if( scroll_ ) // todo! quick and dirty; improve
+    {
+        double mx = ( extents_->second.x() - extents_->first.x() ) * 0.1;
+        double my = ( extents_->second.y() - extents_->first.y() ) * 0.1;
+        x_axis_->setMin( extents_->first.x() - mx );
+        x_axis_->setMax( extents_->second.x() + mx );
+        y_axis_->setMin( extents_->first.y() - my );
+        y_axis_->setMax( extents_->second.y() + my );
+    }
+    else
+    {
+        double mx = ( x_axis_->max() - x_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
+        double my = ( y_axis_->max() - y_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
+        if( x_axis_->min() > extents_->first.x() ) { x_axis_->setMin( extents_->first.x() - mx ); }
+        if( x_axis_->max() < extents_->second.x() ) { x_axis_->setMax( extents_->second.x() + mx ); }
+        if( y_axis_->min() > extents_->first.y() ) { y_axis_->setMin( extents_->first.y() - my ); }
+        if( y_axis_->max() < extents_->second.y() ) { y_axis_->setMax( extents_->second.y() + my ); }
     }
 }
 

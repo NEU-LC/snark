@@ -138,18 +138,6 @@ static void usage( bool verbose = false )
     exit( 0 );
 }
 
-QT_USE_NAMESPACE
-QT_CHARTS_USE_NAMESPACE
-
-static snark::graphics::plotting::stream* make_streams( const snark::graphics::plotting::stream::config_t& config, QChart* chart )
-{
-    if( config.shape == "line" || config.shape.empty() ) { return new snark::graphics::plotting::stream( new QLineSeries( chart ), config ); }
-    if( config.shape == "spline" ) { return new snark::graphics::plotting::stream( new QSplineSeries( chart ), config ); }
-    if( config.shape == "scatter" ) { return new snark::graphics::plotting::stream( new QScatterSeries( chart ), config ); }
-    std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.shape << "\"" << std::endl;
-    exit( 1 );
-}
-
 // todo
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
 // ? qt, qtcharts: static layout configuration files?
@@ -196,6 +184,18 @@ static snark::graphics::plotting::stream* make_streams( const snark::graphics::p
 // - span policies
 //   - better autoscaling
 //   - better autoscrolling
+
+QT_USE_NAMESPACE
+QT_CHARTS_USE_NAMESPACE
+
+static snark::graphics::plotting::stream* make_streams( const snark::graphics::plotting::stream::config_t& config, QChart* chart )
+{
+    if( config.shape == "line" || config.shape.empty() ) { return new snark::graphics::plotting::stream( new QLineSeries( chart ), config ); }
+    if( config.shape == "spline" ) { return new snark::graphics::plotting::stream( new QSplineSeries( chart ), config ); }
+    if( config.shape == "scatter" ) { return new snark::graphics::plotting::stream( new QScatterSeries( chart ), config ); }
+    std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.shape << "\"" << std::endl;
+    exit( 1 );
+}
 
 int main( int ac, char** av )
 {
