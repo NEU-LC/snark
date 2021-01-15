@@ -3,6 +3,7 @@
 #pragma once
 
 #include <deque>
+#include <boost/optional.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 #include <QColor>
@@ -27,16 +28,17 @@ class stream // todo: if stream other than xy stream required, create stream bas
     public:
         struct config_t
         {
-            comma::csv::options csv;
-            comma::uint32 size;
             std::string color_name;
+            comma::csv::options csv;
+            QColor color;
+            bool pass_through;
+            bool scroll; // todo! a better name!
             std::string shape;
+            comma::uint32 size;
             std::string style;
             float weight;
-            bool scroll; // todo! a better name!
-            QColor color;
             
-            config_t() : size( 10000 ), scroll( false ) {}
+            config_t() : pass_through( false ), scroll( false ), size( 10000 ) {}
             config_t( const comma::command_line_options& options );
         };
         
@@ -59,6 +61,7 @@ class stream // todo: if stream other than xy stream required, create stream bas
         bool is_stdin_;
         comma::io::istream is_;
         comma::csv::input_stream< graphics::plotting::point > istream_;
+        boost::scoped_ptr< comma::csv::passed< graphics::plotting::point > > passed_; // boost::optional< comma::csv::passed< graphics::plotting::point > > passed_;
         boost::scoped_ptr< boost::thread > thread_;
         comma::uint64 count_;
         bool has_x_;

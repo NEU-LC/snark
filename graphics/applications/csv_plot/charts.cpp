@@ -50,7 +50,7 @@ xy_chart::xy_chart( float timeout, QGraphicsItem *parent, Qt::WindowFlags window
     addAxis( y_axis_, Qt::AlignLeft );
     x_axis_->setTickCount( 1 ); // todo!
     x_axis_->setRange( 0, 10 ); // todo!
-    y_axis_->setRange( -5, 10 ); // todo!
+    y_axis_->setRange( 0, 10 ); // todo!
 }
 
 void xy_chart::push_back( plotting::stream* s )

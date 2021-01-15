@@ -45,6 +45,7 @@
 #include <comma/csv/traits.h>
 #include <comma/string/string.h>
 #include <comma/name_value/parser.h>
+#include <comma/name_value/serialize.h>
 #include "csv_plot/charts.h"
 #include "csv_plot/traits.h"
 
@@ -149,7 +150,6 @@ static void usage( bool verbose = false )
 //     - -> multiple series with different properties (also different targets)
 //     - allow common x, e.g. if series[0]/x not present, look for x field; series[1]/x present, overrules common x
 //     - support t field as well
-// - --pass-through
 // - zoom
 // - save as
 //   - png
@@ -161,6 +161,7 @@ static void usage( bool verbose = false )
 //   - properties
 //     - title
 //     ? legend
+//   - --chart-config-fields
 // - axes properties
 //   - extents policies
 //     - fixed
@@ -175,6 +176,7 @@ static void usage( bool verbose = false )
 //   - scatter: style; derive from series? series -> base class?
 //     - marker color
 //     - marker shape
+//   - --series-config-fields
 // - layouts
 //   - title
 //   - multiple charts
@@ -188,13 +190,23 @@ static void usage( bool verbose = false )
 QT_USE_NAMESPACE
 QT_CHARTS_USE_NAMESPACE
 
-static snark::graphics::plotting::stream* make_streams( const snark::graphics::plotting::stream::config_t& config, QChart* chart )
+static bool verbose;
+
+static snark::graphics::plotting::stream* make_streams( snark::graphics::plotting::stream::config_t config, QChart* chart )
 {
-    if( config.shape == "line" || config.shape.empty() ) { return new snark::graphics::plotting::stream( new QLineSeries( chart ), config ); }
-    if( config.shape == "spline" ) { return new snark::graphics::plotting::stream( new QSplineSeries( chart ), config ); }
-    if( config.shape == "scatter" ) { return new snark::graphics::plotting::stream( new QScatterSeries( chart ), config ); }
-    std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.shape << "\"" << std::endl;
-    exit( 1 );
+    static std::string pass_through_stream_name;
+    snark::graphics::plotting::stream* s = nullptr;
+    if( config.shape == "line" || config.shape.empty() ) { s = new snark::graphics::plotting::stream( new QLineSeries( chart ), config ); }
+    else if( config.shape == "spline" ) { s = new snark::graphics::plotting::stream( new QSplineSeries( chart ), config ); }
+    else if( config.shape == "scatter" ) { s = new snark::graphics::plotting::stream( new QScatterSeries( chart ), config ); }
+    else { std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.shape << "\"" << std::endl; exit( 1 ); }
+    if( s->config.pass_through )
+    {
+        if( !pass_through_stream_name.empty() ) { std::cerr << "csv-plot: expected pass-through only for one stream; got at least two: '" << pass_through_stream_name << "' and then '" << s->config.csv.filename << "'" << std::endl; exit( 1 ); }
+        if( verbose ) { std::cerr << "csv-plot: stream '" << s->config.csv.filename << "' will be passed through" << std::endl; }
+        pass_through_stream_name = s->config.csv.filename;
+    }
+    return s;
 }
 
 int main( int ac, char** av )
@@ -202,7 +214,7 @@ int main( int ac, char** av )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        bool verbose = options.exists( "--verbose,-v" );
+        verbose = options.exists( "--verbose,-v" );
         if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::point >( false ), ',' ) << std::endl; return 0; }
         snark::graphics::plotting::stream::config_t config( options );
         config.csv.full_xpath = false;
@@ -218,9 +230,9 @@ int main( int ac, char** av )
         chart->setAnimationOptions( QChart::SeriesAnimations ); // chart->setAnimationOptions( QChart::AllAnimations ); // todo? make configurable?
         QChartView chartView( chart );
         chartView.setRenderHint( QPainter::Antialiasing );
-        if( options.exists( "--no-stdin" ) ) { if( stdin_index ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
-        else if( !stdin_index ) { config.csv.filename = "-"; chart->push_back( make_streams( config, chart ) ); }
-        for( unsigned int i = 0; i < unnamed.size(); ++i ) { chart->push_back( make_streams( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ), chart ) ); }
+        if( stdin_index ) { if( options.exists( "--no-stdin" ) ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
+        else { config.csv.filename = "-"; chart->push_back( make_streams( config, chart ) ); config.pass_through = false; }
+        for( unsigned int i = 0; i < unnamed.size(); ++i ) { chart->push_back( make_streams( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ), chart ) ); config.pass_through = false; }
         if( verbose ) { std::cerr << "csv-plot: got " << chart->streams().size() << " input stream(s)" << std::endl; }
         window.setCentralWidget( &chartView );
         window.resize( 800, 600 ); // todo: make configurable

@@ -1,5 +1,6 @@
 // This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2011 The University of Sydney
+// Copyright (c) 2021 Vsevolod Vlaskine
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -89,6 +90,7 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
         v.apply( "color", t.color_name );
         t.color = QColor( &t.color_name[0] );
         v.apply( "csv", t.csv );
+        v.apply( "pass-through", t.pass_through );
         v.apply( "scroll", t.scroll );
         v.apply( "shape", t.shape );
         v.apply( "size", t.size );
@@ -100,6 +102,7 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
     {
         v.apply( "color", std::string( t.color.name() ) );
         v.apply( "csv", t.csv );
+        v.apply( "pass-through", t.pass_through );
         v.apply( "scroll", t.scroll );
         v.apply( "shape", t.shape );
         v.apply( "size", t.size );
