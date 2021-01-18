@@ -130,7 +130,7 @@ static void usage( bool verbose = false )
 
 // todo
 // - --window-size (currently hardcoded)
-// ? --full-screen
+// ? --full-screen (or --window-size=full-screen?)
 // - --stream-config
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
@@ -151,7 +151,7 @@ static void usage( bool verbose = false )
 //     - title
 //     ? legend (especially if multiple series on the same chart
 //   - --chart-config-fields
-// - axes properties
+// - axis properties
 //   - extents policies
 //     - fixed
 //     - auto-adjust
@@ -159,7 +159,7 @@ static void usage( bool verbose = false )
 //   - t markers on x axis (QtCharts::QDateTimeAxis?)
 // - series properties
 //   - properties as policy templated on qt series?
-//   - spline: style?
+//   - spline: style? parametrization?
 //   - scatter: style; derive from series? series -> base class?
 //     - marker color
 //     - marker shape
@@ -168,8 +168,8 @@ static void usage( bool verbose = false )
 //   - multi-window
 //   - stacked
 // - span policies
-//   - better autoscaling
-//   - better autoscrolling
+//   ? better autoscaling
+//   ? better autoscrolling
 // - building
 //   ? move into a separate repository or add a separate cmake for cpack packaging
 //   ? copy-paste block_buffer
