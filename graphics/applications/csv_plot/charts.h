@@ -26,6 +26,7 @@ class chart: public QChart
         void start();
         void shutdown();
         const boost::ptr_vector< plotting::stream >& streams() const { return streams_; }
+        const std::string& title() const { return title_; }
 
     public slots:
         void update();
@@ -36,6 +37,7 @@ class chart: public QChart
         
     private:
         QTimer timer_;
+        std::string title_;
 };
 
 class xy_chart: public chart

@@ -6,7 +6,9 @@
 
 namespace snark { namespace graphics { namespace plotting {
 
-chart::chart( float timeout, const std::string& title, QGraphicsItem *parent, Qt::WindowFlags window_flags ): QChart( QChart::ChartTypeCartesian, parent, window_flags )
+chart::chart( float timeout, const std::string& title, QGraphicsItem *parent, Qt::WindowFlags window_flags )
+    : QChart( QChart::ChartTypeCartesian, parent, window_flags )
+    , title_( title )
 {
     setTitle( &title[0] );
     legend()->hide();

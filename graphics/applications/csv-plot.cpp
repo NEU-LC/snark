@@ -134,7 +134,6 @@ static void usage( bool verbose = false )
 }
 
 // todo
-// ! chart title semantics: improve!!!
 // - --window-size (currently hardcoded)
 // ? --full-screen
 // - --stream-config
@@ -149,7 +148,6 @@ static void usage( bool verbose = false )
 //   - png
 //   ? save all windows
 // - chart
-//   - fix! set title
 //   - types
 //     - 2.5d charts
 //     ? polar charts
@@ -176,6 +174,11 @@ static void usage( bool verbose = false )
 // - span policies
 //   - better autoscaling
 //   - better autoscrolling
+// - building
+//   ? move into a separate repository
+//   ? remove snark dependencies (just don't use eigen)
+//   ? package
+//   ? expose on ppa
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
 // ? qt, qtcharts: static layout configuration files?
 // ? move main window to separate file
@@ -239,8 +242,7 @@ static QWidget* make_widget( const std::string& l, charts_t& charts )
             QChartView* v = new QChartView( c.second );
             v->setRenderHint( QPainter::Antialiasing );
             v->setContentsMargins( 0, 0, 0, 0 );
-            std::string t = c.second->streams()[0].config.series.title.empty() ? c.second->streams()[0].config.series.chart : c.second->streams()[0].config.series.title; // todo: quick and dirty; trivially improve title semantics
-            w->addTab( v, t.empty() ? "unnamed" : &t[0] );
+            w->addTab( v, &c.second->title()[0] );
         }
         return w;
     }
@@ -268,8 +270,11 @@ int main( int ac, char** av )
         if( verbose ) { std::cerr << "csv-plot: got " << configs.size() << " input stream(s)" << std::endl; }
         float timeout = options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ); // todo? update streams and charts at variable rates?
         QApplication a( ac, av );
+        std::map< std::string, std::string > titles;
+        for( const auto& c: configs ) { if( titles.find( c.series.chart ) == titles.end() || titles[ c.series.chart ].empty() ) { titles[ c.series.chart ] = c.series.title; } }
+        for( auto& t: titles ) { t.second = t.second.empty() ? t.first.empty() ? "unnamed" : t.first : t.second; } // quick and dirty for now
         std::map< std::string, snark::graphics::plotting::chart* > charts;
-        for( const auto& c: configs ) { if( charts.find( c.series.chart ) == charts.end() ) { charts[ c.series.chart ] = new snark::graphics::plotting::xy_chart( timeout, c.series.title.empty() ? c.series.chart : c.series.title ); } } // todo: quick and dirty; trivially improve title semantics
+        for( auto t: titles ) { charts[ t.first ] = new snark::graphics::plotting::xy_chart( timeout, t.second ); }
         if( verbose ) { std::cerr << "csv-plot: creates " << charts.size() << " chart(s)" << std::endl; }
         for( const auto& c: configs ) { charts[ c.series.chart ]->push_back( make_stream( c, charts[ c.series.chart ] ) ); } // todo: multiple series from a stream could go to different charts
         if( verbose ) { std::cerr << "csv-plot: created " << configs.size() << " input stream(s)" << std::endl; }
