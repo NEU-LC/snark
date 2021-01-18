@@ -46,7 +46,8 @@ static void bash_completion( unsigned int const ac, char const * const * av )
     static const char* completion_options =
         " --help -h --verbose -v"
         " --output-fields --output-format"
-        " --sample-data"
+        " --address --port"
+        " --log-dir --sample-data"
         " status rvmap detection track measurement"
         ;
     std::cout << completion_options << std::endl;
