@@ -30,7 +30,7 @@ examples
         
     using message types offline, try it
         imply package from message type
-            echo 1,2,3 | ros-from-csv --type geometry_msgs.msg.Point --dry
+            echo 1,2,3 | ros-from-csv --type geometry_msgs.msg.Point --format f,f,f --dry
         explicitly specify package with message type definition
             echo 1,2,3 | ros-from-csv --import geometry_msgs.msg --type geometry_msgs.msg.Point --format f,f,f --dry
 
