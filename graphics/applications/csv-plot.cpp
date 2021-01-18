@@ -69,12 +69,6 @@ static void usage( bool verbose = false )
     std::cerr << "    --size,-s,--tail=<n>: plot last <n> records of stream; default 10000" << std::endl;
     std::cerr << "        use --style=dots, otherwise it's buggy; todo: fix" << std::endl;
     std::cerr << "    --style=<style>: todo" << std::endl;
-//     std::cerr << "    --style=<style>: plot style (mapped into qwt styles)" << std::endl;
-//     std::cerr << "        curve: no-curve" << std::endl;
-//     std::cerr << "               lines (default)" << std::endl;
-//     std::cerr << "               sticks" << std::endl;
-//     std::cerr << "               steps" << std::endl;
-//     std::cerr << "               dots" << std::endl;
     std::cerr << "    --weight=<weight>: point or line weight" << std::endl;
     if( verbose ) { std::cerr << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
@@ -155,7 +149,7 @@ static void usage( bool verbose = false )
 //     ? chart types other than xy, e.g. pie chart
 //   - properties
 //     - title
-//     ? legend
+//     ? legend (especially if multiple series on the same chart
 //   - --chart-config-fields
 // - axes properties
 //   - extents policies
