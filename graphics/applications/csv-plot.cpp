@@ -51,6 +51,7 @@ static void usage( bool verbose = false )
     std::cerr << "                    cols=<cols>: grid with <cols> columns (rows calculated from number of charts)" << std::endl;
     std::cerr << "                    rows=<rows>: grid with <rows> rows (columns calculated from number of charts)" << std::endl;
     std::cerr << "                    default: cols=1" << std::endl;
+    std::cerr << "                stacked: todo: each chart is in its own window" << std::endl;
     std::cerr << "                tabs: charts are arranged in single window as tabs" << std::endl;
     std::cerr << "                windows: todo: each chart is in its own window" << std::endl;
     std::cerr << "    --pass-through,--pass; todo: output to stdout the first stream on the command line" << std::endl;
@@ -171,6 +172,7 @@ static void usage( bool verbose = false )
 //   - --series-config-fields
 // - layouts
 //   - multi-window
+//   - stacked
 // - span policies
 //   - better autoscaling
 //   - better autoscrolling
@@ -246,6 +248,7 @@ static QWidget* make_widget( const std::string& l, charts_t& charts )
         }
         return w;
     }
+    else if( shape == "stacked" ) { COMMA_THROW( comma::exception, "csv-plot: --layout=stacked: todo" ); }
     else if( shape == "windows" ) { COMMA_THROW( comma::exception, "csv-plot: --layout=windows: todo" ); }
     COMMA_THROW( comma::exception, "csv-plot: expected layout; got: '" << shape << "'" );
 }
