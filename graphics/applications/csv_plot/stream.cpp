@@ -39,7 +39,7 @@ stream::stream( QXYSeries* s, const config_t& config )
 
 stream::buffers_t_::buffers_t_( comma::uint32 size ) : points( size ) {}
 
-void stream::buffers_t_::add( const point& p ) { points.add( QPointF( p.coordinates.x(), p.coordinates.y() ), p.block ); }
+void stream::buffers_t_::add( const point& p ) { points.add( p, p.block ); }
 
 bool stream::buffers_t_::changed() const { return points.changed(); }
 
@@ -66,7 +66,7 @@ void stream::read_()
         if( !p ) { break; }
         if( passed_ ) { passed_->write(); }
         point q = *p;
-        if( !has_x_ ) { q.coordinates.x() = count_; }
+        if( !has_x_ ) { q.x = count_; }
         ++count_;
         comma::synchronized< points_t >::scoped_transaction( points )->push_back( q );
     }
@@ -89,11 +89,12 @@ bool stream::update()
     extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) );
     auto append = [&]( unsigned int i )
     {
-        series->append( buffers_.points.values()[i] );
-        if( extents_.first.x() > buffers_.points.values()[i].x() ) { extents_.first.setX( buffers_.points.values()[i].x() ); }
-        if( extents_.second.x() < buffers_.points.values()[i].x() ) { extents_.second.setX( buffers_.points.values()[i].x() ); }
-        if( extents_.first.y() > buffers_.points.values()[i].y() ) { extents_.first.setY( buffers_.points.values()[i].y() ); }
-        if( extents_.second.y() < buffers_.points.values()[i].y() ) { extents_.second.setY( buffers_.points.values()[i].y() ); }
+        const auto& v = buffers_.points.values()[i];
+        series->append( QPoint( v.x, v.y ) ); // todo: support 3d data, time series, polar data (or template stream upon those)
+        if( extents_.first.x() > v.x ) { extents_.first.setX( v.x ); }
+        if( extents_.second.x() < v.x ) { extents_.second.setX( v.x ); }
+        if( extents_.first.y() > v.y ) { extents_.first.setY( v.y ); }
+        if( extents_.second.y() < v.y ) { extents_.second.setY( v.y ); }
     };
     if( buffers_.changed() )
     {

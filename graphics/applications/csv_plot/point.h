@@ -31,19 +31,22 @@
 
 #pragma once
 
-#include <Eigen/Core>
 #include <QColor>
+#include <boost/date_time/posix_time/ptime.hpp>
 #include <comma/base/types.h>
 
 namespace snark { namespace graphics { namespace plotting {
 
-struct point
+struct point // todo? polar?
 {
-    Eigen::Vector2d coordinates;
-    QColor color;
+    boost::posix_time::ptime t;
+    double x;
+    double y;
+    double z;
     comma::uint32 block;
+    QColor color;
     
-    point(): coordinates( Eigen::Vector2d::Zero() ), block( 0 ) {}
+    point(): x( 0 ), y( 0 ), z( 0 ), block( 0 ), color( QColor( 0, 0, 0 ) ) {}
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {

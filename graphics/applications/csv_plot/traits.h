@@ -71,16 +71,22 @@ template <> struct traits< snark::graphics::plotting::point >
 {
     template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::point& t, V& v )
     {
-        v.apply( "coordinates", t.coordinates );
-        v.apply( "color", t.color );
+        v.apply( "t", t.t );
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
         v.apply( "block", t.block );
+        v.apply( "color", t.color );
     }
 
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::point& t, V& v )
     {
-        v.apply( "coordinates", t.coordinates );
-        v.apply( "color", t.color );
+        v.apply( "t", t.t );
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+        v.apply( "z", t.z );
         v.apply( "block", t.block );
+        v.apply( "color", t.color );
     }
 };
 

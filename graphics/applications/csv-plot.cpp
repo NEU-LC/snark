@@ -171,8 +171,8 @@ static void usage( bool verbose = false )
 //   - better autoscaling
 //   - better autoscrolling
 // - building
-//   ? move into a separate repository
-//   ? remove snark dependencies (just don't use eigen)
+//   ? move into a separate repository or add a separate cmake for cpack packaging
+//   ? copy-paste block_buffer
 //   ? package
 //   ? expose on ppa
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)

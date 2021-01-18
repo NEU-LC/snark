@@ -64,7 +64,7 @@ class stream // todo: if stream other than xy stream required, create stream bas
         void read_();
         struct buffers_t_
         {
-            block_buffer< QPointF > points;
+            block_buffer< plotting::point > points;
             buffers_t_( comma::uint32 size );
             void add( const point& p );
             bool changed() const;
@@ -72,7 +72,7 @@ class stream // todo: if stream other than xy stream required, create stream bas
         };
         buffers_t_ buffers_;
         unsigned int size_;
-        std::pair< QPointF, QPointF > extents_;
+        std::pair< QPointF, QPointF > extents_; // should it be 3d?
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {
