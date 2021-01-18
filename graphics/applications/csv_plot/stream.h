@@ -17,6 +17,7 @@
 #include <comma/sync/synchronized.h>
 #include "../../../graphics/block_buffer.h"
 #include "point.h"
+#include "series.h"
 
 QT_USE_NAMESPACE
 QT_CHARTS_USE_NAMESPACE
@@ -28,17 +29,12 @@ class stream // todo: if stream other than xy stream required, create stream bas
     public:
         struct config_t
         {
-            std::string color_name;
             comma::csv::options csv;
-            QColor color;
             bool pass_through;
-            bool scroll; // todo! a better name!
-            std::string shape;
+            plotting::series::config series;
             comma::uint32 size;
-            std::string style;
-            float weight;
             
-            config_t() : pass_through( false ), scroll( false ), size( 10000 ) {}
+            config_t() : pass_through( false ), size( 10000 ) {}
             config_t( const comma::command_line_options& options );
         };
         

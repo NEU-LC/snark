@@ -34,6 +34,7 @@
 
 #include "../../../visiting/eigen.h"
 #include "point.h"
+#include "series.h"
 #include "stream.h"
 
 namespace comma { namespace visiting {
@@ -83,31 +84,48 @@ template <> struct traits< snark::graphics::plotting::point >
     }
 };
 
+template <> struct traits< snark::graphics::plotting::series::config >
+{
+    template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::series::config& t, V& v )
+    {
+        v.apply( "chart", t.chart );
+        v.apply( "color", t.color_name );
+        t.color = QColor( &t.color_name[0] );
+        v.apply( "scroll", t.scroll );
+        v.apply( "shape", t.shape );
+        v.apply( "style", t.style );
+        v.apply( "title", t.title );
+        v.apply( "weight", t.weight );
+    }
+
+    template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::series::config& t, V& v )
+    {
+        v.apply( "chart", t.chart );
+        v.apply( "color", std::string( t.color.name() ) );
+        v.apply( "scroll", t.scroll );
+        v.apply( "shape", t.shape );
+        v.apply( "style", t.style );
+        v.apply( "title", t.title );
+        v.apply( "weight", t.weight );
+    }
+};
+
 template <> struct traits< snark::graphics::plotting::stream::config_t >
 {
     template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::stream::config_t& t, V& v )
     {
-        v.apply( "color", t.color_name );
-        t.color = QColor( &t.color_name[0] );
         v.apply( "csv", t.csv );
         v.apply( "pass-through", t.pass_through );
-        v.apply( "scroll", t.scroll );
-        v.apply( "shape", t.shape );
+        v.apply( "series", t.series );
         v.apply( "size", t.size );
-        v.apply( "style", t.style );
-        v.apply( "weight", t.weight );
     }
 
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v )
     {
-        v.apply( "color", std::string( t.color.name() ) );
         v.apply( "csv", t.csv );
         v.apply( "pass-through", t.pass_through );
-        v.apply( "scroll", t.scroll );
-        v.apply( "shape", t.shape );
+        v.apply( "series", t.series );
         v.apply( "size", t.size );
-        v.apply( "style", t.style );
-        v.apply( "weight", t.weight );
     }
 };
 

@@ -196,10 +196,10 @@ static snark::graphics::plotting::stream* make_streams( snark::graphics::plottin
 {
     static std::string pass_through_stream_name;
     snark::graphics::plotting::stream* s = nullptr;
-    if( config.shape == "line" || config.shape.empty() ) { s = new snark::graphics::plotting::stream( new QLineSeries( chart ), config ); }
-    else if( config.shape == "spline" ) { s = new snark::graphics::plotting::stream( new QSplineSeries( chart ), config ); }
-    else if( config.shape == "scatter" ) { s = new snark::graphics::plotting::stream( new QScatterSeries( chart ), config ); }
-    else { std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.shape << "\"" << std::endl; exit( 1 ); }
+    if( config.series.shape == "line" || config.series.shape.empty() ) { s = new snark::graphics::plotting::stream( new QLineSeries( chart ), config ); }
+    else if( config.series.shape == "spline" ) { s = new snark::graphics::plotting::stream( new QSplineSeries( chart ), config ); }
+    else if( config.series.shape == "scatter" ) { s = new snark::graphics::plotting::stream( new QScatterSeries( chart ), config ); }
+    else { std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.series.shape << "\"" << std::endl; exit( 1 ); }
     if( s->config.pass_through )
     {
         if( !pass_through_stream_name.empty() ) { std::cerr << "csv-plot: expected pass-through only for one stream; got at least two: '" << pass_through_stream_name << "' and then '" << s->config.csv.filename << "'" << std::endl; exit( 1 ); }
@@ -222,19 +222,20 @@ int main( int ac, char** av )
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
+        //snark::graphics::plotting::stream::config
         QApplication a( ac, av );
         QMainWindow window;
         snark::graphics::plotting::chart* chart = new snark::graphics::plotting::xy_chart( options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ) ); // todo? update streams and charts at variable rates?
         chart->setTitle( "test chart" );
         chart->legend()->hide();
         chart->setAnimationOptions( QChart::SeriesAnimations ); // chart->setAnimationOptions( QChart::AllAnimations ); // todo? make configurable?
-        QChartView chartView( chart );
-        chartView.setRenderHint( QPainter::Antialiasing );
+        QChartView view( chart );
+        view.setRenderHint( QPainter::Antialiasing );
         if( stdin_index ) { if( options.exists( "--no-stdin" ) ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
         else { config.csv.filename = "-"; chart->push_back( make_streams( config, chart ) ); config.pass_through = false; }
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { chart->push_back( make_streams( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ), chart ) ); config.pass_through = false; }
         if( verbose ) { std::cerr << "csv-plot: got " << chart->streams().size() << " input stream(s)" << std::endl; }
-        window.setCentralWidget( &chartView );
+        window.setCentralWidget( &view );
         window.resize( 800, 600 ); // todo: make configurable
         chart->start();
         window.show();

@@ -59,7 +59,7 @@ void xy_chart::push_back( plotting::stream* s )
     addSeries( s->series );
     s->series->attachAxis( x_axis_ );
     s->series->attachAxis( y_axis_ );
-    if( s->config.scroll ) { scroll_ = true; } // quick and dirty
+    if( s->config.series.scroll ) { scroll_ = true; } // quick and dirty
 }
 
 void xy_chart::update_()

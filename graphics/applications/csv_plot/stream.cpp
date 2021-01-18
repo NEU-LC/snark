@@ -7,37 +7,15 @@
 #include "stream.h"
 #include "traits.h"
 
-#include <iostream>
-
 namespace snark { namespace graphics { namespace plotting {
 
-static const char* hex_color_( const std::string& c )
-{
-    if( c == "red" ) { return "#FF0000"; }
-    if( c == "green" ) { return "#00FF00"; }
-    if( c == "blue" ) { return "#0000FF"; }
-    if( c == "yellow" ) { return "#FFFF00"; }
-    if( c == "cyan" ) { return "#00FFFF"; }
-    if( c == "magenta" ) { return "#FF00FF"; }
-    if( c == "black" ) { return "#000000"; }
-    if( c == "white" ) { return "#FFFFFF"; }
-    if( c == "grey" ) { return "#888888"; }
-    return &c[0];
-}
-    
 stream::config_t::config_t( const comma::command_line_options& options )
-    : color_name( options.value< std::string >( "--color,--colour", "black" ) )
-    , csv( options )
+    : csv( options, "x,y" )
     , pass_through( options.exists( "--pass-through,--pass" ) )
-    , scroll( options.exists( "--scroll" ) )
-    , shape( options.value< std::string >( "--shape,--type", "line" ) )
+    , series( options )
     , size( options.value( "--size,-s,--tail", 10000 ) )
-    , style( options.value< std::string >( "--style", "" ) )
-    , weight( options.value( "--weight", 0.0 ) )
     
 {
-    if( csv.fields.empty() ) { csv.fields="x,y"; } // todo: parametrize on the graph type
-    if( !color_name.empty() ) { color = QColor( hex_color_( color_name ) ); }
 }
 
 stream::stream( QXYSeries* s, const config_t& config )
@@ -53,11 +31,10 @@ stream::stream( QXYSeries* s, const config_t& config )
     , size_( 0 )
     , extents_( QPointF( 0, 0 ), QPointF( 0, 0 ) )
 {
-    //if( config.pass_through ) { passed_.reset( std::move( comma::csv::passed< graphics::plotting::point >( istream_, std::cout, config.csv.flush ) ) ); }
     if( config.pass_through ) { passed_.reset( new comma::csv::passed< graphics::plotting::point >( istream_, std::cout, config.csv.flush ) ); }
-    QPen pen( config.color );
-    pen.setWidth( config.weight );
-    series->setPen( pen );
+    QPen pen( config.series.color ); // todo: move to series
+    pen.setWidth( config.series.weight ); // todo: move to series
+    series->setPen( pen ); // todo: move to series
 }
 
 stream::buffers_t_::buffers_t_( comma::uint32 size ) : points( size ) {}
