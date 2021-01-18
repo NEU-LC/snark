@@ -4,12 +4,13 @@
 #include <comma/math/compare.h>
 #include "charts.h"
 
-#include <iostream>
-
 namespace snark { namespace graphics { namespace plotting {
 
-chart::chart( float timeout, QGraphicsItem *parent, Qt::WindowFlags window_flags ): QChart( QChart::ChartTypeCartesian, parent, window_flags )
+chart::chart( float timeout, const std::string& title, QGraphicsItem *parent, Qt::WindowFlags window_flags ): QChart( QChart::ChartTypeCartesian, parent, window_flags )
 {
+    setTitle( &title[0] );
+    legend()->hide();
+    setAnimationOptions( QChart::SeriesAnimations ); // chart->setAnimationOptions( QChart::AllAnimations ); // todo? make configurable?
     QObject::connect( &timer_, &QTimer::timeout, this, &chart::update );
     timer_.setInterval( ( unsigned int )( timeout * 1000 ) );
 }
@@ -40,8 +41,8 @@ void chart::update()
     if( all_shutdown ) { timer_.stop(); }
 }
 
-xy_chart::xy_chart( float timeout, QGraphicsItem *parent, Qt::WindowFlags window_flags )
-    : chart( timeout, parent, window_flags )
+xy_chart::xy_chart( float timeout, const std::string& title, QGraphicsItem *parent, Qt::WindowFlags window_flags )
+    : chart( timeout, title, parent, window_flags )
     , x_axis_( new QValueAxis )
     , y_axis_( new QValueAxis )
     , scroll_( false )

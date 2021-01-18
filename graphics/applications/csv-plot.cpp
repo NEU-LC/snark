@@ -1,38 +1,12 @@
-// This file is part of snark, a generic and flexible library for robotics research
-// Copyright (c) 2011 The University of Sydney
 // Copyright (c) 2021 Vsevolod Vlaskine
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // todo! add QtCharts licence
 
 /// @author Vsevolod Vlaskine
 
 #include <iostream>
+#include <map>
+#include <set>
 #include <boost/shared_ptr.hpp>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMainWindow>
@@ -67,6 +41,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --help,-h: help, --help --verbose: more help" << std::endl;
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
     std::cerr << "    --input-fields; output possible input fields and exit" << std::endl;
+    std::cerr << "    --layout=<layout>; default=grid; todo: layouts for multiple charts" << std::endl;
     std::cerr << "    --pass-through,--pass; todo: output to stdout the first stream on the command line" << std::endl;
     std::cerr << "    --timeout=<seconds>; how often to update, overrides --fps" << std::endl;
     std::cerr << "    --no-stdin: don't try to read from stdin" << std::endl;
@@ -192,7 +167,7 @@ QT_CHARTS_USE_NAMESPACE
 
 static bool verbose;
 
-static snark::graphics::plotting::stream* make_streams( snark::graphics::plotting::stream::config_t config, QChart* chart )
+static snark::graphics::plotting::stream* make_stream( snark::graphics::plotting::stream::config_t config, QChart* chart )
 {
     static std::string pass_through_stream_name;
     snark::graphics::plotting::stream* s = nullptr;
@@ -222,22 +197,25 @@ int main( int ac, char** av )
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
-        //snark::graphics::plotting::stream::config
-        QApplication a( ac, av );
-        QMainWindow window;
-        snark::graphics::plotting::chart* chart = new snark::graphics::plotting::xy_chart( options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ) ); // todo? update streams and charts at variable rates?
-        chart->setTitle( "test chart" );
-        chart->legend()->hide();
-        chart->setAnimationOptions( QChart::SeriesAnimations ); // chart->setAnimationOptions( QChart::AllAnimations ); // todo? make configurable?
-        QChartView view( chart );
-        view.setRenderHint( QPainter::Antialiasing );
+        std::vector< snark::graphics::plotting::stream::config_t > configs;
         if( stdin_index ) { if( options.exists( "--no-stdin" ) ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
-        else { config.csv.filename = "-"; chart->push_back( make_streams( config, chart ) ); config.pass_through = false; }
-        for( unsigned int i = 0; i < unnamed.size(); ++i ) { chart->push_back( make_streams( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ), chart ) ); config.pass_through = false; }
-        if( verbose ) { std::cerr << "csv-plot: got " << chart->streams().size() << " input stream(s)" << std::endl; }
+        else { config.csv.filename = "-"; configs.push_back( config ); config.pass_through = false; }
+        for( unsigned int i = 0; i < unnamed.size(); ++i ) { configs.push_back( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ) ); config.pass_through = false; }
+        if( verbose ) { std::cerr << "csv-plot: got " << configs.size() << " input stream(s)" << std::endl; }
+        float timeout = options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ); // todo? update streams and charts at variable rates?
+        QApplication a( ac, av );
+        std::map< std::string, snark::graphics::plotting::chart* > charts;
+        for( const auto& c: configs ) { if( charts.find( c.series.chart ) == charts.end() ) { charts[ c.series.chart ] = new snark::graphics::plotting::xy_chart( timeout, c.series.title ); } }
+        if( verbose ) { std::cerr << "csv-plot: creates " << charts.size() << " chart(s)" << std::endl; }
+        QMainWindow window;
+        QChartView view( charts.begin()->second ); // todo: layouts
+        view.setRenderHint( QPainter::Antialiasing );
+        for( const auto& c: configs ) { charts[ c.series.chart ]->push_back( make_stream( c, charts[ c.series.chart ] ) ); }
+        if( verbose ) { std::cerr << "csv-plot: created " << configs.size() << " input stream(s)" << std::endl; }
         window.setCentralWidget( &view );
         window.resize( 800, 600 ); // todo: make configurable
-        chart->start();
+        for( auto c: charts ) { c.second->start(); }
+        std::cerr << "csv-plot: started" << std::endl;
         window.show();
         return a.exec();
     }

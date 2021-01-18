@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <string>
 #include <QtCharts/QChart>
 #include <QtCore/QTimer>
 #include <QtCharts/QLineSeries>
@@ -19,7 +20,7 @@ class chart: public QChart
 {
     Q_OBJECT
     public:
-        chart( float timeout, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
+        chart( float timeout, const std::string& title, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
         virtual ~chart();
         virtual void push_back( plotting::stream* r ) = 0;
         void start();
@@ -41,7 +42,7 @@ class xy_chart: public chart
 {
     Q_OBJECT
     public:
-        xy_chart( float timeout, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
+        xy_chart( float timeout, const std::string& title, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
         void push_back( plotting::stream* s );
         
     protected:
