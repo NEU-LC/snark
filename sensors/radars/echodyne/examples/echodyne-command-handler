@@ -1,12 +1,14 @@
 #!/usr/bin/expect
 
-if {$argc > 0} {
+set port [lindex $argv 0]
+
+if {[string equal $port "-h"] || [string equal $port "--help"]} {
     puts ""
     puts "Emulate the command handler of an Echodyne radar"
     puts ""
-    puts "Usage: echodyne-command-handler"
+    puts "Usage: echodyne-command-handler [<port>]"
     puts ""
-    puts "Listens on port 23 for Echodyne radar commands"
+    puts "Listens on <port> (default: 23) for Echodyne radar commands"
     puts ""
     puts "Supports the following:"
     puts "    GETSERIAL"
@@ -17,19 +19,21 @@ if {$argc > 0} {
     puts ""
     puts "Example"
     puts "    In two separate terminals:"
-    puts "    $ sudo echodyne-command-handler"
-    puts "    $ echodyne-cat <channel> --address 127.0.0.1"
+    puts "    $ echodyne-command-handler 2023"
+    puts "    $ echodyne-cat <channel> --address 127.0.0.1 --port 2023"
     puts ""
     puts "    will set-up echodyne-cat to read from the raw radar data port for <channel>"
     puts ""
     return 0
 }
 
+if {[string compare $port ""] == 0} { set port 23 }
+
 # never timeout
 set timeout -1
 
 # The radar listens for commands on tcp port 23
-spawn nc -lkC localhost 23
+spawn nc -lkC localhost $port
 
 # boot time is considered to be when this application starts
 global time_at_boot
