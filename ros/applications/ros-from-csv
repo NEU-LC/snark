@@ -30,9 +30,9 @@ examples
         
     using message types offline, try it
         imply package from message type
-            echo 1,2,3 | ros-from-csv --type geometry_msgs.msg.Point --format f,f,f --dry
+            echo 1,2,3 | ros-from-csv --type geometry_msgs.msg.Point --format 3f --dry
         explicitly specify package with message type definition
-            echo 1,2,3 | ros-from-csv --import geometry_msgs.msg --type geometry_msgs.msg.Point --format f,f,f --dry
+            echo 1,2,3 | ros-from-csv --import geometry_msgs.msg --type geometry_msgs.msg.Point --format 3f --dry
 
 """
 
@@ -72,7 +72,7 @@ def main():
     if args.format or args.binary:
         formats = args.format if args.format else args.binary
         fields = args.fields if args.fields else record_type.fields
-        lengths = detail.command_line.lengths_of_strings( fields, formats )
+        lengths = detail.command_line.lengths_of_strings( fields, comma.csv.format.expand( formats ))
         record_type, record_ctor = convert.ros_message_to_csv_record( message_type(), lengths )
     if args.output_fields: print ','.join( detail.command_line.fields_of_record( record_type, args.index_output_fields ) ); sys.exit( 0 )
     if args.output_format: print ','.join( [ comma.csv.format.from_numpy( f ) for f in record_type.format.split(',') ] ); sys.exit( 0 )
