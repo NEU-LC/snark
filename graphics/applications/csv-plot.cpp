@@ -45,14 +45,14 @@ static void usage( bool verbose = false )
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
     std::cerr << "    --input-fields; output possible input fields and exit" << std::endl;
     std::cerr << "    --layout=<layout>; default=grid; layouts for multiple charts" << std::endl;
-    std::cerr << "                       <layout>" << std::endl;
-    std::cerr << "                           grid[;<shape>]: charts are arranged in single window as grid" << std::endl;
-    std::cerr << "                              <shape>: default: 1" << std::endl;
-    std::cerr << "                                  cols=<cols>: grid with <cols> columns (rows calculated from number of charts)" << std::endl;
-    std::cerr << "                                  rows=<rows>: grid with <rows> rows (columns calculated from number of charts)" << std::endl;
-    std::cerr << "                                  default: cols=1" << std::endl;
-    std::cerr << "                           tabs: todo: charts are arranged in single window as tabs" << std::endl;
-    std::cerr << "                           windows: todo: each chart is in its own window" << std::endl;
+    std::cerr << "        <layout>" << std::endl;
+    std::cerr << "            grid[;<shape>]: charts are arranged in single window as grid" << std::endl;
+    std::cerr << "                <shape>: default: 1" << std::endl;
+    std::cerr << "                    cols=<cols>: grid with <cols> columns (rows calculated from number of charts)" << std::endl;
+    std::cerr << "                    rows=<rows>: grid with <rows> rows (columns calculated from number of charts)" << std::endl;
+    std::cerr << "                    default: cols=1" << std::endl;
+    std::cerr << "                tabs: charts are arranged in single window as tabs" << std::endl;
+    std::cerr << "                windows: todo: each chart is in its own window" << std::endl;
     std::cerr << "    --pass-through,--pass; todo: output to stdout the first stream on the command line" << std::endl;
     std::cerr << "    --timeout=<seconds>; how often to update, overrides --fps" << std::endl;
     std::cerr << "    --no-stdin: don't try to read from stdin" << std::endl;
@@ -134,7 +134,7 @@ static void usage( bool verbose = false )
 }
 
 // todo
-// ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
+// ! chart title semantics: improve!!!
 // ? qt, qtcharts: static layout configuration files?
 // ? move main window to separate file
 // - --window-size (currently hardcoded)
@@ -173,11 +173,11 @@ static void usage( bool verbose = false )
 //     - marker shape
 //   - --series-config-fields
 // - layouts
-//   - support multi-window
-//   - tabs layout
+//   - multi-window
 // - span policies
 //   - better autoscaling
 //   - better autoscrolling
+// ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
 
 QT_USE_NAMESPACE
 QT_CHARTS_USE_NAMESPACE
@@ -202,11 +202,10 @@ static snark::graphics::plotting::stream* make_stream( snark::graphics::plotting
     return s;
 }
 
-static QLayout* make_layout( const std::string& l, charts_t& charts )
+static QWidget* make_widget( const std::string& l, charts_t& charts )
 {
     comma::name_value::map m( l, "shape" );
     std::string shape = m.value< std::string >( "shape" );
-    QLayout* layout = nullptr;
     if( shape == "grid" )
     {
         auto cols = m.optional< unsigned int >( "cols" );
@@ -222,17 +221,30 @@ static QLayout* make_layout( const std::string& l, charts_t& charts )
         {
             QChartView* v = new QChartView( c.second );
             v->setRenderHint( QPainter::Antialiasing );
+            v->setContentsMargins( 0, 0, 0, 0 );
             grid->addWidget( v, row, col, 1, 1 );
             if( ++col == cols ) { col = 0; ++row; }
         }
-        layout = grid;
+        auto w = new QWidget;
+        w->setLayout( grid );
+        w->setContentsMargins( 0, 0, 0, 0 );
+        return w;
     }
-    else if( shape == "tabs" ) { COMMA_THROW( comma::exception, "csv-plot: --layout=tabs: todo" ); }
+    else if( shape == "tabs" )
+    {
+        auto w = new QTabWidget;
+        for( auto c: charts )
+        {
+            QChartView* v = new QChartView( c.second );
+            v->setRenderHint( QPainter::Antialiasing );
+            v->setContentsMargins( 0, 0, 0, 0 );
+            std::string t = c.second->streams()[0].config.series.title.empty() ? c.second->streams()[0].config.series.chart : c.second->streams()[0].config.series.title; // todo: quick and dirty; trivially improve title semantics
+            w->addTab( v, t.empty() ? "unnamed" : &t[0] );
+        }
+        return w;
+    }
     else if( shape == "windows" ) { COMMA_THROW( comma::exception, "csv-plot: --layout=windows: todo" ); }
-    else { COMMA_THROW( comma::exception, "csv-plot: expected layout; got: '" << shape << "'" ); }
-    layout->setContentsMargins( 0, 0, 0, 0 );
-    layout->setSpacing( 0 );
-    return layout;
+    COMMA_THROW( comma::exception, "csv-plot: expected layout; got: '" << shape << "'" );
 }
 
 int main( int ac, char** av )
@@ -256,15 +268,12 @@ int main( int ac, char** av )
         float timeout = options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ); // todo? update streams and charts at variable rates?
         QApplication a( ac, av );
         std::map< std::string, snark::graphics::plotting::chart* > charts;
-        for( const auto& c: configs ) { if( charts.find( c.series.chart ) == charts.end() ) { charts[ c.series.chart ] = new snark::graphics::plotting::xy_chart( timeout, c.series.title ); } }
+        for( const auto& c: configs ) { if( charts.find( c.series.chart ) == charts.end() ) { charts[ c.series.chart ] = new snark::graphics::plotting::xy_chart( timeout, c.series.title.empty() ? c.series.chart : c.series.title ); } } // todo: quick and dirty; trivially improve title semantics
         if( verbose ) { std::cerr << "csv-plot: creates " << charts.size() << " chart(s)" << std::endl; }
         for( const auto& c: configs ) { charts[ c.series.chart ]->push_back( make_stream( c, charts[ c.series.chart ] ) ); } // todo: multiple series from a stream could go to different charts
         if( verbose ) { std::cerr << "csv-plot: created " << configs.size() << " input stream(s)" << std::endl; }
         QMainWindow window;
-        QWidget* w = new QWidget;
-        w->setLayout( make_layout( options.value< std::string >( "--layout", "grid,1" ), charts ) );
-        w->setContentsMargins( 0, 0, 0, 0 );
-        window.setCentralWidget( w );
+        window.setCentralWidget( make_widget( options.value< std::string >( "--layout", "grid" ), charts ) );
         window.resize( 800, 600 ); // todo: make configurable
         for( auto c: charts ) { c.second->start(); }
         std::cerr << "csv-plot: started" << std::endl;
