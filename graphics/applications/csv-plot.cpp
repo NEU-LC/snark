@@ -7,7 +7,9 @@
 #include <iostream>
 #include <map>
 #include <set>
+#include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
+#include <QGridLayout>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMainWindow>
 #include <QtCharts/QLineSeries>
@@ -18,6 +20,7 @@
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
 #include <comma/string/string.h>
+#include <comma/name_value/map.h>
 #include <comma/name_value/parser.h>
 #include <comma/name_value/serialize.h>
 #include "csv_plot/charts.h"
@@ -41,7 +44,15 @@ static void usage( bool verbose = false )
     std::cerr << "    --help,-h: help, --help --verbose: more help" << std::endl;
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
     std::cerr << "    --input-fields; output possible input fields and exit" << std::endl;
-    std::cerr << "    --layout=<layout>; default=grid; todo: layouts for multiple charts" << std::endl;
+    std::cerr << "    --layout=<layout>; default=grid; layouts for multiple charts" << std::endl;
+    std::cerr << "                       <layout>" << std::endl;
+    std::cerr << "                           grid[;<shape>]: charts are arranged in single window as grid" << std::endl;
+    std::cerr << "                              <shape>: default: 1" << std::endl;
+    std::cerr << "                                  cols=<cols>: grid with <cols> columns (rows calculated from number of charts)" << std::endl;
+    std::cerr << "                                  rows=<rows>: grid with <rows> rows (columns calculated from number of charts)" << std::endl;
+    std::cerr << "                                  default: cols=1" << std::endl;
+    std::cerr << "                           tabs: todo: charts are arranged in single window as tabs" << std::endl;
+    std::cerr << "                           windows: todo: each chart is in its own window" << std::endl;
     std::cerr << "    --pass-through,--pass; todo: output to stdout the first stream on the command line" << std::endl;
     std::cerr << "    --timeout=<seconds>; how often to update, overrides --fps" << std::endl;
     std::cerr << "    --no-stdin: don't try to read from stdin" << std::endl;
@@ -95,10 +106,18 @@ static void usage( bool verbose = false )
         std::cerr << "        netcat localhost 12345 | csv-plot --fields=x,y,block" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    xy chart with multiple inputs block by block with different shapes" << std::endl;
-        std::cerr << "        csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
-        std::cerr << "            | csv-plot '-;fields=block,x,y;color=red;weight=2' \\" << std::endl;
-        std::cerr << "                       <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=blue;weight=2;shape=spline' \\" << std::endl;
-        std::cerr << "                       <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=green;weight=2;shape=scatter'" << std::endl;
+        std::cerr << "        - all plots on the same chart" << std::endl;
+        std::cerr << "            csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
+        std::cerr << "                | csv-plot '-;fields=block,x,y;color=red;weight=2' \\" << std::endl;
+        std::cerr << "                           <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=blue;weight=2;shape=spline' \\" << std::endl;
+        std::cerr << "                           <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=green;weight=2;shape=scatter'" << std::endl;
+        std::cerr << "        - plots on different charts with grid layout: same command as above, but add 'chart=...'" << std::endl;
+        std::cerr << "            - default layout: charts are stacked in a single column" << std::endl;
+        std::cerr << "                ... | csv-plot ... '...;fields=...;chart=A' '...;fields=...;chart=B' '...;fields=...;chart=C'" << std::endl;
+        std::cerr << "            - two columns:" << std::endl;
+        std::cerr << "                ... | csv-plot --layout='grid;cols=2' ... '...;fields=...;chart=A' '...;fields=...;chart=B' '...;fields=...;chart=C'" << std::endl;
+        std::cerr << "            - one row:" << std::endl;
+        std::cerr << "                ... | csv-plot --layout='grid;rows=1' ... '...;fields=...;chart=A' '...;fields=...;chart=B' '...;fields=...;chart=C'" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    xy chart with sliding window on endless series with 2 frames per second refresh, using --scroll" << std::endl;
         std::cerr << "        csv-random make --type f --range=0,20 | csv-paste line-number - | csv-repeat --pace --period 0.1 \\" << std::endl;
@@ -117,7 +136,8 @@ static void usage( bool verbose = false )
 // todo
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
 // ? qt, qtcharts: static layout configuration files?
-// - move main window to separate file
+// ? move main window to separate file
+// - --window-size (currently hardcoded)
 // - --stream-config
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
@@ -130,8 +150,10 @@ static void usage( bool verbose = false )
 //   - png
 //   ? save all windows
 // - chart
+//   - fix! set title
 //   - types
 //     - 2.5d charts
+//     ? polar charts
 //     ? chart types other than xy, e.g. pie chart
 //   - properties
 //     - title
@@ -145,18 +167,13 @@ static void usage( bool verbose = false )
 //   - t markers on x axis (QtCharts::QDateTimeAxis?)
 // - series properties
 //   - properties as policy templated on qt series?
-//   - title
-//   - target chart
 //   - spline: style?
 //   - scatter: style; derive from series? series -> base class?
 //     - marker color
 //     - marker shape
 //   - --series-config-fields
 // - layouts
-//   - title
-//   - multiple charts
 //   - support multi-window
-//   - grid layout
 //   - tabs layout
 // - span policies
 //   - better autoscaling
@@ -166,6 +183,7 @@ QT_USE_NAMESPACE
 QT_CHARTS_USE_NAMESPACE
 
 static bool verbose;
+typedef std::map< std::string, snark::graphics::plotting::chart* > charts_t;
 
 static snark::graphics::plotting::stream* make_stream( snark::graphics::plotting::stream::config_t config, QChart* chart )
 {
@@ -182,6 +200,39 @@ static snark::graphics::plotting::stream* make_stream( snark::graphics::plotting
         pass_through_stream_name = s->config.csv.filename;
     }
     return s;
+}
+
+static QLayout* make_layout( const std::string& l, charts_t& charts )
+{
+    comma::name_value::map m( l, "shape" );
+    std::string shape = m.value< std::string >( "shape" );
+    QLayout* layout = nullptr;
+    if( shape == "grid" )
+    {
+        auto cols = m.optional< unsigned int >( "cols" );
+        auto rows = m.optional< unsigned int >( "rows" );
+        if( !cols && !rows ) { cols = 1; }
+        if( !cols ) { cols = charts.size() / *rows + 1; }
+        if( !rows ) { rows = charts.size() / *cols + 1; }
+        if( *cols * *rows < charts.size() ) { COMMA_THROW( comma::exception, "csv-plot: expected grid of size at least " << charts.size() << "; got: grid " << *cols << "x" << *rows ); }
+        QGridLayout* grid = new QGridLayout;
+        unsigned int row = 0;
+        unsigned int col = 0;
+        for( auto c: charts )
+        {
+            QChartView* v = new QChartView( c.second );
+            v->setRenderHint( QPainter::Antialiasing );
+            grid->addWidget( v, row, col, 1, 1 );
+            if( ++col == cols ) { col = 0; ++row; }
+        }
+        layout = grid;
+    }
+    else if( shape == "tabs" ) { COMMA_THROW( comma::exception, "csv-plot: --layout=tabs: todo" ); }
+    else if( shape == "windows" ) { COMMA_THROW( comma::exception, "csv-plot: --layout=windows: todo" ); }
+    else { COMMA_THROW( comma::exception, "csv-plot: expected layout; got: '" << shape << "'" ); }
+    layout->setContentsMargins( 0, 0, 0, 0 );
+    layout->setSpacing( 0 );
+    return layout;
 }
 
 int main( int ac, char** av )
@@ -207,12 +258,13 @@ int main( int ac, char** av )
         std::map< std::string, snark::graphics::plotting::chart* > charts;
         for( const auto& c: configs ) { if( charts.find( c.series.chart ) == charts.end() ) { charts[ c.series.chart ] = new snark::graphics::plotting::xy_chart( timeout, c.series.title ); } }
         if( verbose ) { std::cerr << "csv-plot: creates " << charts.size() << " chart(s)" << std::endl; }
-        QMainWindow window;
-        QChartView view( charts.begin()->second ); // todo: layouts
-        view.setRenderHint( QPainter::Antialiasing );
-        for( const auto& c: configs ) { charts[ c.series.chart ]->push_back( make_stream( c, charts[ c.series.chart ] ) ); }
+        for( const auto& c: configs ) { charts[ c.series.chart ]->push_back( make_stream( c, charts[ c.series.chart ] ) ); } // todo: multiple series from a stream could go to different charts
         if( verbose ) { std::cerr << "csv-plot: created " << configs.size() << " input stream(s)" << std::endl; }
-        window.setCentralWidget( &view );
+        QMainWindow window;
+        QWidget* w = new QWidget;
+        w->setLayout( make_layout( options.value< std::string >( "--layout", "grid,1" ), charts ) );
+        w->setContentsMargins( 0, 0, 0, 0 );
+        window.setCentralWidget( w );
         window.resize( 800, 600 ); // todo: make configurable
         for( auto c: charts ) { c.second->start(); }
         std::cerr << "csv-plot: started" << std::endl;
