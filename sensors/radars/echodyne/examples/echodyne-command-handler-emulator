@@ -1,12 +1,13 @@
 #!/usr/bin/expect
 
 set port [lindex $argv 0]
+set scriptname [file tail $argv0]
 
 if {[string equal $port "-h"] || [string equal $port "--help"]} {
     puts ""
     puts "Emulate the command handler of an Echodyne radar"
     puts ""
-    puts "Usage: echodyne-command-handler [<port>]"
+    puts "Usage: $scriptname \[<port>]"
     puts ""
     puts "Listens on <port> (default: 23) for Echodyne radar commands"
     puts ""
@@ -19,7 +20,7 @@ if {[string equal $port "-h"] || [string equal $port "--help"]} {
     puts ""
     puts "Example"
     puts "    In two separate terminals:"
-    puts "    $ echodyne-command-handler 2023"
+    puts "    $ $scriptname 2023"
     puts "    $ echodyne-cat <channel> --address 127.0.0.1 --port 2023"
     puts ""
     puts "    will set-up echodyne-cat to read from the raw radar data port for <channel>"
