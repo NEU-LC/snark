@@ -135,9 +135,8 @@ static void usage( bool verbose = false )
 
 // todo
 // ! chart title semantics: improve!!!
-// ? qt, qtcharts: static layout configuration files?
-// ? move main window to separate file
 // - --window-size (currently hardcoded)
+// ? --full-screen
 // - --stream-config
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
@@ -178,6 +177,8 @@ static void usage( bool verbose = false )
 //   - better autoscaling
 //   - better autoscrolling
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
+// ? qt, qtcharts: static layout configuration files?
+// ? move main window to separate file
 
 QT_USE_NAMESPACE
 QT_CHARTS_USE_NAMESPACE
