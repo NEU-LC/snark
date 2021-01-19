@@ -129,6 +129,7 @@ static void usage( bool verbose = false )
 }
 
 // todo
+// - application/examples/csv-plot/...: example command lines
 // - --window-size (currently hardcoded)
 // ? --full-screen (or --window-size=full-screen?)
 // - --stream-config
@@ -141,7 +142,7 @@ static void usage( bool verbose = false )
 // - zoom
 // - save as
 //   - png
-//   ? save all windows
+//   ? save all charts
 // - chart
 //   - types
 //     - 2.5d charts
@@ -253,7 +254,7 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         verbose = options.exists( "--verbose,-v" );
-        if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::point >( false ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, snark::graphics::plotting::record( 2 ) ), ',' ) << std::endl; return 0; }
         snark::graphics::plotting::stream::config_t config( options );
         config.csv.full_xpath = false;
         if( config.csv.fields.empty() ) { config.csv.fields = "x,y"; }

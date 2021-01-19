@@ -71,22 +71,35 @@ template <> struct traits< snark::graphics::plotting::point >
 {
     template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::point& t, V& v )
     {
-        v.apply( "t", t.t );
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
-        v.apply( "block", t.block );
-        v.apply( "color", t.color );
     }
 
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::point& t, V& v )
     {
-        v.apply( "t", t.t );
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
+    }
+};
+
+template <> struct traits< snark::graphics::plotting::record >
+{
+    template< typename K, typename V > static void visit( const K& k, snark::graphics::plotting::record& t, V& v )
+    {
+        v.apply( "t", t.t );
+        comma::visiting::traits< snark::graphics::plotting::point >::visit( k, t, v ); // quick and dirty: t,x,y,z looks better than x,y,z,t
         v.apply( "block", t.block );
-        v.apply( "color", t.color );
+        v.apply( "series", t.series );
+    }
+
+    template< typename K, typename V > static void visit( const K& k, const snark::graphics::plotting::record& t, V& v )
+    {
+        v.apply( "t", t.t );
+        comma::visiting::traits< snark::graphics::plotting::point >::visit( k, t, v ); // quick and dirty: t,x,y,z looks better than x,y,z,t
+        v.apply( "block", t.block );
+        v.apply( "series", t.series );
     }
 };
 

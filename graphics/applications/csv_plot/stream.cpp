@@ -14,7 +14,6 @@ stream::config_t::config_t( const comma::command_line_options& options )
     , pass_through( options.exists( "--pass-through,--pass" ) )
     , series( options )
     , size( options.value( "--size,-s,--tail", 10000 ) )
-    
 {
 }
 
@@ -31,19 +30,19 @@ stream::stream( QXYSeries* s, const config_t& config )
     , size_( 0 )
     , extents_( QPointF( 0, 0 ), QPointF( 0, 0 ) )
 {
-    if( config.pass_through ) { passed_.reset( new comma::csv::passed< graphics::plotting::point >( istream_, std::cout, config.csv.flush ) ); }
+    if( config.pass_through ) { passed_.reset( new comma::csv::passed< graphics::plotting::record >( istream_, std::cout, config.csv.flush ) ); }
     QPen pen( config.series.color ); // todo: move to series
     pen.setWidth( config.series.weight ); // todo: move to series
     series->setPen( pen ); // todo: move to series
 }
 
-stream::buffers_t_::buffers_t_( comma::uint32 size ) : points( size ) {}
+stream::buffers_t_::buffers_t_( comma::uint32 size ) : records( size ) {}
 
-void stream::buffers_t_::add( const point& p ) { points.add( p, p.block ); }
+void stream::buffers_t_::add( const record& p ) { records.add( p, p.block ); }
 
-bool stream::buffers_t_::changed() const { return points.changed(); }
+bool stream::buffers_t_::changed() const { return records.changed(); }
 
-void stream::buffers_t_::mark_seen() { points.mark_seen(); }
+void stream::buffers_t_::mark_seen() { records.mark_seen(); }
 
 void stream::start() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read_, boost::ref( *this ) ) ) ); }
 
@@ -62,22 +61,22 @@ void stream::read_()
 {
     while( !is_shutdown_ && ( istream_.ready() || ( is_->good() && !is_->eof() ) ) )
     {
-        const point* p = istream_.read();
+        const record* p = istream_.read();
         if( !p ) { break; }
         if( passed_ ) { passed_->write(); }
-        point q = *p;
+        record q = *p;
         if( !has_x_ ) { q.x = count_; }
         ++count_;
-        comma::synchronized< points_t >::scoped_transaction( points )->push_back( q );
+        comma::synchronized< records_t >::scoped_transaction( records )->push_back( q );
     }
     is_shutdown_ = true;
 }
 
 bool stream::update()
 {
-    points_t p;
+    records_t p;
     {
-        comma::synchronized< points_t >::scoped_transaction t( points );
+        comma::synchronized< records_t >::scoped_transaction t( records );
         p = *t; // todo! quick and dirty, potentially massive copy; watch performance!
         t->clear();
     }
@@ -85,11 +84,11 @@ bool stream::update()
     for( auto& e: p ) { buffers_.add( e ); }
     bool changed = buffers_.changed();
     static_assert( sizeof( qreal ) == 8 );
-    size_ = buffers_.points.size();
+    size_ = buffers_.records.size();
     extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) );
     auto append = [&]( unsigned int i )
     {
-        const auto& v = buffers_.points.values()[i];
+        const auto& v = buffers_.records.values()[i];
         series->append( QPoint( v.x, v.y ) ); // todo: support 3d data, time series, polar data (or template stream upon those)
         if( extents_.first.x() > v.x ) { extents_.first.setX( v.x ); }
         if( extents_.second.x() < v.x ) { extents_.second.setX( v.x ); }
@@ -99,8 +98,8 @@ bool stream::update()
     if( buffers_.changed() )
     {
         series->clear();
-        for( unsigned int i = buffers_.points.begin(); i < buffers_.points.size(); ++i ) { append( i ); }
-        for( unsigned int i = 0; i < buffers_.points.begin(); ++i ) { append( i ); }
+        for( unsigned int i = buffers_.records.begin(); i < buffers_.records.size(); ++i ) { append( i ); }
+        for( unsigned int i = 0; i < buffers_.records.begin(); ++i ) { append( i ); }
     }
     buffers_.mark_seen();
     return changed;

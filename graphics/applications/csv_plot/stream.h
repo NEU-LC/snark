@@ -40,8 +40,8 @@ class stream // todo: if stream other than xy stream required, create stream bas
         
         QtCharts::QXYSeries* series; // todo: array of series supporting multiple feeds from the same stream, potentially targeting multiple charts
         const config_t config;
-        typedef std::deque< graphics::plotting::point > points_t;
-        comma::synchronized< points_t > points; // quick and dirty
+        typedef std::deque< graphics::plotting::record > records_t;
+        comma::synchronized< records_t > records; // quick and dirty
 
         stream( QXYSeries* s, const config_t& config );
         void start();
@@ -56,23 +56,23 @@ class stream // todo: if stream other than xy stream required, create stream bas
         bool is_shutdown_;
         bool is_stdin_;
         comma::io::istream is_;
-        comma::csv::input_stream< graphics::plotting::point > istream_;
-        boost::scoped_ptr< comma::csv::passed< graphics::plotting::point > > passed_; // boost::optional< comma::csv::passed< graphics::plotting::point > > passed_;
+        comma::csv::input_stream< graphics::plotting::record > istream_;
+        boost::scoped_ptr< comma::csv::passed< graphics::plotting::record > > passed_; // boost::optional< comma::csv::passed< graphics::plotting::record > > passed_; // todo: move semantics
         boost::scoped_ptr< boost::thread > thread_;
         comma::uint64 count_;
         bool has_x_;
         void read_();
         struct buffers_t_
         {
-            block_buffer< plotting::point > points;
+            block_buffer< plotting::record > records;
             buffers_t_( comma::uint32 size );
-            void add( const point& p );
+            void add( const record& p );
             bool changed() const;
             void mark_seen();
         };
         buffers_t_ buffers_;
         unsigned int size_;
-        std::pair< QPointF, QPointF > extents_; // should it be 3d?
+        std::pair< QPointF, QPointF > extents_; // todo: should be a pair of min record and max record
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {
