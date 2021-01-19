@@ -34,7 +34,8 @@ if {[string compare $port ""] == 0} { set port 23 }
 set timeout -1
 
 # The radar listens for commands on tcp port 23
-spawn nc -lkC localhost $port
+# netcat options are: listen, keep listening, send CRLF
+spawn -noecho nc -lkC localhost $port
 
 # boot time is considered to be when this application starts
 global time_at_boot
