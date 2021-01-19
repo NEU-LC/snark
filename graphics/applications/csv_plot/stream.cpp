@@ -17,13 +17,20 @@ stream::config_t::config_t( const comma::command_line_options& options )
 {
 }
 
+static plotting::record zero_()
+{
+    plotting::record r;
+    r.x = r.y = r.z = 0;
+    return r;
+}
+
 stream::stream( QXYSeries* s, const config_t& config )
     : series( s )
     , config( config )
     , is_shutdown_( false )
     , is_stdin_( config.csv.filename == "-" )
     , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
-    , istream_( *is_, config.csv )
+    , istream_( *is_, config.csv, zero_() )
     , count_( 0 )
     , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
     , buffers_( config.size )
@@ -89,11 +96,11 @@ bool stream::update()
     auto append = [&]( unsigned int i )
     {
         const auto& v = buffers_.records.values()[i];
-        series->append( QPoint( v.x, v.y ) ); // todo: support 3d data, time series, polar data (or template stream upon those)
-        if( extents_.first.x() > v.x ) { extents_.first.setX( v.x ); }
-        if( extents_.second.x() < v.x ) { extents_.second.setX( v.x ); }
-        if( extents_.first.y() > v.y ) { extents_.first.setY( v.y ); }
-        if( extents_.second.y() < v.y ) { extents_.second.setY( v.y ); }
+        series->append( QPoint( *v.x, *v.y ) ); // todo: support 3d data, time series, polar data (or template stream upon those)
+        if( extents_.first.x() > v.x ) { extents_.first.setX( *v.x ); }
+        if( extents_.second.x() < v.x ) { extents_.second.setX( *v.x ); }
+        if( extents_.first.y() > v.y ) { extents_.first.setY( *v.y ); }
+        if( extents_.second.y() < v.y ) { extents_.second.setY( *v.y ); }
     };
     if( buffers_.changed() )
     {

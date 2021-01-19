@@ -92,6 +92,12 @@ template <> struct traits< snark::graphics::plotting::record >
         comma::visiting::traits< snark::graphics::plotting::point >::visit( k, t, v ); // quick and dirty: t,x,y,z looks better than x,y,z,t
         v.apply( "block", t.block );
         v.apply( "series", t.series );
+        for( auto& s: t.series ) // hacky for traits in libraries, but ok for applications where traits have limited use
+        {
+            if( !s.x ) { s.x = *t.x; }
+            if( !s.y ) { s.x = *t.y; }
+            if( !s.z ) { s.x = *t.z; }
+        }
     }
 
     template< typename K, typename V > static void visit( const K& k, const snark::graphics::plotting::record& t, V& v )

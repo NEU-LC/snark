@@ -43,7 +43,8 @@ static void usage( bool verbose = false )
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: help, --help --verbose: more help" << std::endl;
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
-    std::cerr << "    --input-fields; output possible input fields and exit" << std::endl;
+    std::cerr << "    --input-fields; print possible input fields to stdout and exit" << std::endl;
+    std::cerr << "    --input-fields-example; print input fields example to stdout and exit" << std::endl;
     std::cerr << "    --layout=<layout>; default=grid; layouts for multiple charts" << std::endl;
     std::cerr << "        <layout>" << std::endl;
     std::cerr << "            grid[;<shape>]: charts are arranged in single window as grid" << std::endl;
@@ -254,7 +255,8 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         verbose = options.exists( "--verbose,-v" );
-        if( options.exists( "--input-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, snark::graphics::plotting::record( 2 ) ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << ( comma::join( comma::csv::names< snark::graphics::plotting::record >( true ), ',' ) + ",series" ) << std::endl; return 0; } // quick and dirty
+        if( options.exists( "--input-fields-example" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, snark::graphics::plotting::record( 2 ) ), ',' ) << std::endl; return 0; }
         snark::graphics::plotting::stream::config_t config( options );
         config.csv.full_xpath = false;
         if( config.csv.fields.empty() ) { config.csv.fields = "x,y"; }

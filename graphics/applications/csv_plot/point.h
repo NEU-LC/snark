@@ -4,17 +4,27 @@
 
 #include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/optional.hpp>
 #include <comma/base/types.h>
 
 namespace snark { namespace graphics { namespace plotting {
 
+// struct point
+// {
+//     double x;
+//     double y;
+//     double z;
+//     
+//     point(): x( 0 ), y( 0 ), z( 0 ) {}
+// };
+
 struct point
 {
-    double x;
-    double y;
-    double z;
+    boost::optional< double > x;
+    boost::optional< double > y;
+    boost::optional< double > z;
     
-    point(): x( 0 ), y( 0 ), z( 0 ) {}
+    point() {}
 };
 
 struct record: public plotting::point
