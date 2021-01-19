@@ -32,8 +32,7 @@
 
 #pragma once
 
-#include "../../../visiting/eigen.h"
-#include "point.h"
+#include "record.h"
 #include "series.h"
 #include "stream.h"
 
@@ -143,6 +142,7 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
         v.apply( "pass-through", t.pass_through );
         v.apply( "series", t.series );
         v.apply( "size", t.size );
+        v.apply( "number-of-series", t.number_of_series );
     }
 
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v )
@@ -151,6 +151,7 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
         v.apply( "pass-through", t.pass_through );
         v.apply( "series", t.series );
         v.apply( "size", t.size );
+        v.apply( "number-of-series", t.number_of_series );
     }
 };
 

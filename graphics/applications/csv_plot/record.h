@@ -2,21 +2,13 @@
 
 #pragma once
 
+#include <string>
 #include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/optional.hpp>
 #include <comma/base/types.h>
 
 namespace snark { namespace graphics { namespace plotting {
-
-// struct point
-// {
-//     double x;
-//     double y;
-//     double z;
-//     
-//     point(): x( 0 ), y( 0 ), z( 0 ) {}
-// };
 
 struct point
 {
@@ -34,6 +26,8 @@ struct record: public plotting::point
     std::vector< plotting::point > series;
     
     record( unsigned int s = 0 ): block( 0 ), series( s ) {}
+    
+    static record sample( const std::string& fields, unsigned int size = 0 );
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {

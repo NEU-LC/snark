@@ -16,7 +16,7 @@
 #include <comma/io/stream.h>
 #include <comma/sync/synchronized.h>
 #include "../../../graphics/block_buffer.h"
-#include "point.h"
+#include "record.h"
 #include "series.h"
 
 QT_USE_NAMESPACE
@@ -33,8 +33,9 @@ class stream // todo: if stream other than xy stream required, create stream bas
             bool pass_through;
             plotting::series::config series;
             comma::uint32 size;
+            comma::uint32 number_of_series; // todo: a shorter name?
             
-            config_t() : pass_through( false ), size( 10000 ) {}
+            config_t() : pass_through( false ), size( 10000 ), number_of_series( 0 ) {}
             config_t( const comma::command_line_options& options );
         };
         

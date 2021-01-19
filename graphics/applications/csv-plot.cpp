@@ -55,6 +55,7 @@ static void usage( bool verbose = false )
     std::cerr << "                stacked: todo: each chart is in its own window" << std::endl;
     std::cerr << "                tabs: charts are arranged in single window as tabs" << std::endl;
     std::cerr << "                windows: todo: each chart is in its own window" << std::endl;
+    std::cerr << "    --number-of-series,-n=<n>; how many series streams contain; a convenience option, if --fields have just 'series' field" << std::endl;
     std::cerr << "    --pass-through,--pass; todo: output to stdout the first stream on the command line" << std::endl;
     std::cerr << "    --timeout=<seconds>; how often to update, overrides --fps" << std::endl;
     std::cerr << "    --no-stdin: don't try to read from stdin" << std::endl;

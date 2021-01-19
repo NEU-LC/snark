@@ -14,14 +14,8 @@ stream::config_t::config_t( const comma::command_line_options& options )
     , pass_through( options.exists( "--pass-through,--pass" ) )
     , series( options )
     , size( options.value( "--size,-s,--tail", 10000 ) )
+    , number_of_series( options.value( "--number-of-series,-n", 0 ) )
 {
-}
-
-static plotting::record zero_()
-{
-    plotting::record r;
-    r.x = r.y = r.z = 0;
-    return r;
 }
 
 stream::stream( QXYSeries* s, const config_t& config )
@@ -30,7 +24,7 @@ stream::stream( QXYSeries* s, const config_t& config )
     , is_shutdown_( false )
     , is_stdin_( config.csv.filename == "-" )
     , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
-    , istream_( *is_, config.csv, zero_() )
+    , istream_( *is_, config.csv, plotting::record::sample( config.csv.fields, config.number_of_series ) )
     , count_( 0 )
     , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
     , buffers_( config.size )
