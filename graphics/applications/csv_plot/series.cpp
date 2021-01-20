@@ -20,11 +20,11 @@ static const char* hex_color_( const std::string& c )
     
 series::config::config( const comma::command_line_options& options )
     : color_name( options.value< std::string >( "--color,--colour", "black" ) )
+    , color( color_name.empty() ? QColor( 0, 0, 0 ) : QColor( hex_color_( color_name ) ) )
     , scroll( options.exists( "--scroll" ) )
     , shape( options.value< std::string >( "--shape,--type", "line" ) )
     , style( options.value< std::string >( "--style", "" ) )
     , weight( options.value( "--weight", 0.0 ) )
-    , color( color_name.empty() ? QColor( 0, 0, 0 ) : QColor( hex_color_( color_name ) ) )
 {
 }
 

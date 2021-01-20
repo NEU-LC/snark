@@ -115,6 +115,7 @@ template <> struct traits< snark::graphics::plotting::series::config >
         v.apply( "chart", t.chart );
         v.apply( "color", t.color_name );
         t.color = QColor( &t.color_name[0] );
+        v.apply( "name", t.name );
         v.apply( "scroll", t.scroll );
         v.apply( "shape", t.shape );
         v.apply( "style", t.style );
@@ -126,6 +127,7 @@ template <> struct traits< snark::graphics::plotting::series::config >
     {
         v.apply( "chart", t.chart );
         v.apply( "color", std::string( t.color.name() ) );
+        v.apply( "name", t.name );
         v.apply( "scroll", t.scroll );
         v.apply( "shape", t.shape );
         v.apply( "style", t.style );

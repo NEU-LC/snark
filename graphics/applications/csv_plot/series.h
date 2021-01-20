@@ -15,6 +15,7 @@ struct series // quick and dirty
         std::string chart;
         std::string color_name;
         QColor color;
+        std::string name;
         bool scroll; // todo! a better name!
         std::string shape;
         std::string style;
