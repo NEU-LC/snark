@@ -2,7 +2,7 @@
 
 #include "series.h"
 
-namespace snark { namespace graphics { namespace plotting {
+namespace snark { namespace graphics { namespace plotting { namespace series {
 
 static const char* hex_color_( const std::string& c )
 {
@@ -18,7 +18,7 @@ static const char* hex_color_( const std::string& c )
     return &c[0];
 }
     
-series::config::config( const comma::command_line_options& options )
+config::config( const comma::command_line_options& options )
     : color_name( options.value< std::string >( "--color,--colour", "black" ) )
     , color( color_name.empty() ? QColor( 0, 0, 0 ) : QColor( hex_color_( color_name ) ) )
     , scroll( options.exists( "--scroll" ) )
@@ -28,4 +28,4 @@ series::config::config( const comma::command_line_options& options )
 {
 }
 
-} } } // namespace snark { namespace graphics { namespace plotting {
+} } } } // namespace snark { namespace graphics { namespace plotting { namespace series {

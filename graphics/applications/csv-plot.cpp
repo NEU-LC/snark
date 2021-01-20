@@ -137,6 +137,7 @@ static void usage( bool verbose = false )
 // - --stream-config
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
+//   - label: optional field
 //   - multiple x,y fields in a single record
 //     - -> multiple series with different properties (also different targets)
 //     - allow common x, e.g. if series[0]/x not present, look for x field; series[1]/x present, overrules common x
@@ -146,6 +147,7 @@ static void usage( bool verbose = false )
 //   - png
 //   ? save all charts
 // - chart
+//   ? move timer out of chart
 //   - types
 //     - 2.5d charts
 //     ? polar charts
