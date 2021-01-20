@@ -3,6 +3,7 @@
 #pragma once
 
 #include <deque>
+#include <vector>
 #include <boost/optional.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
@@ -39,12 +40,12 @@ class stream // todo: if stream other than xy stream required, create stream bas
             config_t( const comma::command_line_options& options );
         };
         
-        QtCharts::QXYSeries* series; // todo: array of series supporting multiple feeds from the same stream, potentially targeting multiple charts
+        QtCharts::QXYSeries* master_series; // todo: array of series supporting multiple feeds from the same stream, optionally targeting multiple charts
         const config_t config;
         typedef std::deque< graphics::plotting::record > records_t;
         comma::synchronized< records_t > records; // quick and dirty
 
-        stream( QXYSeries* s, const config_t& config );
+        stream( QXYSeries* m, const config_t& config );
         void start();
         bool is_shutdown() const;
         bool is_stdin() const;

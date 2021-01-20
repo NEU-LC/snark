@@ -15,8 +15,6 @@ struct point
     boost::optional< double > x;
     boost::optional< double > y;
     boost::optional< double > z;
-    
-    point() {}
 };
 
 struct record: public plotting::point
@@ -26,7 +24,6 @@ struct record: public plotting::point
     std::vector< plotting::point > series;
     
     record( unsigned int s = 0 ): block( 0 ), series( s ) {}
-    
     static record sample( const std::string& fields, unsigned int size = 0 );
 };
     

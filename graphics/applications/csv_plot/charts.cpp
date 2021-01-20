@@ -59,9 +59,9 @@ xy_chart::xy_chart( float timeout, const std::string& title, QGraphicsItem *pare
 void xy_chart::push_back( plotting::stream* s )
 {
     streams_.push_back( s );
-    addSeries( s->series );
-    s->series->attachAxis( x_axis_ );
-    s->series->attachAxis( y_axis_ );
+    addSeries( s->master_series );
+    s->master_series->attachAxis( x_axis_ );
+    s->master_series->attachAxis( y_axis_ );
     if( s->config.series.scroll ) { scroll_ = true; } // quick and dirty
 }
 

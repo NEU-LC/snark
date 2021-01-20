@@ -18,8 +18,8 @@ stream::config_t::config_t( const comma::command_line_options& options )
 {
 }
 
-stream::stream( QXYSeries* s, const config_t& config )
-    : series( s )
+stream::stream( QXYSeries* m, const config_t& config )
+    : master_series( m )
     , config( config )
     , is_shutdown_( false )
     , is_stdin_( config.csv.filename == "-" )
@@ -34,7 +34,7 @@ stream::stream( QXYSeries* s, const config_t& config )
     if( config.pass_through ) { passed_.reset( new comma::csv::passed< graphics::plotting::record >( istream_, std::cout, config.csv.flush ) ); }
     QPen pen( config.series.color ); // todo: move to series
     pen.setWidth( config.series.weight ); // todo: move to series
-    series->setPen( pen ); // todo: move to series
+    master_series->setPen( pen ); // todo: move to series
 }
 
 stream::buffers_t_::buffers_t_( comma::uint32 size ) : records( size ) {}
@@ -90,7 +90,7 @@ bool stream::update()
     auto append = [&]( unsigned int i )
     {
         const auto& v = buffers_.records.values()[i];
-        series->append( QPoint( *v.x, *v.y ) ); // todo: support 3d data, time series, polar data (or template stream upon those)
+        master_series->append( QPoint( *v.x, *v.y ) ); // todo: support 3d data, time series, polar data (or template stream upon those)
         if( extents_.first.x() > v.x ) { extents_.first.setX( *v.x ); }
         if( extents_.second.x() < v.x ) { extents_.second.setX( *v.x ); }
         if( extents_.first.y() > v.y ) { extents_.first.setY( *v.y ); }
@@ -98,7 +98,7 @@ bool stream::update()
     };
     if( buffers_.changed() )
     {
-        series->clear();
+        master_series->clear();
         for( unsigned int i = buffers_.records.begin(); i < buffers_.records.size(); ++i ) { append( i ); }
         for( unsigned int i = 0; i < buffers_.records.begin(); ++i ) { append( i ); }
     }
