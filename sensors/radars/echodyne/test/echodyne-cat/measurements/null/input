@@ -1,0 +1,14 @@
+channel=measurement
+port=29984
+header_fields="start_tag,num_bytes,num_measurements,time_days,time_ms,reserved"
+header_format="s[16],4ui,s[32]"
+repeat=3
+pause=0.1
+
+packet_size=$( echo $header_format | csv-format size )
+
+function header_content()
+{
+    local timestep=$1
+    echo "<measurement23>,$packet_size,0,0,$( elapsed_ms $timestep ),"
+}

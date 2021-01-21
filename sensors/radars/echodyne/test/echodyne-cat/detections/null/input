@@ -1,0 +1,14 @@
+channel=detection
+port=29981
+header_fields="start_tag,num_bytes,num_detections,beam_purpose,azimuth,elevation,detection_time_days,detection_time_ms,reserved"
+header_format="s[12],3ui,2f,2ui,s[4]"
+repeat=3
+pause=0.1
+
+packet_size=$( echo $header_format | csv-format size )
+
+function header_content()
+{
+    local timestep=$1
+    echo "<detections>,$packet_size,0,0,0,0,0,$( elapsed_ms $timestep ),"
+}

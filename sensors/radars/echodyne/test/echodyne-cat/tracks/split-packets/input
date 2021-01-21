@@ -1,0 +1,24 @@
+channel=track
+port=29982
+header_fields="start_tag,num_bytes,num_tracks,time_days,time_ms,reserved"
+header_format="s[12],4ui,s[12]"
+data_format="2ui,9f,3ui,3f,2i,2f,6ui,f,ui,3f"
+repeat=3
+pause=0.1
+
+function data_content()
+{
+    echo "1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+    echo "2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+    echo "3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+}
+
+num_tracks=$( data_content | wc -l )
+packet_size=$( echo $header_format,$( yes $data_format | head -$num_tracks | tr '\n' , | sed 's/,$//' ) | csv-format size )
+publish_size=$(( packet_size / 4 )) # all fields are four-byte multiples, so we can safely divide by 4
+
+function header_content()
+{
+    local timestep=$1
+    echo "<tracktrack>,$packet_size,$num_tracks,0,$( elapsed_ms $timestep ),"
+}

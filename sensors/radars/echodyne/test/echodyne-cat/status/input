@@ -1,0 +1,20 @@
+channel=status
+port=29979
+header_fields="start_tag,num_bytes,reserved,schema_version,serial_number"
+header_format="s[12],ui,s[8],s[4],s[8]"
+data_format="ui,2f,s[4],4f,2ui,3f,ui,s[4],ui,s[252]"
+repeat=3
+pause=0.05
+
+function data_content()
+{
+    local timestep=$1
+    echo "2,1.0,2.0,,1.0,2.0,3.0,4.0,1,$( elapsed_ms $timestep ),1.0,2.0,3.0,0,,0,"
+}
+
+packet_size=$( echo $header_format,$data_format | csv-format size )
+
+function header_content()
+{
+    echo "<syststatus>,$packet_size,,1234,abcdefgh"
+}

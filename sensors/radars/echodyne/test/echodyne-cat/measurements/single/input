@@ -1,0 +1,21 @@
+channel=measurement
+port=29984
+header_fields="start_tag,num_bytes,num_measurements,time_days,time_ms,reserved"
+header_format="s[16],4ui,s[32]"
+data_format="3ui,5f,ui,64ui,2f,s[80]"
+repeat=3
+pause=0.1
+
+function data_content()
+{
+    echo "1,0,0,0,0,0,0,0,1,101,$( yes 0 | head -63 | tr '\n' , | sed 's/,$//' ),0.5,0.5,"
+}
+
+num_measurements=$( data_content | wc -l )
+packet_size=$( echo $header_format,$( yes $data_format | head -$num_measurements | tr '\n' , | sed 's/,$//' ) | csv-format size )
+
+function header_content()
+{
+    local timestep=$1
+    echo "<measurements23>,$packet_size,$num_measurements,0,$( elapsed_ms $timestep ),"
+}

@@ -1,0 +1,14 @@
+channel=track
+port=29982
+header_fields="start_tag,num_bytes,num_tracks,time_days,time_ms,reserved"
+header_format="s[12],4ui,s[12]"
+repeat=3
+pause=0.1
+
+packet_size=$( echo $header_format | csv-format size )
+
+function header_content()
+{
+    local timestep=$1
+    echo "<tracktrack>,$packet_size,0,0,$( elapsed_ms $timestep ),"
+}

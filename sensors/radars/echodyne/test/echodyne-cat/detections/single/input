@@ -1,0 +1,21 @@
+channel=detection
+port=29981
+header_fields="start_tag,num_bytes,num_detections,beam_purpose,azimuth,elevation,detection_time_days,detection_time_ms,reserved"
+header_format="s[12],3ui,2f,2ui,s[4]"
+data_format="2ui,7f,ui,s[4],f,s[16]"
+repeat=3
+pause=0.1
+
+function data_content()
+{
+    echo "0,0,0,0,0,0,0,0,0,1,abcd,0,"
+}
+
+num_detections=$( data_content | wc -l )
+packet_size=$( echo $header_format,$( yes $data_format | head -$num_detections | tr '\n' , | sed 's/,$//' ) | csv-format size )
+
+function header_content()
+{
+    local timestep=$1
+    echo "<detections>,$packet_size,$num_detections,0,0,0,0,$( elapsed_ms $timestep ),"
+}

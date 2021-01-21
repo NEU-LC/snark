@@ -1,0 +1,3 @@
+# echodyne-cat reads from fixed-defined ports for each channel
+# so we can't run tests in parallel
+resources/serial="true"

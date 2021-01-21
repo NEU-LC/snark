@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# default parameter values
+command_port=2023
+
+# read individual test parameters and functions
+eval "$( cat )"
+
+function cleanup()
+{
+    echodyne_cat_pid=$( pgrep -l -g $echodyne_cat_pgid | grep echodyne-cat | cut -f1 -d' ' )
+    # We need to terminate echodyne-cat in order to see the output, since it's captured in a variable.
+    echo "terminating echodyne-cat pid $echodyne_cat_pid" >&2
+    [[ $echodyne_cat_pid ]] && kill $echodyne_cat_pid
+    [[ $echodyne_command_handler_emulator_pid ]] && kill $echodyne_command_handler_emulator_pid
+    sleep 2                     # time for output to complete
+}
+
+trap cleanup EXIT
+
+# we set up a non-standard (not 23) command port so that we don't need sudo
+$( dirname $0 )/../../examples/echodyne-command-handler-emulator $command_port >&2 &
+echodyne_command_handler_emulator_pid=$!
+
+function wait_for_port()
+{
+    local port=$1
+    echo "waiting for port $port" >&2
+    while [[ -z $( io-ls --fields local/port,state | csv-select --fields port,status --format 2l "port;equals=$port" "status;equals=10" ) ]]; do
+        sleep 0.5
+    done
+    echo "port $port is ready" >&2
+}
+
+function echodyne_cat()
+{
+    wait_for_port $command_port
+    wait_for_port $port
+
+    local output=$( echodyne-cat $channel --address localhost --port $command_port \
+                        | csv-from-bin $( echodyne-cat $channel --output-format ) )
+    # This won't execute until echodyne-cat terminates (and loads the output variable)
+    # We capture in a variable to allow us to count the lines when there are no lines,
+    # to compare with expected value via comma-test-run.
+    echo num_records=$( grep -c -v '^$' <<< $output )
+    echo "$output" | name-value-from-csv $( echodyne-cat $channel --output-fields ) \
+                                         --prefix output --line-number --unquote
+}
+
+echodyne_cat &
+echodyne_cat_fn_pid=$!
+echodyne_cat_pgid=$( ps -o pgid= -p $echodyne_cat_fn_pid )
+
+[[ $publish_size ]] || publish_size=$packet_size
+
+function exists() { declare -f $1 > /dev/null; }
+
+function elapsed_ms()
+{
+    local timestep=$1
+    echo "$timestep * $pause * 1000 / 1" | bc
+}
+
+{
+    # don't start publishing until echodyne-cat is ready
+    echo "waiting for echodyne-cat..." >&2
+    while [[ -z $( pgrep -l -g $echodyne_cat_pgid | grep echodyne-cat ) ]]; do sleep 0.5; done
+    echo "echodyne-cat is ready" >&2
+    sleep 1                     # just wait a little longer
+    
+    for i in $( seq 0 $(( repeat-1 )) ); do
+        header_content $i | csv-to-bin $header_format
+        exists data_content && data_content $i | csv-to-bin $data_format
+        sleep $pause
+    done
+} | io-publish tcp:$port --size $publish_size
