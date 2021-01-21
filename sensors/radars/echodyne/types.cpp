@@ -31,7 +31,7 @@
 
 namespace snark { namespace echodyne {
 
-const double deg_to_rad = 1.0d / 360.0d * 2.0d * M_PI;
+const double deg_to_rad = 1.0 / 360.0 * 2.0 * M_PI;
 
 // Assumes system clock has been configured to be time since unix epoch
 boost::posix_time::ptime from_echodyne_time( uint32_t days, uint32_t ms )
