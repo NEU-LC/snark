@@ -116,6 +116,7 @@ meas_data_t::meas_data_t( const meas_header* header, const meas_data& data )
     , probability_other( data.prob_other )
     , probability_uav( data.prob_uav )
 {
+    detection_ids.fill( 0 );
     for( unsigned int i = 0; i < num_detections; i++ ) { detection_ids[i] = data.detIds[i]; }
 }
 
