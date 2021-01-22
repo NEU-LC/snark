@@ -115,6 +115,11 @@ static void usage( bool verbose = false )
         std::cerr << "            | csv-plot --fps 2 --scroll '-;color=red;weight=2;size=40' \\" << std::endl;
         std::cerr << "                       <( csv-random make --seed 1234 --type f --range=0,30 | csv-paste line-number - | csv-repeat --pace --period 0.1 )';color=blue;weight=2;size=50'" << std::endl;
         std::cerr << std::endl;
+        std::cerr << "    multiple series per stream" << std::endl;
+        std::cerr << "        csv-random make --type 3f --range=0,20 \\" << std::endl;
+        std::cerr << "            | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
+        std::cerr << "            | csv-plot '-;fields=block,x,y,series[0]/y,series[1]/y;color=red;weight=2;chart=test'" << std::endl;
+        std::cerr << std::endl;
     }
     else
     {
@@ -125,6 +130,7 @@ static void usage( bool verbose = false )
 }
 
 // todo
+// ! multple series per stream: only master and first series gets shown
 // ! get rid of master series
 // ! optional series configs
 // - application/examples/csv-plot/...: example command lines
@@ -195,8 +201,6 @@ int main( int ac, char** av )
         if( options.exists( "--input-fields" ) ) { std::cout << ( comma::join( comma::csv::names< snark::graphics::plotting::record >( true ), ',' ) + ",series" ) << std::endl; return 0; } // quick and dirty
         if( options.exists( "--input-fields-example" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, snark::graphics::plotting::record( 2 ) ), ',' ) << std::endl; return 0; }
         snark::graphics::plotting::stream::config_t config( options );
-        config.csv.full_xpath = false;
-        if( config.csv.fields.empty() ) { config.csv.fields = "x,y"; }
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--maximize,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
