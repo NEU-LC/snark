@@ -12,7 +12,7 @@ record record::sample( const std::string& fields, unsigned int size )
     plotting::record r;
     const auto& s = comma::split( fields, ',', true );
     if( s.empty() ) { r.x = 0; r.y = 0; }
-    for( const auto& f: s ) // quick and dirty
+    for( const auto& f: s ) // todo: check for time field
     {
         if( f == "x" ) { r.x = 0; }
         else if( f == "y" ) { r.y = 0; }

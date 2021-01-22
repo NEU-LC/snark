@@ -3,6 +3,7 @@
 #pragma once
 
 #include <deque>
+#include <map>
 #include <vector>
 #include <boost/optional.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -53,6 +54,7 @@ class stream // todo: if stream other than xy stream required, create stream bas
         bool update();
         std::pair< QPointF, QPointF > extents() const { return master_series.extents(); }
         unsigned int size() const { return size_; }
+        static plotting::stream* make( const plotting::stream::config_t& config, QChart* chart ); // todo: pass map of charts
 
     protected:
         bool is_shutdown_;

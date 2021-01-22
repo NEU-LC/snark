@@ -4,6 +4,7 @@
 
 #include <string>
 #include <QColor>
+#include <QtCharts/QChart>
 #include <QtCharts/QXYSeries>
 #include <comma/application/command_line_options.h>
 #include "record.h"
@@ -35,6 +36,7 @@ class xy // todo? derive from base class? template on qt series type? time to de
         const std::pair< QPointF, QPointF >& extents() const { return extents_; }
         void clear();
         void append( boost::posix_time::ptime t, const point& p );
+        static xy make( QtCharts::QChart* chart, const series::config& c );
     
     private:
         QtCharts::QXYSeries* series_;

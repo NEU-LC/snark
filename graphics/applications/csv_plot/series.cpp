@@ -1,5 +1,10 @@
 // Copyright (c) 2021 Vsevolod Vlaskine
 
+#include <QtCharts/QXYSeries>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QScatterSeries>
+#include <QtCharts/QSplineSeries>
+#include <comma/base/exception.h>
 #include "series.h"
 
 namespace snark { namespace graphics { namespace plotting { namespace series {
@@ -49,5 +54,15 @@ void xy::append( boost::posix_time::ptime, const point& p )
     if( extents_.first.y() > p.y ) { extents_.first.setY( *p.y ); }
     if( extents_.second.y() < p.y ) { extents_.second.setY( *p.y ); }
 }
+
+QtCharts::QXYSeries* make_series_( const std::string& shape, QtCharts::QChart* chart )
+{
+    if( shape == "line" || shape.empty() ) { return new QtCharts::QLineSeries( chart ); }
+    if( shape == "spline" ) { return new QtCharts::QSplineSeries( chart ); }
+    if( shape == "scatter" ) { return new QtCharts::QScatterSeries( chart ); }
+    COMMA_THROW( comma::exception, "csv-plot: expected stream type as shape, got: \"" << shape << "\"" );
+};
+
+xy xy::make( QtCharts::QChart* chart, const series::config& c ) { return xy( make_series_( c.shape, chart ), c ); }
 
 } } } } // namespace snark { namespace graphics { namespace plotting { namespace series {

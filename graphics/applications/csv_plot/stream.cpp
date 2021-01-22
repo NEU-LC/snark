@@ -3,12 +3,25 @@
 #include <limits>
 #include <type_traits>
 #include <boost/bind.hpp>
-#include <QtCharts/QXYSeries>
+#include <QtCharts/QChart>
+#include <comma/base/exception.h>
 #include "stream.h"
 #include "traits.h"
 
 namespace snark { namespace graphics { namespace plotting {
 
+plotting::stream* stream::make( const plotting::stream::config_t& config, QtCharts::QChart* chart ) // todo! multiple series configs, multiple series target charts, pass chart map
+{
+    plotting::stream* s = new plotting::stream( plotting::series::xy::make( chart, config.series ), config );
+    plotting::record sample = plotting::record::sample( config.csv.fields, config.number_of_series );
+    std::vector< plotting::series::xy > series;
+    for( auto& s: sample.series )
+    {
+        // todo
+    }
+    return s;
+}
+    
 stream::config_t::config_t( const comma::command_line_options& options )
     : csv( options, "x,y" )
     , pass_through( options.exists( "--pass-through,--pass" ) )

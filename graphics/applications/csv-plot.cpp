@@ -126,6 +126,7 @@ static void usage( bool verbose = false )
 
 // todo
 // - application/examples/csv-plot/...: example command lines
+// - gitlab: tutorial
 // - --stream-config
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
