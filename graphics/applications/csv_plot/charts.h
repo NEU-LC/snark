@@ -4,7 +4,6 @@
 
 #include <string>
 #include <QtCharts/QChart>
-#include <QtCore/QTimer>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
 #include <boost/optional.hpp>
@@ -20,23 +19,19 @@ class chart: public QChart
 {
     Q_OBJECT
     public:
-        chart( float timeout, const std::string& title, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
-        virtual ~chart();
+        chart( const std::string& title, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
+        virtual ~chart() {}
         virtual void push_back( plotting::stream* r ) = 0;
-        void start();
-        void shutdown();
-        const boost::ptr_vector< plotting::stream >& streams() const { return streams_; }
+        virtual void update() = 0;
+        const std::vector< plotting::stream* >& streams() const { return streams_; }
         const std::string& title() const { return title_; }
-
-    public slots:
-        void update();
+        
         
     protected:
-        boost::ptr_vector< plotting::stream > streams_;
+        std::vector< plotting::stream* > streams_;
         virtual void update_() {}
         
     private:
-        QTimer timer_;
         std::string title_;
 };
 
@@ -44,11 +39,9 @@ class xy_chart: public chart
 {
     Q_OBJECT
     public:
-        xy_chart( float timeout, const std::string& title, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
-        void push_back( plotting::stream* s );
-        
-    protected:
-        void update_();
+        xy_chart( const std::string& title, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
+        void push_back( plotting::stream* s );        
+        void update();
         
     private:
         boost::optional< std::pair< QPointF, QPointF > > extents_;

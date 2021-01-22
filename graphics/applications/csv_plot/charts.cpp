@@ -6,45 +6,17 @@
 
 namespace snark { namespace graphics { namespace plotting {
 
-chart::chart( float timeout, const std::string& title, QGraphicsItem *parent, Qt::WindowFlags window_flags )
+chart::chart( const std::string& title, QGraphicsItem *parent, Qt::WindowFlags window_flags )
     : QChart( QChart::ChartTypeCartesian, parent, window_flags )
     , title_( title )
 {
     setTitle( &title[0] );
     legend()->hide();
     setAnimationOptions( QChart::SeriesAnimations ); // chart->setAnimationOptions( QChart::AllAnimations ); // todo? make configurable?
-    QObject::connect( &timer_, &QTimer::timeout, this, &chart::update );
-    timer_.setInterval( ( unsigned int )( timeout * 1000 ) );
 }
 
-chart::~chart() { shutdown(); }
-
-void chart::start()
-{
-    for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].start(); }
-    timer_.start();
-}
-
-void chart::shutdown()
-{
-    timer_.stop();
-    for( unsigned int i = 0; i < streams_.size(); ++i ) { streams_[i].shutdown(); }
-}
-
-void chart::update()
-{
-    bool all_shutdown = true;
-    for( unsigned int i = 0; i < streams_.size(); ++i )
-    {
-        streams_[i].update();
-        if( !streams_[i].is_shutdown() ) { all_shutdown = false; }
-    }
-    update_();
-    if( all_shutdown ) { timer_.stop(); }
-}
-
-xy_chart::xy_chart( float timeout, const std::string& title, QGraphicsItem *parent, Qt::WindowFlags window_flags )
-    : chart( timeout, title, parent, window_flags )
+xy_chart::xy_chart( const std::string& title, QGraphicsItem *parent, Qt::WindowFlags window_flags )
+    : chart( title, parent, window_flags )
     , x_axis_( new QValueAxis )
     , y_axis_( new QValueAxis )
     , scroll_( false )
@@ -65,7 +37,7 @@ void xy_chart::push_back( plotting::stream* s )
     if( s->master_series.config().scroll ) { scroll_ = true; } // todo: quick and dirty; scroll should be chart property
 }
 
-void xy_chart::update_()
+void xy_chart::update()
 {
     // todo: handle range of zero length
     // todo: add configurable margins
@@ -74,12 +46,12 @@ void xy_chart::update_()
     extents_.reset();
     for( unsigned int i = 0; i < streams_.size(); ++i )
     {
-        if( streams_[i].size() == 0 ) { continue; }
+        if( streams_[i]->size() == 0 ) { continue; }
         if( !extents_ ) { extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) ); }
-        if( extents_->first.x() > streams_[i].extents().first.x() ) { extents_->first.setX( streams_[i].extents().first.x() ); }
-        if( extents_->second.x() < streams_[i].extents().second.x() ) { extents_->second.setX( streams_[i].extents().second.x() ); }
-        if( extents_->first.y() > streams_[i].extents().first.y() ) { extents_->first.setY( streams_[i].extents().first.y() ); }
-        if( extents_->second.y() < streams_[i].extents().second.y() ) { extents_->second.setY( streams_[i].extents().second.y() ); }
+        if( extents_->first.x() > streams_[i]->extents().first.x() ) { extents_->first.setX( streams_[i]->extents().first.x() ); }
+        if( extents_->second.x() < streams_[i]->extents().second.x() ) { extents_->second.setX( streams_[i]->extents().second.x() ); }
+        if( extents_->first.y() > streams_[i]->extents().first.y() ) { extents_->first.setY( streams_[i]->extents().first.y() ); }
+        if( extents_->second.y() < streams_[i]->extents().second.y() ) { extents_->second.setY( streams_[i]->extents().second.y() ); }
     }
     if( !extents_ ) { return; }
     if( scroll_ ) // todo! quick and dirty; improve

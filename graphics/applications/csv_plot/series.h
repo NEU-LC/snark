@@ -26,7 +26,6 @@ struct config
     config( const comma::command_line_options& options );
 };
 
-// todo: set pen etc on construction
 class xy // todo? derive from base class? template on qt series type? time to decide: when introducing time series
 {
     public:

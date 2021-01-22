@@ -6,24 +6,16 @@
 
 #include <iostream>
 #include <map>
-#include <set>
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
-#include <QGridLayout>
 #include <QtWidgets/QApplication>
-#include <QtWidgets/QMainWindow>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QScatterSeries>
-#include <QtCharts/QSplineSeries>
-#include <QtCharts/QChartView>
 #include <comma/application/command_line_options.h>
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
 #include <comma/string/string.h>
-#include <comma/name_value/map.h>
 #include <comma/name_value/parser.h>
 #include <comma/name_value/serialize.h>
-#include "csv_plot/charts.h"
+#include "csv_plot/main_window.h"
 #include "csv_plot/traits.h"
 
 static void usage( bool verbose = false )
@@ -45,6 +37,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
     std::cerr << "    --input-fields; print possible input fields to stdout and exit" << std::endl;
     std::cerr << "    --input-fields-example; print input fields example to stdout and exit" << std::endl;
+    std::cerr << "    --full-screen: todo: initially, creat full screen windows" << std::endl;
     std::cerr << "    --layout=<layout>; default=grid; layouts for multiple charts" << std::endl;
     std::cerr << "        <layout>" << std::endl;
     std::cerr << "            grid[;<shape>]: charts are arranged in single window as grid" << std::endl;
@@ -69,9 +62,10 @@ static void usage( bool verbose = false )
     std::cerr << "    --shape=<what>: line (default)" << std::endl;
     std::cerr << "                    todo: more shapes" << std::endl;
     std::cerr << "    --size,-s,--tail=<n>: plot last <n> records of stream; default 10000" << std::endl;
-    std::cerr << "        use --style=dots, otherwise it's buggy; todo: fix" << std::endl;
-    std::cerr << "    --style=<style>: todo" << std::endl;
+    //std::cerr << "        use --style=dots, otherwise it's buggy; todo: fix" << std::endl;
+    //std::cerr << "    --style=<style>: todo" << std::endl;
     std::cerr << "    --weight=<weight>: point or line weight" << std::endl;
+    std::cerr << "    --window-size=<x>,<y>; default: 800,600" << std::endl;
     if( verbose ) { std::cerr << std::endl << comma::csv::options::usage() << std::endl; }
     std::cerr << std::endl;
     if( verbose )
@@ -182,111 +176,42 @@ static void usage( bool verbose = false )
 //   ? expose on ppa
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
 // ? qt, qtcharts: static layout configuration files?
-// ? move main window to separate file
 
 QT_USE_NAMESPACE
-QT_CHARTS_USE_NAMESPACE
-
-static bool verbose;
-typedef std::map< std::string, snark::graphics::plotting::chart* > charts_t;
-
-static snark::graphics::plotting::stream* make_stream( snark::graphics::plotting::stream::config_t config, QChart* chart )
-{
-    static std::string pass_through_stream_name;
-    snark::graphics::plotting::stream* s = nullptr;
-    if( config.series.shape == "line" || config.series.shape.empty() ) { s = new snark::graphics::plotting::stream( snark::graphics::plotting::series::xy( new QLineSeries( chart ), config.series ), config ); }
-    else if( config.series.shape == "spline" ) { s = new snark::graphics::plotting::stream( snark::graphics::plotting::series::xy( new QSplineSeries( chart ), config.series ), config ); }
-    else if( config.series.shape == "scatter" ) { s = new snark::graphics::plotting::stream( snark::graphics::plotting::series::xy( new QScatterSeries( chart ), config.series ), config ); }
-    else { std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.series.shape << "\"" << std::endl; exit( 1 ); }
-    if( s->config.pass_through )
-    {
-        if( !pass_through_stream_name.empty() ) { std::cerr << "csv-plot: expected pass-through only for one stream; got at least two: '" << pass_through_stream_name << "' and then '" << s->config.csv.filename << "'" << std::endl; exit( 1 ); }
-        if( verbose ) { std::cerr << "csv-plot: stream '" << s->config.csv.filename << "' will be passed through" << std::endl; }
-        pass_through_stream_name = s->config.csv.filename;
-    }
-    return s;
-}
-
-static QWidget* make_widget( const std::string& l, charts_t& charts )
-{
-    comma::name_value::map m( l, "shape" );
-    std::string shape = m.value< std::string >( "shape" );
-    if( shape == "grid" )
-    {
-        auto cols = m.optional< unsigned int >( "cols" );
-        auto rows = m.optional< unsigned int >( "rows" );
-        if( !cols && !rows ) { cols = 1; }
-        if( !cols ) { cols = charts.size() / *rows + 1; }
-        if( !rows ) { rows = charts.size() / *cols + 1; }
-        if( *cols * *rows < charts.size() ) { COMMA_THROW( comma::exception, "csv-plot: expected grid of size at least " << charts.size() << "; got: grid " << *cols << "x" << *rows ); }
-        QGridLayout* grid = new QGridLayout;
-        unsigned int row = 0;
-        unsigned int col = 0;
-        for( auto c: charts )
-        {
-            QChartView* v = new QChartView( c.second );
-            v->setRenderHint( QPainter::Antialiasing );
-            v->setContentsMargins( 0, 0, 0, 0 );
-            grid->addWidget( v, row, col, 1, 1 );
-            if( ++col == cols ) { col = 0; ++row; }
-        }
-        auto w = new QWidget;
-        w->setLayout( grid );
-        w->setContentsMargins( 0, 0, 0, 0 );
-        return w;
-    }
-    else if( shape == "tabs" )
-    {
-        auto w = new QTabWidget;
-        for( auto c: charts )
-        {
-            QChartView* v = new QChartView( c.second );
-            v->setRenderHint( QPainter::Antialiasing );
-            v->setContentsMargins( 0, 0, 0, 0 );
-            w->addTab( v, &c.second->title()[0] );
-        }
-        return w;
-    }
-    else if( shape == "stacked" ) { COMMA_THROW( comma::exception, "csv-plot: --layout=stacked: todo" ); }
-    else if( shape == "windows" ) { COMMA_THROW( comma::exception, "csv-plot: --layout=windows: todo" ); }
-    COMMA_THROW( comma::exception, "csv-plot: expected layout; got: '" << shape << "'" );
-}
 
 int main( int ac, char** av )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
-        verbose = options.exists( "--verbose,-v" );
+        bool verbose = options.exists( "--verbose,-v" );
         if( options.exists( "--input-fields" ) ) { std::cout << ( comma::join( comma::csv::names< snark::graphics::plotting::record >( true ), ',' ) + ",series" ) << std::endl; return 0; } // quick and dirty
         if( options.exists( "--input-fields-example" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, snark::graphics::plotting::record( 2 ) ), ',' ) << std::endl; return 0; }
         snark::graphics::plotting::stream::config_t config( options );
         config.csv.full_xpath = false;
         if( config.csv.fields.empty() ) { config.csv.fields = "x,y"; }
-        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         std::vector< snark::graphics::plotting::stream::config_t > configs;
         if( stdin_index ) { if( options.exists( "--no-stdin" ) ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
         else { config.csv.filename = "-"; configs.push_back( config ); config.pass_through = false; }
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { configs.push_back( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ) ); config.pass_through = false; }
-        if( verbose ) { std::cerr << "csv-plot: got " << configs.size() << " input stream(s)" << std::endl; }
+        if( verbose ) { std::cerr << "csv-plot: got " << configs.size() << " input stream config(s)" << std::endl; }
         float timeout = options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ); // todo? update streams and charts at variable rates?
+        std::string layout = options.value< std::string >( "--layout", "grid" );
+        auto window_size = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--window-size", "800,600" ) );
         QApplication a( ac, av );
-        std::map< std::string, std::string > titles;
-        for( const auto& c: configs ) { if( titles.find( c.series.chart ) == titles.end() || titles[ c.series.chart ].empty() ) { titles[ c.series.chart ] = c.series.title; } }
-        for( auto& t: titles ) { t.second = t.second.empty() ? t.first : t.second; } // quick and dirty for now
-        std::map< std::string, snark::graphics::plotting::chart* > charts;
-        for( auto t: titles ) { charts[ t.first ] = new snark::graphics::plotting::xy_chart( timeout, t.second ); }
-        if( verbose ) { std::cerr << "csv-plot: creates " << charts.size() << " chart(s)" << std::endl; }
-        for( const auto& c: configs ) { charts[ c.series.chart ]->push_back( make_stream( c, charts[ c.series.chart ] ) ); } // todo: multiple series from a stream could go to different charts
-        if( verbose ) { std::cerr << "csv-plot: created " << configs.size() << " input stream(s)" << std::endl; }
-        QMainWindow window;
-        window.setCentralWidget( make_widget( options.value< std::string >( "--layout", "grid" ), charts ) );
-        window.resize( 800, 600 ); // todo: make configurable
-        for( auto c: charts ) { c.second->start(); }
+        snark::graphics::plotting::main_window main_window( configs, window_size, layout, timeout );
+        if( verbose )
+        {
+            std::cerr << "csv-plot: created " << main_window.charts().size() << " chart(s)" << std::endl;
+            std::cerr << "csv-plot: created " << main_window.streams().size() << " input stream(s)" << std::endl;
+            if( !main_window.pass_through_stream_name().empty() ) { std::cerr << "csv-plot: stream '" << main_window.pass_through_stream_name() << "' will be passed through" << std::endl; }
+        }
+        main_window.start();
         std::cerr << "csv-plot: started" << std::endl;
-        window.show();
+        main_window.show();
         return a.exec();
     }
     catch( std::exception& ex ) { std::cerr << "csv-plot: " << ex.what() << std::endl; }
