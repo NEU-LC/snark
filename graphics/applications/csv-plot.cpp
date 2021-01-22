@@ -128,7 +128,6 @@ static void usage( bool verbose = false )
 }
 
 // todo
-// ! multple series per stream: only master and first series gets shown
 // ! get rid of master series
 // ! optional series configs
 // - application/examples/csv-plot/...: example command lines
