@@ -196,8 +196,20 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         bool verbose = options.exists( "--verbose,-v" );
-        if( options.exists( "--input-fields" ) ) { std::cout << ( comma::join( comma::csv::names< snark::graphics::plotting::record >( true ), ',' ) + ",series" ) << std::endl; return 0; } // quick and dirty
-        if( options.exists( "--input-fields-example" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, snark::graphics::plotting::record( 2 ) ), ',' ) << std::endl; return 0; }
+        if( options.exists( "--input-fields" ) ) { std::cout << "t,x,y,z,series" << std::endl; return 0; } // quick and dirty
+        if( options.exists( "--input-fields-example" ) )
+        { 
+            auto r = snark::graphics::plotting::record( 2 );
+            r.x = 0;
+            r.y = 0;
+            r.series[0].x = 0;
+            r.series[0].y = 0;
+            r.series[1].x = 0;
+            r.series[1].y = 0;
+            std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, r ), ',' ) << std::endl;
+            return 0;
+        }
+        
         snark::graphics::plotting::stream::config_t config( options );
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--maximize,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
