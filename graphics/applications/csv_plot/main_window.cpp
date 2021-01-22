@@ -73,7 +73,7 @@ main_window::main_window( const std::vector< plotting::stream::config_t >& confi
             pass_through_stream_name_ = s->config.csv.filename;
         }
         streams_.push_back( s );
-        charts_[ c.series.chart ]->push_back( s );
+        charts_[ c.series.chart ]->push_back( &s->master_series ); // quick and dirty
     } 
     setCentralWidget( make_widget_( layout, charts_ ) );
     resize( size.first, size.second );
@@ -104,7 +104,7 @@ void main_window::update()
         if( !s.is_shutdown() ) { all_shutdown = false; }
     }
     for( auto& c: charts_ ) { c.second->update(); }
-    if( all_shutdown ) { std::cerr << "--> d" << std::endl; timer_.stop(); }
+    if( all_shutdown ) { timer_.stop(); }
 }
 
 } } } // namespace snark { namespace graphics { namespace plotting {

@@ -33,7 +33,7 @@ config::config( const comma::command_line_options& options )
 {
 }
 
-xy::xy( QtCharts::QXYSeries* s, const series::config& c ): series_( s ), config_( c )
+xy::xy( QtCharts::QXYSeries* s, const series::config& c ): series_( s ), config_( c ), updated_( false )
 {
     QPen pen( config_.color );
     pen.setWidth( config_.weight );
@@ -53,6 +53,7 @@ void xy::append( boost::posix_time::ptime, const point& p )
     if( extents_.second.x() < p.x ) { extents_.second.setX( *p.x ); }
     if( extents_.first.y() > p.y ) { extents_.first.setY( *p.y ); }
     if( extents_.second.y() < p.y ) { extents_.second.setY( *p.y ); }
+    updated_ = true;
 }
 
 QtCharts::QXYSeries* make_series_( const std::string& shape, QtCharts::QChart* chart )

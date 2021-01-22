@@ -28,30 +28,26 @@ xy_chart::xy_chart( const std::string& title, QGraphicsItem *parent, Qt::WindowF
     y_axis_->setRange( 0, 10 ); // todo!
 }
 
-void xy_chart::push_back( plotting::stream* s )
+void xy_chart::push_back( plotting::series::xy* s )
 {
-    streams_.push_back( s );
-    addSeries( s->master_series() );
-    s->master_series()->attachAxis( x_axis_ );
-    s->master_series()->attachAxis( y_axis_ );
-    if( s->master_series.config().scroll ) { scroll_ = true; } // todo: quick and dirty; scroll should be chart property
+    series_.push_back( s );
+    addSeries( ( *s )() );
+    ( *s )()->attachAxis( x_axis_ );
+    ( *s )()->attachAxis( y_axis_ );
+    if( s->config().scroll ) { scroll_ = true; } // todo: quick and dirty; scroll should be chart property
 }
 
 void xy_chart::update()
 {
-    // todo: handle range of zero length
-    // todo: add configurable margins
-    // todo: handle various range policies
-    // todo: fixed range
     extents_.reset();
-    for( unsigned int i = 0; i < streams_.size(); ++i )
+    for( auto s: series_ )
     {
-        if( streams_[i]->size() == 0 ) { continue; }
+        if( !s->updated() ) { continue; }
         if( !extents_ ) { extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) ); }
-        if( extents_->first.x() > streams_[i]->extents().first.x() ) { extents_->first.setX( streams_[i]->extents().first.x() ); }
-        if( extents_->second.x() < streams_[i]->extents().second.x() ) { extents_->second.setX( streams_[i]->extents().second.x() ); }
-        if( extents_->first.y() > streams_[i]->extents().first.y() ) { extents_->first.setY( streams_[i]->extents().first.y() ); }
-        if( extents_->second.y() < streams_[i]->extents().second.y() ) { extents_->second.setY( streams_[i]->extents().second.y() ); }
+        if( extents_->first.x() > s->extents().first.x() ) { extents_->first.setX( s->extents().first.x() ); }
+        if( extents_->second.x() < s->extents().second.x() ) { extents_->second.setX( s->extents().second.x() ); }
+        if( extents_->first.y() > s->extents().first.y() ) { extents_->first.setY( s->extents().first.y() ); }
+        if( extents_->second.y() < s->extents().second.y() ) { extents_->second.setY( s->extents().second.y() ); }
     }
     if( !extents_ ) { return; }
     if( scroll_ ) // todo! quick and dirty; improve

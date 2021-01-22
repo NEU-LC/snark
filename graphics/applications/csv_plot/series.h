@@ -37,11 +37,13 @@ class xy // todo? derive from base class? template on qt series type? time to de
         void clear();
         void append( boost::posix_time::ptime t, const point& p );
         static xy make( QtCharts::QChart* chart, const series::config& c );
+        bool updated( bool reset = true ) { if( reset ) { updated_ = false; return updated_; } }
     
     private:
         QtCharts::QXYSeries* series_;
         series::config config_;
         std::pair< QPointF, QPointF > extents_;
+        bool updated_;
 };
     
 } } } } // namespace snark { namespace graphics { namespace plotting { namespace series {

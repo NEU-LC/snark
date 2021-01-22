@@ -148,6 +148,11 @@ static void usage( bool verbose = false )
 //   - properties
 //     - title
 //     ? legend (especially if multiple series on the same chart
+//   - axes
+//     - handle range of zero length
+//     - add configurable margins
+//     - handle various range policies
+//     - fixed range
 //   - --chart-config-fields
 // - axis properties
 //   - extents policies
