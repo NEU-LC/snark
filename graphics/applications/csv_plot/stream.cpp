@@ -93,17 +93,20 @@ bool stream::update()
     bool changed = buffers_.changed();
     static_assert( sizeof( qreal ) == 8 );
     size_ = buffers_.records.size();
-    auto append = [&]( plotting::series::xy& s, unsigned int i ) { s.append( buffers_.records.values()[i].t, buffers_.records.values()[i] ); }; // todo: support 3d data, time series, polar data
-    auto update_series = [&]( plotting::series::xy& s )
+    auto append = [&]( plotting::series::xy& s, unsigned int i, const boost::optional< unsigned int >& j ) // todo: support 3d data, time series, polar data
+    {
+        s.append( buffers_.records.values()[i].t, j ? buffers_.records.values()[i].series[*j] : buffers_.records.values()[i] );
+    };
+    auto update_series = [&]( plotting::series::xy& s, const boost::optional< unsigned int >& j = boost::none ) // todo! simple thing, but so convoluted; simplify or just get rid of master series
     {
         s.clear();
-        for( unsigned int i = buffers_.records.begin(); i < buffers_.records.size(); ++i ) { append( s, i ); }
-        for( unsigned int i = 0; i < buffers_.records.begin(); ++i ) { append( s, i ); }
+        for( unsigned int i = buffers_.records.begin(); i < buffers_.records.size(); ++i ) { append( s, i, j ); }
+        for( unsigned int i = 0; i < buffers_.records.begin(); ++i ) { append( s, i, j ); }
     };
     if( buffers_.changed() )
     {
         update_series( master_series );
-        for( auto& s: series ) { update_series( s ); }
+        for( unsigned int j = 0; j < series.size(); ++j ) { update_series( series[j], j ); }
     }
     buffers_.mark_seen();
     return changed;

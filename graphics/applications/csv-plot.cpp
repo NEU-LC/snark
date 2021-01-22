@@ -125,6 +125,8 @@ static void usage( bool verbose = false )
 }
 
 // todo
+// ! get rid of master series
+// ! optional series configs
 // - application/examples/csv-plot/...: example command lines
 // - gitlab: tutorial
 // - --stream-config
