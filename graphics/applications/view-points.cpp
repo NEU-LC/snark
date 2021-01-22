@@ -231,7 +231,7 @@ static void usage( bool )
         "\n"
         "\nmore options"
         "\n    --background-colour,--background-color=<colour> : default: black"
-        "\n    --show-maximized,--maximize; start view-points in full-screen"
+        "\n    --full-screen,--maximize; start view-points in full-screen"
         "\n    --output-camera-config,--output-camera: output camera config to stdout as stream of json structures"
         "\n    --scene-center,--center=<value>: fixed scene center as \"x,y,z\""
         "\n    --scene-radius,--radius=<value>: fixed scene radius in metres, since sometimes it is hard to imply"
@@ -681,7 +681,7 @@ int main( int argc, char** argv )
         if( options.exists( "--bash-completion" ) ) bash_completion( argc, argv );
         if( options.exists( "--version" ) ) { version(); exit( 0 ); }
         comma::csv::options csv_options( argc, argv, "", false );
-        std::vector< std::string > properties = options.unnamed( "--show-maximized,--maximize,--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill", "-[^;].*" );
+        std::vector< std::string > properties = options.unnamed( "--full-screen,--maximize,--z-is-up,--orthographic,--flush,--no-stdin,--output-camera-config,--output-camera,--pass-through,--pass,--exit-on-end-of-input,--fill", "-[^;].*" );
         snark::graphics::view::color_t  background_color( QColor( QString( options.value< std::string >( "--background-colour,--background-color", "#000000" ).c_str() ) ) );
         boost::optional< comma::csv::options > camera_csv;
         boost::optional< Eigen::Vector3d > camera_position;
@@ -784,7 +784,7 @@ int main( int argc, char** argv )
             if( options.exists( "--output-camera-config,--output-camera" ) ) { COMMA_THROW( comma::exception, "cannot use --output-camera-config whilst \"pass-through\" option is in use" ); }
         }
         snark::graphics::view::MainWindow main_window( comma::join( argv, argc, ' ' ), controller );
-        options.exists( "--show-maximized,--maximize" ) ? main_window.showMaximized() : main_window.show();
+        options.exists( "--full-screen,--maximize" ) ? main_window.showMaximized() : main_window.show();
         QApplication::exec();
         return 0;       // We never actually reach this line because we raise SIGINT when closing
 

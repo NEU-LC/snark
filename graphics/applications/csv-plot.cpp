@@ -37,7 +37,7 @@ static void usage( bool verbose = false )
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
     std::cerr << "    --input-fields; print possible input fields to stdout and exit" << std::endl;
     std::cerr << "    --input-fields-example; print input fields example to stdout and exit" << std::endl;
-    std::cerr << "    --full-screen: todo: initially, creat full screen windows" << std::endl;
+    std::cerr << "    --full-screen,--maximize: todo: initially, creat full screen windows" << std::endl;
     std::cerr << "    --layout=<layout>; default=grid; layouts for multiple charts" << std::endl;
     std::cerr << "        <layout>" << std::endl;
     std::cerr << "            grid[;<shape>]: charts are arranged in single window as grid" << std::endl;
@@ -126,8 +126,6 @@ static void usage( bool verbose = false )
 
 // todo
 // - application/examples/csv-plot/...: example command lines
-// - --window-size (currently hardcoded)
-// ? --full-screen (or --window-size=full-screen?)
 // - --stream-config
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
@@ -190,7 +188,7 @@ int main( int ac, char** av )
         snark::graphics::plotting::stream::config_t config( options );
         config.csv.full_xpath = false;
         if( config.csv.fields.empty() ) { config.csv.fields = "x,y"; }
-        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
+        const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--maximize,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         std::vector< snark::graphics::plotting::stream::config_t > configs;
@@ -211,7 +209,7 @@ int main( int ac, char** av )
         }
         main_window.start();
         std::cerr << "csv-plot: started" << std::endl;
-        main_window.show();
+        options.exists( "--full-screen,--maximize" ) ? main_window.showMaximized() : main_window.show();
         return a.exec();
     }
     catch( std::exception& ex ) { std::cerr << "csv-plot: " << ex.what() << std::endl; }
