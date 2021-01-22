@@ -40,18 +40,18 @@ class stream // todo: if stream other than xy stream required, create stream bas
             config_t( const comma::command_line_options& options );
         };
         
-        QtCharts::QXYSeries* master_series; // todo: array of series supporting multiple feeds from the same stream, optionally targeting multiple charts
+        plotting::series::xy master_series; // todo: array of series supporting multiple feeds from the same stream, optionally targeting multiple charts
         const config_t config;
         typedef std::deque< graphics::plotting::record > records_t;
         comma::synchronized< records_t > records; // quick and dirty
 
-        stream( QXYSeries* m, const config_t& config );
+        stream( const plotting::series::xy& m, const config_t& config );
         void start();
         bool is_shutdown() const;
         bool is_stdin() const;
         void shutdown();
         bool update();
-        std::pair< QPointF, QPointF > extents() const { return extents_; }
+        std::pair< QPointF, QPointF > extents() const { return master_series.extents(); }
         unsigned int size() const { return size_; }
 
     protected:
@@ -74,7 +74,6 @@ class stream // todo: if stream other than xy stream required, create stream bas
         };
         buffers_t_ buffers_;
         unsigned int size_;
-        std::pair< QPointF, QPointF > extents_; // todo: should be a pair of min record and max record
 };
     
 } } } // namespace snark { namespace graphics { namespace plotting {

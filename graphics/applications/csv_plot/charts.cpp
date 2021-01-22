@@ -59,10 +59,10 @@ xy_chart::xy_chart( float timeout, const std::string& title, QGraphicsItem *pare
 void xy_chart::push_back( plotting::stream* s )
 {
     streams_.push_back( s );
-    addSeries( s->master_series );
-    s->master_series->attachAxis( x_axis_ );
-    s->master_series->attachAxis( y_axis_ );
-    if( s->config.series.scroll ) { scroll_ = true; } // quick and dirty
+    addSeries( s->master_series() );
+    s->master_series()->attachAxis( x_axis_ );
+    s->master_series()->attachAxis( y_axis_ );
+    if( s->master_series.config().scroll ) { scroll_ = true; } // todo: quick and dirty; scroll should be chart property
 }
 
 void xy_chart::update_()

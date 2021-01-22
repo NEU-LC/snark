@@ -194,9 +194,9 @@ static snark::graphics::plotting::stream* make_stream( snark::graphics::plotting
 {
     static std::string pass_through_stream_name;
     snark::graphics::plotting::stream* s = nullptr;
-    if( config.series.shape == "line" || config.series.shape.empty() ) { s = new snark::graphics::plotting::stream( new QLineSeries( chart ), config ); }
-    else if( config.series.shape == "spline" ) { s = new snark::graphics::plotting::stream( new QSplineSeries( chart ), config ); }
-    else if( config.series.shape == "scatter" ) { s = new snark::graphics::plotting::stream( new QScatterSeries( chart ), config ); }
+    if( config.series.shape == "line" || config.series.shape.empty() ) { s = new snark::graphics::plotting::stream( snark::graphics::plotting::series::xy( new QLineSeries( chart ), config.series ), config ); }
+    else if( config.series.shape == "spline" ) { s = new snark::graphics::plotting::stream( snark::graphics::plotting::series::xy( new QSplineSeries( chart ), config.series ), config ); }
+    else if( config.series.shape == "scatter" ) { s = new snark::graphics::plotting::stream( snark::graphics::plotting::series::xy( new QScatterSeries( chart ), config.series ), config ); }
     else { std::cerr << "csv-plot: expected stream type as shape, got: \"" << config.series.shape << "\"" << std::endl; exit( 1 ); }
     if( s->config.pass_through )
     {
@@ -275,7 +275,7 @@ int main( int ac, char** av )
         QApplication a( ac, av );
         std::map< std::string, std::string > titles;
         for( const auto& c: configs ) { if( titles.find( c.series.chart ) == titles.end() || titles[ c.series.chart ].empty() ) { titles[ c.series.chart ] = c.series.title; } }
-        for( auto& t: titles ) { t.second = t.second.empty() ? t.first.empty() ? "unnamed" : t.first : t.second; } // quick and dirty for now
+        for( auto& t: titles ) { t.second = t.second.empty() ? t.first : t.second; } // quick and dirty for now
         std::map< std::string, snark::graphics::plotting::chart* > charts;
         for( auto t: titles ) { charts[ t.first ] = new snark::graphics::plotting::xy_chart( timeout, t.second ); }
         if( verbose ) { std::cerr << "csv-plot: creates " << charts.size() << " chart(s)" << std::endl; }

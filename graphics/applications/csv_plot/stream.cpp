@@ -18,7 +18,7 @@ stream::config_t::config_t( const comma::command_line_options& options )
 {
 }
 
-stream::stream( QXYSeries* m, const config_t& config )
+stream::stream( const plotting::series::xy& m, const config_t& config )
     : master_series( m )
     , config( config )
     , is_shutdown_( false )
@@ -29,12 +29,8 @@ stream::stream( QXYSeries* m, const config_t& config )
     , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
     , buffers_( config.size )
     , size_( 0 )
-    , extents_( QPointF( 0, 0 ), QPointF( 0, 0 ) )
 {
     if( config.pass_through ) { passed_.reset( new comma::csv::passed< graphics::plotting::record >( istream_, std::cout, config.csv.flush ) ); }
-    QPen pen( config.series.color ); // todo: move to series
-    pen.setWidth( config.series.weight ); // todo: move to series
-    master_series->setPen( pen ); // todo: move to series
 }
 
 stream::buffers_t_::buffers_t_( comma::uint32 size ) : records( size ) {}
@@ -86,19 +82,10 @@ bool stream::update()
     bool changed = buffers_.changed();
     static_assert( sizeof( qreal ) == 8 );
     size_ = buffers_.records.size();
-    extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) );
-    auto append = [&]( unsigned int i )
-    {
-        const auto& v = buffers_.records.values()[i];
-        master_series->append( QPoint( *v.x, *v.y ) ); // todo: support 3d data, time series, polar data (or template stream upon those)
-        if( extents_.first.x() > v.x ) { extents_.first.setX( *v.x ); }
-        if( extents_.second.x() < v.x ) { extents_.second.setX( *v.x ); }
-        if( extents_.first.y() > v.y ) { extents_.first.setY( *v.y ); }
-        if( extents_.second.y() < v.y ) { extents_.second.setY( *v.y ); }
-    };
+    auto append = [&]( unsigned int i ) { master_series.append( buffers_.records.values()[i].t, buffers_.records.values()[i] ); }; // todo: support 3d data, time series, polar data (or template stream upon those)
     if( buffers_.changed() )
     {
-        master_series->clear();
+        master_series.clear();
         for( unsigned int i = buffers_.records.begin(); i < buffers_.records.size(); ++i ) { append( i ); }
         for( unsigned int i = 0; i < buffers_.records.begin(); ++i ) { append( i ); }
     }

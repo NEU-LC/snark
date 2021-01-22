@@ -6,6 +6,7 @@
 #include <QColor>
 #include <QtCharts/QXYSeries>
 #include <comma/application/command_line_options.h>
+#include "record.h"
 
 namespace snark { namespace graphics { namespace plotting { namespace series {
 
@@ -15,7 +16,7 @@ struct config
     std::string color_name;
     QColor color;
     std::string name;
-    bool scroll; // todo! a better name!
+    bool scroll; // todo! a better name! move to chart config
     std::string shape;
     std::string style;
     std::string title;
@@ -29,10 +30,12 @@ struct config
 class xy // todo? derive from base class? template on qt series type? time to decide: when introducing time series
 {
     public:
-        xy( QtCharts::QXYSeries* s = nullptr, const series::config& c = series::config() ): series_( s ), config_( c ) {}
+        xy( QtCharts::QXYSeries* s = nullptr, const series::config& c = series::config() );
         const series::config& config() const { return config_; }
         QtCharts::QXYSeries* operator()() { return series_; }
         const std::pair< QPointF, QPointF >& extents() const { return extents_; }
+        void clear();
+        void append( boost::posix_time::ptime t, const point& p );
     
     private:
         QtCharts::QXYSeries* series_;
