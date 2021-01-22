@@ -62,8 +62,6 @@ static void usage( bool verbose = false )
     std::cerr << "    --shape=<what>: line (default)" << std::endl;
     std::cerr << "                    todo: more shapes" << std::endl;
     std::cerr << "    --size,-s,--tail=<n>: plot last <n> records of stream; default 10000" << std::endl;
-    //std::cerr << "        use --style=dots, otherwise it's buggy; todo: fix" << std::endl;
-    //std::cerr << "    --style=<style>: todo" << std::endl;
     std::cerr << "    --weight=<weight>: point or line weight" << std::endl;
     std::cerr << "    --window-size=<x>,<y>; default: 800,600" << std::endl;
     if( verbose ) { std::cerr << std::endl << comma::csv::options::usage() << std::endl; }
@@ -187,6 +185,7 @@ static void usage( bool verbose = false )
 //   ? copy-paste block_buffer
 //   ? package
 //   ? expose on ppa
+// ! qtcharts licence
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
 // ? qt, qtcharts: static layout configuration files?
 
