@@ -42,7 +42,7 @@ void xy_chart::update()
     extents_.reset();
     for( auto s: series_ )
     {
-        //if( !s->updated() ) { continue; }
+        if( !s->updated() ) { continue; }
         if( !extents_ ) { extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) ); }
         if( extents_->first.x() > s->extents().first.x() ) { extents_->first.setX( s->extents().first.x() ); }
         if( extents_->second.x() < s->extents().second.x() ) { extents_->second.setX( s->extents().second.x() ); }

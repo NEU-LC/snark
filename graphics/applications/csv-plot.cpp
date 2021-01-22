@@ -128,6 +128,7 @@ static void usage( bool verbose = false )
 // - application/examples/csv-plot/...: example command lines
 // - gitlab: tutorial
 // - --stream-config
+// ? extents -> separate generic class
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
 //   - label: optional field
@@ -140,7 +141,6 @@ static void usage( bool verbose = false )
 //   - png
 //   ? save all charts
 // - chart
-//   ? move timer out of chart
 //   - types
 //     - 2.5d charts
 //     ? polar charts

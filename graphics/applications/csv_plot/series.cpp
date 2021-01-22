@@ -44,6 +44,7 @@ void xy::clear()
 {
     series_->clear();
     extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) );
+    updated_ = false;
 }
 
 void xy::append( boost::posix_time::ptime, const point& p )
@@ -63,6 +64,13 @@ QtCharts::QXYSeries* make_series_( const std::string& shape, QtCharts::QChart* c
     if( shape == "scatter" ) { return new QtCharts::QScatterSeries( chart ); }
     COMMA_THROW( comma::exception, "csv-plot: expected stream type as shape, got: \"" << shape << "\"" );
 };
+
+bool xy::updated( bool reset )
+{ 
+    bool r = updated_;
+    updated_ = updated_ && !reset;
+    return r;
+}
 
 xy xy::make( QtCharts::QChart* chart, const series::config& c ) { return xy( make_series_( c.shape, chart ), c ); }
 
