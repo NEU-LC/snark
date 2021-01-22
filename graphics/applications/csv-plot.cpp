@@ -114,9 +114,9 @@ static void usage( bool verbose = false )
         std::cerr << "                       <( csv-random make --seed 1234 --type f --range=0,30 | csv-paste line-number - | csv-repeat --pace --period 0.1 )';color=blue;weight=2;size=50'" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    multiple series per stream" << std::endl;
-        std::cerr << "        csv-random make --type 3f --range=0,20 \\" << std::endl;
+        std::cerr << "        csv-random make --type 4f --range=0,20 \\" << std::endl;
         std::cerr << "            | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
-        std::cerr << "            | csv-plot '-;fields=block,x,y,series[0]/y,series[1]/y;color=red;weight=2;chart=test'" << std::endl;
+        std::cerr << "            | csv-plot '-;fields=block,x,y,series[0]/y,series[1]/y,series[2]/y;color=red;weight=2;chart=test' --fps 1" << std::endl;
         std::cerr << std::endl;
     }
     else

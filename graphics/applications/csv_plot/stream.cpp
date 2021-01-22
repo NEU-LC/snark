@@ -96,6 +96,7 @@ bool stream::update()
     auto append = [&]( plotting::series::xy& s, unsigned int i, const boost::optional< unsigned int >& j ) // todo: support 3d data, time series, polar data
     {
         s.append( buffers_.records.values()[i].t, j ? buffers_.records.values()[i].series[*j] : buffers_.records.values()[i] );
+        
     };
     auto update_series = [&]( plotting::series::xy& s, const boost::optional< unsigned int >& j = boost::none ) // todo! simple thing, but so convoluted; simplify or just get rid of master series
     {
