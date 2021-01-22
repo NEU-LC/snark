@@ -18,6 +18,7 @@
 #include <comma/io/stream.h>
 #include <comma/sync/synchronized.h>
 #include "../../../graphics/block_buffer.h"
+#include "charts.h"
 #include "record.h"
 #include "series.h"
 
@@ -41,12 +42,13 @@ class stream // todo: if stream other than xy stream required, create stream bas
             config_t( const comma::command_line_options& options );
         };
         
-        plotting::series::xy master_series; // todo: array of series supporting multiple feeds from the same stream, optionally targeting multiple charts
+        plotting::series::xy master_series;
+        std::vector< plotting::series::xy > series;
         const config_t config;
         typedef std::deque< graphics::plotting::record > records_t;
         comma::synchronized< records_t > records; // quick and dirty
 
-        stream( const plotting::series::xy& m, const config_t& config );
+        stream( const plotting::series::xy& m, const std::vector< plotting::series::xy >& s, const config_t& config );
         void start();
         bool is_shutdown() const;
         bool is_stdin() const;
@@ -54,7 +56,7 @@ class stream // todo: if stream other than xy stream required, create stream bas
         bool update();
         std::pair< QPointF, QPointF > extents() const { return master_series.extents(); }
         unsigned int size() const { return size_; }
-        static plotting::stream* make( const plotting::stream::config_t& config, QChart* chart ); // todo: pass map of charts
+        static plotting::stream* make( const plotting::stream::config_t& config, const std::map< std::string, snark::graphics::plotting::chart* >& charts );
 
     protected:
         bool is_shutdown_;

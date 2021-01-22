@@ -10,16 +10,13 @@
 
 namespace snark { namespace graphics { namespace plotting {
 
-plotting::stream* stream::make( const plotting::stream::config_t& config, QtCharts::QChart* chart ) // todo! multiple series configs, multiple series target charts, pass chart map
+plotting::stream* stream::make( const plotting::stream::config_t& config, const std::map< std::string, snark::graphics::plotting::chart* >& charts )
 {
-    plotting::stream* s = new plotting::stream( plotting::series::xy::make( chart, config.series ), config );
+    auto master_series = plotting::series::xy::make( charts.find( config.series.chart )->second, config.series );
     plotting::record sample = plotting::record::sample( config.csv.fields, config.number_of_series );
     std::vector< plotting::series::xy > series;
-    for( auto& s: sample.series )
-    {
-        // todo
-    }
-    return s;
+    for( unsigned int i = 0; i < sample.series.size(); ++i ) { series.push_back( plotting::series::xy::make( charts.find( config.series.chart )->second, config.series ) ); } // todo: series configs
+    return new plotting::stream( master_series, series, config );
 }
     
 stream::config_t::config_t( const comma::command_line_options& options )
@@ -31,8 +28,9 @@ stream::config_t::config_t( const comma::command_line_options& options )
 {
 }
 
-stream::stream( const plotting::series::xy& m, const config_t& config )
+stream::stream( const plotting::series::xy& m, const std::vector< plotting::series::xy >& s, const config_t& config )
     : master_series( m )
+    , series( s )
     , config( config )
     , is_shutdown_( false )
     , is_stdin_( config.csv.filename == "-" )
@@ -95,12 +93,17 @@ bool stream::update()
     bool changed = buffers_.changed();
     static_assert( sizeof( qreal ) == 8 );
     size_ = buffers_.records.size();
-    auto append = [&]( unsigned int i ) { master_series.append( buffers_.records.values()[i].t, buffers_.records.values()[i] ); }; // todo: support 3d data, time series, polar data (or template stream upon those)
+    auto append = [&]( plotting::series::xy& s, unsigned int i ) { s.append( buffers_.records.values()[i].t, buffers_.records.values()[i] ); }; // todo: support 3d data, time series, polar data
+    auto update_series = [&]( plotting::series::xy& s )
+    {
+        s.clear();
+        for( unsigned int i = buffers_.records.begin(); i < buffers_.records.size(); ++i ) { append( s, i ); }
+        for( unsigned int i = 0; i < buffers_.records.begin(); ++i ) { append( s, i ); }
+    };
     if( buffers_.changed() )
     {
-        master_series.clear();
-        for( unsigned int i = buffers_.records.begin(); i < buffers_.records.size(); ++i ) { append( i ); }
-        for( unsigned int i = 0; i < buffers_.records.begin(); ++i ) { append( i ); }
+        update_series( master_series );
+        for( auto& s: series ) { update_series( s ); }
     }
     buffers_.mark_seen();
     return changed;

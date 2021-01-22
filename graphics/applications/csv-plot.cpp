@@ -136,6 +136,7 @@ static void usage( bool verbose = false )
 //     - -> multiple series with different properties (also different targets)
 //     - allow common x, e.g. if series[0]/x not present, look for x field; series[1]/x present, overrules common x
 //     - support t field as well
+//     ? make master series optional or get rid of it altogether
 // - zoom
 // - save as
 //   - png
@@ -211,10 +212,15 @@ int main( int ac, char** av )
         {
             std::cerr << "csv-plot: created " << main_window.charts().size() << " chart(s)" << std::endl;
             std::cerr << "csv-plot: created " << main_window.streams().size() << " input stream(s)" << std::endl;
+            for( unsigned int i = 0; i < main_window.streams().size(); ++i )
+            {
+                std::cerr << "csv-plot: stream " << i << ": master series will be shown on chart named: '" << main_window.streams()[i].master_series.config().chart << "'" << std::endl;
+                for( unsigned int j = 0; j < main_window.streams()[i].series.size(); ++j ) { std::cerr << "csv-plot: stream " << i << ": series " << j << " will be shown on chart named: '" << main_window.streams()[i].series[j].config().chart << "'" << std::endl; }
+            }
             if( !main_window.pass_through_stream_name().empty() ) { std::cerr << "csv-plot: stream '" << main_window.pass_through_stream_name() << "' will be passed through" << std::endl; }
         }
         main_window.start();
-        std::cerr << "csv-plot: started" << std::endl;
+        if( verbose ) { std::cerr << "csv-plot: started" << std::endl; }
         options.exists( "--full-screen,--maximize" ) ? main_window.showMaximized() : main_window.show();
         return a.exec();
     }
