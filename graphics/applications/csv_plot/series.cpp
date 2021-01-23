@@ -72,6 +72,6 @@ bool xy::updated( bool reset )
     return r;
 }
 
-xy xy::make( QtCharts::QChart* chart, const series::config& c ) { return xy( make_series_( c.shape, chart ), c ); }
+xy xy::make( const series::config& c, QtCharts::QChart* chart ) { return xy( make_series_( c.shape, chart ), c ); }
 
 } } } } // namespace snark { namespace graphics { namespace plotting { namespace series {

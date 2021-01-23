@@ -9,15 +9,21 @@
 #include "series.h"
 #include "stream.h"
 
+#include <iostream>
+
 namespace comma { namespace visiting {
 
 template <> struct traits< snark::graphics::plotting::point >
 {
     template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::point& t, V& v )
     {
+        if( t.x ) { std::cerr << "--> traits: a: t.x: " << *t.x << std::endl; }
+        if( t.y ) { std::cerr << "--> traits: a: t.y: " << *t.y << std::endl; }
         if( t.x ) { v.apply( "x", *t.x ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
         if( t.y ) { v.apply( "y", *t.y ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
         if( t.z ) { v.apply( "z", *t.z ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
+        if( t.x ) { std::cerr << "--> traits: c: t.x: " << *t.x << std::endl; }
+        if( t.y ) { std::cerr << "--> traits: c: t.y: " << *t.y << std::endl; }
     }
 
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::point& t, V& v )
@@ -33,23 +39,21 @@ template <> struct traits< snark::graphics::plotting::record >
     template< typename K, typename V > static void visit( const K& k, snark::graphics::plotting::record& t, V& v )
     {
         v.apply( "t", t.t );
-        comma::visiting::traits< snark::graphics::plotting::point >::visit( k, t, v ); // quick and dirty: t,x,y,z looks better than x,y,z,t
-        v.apply( "block", t.block );
         v.apply( "series", t.series );
-        for( auto& s: t.series ) // hacky for traits in libraries, but ok for applications where traits have limited use
+        v.apply( "block", t.block );
+        for( unsigned int i = 1; i < t.series.size(); ++i ) // todo: lots of copying, watch performance; hacky for traits in libraries, but ok for applications where traits have limited use
         {
-            if( !s.x ) { s.x = *t.x; }
-            if( !s.y ) { s.y = *t.y; }
-            if( !s.z ) { s.z = *t.z; }
+            if( !t.series[i].x ) { t.series[i].x = *t.series[0].x; }
+            if( !t.series[i].y ) { t.series[i].y = *t.series[0].y; }
+            if( !t.series[i].z ) { t.series[i].z = *t.series[0].z; }
         }
     }
 
     template< typename K, typename V > static void visit( const K& k, const snark::graphics::plotting::record& t, V& v )
     {
         v.apply( "t", t.t );
-        comma::visiting::traits< snark::graphics::plotting::point >::visit( k, t, v ); // quick and dirty: t,x,y,z looks better than x,y,z,t
-        v.apply( "block", t.block );
         v.apply( "series", t.series );
+        v.apply( "block", t.block );
     }
 };
 

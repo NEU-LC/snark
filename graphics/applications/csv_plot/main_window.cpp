@@ -64,16 +64,14 @@ main_window::main_window( const std::vector< plotting::stream::config_t >& confi
     for( auto t: titles ) { charts_[ t.first ] = new plotting::xy_chart( t.second ); }
     for( const auto& c: configs ) // todo: multiple series from a stream could go to different charts
     { 
-        auto s = plotting::stream::make( c, charts_ ); // todo: pass charts map
+        auto s = plotting::stream::make( c, charts_ );
         if( s->config.pass_through )
         {
             if( !pass_through_stream_name_.empty() ) { COMMA_THROW( comma::exception, "csv-plot: expected pass-through only for one stream; got at least two: '" << pass_through_stream_name_ << "' and then '" << s->config.csv.filename << "'" ); }
             pass_through_stream_name_ = s->config.csv.filename;
         }
         streams_.push_back( s );
-        auto& chart = charts_[ c.series.chart ];
-        chart->push_back( &s->master_series ); // quick and dirty; todo? move to stream::make()?
-        for( auto& t: s->series ) { chart->push_back( &t ); }
+        for( auto& t: s->series ) { charts_[ t.config().chart ]->push_back( &t ); } // quick and dirty; todo? move to stream::make()? (then change series vector in stream to ptr_vector)
     } 
     setCentralWidget( make_widget_( layout, charts_ ) );
     resize( size.first, size.second );

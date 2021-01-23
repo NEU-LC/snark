@@ -5,19 +5,23 @@
 #include <comma/string/split.h>
 #include "record.h"
 
+#include <iostream>
+
 namespace snark { namespace graphics { namespace plotting {
 
 record record::sample( const std::string& fields, unsigned int size )
 {
     plotting::record r;
-    const auto& s = comma::split( fields, ',', true );
-    if( s.empty() ) { r.x = 0; r.y = 0; }
+    auto s = comma::split( fields.empty() ? std::string( "series[0]/x,series[0]/y" ) : fields, ',' ); // quick and dirty
+    for( auto& f: s ) // quick and dirty
+    {
+        if( f == "x" ) { f = "series[0]/x"; }
+        else if( f == "y" ) { f = "series[0]/y"; }
+        else if( f == "z" ) { f = "series[0]/z"; }
+    }
     for( const auto& f: s ) // todo: check for time field
     {
-        if( f == "x" ) { r.x = 0; }
-        else if( f == "y" ) { r.y = 0; }
-        else if( f == "z" ) { r.z = 0; }
-        else if( f == "series" )
+        if( f == "series" ) // todo: quick and dirty, check fields are valid
         { 
             if( size == 0 ) { COMMA_THROW( comma::exception, "'series' field present, but number of series not specified for fields: \"" << fields << "\"" ); }
             r.series.resize( size );
@@ -37,6 +41,11 @@ record record::sample( const std::string& fields, unsigned int size )
             if( n == "z" ) { r.series[i].z = 0; }
         }
     }
+    
+    std::cerr << "--> r.series.size(): " << r.series.size() << std::endl;
+    std::cerr << "--> r.series[0].x: " << ( r.series[0].x ? "set": "not set" ) << std::endl;
+    std::cerr << "--> r.series[0].y: " << ( r.series[0].y ? "set": "not set" ) << std::endl;
+    
     return r;
 }
     

@@ -12,11 +12,10 @@ namespace snark { namespace graphics { namespace plotting {
 
 plotting::stream* stream::make( const plotting::stream::config_t& config, const std::map< std::string, snark::graphics::plotting::chart* >& charts )
 {
-    auto master_series = plotting::series::xy::make( charts.find( config.series.chart )->second, config.series );
     plotting::record sample = plotting::record::sample( config.csv.fields, config.number_of_series );
     std::vector< plotting::series::xy > series;
-    for( unsigned int i = 0; i < sample.series.size(); ++i ) { series.push_back( plotting::series::xy::make( charts.find( config.series.chart )->second, config.series ) ); } // todo: series configs
-    return new plotting::stream( master_series, series, config );
+    for( unsigned int i = 0; i < sample.series.size(); ++i ) { series.push_back( plotting::series::xy::make( config.series, charts.find( config.series.chart )->second ) ); } // todo: series configs
+    return new plotting::stream( series, config );
 }
     
 stream::config_t::config_t( const comma::command_line_options& options )
@@ -28,9 +27,8 @@ stream::config_t::config_t( const comma::command_line_options& options )
 {
 }
 
-stream::stream( const plotting::series::xy& m, const std::vector< plotting::series::xy >& s, const config_t& config )
-    : master_series( m )
-    , series( s )
+stream::stream( const std::vector< plotting::series::xy >& s, const config_t& config )
+    : series( s )
     , config( config )
     , is_shutdown_( false )
     , is_stdin_( config.csv.filename == "-" )
@@ -73,8 +71,9 @@ void stream::read_()
         if( !p ) { break; }
         if( passed_ ) { passed_->write(); }
         record q = *p;
-        if( !has_x_ ) { q.x = count_; }
+        if( !has_x_ ) { q.series[0].x = count_; }
         ++count_;
+        std::cerr << "--> stream: q.series[0].x: " << *q.series[0].x << " q.series[0].y: " << *q.series[0].y << std::endl;
         comma::synchronized< records_t >::scoped_transaction( records )->push_back( q );
     }
     is_shutdown_ = true;
@@ -93,21 +92,15 @@ bool stream::update()
     bool changed = buffers_.changed();
     static_assert( sizeof( qreal ) == 8 );
     size_ = buffers_.records.size();
-    auto append = [&]( plotting::series::xy& s, unsigned int i, const boost::optional< unsigned int >& j ) // todo: support 3d data, time series, polar data
-    {
-        s.append( buffers_.records.values()[i].t, j ? buffers_.records.values()[i].series[*j] : buffers_.records.values()[i] );
-        
-    };
-    auto update_series = [&]( plotting::series::xy& s, const boost::optional< unsigned int >& j = boost::none ) // todo! simple thing, but so convoluted; simplify or just get rid of master series
-    {
-        s.clear();
-        for( unsigned int i = buffers_.records.begin(); i < buffers_.records.size(); ++i ) { append( s, i, j ); }
-        for( unsigned int i = 0; i < buffers_.records.begin(); ++i ) { append( s, i, j ); }
-    };
+    auto append = [&]( plotting::series::xy& s, unsigned int i, unsigned int j ) { s.append( buffers_.records.values()[i].t, buffers_.records.values()[i].series[j] ); }; // todo: support 3d data, time series, polar data
     if( buffers_.changed() )
     {
-        update_series( master_series );
-        for( unsigned int j = 0; j < series.size(); ++j ) { update_series( series[j], j ); }
+        for( unsigned int j = 0; j < series.size(); ++j )
+        { 
+            series[j].clear();
+            for( unsigned int i = buffers_.records.begin(); i < buffers_.records.size(); ++i ) { append( series[j], i, j ); }
+            for( unsigned int i = 0; i < buffers_.records.begin(); ++i ) { append( series[j], i, j ); }
+        }
     }
     buffers_.mark_seen();
     return changed;

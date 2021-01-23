@@ -37,6 +37,14 @@ static void usage( bool verbose = false )
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
     std::cerr << "    --input-fields; print possible input fields to stdout and exit" << std::endl;
     std::cerr << "    --input-fields-example; print input fields example to stdout and exit" << std::endl;
+    std::cerr << "    --fields: t,series,block" << std::endl;
+    std::cerr << "              x,y: aliases for series[0]/x and series[0]/y" << std::endl;
+    std::cerr << "              series fields: x,y,z" << std::endl;
+    std::cerr << "              default: x,y" << std::endl;
+    std::cerr << "              examples" << std::endl;
+    std::cerr << "                  --fields=series[0]/x,series[0]/y,series[1]/x,series[1]/y" << std::endl;
+    std::cerr << "                  --fields=series[0],series[1]: means same as above" << std::endl;
+    std::cerr << "                  --fields=x,y,series[1]: means same as above" << std::endl;
     std::cerr << "    --full-screen,--maximize: todo: initially, creat full screen windows" << std::endl;
     std::cerr << "    --layout=<layout>; default=grid; layouts for multiple charts" << std::endl;
     std::cerr << "        <layout>" << std::endl;
@@ -128,7 +136,6 @@ static void usage( bool verbose = false )
 }
 
 // todo
-// ! get rid of master series
 // ! optional series configs
 // - application/examples/csv-plot/...: example command lines
 // - gitlab: tutorial
@@ -141,7 +148,6 @@ static void usage( bool verbose = false )
 //     - -> multiple series with different properties (also different targets)
 //     - allow common x, e.g. if series[0]/x not present, look for x field; series[1]/x present, overrules common x
 //     - support t field as well
-//     ? make master series optional or get rid of it altogether
 // - zoom
 // - save as
 //   - png
@@ -196,20 +202,8 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         bool verbose = options.exists( "--verbose,-v" );
-        if( options.exists( "--input-fields" ) ) { std::cout << "t,x,y,z,series" << std::endl; return 0; } // quick and dirty
-        if( options.exists( "--input-fields-example" ) )
-        { 
-            auto r = snark::graphics::plotting::record( 2 );
-            r.x = 0;
-            r.y = 0;
-            r.series[0].x = 0;
-            r.series[0].y = 0;
-            r.series[1].x = 0;
-            r.series[1].y = 0;
-            std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, r ), ',' ) << std::endl;
-            return 0;
-        }
-        
+        if( options.exists( "--input-fields" ) ) { std::cout << "t,series,block" << std::endl; return 0; } // quick and dirty
+        if( options.exists( "--input-fields-example" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, snark::graphics::plotting::record::sample( "series", 2 ) ), ',' ) << std::endl; return 0; }
         snark::graphics::plotting::stream::config_t config( options );
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--maximize,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
@@ -230,7 +224,6 @@ int main( int ac, char** av )
             std::cerr << "csv-plot: created " << main_window.streams().size() << " input stream(s)" << std::endl;
             for( unsigned int i = 0; i < main_window.streams().size(); ++i )
             {
-                std::cerr << "csv-plot: stream " << i << ": master series will be shown on chart named: '" << main_window.streams()[i].master_series.config().chart << "'" << std::endl;
                 for( unsigned int j = 0; j < main_window.streams()[i].series.size(); ++j ) { std::cerr << "csv-plot: stream " << i << ": series " << j << " will be shown on chart named: '" << main_window.streams()[i].series[j].config().chart << "'" << std::endl; }
             }
             if( !main_window.pass_through_stream_name().empty() ) { std::cerr << "csv-plot: stream '" << main_window.pass_through_stream_name() << "' will be passed through" << std::endl; }

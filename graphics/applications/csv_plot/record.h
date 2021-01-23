@@ -17,7 +17,7 @@ struct point
     boost::optional< double > z;
 };
 
-struct record: public plotting::point
+struct record
 {
     boost::posix_time::ptime t;
     comma::uint32 block;

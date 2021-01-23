@@ -36,7 +36,7 @@ class xy // todo? derive from base class? template on qt series type? time to de
         const std::pair< QPointF, QPointF >& extents() const { return extents_; }
         void clear();
         void append( boost::posix_time::ptime t, const point& p );
-        static xy make( QtCharts::QChart* chart, const series::config& c );
+        static xy make( const series::config& c, QtCharts::QChart* chart );
         bool updated( bool reset = true );
     
     private:
