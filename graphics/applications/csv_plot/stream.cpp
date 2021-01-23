@@ -5,6 +5,8 @@
 #include <boost/bind.hpp>
 #include <QtCharts/QChart>
 #include <comma/base/exception.h>
+#include <comma/name_value/parser.h>
+#include <comma/string/string.h>
 #include "stream.h"
 #include "traits.h"
 
@@ -17,14 +19,28 @@ plotting::stream* stream::make( const plotting::stream::config_t& config, const 
     for( unsigned int i = 0; i < sample.series.size(); ++i ) { series.push_back( plotting::series::xy::make( config.series, charts.find( config.series.chart )->second ) ); } // todo: series configs
     return new plotting::stream( series, config );
 }
+
+static std::string fields_from_aliases_( const std::string& fields )
+{
+    auto v = comma::split( fields, ',', true );
+    for( auto& f: v ) { if( f == "x" || f == "y" || f == "z" ) { f = "series[0]/" + f; } }
+    return comma::join( v, ',' );
+} // quick and dirty
     
 stream::config_t::config_t( const comma::command_line_options& options )
-    : csv( options, "x,y" )
+    : csv( options, "series[0]/x,series[0]/y" )
     , pass_through( options.exists( "--pass-through,--pass" ) )
     , series( options )
     , size( options.value( "--size,-s,--tail", 10000 ) )
     , number_of_series( options.value( "--number-of-series,-n", 0 ) )
 {
+    csv.fields = fields_from_aliases_( csv.fields );
+}
+
+stream::config_t::config_t( const std::string& options, const stream::config_t& defaults )
+{
+    *this = comma::name_value::parser( "filename", ';', '=', false ).get( options, defaults ); // quick and dirty
+    csv.fields = fields_from_aliases_( csv.fields );
 }
 
 stream::stream( const std::vector< plotting::series::xy >& s, const config_t& config )
@@ -35,7 +51,7 @@ stream::stream( const std::vector< plotting::series::xy >& s, const config_t& co
     , is_( config.csv.filename, config.csv.binary() ? comma::io::mode::binary : comma::io::mode::ascii, comma::io::mode::non_blocking )
     , istream_( *is_, config.csv, plotting::record::sample( config.csv.fields, config.number_of_series ) )
     , count_( 0 )
-    , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) )
+    , has_x_( config.csv.fields.empty() || config.csv.has_field( "x" ) || config.csv.has_field( "series[0]/x" ) || config.csv.has_field( "series[0]" ) ) // todo: quick and dirty, improve
     , buffers_( config.size )
     , size_( 0 )
 {
@@ -73,7 +89,6 @@ void stream::read_()
         record q = *p;
         if( !has_x_ ) { q.series[0].x = count_; }
         ++count_;
-        std::cerr << "--> stream: q.series[0].x: " << *q.series[0].x << " q.series[0].y: " << *q.series[0].y << std::endl;
         comma::synchronized< records_t >::scoped_transaction( records )->push_back( q );
     }
     is_shutdown_ = true;

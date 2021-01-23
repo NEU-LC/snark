@@ -136,6 +136,7 @@ static void usage( bool verbose = false )
 }
 
 // todo
+// ! test binary!
 // ! optional series configs
 // - application/examples/csv-plot/...: example command lines
 // - gitlab: tutorial
@@ -196,6 +197,32 @@ static void usage( bool verbose = false )
 
 QT_USE_NAMESPACE
 
+struct blah
+{ 
+    boost::optional< double > x;
+    boost::optional< double > y;
+};
+
+namespace comma { namespace visiting {
+
+template <> struct traits< blah >
+{
+    template< typename K, typename V > static void visit( const K&, blah& t, V& v )
+    {
+        if( t.x ) { v.apply( "x", *t.x ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
+        if( t.y ) { v.apply( "y", *t.y ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
+    }
+
+    template< typename K, typename V > static void visit( const K&, const blah& t, V& v )
+    {
+        if( t.x ) { v.apply( "x", *t.x ); }
+        if( t.y ) { v.apply( "y", *t.y ); }
+    }
+};
+
+} }
+
+
 int main( int ac, char** av )
 {
     try
@@ -211,7 +238,7 @@ int main( int ac, char** av )
         std::vector< snark::graphics::plotting::stream::config_t > configs;
         if( stdin_index ) { if( options.exists( "--no-stdin" ) ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
         else { config.csv.filename = "-"; configs.push_back( config ); config.pass_through = false; }
-        for( unsigned int i = 0; i < unnamed.size(); ++i ) { configs.push_back( comma::name_value::parser( "filename", ';', '=', false ).get( unnamed[i], config ) ); config.pass_through = false; }
+        for( unsigned int i = 0; i < unnamed.size(); ++i ) { configs.push_back( snark::graphics::plotting::stream::config_t( unnamed[i], config ) ); config.pass_through = false; }
         if( verbose ) { std::cerr << "csv-plot: got " << configs.size() << " input stream config(s)" << std::endl; }
         float timeout = options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ); // todo? update streams and charts at variable rates?
         std::string layout = options.value< std::string >( "--layout", "grid" );

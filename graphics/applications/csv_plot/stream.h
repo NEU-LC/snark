@@ -40,6 +40,7 @@ class stream // todo: if stream other than xy stream required, create stream bas
             
             config_t() : pass_through( false ), size( 10000 ), number_of_series( 0 ) {}
             config_t( const comma::command_line_options& options );
+            config_t( const std::string& options, const config_t& defaults = config_t() );
         };
         
         std::vector< plotting::series::xy > series;

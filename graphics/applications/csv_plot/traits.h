@@ -4,12 +4,11 @@
 
 #pragma once
 
+#include <comma/csv/traits.h>
 #include <comma/visiting/traits.h>
 #include "record.h"
 #include "series.h"
 #include "stream.h"
-
-#include <iostream>
 
 namespace comma { namespace visiting {
 
@@ -17,15 +16,10 @@ template <> struct traits< snark::graphics::plotting::point >
 {
     template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::point& t, V& v )
     {
-        if( t.x ) { std::cerr << "--> traits: a: t.x: " << *t.x << std::endl; }
-        if( t.y ) { std::cerr << "--> traits: a: t.y: " << *t.y << std::endl; }
         if( t.x ) { v.apply( "x", *t.x ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
         if( t.y ) { v.apply( "y", *t.y ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
         if( t.z ) { v.apply( "z", *t.z ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
-        if( t.x ) { std::cerr << "--> traits: c: t.x: " << *t.x << std::endl; }
-        if( t.y ) { std::cerr << "--> traits: c: t.y: " << *t.y << std::endl; }
     }
-
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::point& t, V& v )
     {
         if( t.x ) { v.apply( "x", *t.x ); }
@@ -48,7 +42,6 @@ template <> struct traits< snark::graphics::plotting::record >
             if( !t.series[i].z ) { t.series[i].z = *t.series[0].z; }
         }
     }
-
     template< typename K, typename V > static void visit( const K& k, const snark::graphics::plotting::record& t, V& v )
     {
         v.apply( "t", t.t );
@@ -71,7 +64,6 @@ template <> struct traits< snark::graphics::plotting::series::config >
         v.apply( "title", t.title );
         v.apply( "weight", t.weight );
     }
-
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::series::config& t, V& v )
     {
         v.apply( "chart", t.chart );
@@ -95,7 +87,6 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
         v.apply( "size", t.size );
         v.apply( "number-of-series", t.number_of_series );
     }
-
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v )
     {
         v.apply( "csv", t.csv );

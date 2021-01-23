@@ -5,20 +5,12 @@
 #include <comma/string/split.h>
 #include "record.h"
 
-#include <iostream>
-
 namespace snark { namespace graphics { namespace plotting {
 
 record record::sample( const std::string& fields, unsigned int size )
 {
     plotting::record r;
-    auto s = comma::split( fields.empty() ? std::string( "series[0]/x,series[0]/y" ) : fields, ',' ); // quick and dirty
-    for( auto& f: s ) // quick and dirty
-    {
-        if( f == "x" ) { f = "series[0]/x"; }
-        else if( f == "y" ) { f = "series[0]/y"; }
-        else if( f == "z" ) { f = "series[0]/z"; }
-    }
+    const auto& s = comma::split( fields.empty() ? std::string( "series[0]/x,series[0]/y" ) : fields, ',' ); // quick and dirty
     for( const auto& f: s ) // todo: check for time field
     {
         if( f == "series" ) // todo: quick and dirty, check fields are valid
@@ -41,11 +33,6 @@ record record::sample( const std::string& fields, unsigned int size )
             if( n == "z" ) { r.series[i].z = 0; }
         }
     }
-    
-    std::cerr << "--> r.series.size(): " << r.series.size() << std::endl;
-    std::cerr << "--> r.series[0].x: " << ( r.series[0].x ? "set": "not set" ) << std::endl;
-    std::cerr << "--> r.series[0].y: " << ( r.series[0].y ? "set": "not set" ) << std::endl;
-    
     return r;
 }
     
