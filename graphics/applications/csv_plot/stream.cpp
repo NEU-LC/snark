@@ -40,11 +40,13 @@ stream::config_t::config_t( const comma::command_line_options& options )
 
 stream::config_t::config_t( const std::string& options, const stream::config_t& defaults )
 {
-    plotting::record sample = plotting::record::sample( csv.fields, number_of_series );
-    series.resize( sample.series.size() );
-    number_of_series = series.size(); // quick and dirty
-    *this = comma::name_value::parser( "filename", ';', '=', false ).get( options, defaults ); // quick and dirty
+    *this = comma::name_value::parser( "filename", ';', '=', false ).get( options, defaults ); // quick and dirty; todo: unhack visiting
     csv.fields = fields_from_aliases_( csv.fields );
+    plotting::record sample = plotting::record::sample( csv.fields, number_of_series ); // quick and dirty
+    series.resize( sample.series.size() );
+    for( unsigned int i = 1; i < series.size(); ++i ) { series[i] = series[0]; }
+    // todo: set individual series properties
+    number_of_series = series.size(); // quick and dirty
 }
 
 stream::stream( const std::vector< plotting::series::xy >& s, const config_t& config )
