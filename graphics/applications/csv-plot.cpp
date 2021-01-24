@@ -43,15 +43,18 @@ static void usage( bool verbose = false )
     std::cerr << "              x,y: aliases for series[0]/x and series[0]/y" << std::endl;
     std::cerr << "              series fields: x,y,z" << std::endl;
     std::cerr << "              default: x,y" << std::endl;
+    std::cerr << "              if x is not present in series n, x will be same as in series 0" << std::endl;
     std::cerr << "              examples" << std::endl;
     std::cerr << "                  --fields=series[0]/x,series[0]/y,series[1]/x,series[1]/y" << std::endl;
     std::cerr << "                  --fields=series[0],series[1]: means same as above" << std::endl;
     std::cerr << "                  --fields=x,y,series[1]: means same as above" << std::endl;
+    std::cerr << "                  --fields=series[0],series[1]/y,series[2]/y: series 1 and 2 take x from series 0" << std::endl;
     std::cerr << "    --no-stdin: don't try to read from stdin" << std::endl;
     std::cerr << "    --number-of-series,-n=<n>; default=1; how many series each stream has; a convenience option" << std::endl;
     std::cerr << "                               if --fields have 'series' field without series indices" << std::endl;
     std::cerr << "    --pass-through,--pass; todo: output to stdout the first stream on the command line" << std::endl;
     std::cerr << "    --size,-s,--tail=<n>: plot last <n> records of stream; default 10000" << std::endl;
+    std::cerr << std::endl;
     std::cerr << std::endl << comma::csv::options::usage( verbose ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "chart options" << std::endl;
@@ -65,6 +68,13 @@ static void usage( bool verbose = false )
     std::cerr << "    --shape=<what>: line (default)" << std::endl;
     std::cerr << "                    todo: more shapes" << std::endl;
     std::cerr << "    --weight=<weight>: point or line weight" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "    for multiple series per stream, individual series options look like: 'series[2]=color:green|chart:test'" << std::endl;
+    std::cerr << "    i.e. options are |-separated <name>:<value> pairs, for example, in the following command line:" << std::endl;
+    std::cerr << "        csv-plot '-;fields=series;number-of-series=4;color=red;chart=one;series[1]=color:blue;series[2]=color:green|chart:two'" << std::endl;
+    std::cerr << "        - there are 4 series on stdin with fields: series[0]/x,series[0]/y,series[1]/x,series[1]/y,series[2]/x,series[2]/y,series[3]/x,series[3]/y" << std::endl;
+    std::cerr << "        - series 2 will be shown in chart 'two'; series 0, 1, and 3 in chart 'one'" << std::endl;
+    std::cerr << "        - series 1 will be blue; series 2 green; series 0 and 3 red" << std::endl;
     std::cerr << std::endl;
     std::cerr << "window options" << std::endl;
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
@@ -130,9 +140,14 @@ static void usage( bool verbose = false )
         std::cerr << "                       <( csv-random make --seed 1234 --type f --range=0,30 | csv-paste line-number - | csv-repeat --pace --period 0.1 )';color=blue;weight=2;size=50'" << std::endl;
         std::cerr << std::endl;
         std::cerr << "    multiple series per stream" << std::endl;
-        std::cerr << "        csv-random make --type 4f --range=0,20 \\" << std::endl;
-        std::cerr << "            | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
-        std::cerr << "            | csv-plot '-;fields=block,x,y,series[0]/y,series[1]/y,series[2]/y;color=red;weight=2;chart=test' --fps 1" << std::endl;
+        std::cerr << "        basics" << std::endl;
+        std::cerr << "            csv-random make --type 4f --range=0,20 \\" << std::endl;
+        std::cerr << "                | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
+        std::cerr << "                | csv-plot '-;fields=block,x,y,series[0]/y,series[1]/y,series[2]/y' --fps 1" << std::endl;
+        std::cerr << "        individual series options" << std::endl;
+        std::cerr << "            csv-random make --type 4f --range=0,20 \\" << std::endl;
+        std::cerr << "                | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
+        std::cerr << "                | csv-plot '-;fields=block,x,y,series[0]/y,series[1]/y,series[2]/y;series[1]=color:blue;series[2]=color:green|chart:test2' --fps 1" << std::endl;
         std::cerr << std::endl;
     }
     else
@@ -145,7 +160,6 @@ static void usage( bool verbose = false )
 
 // todo
 // ! test binary!
-// ! optional series configs
 // - application/examples/csv-plot/...: example command lines
 // - gitlab: tutorial
 // - --stream-config
@@ -195,6 +209,8 @@ static void usage( bool verbose = false )
 // - span policies
 //   ? better autoscaling
 //   ? better autoscrolling
+// - main window
+//   - add signal to update? currently, updates only after first timeout
 // - building
 //   ? move into a separate repository or add a separate cmake for cpack packaging
 //   ? copy-paste block_buffer

@@ -1,7 +1,7 @@
 // Copyright (c) 2021 Vsevolod Vlaskine
 
-#include <limits>
-#include <type_traits>
+#include <map>
+#include <vector>
 #include <boost/bind.hpp>
 #include <QtCharts/QChart>
 #include <comma/base/exception.h>
@@ -40,13 +40,27 @@ stream::config_t::config_t( const comma::command_line_options& options )
 
 stream::config_t::config_t( const std::string& options, const stream::config_t& defaults )
 {
-    *this = comma::name_value::parser( "filename", ';', '=', false ).get( options, defaults ); // quick and dirty; todo: unhack visiting
+    std::vector< std::string > g;
+    std::map< unsigned int, std::string > s;
+    const auto& v = comma::split( options, ';' );
+    for( const auto& o: v ) // quick and dirty
+    {
+        try
+        {
+            if( o.substr( 0, 7 ) == "series[" ) { s[ boost::lexical_cast< unsigned int >( o.substr( 7, o.find_first_of( ']' ) - 7 ) ) ] = o.substr( o.find_first_of( '=' ) + 1 ); }
+            else { g.push_back( o ); }
+        }
+        catch( std::exception& ex )
+        {
+            COMMA_THROW( comma::exception, "invalid stream options '" << options << "': " << ex.what() );
+        }
+    }
+    *this = comma::name_value::parser( "filename", ';', '=', false ).get( comma::join( g, ';' ), defaults ); // quick and dirty; todo: unhack visiting
     csv.fields = fields_from_aliases_( csv.fields );
     plotting::record sample = plotting::record::sample( csv.fields, number_of_series ); // quick and dirty
+    number_of_series = sample.series.size(); // quick and dirty
     series.resize( sample.series.size() );
-    for( unsigned int i = 1; i < series.size(); ++i ) { series[i] = series[0]; }
-    // todo: set individual series properties
-    number_of_series = series.size(); // quick and dirty
+    for( unsigned int i = 1; i < series.size(); ++i ) { series[i] = s.find( i ) == s.end() ? series[0] : comma::name_value::parser( '|', ':', false ).get( s[i], series[0] ); }
 }
 
 stream::stream( const std::vector< plotting::series::xy >& s, const config_t& config )
@@ -72,7 +86,7 @@ bool stream::buffers_t_::changed() const { return records.changed(); }
 
 void stream::buffers_t_::mark_seen() { records.mark_seen(); }
 
-void stream::start() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read_, boost::ref( *this ) ) ) ); }
+void stream::start() { thread_.reset( new boost::thread( boost::bind( &graphics::plotting::stream::read_, boost::ref( *this ) ) ) ); } // todo: replace with std::thread
 
 bool stream::is_shutdown() const { return is_shutdown_; }
 
