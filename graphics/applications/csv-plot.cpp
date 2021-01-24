@@ -54,6 +54,18 @@ static void usage( bool verbose = false )
     std::cerr << "    --size,-s,--tail=<n>: plot last <n> records of stream; default 10000" << std::endl;
     std::cerr << std::endl << comma::csv::options::usage( verbose ) << std::endl;
     std::cerr << std::endl;
+    std::cerr << "chart options" << std::endl;
+    std::cerr << "    --scroll: if present, chart axes get adjusted to where the data is" << std::endl;
+    std::cerr << "    --title=[<title>]: chart title" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "series options" << std::endl;
+    std::cerr << "    --color=<color>: plot color: black, white, red, green, blue" << std::endl;
+    std::cerr << "                                 yellow, cyan, magenta, grey" << std::endl;
+    std::cerr << "                                 or #rrggbb, e.g. #ff00ff" << std::endl;
+    std::cerr << "    --shape=<what>: line (default)" << std::endl;
+    std::cerr << "                    todo: more shapes" << std::endl;
+    std::cerr << "    --weight=<weight>: point or line weight" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "window options" << std::endl;
     std::cerr << "    --frames-per-second,--fps=<value>; default=10; how often to update chart(s)" << std::endl;
     std::cerr << "    --full-screen,--maximize: todo: initially, create full screen windows" << std::endl;
@@ -69,18 +81,6 @@ static void usage( bool verbose = false )
     std::cerr << "                windows: todo: each chart is in its own window" << std::endl;
     std::cerr << "    --timeout=<seconds>; how often to update, overrides --fps" << std::endl;
     std::cerr << "    --window-size=<x>,<y>: initial window size; default=800,600" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "chart options" << std::endl;
-    std::cerr << "    --window-size=<x>,<y>; default: 800,600" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "series options" << std::endl;
-    std::cerr << "    --color=<color>: plot color: black, white, red, green, blue" << std::endl;
-    std::cerr << "                                 yellow, cyan, magenta, grey" << std::endl;
-    std::cerr << "                                 or #rrggbb, e.g. #ff00ff" << std::endl;
-    std::cerr << "    --scroll: if present, chart axes get adjusted to where the data is" << std::endl;
-    std::cerr << "    --shape=<what>: line (default)" << std::endl;
-    std::cerr << "                    todo: more shapes" << std::endl;
-    std::cerr << "    --weight=<weight>: point or line weight" << std::endl;
     std::cerr << std::endl;
     if( verbose )
     {

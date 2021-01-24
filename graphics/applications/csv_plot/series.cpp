@@ -29,6 +29,7 @@ config::config( const comma::command_line_options& options )
     , scroll( options.exists( "--scroll" ) )
     , shape( options.value< std::string >( "--shape,--type", "line" ) )
     , style( options.value< std::string >( "--style", "" ) )
+    , title( options.value< std::string >( "--title", "" ) )
     , weight( options.value( "--weight", 0.0 ) )
 {
 }
