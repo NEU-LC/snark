@@ -172,6 +172,9 @@ static void usage( bool verbose=false )
     std::cerr << "        --header-fields; output header fields and exit" << std::endl;
     std::cerr << "        --header-format; output header fields and exit" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "    histogram" << std::endl;
+    std::cerr << "        --interleave-channels,--interleave: interleave channel histograms for each value" << std::endl;
+    std::cerr << std::endl;
     std::cerr << "    life" << std::endl;
     std::cerr << "        --exit-on-stability: exit, if no change" << std::endl;
     std::cerr << "        --procreation-treshold,--procreation=[<threshold>]: todo: document; default: 3.0" << std::endl;
@@ -1085,7 +1088,7 @@ int main( int ac, char** av )
         csv.full_xpath = true;
         verbose = options.exists("--verbose,-v");
         //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--forever,--header-fields,--header-format,--output-fields,--output-format,--exit-on-stability,--crop,--no-discard,--show-partial,--permissive,--deterministic,--fit-last,--output-number-of-strides,--number-of-strides,--prepend,--realtime,--reverse", "-.*");
+        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--forever,--header-fields,--header-format,--interleave-channels,--interleave,--output-fields,--output-format,--exit-on-stability,--crop,--no-discard,--show-partial,--permissive,--deterministic,--fit-last,--output-number-of-strides,--number-of-strides,--prepend,--realtime,--reverse", "-.*");
         if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
         if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
         std::string operation = ops.front();
@@ -1282,11 +1285,13 @@ int main( int ac, char** av )
         if( operation == "histogram" )
         {
             if( options.exists("--output-fields") ) { std::cout << "t,rows,cols,type,histogram" << std::endl;  exit(0); }
-            if( options.exists("--output-format") ) { std::cout << "t,3ui,d,256ui" << std::endl;  exit(0); }
-            snark::cv_mat::serialization serialization( input_options );
+            if( options.exists("--output-format") ) { std::cout << "t,3ui,256ui" << std::endl;  exit(0); }
+            snark::cv_mat::serialization input_serialization( input_options );
+            snark::cv_mat::serialization output_serialization( output_options );
+            bool interleave = options.exists( "--interleave-channels,--interleave" );
             while( std::cin.good() && !std::cin.eof() )
             {
-                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
+                std::pair< snark::cv_mat::serialization::header::buffer_t, cv::Mat > p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
                 if( p.second.empty() ) { return 0; }
                 if( p.second.type() != CV_8UC1 && p.second.type() != CV_8UC2 && p.second.type() != CV_8UC3 && p.second.type() != CV_8UC4 ) { std::cerr << "cv-calc: histogram: expected an unsigned char image type; got type: " << p.second.type() << std::endl; exit( 1 ); }
                 typedef boost::array< comma::uint32, 256 > channel_t;
@@ -1298,8 +1303,15 @@ int main( int ac, char** av )
                     const unsigned char* m = mat.ptr< unsigned char >( r );
                     for( int c = 0; c < mat.cols; ++c ) { for( unsigned int i = 0; i < channels.size(); ++channels[i][*m], ++i, ++m ); }
                 }
-                if( !serialization.no_header() ) { std::cout.write( &serialization.header_buffer()[0], serialization.header_buffer().size() ); }
-                for( unsigned int i = 0; i < channels.size(); ++i ) { std::cout.write( ( char* )( &channels[i][0] ), sizeof( comma::uint32 ) * 256 ); }
+                if( !output_serialization.no_header() ) { std::cout.write( &output_serialization.header_buffer()[0], output_serialization.header_buffer().size() ); }
+                if( interleave )
+                {
+                    for( unsigned int i = 0; i < 256; ++i ) { for( const auto& c: channels ) { std::cout.write( ( char* )( &c[i] ), sizeof( comma::uint32 ) ); } }
+                }
+                else
+                {
+                    for( const auto& c: channels ) { std::cout.write( ( char* )( &c[0] ), sizeof( comma::uint32 ) * 256 ); }
+                }
                 std::cout.flush();
             }
             return 0;
