@@ -59,7 +59,10 @@ static QWidget* make_widget_( const std::string& l, main_window::charts_t& chart
 main_window::main_window( const std::vector< plotting::stream::config_t >& configs, std::pair< unsigned int, unsigned int > size, const std::string& layout, float timeout )
 {
     std::map< std::string, std::string > titles;
-    for( const auto& c: configs ) { if( titles.find( c.series.chart ) == titles.end() || titles[ c.series.chart ].empty() ) { titles[ c.series.chart ] = c.series.title; } }
+    for( const auto& c: configs )
+    {
+        for( const auto& s: c.series ) { if( titles.find( s.chart ) == titles.end() || titles[ s.chart ].empty() ) { titles[ s.chart ] = s.title; } }
+    }
     for( auto& t: titles ) { t.second = t.second.empty() ? t.first : t.second; } // quick and dirty for now
     for( auto t: titles ) { charts_[ t.first ] = new plotting::xy_chart( t.second ); }
     for( const auto& c: configs ) // todo: multiple series from a stream could go to different charts

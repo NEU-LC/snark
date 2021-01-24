@@ -14,9 +14,8 @@ namespace snark { namespace graphics { namespace plotting {
 
 plotting::stream* stream::make( const plotting::stream::config_t& config, const std::map< std::string, snark::graphics::plotting::chart* >& charts )
 {
-    plotting::record sample = plotting::record::sample( config.csv.fields, config.number_of_series );
     std::vector< plotting::series::xy > series;
-    for( unsigned int i = 0; i < sample.series.size(); ++i ) { series.push_back( plotting::series::xy::make( config.series, charts.find( config.series.chart )->second ) ); } // todo: series configs
+    for( const auto& c: config.series ) { series.push_back( plotting::series::xy::make( c, charts.find( c.chart )->second ) ); }
     return new plotting::stream( series, config );
 }
 
@@ -25,20 +24,25 @@ static std::string fields_from_aliases_( const std::string& fields )
     auto v = comma::split( fields, ',', true );
     for( auto& f: v ) { if( f == "x" || f == "y" || f == "z" ) { f = "series[0]/" + f; } }
     return comma::join( v, ',' );
-} // quick and dirty
+}
     
 stream::config_t::config_t( const comma::command_line_options& options )
     : csv( options, "series[0]/x,series[0]/y" )
     , pass_through( options.exists( "--pass-through,--pass" ) )
-    , series( options )
     , size( options.value( "--size,-s,--tail", 10000 ) )
-    , number_of_series( options.value( "--number-of-series,-n", 0 ) )
+    , number_of_series( options.value( "--number-of-series,-n", 1 ) )
 {
     csv.fields = fields_from_aliases_( csv.fields );
+    const auto& o = plotting::series::config( options );
+    series.resize( number_of_series );
+    for( auto& s: series ) { s = o; }
 }
 
 stream::config_t::config_t( const std::string& options, const stream::config_t& defaults )
 {
+    plotting::record sample = plotting::record::sample( csv.fields, number_of_series );
+    series.resize( sample.series.size() );
+    number_of_series = series.size(); // quick and dirty
     *this = comma::name_value::parser( "filename", ';', '=', false ).get( options, defaults ); // quick and dirty
     csv.fields = fields_from_aliases_( csv.fields );
 }

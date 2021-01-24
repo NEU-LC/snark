@@ -83,18 +83,20 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
     {
         v.apply( "csv", t.csv );
         v.apply( "pass-through", t.pass_through );
-        v.apply( "series", t.series );
         v.apply( "size", t.size );
         v.apply( "number-of-series", t.number_of_series );
+        if( t.series.size() < t.number_of_series ) { t.series.resize( t.number_of_series ); } // quick and dirty
+        v.apply( "series", t.series[0] );
+        for( unsigned int i = 1; i < t.series.size(); ++i ) { t.series[i] = t.series[0]; } // todo: options per series
     }
-    template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v )
-    {
-        v.apply( "csv", t.csv );
-        v.apply( "pass-through", t.pass_through );
-        v.apply( "series", t.series );
-        v.apply( "size", t.size );
-        v.apply( "number-of-series", t.number_of_series );
-    }
+    //template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v )
+    //{
+    //    v.apply( "csv", t.csv );
+    //    v.apply( "pass-through", t.pass_through );
+    //    v.apply( "series", t.series ); // todo: probably does not work yet
+    //    v.apply( "size", t.size );
+    //    v.apply( "number-of-series", t.number_of_series );
+    //}
 };
 
 } } // namespace comma { namespace visiting {

@@ -34,11 +34,10 @@ class stream // todo: if stream other than xy stream required, create stream bas
         {
             comma::csv::options csv;
             bool pass_through;
-            plotting::series::config series;
+            std::vector< plotting::series::config > series;
             comma::uint32 size;
             comma::uint32 number_of_series; // todo: a shorter name?
-            
-            config_t() : pass_through( false ), size( 10000 ), number_of_series( 0 ) {}
+            config_t() : pass_through( false ), series( 1 ), size( 10000 ), number_of_series( 1 ) {}
             config_t( const comma::command_line_options& options );
             config_t( const std::string& options, const config_t& defaults = config_t() );
         };

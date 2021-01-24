@@ -48,7 +48,7 @@ static void usage( bool verbose = false )
     std::cerr << "                  --fields=series[0],series[1]: means same as above" << std::endl;
     std::cerr << "                  --fields=x,y,series[1]: means same as above" << std::endl;
     std::cerr << "    --no-stdin: don't try to read from stdin" << std::endl;
-    std::cerr << "    --number-of-series,-n=<n>; how many series each stream has; a convenience option" << std::endl;
+    std::cerr << "    --number-of-series,-n=<n>; default=1; how many series each stream has; a convenience option" << std::endl;
     std::cerr << "                               if --fields have 'series' field without series indices" << std::endl;
     std::cerr << "    --pass-through,--pass; todo: output to stdout the first stream on the command line" << std::endl;
     std::cerr << "    --size,-s,--tail=<n>: plot last <n> records of stream; default 10000" << std::endl;
@@ -176,6 +176,7 @@ static void usage( bool verbose = false )
 //     - fixed range
 //   - --chart-config-fields
 // - axis properties
+//   - labels
 //   - extents policies
 //     - fixed
 //     - auto-adjust
@@ -230,7 +231,6 @@ template <> struct traits< blah >
 
 } }
 
-
 int main( int ac, char** av )
 {
     try
@@ -239,10 +239,10 @@ int main( int ac, char** av )
         bool verbose = options.exists( "--verbose,-v" );
         if( options.exists( "--input-fields" ) ) { std::cout << "t,series,block" << std::endl; return 0; } // quick and dirty
         if( options.exists( "--input-fields-example" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, snark::graphics::plotting::record::sample( "series", 2 ) ), ',' ) << std::endl; return 0; }
-        snark::graphics::plotting::stream::config_t config( options );
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--maximize,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
+        snark::graphics::plotting::stream::config_t config( options );
         std::vector< snark::graphics::plotting::stream::config_t > configs;
         if( stdin_index ) { if( options.exists( "--no-stdin" ) ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
         else { config.csv.filename = "-"; configs.push_back( config ); config.pass_through = false; }
