@@ -149,6 +149,14 @@ static void usage( bool verbose = false )
         std::cerr << "                | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
         std::cerr << "                | csv-plot '-;fields=block,x,y,series[0]/y,series[1]/y,series[2]/y;series[1]=color:blue;series[2]=color:green|chart:test2' --fps 1" << std::endl;
         std::cerr << std::endl;
+        std::cerr << "    display image histogram from the laptop camera" << std::endl;
+        std::cerr << "        cv-cat --camera \\" << std::endl;
+        std::cerr << "            | cv-calc histogram --interleave --output no-header \\" << std::endl;
+        std::cerr << "            | csv-paste 'line-number;size=256;binary=ui' \\" << std::endl;
+        std::cerr << "                        'line-number;size=256;index;binary=ui' \\" << std::endl;
+        std::cerr << "                        '-;binary=3ui' \\" << std::endl;
+        std::cerr << "            | csv-plot '-;fields=block,x,series[0]/y,series[1]/y,series[2]/y;binary=5ui;series[0]=color:blue;series[1]=color:green;series[2]=color:red'" << std::endl;
+        std::cerr << std::endl;
     }
     else
     {

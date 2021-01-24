@@ -60,7 +60,7 @@ stream::config_t::config_t( const std::string& options, const stream::config_t& 
     plotting::record sample = plotting::record::sample( csv.fields, number_of_series ); // quick and dirty
     number_of_series = sample.series.size(); // quick and dirty
     series.resize( sample.series.size() );
-    for( unsigned int i = 1; i < series.size(); ++i ) { series[i] = s.find( i ) == s.end() ? series[0] : comma::name_value::parser( '|', ':', false ).get( s[i], series[0] ); }
+    for( unsigned int i = 0; i < series.size(); ++i ) { series[i] = s.find( i ) == s.end() ? series[0] : comma::name_value::parser( '|', ':', false ).get( s[i], series[0] ); }
 }
 
 stream::stream( const std::vector< plotting::series::xy >& s, const config_t& config )
