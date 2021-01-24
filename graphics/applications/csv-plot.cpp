@@ -167,7 +167,7 @@ static void usage( bool verbose = false )
 }
 
 // todo
-// ! test binary!
+// ! performance: struggles with more than 10000 points; find bottlenecks
 // - application/examples/csv-plot/...: example command lines
 // - gitlab: tutorial
 // - --stream-config
