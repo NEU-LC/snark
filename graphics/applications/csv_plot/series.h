@@ -19,7 +19,7 @@ struct config
     std::string name;
     bool scroll; // todo! a better name! move to chart config
     std::string shape;
-    std::string style;
+    std::string style; // todo
     std::string title;
     float weight;
     
