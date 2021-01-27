@@ -58,6 +58,16 @@ static void usage( bool verbose = false )
     std::cerr << std::endl << comma::csv::options::usage( verbose ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "chart options" << std::endl;
+    std::cerr << "    --chart=<properties>; todo: semicolon-separated chart properties; multiple --chart options allowed" << std::endl;
+    std::cerr << "        <properties>" << std::endl;
+    std::cerr << "            animate: todo" << std::endl;
+    std::cerr << "            legend: todo" << std::endl;
+    std::cerr << "            max: todo" << std::endl;
+    std::cerr << "            min: todo" << std::endl;
+    std::cerr << "            name: todo" << std::endl;
+    std::cerr << "            range: todo?" << std::endl;
+    std::cerr << "            scroll: todo" << std::endl;
+    std::cerr << "            title: todo" << std::endl;
     std::cerr << "    --scroll: if present, chart axes get adjusted to where the data is" << std::endl;
     std::cerr << "    --title=[<title>]: chart title" << std::endl;
     std::cerr << std::endl;
@@ -168,6 +178,8 @@ static void usage( bool verbose = false )
 
 // todo
 // ! performance: struggles with more than 10000 points; find bottlenecks
+// ! --chart=<config>
+// ! chart axes: fixed range
 // - application/examples/csv-plot/...: example command lines
 // - gitlab: tutorial
 // - --stream-config
@@ -202,6 +214,7 @@ static void usage( bool verbose = false )
 //   - extents policies
 //     - fixed
 //     - auto-adjust
+//     ? ignore outliers?
 //     - label
 //   - t markers on x axis (QtCharts::QDateTimeAxis?)
 // - series properties

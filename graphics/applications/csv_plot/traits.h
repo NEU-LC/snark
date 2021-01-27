@@ -6,6 +6,7 @@
 
 #include <comma/csv/traits.h>
 #include <comma/visiting/traits.h>
+#include "charts.h"
 #include "record.h"
 #include "series.h"
 #include "stream.h"
@@ -89,7 +90,7 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
         v.apply( "series", t.series[0] );
         for( unsigned int i = 1; i < t.series.size(); ++i ) { t.series[i] = t.series[0]; } // todo: options per series
     }
-    //template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v )
+    //template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v ) // todo?
     //{
     //    v.apply( "csv", t.csv );
     //    v.apply( "pass-through", t.pass_through );
@@ -97,6 +98,20 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
     //    v.apply( "size", t.size );
     //    v.apply( "number-of-series", t.number_of_series );
     //}
+};
+
+template <> struct traits< snark::graphics::plotting::chart::config_t >
+{
+    template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::chart::config_t& t, V& v )
+    {
+        v.apply( "animate", t.animate );
+        v.apply( "legend", t.legend );
+        v.apply( "max", t.max );
+        v.apply( "min", t.min );
+        v.apply( "name", t.name );
+        v.apply( "scroll", t.scroll );
+        v.apply( "title", t.title );
+    }
 };
 
 } } // namespace comma { namespace visiting {
