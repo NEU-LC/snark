@@ -71,7 +71,7 @@ def main():
     record_type, record_ctor = convert.ros_message_to_csv_record( message_type() )
     if args.format or args.binary:
         formats = args.format if args.format else args.binary
-        fields = args.fields if args.fields else record_type.fields
+        fields = args.fields if args.fields else detail.command_line.fields_of_record( record_type, args.index_output_fields )
         lengths = detail.command_line.lengths_of_strings( fields, comma.csv.format.expand( formats ))
         record_type, record_ctor = convert.ros_message_to_csv_record( message_type(), lengths )
     if args.output_fields: print ','.join( detail.command_line.fields_of_record( record_type, args.index_output_fields ) ); sys.exit( 0 )
