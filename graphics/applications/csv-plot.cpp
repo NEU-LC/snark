@@ -279,17 +279,18 @@ int main( int ac, char** av )
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--maximize,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
-        snark::graphics::plotting::stream::config_t config( options );
-        std::vector< snark::graphics::plotting::stream::config_t > configs;
+        snark::graphics::plotting::stream::config_t stream_config( options );
+        std::vector< snark::graphics::plotting::stream::config_t > stream_configs;
         if( stdin_index ) { if( options.exists( "--no-stdin" ) ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
-        else { config.csv.filename = "-"; configs.push_back( config ); config.pass_through = false; }
-        for( unsigned int i = 0; i < unnamed.size(); ++i ) { configs.push_back( snark::graphics::plotting::stream::config_t( unnamed[i], config ) ); config.pass_through = false; }
-        if( verbose ) { std::cerr << "csv-plot: got " << configs.size() << " input stream config(s)" << std::endl; }
+        else { stream_config.csv.filename = "-"; stream_configs.push_back( stream_config ); stream_config.pass_through = false; }
+        for( unsigned int i = 0; i < unnamed.size(); ++i ) { stream_configs.push_back( snark::graphics::plotting::stream::config_t( unnamed[i], stream_config ) ); stream_config.pass_through = false; }
+        if( verbose ) { std::cerr << "csv-plot: got " << stream_configs.size() << " input stream config(s)" << std::endl; }
+        const auto& chart_properties = options.values< std::string >( "--chart" );
         float timeout = options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ); // todo? update streams and charts at variable rates?
         std::string layout = options.value< std::string >( "--layout", "grid" );
         auto window_size = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--window-size", "800,600" ) );
         QApplication a( ac, av );
-        snark::graphics::plotting::main_window main_window( configs, window_size, layout, timeout );
+        snark::graphics::plotting::main_window main_window( stream_configs, chart_properties, window_size, layout, timeout );
         if( verbose )
         {
             std::cerr << "csv-plot: created " << main_window.charts().size() << " chart(s)" << std::endl;

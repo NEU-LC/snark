@@ -56,7 +56,11 @@ static QWidget* make_widget_( const std::string& l, main_window::charts_t& chart
     COMMA_THROW( comma::exception, "csv-plot: expected layout; got: '" << shape << "'" );
 }
 
-main_window::main_window( const std::vector< plotting::stream::config_t >& configs, std::pair< unsigned int, unsigned int > size, const std::string& layout, float timeout )
+main_window::main_window( const std::vector< plotting::stream::config_t >& configs
+                        , const std::vector< std::string >& chart_properties
+                        , const std::pair< unsigned int, unsigned int >& size
+                        , const std::string& layout
+                        , float timeout )
 {
     std::map< std::string, std::string > titles;
     for( const auto& c: configs )
