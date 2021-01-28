@@ -32,8 +32,7 @@ class chart: public QChart
             std::string title;
             
             config_t( const std::string& name = "", const std::string& title = "" );
-            static config_t make( const std::string& s );
-            static std::vector< config_t > make( const std::vector< std::string >& v );
+            static config_t make( const std::string& s, const chart::config_t& defaults = chart::config_t() );
         };
         
         chart( const config_t& c, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );

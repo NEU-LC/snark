@@ -1,7 +1,5 @@
 // Copyright (c) 2021 Vsevolod Vlaskine
 
-#include <comma/base/exception.h>
-#include <comma/math/compare.h>
 #include "charts.h"
 
 namespace snark { namespace graphics { namespace plotting {
@@ -15,16 +13,6 @@ chart::config_t::config_t( const std::string& name, const std::string& t )
 {
 }
 
-chart::config_t chart::config_t::make( const std::string& s )
-{
-    COMMA_THROW( comma::exception, "todo" );
-}
-
-std::vector< chart::config_t > chart::config_t::make( const std::vector< std::string >& v )
-{
-    COMMA_THROW( comma::exception, "todo" );
-}
-    
 chart::chart( const chart::config_t& config, QGraphicsItem *parent, Qt::WindowFlags window_flags )
     : QChart( QChart::ChartTypeCartesian, parent, window_flags )
     , config_( config )

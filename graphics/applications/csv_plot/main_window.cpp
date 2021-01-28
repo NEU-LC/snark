@@ -1,13 +1,15 @@
+#include <map>
 #include <QGridLayout>
 #include <QTabWidget>
 #include <QtCharts/QChartView>
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
-#include <comma/string/string.h>
-#include <comma/name_value/map.h>
 #include <comma/name_value/parser.h>
-#include <comma/name_value/serialize.h>
+#include <comma/name_value/map.h>
+//#include <comma/name_value/serialize.h>
+#include <comma/string/string.h>
 #include "main_window.h"
+#include "traits.h"
 
 namespace snark { namespace graphics { namespace plotting {
 
@@ -62,13 +64,23 @@ main_window::main_window( const std::vector< plotting::stream::config_t >& confi
                         , const std::string& layout
                         , float timeout )
 {
-    std::map< std::string, std::string > titles;
+    std::map< std::string, plotting::chart::config_t > chart_configs;
+    for( const auto& p: chart_properties ) // todo: quick and dirty; move to a chart method
+    {
+        auto c = comma::name_value::parser( "name", ';', '=', true ).get< plotting::chart::config_t >( p );
+        if( c.title.empty() ) { c.title = c.name; } // quick and dirty
+        chart_configs[ c.name ] = c;
+    }    
     for( const auto& c: configs )
     {
-        for( const auto& s: c.series ) { if( titles.find( s.chart ) == titles.end() || titles[ s.chart ].empty() ) { titles[ s.chart ] = s.title; } }
+        for( const auto& s: c.series ) // quick and dirty
+        {
+            auto i = chart_configs.insert( std::make_pair( s.chart, plotting::chart::config_t( s.chart ) ) );
+            if( !s.title.empty() ) { i.first->second.title = s.title; } // todo: quick and dirty; move to a chart method
+            if( s.scroll ) { i.first->second.scroll = true; } // todo: quick and dirty; move to a chart method
+        }
     }
-    for( auto& t: titles ) { t.second = t.second.empty() ? t.first : t.second; } // quick and dirty for now
-    for( auto t: titles ) { charts_[ t.first ] = new plotting::xy_chart( plotting::chart::config_t( t.second ) ); }
+    for( const auto& c: chart_configs ) { charts_[ c.first ] = new plotting::xy_chart( plotting::chart::config_t( c.second ) ); }
     for( const auto& c: configs ) // todo: multiple series from a stream could go to different charts
     { 
         auto s = plotting::stream::make( c, charts_ );

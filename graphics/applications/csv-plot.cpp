@@ -13,7 +13,6 @@
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
 #include <comma/string/string.h>
-#include <comma/name_value/parser.h>
 #include <comma/name_value/serialize.h>
 #include "csv_plot/main_window.h"
 #include "csv_plot/traits.h"
@@ -60,16 +59,16 @@ static void usage( bool verbose = false )
     std::cerr << "chart options" << std::endl;
     std::cerr << "    --chart=<properties>; todo: semicolon-separated chart properties; multiple --chart options allowed" << std::endl;
     std::cerr << "        <properties>" << std::endl;
-    std::cerr << "            animate: todo" << std::endl;
-    std::cerr << "            legend: todo" << std::endl;
+    std::cerr << "            animate: todo; default: true" << std::endl;
+    std::cerr << "            legend: todo; default: false" << std::endl;
     std::cerr << "            max: todo" << std::endl;
     std::cerr << "            min: todo" << std::endl;
     std::cerr << "            name: todo" << std::endl;
     std::cerr << "            range: todo?" << std::endl;
     std::cerr << "            scroll: todo" << std::endl;
     std::cerr << "            title: todo" << std::endl;
+    std::cerr << "        e.g: todo" << std::endl;
     std::cerr << "    --scroll: if present, chart axes get adjusted to where the data is" << std::endl;
-    std::cerr << "    --title=[<title>]: chart title" << std::endl;
     std::cerr << std::endl;
     std::cerr << "series options" << std::endl;
     std::cerr << "    --color=<color>: plot color: black, white, red, green, blue" << std::endl;
@@ -77,6 +76,7 @@ static void usage( bool verbose = false )
     std::cerr << "                                 or #rrggbb, e.g. #ff00ff" << std::endl;
     std::cerr << "    --shape=<what>: line (default)" << std::endl;
     std::cerr << "                    todo: more shapes" << std::endl;
+    std::cerr << "    --title=[<title>]: series title" << std::endl;
     std::cerr << "    --weight=<weight>: point or line weight" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    for multiple series per stream, individual series options look like: 'series[2]=color:green|chart:test'" << std::endl;
@@ -178,11 +178,11 @@ static void usage( bool verbose = false )
 
 // todo
 // ! performance: struggles with more than 10000 points; find bottlenecks
-// ! --chart=<config>
-// ! chart axes: fixed range
+// ! chart axes: fixed range: debug
+// - legend: series titles etc
 // - application/examples/csv-plot/...: example command lines
 // - gitlab: tutorial
-// - --stream-config
+// - --stream-config, --chart-config, --series-config
 // ? extents -> separate generic class
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
