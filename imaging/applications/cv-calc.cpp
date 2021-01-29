@@ -1085,13 +1085,12 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         comma::csv::options csv( options );
-        csv.full_xpath = true;
-        verbose = options.exists("--verbose,-v");
-        //std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
-        std::vector< std::string > ops = options.unnamed("-h,--help,-v,--verbose,--flush,--forever,--header-fields,--header-format,--interleave-channels,--interleave,--output-fields,--output-format,--exit-on-stability,--crop,--no-discard,--show-partial,--permissive,--deterministic,--fit-last,--output-number-of-strides,--number-of-strides,--prepend,--realtime,--reverse", "-.*");
-        if( ops.empty() ) { std::cerr << name << "please specify an operation." << std::endl; return 1;  }
-        if( ops.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( ops, ' ' ) << std::endl; return 1; }
-        std::string operation = ops.front();
+        verbose = options.exists( "--verbose,-v" );
+        //std::vector< std::string > unnamed = options.unnamed("-h,--help,-v,--verbose,--flush,--input-fields,--input-format,--output-fields,--output-format,--show-partial", "--fields,--binary,--input,--output,--strides,--padding,--shape,--size,--kernel");
+        std::vector< std::string > unnamed = options.unnamed( "-h,--help,-v,--verbose,--flush,--forever,--header-fields,--header-format,--interleave-channels,--interleave,--output-fields,--output-format,--exit-on-stability,--crop,--no-discard,--show-partial,--permissive,--deterministic,--fit-last,--output-number-of-strides,--number-of-strides,--prepend,--realtime,--reverse", "-.*" );
+        if( unnamed.empty() ) { std::cerr << name << "please specify operation" << std::endl; return 1; }
+        if( unnamed.size() > 1 ) { std::cerr << name << "please specify only one operation, got " << comma::join( unnamed, ' ' ) << std::endl; return 1; }
+        std::string operation = unnamed.front();
         const snark::cv_mat::serialization::options input_parsed = comma::name_value::parser( ';', '=' ).get< snark::cv_mat::serialization::options >( options.value< std::string >( "--input", "" ) );
         snark::cv_mat::serialization::options input_options = handle_fields_and_format(csv, input_parsed );
         std::string output_options_string = options.value< std::string >( "--output", "" );
