@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <comma/csv/traits.h>
 #include <comma/visiting/traits.h>
 #include "charts.h"
@@ -23,9 +24,9 @@ template <> struct traits< snark::graphics::plotting::point >
     }
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::point& t, V& v )
     {
-        if( t.x ) { v.apply( "x", *t.x ); }
-        if( t.y ) { v.apply( "y", *t.y ); }
-        if( t.z ) { v.apply( "z", *t.z ); }
+        if( t.x ) { v.apply( "x", *t.x ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
+        if( t.y ) { v.apply( "y", *t.y ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
+        if( t.z ) { v.apply( "z", *t.z ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
     }
 };
 
@@ -90,24 +91,25 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
         v.apply( "series", t.series[0] );
         for( unsigned int i = 1; i < t.series.size(); ++i ) { t.series[i] = t.series[0]; } // todo: options per series
     }
-    //template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::stream::config_t& t, V& v ) // todo?
-    //{
-    //    v.apply( "csv", t.csv );
-    //    v.apply( "pass-through", t.pass_through );
-    //    v.apply( "series", t.series ); // todo: probably does not work yet
-    //    v.apply( "size", t.size );
-    //    v.apply( "number-of-series", t.number_of_series );
-    //}
 };
 
 template <> struct traits< snark::graphics::plotting::chart::config_t >
 {
+    static void set_to_nan( boost::optional< double >& d ) { if( !d ) { d = std::nan( "" ); } } // todo: shame, shame, shame; fix csv visiting of optional
+    static void reset_if_nan( boost::optional< double >& d ) { if( d && std::isnan( *d ) ) { d.reset(); } } // todo: shame, shame, shame; fix csv visiting of optional
+    static void set_to_nan( snark::graphics::plotting::point& p ) { set_to_nan( p.x ); set_to_nan( p.y ); set_to_nan( p.z ); } // todo: shame, shame, shame; fix csv visiting of optional
+    static void reset_if_nan( snark::graphics::plotting::point& p ) { reset_if_nan( p.x ); reset_if_nan( p.y ); reset_if_nan( p.z ); } // todo: shame, shame, shame; fix csv visiting of optional
+    
     template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::chart::config_t& t, V& v )
     {
         v.apply( "animate", t.animate );
         v.apply( "legend", t.legend );
+        set_to_nan( t.max ); // shame
         v.apply( "max", t.max );
+        reset_if_nan( t.max ); // shame
+        set_to_nan( t.min ); // shame
         v.apply( "min", t.min );
+        reset_if_nan( t.min ); // shame
         v.apply( "name", t.name );
         v.apply( "scroll", t.scroll );
         v.apply( "title", t.title );

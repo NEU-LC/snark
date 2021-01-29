@@ -53,16 +53,10 @@ void xy_chart::update()
     {
         if( !s->updated() ) { continue; }
         if( !extents_ ) { extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) ); }
-        if( !fixed_x_ )
-        {
-            if( extents_->first.x() > s->extents().first.x() ) { extents_->first.setX( s->extents().first.x() ); }
-            if( extents_->second.x() < s->extents().second.x() ) { extents_->second.setX( s->extents().second.x() ); }
-        }
-        if( !fixed_y_ )
-        {
-            if( extents_->first.y() > s->extents().first.y() ) { extents_->first.setY( s->extents().first.y() ); }
-            if( extents_->second.y() < s->extents().second.y() ) { extents_->second.setY( s->extents().second.y() ); }
-        }
+        if( !config_.min.x && extents_->first.x() > s->extents().first.x() ) { extents_->first.setX( s->extents().first.x() ); }
+        if( !config_.max.x && extents_->second.x() < s->extents().second.x() ) { extents_->second.setX( s->extents().second.x() ); }
+        if( !config_.min.y && extents_->first.y() > s->extents().first.y() ) { extents_->first.setY( s->extents().first.y() ); }
+        if( !config_.max.y && extents_->second.y() < s->extents().second.y() ) { extents_->second.setY( s->extents().second.y() ); }
     }
     if( !extents_ ) { return; }
     if( !fixed_x_ )
@@ -70,14 +64,14 @@ void xy_chart::update()
         if( config_.scroll ) // todo! quick and dirty; improve
         {
             double mx = ( extents_->second.x() - extents_->first.x() ) * 0.1;
-            x_axis_->setMin( extents_->first.x() - mx );
-            x_axis_->setMax( extents_->second.x() + mx );
+            if( !config_.min.x ) { x_axis_->setMin( extents_->first.x() - mx ); }
+            if( !config_.max.x ) { x_axis_->setMax( extents_->second.x() + mx ); }
         }
         else
         {
             double mx = ( x_axis_->max() - x_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
-            if( x_axis_->min() > extents_->first.x() ) { x_axis_->setMin( extents_->first.x() - mx ); }
-            if( x_axis_->max() < extents_->second.x() ) { x_axis_->setMax( extents_->second.x() + mx ); }
+            if( !config_.min.x && x_axis_->min() > extents_->first.x() ) { x_axis_->setMin( extents_->first.x() - mx ); }
+            if( !config_.max.x && x_axis_->max() < extents_->second.x() ) { x_axis_->setMax( extents_->second.x() + mx ); }
         }
     }
     if( !fixed_y_ )
@@ -85,14 +79,14 @@ void xy_chart::update()
         if( config_.scroll ) // todo! quick and dirty; improve
         {
             double my = ( extents_->second.y() - extents_->first.y() ) * 0.1;
-            y_axis_->setMin( extents_->first.y() - my );
-            y_axis_->setMax( extents_->second.y() + my );
+            if( !config_.min.y ) { y_axis_->setMin( extents_->first.y() - my ); }
+            if( !config_.max.y ) { y_axis_->setMax( extents_->second.y() + my ); }
         }
         else
         {
             double my = ( y_axis_->max() - y_axis_->min() ) * 0.1; // todo: make configurable or at least not so daft
-            if( y_axis_->min() > extents_->first.y() ) { y_axis_->setMin( extents_->first.y() - my ); }
-            if( y_axis_->max() < extents_->second.y() ) { y_axis_->setMax( extents_->second.y() + my ); }
+            if( !config_.min.y && y_axis_->min() > extents_->first.y() ) { y_axis_->setMin( extents_->first.y() - my ); }
+            if( !config_.max.y && y_axis_->max() < extents_->second.y() ) { y_axis_->setMax( extents_->second.y() + my ); }
         }
     }
 }
