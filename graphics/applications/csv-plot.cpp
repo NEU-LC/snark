@@ -180,8 +180,8 @@ static void usage( bool verbose = false )
 // todo
 // ! performance: struggles with more than 10000 points; find bottlenecks
 // ! chart axes: fixed range: debug
-// - application/examples/csv-plot/...: example command lines
-// - gitlab: tutorial
+// ! gitlab: tutorial
+// ! application/examples/csv-plot/...: example command lines
 // - --stream-config, --chart-config, --series-config
 // ? extents -> separate generic class
 // - input
