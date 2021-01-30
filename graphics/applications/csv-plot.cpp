@@ -204,14 +204,11 @@ static void usage( bool verbose = false )
 //     - handle range of zero length
 //     - add configurable margins
 //     - handle various range policies
+//     - extents policies
+//       - auto-adjust
+//       ? ignore outliers? e.g. percentile-based?
+//       - t markers on x axis (QtCharts::QDateTimeAxis?)
 //   - --chart-config-fields
-// - axis properties
-//   - extents policies
-//     - fixed
-//     - auto-adjust
-//     ? ignore outliers? e.g. percentile-based?
-//     - label
-//   - t markers on x axis (QtCharts::QDateTimeAxis?)
 // - series properties
 //   - properties as policy templated on qt series?
 //   - spline: style? parametrization?
