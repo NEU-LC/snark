@@ -165,7 +165,7 @@ static void usage( bool verbose = false )
         std::cerr << "            | csv-paste 'line-number;size=256;binary=ui' \\" << std::endl;
         std::cerr << "                        'line-number;size=256;index;binary=ui' \\" << std::endl;
         std::cerr << "                        '-;binary=3ui' \\" << std::endl;
-        std::cerr << "            | csv-plot '-;fields=block,x,series[0]/y,series[1]/y,series[2]/y;binary=5ui;series[0]=color:blue;series[1]=color:green;series[2]=color:red;chart=histogram' \\" << std::endl;
+        std::cerr << "            | csv-plot '-;fields=block,x,series[0]/y,series[1]/y,series[2]/y;binary=5ui;series[0]=color:blue|title:blue;series[1]=color:green|title:green;series[2]=color:red|title:red;chart=histogram' \\" << std::endl;
         std::cerr << "                       --chart='histogram;min/y=0;max/y=8000'" << std::endl;
         std::cerr << std::endl;
     }

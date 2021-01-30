@@ -76,7 +76,7 @@ main_window::main_window( const std::vector< plotting::stream::config_t >& confi
         for( const auto& s: c.series ) // quick and dirty
         {
             auto i = chart_configs.insert( std::make_pair( s.chart, plotting::chart::config_t( s.chart ) ) );
-            if( !s.title.empty() ) { i.first->second.title = s.title; } // todo: quick and dirty; move to a chart method
+            if( i.first->second.title.empty() ) { i.first->second.title = s.title; } // todo: quick and dirty; move to a chart method
             if( s.scroll ) { i.first->second.scroll = true; } // todo: quick and dirty; move to a chart method
         }
     }

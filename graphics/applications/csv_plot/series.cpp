@@ -39,6 +39,7 @@ xy::xy( QtCharts::QXYSeries* s, const series::config& c ): series_( s ), config_
     QPen pen( config_.color );
     pen.setWidth( config_.weight );
     series_->setPen( pen );
+    series_->setName( &config_.title[0] );
 }
 
 void xy::clear()
