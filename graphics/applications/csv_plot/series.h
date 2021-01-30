@@ -10,7 +10,7 @@
 #include "record.h"
 
 namespace snark { namespace graphics { namespace plotting { namespace series {
-
+    
 struct config
 {
     std::string chart;

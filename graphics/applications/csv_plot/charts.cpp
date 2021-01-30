@@ -29,6 +29,8 @@ xy_chart::xy_chart( const chart::config_t& config, QGraphicsItem *parent, Qt::Wi
     , x_axis_( new QValueAxis )
     , y_axis_( new QValueAxis )
 {
+    x_axis_->setTitleText( &config.axes.x.title[0] );
+    y_axis_->setTitleText( &config.axes.y.title[0] );
     addAxis( x_axis_, Qt::AlignBottom ); // todo: make configurable
     addAxis( y_axis_, Qt::AlignLeft ); // todo: make configurable
     x_axis_->setTickCount( 1 ); // todo: make configurable

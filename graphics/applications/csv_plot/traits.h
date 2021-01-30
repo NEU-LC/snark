@@ -68,7 +68,6 @@ template <> struct traits< snark::graphics::plotting::series::config >
     }
     template< typename K, typename V > static void visit( const K&, const snark::graphics::plotting::series::config& t, V& v )
     {
-        v.apply( "chart", t.chart );
         v.apply( "color", std::string( t.color.name() ) );
         v.apply( "name", t.name );
         v.apply( "scroll", t.scroll );
@@ -93,6 +92,23 @@ template <> struct traits< snark::graphics::plotting::stream::config_t >
     }
 };
 
+template <> struct traits< snark::graphics::plotting::chart::axis::config >
+{
+    template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::chart::axis::config& t, V& v )
+    { 
+        v.apply( "title", t.title );
+    }
+};
+
+template <> struct traits< snark::graphics::plotting::chart::axes::config >
+{
+    template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::chart::axes::config& t, V& v )
+    {
+        v.apply( "x", t.x );
+        v.apply( "y", t.y );
+    }
+};
+
 template <> struct traits< snark::graphics::plotting::chart::config_t >
 {
     static void set_to_nan( boost::optional< double >& d ) { if( !d ) { d = std::nan( "" ); } } // todo: shame, shame, shame; fix csv visiting of optional
@@ -103,6 +119,7 @@ template <> struct traits< snark::graphics::plotting::chart::config_t >
     template< typename K, typename V > static void visit( const K&, snark::graphics::plotting::chart::config_t& t, V& v )
     {
         v.apply( "animate", t.animate );
+        v.apply( "axes", t.axes );
         v.apply( "legend", t.legend );
         set_to_nan( t.max ); // shame
         v.apply( "max", t.max );

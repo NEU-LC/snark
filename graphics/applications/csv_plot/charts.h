@@ -16,14 +16,19 @@ QT_USE_NAMESPACE
 QT_CHARTS_USE_NAMESPACE
 
 namespace snark { namespace graphics { namespace plotting {
-
+    
 class chart: public QChart
 {
     Q_OBJECT
     public:
+        struct axis { struct config { std::string title; }; };
+
+        struct axes { struct config { axis::config x; axis::config y; }; };
+        
         struct config_t
         {
             bool animate;
+            plotting::chart::axes::config axes;
             bool legend;
             point max; // todo? is it xychart-specific?
             point min; // todo? is it xychart-specific?

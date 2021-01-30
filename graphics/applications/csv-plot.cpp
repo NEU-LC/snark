@@ -57,17 +57,17 @@ static void usage( bool verbose = false )
     std::cerr << std::endl << comma::csv::options::usage( verbose ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "chart options" << std::endl;
-    std::cerr << "    --chart=<properties>; todo: semicolon-separated chart properties; multiple --chart options allowed" << std::endl;
+    std::cerr << "    --chart=<name>,<properties>; todo: semicolon-separated chart properties; multiple --chart options allowed" << std::endl;
     std::cerr << "        <properties>" << std::endl;
-    std::cerr << "            animate: todo; default: true" << std::endl;
-    std::cerr << "            legend: todo; default: false" << std::endl;
-    std::cerr << "            max: todo" << std::endl;
-    std::cerr << "            min: todo" << std::endl;
-    std::cerr << "            name: todo" << std::endl;
-    std::cerr << "            range: todo?" << std::endl;
-    std::cerr << "            scroll: todo" << std::endl;
-    std::cerr << "            title: todo" << std::endl;
-    std::cerr << "        e.g: todo" << std::endl;
+    std::cerr << "            animate; default: true" << std::endl;
+    std::cerr << "            axes/x=[<title>]" << std::endl;
+    std::cerr << "            axes/y=[<title>]" << std::endl;
+    std::cerr << "            legend; show legend; default: false" << std::endl;
+    std::cerr << "            max/x=[<value>], max/y=[<value>]" << std::endl;
+    std::cerr << "            min/x=[<value>], min/y=[<value>]" << std::endl;
+    std::cerr << "            scroll; \"scroll\" to the current chart extents" << std::endl;
+    std::cerr << "            title=[<title>]; default: <name>" << std::endl;
+    std::cerr << "        example: todo" << std::endl;
     std::cerr << "    --scroll: if present, chart axes get adjusted to where the data is" << std::endl;
     std::cerr << std::endl;
     std::cerr << "series options" << std::endl;
@@ -166,7 +166,7 @@ static void usage( bool verbose = false )
         std::cerr << "                        'line-number;size=256;index;binary=ui' \\" << std::endl;
         std::cerr << "                        '-;binary=3ui' \\" << std::endl;
         std::cerr << "            | csv-plot '-;fields=block,x,series[0]/y,series[1]/y,series[2]/y;binary=5ui;series[0]=color:blue|title:blue;series[1]=color:green|title:green;series[2]=color:red|title:red;chart=histogram' \\" << std::endl;
-        std::cerr << "                       --chart='histogram;min/y=0;max/y=8000'" << std::endl;
+        std::cerr << "                       --chart='histogram;min/y=0;max/y=8000;axes/x/title=pixel value;axes/y/title=number of pixels'" << std::endl;
         std::cerr << std::endl;
     }
     else
@@ -180,7 +180,6 @@ static void usage( bool verbose = false )
 // todo
 // ! performance: struggles with more than 10000 points; find bottlenecks
 // ! chart axes: fixed range: debug
-// - legend: series titles etc
 // - application/examples/csv-plot/...: example command lines
 // - gitlab: tutorial
 // - --stream-config, --chart-config, --series-config
@@ -201,17 +200,12 @@ static void usage( bool verbose = false )
 //     - 2.5d charts
 //     ? polar charts
 //     ? chart types other than xy, e.g. pie chart
-//   - properties
-//     - title
-//     ? legend (especially if multiple series on the same chart
 //   - axes
 //     - handle range of zero length
 //     - add configurable margins
 //     - handle various range policies
-//     - fixed range
 //   - --chart-config-fields
 // - axis properties
-//   - labels
 //   - extents policies
 //     - fixed
 //     - auto-adjust
