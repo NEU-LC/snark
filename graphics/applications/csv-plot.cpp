@@ -204,6 +204,7 @@ static void usage( bool verbose = false )
 //     - handle range of zero length
 //     - add configurable margins
 //     - handle various range policies
+//     - axis types (e.g. int)
 //     - extents policies
 //       - auto-adjust
 //       ? ignore outliers? e.g. percentile-based?
@@ -224,6 +225,7 @@ static void usage( bool verbose = false )
 //   ? better autoscrolling
 // - main window
 //   - add signal to update? currently, updates only after first timeout
+//   - grey margins waste real estate; remove
 // - building
 //   ? move into a separate repository or add a separate cmake for cpack packaging
 //   ? copy-paste block_buffer
