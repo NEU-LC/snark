@@ -197,11 +197,7 @@ static void usage( bool verbose = false )
 // ? extents -> separate generic class
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
-//   - label: optional field
-//   - multiple x,y fields in a single record
-//     - -> multiple series with different properties (also different targets)
-//     - allow common x, e.g. if series[0]/x not present, look for x field; series[1]/x present, overrules common x
-//     - support t field as well
+//   - label: optional input field
 // - zoom
 // - save as
 //   - png
@@ -220,16 +216,13 @@ static void usage( bool verbose = false )
 //       - auto-adjust
 //       ? ignore outliers? e.g. percentile-based?
 //       - t markers on x axis (QtCharts::QDateTimeAxis?)
-//   - --chart-config-fields
 // - series properties
 //   - properties
 //     - as policy templated on qt series?
-//     - --series
 //   - scatter: style; derive from series? series -> base class?
 //     - marker color
 //     - marker shape
 //   ? --scroll: separate logic from chart --scroll or remove from series altogether?
-//   - --series-config-fields
 // - layouts
 //   - multi-window
 //   - stacked
