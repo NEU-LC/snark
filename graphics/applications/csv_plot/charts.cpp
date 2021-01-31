@@ -34,6 +34,7 @@ xy_chart::xy_chart( const chart::config_t& config, QGraphicsItem *parent, Qt::Wi
     , x_axis_( new QValueAxis )
     , y_axis_( new QValueAxis )
 {
+    //setMargins( QMargins( 5, 5, 5, 5 ) ); // quick and dirty
     //QFont font( x_axis_->titleFont().family(), 1, 1 );
     x_axis_->setTitleFont( x_axis_->titleFont() ); // voodoo, this removes font boldness... whatever...
     y_axis_->setTitleFont( y_axis_->titleFont() ); // voodoo, this removes font boldness... whatever...

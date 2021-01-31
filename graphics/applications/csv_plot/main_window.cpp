@@ -23,6 +23,7 @@ static QWidget* make_widget_( const std::string& l, main_window::charts_t& chart
         if( !rows ) { rows = charts.size() / *cols + 1; }
         if( *cols * *rows < charts.size() ) { COMMA_THROW( comma::exception, "csv-plot: expected grid of size at least " << charts.size() << "; got: grid " << *cols << "x" << *rows ); }
         QGridLayout* grid = new QGridLayout;
+        grid->setContentsMargins( 0, 0, 0, 0 );
         unsigned int row = 0;
         unsigned int col = 0;
         for( auto c: charts )
@@ -41,6 +42,7 @@ static QWidget* make_widget_( const std::string& l, main_window::charts_t& chart
     else if( shape == "tabs" )
     {
         auto w = new QTabWidget;
+        w->setContentsMargins( 0, 0, 0, 0 );
         for( auto c: charts )
         {
             QChartView* v = new QChartView( c.second );

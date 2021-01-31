@@ -193,7 +193,6 @@ static void usage( bool verbose = false )
 // ! performance: struggles with more than 10000 points; find bottlenecks
 // ! gitlab: tutorial
 // ! application/examples/csv-plot/...: example command lines
-// - --stream-config, --chart-config, --series-config
 // ? extents -> separate generic class
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
@@ -206,7 +205,8 @@ static void usage( bool verbose = false )
 //   - types
 //     - 2.5d charts
 //     ? polar charts
-//     ? chart types other than xy, e.g. pie chart
+//     ? pie chart
+//     ? bar chart
 //   - axes
 //     - handle range of zero length
 //     ? add configurable margins
@@ -217,6 +217,7 @@ static void usage( bool verbose = false )
 //       ? ignore outliers? e.g. percentile-based?
 //       - t markers on x axis (QtCharts::QDateTimeAxis?)
 // - series properties
+//   ? optionally: series[2]=<name>
 //   - properties
 //     - as policy templated on qt series?
 //   - scatter: style; derive from series? series -> base class?
@@ -231,12 +232,12 @@ static void usage( bool verbose = false )
 //   ? better autoscrolling
 // - main window
 //   - add signal to update? currently, updates only after first timeout
-//   - grey margins waste real estate; remove
 // - building
-//   ? move into a separate repository or add a separate cmake for cpack packaging
-//   ? copy-paste block_buffer
-//   ? package
-//   ? expose on ppa
+//   ? packaging as a separate package
+//       ? move into a separate repository or add a separate cmake for cpack packaging
+//       ? copy-paste block_buffer
+//       ? package
+//       ? expose on ppa
 // ! qtcharts licence
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
 // ? qt, qtcharts: static layout configuration files?
