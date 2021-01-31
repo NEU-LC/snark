@@ -56,7 +56,6 @@ static QWidget* make_widget_( const std::string& l, main_window::charts_t& chart
 }
 
 main_window::main_window( const std::vector< snark::graphics::plotting::stream::config_t >& stream_configs
-                        , const std::map< std::string, snark::graphics::plotting::series::config >& series_configs
                         , std::map< std::string, snark::graphics::plotting::chart::config_t > chart_configs
                         , const std::pair< unsigned int, unsigned int >& size
                         , const std::string& layout

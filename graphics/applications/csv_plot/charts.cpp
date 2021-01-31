@@ -13,6 +13,11 @@ chart::config_t::config_t( const std::string& name, const std::string& t )
 {
 }
 
+chart::config_t::config_t( const comma::command_line_options& options ) // todo? more options
+    : scroll( options.exists( "--scroll" ) )
+{
+}
+
 chart::chart( const chart::config_t& config, QGraphicsItem *parent, Qt::WindowFlags window_flags )
     : QChart( QChart::ChartTypeCartesian, parent, window_flags )
     , config_( config )

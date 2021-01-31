@@ -71,9 +71,18 @@ static void usage( bool verbose = false )
     std::cerr << "    --scroll: if present, chart axes get adjusted to where the data is" << std::endl;
     std::cerr << std::endl;
     std::cerr << "series options" << std::endl;
-    //std::cerr << "    --series=<name>,<properties>; semicolon-separated chart properties; multiple --series options allowed" << std::endl;
-    //std::cerr << "        <properties>" << std::endl;
-    //std::cerr << "            todo" << std::endl;
+    std::cerr << "    there are three equivalent ways to define series properties (the choice is determined by what looks better on specific command line)" << std::endl;
+    std::cerr << "        - using command line option like --color or --shape (see below)" << std::endl;
+    std::cerr << "        - using --series option" << std::endl;
+    std::cerr << "        - or as series properties of a stream" << std::endl;
+    std::cerr << "    examples" << std::endl;
+    std::cerr << "        csv-plot --shape=spline --color=red" << std::endl;
+    std::cerr << "        csv-plot '-;shape=spline;color=red'" << std::endl;
+    std::cerr << "        csv-plot '-;series[0]=shape:spline|color:red'" << std::endl;
+    std::cerr << "        csv-plot '-;series[0]=name:xxx' --series='xxx;shape=spline;color=red'" << std::endl;
+    std::cerr << "    --series=<name>,<properties>; semicolon-separated chart properties; multiple --series options allowed" << std::endl;
+    std::cerr << "        <properties>" << std::endl;
+    std::cerr << "            todo" << std::endl;
     std::cerr << "    --color=<color>: plot color: black, white, red, green, blue" << std::endl;
     std::cerr << "                                 yellow, cyan, magenta, grey" << std::endl;
     std::cerr << "                                 or #rrggbb, e.g. #ff00ff" << std::endl;
@@ -181,7 +190,6 @@ static void usage( bool verbose = false )
 }
 
 // todo
-// ! --series: plug in in making stream
 // ! performance: struggles with more than 10000 points; find bottlenecks
 // ! gitlab: tutorial
 // ! application/examples/csv-plot/...: example command lines
@@ -220,6 +228,7 @@ static void usage( bool verbose = false )
 //   - scatter: style; derive from series? series -> base class?
 //     - marker color
 //     - marker shape
+//   ? --scroll: separate logic from chart --scroll or remove from series altogether?
 //   - --series-config-fields
 // - layouts
 //   - multi-window
@@ -264,19 +273,19 @@ int main( int ac, char** av )
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--maximize,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
         boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
+        const auto& chart_configs = make_configs( options.values< std::string >( "--chart" ), snark::graphics::plotting::chart::config_t( options ) );
+        const auto& series_configs = make_configs( options.values< std::string >( "--series" ), snark::graphics::plotting::series::config( options ) );
         snark::graphics::plotting::stream::config_t stream_config( options );
         std::vector< snark::graphics::plotting::stream::config_t > stream_configs;
         if( stdin_index ) { if( options.exists( "--no-stdin" ) ) { std::cerr << "csv-plot: due to --no-stdin, expected no stdin options; got: \"" << unnamed[ *stdin_index ] << "\"" << std::endl; return 1; } }
         else { stream_config.csv.filename = "-"; stream_configs.push_back( stream_config ); stream_config.pass_through = false; }
-        for( unsigned int i = 0; i < unnamed.size(); ++i ) { stream_configs.push_back( snark::graphics::plotting::stream::config_t( unnamed[i], stream_config ) ); stream_config.pass_through = false; }
+        for( unsigned int i = 0; i < unnamed.size(); ++i ) { stream_configs.push_back( snark::graphics::plotting::stream::config_t( unnamed[i], series_configs, stream_config ) ); stream_config.pass_through = false; }
         if( verbose ) { std::cerr << "csv-plot: got " << stream_configs.size() << " input stream config(s)" << std::endl; }
-        const auto& chart_configs = make_configs( options.values< std::string >( "--chart" ), snark::graphics::plotting::chart::config_t() );
-        const auto& series_configs = make_configs( options.values< std::string >( "--series" ), snark::graphics::plotting::series::config( options ) );
         float timeout = options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) );
         std::string layout = options.value< std::string >( "--layout", "grid" );
         auto window_size = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--window-size", "800,600" ) );
         QApplication a( ac, av );
-        snark::graphics::plotting::main_window main_window( stream_configs, series_configs, chart_configs, window_size, layout, timeout );
+        snark::graphics::plotting::main_window main_window( stream_configs, chart_configs, window_size, layout, timeout );
         if( verbose )
         {
             std::cerr << "csv-plot: created " << main_window.charts().size() << " chart(s)" << std::endl;

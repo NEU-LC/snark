@@ -9,6 +9,7 @@
 #include <QtCharts/QValueAxis>
 #include <boost/optional.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
+#include <comma/application/command_line_options.h>
 #include "record.h"
 #include "series.h"
 
@@ -37,6 +38,7 @@ class chart: public QChart
             std::string title;
             
             config_t( const std::string& name = "", const std::string& title = "" );
+            config_t( const comma::command_line_options& options );
             static config_t make( const std::string& s, const chart::config_t& defaults = chart::config_t() );
         };
         
@@ -46,7 +48,6 @@ class chart: public QChart
         virtual void update() = 0;
         const std::vector< plotting::series::xy* >& series() const { return series_; }
         const config_t& config() const { return config_; }
-        
         
     protected:
         std::vector< plotting::series::xy* > series_; // todo! implement and use series::base!

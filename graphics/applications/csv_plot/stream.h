@@ -39,7 +39,7 @@ class stream // todo: if stream other than xy stream required, create stream bas
             comma::uint32 number_of_series; // todo: a shorter name?
             config_t() : pass_through( false ), series( 1 ), size( 10000 ), number_of_series( 1 ) {}
             config_t( const comma::command_line_options& options );
-            config_t( const std::string& options, const config_t& defaults = config_t() );
+            config_t( const std::string& options, const std::map< std::string, plotting::series::config >& series_configs, const config_t& defaults = config_t() );
         };
         
         std::vector< plotting::series::xy > series;
