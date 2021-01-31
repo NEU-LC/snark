@@ -13,7 +13,7 @@
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
 #include <comma/string/string.h>
-#include <comma/name_value/serialize.h>
+#include <comma/name_value/parser.h>
 #include "csv_plot/main_window.h"
 #include "csv_plot/traits.h"
 
@@ -57,7 +57,7 @@ static void usage( bool verbose = false )
     std::cerr << std::endl << comma::csv::options::usage( verbose ) << std::endl;
     std::cerr << std::endl;
     std::cerr << "chart options" << std::endl;
-    std::cerr << "    --chart=<name>,<properties>; todo: semicolon-separated chart properties; multiple --chart options allowed" << std::endl;
+    std::cerr << "    --chart=<name>,<properties>; semicolon-separated chart properties; multiple --chart options allowed" << std::endl;
     std::cerr << "        <properties>" << std::endl;
     std::cerr << "            animate; default: true" << std::endl;
     std::cerr << "            axes/x=[<title>]" << std::endl;
@@ -71,6 +71,9 @@ static void usage( bool verbose = false )
     std::cerr << "    --scroll: if present, chart axes get adjusted to where the data is" << std::endl;
     std::cerr << std::endl;
     std::cerr << "series options" << std::endl;
+    //std::cerr << "    --series=<name>,<properties>; semicolon-separated chart properties; multiple --series options allowed" << std::endl;
+    //std::cerr << "        <properties>" << std::endl;
+    //std::cerr << "            todo" << std::endl;
     std::cerr << "    --color=<color>: plot color: black, white, red, green, blue" << std::endl;
     std::cerr << "                                 yellow, cyan, magenta, grey" << std::endl;
     std::cerr << "                                 or #rrggbb, e.g. #ff00ff" << std::endl;
@@ -178,8 +181,8 @@ static void usage( bool verbose = false )
 }
 
 // todo
+// ! --series: plug in in making stream
 // ! performance: struggles with more than 10000 points; find bottlenecks
-// ! chart axes: fixed range: debug
 // ! gitlab: tutorial
 // ! application/examples/csv-plot/...: example command lines
 // - --stream-config, --chart-config, --series-config
@@ -202,7 +205,7 @@ static void usage( bool verbose = false )
 //     ? chart types other than xy, e.g. pie chart
 //   - axes
 //     - handle range of zero length
-//     - add configurable margins
+//     ? add configurable margins
 //     - handle various range policies
 //     - axis types (e.g. int)
 //     - extents policies
@@ -211,8 +214,9 @@ static void usage( bool verbose = false )
 //       - t markers on x axis (QtCharts::QDateTimeAxis?)
 //   - --chart-config-fields
 // - series properties
-//   - properties as policy templated on qt series?
-//   - spline: style? parametrization?
+//   - properties
+//     - as policy templated on qt series?
+//     - --series
 //   - scatter: style; derive from series? series -> base class?
 //     - marker color
 //     - marker shape
@@ -237,30 +241,17 @@ static void usage( bool verbose = false )
 
 QT_USE_NAMESPACE
 
-struct blah
-{ 
-    boost::optional< double > x;
-    boost::optional< double > y;
-};
-
-namespace comma { namespace visiting {
-
-template <> struct traits< blah >
+template < typename P > static std::map< std::string, P > make_configs( const std::vector< std::string >& properties, const P& defaults = P() )
 {
-    template< typename K, typename V > static void visit( const K&, blah& t, V& v )
+    std::map< std::string, P > m;
+    for( const auto& p: properties )
     {
-        if( t.x ) { v.apply( "x", *t.x ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
-        if( t.y ) { v.apply( "y", *t.y ); } // todo? what should be the behaviour in comma::csv::from_ascii on optional?
+        auto c = comma::name_value::parser( "name", ';', '=', true ).get< P >( p, defaults );
+        if( c.title.empty() ) { c.title = c.name; } // quick and dirty
+        m[ c.name ] = c;
     }
-
-    template< typename K, typename V > static void visit( const K&, const blah& t, V& v )
-    {
-        if( t.x ) { v.apply( "x", *t.x ); }
-        if( t.y ) { v.apply( "y", *t.y ); }
-    }
-};
-
-} }
+    return m;
+}
 
 int main( int ac, char** av )
 {
@@ -279,12 +270,13 @@ int main( int ac, char** av )
         else { stream_config.csv.filename = "-"; stream_configs.push_back( stream_config ); stream_config.pass_through = false; }
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { stream_configs.push_back( snark::graphics::plotting::stream::config_t( unnamed[i], stream_config ) ); stream_config.pass_through = false; }
         if( verbose ) { std::cerr << "csv-plot: got " << stream_configs.size() << " input stream config(s)" << std::endl; }
-        const auto& chart_properties = options.values< std::string >( "--chart" );
-        float timeout = options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) ); // todo? update streams and charts at variable rates?
+        const auto& chart_configs = make_configs( options.values< std::string >( "--chart" ), snark::graphics::plotting::chart::config_t() );
+        const auto& series_configs = make_configs( options.values< std::string >( "--series" ), snark::graphics::plotting::series::config( options ) );
+        float timeout = options.value( "--timeout", 1. / options.value( "--frames-per-second,--fps", 10 ) );
         std::string layout = options.value< std::string >( "--layout", "grid" );
         auto window_size = comma::csv::ascii< std::pair< unsigned int, unsigned int > >().get( options.value< std::string >( "--window-size", "800,600" ) );
         QApplication a( ac, av );
-        snark::graphics::plotting::main_window main_window( stream_configs, chart_properties, window_size, layout, timeout );
+        snark::graphics::plotting::main_window main_window( stream_configs, series_configs, chart_configs, window_size, layout, timeout );
         if( verbose )
         {
             std::cerr << "csv-plot: created " << main_window.charts().size() << " chart(s)" << std::endl;

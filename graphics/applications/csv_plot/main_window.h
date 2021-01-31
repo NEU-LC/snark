@@ -18,8 +18,9 @@ class main_window: public QMainWindow
     Q_OBJECT
     public:
         typedef std::map< std::string, snark::graphics::plotting::chart* > charts_t;
-        main_window( const std::vector< snark::graphics::plotting::stream::config_t >& configs
-                   , const std::vector< std::string >& chart_properties
+        main_window( const std::vector< snark::graphics::plotting::stream::config_t >& stream_configs
+                   , const std::map< std::string, snark::graphics::plotting::series::config >& series_configs
+                   , std::map< std::string, snark::graphics::plotting::chart::config_t > chart_configs
                    , const std::pair< unsigned int, unsigned int >& size
                    , const std::string& layout
                    , float timeout );

@@ -4,12 +4,9 @@
 #include <QtCharts/QChartView>
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
-#include <comma/name_value/parser.h>
 #include <comma/name_value/map.h>
-//#include <comma/name_value/serialize.h>
 #include <comma/string/string.h>
 #include "main_window.h"
-#include "traits.h"
 
 namespace snark { namespace graphics { namespace plotting {
 
@@ -58,20 +55,14 @@ static QWidget* make_widget_( const std::string& l, main_window::charts_t& chart
     COMMA_THROW( comma::exception, "csv-plot: expected layout; got: '" << shape << "'" );
 }
 
-main_window::main_window( const std::vector< plotting::stream::config_t >& configs
-                        , const std::vector< std::string >& chart_properties
+main_window::main_window( const std::vector< snark::graphics::plotting::stream::config_t >& stream_configs
+                        , const std::map< std::string, snark::graphics::plotting::series::config >& series_configs
+                        , std::map< std::string, snark::graphics::plotting::chart::config_t > chart_configs
                         , const std::pair< unsigned int, unsigned int >& size
                         , const std::string& layout
                         , float timeout )
 {
-    std::map< std::string, plotting::chart::config_t > chart_configs;
-    for( const auto& p: chart_properties ) // todo: quick and dirty; move to a chart method
-    {
-        auto c = comma::name_value::parser( "name", ';', '=', true ).get< plotting::chart::config_t >( p );
-        if( c.title.empty() ) { c.title = c.name; } // quick and dirty
-        chart_configs[ c.name ] = c;
-    }    
-    for( const auto& c: configs )
+    for( const auto& c: stream_configs )
     {
         for( const auto& s: c.series ) // quick and dirty
         {
@@ -81,7 +72,7 @@ main_window::main_window( const std::vector< plotting::stream::config_t >& confi
         }
     }
     for( const auto& c: chart_configs ) { charts_[ c.first ] = new plotting::xy_chart( plotting::chart::config_t( c.second ) ); }
-    for( const auto& c: configs ) // todo: multiple series from a stream could go to different charts
+    for( const auto& c: stream_configs ) // todo: multiple series from a stream could go to different charts
     { 
         auto s = plotting::stream::make( c, charts_ );
         if( s->config.pass_through )
