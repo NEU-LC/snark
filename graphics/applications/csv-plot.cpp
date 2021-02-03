@@ -203,6 +203,8 @@ static void usage( bool verbose = false )
 //   - png
 //   ? save all charts
 // - chart
+//   - properties
+//     ? optionally show block number? optional block label field (in streams)?
 //   - types
 //     - 2.5d charts
 //     ? polar charts
