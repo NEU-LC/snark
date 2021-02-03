@@ -40,11 +40,15 @@ xy_chart::xy_chart( const chart::config_t& config, QGraphicsItem *parent, Qt::Wi
     y_axis_->setTitleFont( y_axis_->titleFont() ); // voodoo, this removes font boldness... whatever...
     x_axis_->setTitleText( &config.axes.x.title[0] );
     y_axis_->setTitleText( &config.axes.y.title[0] );
+    x_axis_->setTickCount( 1 ); // todo: make configurable
+    double min_x = config.min.x ? *config.min.x : 0;
+    double max_x = config.max.x ? *config.max.x : min_x + 10; // quick and dirty
+    x_axis_->setRange( min_x, max_x );
+    double min_y = config.min.y ? *config.min.y : 0;
+    double max_y = config.max.y ? *config.max.y : min_y + 10; // quick and dirty
+    y_axis_->setRange( min_y, max_y );
     addAxis( x_axis_, Qt::AlignBottom ); // todo? make configurable
     addAxis( y_axis_, Qt::AlignLeft ); // todo? make configurable
-    x_axis_->setTickCount( 1 ); // todo: make configurable
-    x_axis_->setRange( config.min.x ? *config.min.x : 0, config.max.x ? *config.max.x : 10 );
-    y_axis_->setRange( config.min.y ? *config.min.y : 0, config.max.y ? *config.max.y : 10 );
 }
 
 void xy_chart::push_back( plotting::series::xy* s )
