@@ -190,6 +190,7 @@ static void usage( bool verbose = false )
 }
 
 // todo
+// ! scatter properties
 // ! performance: struggles with more than 10000 points; find bottlenecks
 // ! gitlab: tutorial
 // ! application/examples/csv-plot/...: example command lines
