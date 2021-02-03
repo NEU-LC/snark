@@ -147,7 +147,7 @@ static void usage( bool verbose = false )
         std::cerr << "            csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - \\" << std::endl;
         std::cerr << "                | csv-plot '-;fields=block,x,y;color=red;weight=2' \\" << std::endl;
         std::cerr << "                           <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=blue;weight=2;shape=spline' \\" << std::endl;
-        std::cerr << "                           <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=green;weight=2;shape=scatter'" << std::endl;
+        std::cerr << "                           <( csv-random make --type f --range=0,20 | csv-paste 'line-number;size=10' 'line-number;size=10;index' - )';fields=block,x,y;color=green;weight=5;shape=scatter'" << std::endl;
         std::cerr << "        - plots on different charts with grid layout: same command as above, but add 'chart=...'" << std::endl;
         std::cerr << "            - default layout: charts are stacked in a single column" << std::endl;
         std::cerr << "                ... | csv-plot ... '...;fields=...;chart=A' '...;fields=...;chart=B' '...;fields=...;chart=C'" << std::endl;
@@ -190,7 +190,6 @@ static void usage( bool verbose = false )
 }
 
 // todo
-// ! scatter properties
 // ! performance: struggles with more than 10000 points; find bottlenecks
 // ! gitlab: tutorial
 // ! application/examples/csv-plot/...: example command lines

@@ -40,6 +40,7 @@ xy::xy( QtCharts::QXYSeries* s, const series::config& c ): series_( s ), config_
     pen.setWidth( config_.weight );
     series_->setPen( pen );
     series_->setName( &config_.title[0] );
+    series_->setColor( config_.color );
 }
 
 void xy::clear()
@@ -59,12 +60,18 @@ void xy::append( boost::posix_time::ptime, const point& p )
     updated_ = true;
 }
 
-QtCharts::QXYSeries* make_series_( const std::string& shape, QtCharts::QChart* chart )
+QtCharts::QXYSeries* make_series_( const series::config& c, QtCharts::QChart* chart )
 {
-    if( shape == "line" || shape.empty() ) { return new QtCharts::QLineSeries( chart ); }
-    if( shape == "spline" ) { return new QtCharts::QSplineSeries( chart ); }
-    if( shape == "scatter" ) { return new QtCharts::QScatterSeries( chart ); }
-    COMMA_THROW( comma::exception, "csv-plot: expected stream type as shape, got: \"" << shape << "\"" );
+    if( c.shape == "line" || c.shape.empty() ) { return new QtCharts::QLineSeries( chart ); }
+    if( c.shape == "spline" ) { return new QtCharts::QSplineSeries( chart ); }
+    if( c.shape == "scatter" ) // todo: quick and dirty; make polymorphic
+    {
+        auto s = new QtCharts::QScatterSeries( chart );
+        s->setMarkerSize( c.weight );
+        s->setBorderColor( c.color );
+        return s;
+    }
+    COMMA_THROW( comma::exception, "csv-plot: expected stream type as shape, got: \"" << c.shape << "\"" );
 };
 
 bool xy::updated( bool reset )
@@ -74,6 +81,6 @@ bool xy::updated( bool reset )
     return r;
 }
 
-xy xy::make( const series::config& c, QtCharts::QChart* chart ) { return xy( make_series_( c.shape, chart ), c ); }
+xy xy::make( const series::config& c, QtCharts::QChart* chart ) { return xy( make_series_( c, chart ), c ); }
 
 } } } } // namespace snark { namespace graphics { namespace plotting { namespace series {
