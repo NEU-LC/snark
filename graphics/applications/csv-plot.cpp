@@ -211,27 +211,27 @@ static void usage( bool verbose = false )
 //     ? bar chart
 //   - axes
 //     - handle range of zero length
+//     - check range validity
 //     ? add configurable margins
-//     - handle various range policies
 //     - axis types (e.g. int)
+//     - configurable ticks
 //     - extents policies
 //       - auto-adjust
+//         ? optional downscaling
+//         ? better autoscaling
+//         ? better autoscrolling
 //       ? ignore outliers? e.g. percentile-based?
 //       - t markers on x axis (QtCharts::QDateTimeAxis?)
 // - series properties
 //   ? optionally: series[2]=<name>
 //   - properties
 //     - as policy templated on qt series?
-//   - scatter: style; derive from series? series -> base class?
-//     - marker color
-//     - marker shape
+//   - scatter: style
+//     ? marker shape
 //   ? --scroll: separate logic from chart --scroll or remove from series altogether?
 // - layouts
 //   - multi-window
-//   - stacked
-// - span policies
-//   ? better autoscaling
-//   ? better autoscrolling
+//   ? stacked
 // - main window
 //   - add signal to update? currently, updates only after first timeout
 // - building
