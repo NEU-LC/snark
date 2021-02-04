@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # This file is part of snark, a generic and flexible library for robotics research
 # Copyright (c) 2011 The University of Sydney
@@ -30,19 +30,18 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-import urlparse
-import BaseHTTPServer
-import SocketServer
+import http.server
+import http.client
+import socketserver
 import argparse
-import commands
 import subprocess
 import sys
 import os
 import collections
-import httplib
 import signal
 import shlex
 import threading
+import urllib.parse as urlparse
 
 script_name = sys.argv[0].split('/')[-1]
 DEFAULT_HOST = ''
@@ -180,7 +179,7 @@ class sensors:
                 self._find_sensor_names( item, xpath+"["+str(i)+"]" )
                 i=i+1
         else:
-            for key,value in dictionary.iteritems():
+            for key,value in dictionary.items():
                 if type( value ) == dict:
                     xpath_key = ( xpath + '/' + key ) if xpath else key
                     if 'command' in value: self._names.append( xpath_key )
@@ -191,8 +190,8 @@ class sensors:
                     
     def print_list(self):
         sys.stderr.write("print_list %d \n"%len(self._parameters))
-        for name,value in self._parameters.iteritems():
-            print("%s=%s;%s" % (name,value.command,value.content_type))
+        for name,value in self._parameters.items():
+            print(("%s=%s;%s" % (name,value.command,value.content_type)))
 
     def __init__( self, web_config, robot_config, publish_config ):
         self._names = []
@@ -221,17 +220,17 @@ def _quote_html(html):
     return html.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
+class handler( http.server.BaseHTTPRequestHandler ):
     def send_error_response(self, code, message=None):
         try:
-            short, long = self.responses[code]
+            short, int = self.responses[code]
         except KeyError:
-            short, long = '???', '???'
+            short, int = '???', '???'
 
         if message is None:
             message = short
 
-        explain = long
+        explain = int
         self.log_error("code %d, message %s", code, message)
         content = (self.error_message_format %{'code': code, 'message': _quote_html(message), 'explain': explain})
         self.send_response(code, message)
@@ -240,7 +239,7 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
         self.send_header('Connection', 'close')
         self.end_headers()
         if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
-            self.wfile.write(content)
+            self.wfile.write(content.encode('utf-8'))
 
     def do_OPTIONS(self):
         self.send_response(200, "ok")
@@ -254,10 +253,10 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
         url = urlparse.urlparse( self.path )
         params = dict(urlparse.parse_qsl(url.query))
         # print("params %s \n" % params)
-        if params.has_key('_'):
+        if "_" in params:
             del params['_']
         param_list=[]
-        for key, value in params.iteritems():
+        for key, value in params.items():
             param_list.append("=".join([str(key), str(value)]))
         query = urlparse.urlparse(self.path).query
         #print("param_list %s \n" % param_list)
@@ -266,15 +265,14 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
         sensor_parameters = sensors.get( sensor )
         if not sensor_parameters:
             message = "%s: sensor '%s' requested by client '%s' is not in web_config '%s'" % ( script_name, sensor, client, args.config )
-            self.send_error_response( httplib.NOT_FOUND, message )
+            self.send_error_response( http.client.NOT_FOUND, message )
             return
         def preexec_fn():
             signal.signal( signal.SIGPIPE, signal.SIG_DFL )
         #    os.setsid() # using timeout is a safer option to get a process group
         with lock:
-            p = subprocess.Popen( shlex.split( sensor_parameters.command.encode('ascii')), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=preexec_fn )
-            p.stdin.write(str('\n'.join(param_list)))
-            p.stdin.write("\n")
+            p = subprocess.Popen( shlex.split( sensor_parameters.command ), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=preexec_fn)
+            p.stdin.write(('\n'.join(param_list) + "\n").encode('utf-8'))
             running_subprocesses.append( p )
         output, error = p.communicate()
         #print("output=%s " % output)
@@ -289,10 +287,10 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
             else:
                 message = "%s: request '%s' for sensor '%s' in web config '%s' failed" % ( script_name, sensor_parameters.command, sensor, args.config )
 
-            self.send_error_response( httplib.INTERNAL_SERVER_ERROR, message )
+            self.send_error_response( http.client.INTERNAL_SERVER_ERROR, message )
             return
         else:
-            self.send_response( httplib.OK )
+            self.send_response( http.client.OK )
             self.send_header( 'Content-type', sensor_parameters.content_type )
             self.send_header( 'Content-length', len( output ) )
             self.send_header( 'Access-Control-Allow-Origin', '*' )
@@ -301,7 +299,7 @@ class handler( BaseHTTPServer.BaseHTTPRequestHandler ):
 
     def log_message(self, format, *a):
         if args.verbose:
-            return BaseHTTPServer.BaseHTTPRequestHandler.log_message(self, format, *a)
+            return http.server.BaseHTTPRequestHandler.log_message(self, format, *a)
 
 
 parser = argparse.ArgumentParser( description=description, epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter, add_help=False )
@@ -329,10 +327,10 @@ if args.help:
 def load_config( config_file_name ):
     if not config_file_name: return {}
     # parsing through name-value-convert first is needed since json.load throws on json files with comments
-    command = "name-value-convert --to json < %s" % config_file_name
-    status, output = commands.getstatusoutput( command )
-    if status != 0: sys.exit( "%s: '%s' returned error: %s" % ( script_name, command, output ) )
-    return json.loads( output )
+    proc = subprocess.Popen(["name-value-convert", "--to", "json"], stdin=open(config_file_name), stdout=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    if proc.returncode != 0: sys.exit( "%s: '%s' returned error: %s" % ( script_name, command, stderr ) )
+    return json.loads( stdout )
 
 configs = {
     'web_config': load_config( args.config ),
@@ -357,7 +355,7 @@ signal.signal( signal.SIGINT, trap )
 signal.signal( signal.SIGTERM, trap )
 signal.signal( signal.SIGHUP, trap )
 
-class async_http_server( SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer ): pass
+class async_http_server( socketserver.ThreadingMixIn, http.server.HTTPServer ): pass
 
 async_http_server( ( args.host, args.port ), handler ).serve_forever()
 
