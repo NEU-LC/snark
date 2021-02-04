@@ -191,14 +191,21 @@ static void usage( bool verbose = false )
 
 // todo
 // ! --span additionally to --size
-// ! performance: struggles with more than 10000 points; find bottlenecks
+// ? performance: struggles with more than 10000 points; find bottlenecks
 // ! gitlab: tutorial
 // ! application/examples/csv-plot/...: example command lines
 // ? extents -> separate generic class
 // - input
 //   - t as x axis (QtCharts::QDateTimeAxis?)
 //   - label: optional input field
-// - zoom
+// - pan and zoom
+//   - zoom
+//     - on mouse wheel
+//     - on rectangle selection
+//     ? zoom buttons?
+//   - pan
+//     ? on mouse events?
+//     ? pan buttons?
 // - save as
 //   - png
 //   ? save all charts
@@ -206,6 +213,7 @@ static void usage( bool verbose = false )
 //   - properties
 //     ? optionally show block number? optional block label field (in streams)?
 //   - types
+//     - time series chart
 //     - 2.5d charts
 //     ? polar charts
 //     ? pie chart
