@@ -195,6 +195,8 @@ static void usage( bool verbose = false )
 // ! gitlab: tutorial
 // ! application/examples/csv-plot/...: example command lines
 // ? extents -> separate generic class
+// - examples
+//   - colour wheel in polar
 // - cmake: turn on by default
 // - input
 //   - t
@@ -205,6 +207,7 @@ static void usage( bool verbose = false )
 //   - label
 //     - optional input field
 //     ? time as label (instead of QtCharts::QDateTimeAxis)
+//   ? optional individual color for each input point
 // - pan and zoom
 //   - zoom
 //     - on mouse wheel
