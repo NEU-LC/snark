@@ -1,0 +1,1 @@
+cv-cat --camera 'resize=640,480;convert-color=rgb,hsv;convert-to=f,0.0039;linear-combination=r,0.5g,b;convert-to=ub,255;convert-color=hsv,rgb;view;null'

@@ -191,13 +191,20 @@ static void usage( bool verbose = false )
 
 // todo
 // ! --span additionally to --size
-// ? performance: struggles with more than 10000 points; find bottlenecks
+// ? performance: struggles with more than 10000 points; find bottlenecks (currently, lots of non-zero copies of buffers
 // ! gitlab: tutorial
 // ! application/examples/csv-plot/...: example command lines
 // ? extents -> separate generic class
+// - cmake: turn on by default
 // - input
-//   - t as x axis (QtCharts::QDateTimeAxis?)
-//   - label: optional input field
+//   - t
+//     - as x axis (QtCharts::QDateTimeAxis?)
+//     ? or simply if x is optional and t not empty
+//       - convert t to seconds and assign to x
+//       - optionally offset by the first timestamp
+//   - label
+//     - optional input field
+//     ? time as label (instead of QtCharts::QDateTimeAxis)
 // - pan and zoom
 //   - zoom
 //     - on mouse wheel
@@ -218,6 +225,7 @@ static void usage( bool verbose = false )
 //     ? polar charts
 //     ? pie chart
 //     ? bar chart
+//   ? optionally show grid
 //   - axes
 //     - handle range of zero length
 //     - check range validity
