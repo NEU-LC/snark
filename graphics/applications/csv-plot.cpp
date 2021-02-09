@@ -224,7 +224,9 @@ static void usage( bool verbose = false )
 //     ? optionally show block number? optional block label field (in streams)?
 //   - types
 //     - time series chart
-//     - 2.5d charts
+//     ? 2.5d charts (not available in qtcharts)
+//       ? use q3surface? qt3dvisualisation?
+//       ? use background image?
 //     ? polar charts
 //     ? pie chart
 //     ? bar chart
@@ -262,7 +264,10 @@ static void usage( bool verbose = false )
 //       ? expose on ppa
 // ! qtcharts licence
 // ! don't use block buffer as is? use double-buffered QList and pop front if exceeds size? (so far performance looks ok)
-// ? qt, qtcharts: static layout configuration files?
+// - qml
+//   ? qml import
+//   ? qml export
+//   ? totally rewrite everything using qml?
 
 QT_USE_NAMESPACE
 
