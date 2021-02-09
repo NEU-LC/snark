@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Mission Systems Pty Ltd
+// Copyright (c) 2021 Mission Systems Pty Ltd
 
 #include "lidar.h"
 #include <comma/application/verbose.h>
