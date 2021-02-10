@@ -29,6 +29,7 @@
       - libassimp-dev
       - python3-opencv
       - python3-pip
+      - libqt5charts5-dev
 
   - pip:
         name: "pysolar"
