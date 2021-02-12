@@ -35,6 +35,7 @@ import argparse
 import numpy as np
 import signal
 import sys
+import os
 
 from ctypes import *
 import math
@@ -49,189 +50,33 @@ description = """
 
 read tensors as binary on stdin, load model from file, apply model, write output tensors to stdout
 
-ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment
+PREREQUISITES:
+This code requires the darknet fork at https://github.com/AlexeyAB/darknet/ to be built and installed.
+Since the code lacks an install script, the best way to install is:
 
+    cd $DARKNET_SRC_DIR
+    cp darknet /usr/local/bin/
+    cp darknet.so /usr/local/lib/
+    cp darknet.py $(python3 -c 'import site; print(site.getsitepackages()[0])')
 
 """
 
-epilog = """
-examples
-    todo
-"""
+os.environ['DARKNET_PATH'] = '/usr/local/lib/'
+from darknet import (
+    do_nms_obj,
+    free_detections,
+    get_network_boxes,
+    load_net_custom,
+    predict_image,
+    IMAGE,
+)
 
-home = expanduser("~")
-
-# NOTE: This application works with either the original darknet implementation
-# at https://github.com/pjreddie/darknet (ORIGINAL) or the more actively-developed
-# fork at https://github.com/alexeyab/darknet (ALEXEY_AB).
-# The C-API is slightly different, so we need to detect which version is in use.
-lib = CDLL("/usr/local/lib/libdarknet.so", RTLD_GLOBAL)
-DARKNET_VERSION = 'ALEXEY_AB' if hasattr(lib, 'network_predict_ptr') else 'ORIGINAL'
-
-def sample(probs):
-    s = sum(probs)
-    probs = [a/s for a in probs]
-    r = random.uniform(0, 1)
-    for i in range(len(probs)):
-        r = r - probs[i]
-        if r <= 0:
-            return i
-    return len(probs)-1
 
 def c_array(ctype, values):
     arr = (ctype*len(values))()
     assert sizeof(arr) == values.nbytes
     memmove(byref(arr), values.ctypes.data, values.nbytes)
     return arr
-
-class BOX(Structure):
-    _fields_ = [("x", c_float),
-                ("y", c_float),
-                ("w", c_float),
-                ("h", c_float)]
-
-class DETECTION(Structure):
-    _fields_ = ([("bbox", BOX),
-                 ("classes", c_int),
-                 ("prob", POINTER(c_float)),
-                 ("mask", POINTER(c_float)),
-                 ("objectness", c_float),
-                 ("sort_class", c_int)] +
-                 ([("uc", POINTER(c_float)), ("points", c_int)] if DARKNET_VERSION == 'ALEXEY_AB' else []))
-
-
-class IMAGE(Structure):
-    _fields_ = [("w", c_int),
-                ("h", c_int),
-                ("c", c_int),
-                ("data", POINTER(c_float))]
-
-class METADATA(Structure):
-    _fields_ = [("classes", c_int),
-                ("names", POINTER(c_char_p))]
-
-predict = None
-set_gpu = None
-make_image = None
-get_network_boxes = None
-make_network_boxes = None
-free_detections = None
-free_ptrs = None
-network_predict = None
-reset_rnn = None
-load_net = None
-do_nms_obj = None
-do_nms_sort = None
-free_image = None
-letterbox_image = None
-load_meta = None
-load_image = None
-rgbgr_image = None
-predict_image = None
-
-def set_up_darknet_funcs():
-    global predict
-    global set_gpu
-    global make_image
-    global get_network_boxes
-    global make_network_boxes
-    global free_detections
-    global free_ptrs
-    global network_predict
-    global reset_rnn
-    global load_net
-    global do_nms_obj
-    global do_nms_sort
-    global free_image
-    global letterbox_image
-    global load_meta
-    global load_image
-    global rgbgr_image
-    global predict_image
-
-    lib.network_width.argtypes = [c_void_p]
-    lib.network_width.restype = c_int
-    lib.network_height.argtypes = [c_void_p]
-    lib.network_height.restype = c_int
-
-    predict = lib.network_predict
-    predict.argtypes = [c_void_p, POINTER(c_float)]
-    predict.restype = POINTER(c_float)
-
-    set_gpu = lib.cuda_set_device
-    set_gpu.argtypes = [c_int]
-
-    make_image = lib.make_image
-    make_image.argtypes = [c_int, c_int, c_int]
-    make_image.restype = IMAGE
-
-    get_network_boxes = lib.get_network_boxes
-    get_network_boxes.argtypes = [c_void_p, c_int, c_int, c_float, c_float, POINTER(c_int), c_int, POINTER(c_int)]
-    get_network_boxes.restype = POINTER(DETECTION)
-
-    make_network_boxes = lib.make_network_boxes
-    make_network_boxes.argtypes = [c_void_p]
-    make_network_boxes.restype = POINTER(DETECTION)
-
-    free_detections = lib.free_detections
-    free_detections.argtypes = [POINTER(DETECTION), c_int]
-
-    free_ptrs = lib.free_ptrs
-    free_ptrs.argtypes = [POINTER(c_void_p), c_int]
-
-    if DARKNET_VERSION == 'ALEXEY_AB':
-        network_predict = lib.network_predict_ptr
-    else:
-        network_predict = lib.network_predict
-    network_predict.argtypes = [c_void_p, POINTER(c_float)]
-
-    reset_rnn = lib.reset_rnn
-    reset_rnn.argtypes = [c_void_p]
-
-    def load_net_fn(cfg, weights):
-        # The AlexeyAB darknet version uses a "batch" parameter >0 to
-        # load_network_custom to put the network in detection mode. When not
-        # training, the yolov3 network uses about half as much GPU RAM.
-        if DARKNET_VERSION == 'ALEXEY_AB':
-            load = lib.load_network_custom
-            load.argtypes = [c_char_p, c_char_p, c_int, c_int]
-            load.restype = c_void_p
-            return load(cfg, weights, 0, 1)
-        else:
-            load = lib.load_network
-            load.argtypes = [c_char_p, c_char_p, c_int]
-            load.restype = c_void_p
-            return load(cfg, weights, 0)
-
-    load_net = load_net_fn
-
-    do_nms_obj = lib.do_nms_obj
-    do_nms_obj.argtypes = [POINTER(DETECTION), c_int, c_int, c_float]
-
-    do_nms_sort = lib.do_nms_sort
-    do_nms_sort.argtypes = [POINTER(DETECTION), c_int, c_int, c_float]
-
-    free_image = lib.free_image
-    free_image.argtypes = [IMAGE]
-
-    letterbox_image = lib.letterbox_image
-    letterbox_image.argtypes = [IMAGE, c_int, c_int]
-    letterbox_image.restype = IMAGE
-
-    load_meta = lib.get_metadata
-    lib.get_metadata.argtypes = [c_char_p]
-    lib.get_metadata.restype = METADATA
-
-    load_image = lib.load_image_color
-    load_image.argtypes = [c_char_p, c_int, c_int]
-    load_image.restype = IMAGE
-
-    rgbgr_image = lib.rgbgr_image
-    rgbgr_image.argtypes = [IMAGE]
-
-    predict_image = lib.network_predict_image
-    predict_image.argtypes = [c_void_p, IMAGE]
-    predict_image.restype = POINTER(c_float)
 
 def array_to_image(arr, input_type):
     arr = arr if arr.shape[2] == 1 else arr[:, :, [2, 1, 0]]
@@ -257,7 +102,8 @@ def detect(net, meta, image, input_type, thresh=.25, hier_thresh=.5, nms=.45):
     pnum = pointer(num)
     predict_image(net, im)
 
-    dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, None, 0, pnum)
+    letterbox = False
+    dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, None, 0, pnum, letterbox)
     num = pnum[0]
     if (nms): do_nms_obj(dets, num, meta.classes, nms);
 
@@ -293,26 +139,35 @@ def iterator( buffer, shape, n_type, header_size, footer_size ): # todo: quick a
         else: yield None, None, None
 
 if __name__ == '__main__':
+    # The darknet library prints all sorts of stuff to stdout, which interferes
+    # with piping the output of darknet-cat into another tool. To workaround
+    # this, we redirect everything from darknet's stdout to stderr.
+    # To make sure stuff we print in python goes to the real stdout, we
+    # duplicate it before redirecting.
+    stdout_copy = os.fdopen(os.dup(sys.stdout.fileno()), sys.stdout.mode)
+    os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
+    sys.stdout = stdout_copy
+
     def handle_signal( s, f ): sys.stderr.write("darknet-cat: broken pipe, exit\n"); sys.exit( 0 )
-    signal.signal( signal.SIGPIPE, handle_signal ) 
-    parser = argparse.ArgumentParser( description = description, epilog = epilog, formatter_class = argparse.RawTextHelpFormatter )
+    signal.signal( signal.SIGPIPE, handle_signal )
+    parser = argparse.ArgumentParser( description = description, formatter_class = argparse.RawTextHelpFormatter )
     parser.add_argument( '--input-shape', type = str, required=True, help = 'image size in the the format width,height,channels' )
-    parser.add_argument( '--footer-size', type = int, default = 0, help = 'if a footer of given size in bytes is present, pass it to stdout with output tensor prepended' )    
+    parser.add_argument( '--footer-size', type = int, default = 0, help = 'if a footer of given size in bytes is present, pass it to stdout with output tensor prepended' )
     parser.add_argument( '--header-size', type = int, default = 0, help = 'if a header of given size in bytes is present, pass it to stdout with output tensor appended' )
     parser.add_argument( '--keep-input', action="store_true", help = 'append output to input' )
     parser.add_argument( '--threshold', type=float, default=0.25, help='detector threshold' )
     parser.add_argument( '--verbose', '-v', action="store_true", help = 'more output' )
     parser.add_argument( '--save-images', action="store_true", help = 'save to labelled images' )
     parser.add_argument( '--config', help="configuration (cfg) file required by darknet", required=True)
-    parser.add_argument( '--weights', help="tained darknet weights file", required=True)
+    parser.add_argument( '--weights', help="trained darknet weights file", required=True)
     parser.add_argument( '--classes', help="number of classes", required=True, type=int)
     parser.add_argument( '--input-file', help="file to read image data from", type=argparse.FileType('rb'), default=sys.stdin.buffer)
     parser.add_argument( '--output-file', help="file to write detection results to", type=argparse.FileType('wb'), default=sys.stdout.buffer)
     args = parser.parse_args()
-    warn( "ATTENTION: this application is work-in-progress, its interfaces and usage semantics may change at any moment" )
 
-    set_up_darknet_funcs() # todo: install darknet somehow
-    net = load_net(args.config.encode('utf-8'), args.weights.encode('utf-8'))
+    # Calling load_net_custom with last param (batch) equal to 1, causes the network to
+    # startup in inference mode and not allocate memory for training.
+    net = load_net_custom(args.config.encode('utf-8'), args.weights.encode('utf-8'), 0, 1)
 
     meta = namedtuple("meta", "classes names") # create meta class directly rather than requiring a file
     meta.classes=args.classes
@@ -329,7 +184,9 @@ if __name__ == '__main__':
             say("time per image: {}".format(time()-t0))
             t0=time()
 
-        if data is None: break
+        if data is None:
+            break
+
         results = detect(net, meta, data, ntype, thresh=args.threshold)
 
         p1_list, p2_list = list(), list()
@@ -345,8 +202,8 @@ if __name__ == '__main__':
 
             if args.save_images:
                 x, y, w, h = np.array(output).astype(int)
-                p1_list.append((x-w/2, y-h/2))
-                p2_list.append((x+w/2, y+h/2))
+                p1_list.append((x-w//2, y-h//2))
+                p2_list.append((x+w//2, y+h//2))
 
         if args.save_images:
             data = data.copy()
