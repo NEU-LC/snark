@@ -6,6 +6,7 @@ source_group( ${TARGET_NAME} FILES ${sources} ${includes} )
 add_library( ${TARGET_NAME} ${sources} ${includes} )
 set_target_properties( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
 target_link_libraries( ${TARGET_NAME} snark_math snark_math_spherical_geometry ${snark_ALL_EXTERNAL_LIBRARIES} )
+set_target_properties( ${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE -s )
 install( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/navigation/${PROJECT} )
 install(
     TARGETS ${TARGET_NAME}

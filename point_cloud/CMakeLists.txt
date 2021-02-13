@@ -9,6 +9,7 @@ FILE( GLOB impl_includes ${DIR}/impl/*.h )
 SOURCE_GROUP( ${PROJECT} FILES ${source} ${includes} ${impl_includes} )
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${impl_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
+set_target_properties( ${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE -s )
 target_link_libraries( ${TARGET_NAME} snark_math )
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PROJECT} )

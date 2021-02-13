@@ -11,13 +11,16 @@ add_definitions( ${PCL_DEFINITIONS} )
 
 add_executable( points-to-pcd points-to-pcd.cpp )
 target_link_libraries( points-to-pcd snark_math snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} ${PCL_LIBRARIES} )
+set_target_properties( points-to-pcd PROPERTIES LINK_FLAGS_RELEASE -s )
 
 add_executable( points-from-pcd points-from-pcd.cpp )
 target_link_libraries( points-from-pcd snark_math snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} ${PCL_LIBRARIES} )
+set_target_properties( points-from-pcd PROPERTIES LINK_FLAGS_RELEASE -s )
 
 add_executable( points-pcl-calc points-pcl-calc.cpp )
 # target_link_libraries( points-pcl-calc ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} pcl_segmentation pcl_kdtree pcl_common )
 target_link_libraries( points-pcl-calc ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} ${PCL_LIBRARIES} )
+set_target_properties( points-pcl-calc PROPERTIES LINK_FLAGS_RELEASE -s )
 
 if( PROFILE )
     target_link_libraries( points-to-pcd profiler )

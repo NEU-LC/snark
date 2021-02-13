@@ -1,6 +1,7 @@
 source_group( ipx-cat FILES ipx-cat.cpp )
 add_executable( ipx-cat ipx-cat.cpp )
 #target_link_libraries( ipx-cat snark_ipx snark_imaging ${Boost_PROGRAM_OPTIONS_LIBRARY} ${snark_ALL_EXTERNAL_LIBRARIES} tbb )
+set_target_properties( ipx-cat PROPERTIES LINK_FLAGS_RELEASE -s )
 target_link_libraries( ipx-cat
                        snark_ipx
                        snark_imaging

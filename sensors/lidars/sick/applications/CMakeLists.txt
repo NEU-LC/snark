@@ -1,9 +1,11 @@
 SOURCE_GROUP( sick-ldmrs-stream FILES sick-ldmrs-stream.cpp )
 ADD_EXECUTABLE( sick-ldmrs-stream sick-ldmrs-stream.cpp )
+set_target_properties( sick-ldmrs-stream PROPERTIES LINK_FLAGS_RELEASE -s )
 TARGET_LINK_LIBRARIES( sick-ldmrs-stream snark_sick snark_timing ${snark_ALL_EXTERNAL_LIBRARIES} )
 
 SOURCE_GROUP( sick-ldmrs-to-csv FILES sick-ldmrs-to-csv.cpp )
 ADD_EXECUTABLE( sick-ldmrs-to-csv sick-ldmrs-to-csv.cpp )
+set_target_properties( sick-ldmrs-to-csv PROPERTIES LINK_FLAGS_RELEASE -s )
 TARGET_LINK_LIBRARIES( sick-ldmrs-to-csv snark_sick snark_timing snark_math ${snark_ALL_EXTERNAL_LIBRARIES} )
 
 INSTALL( TARGETS sick-ldmrs-stream sick-ldmrs-to-csv

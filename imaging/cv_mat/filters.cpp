@@ -1711,7 +1711,7 @@ class map_impl_
                     default: std::cerr << "map filter: expected integer cv type, got " << m.second.type() << std::endl; return value_type();
                 }
             }
-            catch ( std::out_of_range ) { return value_type(); }
+            catch ( std::out_of_range& ) { return value_type(); }
             return n;
         }
         #endif

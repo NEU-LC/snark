@@ -37,11 +37,9 @@ ENDIF()
 # ---------------------------------------------------------------------------
 # set compiler and linker flags and variables
 
-IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
-      "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
-      FORCE)
-ENDIF(NOT CMAKE_BUILD_TYPE)
+if( NOT CMAKE_BUILD_TYPE )
+  set( CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE )
+endif( NOT CMAKE_BUILD_TYPE )
 
 find_package( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
 
@@ -156,8 +154,8 @@ SET( snark_BUILD_TESTS ${BUILD_TESTS} )
 OPTION( BUILD_APPLICATIONS "build applications" ON )
 SET( snark_BUILD_APPLICATIONS ${BUILD_APPLICATIONS} )
 
-OPTION(BUILD_SHARED_LIBS "build with shared libraries" OFF)
-SET(snark_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+option( BUILD_SHARED_LIBS "build with shared libraries" ON )
+set( snark_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS} )
 
 IF( NOT BUILD_SHARED_LIBS )
     SET( Boost_USE_STATIC_LIBS ON )
@@ -276,7 +274,7 @@ OPTION( snark_build_point_cloud "build point cloud" ON )
 OPTION( snark_build_point_cloud_pcl "build points cloud pcl" OFF )
 OPTION( snark_build_python "build python packages" OFF )
 OPTION( snark_build_sensors "build sensors" ON )
-OPTION( snark_build_terrain "build terrain" OFF )
+OPTION( snark_build_terrain "build terrain" ON )
 OPTION( snark_build_web "build web" OFF )
 option( snark_build_ros "build ros" OFF )
 
@@ -292,7 +290,7 @@ CMAKE_DEPENDENT_OPTION( snark_build_sensors_echodyne "build echodyne components"
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gige "build gige components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_gobi "build gobi components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_ipx "build ipx components" OFF "snark_build_sensors" OFF )
-CMAKE_DEPENDENT_OPTION( snark_build_sensors_hokuyo "build hokuyo components" ON "snark_build_sensors" OFF )
+CMAKE_DEPENDENT_OPTION( snark_build_sensors_hokuyo "build hokuyo components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_jai "build jai components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_kinect "build kinect components" OFF "snark_build_sensors" OFF )
 CMAKE_DEPENDENT_OPTION( snark_build_sensors_ouster "build ouster components" OFF "snark_build_sensors" OFF )
@@ -557,7 +555,7 @@ set( CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://gitlab.com/orthographic/snark/-/wiki
 set( CPACK_DEBIAN_PACKAGE_MAINTAINER "vsevolod vlaskine <vsevolod.vlaskine@gmail.com>" )
 #set( CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/system/package/debian/changelog" )
 set( CPACK_PACKAGE_CONTACT "vsevolod.vlaskine@gmail.com" )
-set( CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/copyright" )
+set( CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING" )
 set( CPACK_GENERATOR "DEB" CACHE STRING "cpack generator: PRM or DEB" )
 set( CPACK_PACKAGE_VERSION_MAJOR ${snark_version_major} CACHE STRING "cpack version major" )
 set( CPACK_PACKAGE_VERSION_MINOR ${snark_version_minor} CACHE STRING "cpack version minor" )

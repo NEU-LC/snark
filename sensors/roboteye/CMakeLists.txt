@@ -26,6 +26,7 @@ include_directories( ${RobotEye_INCLUDE_DIR} )
 source_group( ${TARGET_NAME} FILES ${sources} ${includes} )
 add_library( ${TARGET_NAME} ${sources} ${includes} )
 set_target_properties( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
+set_target_properties( ${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE -s )
 target_link_libraries( ${TARGET_NAME} ${snark_ALL_LIBRARIES} ${RobotEye_LIBRARIES} )
 install(
     TARGETS ${TARGET_NAME}

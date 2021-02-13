@@ -17,6 +17,7 @@ install( CODE "execute_process( COMMAND ldconfig )" )
 
 add_executable( kinect-cat kinect-cat.cpp )
 add_dependencies( kinect-cat kinect.conf )
+set_target_properties( kinect-cat PROPERTIES LINK_FLAGS_RELEASE -s )
 
 # Set cmake prefix path to enable cmake to find freenect2
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${freenect2_DIR})

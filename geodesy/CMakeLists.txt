@@ -12,6 +12,7 @@ INSTALL( FILES ${detail_includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/${PRO
 
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${detail_source} ${detail_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
+set_target_properties( ${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE -s )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} snark_math_spherical_geometry ${snark_ALL_EXTERNAL_LIBRARIES} )
 INSTALL(
     TARGETS ${TARGET_NAME}

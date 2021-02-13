@@ -29,6 +29,17 @@ TARGET_LINK_LIBRARIES( points-to-voxels snark_point_cloud ${comma_ALL_LIBRARIES}
 TARGET_LINK_LIBRARIES( points-to-voxel-indices snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 TARGET_LINK_LIBRARIES( points-track-partitions ${comma_ALL_LIBRARIES} )
 
+set_target_properties( points-align PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-calc PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-detect-change PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-foreground-partitions PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-rays PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-to-centroids PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-to-partitions PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-to-voxels PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-to-voxel-indices PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-track-partitions PROPERTIES LINK_FLAGS_RELEASE -s )
+
 IF( PROFILE )
     TARGET_LINK_LIBRARIES ( points-to-partitions profiler )
 ENDIF( PROFILE )
@@ -50,6 +61,7 @@ INSTALL( PROGRAMS examples/points-eigen points-to-image DESTINATION ${snark_INST
 
 add_executable( points-mesh points-mesh.cpp )
 target_link_libraries( points-mesh ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+set_target_properties( points-mesh PROPERTIES LINK_FLAGS_RELEASE -s )
 install( TARGETS points-mesh RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 if( USE_CUDA )
@@ -59,11 +71,13 @@ else( USE_CUDA )
 endif( USE_CUDA )
 
 target_link_libraries( points-join snark_math snark_math_geometry snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} tbb )
+set_target_properties( points-join PROPERTIES LINK_FLAGS_RELEASE -s )
 install( TARGETS points-join RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 if( NOT WIN32 )
     add_executable( points-grep points-grep.cpp ${points_grep_includes} ${points_grep_source} )
     target_link_libraries( points-grep snark_math_geometry snark_math ${comma_ALL_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY} )
+    set_target_properties( points-grep PROPERTIES LINK_FLAGS_RELEASE -s )
     install( TARGETS points-grep RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 endif( NOT WIN32 )
 

@@ -1,5 +1,6 @@
 ADD_EXECUTABLE( graph-search graph-search.cpp )
 TARGET_LINK_LIBRARIES( graph-search ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+set_target_properties( graph-search PROPERTIES LINK_FLAGS_RELEASE -s )
 INSTALL( TARGETS graph-search RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 INSTALL( PROGRAMS graph-view DESTINATION ${snark_INSTALL_BIN_DIR} )

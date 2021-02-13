@@ -1,5 +1,5 @@
 SOURCE_GROUP( csv-time-adjust FILES csv-time-adjust.cpp )
 ADD_EXECUTABLE( csv-time-adjust csv-time-adjust.cpp )
 TARGET_LINK_LIBRARIES( csv-time-adjust snark_timing ${snark_ALL_EXTERNAL_LIBRARIES} )
-
+set_target_properties( csv-time-adjust PROPERTIES LINK_FLAGS_RELEASE -s )
 INSTALL( TARGETS csv-time-adjust RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )

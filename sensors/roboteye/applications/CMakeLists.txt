@@ -4,12 +4,13 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOCULAR_ROBOTEYE_GENICAM_DIR=\"${OCULA
 
 add_executable( ocular-roboteye-thermal-cat ocular-roboteye-thermal-cat.cpp )
 target_link_libraries( ocular-roboteye-thermal-cat snark_roboteye )
+set_target_properties( ocular-roboteye-thermal-cat PROPERTIES LINK_FLAGS_RELEASE -s )
 install( TARGETS ocular-roboteye-thermal-cat RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 configure_file( ocular-roboteye-thermal.template ocular-roboteye-thermal @ONLY )
-install( PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/ocular-roboteye-thermal
-         DESTINATION ${snark_INSTALL_BIN_DIR} )
+install( PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/ocular-roboteye-thermal DESTINATION ${snark_INSTALL_BIN_DIR} )
 
 add_executable( ocular-roboteye-to-csv ocular-roboteye-to-csv.cpp )
 target_link_libraries( ocular-roboteye-to-csv snark_roboteye )
+set_target_properties( ocular-roboteye-to-csv PROPERTIES LINK_FLAGS_RELEASE -s )
 install( TARGETS ocular-roboteye-to-csv RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )

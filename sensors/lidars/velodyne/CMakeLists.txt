@@ -26,6 +26,7 @@ SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes}
 
 ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes} ${hdl64_source} ${hdl64_includes} ${impl_source} ${impl_includes} ${puck_source} ${puck_includes} ${thin_source} ${thin_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
+set_target_properties( ${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE -s )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} snark_math ${snark_ALL_EXTERNAL_LIBRARIES} )
 
 INSTALL( FILES ${includes} DESTINATION ${snark_INSTALL_INCLUDE_DIR}/sensors/lidars/${PROJECT} )

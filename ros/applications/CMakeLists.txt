@@ -15,10 +15,12 @@ SET( GLOB stdmsgs_include ${dir}/std_msgs/*.h )
 # source_group( points-to-ros FILES points-to-ros.cpp )
 add_executable( points-to-ros points-to-ros.cpp )
 target_link_libraries( points-to-ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
+set_target_properties( points-to-ros PROPERTIES LINK_FLAGS_RELEASE -s )
 
 # source_group( points-from-ros FILES points-from-ros.cpp )
 add_executable( points-from-ros points-from-ros.cpp )
 target_link_libraries( points-from-ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
+set_target_properties( points-from-ros PROPERTIES LINK_FLAGS_RELEASE -s )
 
 install( TARGETS points-to-ros points-from-ros
          RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}

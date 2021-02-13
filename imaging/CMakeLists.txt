@@ -42,6 +42,7 @@ ADD_LIBRARY( ${TARGET_NAME} ${source} ${includes}
                             ${cvmat_filters_source} ${cvmat_filters_includes}
                             ${vegetation_source} ${vegetation_includes} )
 SET_TARGET_PROPERTIES( ${TARGET_NAME} PROPERTIES ${snark_LIBRARY_PROPERTIES} )
+set_target_properties( ${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE -s )
 TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} snark_timing snark_math ${ZLIB_LIBRARIES} ${OpenCV_LIBS} tbb ${pgrey_libs} )
 #TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${comma_ALL_LIBRARIES} ${comma_ALL_EXTERNAL_LIBRARIES} ${OpenCV_LIBS} tbb fftw3 ${pgrey_libs} )
 
