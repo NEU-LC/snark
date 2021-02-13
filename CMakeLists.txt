@@ -118,6 +118,10 @@ IF( NOT snark_INSTALL_PACKAGE_DIR )
   SET( snark_INSTALL_PACKAGE_DIR CMakeFiles )
 ENDIF( NOT snark_INSTALL_PACKAGE_DIR )
 
+set( snark_version_major "1" ) # quick and dirty
+set( snark_version_minor "0" ) # quick and dirty
+set( snark_version_patch "0" ) # quick and dirty
+
 #INCLUDE_DIRECTORIES( ${SOURCE_CODE_BASE_DIR}/../ )
 #INCLUDE_DIRECTORIES( ${snark_INSTALL_INCLUDE_DIR}/../ )
 
@@ -545,22 +549,51 @@ configure_testing( snark_build_ros ros/applications/test )
 configure_testing( snark_build_sensors_echodyne sensors/radars/echodyne )
 configure_testing( snark_build_sensors_ouster sensors/lidars/ouster )
 
-# Package
-#the following set up optional parameters for cpack
-SET(CPACK_PACKAGE_NAME "snark")
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Snark contains various libraries and utilities for interacting with robots and working with sensor data.")
-SET(CPACK_PACKAGE_VENDOR "ACFR")
-SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/COPYING")
-SET(CPACK_PACKAGE_VERSION_MAJOR "1")
-SET(CPACK_PACKAGE_VERSION_MINOR ${COMMITDATE})
-SET(CPACK_PACKAGE_VERSION_PATCH ${COMMITHASH})
-SET(CPACK_PACKAGE_CONTACT "t.teo@acfr.usyd.edu.au")
+set( CPACK_PACKAGE_NAME "snark" )
+set( CPACK_PACKAGE_DESCRIPTION_SUMMARY "cli utilities for robotics and computer vision" )
+set( CPACK_PACKAGE_VENDOR "orthographic" )
+set( CPACK_DEBIAN_PACKAGE_DESCRIPTION "command line utilities for for robotics and computer vision" )
+set( CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://gitlab.com/orthographic/snark/-/wikis/home" )
+set( CPACK_DEBIAN_PACKAGE_MAINTAINER "vsevolod vlaskine <vsevolod.vlaskine@gmail.com>" )
+#set( CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/system/package/debian/changelog" )
+set( CPACK_PACKAGE_CONTACT "vsevolod.vlaskine@gmail.com" )
+set( CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/copyright" )
+set( CPACK_GENERATOR "DEB" CACHE STRING "cpack generator: PRM or DEB" )
+set( CPACK_PACKAGE_VERSION_MAJOR ${snark_version_major} CACHE STRING "cpack version major" )
+set( CPACK_PACKAGE_VERSION_MINOR ${snark_version_minor} CACHE STRING "cpack version minor" )
+set( CPACK_PACKAGE_VERSION_PATCH ${snark_version_patch} CACHE STRING "cpack version patch" )
+SET(CPACK_RPM_PACKAGE_REQUIRES "snark python numpy python-opencv")
+#set( CPACK_DEBIAN_PACKAGE_DEPENDS "snark, " )
+set( CPACK_DEBIAN_PACKAGE_SHLIBDEPS "snark, libeigen3-dev, libfftw3-dev, libtbb-dev, zlib1g-dev, libbz2-dev, libopencv-dev, libopencv-highgui-dev, libpcap-dev, qtbase5-dev, qt5-default, qt3d5-dev, libassimp-dev, python-opencv, libqt5charts5-dev, libboost-all-dev (>=1.65), libc" )
+set( CPACK_DEBIAN_PACKAGE_GENERATE_SHLIBS ON )
+set( CPACK_DEBIAN_PACKAGE_GENERATE_SHLIBS_POLICY ON )
 
-# If the user builds shared, make sure that the RPM package (that might be generated) runs ldconfig when it's installed.
-IF( BUILD_SHARED_LIBS )
-	SET(CPACK_RPM_SPEC_MORE_DEFINE "%posttrans -p /sbin/ldconfig")
-ENDIF( BUILD_SHARED_LIBS )
-
+# if the user builds shared, make sure that the RPM package (that might be generated) runs ldconfig when it's installed.
+if( BUILD_SHARED_LIBS )
+    #set( CPACK_RPM_SPEC_MORE_DEFINE "%posttrans -p /sbin/ldconfig" )
+    set( CPACK_RPM_POST_INSTALL_SCRIPT_FILE "%posttrans -p /sbin/ldconfig" )
+    #set( SHLIBS_FILE "${CMAKE_CURRENT_BINARY_DIR}/shlibs" )
+    # witchcraft from here: https://github.com/roboception/rcdiscover/blob/master/cmake/package_debian.cmake
+    set( TRIGGERS_FILE "${CMAKE_CURRENT_BINARY_DIR}/triggers" )
+    file( WRITE "${TRIGGERS_FILE}" "activate-noawait ldconfig\n" )
+    #file( WRITE "${SHLIBS_FILE}" "" )
+    #foreach ( libname ${sharedlibs} )
+    #    get_target_property( so_abiversion ${libname} SOVERSION )
+    #    if(NOT ${so_abiversion})
+    #      set(so_abiversion ${abiversion})
+    #      message(STATUS "SOVERSION of shared lib \"${libname}\" not set explicitly. Using <Major.Minor> of latest tag: ${so_abiversion}")
+    #      set_target_properties(${libname} PROPERTIES SOVERSION ${so_abiversion})
+    #    endif()
+    #    file(APPEND "${SHLIBS_FILE}" "lib${libname} ${so_abiversion} ${CPACK_PACKAGE_NAME}\n")
+    #endforeach (libname)
+    #execute_process( COMMAND chmod 644 "${SHLIBS_FILE}" "${TRIGGERS_FILE}" )
+    execute_process( COMMAND chmod 644 "${TRIGGERS_FILE}" )
+    if( CPACK_DEB_COMPONENT_INSTALL )
+        set( CPACK_DEBIAN_BIN_PACKAGE_CONTROL_EXTRA "${CPACK_DEBIAN_BIN_PACKAGE_CONTROL_EXTRA};${SHLIBS_FILE};${TRIGGERS_FILE}" )
+    else ( CPACK_DEB_COMPONENT_INSTALL )
+        set( CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA};${SHLIBS_FILE};${TRIGGERS_FILE}" )
+    endif ( CPACK_DEB_COMPONENT_INSTALL )
+endif( BUILD_SHARED_LIBS )
 
 IF( snark_build_python AND ADD_PYTHON_PACKAGES_TO_RPM )
     SET(CPACK_RPM_PACKAGE_REQUIRES "comma python numpy python-opencv")
@@ -572,24 +605,18 @@ ELSE( snark_build_python AND ADD_PYTHON_PACKAGES_TO_RPM )
     SET(CPACK_RPM_PACKAGE_REQUIRES "comma")
 ENDIF( snark_build_python AND ADD_PYTHON_PACKAGES_TO_RPM )
 
-# Additional Win32 handling for CPack.
-IF( WIN32 )
+if( WIN32 )
     if( snark_build_imaging )
         file( GLOB OpenCV_DLLS ${OpenCV_LIB_PATH}/../bin/*.dll ) #from opencv version 2.4
     endif( snark_build_imaging )
-
     if( snark_build_graphics )
         get_filename_component( QT_BIN_DIR ${QT_QMAKE_EXECUTABLE} PATH )
         file( GLOB QT_DLLS ${QT_BIN_DIR}/*.dll )
     endif( snark_build_graphics )
-
-    SET(snark_PACKAGE_DLLS ${TBB_DLL_DIR}/tbb.dll ${OpenCV_DLLS} ${QT_DLLS})
-    
-    INSTALL(FILES ${snark_PACKAGE_DLLS} DESTINATION bin )
-
+    set( snark_PACKAGE_DLLS ${TBB_DLL_DIR}/tbb.dll ${OpenCV_DLLS} ${QT_DLLS} )
+    install(FILES ${snark_PACKAGE_DLLS} DESTINATION bin )
     #this line finds the appropriate compiler dlls, e.g. Visual Studio DLLS in windows. Maybe it would find other dlls if a different build tool were used.
-    INCLUDE( InstallRequiredSystemLibraries )
-ENDIF( WIN32 )
+    include( InstallRequiredSystemLibraries )
+endif( WIN32 )
 
-INCLUDE( CPack )
-# End Packaging
+include( CPack )
