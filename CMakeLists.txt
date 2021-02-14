@@ -547,9 +547,7 @@ configure_testing( snark_build_ros ros/applications/test )
 configure_testing( snark_build_sensors_echodyne sensors/radars/echodyne )
 configure_testing( snark_build_sensors_ouster sensors/lidars/ouster )
 
-if( BUILD_SHARED_LIBS )
-    install( CODE "execute_process( COMMAND \"/sbin/ldconfig\" )" ) # is it the right way? does it run at the right time?
-endif( BUILD_SHARED_LIBS )
+add_subdirectory( CMakeFiles/post_install ) # uber-quick and dirty
 
 set( CPACK_PACKAGE_NAME "snark" )
 set( CPACK_PACKAGE_DESCRIPTION_SUMMARY "cli utilities for robotics and computer vision" )
