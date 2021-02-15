@@ -33,14 +33,10 @@ def message( msg ): print( "math-matlab-convert: {}".format( msg ), file=sys.std
 def fatal( msg ): message( msg ); sys.exit( 1 )
 
 def bash_completion (parser):
-    print( " ".join(
-        [ o for o in parser._option_string_actions.keys()
-          if o != "--bash-completion" ]) )
+    print( " ".join( [ o for o in parser._option_string_actions.keys() if o != "--bash-completion" ]) )
 
 def parse_args():
-    description="""
-convert to and from matlab save files
-"""
+    description="""convert to and from matlab save files"""
 
     epilog="""
 output format:
@@ -216,16 +212,11 @@ def from_mat( args ):
         for v in args.variable.split( args.path_separator ):
             try: mat = step_down( mat[ v ] )
             except ( KeyError, ValueError ): fatal( "variable \"{}\" does not exist".format( args.variable ) )
-    if args.list:
-        traverse( mat, args.variable, args.path_separator )
-        return
+    if args.list: traverse( mat, args.variable, args.path_separator ); return
     compound_variable = is_compound( mat )
     if args.output_format:
-        if compound_variable:
-            if args.variable: message( "{} is not a data array".format( args.variable ) )
-            else: message( "--output-format requires a non-compound variable" )
-        else:
-            print( "{}{}".format( mat.shape[1], comma.csv.format.from_numpy( mat.dtype ) ) )
+        if compound_variable: message( "{} is not a data array".format( args.variable ) if args.variable else "--output-format requires a non-compound variable" )
+        else: print( "{}{}".format( mat.shape[1], comma.csv.format.from_numpy( mat.dtype ) ) )
         return
     if not args.to is None:
         if args.to == "csv":
