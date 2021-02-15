@@ -224,12 +224,12 @@ static void usage( bool verbose = false )
 //     ? optionally show block number? optional block label field (in streams)?
 //   - types
 //     - time series chart
-//     ? 2.5d charts (not available in qtcharts)
-//       ? use q3surface? qt3dvisualisation?
-//       ? use background image?
 //     ? polar charts
 //     ? pie chart
 //     ? bar chart
+//     ? 2.5d charts (not available in qtcharts)
+//       ? use q3surface? qt3dvisualisation?
+//       ? use background image?
 //   ? optionally show grid
 //   - axes
 //     - handle range of zero length

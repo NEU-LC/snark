@@ -250,8 +250,7 @@ def from_mat( args ):
                 leaf_var_name = args.variable.split( args.path_separator )[ -1 ]
                 d[ leaf_var_name ] = mat
                 dump_var = d
-            if args.pretty_printing: print( json.dumps( traverse( dump_var ), indent = 4, separators = ( ",", ": " ) ) )
-            else: print( json.dumps( traverse( dump_var ) ) )
+            json.dump( traverse( dump_var ), sys.stdout, indent = 4 if args.pretty_printing else None, separators = ( ",", ": " ) )
         else:
             fatal( "--to <format> must be one of csv or json" )
     else:
