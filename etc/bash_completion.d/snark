@@ -24,6 +24,7 @@ complete -F _snark_bash_completion control-speed
 complete -F _snark_bash_completion echodyne-cat
 complete -F _snark_bash_completion echodyne-cmd
 complete -F _snark_bash_completion geo-sun-position
+complete -F _snark_bash_completion innovusion-cat
 complete -F _snark_bash_completion mat-convert
 complete -F _snark_bash_completion ocular-roboteye-thermal-cat
 complete -F _snark_bash_completion points-align
