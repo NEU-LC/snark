@@ -18,7 +18,9 @@ public:
     void init( const std::string& name
              , const std::string& address, unsigned int port
              , inno_lidar_alarm_callback_t alarm_callback
-             , inno_lidar_frame_callback_t frame_callback );
+             , inno_lidar_frame_callback_t frame_callback
+             , void* context = nullptr );
+
     void start();
 
 private:

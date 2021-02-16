@@ -22,7 +22,8 @@ lidar::~lidar()
 void lidar::init( const std::string& name
                 , const std::string& address, unsigned int port
                 , inno_lidar_alarm_callback_t alarm_callback
-                , inno_lidar_frame_callback_t frame_callback )
+                , inno_lidar_frame_callback_t frame_callback
+                , void* context )
 {
     handle = inno_lidar_open_live( name.c_str(), address.c_str(), port, 1 );
 
@@ -33,7 +34,7 @@ void lidar::init( const std::string& name
     if( inno_lidar_set_reflectance_mode( handle, REFLECTANCE_MODE_INTENSITY ) != 0 )
     { COMMA_THROW( comma::exception, "inno_lidar_set_reflectance_mode() failed" ); }
 
-    if( inno_lidar_set_callbacks( handle, alarm_callback, frame_callback, nullptr, nullptr ) != 0 )
+    if( inno_lidar_set_callbacks( handle, alarm_callback, frame_callback, nullptr, context ) != 0 )
     { COMMA_THROW( comma::exception, "inno_lidar_set_callbacks() failed" ); }
 }
 
