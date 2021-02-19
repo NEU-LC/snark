@@ -150,7 +150,7 @@ struct app
         std::vector< std::string > config_components = comma::split( options.value< std::string >( "--config", default_config ), ':' );
         std::string config_filename = config_components[0];
         std::string config_path = ( config_components.size() > 1 ? config_components[1] : "" );
-        snark::ouster::OS1::config_t config = comma::read_json< snark::ouster::OS1::config_t >( config_filename, config_path, true );
+        snark::ouster::OS1::config_t config = comma::read_json< snark::ouster::OS1::config_t >( config_filename, config_path, false );
 
         intrinsics = intrinsics_t( config );
 
