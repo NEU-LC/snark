@@ -27,6 +27,8 @@ chart::chart( const chart::config_t& config, QGraphicsItem *parent, Qt::WindowFl
     setTitle( &config_.title[0] );
     if( !config_.legend ) { legend()->hide(); }
     if( config_.animate ) { setAnimationOptions( QChart::SeriesAnimations ); }
+    grabGesture(Qt::PanGesture);
+    grabGesture(Qt::PinchGesture);
 }
 
 xy_chart::xy_chart( const chart::config_t& config, QGraphicsItem *parent, Qt::WindowFlags window_flags )

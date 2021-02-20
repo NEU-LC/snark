@@ -7,6 +7,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #include "charts.h"
+#include "chart_view.h"
 #include "stream.h"
 
 QT_USE_NAMESPACE

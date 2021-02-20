@@ -7,11 +7,18 @@
 #include <QtCharts/QChart>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
+#include <QtWidgets/QGesture>
+#include <QtWidgets/QGraphicsScene>
+#include <QtWidgets/QGraphicsView>
 #include <boost/optional.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <comma/application/command_line_options.h>
 #include "record.h"
 #include "series.h"
+
+// QT_BEGIN_NAMESPACE
+// class QGestureEvent;
+// QT_END_NAMESPACE
 
 QT_USE_NAMESPACE
 QT_CHARTS_USE_NAMESPACE
