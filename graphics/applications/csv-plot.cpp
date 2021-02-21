@@ -269,6 +269,22 @@ static void usage( bool verbose = false )
 //   ? qml export
 //   ? totally rewrite everything using qml?
 
+// todo for Hamish
+// ! fix: run histogram demo, try to zoom in and then zoom out - x axis gets squashed
+//        and the only way to restory is pressing 'r'
+// - help:
+//   - as a minimum, add zoom description in --help
+//   ? help menu or status line at the bottom with prompt (maybe it's too much too early)
+// - output to std::cerr: add application name to each message: e.g: std::cerr << "csv-plot: ..."
+//   (if csv-plot runs as a part of the script, the user will know the message is from csv-plot)
+// - move unnecessary includes to cpp file (e.g. <QPoint> is not used in the header)
+// - rename private members as following: panning -> _panning (or panning_ - your call)
+// - chart_view:
+//   ? _last_x, _last_y: use Point _last; instead?
+// - main window
+//   - instead of snark::graphics::plotting::chart_view* v = new snark::graphics::plotting::chart_view( c.second )
+//     it's ok to write: auto v = new snark::graphics::plotting::chart_view( c.second )
+
 QT_USE_NAMESPACE
 
 template < typename P > static std::map< std::string, P > make_configs( const std::vector< std::string >& properties, const P& defaults = P() )
