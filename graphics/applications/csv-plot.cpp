@@ -272,6 +272,8 @@ static void usage( bool verbose = false )
 // todo for Hamish
 // ! fix: run histogram demo, try to zoom in and then zoom out - x axis gets squashed
 //        and the only way to restory is pressing 'r'
+// ! fix: if i select rectangle (in histogram demo), it zooms on y, but not on x; what i would expect: if i select
+//        a rectangle, whatever is in the rectangle should appear in the new zoomed view
 // - help:
 //   - as a minimum, add zoom description in --help
 //   ? help menu or status line at the bottom with prompt (maybe it's too much too early)
