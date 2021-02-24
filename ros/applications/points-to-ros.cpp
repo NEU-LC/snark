@@ -243,7 +243,7 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         comma::csv::options csv(options);
-        if(!csv.binary() && !options.exists("--format")) { COMMA_THROW( comma::exception, "please specify either --format=<format> for ascii or --binary=<format> for format"); }
+        if( !csv.binary() && !options.exists( "--format" )) { COMMA_THROW( comma::exception, "please specify --binary=<format>, or --format=<format> for ascii"); }
         csv.full_xpath=true;
         std::string topic=options.value<std::string>("--topic");
         unsigned queue_size=options.value<unsigned>("--queue-size",1);
