@@ -196,10 +196,14 @@ struct points
     std::size_t data_size;
     bool ascii;
     //const comma::command_line_options& options
-    points(const comma::csv::options& csv, const std::string& format_str) : format(format_str), u(csv.fields,format.expanded_string()), data_size(format.size()), ascii(!csv.binary())
-    {
-        
-    }
+
+    points( const comma::csv::options& csv, const std::string& format_str )
+        : format( format_str )
+        , u( csv.fields, format.expanded_string() )
+        , data_size( format.size() )
+        , ascii( !csv.binary() )
+    {}
+
     void send(ros::Publisher& publisher,const std::string& frame_id)
     {
         //create msg
@@ -220,6 +224,7 @@ struct points
         ros::spinOnce();
         records.clear();
     }
+
     void push_back(const comma::csv::input_stream<record>& is, const record& p)
     {
         records.push_back(p);
