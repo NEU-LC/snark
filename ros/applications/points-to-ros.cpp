@@ -1,5 +1,6 @@
 // This file is part of comma, a generic and flexible library
 // Copyright (c) 2017 The University of Sydney
+// Copyright (c) 2021 Mission Systems Pty Ltd
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -77,11 +78,13 @@ void usage(bool detail)
         std::cerr << "use -v or --verbose to see more detail on csv options" << std::endl;
         std::cerr << std::endl;
     }
-    std::cerr << "example" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    to publish data from file:" << std::endl;
-    std::cerr << "        cat data.bin | " << comma::verbose.app_name() << "  --topic some_topic --fields t,block,x,y,z --binary t,ui,3f " << std::endl;
-    std::cerr << std::endl;
+    std::cerr << "examples:";
+    std::cerr << "\n    csv-random make --type 3d | csv-paste line-number - \\";
+    std::cerr << "\n        | csv-blocks group --fields scalar --span 1000 | csv-time-stamp \\";
+    std::cerr << "\n        | " << comma::verbose.app_name() << " --topic /points -f t,id,x,y,z,block --format t,ui,3d,ui";
+    std::cerr << "\n";
+    std::cerr << "\n    cat data.bin | " << comma::verbose.app_name() << " --topic /points -f t,block,x,y,z -b t,ui,3f";
+    std::cerr << "\n" << std::endl;
 }
 
 namespace snark { namespace ros {
