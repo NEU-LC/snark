@@ -44,7 +44,7 @@ template <> struct traits< snark::innovusion::point_t >
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
-        v.apply( "radius", t.radius );
+        v.apply( "range", t.radius );
         v.apply( "ts_100us", t.ts_100us );
         v.apply( "value", t.value );
         v.apply( "flags", t.flags );
@@ -59,7 +59,7 @@ template <> struct traits< snark::innovusion::point_t >
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
-        v.apply( "radius", t.radius );
+        v.apply( "range", t.radius );
         v.apply( "ts_100us", t.ts_100us );
         v.apply( "value", t.value );
         v.apply( "flags", t.flags );
@@ -79,7 +79,7 @@ template <> struct traits< snark::innovusion::output_data_t >
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
-        v.apply( "radius", t.radius );
+        v.apply( "range", t.radius );
         v.apply( "value", t.value );
     }
 
@@ -91,7 +91,7 @@ template <> struct traits< snark::innovusion::output_data_t >
         v.apply( "x", t.x );
         v.apply( "y", t.y );
         v.apply( "z", t.z );
-        v.apply( "radius", t.radius );
+        v.apply( "range", t.radius );
         v.apply( "value", t.value );
     }
 };
