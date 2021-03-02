@@ -1,5 +1,6 @@
 // This file is part of comma, a generic and flexible library
 // Copyright (c) 2017 The University of Sydney
+// Copyright (c) 2021 Mission Systems Pty Ltd
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -41,47 +42,56 @@
 #include "std_msgs/String.h"
 #include "sensor_msgs/PointCloud2.h"
 
-void usage(bool detail)
+void usage( bool detail )
 {
-    std::cerr<<"    publish csv to ROS PointCloud2" << std::endl;
-    std::cerr<<"        input: reads csv from stdin" << std::endl;
-    std::cerr<<"        output: publishes the data as sensor_msg::PointCloud2 on the specified topic in ROS" << std::endl;
-    std::cerr<<"        if block field is present, then groups all continious records with the same block number as one ros message" << std::endl;
-    std::cerr << std::endl;
-    std::cerr<< "usage: " << comma::verbose.app_name() << " [ <options> ]" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "options" << std::endl;
-    std::cerr << "    --all; sends all the records as one ros message (when no block field), otherwise send each record as a message" << std::endl;
-    std::cerr << "    --hang-on,--stay; waits about three seconds before exiting so that subscribers can receive the last message" << std::endl;
-    std::cerr << "    --help,-h: show help; --help --verbose: show more help" << std::endl;
-    std::cerr << "    --frame: ros message frame as string"<<std::endl;
-    std::cerr << "    --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
-    std::cerr << "    --node-name: node name for this process, when not specified uses ros::init_options::AnonymousName flag" << std::endl;
-    std::cerr << "    --pass-through,--pass; pass input data to stdout" << std::endl;
-    std::cerr << "    --queue-size=[<n>]: ROS publisher queue size, default 1" << std::endl;
-    std::cerr << "    --topic=<topic>: name of topic to publish to" << std::endl;
-    std::cerr << "    --verbose,-v: show detailed messages" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    csv options" << std::endl;
-    std::cerr << "        --fields: default: x,y,z" << std::endl;
-    std::cerr << "        either --format or --binary option must be specified" << std::endl;
-    std::cerr << std::endl;
-    if(detail)
+    std::cerr << "\npublish csv to ROS PointCloud2";
+    std::cerr << "\n";
+    std::cerr << "\n    input: reads csv from stdin";
+    std::cerr << "\n    output: publish as sensor_msg::PointCloud2 on the specified topic in ROS";
+    std::cerr << "\n";
+    std::cerr << "\nusage: " << comma::verbose.app_name() << " [<options>]";
+    std::cerr << "\n";
+    std::cerr << "\noptions:";
+    std::cerr << "\n    --help,-h:             show help; --help --verbose: show more help";
+    std::cerr << "\n    --verbose,-v:          show detailed messages";
+    std::cerr << "\n    --all:                 send all records as one ros message";
+    std::cerr << "\n    --fields,-f=<fields>:  fields names; default=x,y,z";
+    std::cerr << "\n    --frame=[<frame>]:     ros message frame as string";
+    std::cerr << "\n    --hang-on,--stay:      wait before exiting so that subscribers can receive";
+    std::cerr << "\n                           the last message";
+    std::cerr << "\n    --latch:               last message will be saved for future subscribers";
+    std::cerr << "\n    --node-name:           default=ros::init_options::AnonymousName flag";
+    std::cerr << "\n    --pass-through,--pass: pass input data to stdout";
+    std::cerr << "\n    --queue-size=[<n>]:    ROS publisher queue size, default=1";
+    std::cerr << "\n    --topic=<topic>:       name of topic to publish to";
+    std::cerr << "\n";
+    std::cerr << "\nfields:";
+    std::cerr << "\n    All input fields are placed in the data field of the PointCloud2 message.";
+    std::cerr << "\n    If they are present, t and block fields also populate the header.";
+    std::cerr << "\n    Either --format or --binary option must be specified";
+    std::cerr << "\n";
+    std::cerr << "\nROS message:";
+    std::cerr << "\n    By default, one ROS message is published per input record.";
+    std::cerr << "\n    If a block field is present then one message is pubished per block.";
+    std::cerr << "\n    If the --all option is present all records are published as one message.";
+    std::cerr << "\n";
+    if( detail )
     {
-        std::cerr << "csv options:" << std::endl;
-        std::cerr<< comma::csv::options::usage() << std::endl;
-        std::cerr << std::endl;
+        std::cerr << "\ncsv options:\n";
+        std::cerr << comma::csv::options::usage();
     }
     else
     {
-        std::cerr << "use -v or --verbose to see more detail on csv options" << std::endl;
-        std::cerr << std::endl;
+        std::cerr << "\nuse -v or --verbose to see more detail on csv options";
+        std::cerr << "\n";
     }
-    std::cerr << "example" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "    to publish data from file:" << std::endl;
-    std::cerr << "        cat data.bin | " << comma::verbose.app_name() << "  --topic some_topic --fields t,block,x,y,z --binary t,ui,3f " << std::endl;
-    std::cerr << std::endl;
+    std::cerr << "\nexamples:";
+    std::cerr << "\n    csv-random make --type 3d | csv-paste line-number - \\";
+    std::cerr << "\n        | csv-blocks group --fields scalar --span 1000 | csv-time-stamp \\";
+    std::cerr << "\n        | " << comma::verbose.app_name() << " --topic /points -f t,id,x,y,z,block --format t,ui,3d,ui";
+    std::cerr << "\n";
+    std::cerr << "\n    cat data.bin | " << comma::verbose.app_name() << " --topic /points -f t,block,x,y,z -b t,ui,3f";
+    std::cerr << "\n" << std::endl;
 }
 
 namespace snark { namespace ros {
@@ -196,10 +206,14 @@ struct points
     std::size_t data_size;
     bool ascii;
     //const comma::command_line_options& options
-    points(const comma::csv::options& csv, const std::string& format_str) : format(format_str), u(csv.fields,format.expanded_string()), data_size(format.size()), ascii(!csv.binary())
-    {
-        
-    }
+
+    points( const comma::csv::options& csv, const std::string& format_str )
+        : format( format_str )
+        , u( csv.fields, format.expanded_string() )
+        , data_size( format.size() )
+        , ascii( !csv.binary() )
+    {}
+
     void send(ros::Publisher& publisher,const std::string& frame_id)
     {
         //create msg
@@ -220,6 +234,7 @@ struct points
         ros::spinOnce();
         records.clear();
     }
+
     void push_back(const comma::csv::input_stream<record>& is, const record& p)
     {
         records.push_back(p);
@@ -243,7 +258,7 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         comma::csv::options csv(options);
-        if(!csv.binary() && !options.exists("--format")) { COMMA_THROW( comma::exception, "please specify either --format=<format> for ascii or --binary=<format> for format"); }
+        if( !csv.binary() && !options.exists( "--format" )) { COMMA_THROW( comma::exception, "please specify --binary=<format>, or --format=<format> for ascii"); }
         csv.full_xpath=true;
         std::string topic=options.value<std::string>("--topic");
         unsigned queue_size=options.value<unsigned>("--queue-size",1);

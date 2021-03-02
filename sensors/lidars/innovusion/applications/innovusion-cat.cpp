@@ -72,6 +72,7 @@ output_type_t output_type_from_string( const std::string& output_type_str )
 }
 
 static output_type_t output_type = output_type_t::cooked;
+static bool fatal_error = false;
 
 namespace snark { namespace innovusion {
 struct raw_output {};
@@ -106,11 +107,12 @@ struct app
         lidar.init( name, address, port, alarm_callback, frame_callback );
         lidar.start();
 
-        while( !is_shutdown && std::cout.good() )
+        while( !is_shutdown && !fatal_error && std::cout.good() )
         {
             std::this_thread::sleep_for( std::chrono::milliseconds( 500 ));
         }
         if( is_shutdown ) { std::cerr << comma::verbose.app_name() << ": interrupted by signal" << std::endl; }
+        if( fatal_error ) { std::cerr << comma::verbose.app_name() << ": fatal error, exiting" << std::endl; return 1; }
         return 0;
     }
 
@@ -120,6 +122,7 @@ struct app
         std::cerr << comma::verbose.app_name() << ": [" << snark::innovusion::alarm_type_to_string( error_level ) << "] "
                   << snark::innovusion::alarm_code_to_string( alarm_code )
                   << " \"" << error_message << "\"" << std::endl;
+        if( error_level >= INNO_ALARM_CRITICAL ) { fatal_error = true; }
     }
 
     static int frame_callback( int lidar_handle, void* context, inno_frame* frame )
@@ -177,10 +180,10 @@ int main( int argc, char** argv )
 
         output_type = output_type_from_string(  options.value< std::string >( "--output-type", default_output_type ));
 
-        if( output_type == output_type_t::raw ) { app< snark::innovusion::raw_output >::run( options ); }
-        else if( output_type == output_type_t::cooked ) { app< snark::innovusion::output_data_t >::run( options ); }
-        else if( output_type == output_type_t::full ) { app< snark::innovusion::output_data_full_t >::run( options ); }
-        else if( output_type == output_type_t::none ) { app< snark::innovusion::null_output >::run( options ); }
+        if( output_type == output_type_t::raw ) { return app< snark::innovusion::raw_output >::run( options ); }
+        else if( output_type == output_type_t::cooked ) { return app< snark::innovusion::output_data_t >::run( options ); }
+        else if( output_type == output_type_t::full ) { return app< snark::innovusion::output_data_full_t >::run( options ); }
+        else if( output_type == output_type_t::none ) { return app< snark::innovusion::null_output >::run( options ); }
     }
     catch( std::exception& ex )
     {
