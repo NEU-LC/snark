@@ -1,7 +1,6 @@
 #include <map>
 #include <QGridLayout>
 #include <QTabWidget>
-#include <QtCharts/QChartView>
 #include <comma/csv/options.h>
 #include <comma/csv/traits.h>
 #include <comma/name_value/map.h>
@@ -28,8 +27,7 @@ static QWidget* make_widget_( const std::string& l, main_window::charts_t& chart
         unsigned int col = 0;
         for( auto c: charts )
         {
-            snark::graphics::plotting::chart_view* v = new snark::graphics::plotting::chart_view( c.second );
-            // QChartView* v = new QChartView( c.second );
+            auto v = new snark::graphics::plotting::chart_view( c.second );
             v->setRenderHint( QPainter::Antialiasing );
             v->setContentsMargins( 0, 0, 0, 0 );
             grid->addWidget( v, row, col, 1, 1 );
@@ -46,8 +44,7 @@ static QWidget* make_widget_( const std::string& l, main_window::charts_t& chart
         w->setContentsMargins( 0, 0, 0, 0 );
         for( auto c: charts )
         {
-            snark::graphics::plotting::chart_view* v = new snark::graphics::plotting::chart_view( c.second );
-            // QChartView* v = new QChartView( c.second );
+            auto* v = new snark::graphics::plotting::chart_view( c.second );
             v->setRenderHint( QPainter::Antialiasing );
             v->setContentsMargins( 0, 0, 0, 0 );
             w->addTab( v, &c.second->config().title[0] );
@@ -87,8 +84,6 @@ main_window::main_window( const std::vector< snark::graphics::plotting::stream::
         for( auto& t: s->series ) { charts_[ t.config().chart ]->push_back( &t ); } // quick and dirty; todo? move to stream::make()? (then change series vector in stream to ptr_vector)
     } 
     setCentralWidget( make_widget_( layout, charts_ ) );
-    grabGesture( Qt::PanGesture );
-    grabGesture( Qt::PinchGesture );
     resize( size.first, size.second );
     QObject::connect( &timer_, &QTimer::timeout, this, &main_window::update );
     timer_.setInterval( ( unsigned int )( timeout * 1000 ) );

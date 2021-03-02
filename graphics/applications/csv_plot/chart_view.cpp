@@ -1,10 +1,19 @@
 #include "chart_view.h"
+#include <QPointF>
+#include <QRectF>
 
 namespace snark { namespace graphics { namespace plotting {
             
 chart_view::chart_view( QChart* chart, QWidget* parent ) :
     QChartView( chart, parent ),
-    panning( false )
+    panning_( false )
+{
+    setRubberBand( QChartView::RectangleRubberBand );  // rubber band: click and drag box thing
+}
+            
+chart_view::chart_view( QWidget* parent ) :
+    QChartView( parent ),
+    panning_( false )
 {
     setRubberBand( QChartView::RectangleRubberBand );  // rubber band: click and drag box thing
 }
@@ -13,9 +22,9 @@ void chart_view::mousePressEvent( QMouseEvent* event )
 {
     if ( event->button() == Qt::MiddleButton ) 
     { 
-        panning = true;
-        last_x = event->x();
-        last_y = event->y();
+        panning_ = true;
+        last_.setX(event->x());
+        last_.setY(event->y());
         chart()->setAnimationOptions( QChart::NoAnimation );
     }
     QChartView::mousePressEvent( event );
@@ -23,13 +32,13 @@ void chart_view::mousePressEvent( QMouseEvent* event )
 
 void chart_view::mouseMoveEvent( QMouseEvent* event )
 {
-    if ( panning )
+    if ( panning_ )
     {
-        int dx = last_x - event->x();
-        int dy = event->y() - last_y;
+        int dx = last_.x() - event->x();
+        int dy = event->y() - last_.y();
         chart()->scroll( dx, dy );
-        last_x = event->x();
-        last_y = event->y();
+        last_.setX(event->x());
+        last_.setY(event->y());
     }
     QChartView::mouseMoveEvent( event );
 }
@@ -38,7 +47,7 @@ void chart_view::mouseReleaseEvent( QMouseEvent* event )
 {
     if ( event->button() == Qt::MiddleButton ) 
     { 
-        panning = false; 
+        panning_ = false; 
         chart()->setAnimationOptions( QChart::SeriesAnimations );
     }
     QChartView::mouseReleaseEvent( event );
@@ -50,13 +59,17 @@ void chart_view::wheelEvent( QWheelEvent* event )
     QRectF plot_area = chart()->plotArea();
     int y = angle_delta.y();  // +ve if scrolling in
     // if ( chart()->chartType() == QChart::ChartTypePolar )  // polar charts don't support rectangle zooming
-    if ( true )  // polar charts don't support rectangle zooming
+    if ( true )  // currently can't get mouse position in local frame
     {
-        if      ( y > 0 ) { chart()->zoom(1.1);                 }
-        else if ( y < 0 ) { chart()->zoom(0.9);                 }
+        if      ( y > 0 ) { chart()->zoom( 1.1 );               }
+        else if ( y < 0 ) { chart()->zoom( 0.9 );               }
         else              { QGraphicsView::wheelEvent( event ); }
+        QPointF global_pos = event->globalPos();
+        QPoint local_pos  = chart_view().mapFromGlobal( global_pos.toPoint() );
+        std::cerr << "csv-plot: mouse event occured at global position: (" << global_pos.x() << ", " << global_pos.y() << ")\n"
+                  << "local position: (" << local_pos.x() << ", " << local_pos.y() << ")" << std::endl;
     }
-    else  // currently can't get mouse position in local frame
+    else
     {
         plot_area.moveCenter( event->globalPos() - chart()->scenePos() );
         if ( y > 0 )
@@ -78,9 +91,9 @@ void chart_view::wheelEvent( QWheelEvent* event )
             QGraphicsView::wheelEvent( event );
         }
         chart()->zoomIn( plot_area );
-        std::cerr << "Zooming in to the rectangle centred at " << plot_area.center().x() << ", " << plot_area.center().y() << std::endl;
-        std::cerr << "Mouse event occured at " << event->globalPos().x() << ", " << event->globalPos().y() << std::endl;
-        std::cerr << "scenePos: " << chart()->scenePos().x() << ", " << chart()->scenePos().y() << std::endl;
+        std::cerr << "csv-plot: zooming in to the rectangle centred at " << plot_area.center().x() << ", " << plot_area.center().y() << std::endl;
+        std::cerr << "csv-plot: mouse event occured at " << event->globalPos().x() << ", " << event->globalPos().y() << std::endl;
+        std::cerr << "csv-plot: scenePos: " << chart()->scenePos().x() << ", " << chart()->scenePos().y() << std::endl;
     }
 }
 

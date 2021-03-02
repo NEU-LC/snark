@@ -114,6 +114,13 @@ static void usage( bool verbose = false )
     std::cerr << "    --timeout=<seconds>; how often to update, overrides --fps" << std::endl;
     std::cerr << "    --window-size=<x>,<y>: initial window size; default=800,600" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "zooming and panning" << std::endl;
+    std::cerr << "    scroll to zoom in and out about the centre of the plot" << std::endl;
+    std::cerr << "    press the 'r' key to reset the plot to its original zoom level" << std::endl;
+    std::cerr << "    left-click and drag to zoom in" << std::endl;
+    std::cerr << "    right-click and drag to zoom out" << std::endl;
+    std::cerr << "    middle-click and drag to pan" << std::endl;
+    std::cerr << std::endl;
     if( verbose )
     {
         std::cerr << "examples" << std::endl;
@@ -272,17 +279,19 @@ static void usage( bool verbose = false )
 // todo for Hamish
 // ! fix: run histogram demo, try to zoom in and then zoom out - x axis gets squashed
 //        and the only way to restory is pressing 'r'
+// ! fix: if i select rectangle (in histogram demo), it zooms on y, but not on x; what i would expect: if i select
+//        a rectangle, whatever is in the rectangle should appear in the new zoomed view
 // - help:
-//   - as a minimum, add zoom description in --help
+//   x as a minimum, add zoom description in --help
 //   ? help menu or status line at the bottom with prompt (maybe it's too much too early)
-// - output to std::cerr: add application name to each message: e.g: std::cerr << "csv-plot: ..."
+// x output to std::cerr: add application name to each message: e.g: std::cerr << "csv-plot: ..."
 //   (if csv-plot runs as a part of the script, the user will know the message is from csv-plot)
-// - move unnecessary includes to cpp file (e.g. <QPoint> is not used in the header)
-// - rename private members as following: panning -> _panning (or panning_ - your call)
-// - chart_view:
-//   ? _last_x, _last_y: use Point _last; instead?
-// - main window
-//   - instead of snark::graphics::plotting::chart_view* v = new snark::graphics::plotting::chart_view( c.second )
+// x move unnecessary includes to cpp file (e.g. <QPoint> is not used in the header)
+// x rename private members as following: panning -> _panning (or panning_ - your call)
+// x chart_view:
+//   x _last_x, _last_y: use Point _last; instead?
+// x main window
+//   x instead of snark::graphics::plotting::chart_view* v = new snark::graphics::plotting::chart_view( c.second )
 //     it's ok to write: auto v = new snark::graphics::plotting::chart_view( c.second )
 
 QT_USE_NAMESPACE
