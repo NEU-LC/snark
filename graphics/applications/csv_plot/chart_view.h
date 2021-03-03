@@ -6,8 +6,6 @@
 #include <QWheelEvent>
 #include <QMouseEvent>
 #include <QPoint>
-#include <QPointF>
-#include <QRectF>
 #include <QtCharts/QChartView>
 #include <QtWidgets/QRubberBand>
 
@@ -20,6 +18,7 @@ class chart_view: public QChartView
 {
 public:
     chart_view( QChart* chart, QWidget* parent = 0 );
+    chart_view( QWidget* parent = 0 );
 
 protected:
     void keyPressEvent( QKeyEvent* event );
@@ -29,9 +28,8 @@ protected:
     void mouseReleaseEvent( QMouseEvent* event );
     
 private:
-    bool panning;
-    int last_x;
-    int last_y;
+    bool panning_;
+    QPoint last_;
 };
 
 } } } // namespace snark { namespace graphics { namespace plotting {
