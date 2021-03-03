@@ -52,30 +52,23 @@ void chart_view::wheelEvent( QWheelEvent* event )
     // if ( chart()->chartType() == QChart::ChartTypePolar )  // polar charts don't support rectangle zooming
     if ( true )  // polar charts don't support rectangle zooming
     {
-        if      ( y > 0 ) { chart()->zoom(1.1);                 }
-        else if ( y < 0 ) { chart()->zoom(0.9);                 }
-        else              { QGraphicsView::wheelEvent( event ); }
+        if( y == 0 ) { QGraphicsView::wheelEvent( event ); }
+        else { chart()->zoom( y > 0 ? 1.1 : 0.5 )  }
     }
     else  // currently can't get mouse position in local frame
     {
         plot_area.moveCenter( event->globalPos() - chart()->scenePos() );
-        if ( y > 0 )
+        if( y == 0 )
         {
-            plot_area.setTop( plot_area.top() + 10 );
-            plot_area.setBottom( plot_area.bottom() - 10 );
-            plot_area.setLeft( plot_area.left() + 10 );
-            plot_area.setRight( plot_area.right() - 10 );
-        }
-        else if ( y < 0 )
-        {
-            plot_area.setTop( plot_area.top() - 10 );
-            plot_area.setBottom( plot_area.bottom() + 10 );
-            plot_area.setLeft( plot_area.left() - 10 );
-            plot_area.setRight( plot_area.right() + 10 );
+            QGraphicsView::wheelEvent( event );
         }
         else
         {
-            QGraphicsView::wheelEvent( event );
+            int sign = y > 0 ? 1 : -1;
+            plot_area.setTop( plot_area.top() + 10 * sign );
+            plot_area.setBottom( plot_area.bottom() - 10 * sign );
+            plot_area.setLeft( plot_area.left() + 10 * sign );
+            plot_area.setRight( plot_area.right() - 10 * sign );
         }
         chart()->zoomIn( plot_area );
         std::cerr << "Zooming in to the rectangle centred at " << plot_area.center().x() << ", " << plot_area.center().y() << std::endl;
