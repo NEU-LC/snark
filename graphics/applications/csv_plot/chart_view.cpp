@@ -65,7 +65,7 @@ void chart_view::wheelEvent( QWheelEvent* event )
         else if ( y < 0 ) { chart()->zoom( 0.9 );               }
         else              { QGraphicsView::wheelEvent( event ); }
         QPointF global_pos = event->globalPos();
-        QPoint local_pos  = chart_view().mapFromGlobal( global_pos.toPoint() );
+        QPoint local_pos  = QChartView::mapFromGlobal( global_pos.toPoint() ); //QPoint local_pos  = chart_view().mapFromGlobal( global_pos.toPoint() );
         std::cerr << "csv-plot: mouse event occured at global position: (" << global_pos.x() << ", " << global_pos.y() << ")\n"
                   << "local position: (" << local_pos.x() << ", " << local_pos.y() << ")" << std::endl;
     }
