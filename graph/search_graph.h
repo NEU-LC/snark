@@ -30,8 +30,7 @@
 /// @author jason gan
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_GRAPH_SEARCH_GRAPH_H_
-#define SNARK_GRAPH_SEARCH_GRAPH_H_
+#pragma once
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
@@ -105,5 +104,3 @@ struct search_graph
 };
 
 } // namespace snark {
-
-#endif // SNARK_GRAPH_SEARCH_GRAPH_H_
