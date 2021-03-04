@@ -104,16 +104,20 @@ def message_to_image(msg):
     except:
         shutdown=True
         traceback.print_exc()
-        
-if len(args.bags):
-    for bagfile in args.bags:
-        with rosbag.Bag(bagfile) as bag:
-            for topic, msg, t in bag.read_messages(topics=args.topic):
-                if shutdown: exit(0)
-                message_to_image(msg)
-else:
-    rospy.init_node('listener',anonymous=True,disable_signals=True)
-    subscription = rospy.Subscriber(args.topic, Image, message_to_image)
-    while not shutdown:
-        time.sleep(0.001)
-    rospy.signal_shutdown('shutdown')
+
+def main():
+    if len( args.bags ) > 0:
+        for bagfile in args.bags:
+            with rosbag.Bag( bagfile ) as bag:
+                for topic, msg, t in bag.read_messages( topics=args.topic ):
+                    if shutdown: exit( 0 )
+                    message_to_image( msg )
+    else:
+        rospy.init_node( 'listener', anonymous=True, disable_signals=True )
+        subscription = rospy.Subscriber( args.topic, Image, message_to_image )
+        while not shutdown:
+            time.sleep( 0.001 )
+        rospy.signal_shutdown( 'shutdown' )
+
+if __name__ == '__main__':
+    main()
