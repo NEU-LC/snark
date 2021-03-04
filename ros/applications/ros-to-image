@@ -103,7 +103,6 @@ def message_to_image(msg):
         shutdown=True
     except:
         shutdown=True
-        sys.stderr.write("exception!\n")
         traceback.print_exc()
         
 if len(args.bags):
