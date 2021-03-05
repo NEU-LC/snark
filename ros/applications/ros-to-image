@@ -1,15 +1,15 @@
 #!/usr/bin/python
 
+import argparse
+import cv2
+import numpy
+import rosbag
 import rospy
 import sys
-import argparse
 import time
-import numpy
 import traceback
 from sensor_msgs.msg import Image
 from snark.imaging import cv_image
-import cv2
-import rosbag
 
 shutdown = False
 
