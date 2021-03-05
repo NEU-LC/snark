@@ -5,6 +5,7 @@ import cv2
 import numpy
 import rosbag
 import rospy
+import signal
 import sys
 import time
 import traceback
@@ -101,6 +102,15 @@ def message_to_image( msg, flush ):
         traceback.print_exc()
 
 def main():
+    # Reset SIGPIPE and SIGINT to their default OS behaviour.
+    # This stops python dumping a stack-trace on ctrl-c or broken pipe.
+    signal.signal( signal.SIGPIPE, signal.SIG_DFL )
+    s = signal.signal( signal.SIGINT, signal.SIG_DFL )
+    # but don't reset SIGINT if it's been assigned to something other
+    # than the Python default
+    if s != signal.default_int_handler:
+        signal.signal( signal.SIGINT, s )
+
     args = parse_args()
     if len( args.bags ) > 0:
         for bagfile in args.bags:
