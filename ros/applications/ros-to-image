@@ -1,7 +1,7 @@
 #!/usr/bin/python
+
 import rospy
 import sys
-import struct
 import argparse
 import time
 import numpy
@@ -81,31 +81,23 @@ encoding_map={
     "bayer_grbg16": cv2.CV_16UC4
 }
 
-def message_to_image(msg):
+def message_to_image( msg, flush ):
     global shutdown
-    global args
     try:
-        header=numpy.zeros((),dtype=cv_image.image.header_dtype)
-        t=msg.header.stamp
-        header['time']=t.secs*1000000+t.nsecs/1000
-        header['rows']=msg.height
-        header['cols']=msg.width
-        header['type']=encoding_map[msg.encoding]
-        header.tofile(sys.stdout)
-        #t=msg.header.stamp
-        #ts=struct.pack('q',t.secs*1000000+t.nsecs/1000)
-        #sys.stdout.write(ts)
-        #sys.stdout.write(struct.pack('I',msg.height))
-        #sys.stdout.write(struct.pack('I',msg.width))
-        #sys.stdout.write(struct.pack('I',encoding_map[msg.encoding]))
-        sys.stdout.write(msg.data)
-        if args.flush:
+        header = numpy.zeros( (), dtype=cv_image.image.header_dtype )
+        t = msg.header.stamp
+        header['time'] = t.secs * 1000000 + t.nsecs / 1000
+        header['rows'] = msg.height
+        header['cols'] = msg.width
+        header['type'] = encoding_map[ msg.encoding ]
+        header.tofile( sys.stdout )
+        sys.stdout.write( msg.data )
+        if flush:
             sys.stdout.flush()
-        
     except SystemExit:
-        shutdown=True
+        shutdown = True
     except:
-        shutdown=True
+        shutdown = True
         traceback.print_exc()
 
 def main():
@@ -115,10 +107,10 @@ def main():
             with rosbag.Bag( bagfile ) as bag:
                 for topic, msg, t in bag.read_messages( topics=args.topic ):
                     if shutdown: exit( 0 )
-                    message_to_image( msg )
+                    message_to_image( msg, args.flush )
     else:
         rospy.init_node( 'listener', anonymous=True, disable_signals=True )
-        subscription = rospy.Subscriber( args.topic, Image, message_to_image )
+        subscription = rospy.Subscriber( args.topic, Image, message_to_image, args.flush )
         while not shutdown:
             time.sleep( 0.001 )
         rospy.signal_shutdown( 'shutdown' )
