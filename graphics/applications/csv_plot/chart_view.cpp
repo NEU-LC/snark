@@ -65,8 +65,8 @@ void chart_view::wheelEvent( QWheelEvent* event )
         else { chart()->zoom( y > 0 ? 1.1 : 0.5 ); }
         QPointF global_pos = event->globalPos();
         QPoint local_pos  = QChartView::mapFromGlobal( global_pos.toPoint() ); //QPoint local_pos  = chart_view().mapFromGlobal( global_pos.toPoint() );
-        std::cerr << "csv-plot: mouse event occured at global position: (" << global_pos.x() << ", " << global_pos.y() << ")\n"
-                  << "local position: (" << local_pos.x() << ", " << local_pos.y() << ")" << std::endl;
+        //std::cerr << "csv-plot: mouse event occured at global position: (" << global_pos.x() << ", " << global_pos.y() << ")\n"
+        //          << "local position: (" << local_pos.x() << ", " << local_pos.y() << ")" << std::endl;
     }
     else
     {
@@ -84,39 +84,24 @@ void chart_view::wheelEvent( QWheelEvent* event )
             plot_area.setRight( plot_area.right() - 10 * sign );
         }
         chart()->zoomIn( plot_area );
-        std::cerr << "csv-plot: zooming in to the rectangle centred at " << plot_area.center().x() << ", " << plot_area.center().y() << std::endl;
-        std::cerr << "csv-plot: mouse event occured at " << event->globalPos().x() << ", " << event->globalPos().y() << std::endl;
-        std::cerr << "csv-plot: scenePos: " << chart()->scenePos().x() << ", " << chart()->scenePos().y() << std::endl;
+        //std::cerr << "csv-plot: zooming in to the rectangle centred at " << plot_area.center().x() << ", " << plot_area.center().y() << std::endl;
+        //std::cerr << "csv-plot: mouse event occured at " << event->globalPos().x() << ", " << event->globalPos().y() << std::endl;
+        //std::cerr << "csv-plot: scenePos: " << chart()->scenePos().x() << ", " << chart()->scenePos().y() << std::endl;
     }
 }
 
 void chart_view::keyPressEvent( QKeyEvent* event )
 {
-    switch ( event->key() ) {
-    case Qt::Key_Plus:
-        chart()->zoomIn();
-        break;
-    case Qt::Key_Minus:
-        chart()->zoomOut();
-        break;
-    case Qt::Key_Left:
-        chart()->scroll(-50, 0);
-        break;
-    case Qt::Key_Right:
-        chart()->scroll(50, 0);
-        break;
-    case Qt::Key_Up:
-        chart()->scroll(0, 50);
-        break;
-    case Qt::Key_Down:
-        chart()->scroll(0, -50);
-        break;
-    case Qt::Key_R:
-        chart()->zoomReset();
-        break;
-    default:
-        QGraphicsView::keyPressEvent(event);
-        break;
+    switch ( event->key() )
+    {
+        case Qt::Key_Plus: chart()->zoomIn(); break;
+        case Qt::Key_Minus: chart()->zoomOut(); break;
+        case Qt::Key_Left: chart()->scroll(-50, 0); break;
+        case Qt::Key_Right: chart()->scroll(50, 0); break;
+        case Qt::Key_Up: chart()->scroll(0, 50); break;
+        case Qt::Key_Down: chart()->scroll(0, -50); break;
+        case Qt::Key_R: chart()->zoomReset(); break;
+        default: QGraphicsView::keyPressEvent(event); break;
     }
 }
 
