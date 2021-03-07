@@ -277,21 +277,21 @@ static void usage( bool verbose = false )
 //   ? totally rewrite everything using qml?
 
 // todo for Hamish
-// ! fix: run histogram demo, try to zoom in and then zoom out - x axis gets squashed
+// x fix: run histogram demo, try to zoom in and then zoom out - x axis gets squashed
 //        and the only way to restory is pressing 'r'
-// ! fix: if i select rectangle (in histogram demo), it zooms on y, but not on x; what i would expect: if i select
+// . fix: if i select rectangle (in histogram demo), it zooms on y, but not on x; what i would expect: if i select
 //        a rectangle, whatever is in the rectangle should appear in the new zoomed view
 // - help:
-//   x as a minimum, add zoom description in --help
+//   . as a minimum, add zoom description in --help
 //   ? help menu or status line at the bottom with prompt (maybe it's too much too early)
-// x output to std::cerr: add application name to each message: e.g: std::cerr << "csv-plot: ..."
+// . output to std::cerr: add application name to each message: e.g: std::cerr << "csv-plot: ..."
 //   (if csv-plot runs as a part of the script, the user will know the message is from csv-plot)
-// x move unnecessary includes to cpp file (e.g. <QPoint> is not used in the header)
-// x rename private members as following: panning -> _panning (or panning_ - your call)
-// x chart_view:
-//   x _last_x, _last_y: use Point _last; instead?
-// x main window
-//   x instead of snark::graphics::plotting::chart_view* v = new snark::graphics::plotting::chart_view( c.second )
+// . move unnecessary includes to cpp file (e.g. <QPoint> is not used in the header)
+// . rename private members as following: panning -> _panning (or panning_ - your call)
+// . chart_view:
+//   . _last_x, _last_y: use Point _last; instead?
+// . main window
+//   . instead of snark::graphics::plotting::chart_view* v = new snark::graphics::plotting::chart_view( c.second )
 //     it's ok to write: auto v = new snark::graphics::plotting::chart_view( c.second )
 
 QT_USE_NAMESPACE
