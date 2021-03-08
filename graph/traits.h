@@ -29,8 +29,7 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_GRAPH_TRAITS_H_
-#define SNARK_GRAPH_TRAITS_H_
+#pragma once
 
 #include <comma/base/types.h>
 #include <comma/visiting/traits.h>
@@ -75,5 +74,3 @@ template < typename P, typename C > struct traits< typename snark::search_node< 
 };
 
 } } // namespace comma { namespace visiting {
-
-#endif // SNARK_GRAPH_TRAITS_H_

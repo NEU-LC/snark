@@ -30,8 +30,7 @@
 /// @author jason gan
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_GRAPH_SEARCH_H_
-#define SNARK_GRAPH_SEARCH_H_
+#pragma once
 
 #include <queue>
 #include <boost/graph/adjacency_list.hpp>
@@ -143,5 +142,3 @@ inline void forward_search( G& graph, const D& start, const A& advance, const O&
 }
 
 } // namespace snark {
-
-#endif

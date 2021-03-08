@@ -145,31 +145,16 @@ void chart_view::wheelEvent( QWheelEvent* event )
 
 void chart_view::keyPressEvent( QKeyEvent* event )
 {
-    switch ( event->key() ) {
-    case Qt::Key_Plus:
-        chart()->zoomIn();
-        break;
-    case Qt::Key_Minus:
-        chart()->zoomOut();
-        break;
-    case Qt::Key_Left:
-        chart()->scroll(-50, 0);
-        break;
-    case Qt::Key_Right:
-        chart()->scroll(50, 0);
-        break;
-    case Qt::Key_Up:
-        chart()->scroll(0, 50);
-        break;
-    case Qt::Key_Down:
-        chart()->scroll(0, -50);
-        break;
-    case Qt::Key_R:
-        chart()->zoomReset();
-        break;
-    default:
-        QGraphicsView::keyPressEvent(event);
-        break;
+    switch ( event->key() )
+    {
+        case Qt::Key_Plus: chart()->zoomIn(); break;
+        case Qt::Key_Minus: chart()->zoomOut(); break;
+        case Qt::Key_Left: chart()->scroll(-50, 0); break;
+        case Qt::Key_Right: chart()->scroll(50, 0); break;
+        case Qt::Key_Up: chart()->scroll(0, 50); break;
+        case Qt::Key_Down: chart()->scroll(0, -50); break;
+        case Qt::Key_R: chart()->zoomReset(); break;
+        default: QGraphicsView::keyPressEvent(event); break;
     }
 }
 

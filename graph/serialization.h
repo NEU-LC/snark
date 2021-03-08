@@ -29,8 +29,7 @@
 
 /// @author vsevolod vlaskine
 
-#ifndef SNARK_GRAPH_SERIALIZATION_H_
-#define SNARK_GRAPH_SERIALIZATION_H_
+#pragma once
 
 #include <iostream>
 #include <boost/unordered_map.hpp>
@@ -252,5 +251,3 @@ inline void read_edges( boost::adjacency_list< VertexStorage, EdgeStorage, Direc
 }
 
 } // namespace snark {
-
-#endif // SNARK_GRAPH_SERIALIZATION_H_
