@@ -1,0 +1,45 @@
+#!/usr/bin/python
+
+import argparse
+import rosbag
+import sys
+
+def main():
+    parser = argparse.ArgumentParser( description="crop a rosbag" )
+    parser.add_argument( 'input_bag', nargs=1, help='input bag file' )
+    parser.add_argument( 'output_bag', nargs=1, help='output bag file' )
+    parser.add_argument( '--topic', help='list of topics to output' )
+    parser.add_argument( '-n', '--num-msgs', type=int, help='number of messages to output' )
+    parser.add_argument( '-v', '--verbose', help='chat more', action='store_true' )
+    args = parser.parse_args()
+
+    input_bag = args.input_bag[0]
+    output_bag = args.output_bag[0]
+    inbag = rosbag.Bag( input_bag )
+
+    topics = args.topic.split(',') if args.topic else inbag.get_type_and_topic_info()[1].keys()
+    num_msgs = args.num_msgs
+
+    if args.verbose:
+        print >> sys.stderr, "rosbag-crop: writing %s message%s on %s topic%s from %s to %s" % (
+            num_msgs if num_msgs else "all", "" if num_msgs == 1 else "s",
+            ",".join(topics) if args.topic else "all", "" if len(topics) == 1 else "s",
+            input_bag, output_bag )
+
+    msg_count = dict()
+
+    with rosbag.Bag( output_bag, 'w' ) as outbag:
+        for topic, msg, t in inbag.read_messages():
+            if topic in topics:
+                if not msg_count.has_key( topic ):
+                    msgs_in_topic = inbag.get_message_count( topic )
+                    msg_count[topic] = num_msgs if num_msgs < msgs_in_topic else msgs_in_topic
+                if msg_count[topic]:
+                    outbag.write( topic, msg, t )
+                    msg_count[topic] -= 1
+                    if len(msg_count.keys()) == len(topics):
+                        msgs_remaining = sum( msg_count.values() )
+                        if msgs_remaining == 0: break
+
+if __name__ == "__main__":
+    main()
