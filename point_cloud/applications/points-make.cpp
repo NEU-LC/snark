@@ -1,10 +1,9 @@
 // Copyright (c) 2016 The University of Sydney
 // Copyright (c) 2021 Mission Systems Pty Ltd
 
-#include <stdlib.h>
 #include <iostream>
-#include <boost/lexical_cast.hpp>
-#include <Eigen/Core>
+#include <array>
+#include <stdlib.h>
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/csv/stream.h>
@@ -14,17 +13,9 @@ namespace snark { namespace test_pattern {
 
 struct color_t
 {
-    // Use the view-points standard for colour
-    boost::array< unsigned char, 4 > rgba;
-
-    color_t() { rgba[0] = 0; rgba[1] = 0; rgba[2] = 0; rgba[3] = 255; }
-
-    color_t( unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha )
-    {
-        rgba[0] = red; rgba[1] = green; rgba[2] = blue; rgba[3] = alpha;
-    }
-
-    color_t( const color_t& color ) : rgba( color.rgba ) {}
+    boost::array< unsigned char, 4 > rgba = {{ 0, 0, 0, 255 }};
+    color_t() {}
+    color_t( unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha = 255 ): rgba( {{ red, green, blue, alpha }} ) {}
 
     unsigned char red() const   { return rgba[0]; }
     unsigned char green() const { return rgba[1]; }
@@ -61,18 +52,18 @@ struct cube : public operation_t< vertex_t >
     static void usage()
     {
         std::cerr << "\n";
-        std::cerr << "\n  cube operation";
-        std::cerr << "\n    --num,-n=<val>:     number of points in cube (default: " << default_num_points << ")";
-        std::cerr << "\n    --width,-w=<val>:   cube width (default: " << default_width << ")";
-        std::cerr << "\n    --thickness=<val>:  cube thickness (default: " << default_thickness << ")";
+        std::cerr << "\n    test-cube";
+        std::cerr << "\n        --num,-n=<val>:     number of points in cube (default: " << default_num_points << ")";
+        std::cerr << "\n        --width,-w=<val>:   cube width (default: " << default_width << ")";
+        std::cerr << "\n        --thickness=<val>:  cube thickness (default: " << default_thickness << ")";
     }
 
     static void examples()
     {
-        std::cerr << "\n    " << comma::verbose.app_name() << " cube | view-points --fields x,y,z,r,g,b,a";
+        std::cerr << "\n    " << "points-make test-cube | view-points --fields x,y,z,r,g,b,a";
     }
 
-    static const char* completion_options() { return " cube --num -n --width -w --thickness"; }
+    static const char* completion_options() { return " test-cube --num -n --width -w --thickness"; }
 
     static int run( const comma::command_line_options& options )
     {
@@ -98,20 +89,9 @@ struct cube : public operation_t< vertex_t >
     }
 
 private:
-    static unsigned char point_to_color( float p, float width, float thickness )
-    {
-        return (unsigned char)( fabs( p / ( width + thickness )) * 256 );
-    }
-
-    static float random( float min, float max )
-    {
-        return (float)::random() / RAND_MAX * ( max - min ) + min;
-    }
-
-    static int random_sign()
-    {
-        return ::random() % 2 * 2 - 1;
-    }
+    static unsigned char point_to_color( float p, float width, float thickness ) { return (unsigned char)( fabs( p / ( width + thickness )) * 256 ); }
+    static float random( float min, float max ) { return (float)::random() / RAND_MAX * ( max - min ) + min; }
+    static int random_sign() { return ::random() % 2 * 2 - 1; }
 
     static Eigen::Vector3f make_point( float width, float thickness )
     {
@@ -124,7 +104,7 @@ private:
         {
             case 0: x_min = min; break;
             case 1: y_min = min; break;
-            case 2: z_min = min; break;
+            default: case 2: z_min = min; break;
         }
         float x = random_sign() * random( x_min, max );
         float y = random_sign() * random( y_min, max );
@@ -142,18 +122,18 @@ struct grid : public operation_t< Eigen::Vector3f >
     static void usage()
     {
         std::cerr << "\n";
-        std::cerr << "\n  grid operation";
-        std::cerr << "\n    --width,-w=<val>:   grid width (default: " << default_width << ")";
-        std::cerr << "\n    --spacing,-s=<val>: grid spacing (default: " << default_spacing << ")";
-        std::cerr << "\n    --z-offset=<val>:   grid z offset (default: " << default_z_offset << ")";
+        std::cerr << "\n    grid";
+        std::cerr << "\n        --width,-w=<val>:   grid width; default: " << default_width;
+        std::cerr << "\n        --spacing,-s=<val>: grid spacing; default: " << default_spacing;
+        std::cerr << "\n        --z-offset=<val>:   grid z offset; default: " << default_z_offset;
     }
 
     static void examples()
     {
-        std::cerr << "\n    " << comma::verbose.app_name() << " grid | view-points --shape lines";
+        std::cerr << "\n    " << "points-make test-grid | view-points --shape lines";
     }
 
-    static const char* completion_options() { return " grid --width -w --spacing -s --z-offset"; }
+    static const char* completion_options() { return " test-grid --width -w --spacing -s --z-offset"; }
 
     static int run( const comma::command_line_options& options )
     {
@@ -195,15 +175,10 @@ template <> struct traits< snark::test_pattern::color_t >
     template < typename Key, class Visitor >
     static void visit( Key, snark::test_pattern::color_t& p, Visitor& v )
     {
-        unsigned char red   = 0;
-        unsigned char green = 0;
-        unsigned char blue  = 0;
-        unsigned char alpha = 255;
-        v.apply( "r", red );
-        v.apply( "g", green );
-        v.apply( "b", blue );
-        v.apply( "a", alpha );
-        p = snark::test_pattern::color_t( red, green, blue, alpha );
+        v.apply( "r", p.rgba[0] );
+        v.apply( "g", p.rgba[1] );
+        v.apply( "b", p.rgba[2] );
+        v.apply( "a", p.rgba[3] );
     }
 
     template < typename Key, class Visitor >
@@ -253,22 +228,28 @@ static void bash_completion( unsigned const ac, char const * const * av )
 
 static void usage( bool verbose = false )
 {
-    std::cerr << "\nOutput test data";
+    std::cerr << "\noutput point clouds";
     std::cerr << "\n";
-    std::cerr << "\nUsage: " << comma::verbose.app_name() << " <operation> [<options>]";
+    std::cerr << "\nusage: " << "points-make <operation> [<options>]";
     std::cerr << "\n";
-    std::cerr << "\nwhere <operation> is one of: cube or grid";
+    std::cerr << "\n<operation>";
+    std::cerr << "\n    cube: todo: document...";
+    std::cerr << "\n    grid: todo: document...";
     std::cerr << "\n";
-    std::cerr << "\nOptions: ";
+    std::cerr << "\n<options>";
     std::cerr << "\n    --help,-h:       show this help, --help --verbose for more help";
     std::cerr << "\n    --output-fields: show output fields and exit";
     std::cerr << "\n    --output-format: show binary output format and exit";
     std::cerr << "\n    --binary,-b:     output in binary (default is ascii)";
-    std::cerr << "\n    --seed=<n>:      seed for random generator (see srand); default is time";
+    std::cerr << "\n    --seed=<seed>:   seed for random generator (see srand)";
+    std::cerr << "\n                     <seed>: for random generator";
+    std::cerr << "\n                         number, e.g. --seed=55";
+    std::cerr << "\n                         'time', use time as seed, e.g. --seed=time";
+    std::cerr << "\n                         default: 0";
     snark::test_pattern::cube::usage();
     snark::test_pattern::grid::usage();
     std::cerr << "\n";
-    std::cerr << "\nExamples: ";
+    std::cerr << "\nexamples";
     snark::test_pattern::cube::examples();
     snark::test_pattern::grid::examples();
     std::cerr << "\n";
@@ -281,36 +262,17 @@ int main( int argc, char** argv )
     try
     {
         comma::command_line_options options( argc, argv, usage );
-        if( options.exists( "--bash-completion" )) { bash_completion( argc, argv ); }
-
-        unsigned seed = options.value< unsigned int >( "--seed", time(0) );
+        if( options.exists( "--bash-completion" ) ) { bash_completion( argc, argv ); }
+        unsigned seed = options.value< unsigned int >( "--seed", time( 0 ) );
         srand( seed );
-
-        std::vector< std::string > unnamed = options.unnamed( "--help,h", "-.*,--.*" );
-        if( unnamed.empty() )
-        {
-            std::cerr << "Usage: " << comma::verbose.app_name() << " <operation> [<options>]" << std::endl;
-            exit( 1 );
-        }
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h", "-.*,--.*" );
+        if( unnamed.empty() ) { std::cerr << "points-make: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
-
-        if( operation == "cube" ) { return run< snark::test_pattern::cube >( options ); }
-        else if( operation == "grid" ) { return run< snark::test_pattern::grid >( options ); }
-        else
-        {
-            std::cerr << comma::verbose.app_name() << ": operation must be \"cube\" or \"grid\"" << std::endl;
-            return 1;
-        }
+        if( operation == "test-cube" ) { return run< snark::test_pattern::cube >( options ); }
+        else if( operation == "test-grid" ) { return run< snark::test_pattern::grid >( options ); }
+        std::cerr << "points-make: expected operation, got: '" << operation << "'" << std::endl;
     }
-    catch( std::exception& ex )
-    {
-        std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl;
-        return 1;
-    }
-    catch( ... )
-    {
-        std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl;
-        return 1;
-    }
-    return 0;
+    catch( std::exception& ex ) { std::cerr << "points-make: " << ex.what() << std::endl;  }
+    catch( ... ) { std::cerr << "points-make: unknown exception" << std::endl; }
+    return 1;
 }
