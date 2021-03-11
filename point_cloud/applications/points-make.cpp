@@ -75,7 +75,7 @@ struct box : public operation_t< Eigen::Vector3d >
         std::cerr << "\n    points-make box --width 10 --fill --binary 3d | view-points '-;color=yellow;binary=3d'";
     }
 
-    static const char* completion_options() { return " box --fill --extents -e --origin -o --resolution -r --seed -s --width -w"; }
+    static const char* completion_options() { return " box --fill --extents -e --origin -o --resolution -r --random-seed --seed -s --width -w"; }
 
     static int run( const comma::command_line_options& options )
     {
@@ -174,7 +174,7 @@ struct sphere : public operation_t< Eigen::Vector3d >
         std::cerr << "\n    points-make sphere --radius 10 --size 10000 --seed 0 | view-points '-;color=yellow'";
     }
 
-    static const char* completion_options() { return " sphere --radius --center -c --resolution -r --seed -s"; }
+    static const char* completion_options() { return " sphere --radius --center -c --resolution -r --random-seed --seed -s"; }
 
     static int run( const comma::command_line_options& options )
     {
@@ -184,7 +184,7 @@ struct sphere : public operation_t< Eigen::Vector3d >
         double radius = options.value< double >( "--radius" );
         auto resolution = options.optional< double >( "--resolution,-r" );
         auto size = options.optional< unsigned int >( "--size" );
-        auto seed = options.optional< std::string >( "--seed,-s" );
+        auto seed = options.optional< std::string >( "--random-seed,--seed,-s" );
         comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, comma::csv::options( options ) );
         if( seed )
         {
@@ -264,7 +264,7 @@ struct cube : public operation_t< vertex_t >
 
     static int run( const comma::command_line_options& options )
     {
-        unsigned seed = options.value< unsigned int >( "--seed", time( 0 ) );
+        unsigned seed = options.value< unsigned int >( "--random-seed,--seed,-s", time( 0 ) );
         srand( seed );
         unsigned int num_points = options.value< unsigned int >( "--number-of-points,--num,-n", default_num_points );
         float width = options.value< float >( "--width,-w", default_width );
@@ -335,7 +335,7 @@ struct grid : public operation_t< Eigen::Vector3f >
 
     static int run( const comma::command_line_options& options )
     {
-        unsigned seed = options.value< unsigned int >( "--seed", time( 0 ) );
+        unsigned seed = options.value< unsigned int >( "--random-seed,--seed,-s", time( 0 ) );
         srand( seed );
         float width = options.value< float >( "--width,-w", default_width );
         float spacing = options.value< float >( "--spacing,-s", default_spacing );
@@ -421,7 +421,7 @@ template < typename Operation > static int run( const comma::command_line_option
 
 static void bash_completion( unsigned const ac, char const * const * av )
 {
-    std::cout << "--help -h --output-fields --output-format --binary -b --seed"
+    std::cout << "--help -h --output-fields --output-format --binary -b --random-seed --seed -s"
               << snark::points_make::test_pattern::cube::completion_options()
               << snark::points_make::test_pattern::grid::completion_options()
               << std::endl;
@@ -445,8 +445,8 @@ static void usage( bool verbose )
     std::cerr << "\n";
     std::cerr << "\ntest-* options";
     std::cerr << "\n    --binary,-b:     output in binary (default is ascii)";
-    std::cerr << "\n    --seed=<seed>:   seed for random generator (see srand)";
-    std::cerr << "\n                     <seed>: seed for random generator; default: current time";
+    std::cerr << "\n    --random-seed,--seed,-s=<seed>: seed for random generator (see srand)";
+    std::cerr << "\n                                    <seed>: seed for random generator; default: current time";
     std::cerr << "\n";
     std::cerr << "\ncsv options\n";
     std::cerr << comma::csv::options::usage( verbose );
