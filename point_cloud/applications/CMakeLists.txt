@@ -11,6 +11,7 @@ ADD_EXECUTABLE( points-align points-align.cpp )
 ADD_EXECUTABLE( points-calc points-calc.cpp ${points_calc_source} )
 ADD_EXECUTABLE( points-detect-change points-detect-change.cpp )
 ADD_EXECUTABLE( points-foreground-partitions points-foreground-partitions.cpp )
+add_executable( points-make points-make.cpp )
 ADD_EXECUTABLE( points-rays points-rays.cpp )
 ADD_EXECUTABLE( points-to-centroids points-to-centroids.cpp )
 ADD_EXECUTABLE( points-to-partitions points-to-partitions.cpp )
@@ -22,6 +23,7 @@ TARGET_LINK_LIBRARIES( points-align snark_math ${comma_ALL_LIBRARIES} ${snark_AL
 TARGET_LINK_LIBRARIES( points-calc snark_point_cloud snark_math snark_math_geometry ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
 TARGET_LINK_LIBRARIES( points-detect-change snark_math ${comma_ALL_LIBRARIES} ) #profiler )
 TARGET_LINK_LIBRARIES( points-foreground-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
+target_link_libraries( points-make ${comma_ALL_LIBRARIES} )
 TARGET_LINK_LIBRARIES( points-rays snark_math snark_math_spherical_geometry ${comma_ALL_LIBRARIES} tbb ) #profiler )
 TARGET_LINK_LIBRARIES( points-to-centroids snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
 TARGET_LINK_LIBRARIES( points-to-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
@@ -33,6 +35,7 @@ set_target_properties( points-align PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-calc PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-detect-change PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-foreground-partitions PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-make PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-rays PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-to-centroids PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-to-partitions PROPERTIES LINK_FLAGS_RELEASE -s )
@@ -47,13 +50,14 @@ ENDIF( PROFILE )
 INSTALL( TARGETS points-align
                  points-calc
                  points-detect-change
-                 points-to-partitions
                  points-foreground-partitions
+                 points-make
                  points-rays
                  points-to-centroids
-                 points-track-partitions
+                 points-to-partitions
                  points-to-voxels
                  points-to-voxel-indices
+                 points-track-partitions
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
 
