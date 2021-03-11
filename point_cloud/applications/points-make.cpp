@@ -1,15 +1,128 @@
 // Copyright (c) 2016 The University of Sydney
 // Copyright (c) 2021 Mission Systems Pty Ltd
+// Copyright (c) 2021 Vsevolod Vlaskine
 
-#include <iostream>
 #include <array>
-#include <stdlib.h>
+#include <cmath>
+#include <iostream>
+#include <boost/lexical_cast.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
+#include <comma/base/exception.h>
 #include <comma/csv/stream.h>
+#include <comma/string/string.h>
 #include "../../visiting/eigen.h"
 
-namespace snark { namespace test_pattern {
+namespace snark { namespace points_make {
+
+template < typename T >
+struct operation_t
+{
+    static std::string output_fields() { return comma::join( comma::csv::names< T >( false ), ',' ); }
+    static std::string output_format() { return comma::csv::format::value< T >(); }
+};
+    
+struct box : public operation_t< Eigen::Vector3d >
+{
+    static void usage()
+    {
+        std::cerr << "\n    box: output point cloud of rectangular box shape; surface only or filled";
+        std::cerr << "\n         current limitation: extent on a given dimension will be shrank to";
+        std::cerr << "\n                             multiple of resolution of that dimension";
+        std::cerr << "\n        --fill";
+        std::cerr << "\n        --extents,-e=<point>";
+        std::cerr << "\n        --origin,o=<point>; default=0,0,0";
+        std::cerr << "\n        --resolution,-r=<resolution>; <resolution>: <number> or <point>; default=1";
+        std::cerr << "\n        --seed,-s=<seed>; if present, output random points instead of rectangular grid";
+        std::cerr << "\n        --width,-w=<width>; shortcut for --extents, assumes cube";
+    }
+
+    static void examples()
+    {
+        std::cerr << "\n    points-make box --width 100 | view-points '-;color=yellow'";
+        std::cerr << "\n    points-make box --width 10 --fill --binary 3d | view-points '-;color=yellow;binary=3d'";
+    }
+
+    static const char* completion_options() { return " box --fill --extents -e --origin -o --resolution -r --seed -s --width -w"; }
+
+    static int run( const comma::command_line_options& options )
+    {
+        options.assert_mutually_exclusive( "--extents,-e", "--width,-w" );
+        bool fill = options.exists( "--fill" );
+        auto origin = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--origin,-o", "0,0,0" ) );
+        Eigen::Vector3d extents;
+        if( !options.exists( "--extents,-e,--width,-w" ) ) { COMMA_THROW( comma::exception, "box: please specify either --extents or --width" ); }
+        if( options.exists( "--extents,-e" ) ) { extents = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--extents,-e" ) ); }
+        else { double w = options.value< double >( "--width,-w" ); extents = Eigen::Vector3d( w, w, w ); }
+        Eigen::Vector3d resolution;
+        std::string s = options.value< std::string >( "--resolution,-r", "1,1,1" );
+        if( comma::split( s, ',' ).size() == 1 ) { auto r = boost::lexical_cast< double >( s ); resolution = Eigen::Vector3d( r, r, r ); }
+        else { resolution = comma::csv::ascii< Eigen::Vector3d >().get( s ); }
+        auto seed = options.optional< int >( "--seed,-s" );
+        comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, comma::csv::options( options ) );
+        auto p = origin;
+        auto end = origin + extents;
+        if( fill )
+        {
+            if( seed )
+            {
+                COMMA_THROW( comma::exception, "box: --seed: todo" );
+            }
+            else
+            {
+                for( p[0] = origin[0]; p[0] < end[0]; p[0] += resolution[0] )
+                {
+                    for( p[1] = origin[1]; p[1] < end[1]; p[1] += resolution[1] )
+                    {
+                        for( p[2] = origin[2]; p[2] < end[2]; p[2] += resolution[2] )
+                        {
+                            ostream.write( p );
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            if( seed )
+            {
+                COMMA_THROW( comma::exception, "box: --seed: todo" );
+            }
+            else
+            {
+                auto output_filled = [&]()
+                {
+                    for( p[0] = origin[0]; p[0] < end[0]; p[0] += resolution[0] )
+                    {
+                        for( p[1] = origin[1]; p[1] < end[1]; p[1] += resolution[1] )
+                        {
+                            ostream.write( p );
+                        }
+                    }
+                };
+                auto last = p - resolution;  // quick and dirty
+                auto output_unfilled = [&]()
+                {
+                    p[1] = origin[1];
+                    for( p[0] = origin[0]; p[0] < end[0]; p[0] += resolution[0] ) { ostream.write( p ); }
+                    for( p[1] = origin[1] + resolution[1]; p[1] < end[1] - resolution[1]; p[1] += resolution[0] )
+                    {
+                        ostream.write( Eigen::Vector3d( origin[0], p[1], p[2] ) );
+                        ostream.write( Eigen::Vector3d( last[0], p[1], p[2] ) );
+                    }
+                    if( p[1] < end[1] ) { for( p[0] = origin[0]; p[0] < end[0]; p[0] += resolution[0] ) { ostream.write( p ); } }
+                };
+                output_filled();
+                p[2] += resolution[2];
+                for( ; p[2] < end[2] - resolution[2]; p[2] += resolution[2] ) { output_unfilled(); }
+                if( p[2] < end[2] ) { output_filled(); }
+            }
+        }
+        return 0;
+    }
+};
+
+namespace test_pattern {
 
 struct color_t
 {
@@ -31,16 +144,8 @@ struct vertex_t
     Eigen::Vector3f position;
     color_t color;
 
-    vertex_t() {}
-    vertex_t( const Eigen::Vector3f& position, const color_t& color )
-        : position( position ), color( color ) {}
-};
-
-template< typename T >
-struct operation_t
-{
-    static std::string output_fields() { return comma::join( comma::csv::names< T >( false ), ',' ); }
-    static std::string output_format() { return comma::csv::format::value< T >(); }
+    vertex_t(): position( 0, 0, 0 ) {}
+    vertex_t( const Eigen::Vector3f& position, const color_t& color ): position( position ), color( color ) {}
 };
 
 struct cube : public operation_t< vertex_t >
@@ -51,9 +156,8 @@ struct cube : public operation_t< vertex_t >
 
     static void usage()
     {
-        std::cerr << "\n";
         std::cerr << "\n    test-cube";
-        std::cerr << "\n        --num,-n=<val>:     number of points in cube (default: " << default_num_points << ")";
+        std::cerr << "\n        --number-of-points,--num,-n=<val>:     number of points in cube (default: " << default_num_points << ")";
         std::cerr << "\n        --width,-w=<val>:   cube width (default: " << default_width << ")";
         std::cerr << "\n        --thickness=<val>:  cube thickness (default: " << default_thickness << ")";
     }
@@ -67,7 +171,7 @@ struct cube : public operation_t< vertex_t >
 
     static int run( const comma::command_line_options& options )
     {
-        unsigned int num_points = options.value< unsigned int >( "--num,-n", default_num_points );
+        unsigned int num_points = options.value< unsigned int >( "--number-of-points,--num,-n", default_num_points );
         float width = options.value< float >( "--width,-w", default_width );
         float thickness = options.value< float >( "--thickness", default_thickness );
 
@@ -121,8 +225,7 @@ struct grid : public operation_t< Eigen::Vector3f >
 
     static void usage()
     {
-        std::cerr << "\n";
-        std::cerr << "\n    grid";
+        std::cerr << "\n    test-grid";
         std::cerr << "\n        --width,-w=<val>:   grid width; default: " << default_width;
         std::cerr << "\n        --spacing,-s=<val>: grid spacing; default: " << default_spacing;
         std::cerr << "\n        --z-offset=<val>:   grid z offset; default: " << default_z_offset;
@@ -166,14 +269,16 @@ struct grid : public operation_t< Eigen::Vector3f >
     }
 };
 
-} } // namespace snark { namespace test_pattern {
+} } // namespace test_pattern {
+
+} // namespace snark { namespace points_make {
 
 namespace comma { namespace visiting {
 
-template <> struct traits< snark::test_pattern::color_t >
+template <> struct traits< snark::points_make::test_pattern::color_t >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::test_pattern::color_t& p, Visitor& v )
+    static void visit( Key, snark::points_make::test_pattern::color_t& p, Visitor& v )
     {
         v.apply( "r", p.rgba[0] );
         v.apply( "g", p.rgba[1] );
@@ -182,7 +287,7 @@ template <> struct traits< snark::test_pattern::color_t >
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::test_pattern::color_t& p, Visitor& v )
+    static void visit( Key, const snark::points_make::test_pattern::color_t& p, Visitor& v )
     {
         v.apply( "r", p.red() );
         v.apply( "g", p.green() );
@@ -191,17 +296,17 @@ template <> struct traits< snark::test_pattern::color_t >
     }
 };
 
-template <> struct traits< snark::test_pattern::vertex_t >
+template <> struct traits< snark::points_make::test_pattern::vertex_t >
 {
     template < typename Key, class Visitor >
-    static void visit( Key, snark::test_pattern::vertex_t& p, Visitor& v )
+    static void visit( Key, snark::points_make::test_pattern::vertex_t& p, Visitor& v )
     {
         v.apply( "position", p.position );
         v.apply( "color", p.color );
     }
 
     template < typename Key, class Visitor >
-    static void visit( Key, const snark::test_pattern::vertex_t& p, Visitor& v )
+    static void visit( Key, const snark::points_make::test_pattern::vertex_t& p, Visitor& v )
     {
         v.apply( "position", p.position );
         v.apply( "color", p.color );
@@ -220,13 +325,13 @@ template < typename Operation > static int run( const comma::command_line_option
 static void bash_completion( unsigned const ac, char const * const * av )
 {
     std::cout << "--help -h --output-fields --output-format --binary -b --seed"
-              << snark::test_pattern::cube::completion_options()
-              << snark::test_pattern::grid::completion_options()
+              << snark::points_make::test_pattern::cube::completion_options()
+              << snark::points_make::test_pattern::grid::completion_options()
               << std::endl;
     exit( 0 );
 }
 
-static void usage( bool verbose = false )
+static void usage( bool verbose )
 {
     std::cerr << "\noutput point clouds";
     std::cerr << "\n";
@@ -240,19 +345,33 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --help,-h:       show this help, --help --verbose for more help";
     std::cerr << "\n    --output-fields: show output fields and exit";
     std::cerr << "\n    --output-format: show binary output format and exit";
+    std::cerr << "\n";
+    std::cerr << "\ntest-* options";
     std::cerr << "\n    --binary,-b:     output in binary (default is ascii)";
     std::cerr << "\n    --seed=<seed>:   seed for random generator (see srand)";
-    std::cerr << "\n                     <seed>: for random generator";
-    std::cerr << "\n                         number, e.g. --seed=55";
-    std::cerr << "\n                         'time', use time as seed, e.g. --seed=time";
-    std::cerr << "\n                         default: 0";
-    snark::test_pattern::cube::usage();
-    snark::test_pattern::grid::usage();
+    std::cerr << "\n                     <seed>: seed for random generator; default: current time";
+    std::cerr << "\n";
+    std::cerr << "\ncsv options\n";
+    std::cerr << comma::csv::options::usage( verbose );
+    std::cerr << "\n";
+    snark::points_make::box::usage();
+    std::cerr << "\n";
+    snark::points_make::test_pattern::cube::usage();
+    std::cerr << "\n";
+    snark::points_make::test_pattern::grid::usage();
     std::cerr << "\n";
     std::cerr << "\nexamples";
-    snark::test_pattern::cube::examples();
-    snark::test_pattern::grid::examples();
-    std::cerr << "\n";
+    if( verbose )
+    {
+        snark::points_make::box::examples();
+        snark::points_make::test_pattern::cube::examples();
+        snark::points_make::test_pattern::grid::examples();
+    }
+    else
+    {
+        std::cerr << "\n    run points-make --help --verbose to see examples...";
+    }
+    std::cerr << std::endl;
     std::cerr << std::endl;
     exit( 0 );
 }
@@ -265,11 +384,12 @@ int main( int argc, char** argv )
         if( options.exists( "--bash-completion" ) ) { bash_completion( argc, argv ); }
         unsigned seed = options.value< unsigned int >( "--seed", time( 0 ) );
         srand( seed );
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h", "-.*,--.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--fill,--flush,--verbose,-v", "--.*" );
         if( unnamed.empty() ) { std::cerr << "points-make: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
-        if( operation == "test-cube" ) { return run< snark::test_pattern::cube >( options ); }
-        else if( operation == "test-grid" ) { return run< snark::test_pattern::grid >( options ); }
+        if( operation == "box" ) { return run< snark::points_make::box >( options ); }
+        if( operation == "test-cube" ) { return run< snark::points_make::test_pattern::cube >( options ); }
+        else if( operation == "test-grid" ) { return run< snark::points_make::test_pattern::grid >( options ); }
         std::cerr << "points-make: expected operation, got: '" << operation << "'" << std::endl;
     }
     catch( std::exception& ex ) { std::cerr << "points-make: " << ex.what() << std::endl;  }
