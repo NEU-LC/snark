@@ -46,13 +46,13 @@ struct vertex_t
 };
 
 template< typename T >
-struct mode_t
+struct operation_t
 {
     static std::string output_fields() { return comma::join( comma::csv::names< T >( false ), ',' ); }
     static std::string output_format() { return comma::csv::format::value< T >(); }
 };
 
-struct cube : public mode_t< vertex_t >
+struct cube : public operation_t< vertex_t >
 {
     static const unsigned int default_num_points = 100000;
     static constexpr float default_width = 1.0f;
@@ -61,7 +61,7 @@ struct cube : public mode_t< vertex_t >
     static void usage()
     {
         std::cerr << "\n";
-        std::cerr << "\n  cube mode";
+        std::cerr << "\n  cube operation";
         std::cerr << "\n    --num,-n=<val>:     number of points in cube (default: " << default_num_points << ")";
         std::cerr << "\n    --width,-w=<val>:   cube width (default: " << default_width << ")";
         std::cerr << "\n    --thickness=<val>:  cube thickness (default: " << default_thickness << ")";
@@ -133,7 +133,7 @@ private:
     }
 };
 
-struct grid : public mode_t< Eigen::Vector3f >
+struct grid : public operation_t< Eigen::Vector3f >
 {
     static constexpr float default_width = 6.0f;
     static constexpr float default_spacing = 1.0f;
@@ -142,7 +142,7 @@ struct grid : public mode_t< Eigen::Vector3f >
     static void usage()
     {
         std::cerr << "\n";
-        std::cerr << "\n  grid mode";
+        std::cerr << "\n  grid operation";
         std::cerr << "\n    --width,-w=<val>:   grid width (default: " << default_width << ")";
         std::cerr << "\n    --spacing,-s=<val>: grid spacing (default: " << default_spacing << ")";
         std::cerr << "\n    --z-offset=<val>:   grid z offset (default: " << default_z_offset << ")";
@@ -235,11 +235,11 @@ template <> struct traits< snark::test_pattern::vertex_t >
 
 } } // namespace comma { namespace visiting {
 
-template < typename Mode > static int run( const comma::command_line_options& options )
+template < typename Operation > static int run( const comma::command_line_options& options )
 {
-    if( options.exists( "--output-fields" ) ) { std::cout << Mode::output_fields() << std::endl; return 0; }
-    if( options.exists( "--output-format" ) ) { std::cout << Mode::output_format() << std::endl; return 0; }
-    return Mode::run( options );
+    if( options.exists( "--output-fields" ) ) { std::cout << Operation::output_fields() << std::endl; return 0; }
+    if( options.exists( "--output-format" ) ) { std::cout << Operation::output_format() << std::endl; return 0; }
+    return Operation::run( options );
 }
 
 static void bash_completion( unsigned const ac, char const * const * av )
@@ -255,9 +255,9 @@ static void usage( bool verbose = false )
 {
     std::cerr << "\nOutput test data";
     std::cerr << "\n";
-    std::cerr << "\nUsage: " << comma::verbose.app_name() << " <mode> [<options>]";
+    std::cerr << "\nUsage: " << comma::verbose.app_name() << " <operation> [<options>]";
     std::cerr << "\n";
-    std::cerr << "\nwhere <mode> is one of: cube or grid";
+    std::cerr << "\nwhere <operation> is one of: cube or grid";
     std::cerr << "\n";
     std::cerr << "\nOptions: ";
     std::cerr << "\n    --help,-h:       show this help, --help --verbose for more help";
@@ -289,16 +289,16 @@ int main( int argc, char** argv )
         std::vector< std::string > unnamed = options.unnamed( "--help,h", "-.*,--.*" );
         if( unnamed.empty() )
         {
-            std::cerr << "Usage: " << comma::verbose.app_name() << " <mode> [<options>]" << std::endl;
+            std::cerr << "Usage: " << comma::verbose.app_name() << " <operation> [<options>]" << std::endl;
             exit( 1 );
         }
-        std::string mode = unnamed[0];
+        std::string operation = unnamed[0];
 
-        if( mode == "cube" ) { return run< snark::test_pattern::cube >( options ); }
-        else if( mode == "grid" ) { return run< snark::test_pattern::grid >( options ); }
+        if( operation == "cube" ) { return run< snark::test_pattern::cube >( options ); }
+        else if( operation == "grid" ) { return run< snark::test_pattern::grid >( options ); }
         else
         {
-            std::cerr << comma::verbose.app_name() << ": mode must be \"cube\" or \"grid\"" << std::endl;
+            std::cerr << comma::verbose.app_name() << ": operation must be \"cube\" or \"grid\"" << std::endl;
             return 1;
         }
     }
