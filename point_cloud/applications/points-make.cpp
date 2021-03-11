@@ -5,12 +5,16 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <limits>
+#include <memory>
+#include <random>
 #include <boost/lexical_cast.hpp>
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>
 #include <comma/csv/stream.h>
 #include <comma/string/string.h>
+#include "../../math/range_bearing_elevation.h"
 #include "../../visiting/eigen.h"
 
 namespace snark { namespace points_make {
@@ -21,7 +25,33 @@ struct operation_t
     static std::string output_fields() { return comma::join( comma::csv::names< T >( false ), ',' ); }
     static std::string output_format() { return comma::csv::format::value< T >(); }
 };
-    
+
+class random
+{
+    public:
+        random( int seed, bool true_random )
+        {
+            if( true_random )
+            {
+                device_.reset( new std::random_device );
+            }
+            else
+            {
+                engine_.reset( std::mt19937_64( seed ) );
+                distribution_.reset( std::uniform_real_distribution< double >( 0, 1 ) );
+            }
+        }
+        
+        random( const std::string& how ): random( how == "true" ? 0 : boost::lexical_cast< int >( how ), how == "true" ) {}
+        
+        double operator()() { return device_ ? double( ( *device_ )() ) / std::numeric_limits< unsigned int >::max() : ( *distribution_ )( *engine_ ); }
+        
+    private:
+        std::unique_ptr< std::random_device > device_;
+        boost::optional< std::mt19937_64 > engine_;
+        boost::optional< std::uniform_real_distribution< double > > distribution_;
+};
+
 struct box : public operation_t< Eigen::Vector3d >
 {
     static void usage()
@@ -32,8 +62,10 @@ struct box : public operation_t< Eigen::Vector3d >
         std::cerr << "\n        --fill";
         std::cerr << "\n        --extents,-e=<point>";
         std::cerr << "\n        --origin,o=<point>; default=0,0,0";
+        std::cerr << "\n        --random-seed,--seed,-s=<seed>; if present, output uniform random sample on sphere";
+        std::cerr << "\n                                        instead of regular reasonably uniform sample";
+        std::cerr << "\n                                        <seed>: number for repeatable pseudo-random numbers or 'true' for true random";
         std::cerr << "\n        --resolution,-r=<resolution>; <resolution>: <number> or <point>; default=1";
-        std::cerr << "\n        --seed,-s=<seed>; if present, output random points instead of rectangular grid";
         std::cerr << "\n        --width,-w=<width>; shortcut for --extents, assumes cube";
     }
 
@@ -58,7 +90,7 @@ struct box : public operation_t< Eigen::Vector3d >
         std::string s = options.value< std::string >( "--resolution,-r", "1,1,1" );
         if( comma::split( s, ',' ).size() == 1 ) { auto r = boost::lexical_cast< double >( s ); resolution = Eigen::Vector3d( r, r, r ); }
         else { resolution = comma::csv::ascii< Eigen::Vector3d >().get( s ); }
-        auto seed = options.optional< int >( "--seed,-s" );
+        auto seed = options.optional< std::string >( "--random-seed,--seed,-s" );
         comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, comma::csv::options( options ) );
         auto p = origin;
         auto end = origin + extents;
@@ -122,6 +154,67 @@ struct box : public operation_t< Eigen::Vector3d >
     }
 };
 
+struct sphere : public operation_t< Eigen::Vector3d >
+{
+    static void usage() // std::random_device rd;
+    {
+        std::cerr << "\n    sphere: output point cloud of spherical shape; surface only or filled";
+        std::cerr << "\n        --fill; todo";
+        std::cerr << "\n        --radius=<radius>";
+        std::cerr << "\n        --center,-c=<point>; default=0,0,0";
+        std::cerr << "\n        --resolution,-r=<resolution>; roughly how far points need to be from each other; default=1";
+        std::cerr << "\n        --random-seed,--seed,-s=<seed>; if present, output uniform random sample on sphere";
+        std::cerr << "\n                                        instead of regular reasonably uniform sample";
+        std::cerr << "\n                                        <seed>: number for repeatable pseudo-random numbers or 'true' for true random";
+        std::cerr << "\n        --size=<n>; desired number of points";
+    }
+
+    static void examples()
+    {
+        std::cerr << "\n    points-make sphere --radius 10 | view-points '-;color=yellow'";
+    }
+
+    static const char* completion_options() { return " sphere --radius --center -c --resolution -r --seed -s"; }
+
+    static int run( const comma::command_line_options& options )
+    {
+        options.assert_mutually_exclusive( "--resolution,-r", "--size" );
+        bool fill = options.exists( "--fill" );
+        auto center = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--center,-c", "0,0,0" ) );
+        double radius = options.value< double >( "--radius" );
+        auto resolution = options.optional< double >( "--resolution,-r" );
+        auto size = options.optional< unsigned int >( "--size" );
+        auto seed = options.optional< std::string >( "--seed,-s" );
+        comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, comma::csv::options( options ) );
+        if( seed )
+        {
+            points_make::random rd( *seed );
+            unsigned int n = size ? *size
+                                  : fill ? ( ( radius * radius * radius * 4. / 3. * M_PI ) / ( *resolution * *resolution * *resolution / ( 6. * std::sqrt( 2 ) ) ) ) * 4 / 20  // quick and dirty: assuming resolution much less than radius
+                                         : ( ( radius * radius * 4. * M_PI ) / ( *resolution * *resolution * std::sqrt( 3. ) / 2. ) ) * 3. / 6.; // quick and dirty: assuming resolution much less than radius
+            for( unsigned int i = 0; i < n; ++i )
+            {
+                double a = ( rd() * 2 - 1 ) * M_PI;
+                double e = std::asin( rd() * 2 - 1 ); // todo: improve; even though it's reasonably uniform, there are local irregularities
+                double r = ( fill ? std::pow( rd(), 1. / 3 ) : 1 ) * radius;
+                ostream.write( snark::range_bearing_elevation( r, a, e ).to_cartesian() + center );
+            }
+        }
+        else
+        {
+            if( fill )
+            {
+                COMMA_THROW( comma::exception, "sphere: --fill" );
+            }
+            else
+            {
+                COMMA_THROW( comma::exception, "sphere: todo" );
+            }
+        }
+        return 0;
+    }
+};
+
 namespace test_pattern {
 
 struct color_t
@@ -171,6 +264,8 @@ struct cube : public operation_t< vertex_t >
 
     static int run( const comma::command_line_options& options )
     {
+        unsigned seed = options.value< unsigned int >( "--seed", time( 0 ) );
+        srand( seed );
         unsigned int num_points = options.value< unsigned int >( "--number-of-points,--num,-n", default_num_points );
         float width = options.value< float >( "--width,-w", default_width );
         float thickness = options.value< float >( "--thickness", default_thickness );
@@ -240,6 +335,8 @@ struct grid : public operation_t< Eigen::Vector3f >
 
     static int run( const comma::command_line_options& options )
     {
+        unsigned seed = options.value< unsigned int >( "--seed", time( 0 ) );
+        srand( seed );
         float width = options.value< float >( "--width,-w", default_width );
         float spacing = options.value< float >( "--spacing,-s", default_spacing );
         float z_offset = options.value< float >( "--z-offset", default_z_offset );
@@ -356,6 +453,8 @@ static void usage( bool verbose )
     std::cerr << "\n";
     snark::points_make::box::usage();
     std::cerr << "\n";
+    snark::points_make::sphere::usage();
+    std::cerr << "\n";
     snark::points_make::test_pattern::cube::usage();
     std::cerr << "\n";
     snark::points_make::test_pattern::grid::usage();
@@ -364,6 +463,7 @@ static void usage( bool verbose )
     if( verbose )
     {
         snark::points_make::box::examples();
+        snark::points_make::sphere::examples();
         snark::points_make::test_pattern::cube::examples();
         snark::points_make::test_pattern::grid::examples();
     }
@@ -382,12 +482,11 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" ) ) { bash_completion( argc, argv ); }
-        unsigned seed = options.value< unsigned int >( "--seed", time( 0 ) );
-        srand( seed );
         std::vector< std::string > unnamed = options.unnamed( "--help,-h,--fill,--flush,--verbose,-v", "--.*" );
         if( unnamed.empty() ) { std::cerr << "points-make: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         if( operation == "box" ) { return run< snark::points_make::box >( options ); }
+        if( operation == "sphere" ) { return run< snark::points_make::sphere >( options ); }
         if( operation == "test-cube" ) { return run< snark::points_make::test_pattern::cube >( options ); }
         else if( operation == "test-grid" ) { return run< snark::points_make::test_pattern::grid >( options ); }
         std::cerr << "points-make: expected operation, got: '" << operation << "'" << std::endl;
