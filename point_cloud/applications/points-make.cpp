@@ -52,7 +52,7 @@ struct mode_t
     static std::string output_format() { return comma::csv::format::value< T >(); }
 };
 
-struct cube_points : public mode_t< vertex_t >
+struct cube : public mode_t< vertex_t >
 {
     static const unsigned int default_num_points = 100000;
     static constexpr float default_width = 1.0f;
@@ -61,7 +61,7 @@ struct cube_points : public mode_t< vertex_t >
     static void usage()
     {
         std::cerr << "\n";
-        std::cerr << "\n  cube-points mode";
+        std::cerr << "\n  cube mode";
         std::cerr << "\n    --num,-n=<val>:     number of points in cube (default: " << default_num_points << ")";
         std::cerr << "\n    --width,-w=<val>:   cube width (default: " << default_width << ")";
         std::cerr << "\n    --thickness=<val>:  cube thickness (default: " << default_thickness << ")";
@@ -69,10 +69,10 @@ struct cube_points : public mode_t< vertex_t >
 
     static void examples()
     {
-        std::cerr << "\n    " << comma::verbose.app_name() << " cube-points | view-points --fields x,y,z,r,g,b,a";
+        std::cerr << "\n    " << comma::verbose.app_name() << " cube | view-points --fields x,y,z,r,g,b,a";
     }
 
-    static const char* completion_options() { return " cube-points --num -n --width -w --thickness"; }
+    static const char* completion_options() { return " cube --num -n --width -w --thickness"; }
 
     static int run( const comma::command_line_options& options )
     {
@@ -245,7 +245,7 @@ template < typename Mode > static int run( const comma::command_line_options& op
 static void bash_completion( unsigned const ac, char const * const * av )
 {
     std::cout << "--help -h --output-fields --output-format --binary -b --seed"
-              << snark::test_pattern::cube_points::completion_options()
+              << snark::test_pattern::cube::completion_options()
               << snark::test_pattern::grid::completion_options()
               << std::endl;
     exit( 0 );
@@ -257,7 +257,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n";
     std::cerr << "\nUsage: " << comma::verbose.app_name() << " <mode> [<options>]";
     std::cerr << "\n";
-    std::cerr << "\nwhere <mode> is one of: cube-points or grid";
+    std::cerr << "\nwhere <mode> is one of: cube or grid";
     std::cerr << "\n";
     std::cerr << "\nOptions: ";
     std::cerr << "\n    --help,-h:       show this help, --help --verbose for more help";
@@ -265,11 +265,11 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --output-format: show binary output format and exit";
     std::cerr << "\n    --binary,-b:     output in binary (default is ascii)";
     std::cerr << "\n    --seed=<n>:      seed for random generator (see srand); default is time";
-    snark::test_pattern::cube_points::usage();
+    snark::test_pattern::cube::usage();
     snark::test_pattern::grid::usage();
     std::cerr << "\n";
     std::cerr << "\nExamples: ";
-    snark::test_pattern::cube_points::examples();
+    snark::test_pattern::cube::examples();
     snark::test_pattern::grid::examples();
     std::cerr << "\n";
     std::cerr << std::endl;
@@ -294,11 +294,11 @@ int main( int argc, char** argv )
         }
         std::string mode = unnamed[0];
 
-        if( mode == "cube-points" ) { return run< snark::test_pattern::cube_points >( options ); }
+        if( mode == "cube" ) { return run< snark::test_pattern::cube >( options ); }
         else if( mode == "grid" ) { return run< snark::test_pattern::grid >( options ); }
         else
         {
-            std::cerr << comma::verbose.app_name() << ": mode must be \"cube-points\" or \"grid\"" << std::endl;
+            std::cerr << comma::verbose.app_name() << ": mode must be \"cube\" or \"grid\"" << std::endl;
             return 1;
         }
     }

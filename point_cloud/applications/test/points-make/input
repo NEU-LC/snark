@@ -1,6 +1,6 @@
-cube_points[0]="points-make cube-points -n 3 --seed 0"
+cube[0]="points-make cube -n 3 --seed 0"
 
-binary[0]="points-make cube-points -n 3 --seed 0 --binary | csv-from-bin $( points-make cube-points --output-format )"
+binary[0]="points-make cube -n 3 --seed 0 --binary | csv-from-bin $( points-make cube --output-format )"
 
 grid[0]="points-make grid"
 grid[1]="points-make grid --width 2 --spacing 1 --z-offset 0"
