@@ -19,8 +19,7 @@
 
 namespace snark { namespace points_make {
 
-template < typename T >
-struct operation_t
+template < typename T > struct operation_t
 {
     static std::string output_fields() { return comma::join( comma::csv::names< T >( false ), ',' ); }
     static std::string output_format() { return comma::csv::format::value< T >(); }
@@ -52,6 +51,8 @@ class random
         boost::optional< std::uniform_real_distribution< double > > distribution_;
 };
 
+static Eigen::Vector3d tensor_product( const Eigen::Vector3d& s, const Eigen::Vector3d& t ) { return Eigen::Vector3d( s[0] * t[0], s[1] * t[1], s[2] * t[2] ); }
+
 struct box : public operation_t< Eigen::Vector3d >
 {
     static void usage()
@@ -62,10 +63,12 @@ struct box : public operation_t< Eigen::Vector3d >
         std::cerr << "\n        --fill";
         std::cerr << "\n        --extents,-e=<point>";
         std::cerr << "\n        --origin,o=<point>; default=0,0,0";
+        std::cerr << "\n        --random; output random points";
         std::cerr << "\n        --random-seed,--seed,-s=<seed>; if present, output uniform random sample on sphere";
         std::cerr << "\n                                        instead of regular reasonably uniform sample";
         std::cerr << "\n                                        <seed>: number for repeatable pseudo-random numbers or 'true' for true random";
         std::cerr << "\n        --resolution,-r=<resolution>; <resolution>: <number> or <point>; default=1";
+        std::cerr << "\n        --size=<n>; desired number of points, overrides --resolution";
         std::cerr << "\n        --width,-w=<width>; shortcut for --extents, assumes cube";
     }
 
@@ -75,7 +78,7 @@ struct box : public operation_t< Eigen::Vector3d >
         std::cerr << "\n    points-make box --width 10 --fill --binary 3d | view-points '-;color=yellow;binary=3d'";
     }
 
-    static const char* completion_options() { return " box --fill --extents -e --origin -o --resolution -r --random-seed --seed -s --width -w"; }
+    static const char* completion_options() { return " box --fill --extents -e --origin -o --resolution -r --random-seed --random --seed -s --width -w"; }
 
     static int run( const comma::command_line_options& options )
     {
@@ -90,7 +93,9 @@ struct box : public operation_t< Eigen::Vector3d >
         std::string s = options.value< std::string >( "--resolution,-r", "1,1,1" );
         if( comma::split( s, ',' ).size() == 1 ) { auto r = boost::lexical_cast< double >( s ); resolution = Eigen::Vector3d( r, r, r ); }
         else { resolution = comma::csv::ascii< Eigen::Vector3d >().get( s ); }
+        auto size = options.optional< unsigned int >( "--size" );
         auto seed = options.optional< std::string >( "--random-seed,--seed,-s" );
+        if( options.exists( "--random" ) && !seed ) { seed = "0"; } // quick and dirty
         comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, comma::csv::options( options ) );
         auto p = origin;
         auto end = origin + extents;
@@ -98,18 +103,19 @@ struct box : public operation_t< Eigen::Vector3d >
         {
             if( seed )
             {
-                COMMA_THROW( comma::exception, "box: --seed: todo" );
+                if( !size ) { size = ( extents[0] * extents[1] * extents[2] ) / ( resolution[0] * resolution[1] * resolution[2] ); }
+                points_make::random rd( *seed );
+                for( unsigned int i = 0; i < *size; ++i ) { ostream.write( origin + tensor_product( extents, Eigen::Vector3d( rd(), rd(), rd() ) ) ); }
             }
             else
             {
+                //if( size ) { double f = std::pow( extents[0] * extents[1] * extents[2] / *size, 1. / 3 ); resolution = Eigen::Vector3d( f, f, f ); }
+                if( size ) { COMMA_THROW( comma::exception, "box: --fill --size: todo" ); } // the formula above does not guarantee the exact number of points
                 for( p[0] = origin[0]; p[0] < end[0]; p[0] += resolution[0] )
                 {
                     for( p[1] = origin[1]; p[1] < end[1]; p[1] += resolution[1] )
                     {
-                        for( p[2] = origin[2]; p[2] < end[2]; p[2] += resolution[2] )
-                        {
-                            ostream.write( p );
-                        }
+                        for( p[2] = origin[2]; p[2] < end[2]; p[2] += resolution[2] ) { ostream.write( p ); }
                     }
                 }
             }
@@ -118,18 +124,29 @@ struct box : public operation_t< Eigen::Vector3d >
         {
             if( seed )
             {
-                COMMA_THROW( comma::exception, "box: --seed: todo" );
+                std::array< double, 3 > area = {{ extents[1] * extents[2], extents[0] * extents[2], extents[0] * extents[1] }};
+                if( !size ) { size = 2 * ( area[0] / resolution[1] * resolution[2] + area[1] / resolution[0] * resolution[2] + area[2] / resolution[0] * resolution[1] ); }
+                points_make::random rd( *seed );
+                std::mt19937_64 e;
+                std::uniform_real_distribution< double > r( 0, area[0] + area[1] + area[2] );
+                std::uniform_int_distribution< int > l( 0, 1 );
+                auto index = [&]( double s ) -> unsigned int { return s < area[0] ? 0 : s < ( area[0] + area[1] ) ? 1 : 2; };
+                for( unsigned int i = 0; i < *size; ++i )
+                {
+                    Eigen::Vector3d v( rd(), rd(), rd() );
+                    v[ index( r( e ) ) ] = l( e );
+                    ostream.write( origin + tensor_product( extents, v ) );
+                }
             }
             else
             {
+                //if( size ) { double f = std::sqrt( ( extents[0] * extents[1] + extents[1] * extents[2] + extents[0] * extents[2] ) * 2 / * size ); resolution = Eigen::Vector3d( f, f, f ); }
+                if( size ) { COMMA_THROW( comma::exception, "box: --size: todo" ); } // the formula above does not guarantee the exact number of points
                 auto output_filled = [&]()
                 {
                     for( p[0] = origin[0]; p[0] < end[0]; p[0] += resolution[0] )
                     {
-                        for( p[1] = origin[1]; p[1] < end[1]; p[1] += resolution[1] )
-                        {
-                            ostream.write( p );
-                        }
+                        for( p[1] = origin[1]; p[1] < end[1]; p[1] += resolution[1] ) { ostream.write( p ); }
                     }
                 };
                 auto last = p - resolution;  // quick and dirty
@@ -156,17 +173,18 @@ struct box : public operation_t< Eigen::Vector3d >
 
 struct sphere : public operation_t< Eigen::Vector3d >
 {
-    static void usage() // std::random_device rd;
+    static void usage()
     {
         std::cerr << "\n    sphere: output point cloud of spherical shape; surface only or filled";
         std::cerr << "\n        --fill; todo";
         std::cerr << "\n        --radius=<radius>";
         std::cerr << "\n        --center,-c=<point>; default=0,0,0";
         std::cerr << "\n        --resolution,-r=<resolution>; roughly how far points need to be from each other; default=1";
+        std::cerr << "\n        --random; output random points";
         std::cerr << "\n        --random-seed,--seed,-s=<seed>; if present, output uniform random sample on sphere";
         std::cerr << "\n                                        instead of regular reasonably uniform sample";
         std::cerr << "\n                                        <seed>: number for repeatable pseudo-random numbers or 'true' for true random";
-        std::cerr << "\n        --size=<n>; desired number of points";
+        std::cerr << "\n        --size=<n>; desired number of points, overrides resolution";
     }
 
     static void examples()
@@ -174,7 +192,7 @@ struct sphere : public operation_t< Eigen::Vector3d >
         std::cerr << "\n    points-make sphere --radius 10 --size 10000 --seed 0 | view-points '-;color=yellow'";
     }
 
-    static const char* completion_options() { return " sphere --radius --center -c --resolution -r --random-seed --seed -s"; }
+    static const char* completion_options() { return " sphere --radius --center -c --resolution -r --random-seed --random --seed -s"; }
 
     static int run( const comma::command_line_options& options )
     {
@@ -185,6 +203,7 @@ struct sphere : public operation_t< Eigen::Vector3d >
         auto resolution = options.optional< double >( "--resolution,-r" );
         auto size = options.optional< unsigned int >( "--size" );
         auto seed = options.optional< std::string >( "--random-seed,--seed,-s" );
+        if( options.exists( "--random" ) && !seed ) { seed = "0"; } // quick and dirty
         comma::csv::output_stream< Eigen::Vector3d > ostream( std::cout, comma::csv::options( options ) );
         if( seed )
         {
@@ -482,7 +501,7 @@ int main( int argc, char** argv )
     {
         comma::command_line_options options( argc, argv, usage );
         if( options.exists( "--bash-completion" ) ) { bash_completion( argc, argv ); }
-        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--fill,--flush,--verbose,-v", "--.*" );
+        std::vector< std::string > unnamed = options.unnamed( "--help,-h,--fill,--flush,--random,--verbose,-v", "--.*" );
         if( unnamed.empty() ) { std::cerr << "points-make: please specify operation" << std::endl; return 1; }
         std::string operation = unnamed[0];
         if( operation == "box" ) { return run< snark::points_make::box >( options ); }

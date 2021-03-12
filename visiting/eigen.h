@@ -27,9 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef SNARK_VISITING_EIGEN_H
-#define SNARK_VISITING_EIGEN_H
+#pragma once
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -217,5 +215,3 @@ template < typename T > struct traits< ::Eigen::AngleAxis< T > >
 };
 
 } }
-
-#endif // SNARK_VISITING_EIGEN_H
