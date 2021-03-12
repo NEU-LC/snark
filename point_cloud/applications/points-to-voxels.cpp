@@ -90,15 +90,18 @@ int main( int argc, char** argv )
         std::string origin_string;
         std::string resolution_string;
         boost::program_options::options_description description( "options" );
+        comma::uint32 min_size;
         comma::uint32 neighbourhood_radius;
         description.add_options()
             ( "help,h", "display help message" )
+            ( "centers", "output voxel centers instead of means" )
+            ( "min-size", boost::program_options::value< comma::uint32 >( &min_size )->default_value( 0 ), "if non-zero, output only voxels having more than a given number of points" )
             ( "resolution", boost::program_options::value< std::string >( &resolution_string ), "voxel map resolution, e.g. \"0.2\" or \"0.2,0.2,0.5\"" )
             ( "origin", boost::program_options::value< std::string >( &origin_string )->default_value( "0,0,0" ), "voxel map origin" )
             ( "output-fields", "print output fields to stdout and exit" )
             ( "output-format", "print binary output format to stdout and exit" )
             ( "neighbourhood-radius,r", boost::program_options::value< comma::uint32 >( &neighbourhood_radius )->default_value( 0 ), "calculate count of neighbours at given radius" );
-        description.add( comma::csv::program_options::description( "x,y,z,block" ) );
+        description.add( comma::csv::program_options::description( "x,y,z" ) );
         boost::program_options::variables_map vm;
         boost::program_options::store( boost::program_options::parse_command_line( argc, argv, description), vm );
         boost::program_options::notify( vm );
@@ -108,7 +111,7 @@ int main( int argc, char** argv )
             std::cerr << std::endl;
             std::cerr << "usage: cat points.csv | points-to-voxels [options] > voxels.csv" << std::endl;
             std::cerr << std::endl;
-            std::cerr << "input: points: x,y,z[,block]; default: x,y,z,block" << std::endl;
+            std::cerr << "input: points: x,y,z[,block]; default: x,y,z" << std::endl;
             std::cerr << "output: voxels with indices, centroids, and weights (number of points): i,j,k,x,y,z,weight[,neighbour count][,block]" << std::endl;
             std::cerr << "binary output format: 3ui,3d,ui[,ui][,ui]" << std::endl;
             std::cerr << std::endl;
@@ -144,6 +147,7 @@ int main( int argc, char** argv )
         comma::signal_flag is_shutdown;
         unsigned int block = 0;
         const input_point* last = nullptr;
+        bool output_centers = vm.count( "centers" );
         while( !is_shutdown && !std::cin.eof() && std::cin.good() )
         {
             snark::voxel_map< centroid, 3 > voxels( origin, resolution );
@@ -188,10 +192,13 @@ int main( int argc, char** argv )
 //                 ostream.write( it->second );
 //             }
 
+            auto center = [&]( const boost::array< comma::int32, 3 >& i ) -> Eigen::Vector3d { return origin + Eigen::Vector3d( ( i[0] + 0.5 ) * resolution[0], ( i[1] + 0.5 ) * resolution[1], ( i[2] + 0.5 ) * resolution[2] ); };
             for( snark::voxel_map< centroid, 3 >::iterator it = voxels.begin(); it != voxels.end(); ++it )
             {
+                if( min_size > 0 && it->second.size < min_size ) { continue; }
                 it->second.block = block;
                 it->second.index = snark::voxel_map< centroid, 3 >::index_of( it->second.mean, origin, resolution );
+                if( output_centers ) { it->second.mean = center( it->second.index ); }
                 if( neighbourhood_radius == 0 )
                 {
                     ostream.write( it->second );
@@ -215,7 +222,9 @@ int main( int argc, char** argv )
                             }
                         }
                     }
-                    c.mean /= c.size;
+                    if( min_size > 0 && c.size < min_size ) { continue; }
+                    if( output_centers ) { c.mean = origin + Eigen::Vector3d( ( c.index[0] + 0.5 ) * resolution[0], ( c.index[1] + 0.5 ) * resolution[1], ( c.index[2] + 0.5 ) * resolution[2] ); }
+                    else { c.mean /= c.size; }
                     ostream.write( c );
                 }
             }
