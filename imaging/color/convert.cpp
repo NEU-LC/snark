@@ -40,6 +40,8 @@ namespace {
     typedef std::vector< double > channels;
 
     // conversion does not have to be a linear operation, but many are; these function simplify setting up such conversions
+    /*
+      commented-out to remove a compiler warning (-Wunused-function)
     channels linear_combination( const channels & i, const Eigen::Vector3d & before, const Eigen::Matrix3d & m, const Eigen::Vector3d & after )
     {
         channels t = { i[0] + before(0), i[1] + before(1), i[2] + before(2) };
@@ -55,7 +57,7 @@ namespace {
                          , m(1,0) * t[0] + m(1,1) * t[1] + m(1,2) * t[2]
                          , m(2,0) * t[0] + m(2,1) * t[1] + m(2,2) * t[2] } );
     }
-
+    */
     channels linear_combination( const channels & i, const Eigen::Matrix3d & m, const Eigen::Vector3d & after )
     {
         return channels( { m(0,0) * i[0] + m(0,1) * i[1] + m(0,2) * i[2] + after(0)

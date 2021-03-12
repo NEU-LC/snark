@@ -317,7 +317,7 @@ int main( int ac, char** av )
             {
                 // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< coloured< snark::render::svg::point > >( csv.fields, true ) ); }
                 comma::csv::input_stream< coloured< snark::render::svg::point > > istream( std::cin, csv );
-                boost::optional< coloured< snark::render::svg::point > > prev;
+                boost::optional< coloured< snark::render::svg::point > > prev = boost::make_optional< coloured< snark::render::svg::point > >( false, coloured< snark::render::svg::point >() );
                 while( istream.ready() || std::cin.good() )
                 {
                     const coloured< snark::render::svg::point >* p = istream.read();
@@ -331,7 +331,7 @@ int main( int ac, char** av )
                 if( csv.fields.empty() ) { csv.fields = comma::join( comma::csv::names< snark::render::svg::point >(), ',' ); }
                 // why?!! if( options.exists( "--binary,-b" ) ) { csv.format( comma::csv::format::value< snark::render::svg::point >( csv.fields, true ) ); }
                 comma::csv::input_stream< snark::render::svg::point > istream( std::cin, csv );
-                boost::optional< snark::render::svg::point > prev;
+                boost::optional< snark::render::svg::point > prev = boost::make_optional< snark::render::svg::point >( false, snark::render::svg::point() );
                 while( istream.ready() || std::cin.good() )
                 {
                     const snark::render::svg::point* p = istream.read();

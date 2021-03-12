@@ -19,6 +19,8 @@ inline coordinates deg2coordinates( double lat, double lon )
 }
 
 // convert a vector of points in degrees to a vector of points in radians
+/*
+  commented-out to remove a compiler warning (-Wunused-function)
 void deg2coordinates( const std::vector< std::pair< double, double > > & points, std::vector< coordinates > & coords )
 {
     for ( std::vector< std::pair< double, double > >::const_iterator i = points.begin(); i != points.end(); ++i )
@@ -26,7 +28,7 @@ void deg2coordinates( const std::vector< std::pair< double, double > > & points,
         coords.push_back( coordinates::from_degrees( i->first, i->second ) );
     }
 }
-
+*/
 
 } // namespace anonymous
 

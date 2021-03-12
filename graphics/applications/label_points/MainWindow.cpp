@@ -181,7 +181,7 @@ MainWindow::MainWindow( const std::string& title, Viewer* viewer )
 
 void MainWindow::newId() const // quick and dirty (eventually move it to viewer, maybe)
 {
-    boost::optional< comma::uint32 > id;
+    boost::optional< comma::uint32 > id = boost::make_optional< comma::uint32 >( false, 0 );
     for( std::size_t i = 0; i < m_viewer.datasets().size(); ++i )
     {
         if(    m_viewer.datasets()[i]->visible()

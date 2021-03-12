@@ -2357,7 +2357,7 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "crop-tile: specify at least tile count along x and y" ); }
         const std::vector< std::string >& s = comma::split( e[1], ',' );
         bool vertical = true;
-        boost::optional< unsigned int > count_x;
+        boost::optional< unsigned int > count_x = boost::make_optional< unsigned int >( false, 0 );
         boost::optional< unsigned int > count_y;
         boost::optional< unsigned int > x;
         boost::optional< unsigned int > y;
@@ -2388,8 +2388,8 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "tile: specify tile width and height" ); }
         const std::vector< std::string >& s = comma::split( e[1], ',' );
         bool vertical = true;
-        boost::optional< unsigned int > width;
-        boost::optional< unsigned int > height;
+        boost::optional< unsigned int > width = boost::make_optional< unsigned int >( false, 0 );
+        boost::optional< unsigned int > height = boost::make_optional< unsigned int >( false, 0 );
         for( unsigned int i = 0; i < s.size(); ++i )
         {
             if( s[i] == "horizontal" ) { vertical = false; continue; }
@@ -2405,8 +2405,8 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "untile: specify tile count along x and y" ); }
         const std::vector< std::string >& s = comma::split( e[1], ',' );
         bool vertical = true;
-        boost::optional< unsigned int > count_x;
-        boost::optional< unsigned int > count_y;
+        boost::optional< unsigned int > count_x = boost::make_optional< unsigned int >( false, 0 );
+        boost::optional< unsigned int > count_y = boost::make_optional< unsigned int >( false, 0 );
         for( unsigned int i = 0; i < s.size(); ++i )
         {
             if( s[i] == "horizontal" ) { vertical = false; continue; }
@@ -3025,8 +3025,8 @@ std::vector< typename impl::filters< H >::filter_type > impl::filters< H >::make
         }
         else if( e[0] == "log" ) // todo: rotate log by size: expose to user
         {
-            boost::optional < double > period;
-            boost::optional < comma::uint32 > size;
+            boost::optional < double > period = boost::make_optional< double >( false, 0 );
+            boost::optional < comma::uint32 > size = boost::make_optional< comma::uint32 >( false, 0 );
             bool index = false;
             if( e.size() <= 1 ) { COMMA_THROW( comma::exception, "please specify log=<filename> or log=<directory>[,<options>]" ); }
             const std::vector< std::string >& w = comma::split( e[1], ',' );
