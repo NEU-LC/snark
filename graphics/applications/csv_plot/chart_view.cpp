@@ -7,7 +7,6 @@ namespace snark { namespace graphics { namespace plotting {
 chart_view::chart_view( QChart* chart, QWidget* parent )
     : QChartView( chart, parent )
     , mouse_click_state_( mouse_state::NONE )
-    , zoom_factor_( 0.95 )
     , rubber_band_box_()
 {
     // setRubberBand( QChartView::RectangleRubberBand );  // rubber band: click and drag box thing
@@ -17,7 +16,7 @@ chart_view::chart_view( QChart* chart, QWidget* parent )
 chart_view::chart_view( QWidget* parent )
     : QChartView( parent )
     , mouse_click_state_( mouse_state::NONE )
-    , zoom_factor_( 0.95 )
+    , rubber_band_box_()
 {
     // setRubberBand( QChartView::RectangleRubberBand );  // rubber band: click and drag box thing
     setRubberBand( QChartView::NoRubberBand );  // rubber band: click and drag box thing
