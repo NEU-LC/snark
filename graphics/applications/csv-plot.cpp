@@ -317,7 +317,7 @@ int main( int ac, char** av )
         if( options.exists( "--input-fields" ) ) { std::cout << "t,series,block" << std::endl; return 0; } // quick and dirty
         if( options.exists( "--input-fields-example" ) ) { std::cout << comma::join( comma::csv::names< snark::graphics::plotting::record >( true, snark::graphics::plotting::record::sample( "series", 2 ) ), ',' ) << std::endl; return 0; }
         const std::vector< std::string >& unnamed = options.unnamed( "--no-stdin,--verbose,-v,--flush,--full-screen,--maximize,--pass-through,--pass,--scroll", "--.*,-[a-z].*" );
-        boost::optional< unsigned int > stdin_index = boost::optional< unsigned int >();
+        boost::optional< unsigned int > stdin_index = boost::make_optional< unsigned int >( false, 0 );
         for( unsigned int i = 0; i < unnamed.size(); ++i ) { if( unnamed[i] == "-" || unnamed[i].substr( 0, 2 ) == "-;" ) { stdin_index = i; break; } }
         const auto& chart_configs = make_configs( options.values< std::string >( "--chart" ), snark::graphics::plotting::chart::config_t( options ) );
         const auto& series_configs = make_configs( options.values< std::string >( "--series" ), snark::graphics::plotting::series::config( options ) );

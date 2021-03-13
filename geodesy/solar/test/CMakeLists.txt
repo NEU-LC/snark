@@ -1,3 +1,1 @@
-IF( BUILD_TESTS )
-    ADD_SUBDIRECTORY( geo-sun-position )
-ENDIF( BUILD_TESTS )
+add_subdirectory( geo-sun-position )

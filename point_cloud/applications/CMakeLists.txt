@@ -5,34 +5,37 @@ file( GLOB points_calc_source ${dir}/points-calc/*.cpp)
 file( GLOB points_calc_includes ${dir}/points-calc/*.h)
 file( GLOB points_grep_source ${dir}/points-grep/*.cpp)
 file( GLOB points_grep_includes ${dir}/points-grep/*.h)
-SOURCE_GROUP( ${TARGET_NAME} FILES ${source} ${includes} ${points_calc_source} ${points_calc_includes} ${points_grep_includes} ${points_grep_source} )
+source_group( ${TARGET_NAME} FILES ${source} ${includes} ${points_calc_source} ${points_calc_includes} ${points_grep_includes} ${points_grep_source} )
 
-ADD_EXECUTABLE( points-align points-align.cpp )
-ADD_EXECUTABLE( points-calc points-calc.cpp ${points_calc_source} )
-ADD_EXECUTABLE( points-detect-change points-detect-change.cpp )
-ADD_EXECUTABLE( points-foreground-partitions points-foreground-partitions.cpp )
-ADD_EXECUTABLE( points-rays points-rays.cpp )
-ADD_EXECUTABLE( points-to-centroids points-to-centroids.cpp )
-ADD_EXECUTABLE( points-to-partitions points-to-partitions.cpp )
-ADD_EXECUTABLE( points-to-voxels points-to-voxels.cpp )
-ADD_EXECUTABLE( points-to-voxel-indices points-to-voxel-indices.cpp )
-ADD_EXECUTABLE( points-track-partitions points-track-partitions.cpp )
+add_executable( points-align points-align.cpp )
+add_executable( points-calc points-calc.cpp ${points_calc_source} )
+add_executable( points-detect-change points-detect-change.cpp )
+add_executable( points-foreground-partitions points-foreground-partitions.cpp )
+add_executable( points-make points-make.cpp )
+add_executable( points-rays points-rays.cpp )
+add_executable( points-to-centroids points-to-centroids.cpp )
+add_executable( points-to-partitions points-to-partitions.cpp )
+add_executable( points-to-voxels points-to-voxels.cpp )
+add_executable( points-to-voxel-indices points-to-voxel-indices.cpp )
+add_executable( points-track-partitions points-track-partitions.cpp )
 
-TARGET_LINK_LIBRARIES( points-align snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
-TARGET_LINK_LIBRARIES( points-calc snark_point_cloud snark_math snark_math_geometry ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
-TARGET_LINK_LIBRARIES( points-detect-change snark_math ${comma_ALL_LIBRARIES} ) #profiler )
-TARGET_LINK_LIBRARIES( points-foreground-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
-TARGET_LINK_LIBRARIES( points-rays snark_math snark_math_spherical_geometry ${comma_ALL_LIBRARIES} tbb ) #profiler )
-TARGET_LINK_LIBRARIES( points-to-centroids snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
-TARGET_LINK_LIBRARIES( points-to-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
-TARGET_LINK_LIBRARIES( points-to-voxels snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
-TARGET_LINK_LIBRARIES( points-to-voxel-indices snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
-TARGET_LINK_LIBRARIES( points-track-partitions ${comma_ALL_LIBRARIES} )
+target_link_libraries( points-align snark_math ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+target_link_libraries( points-calc snark_point_cloud snark_math snark_math_geometry ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+target_link_libraries( points-detect-change snark_math ${comma_ALL_LIBRARIES} ) #profiler )
+target_link_libraries( points-foreground-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
+target_link_libraries( points-make snark_math ${comma_ALL_LIBRARIES} )
+target_link_libraries( points-rays snark_math snark_math_spherical_geometry ${comma_ALL_LIBRARIES} tbb ) #profiler )
+target_link_libraries( points-to-centroids snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
+target_link_libraries( points-to-partitions snark_point_cloud ${comma_ALL_LIBRARIES} tbb )
+target_link_libraries( points-to-voxels snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+target_link_libraries( points-to-voxel-indices snark_point_cloud ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
+target_link_libraries( points-track-partitions ${comma_ALL_LIBRARIES} )
 
 set_target_properties( points-align PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-calc PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-detect-change PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-foreground-partitions PROPERTIES LINK_FLAGS_RELEASE -s )
+set_target_properties( points-make PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-rays PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-to-centroids PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-to-partitions PROPERTIES LINK_FLAGS_RELEASE -s )
@@ -40,24 +43,25 @@ set_target_properties( points-to-voxels PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-to-voxel-indices PROPERTIES LINK_FLAGS_RELEASE -s )
 set_target_properties( points-track-partitions PROPERTIES LINK_FLAGS_RELEASE -s )
 
-IF( PROFILE )
-    TARGET_LINK_LIBRARIES ( points-to-partitions profiler )
-ENDIF( PROFILE )
+if( PROFILE )
+    target_link_libraries ( points-to-partitions profiler )
+endif( PROFILE )
 
-INSTALL( TARGETS points-align
+install( TARGETS points-align
                  points-calc
                  points-detect-change
-                 points-to-partitions
                  points-foreground-partitions
+                 points-make
                  points-rays
                  points-to-centroids
-                 points-track-partitions
+                 points-to-partitions
                  points-to-voxels
                  points-to-voxel-indices
+                 points-track-partitions
          RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
 
-INSTALL( PROGRAMS examples/points-eigen points-to-image DESTINATION ${snark_INSTALL_BIN_DIR} )
+install( PROGRAMS examples/points-eigen points-to-image DESTINATION ${snark_INSTALL_BIN_DIR} )
 
 add_executable( points-mesh points-mesh.cpp )
 target_link_libraries( points-mesh ${comma_ALL_LIBRARIES} ${snark_ALL_EXTERNAL_LIBRARIES} )
@@ -81,4 +85,4 @@ if( NOT WIN32 )
     install( TARGETS points-grep RUNTIME DESTINATION ${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 endif( NOT WIN32 )
 
-ADD_SUBDIRECTORY( points-calc )
+add_subdirectory( points-calc )

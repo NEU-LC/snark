@@ -38,7 +38,7 @@ ENDIF()
 # set compiler and linker flags and variables
 
 if( NOT CMAKE_BUILD_TYPE )
-  set( CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE )
+  set( CMAKE_BUILD_TYPE Release CACHE STRING "options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE )
 endif( NOT CMAKE_BUILD_TYPE )
 
 find_package( comma PATHS ${comma_DIR} /usr/local/CMakeFiles )
@@ -345,7 +345,7 @@ IF( snark_build_imaging )
         if( snark_build_imaging_stereo )
             message( "imaging/stereo with OpenCV ${OpenCV_VERSION_MAJOR} not supported yet; will not build imaging/stereo" )
         endif( snark_build_imaging_stereo )
-        set( snark_build_imaging_stereo OFF )
+        set( snark_build_imaging_stereo OFF CACHE BOOL "" FORCE )
     endif( ${OpenCV_VERSION_MAJOR} GREATER 2 )
 ENDIF( snark_build_imaging )
 

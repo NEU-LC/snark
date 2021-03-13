@@ -72,7 +72,7 @@ static void usage( bool )
         "\nUnsupported features are shown in dimmed text in this help"
         "\n"
         "\nFor an example of current functionality try:"
-        "\n    snark-graphics-test-pattern cube 100000 0.1 0.01 | view-points --fields=x,y,z,r,g,b,a"
+        "\n    points-make cube | view-points --fields=x,y,z,r,g,b,a"
         "\n"
         "\n----------------------------------------------"
         "\n";
@@ -366,6 +366,9 @@ static void usage( bool )
         "\n        cat velodyne-georeferenced.bin | csv-play --binary t,3d,ui | io-publish --size $( csv-size t,3d,ui ) -m 10000 tcp:12345"
         "\n        rm -rf pipe && mkfifo pipe && cat pipe | view-points \"tcp:localhost:12345;binary=t,3d,ui;fields=,x,y,z,block\" \"-;fields=x,y,z,id,label;weight=10\" | csv-paste \"-\" line-number line-number > pipe"
         "\n"
+        "\n    add a grid"
+        "\n        cat data.bin | view-points <( points-make grid )\";shape=lines\" \"-;binary=3d\""
+        "\n"
         "\n    an example of many of the supported shapes"
         "\n        for i in {0..15}; do echo \"a=2*3.1415926532/16*$i;s(a)*3;c(a)*3;s(a)*3\" | bc -l | paste -s -d,; done \\"
         "\n            | view-points \"-;weight=5;color=cyan;label=point\" \\"
@@ -416,8 +419,8 @@ static std::vector< Options > make_image_options( const std::string& shape )
     {
         const std::vector< std::string >& w = comma::split( v[i], ',' );
         if( w.empty() || w[0].empty() ) { COMMA_THROW( comma::exception, "got empty image options in '" << shape << "'" ); }
-        boost::optional< double > p1;
-        boost::optional< double > p2;
+        boost::optional< double > p1 = boost::make_optional< double >( false, 0 );
+        boost::optional< double > p2 = boost::make_optional< double >( false, 0 );
         switch( w.size() ) // quick and dirty
         {
             case 1: break;
