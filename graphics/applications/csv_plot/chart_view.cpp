@@ -4,89 +4,141 @@
 
 namespace snark { namespace graphics { namespace plotting {
             
-chart_view::chart_view( QChart* chart, QWidget* parent ) :
-    QChartView( chart, parent ),
-    panning_( false )
+chart_view::chart_view( QChart* chart, QWidget* parent )
+    : QChartView( chart, parent )
+    , mouse_click_state_( mouse_state::NONE )
+    , rubber_band_box_()
 {
-    setRubberBand( QChartView::RectangleRubberBand );  // rubber band: click and drag box thing
+    // setRubberBand( QChartView::RectangleRubberBand );  // rubber band: click and drag box thing
+    setRubberBand( QChartView::NoRubberBand );  // rubber band: click and drag box thing
 }
             
-chart_view::chart_view( QWidget* parent ) :
-    QChartView( parent ),
-    panning_( false )
+chart_view::chart_view( QWidget* parent )
+    : QChartView( parent )
+    , mouse_click_state_( mouse_state::NONE )
+    , rubber_band_box_()
 {
-    setRubberBand( QChartView::RectangleRubberBand );  // rubber band: click and drag box thing
+    // setRubberBand( QChartView::RectangleRubberBand );  // rubber band: click and drag box thing
+    setRubberBand( QChartView::NoRubberBand );  // rubber band: click and drag box thing
 }
 
 void chart_view::mousePressEvent( QMouseEvent* event )
 {
-    if ( event->button() == Qt::MiddleButton ) 
-    { 
-        panning_ = true;
-        last_.setX(event->x());
-        last_.setY(event->y());
+    switch ( event->button() )
+    {
+    case Qt::LeftButton:
+        if ( mouse_click_state_ != mouse_state::NONE ) { break; }
+        mouse_click_state_ = mouse_state::LEFT;
+        rubber_band_box_.setTopLeft( event->localPos() );
+        break;
+    case Qt::RightButton:
+        if ( mouse_click_state_ != mouse_state::NONE ) { break; }
+        mouse_click_state_ = mouse_state::RIGHT;
+        rubber_band_box_.setTopLeft( event->localPos() );
+        break;
+    case Qt::MiddleButton:
+        if ( mouse_click_state_ != mouse_state::NONE ) { break; }
+        mouse_click_state_ = mouse_state::MIDDLE;
+        last_mouse_pos_ = event->pos();
         chart()->setAnimationOptions( QChart::NoAnimation );
+        break;
+    default:
+        break;
     }
     QChartView::mousePressEvent( event );
 }
 
 void chart_view::mouseMoveEvent( QMouseEvent* event )
 {
-    if ( panning_ )
+    if ( mouse_click_state_ == mouse_state::MIDDLE )
     {
-        int dx = last_.x() - event->x();
-        int dy = event->y() - last_.y();
+        int dx = last_mouse_pos_.x() - event->x();
+        int dy = event->y() - last_mouse_pos_.y();
         chart()->scroll( dx, dy );
-        last_.setX(event->x());
-        last_.setY(event->y());
+        last_mouse_pos_ = event->pos();
     }
     QChartView::mouseMoveEvent( event );
 }
-
 void chart_view::mouseReleaseEvent( QMouseEvent* event )
 {
-    if ( event->button() == Qt::MiddleButton ) 
-    { 
-        panning_ = false; 
+    switch ( event->button() )
+    {
+    case Qt::LeftButton:
+        if ( mouse_click_state_ == mouse_state::LEFT )
+        {
+            mouse_click_state_ = mouse_state::NONE;
+            rubber_band_box_.setBottomRight( event->localPos() );
+            chart()->zoomIn( rubber_band_box_ );
+        }
+        break;
+    case Qt::RightButton:
+        if ( mouse_click_state_ == mouse_state::RIGHT )
+        {
+            mouse_click_state_ = mouse_state::NONE; 
+            rubber_band_box_.setBottomRight( event->localPos() );
+            chart()->zoomIn( inverse_rubber_band_box() );
+        }
+        break;
+    case Qt::MiddleButton:
+        if ( mouse_click_state_ == mouse_state::MIDDLE ) { mouse_click_state_ = mouse_state::NONE; }
         chart()->setAnimationOptions( QChart::SeriesAnimations );
+        break;
+    default:
+        break;
     }
     QChartView::mouseReleaseEvent( event );
 }
 
-void chart_view::wheelEvent( QWheelEvent* event )
+QRectF chart_view::inverse_rubber_band_box()
 {
-    QPoint angle_delta = event->angleDelta();
     QRectF plot_area = chart()->plotArea();
-    int y = angle_delta.y();  // +ve if scrolling in
-    // if ( chart()->chartType() == QChart::ChartTypePolar )  // polar charts don't support rectangle zooming
-    if ( true )  // currently can't get mouse position in local frame
+    float height_ratio = plot_area.height() / rubber_band_box_.height();
+    float width_ratio  = plot_area.width()  / rubber_band_box_.width();
+    QPointF old_center = plot_area.center();
+    if ( height_ratio > width_ratio )
     {
-        if( y == 0 ) { QGraphicsView::wheelEvent( event ); }
-        else { chart()->zoom( y > 0 ? 1.1 : 0.5 ); }
-        QPointF global_pos = event->globalPos();
-        QPoint local_pos  = QChartView::mapFromGlobal( global_pos.toPoint() ); //QPoint local_pos  = chart_view().mapFromGlobal( global_pos.toPoint() );
-        //std::cerr << "csv-plot: mouse event occured at global position: (" << global_pos.x() << ", " << global_pos.y() << ")\n"
-        //          << "local position: (" << local_pos.x() << ", " << local_pos.y() << ")" << std::endl;
+        plot_area.setHeight( plot_area.height() * height_ratio );
+        plot_area.setWidth(  plot_area.width()  * height_ratio );
     }
     else
     {
-        plot_area.moveCenter( event->globalPos() - chart()->scenePos() );
-        if( y == 0 )
-        {
-            QGraphicsView::wheelEvent( event );
-        }
-        else
-        {
-            int sign = y > 0 ? 1 : -1;
-            plot_area.setTop( plot_area.top() + 10 * sign );
-            plot_area.setBottom( plot_area.bottom() - 10 * sign );
-            plot_area.setLeft( plot_area.left() + 10 * sign );
-            plot_area.setRight( plot_area.right() - 10 * sign );
-        }
-        chart()->zoomIn( plot_area );
-        //std::cerr << "csv-plot: zooming in to the rectangle centred at " << plot_area.center().x() << ", " << plot_area.center().y() << std::endl;
-        //std::cerr << "csv-plot: mouse event occured at " << event->globalPos().x() << ", " << event->globalPos().y() << std::endl;
-        //std::cerr << "csv-plot: scenePos: " << chart()->scenePos().x() << ", " << chart()->scenePos().y() << std::endl;
+        plot_area.setHeight( plot_area.height() * width_ratio );
+        plot_area.setWidth(  plot_area.width()  * width_ratio );
+    }
+    plot_area.moveCenter( old_center );
+    return plot_area;
+}
+
+void chart_view::rectangle_zoom( int scroll_angle, QRectF plot_area, QPoint& local_mouse_pos )
+{
+    float zoom_percent;
+    if      ( scroll_angle > 0 ) { zoom_percent =     zoom_factor_; }
+    else if ( scroll_angle < 0 ) { zoom_percent = 1 / zoom_factor_; }
+    else                         { return;                          }
+    plot_area.moveTo( ( 1 - zoom_percent ) * local_mouse_pos + zoom_percent * plot_area.topLeft() );
+    plot_area.setSize( zoom_percent * plot_area.size() );
+    chart()->zoomIn( plot_area );
+}
+
+void chart_view::basic_zoom( int scroll_angle )
+{
+    if      ( scroll_angle > 0 ) { chart()->zoom( 1.1 ); }
+    else if ( scroll_angle < 0 ) { chart()->zoom( 0.9 ); }
+    else                         { return;               }
+}
+
+void chart_view::wheelEvent( QWheelEvent* event )
+{
+    int scroll_angle = event->angleDelta().y();  // +ve if scrolling in
+    if ( chart()->chartType() == QChart::ChartTypePolar )  // polar charts don't support rectangle zooming
+    {
+        basic_zoom( scroll_angle );
+    }
+    else
+    {
+        QRectF plot_area = chart()->plotArea();
+        QPoint local_mouse_pos = QChartView::mapFromGlobal( event->globalPos() );
+        rectangle_zoom( scroll_angle, plot_area, local_mouse_pos );
     }
 }
 
