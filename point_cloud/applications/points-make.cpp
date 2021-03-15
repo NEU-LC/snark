@@ -200,7 +200,7 @@ struct sphere : public operation_t< Eigen::Vector3d >
         bool fill = options.exists( "--fill" );
         auto center = comma::csv::ascii< Eigen::Vector3d >().get( options.value< std::string >( "--center,-c", "0,0,0" ) );
         double radius = options.value< double >( "--radius" );
-        auto resolution = options.optional< double >( "--resolution,-r" );
+        auto resolution = options.value( "--resolution,-r", 1.0 );
         auto size = options.optional< unsigned int >( "--size" );
         auto seed = options.optional< std::string >( "--random-seed,--seed,-s" );
         if( options.exists( "--random" ) && !seed ) { seed = "0"; } // quick and dirty
@@ -209,8 +209,8 @@ struct sphere : public operation_t< Eigen::Vector3d >
         {
             points_make::random rd( *seed );
             unsigned int n = size ? *size
-                                  : fill ? ( ( radius * radius * radius * 4. / 3. * M_PI ) / ( *resolution * *resolution * *resolution / ( 6. * std::sqrt( 2 ) ) ) ) * 4 / 20  // quick and dirty: assuming resolution much less than radius
-                                         : ( ( radius * radius * 4. * M_PI ) / ( *resolution * *resolution * std::sqrt( 3. ) / 2. ) ) * 3. / 6.; // quick and dirty: assuming resolution much less than radius
+                                  : fill ? ( ( radius * radius * radius * 4. / 3. * M_PI ) / ( resolution * resolution * resolution / ( 6. * std::sqrt( 2 ) ) ) ) * 4 / 20  // quick and dirty: assuming resolution much less than radius
+                                         : ( ( radius * radius * 4. * M_PI ) / ( resolution * resolution * std::sqrt( 3. ) / 2. ) ) * 3. / 6.; // quick and dirty: assuming resolution much less than radius
             for( unsigned int i = 0; i < n; ++i )
             {
                 double a = ( rd() * 2 - 1 ) * M_PI;
@@ -221,13 +221,29 @@ struct sphere : public operation_t< Eigen::Vector3d >
         }
         else
         {
+            if( size ) { COMMA_THROW( comma::exception, "sphere: --size for --random: todo; meanwhile use --resolution" ); }
             if( fill )
             {
                 COMMA_THROW( comma::exception, "sphere: --fill" );
             }
             else
             {
-                COMMA_THROW( comma::exception, "sphere: todo" );
+                double as = std::asin( ( resolution / 2 ) / radius ) * 2;
+                for( double a = 0; a < M_PI * 2; a += as ) { ostream.write( snark::range_bearing_elevation( radius, a, 0 ).to_cartesian() + center ); }
+                double es = std::asin( resolution / radius * std::sqrt( 3 ) / 2 );
+                double t = 0;
+                for( double e = es; e < M_PI / 2; e += es )
+                {
+                    t = 0.5 - t; // quick and dirty
+                    double s = std::asin( ( resolution / 2 ) / ( radius * std::cos( e ) ) ) * 2;
+                    for( double a = s * t; a < M_PI * 2; a += s )
+                    {
+                        auto p = snark::range_bearing_elevation( radius, a, e ).to_cartesian();
+                        ostream.write( p + center );
+                        p[2] = -p[2];
+                        ostream.write( p + center );
+                    }
+                }
             }
         }
         return 0;
