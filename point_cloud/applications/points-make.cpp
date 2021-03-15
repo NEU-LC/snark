@@ -189,7 +189,8 @@ struct sphere : public operation_t< Eigen::Vector3d >
 
     static void examples()
     {
-        std::cerr << "\n    points-make sphere --radius 10 --size 10000 --seed 0 | view-points '-;color=yellow'";
+        std::cerr << "\n    points-make sphere --radius 10 | view-points '-;color=yellow'";
+        std::cerr << "\n    points-make sphere --radius 10 --size 10000 --random | view-points '-;color=yellow'";
     }
 
     static const char* completion_options() { return " sphere --radius --center -c --resolution -r --random-seed --random --seed -s"; }
