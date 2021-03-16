@@ -38,16 +38,16 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/fill_image.h>
-#include "../../imaging/cv_mat/serialization.h"
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
+#include "../../imaging/cv_mat/serialization.h"
 
 namespace {
 
 void bash_completion( unsigned const ac, char const * const * av )
 {
     static char const * const arguments =
-        " --help -h --node-name --queue-size"
+        " --help -h --node-name --node --queue-size"
         " --from --bags --flush"
         " --to --max-datagram-size --latch --frame-id"
         ;
@@ -67,7 +67,7 @@ void usage( bool const verbose )
     std::cerr << std::endl;
     std::cerr << "Options:" << std::endl;
     std::cerr << "    --help,-h; print help and exit." << std::endl;
-    std::cerr << "    --node-name=<name>; node name for this process, when not specified uses ros::init_options::AnonymousName flag." << std::endl;
+    std::cerr << "    --node-name,--node=<name>; node name for this process, when not specified uses ros::init_options::AnonymousName flag." << std::endl;
     std::cerr << "    --queue-size=[<n>]; default=1; ROS Subscriber queue size." << std::endl;
     std::cerr << "    --from=<topic>; ros topic, mutually exclusive with --to." << std::endl;
     std::cerr << "        --bags=[<bagfile>]; read from ros bag file." << std::endl;
@@ -76,6 +76,9 @@ void usage( bool const verbose )
     std::cerr << "        --frame-id=[<frame_id>]: ros header frame id." << std::endl;
     std::cerr << "        --max-datagram-size=[<size>]: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)." << std::endl;
     std::cerr << "        --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "examples" << std::endl;
+    std::cerr << "    todo" << std::endl;
     std::cerr << std::endl;
 }
 
@@ -209,23 +212,6 @@ std::string cv_io::ros_format( unsigned const cv_encoding )
     return map.at( cv_encoding );
 }
 
-static std::vector< std::string > glob( const std::string& path )
-{
-    glob_t globbuf;
-    int return_val = glob( path.c_str(), GLOB_TILDE, NULL, &globbuf );
-    std::vector< std::string > path_names;
-    if( return_val == 0)
-    {
-        for( std::size_t i = 0; i < globbuf.gl_pathc; ++i )
-        {
-            path_names.push_back( std::string( globbuf.gl_pathv[i] ));
-        }
-    }
-    else { std::cerr << comma::verbose.app_name() << ": couldn't find " << path << std::endl; }
-    globfree( &globbuf );
-    return path_names;
-}
-
 class ros_subscriber : public cv_io
 {
 public:
@@ -257,6 +243,26 @@ public:
                     , &ros_subscriber::process, this
                     , hints );
         }
+    }
+    
+    static std::vector< std::string > glob( const std::string& path )
+    {
+        glob_t globbuf;
+        int return_val = glob( &path[0], GLOB_TILDE, NULL, &globbuf );
+        std::vector< std::string > path_names;
+        if( return_val == 0 )
+        {
+            for( std::size_t i = 0; i < globbuf.gl_pathc; ++i )
+            {
+                path_names.push_back( std::string( globbuf.gl_pathv[i] ));
+            }
+        }
+        else
+        {
+            std::cerr << comma::verbose.app_name() << ": couldn't find: \"" << path << "\"" << std::endl;
+        }
+        globfree( &globbuf );
+        return path_names;
     }
 
     void write( message_type const msg )
@@ -308,7 +314,6 @@ private:
     std::string topic;
 };
 
-
 class ros_publisher : public cv_io
 {
 public:
@@ -347,35 +352,33 @@ private:
 
 void ros_execute( char **av, comma::command_line_options const& options )
 {
+    auto node_name = options.optional< std::string >( "--node-name,--node" );
     if( options.exists( "--from" ) )
     {
-        ros_init( av, options.optional< std::string >( "--node-name" ), "_subscriber" );
+        ros_init( av, node_name, "_subscriber" );
         ros_subscriber subscriber( options );
         subscriber.subscribe();
     }
-    else if( options.exists( "--to" ) )
+    else
     {
-        ros_init( av, options.optional< std::string >( "--node-name" ), "_publisher" );
+        ros_init( av, node_name, "_publisher" );
         ros_publisher publisher( options );
         publisher.publish();
     }
-    else
-    {
-        COMMA_THROW( comma::exception, "Exactly one topic (either --from or --to) must be given." );
-    }
 }
 
-}
+} // namespace {
 
 int main( int ac, char* av[] )
 {
     try
     {
         comma::command_line_options options( ac, av, usage );
-        if( options.exists( "--bash-completion" ) ) bash_completion( ac, av );
+        if( options.exists( "--bash-completion" ) ) { bash_completion( ac, av ); }
         options.assert_mutually_exclusive( "--from,--flush,--output-fields", "--to,--dimensions,--dim,--input-fields" );
-
+        options.assert_exists( "--from,--to" );
         ros_execute( av, options );
+        return 0;
     }
     catch( std::exception& ex ) { std::cerr << comma::verbose.app_name() << ": " << ex.what() << std::endl; }
     catch( ... ) { std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl; }
