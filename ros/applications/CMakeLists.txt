@@ -25,12 +25,13 @@ set_target_properties( points-from-ros PROPERTIES LINK_FLAGS_RELEASE -s )
 add_executable( ros-image ros-image.cpp )
 target_link_libraries( ros-image ${stdmsgs_include} ${ros_libs} snark_imaging ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
 
-install( TARGETS points-to-ros points-from-ros ros-image
+add_executable( ros-array ros-array.cpp )
+target_link_libraries( ros-array ${stdmsgs_include} ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
+
+install( TARGETS points-to-ros points-from-ros ros-image ros-array
          RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
 
-install( PROGRAMS ros-bag-to-bin ros-to-image DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
-
-install( PROGRAMS ros-to-csv DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
-
-install( PROGRAMS ros-from-csv DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+install( PROGRAMS ros-bag-to-bin ros-from-csv ros-to-csv ros-to-image
+         DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
+         COMPONENT Runtime )
