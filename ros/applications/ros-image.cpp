@@ -248,7 +248,7 @@ public:
     static std::vector< std::string > glob( const std::string& path )
     {
         glob_t globbuf;
-        int return_val = glob( &path[0], GLOB_TILDE, NULL, &globbuf );
+        int return_val = ::glob( &path[0], GLOB_TILDE, NULL, &globbuf );
         std::vector< std::string > path_names;
         if( return_val == 0 )
         {
