@@ -34,8 +34,6 @@ install( TARGETS points-to-ros points-from-ros ros-image ros-multi-array
          RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
          COMPONENT Runtime )
 
-install( PROGRAMS ros-bag-to-bin ros-to-image DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
-
-install( PROGRAMS ros-to-csv DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
-
-install( PROGRAMS ros-from-csv DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
+install( PROGRAMS ros-bag-to-bin ros-from-csv ros-to-csv ros-to-image
+         DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR}
+         COMPONENT Runtime )
