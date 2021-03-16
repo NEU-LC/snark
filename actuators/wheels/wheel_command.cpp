@@ -93,7 +93,7 @@ bool apply_limit_reverses_direction( snark::wheels::wheel_command& i_command, sn
         if( comma::math::less( i_angle_limit.max, i_command.turnrate, snark::wheels::turnrate_tolerance ) ||
                 comma::math::less( i_command.turnrate, i_angle_limit.min, snark::wheels::turnrate_tolerance ) )
         {
-            COMMA_THROW( comma::exception, "angle "<< i_command.turnrate <<"is outside limit of " << i_angle_limit.min << " and " << i_angle_limit.max );
+            COMMA_THROW( comma::exception, "angle "<< i_command.turnrate <<" is outside limit of " << i_angle_limit.min << " and " << i_angle_limit.max );
         }
     }
     return direction_reversed;
