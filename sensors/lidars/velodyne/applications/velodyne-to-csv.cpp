@@ -254,7 +254,6 @@ int main( int ac, char** av )
     {
         comma::command_line_options options( ac, av, usage );
         bool verbose = options.exists( "--verbose,-v" );
-        bool flush = options.exists( "--flush" );
         if( options.exists( "--output-fields" ) ) { std::cout << comma::join( comma::csv::names< snark::velodyne_point >(), ',' ) << std::endl; return 0; }
         std::string fields = fields_( options.value< std::string >( "--fields", "" ) );
         comma::csv::format format = format_( options.value< std::string >( "--binary,-b", "" ), fields );
@@ -275,6 +274,7 @@ int main( int ac, char** av )
         comma::csv::options csv;
         csv.fields = fields;
         csv.full_xpath = true;
+        csv.flush = options.exists( "--flush" );
         if( options.exists( "--binary,-b" ) ) { csv.format( format ); }
         options.assert_mutually_exclusive( "--pcap,--thin,--udp-port,--proprietary,-q" );
         options.assert_mutually_exclusive( "--puck,--db" );
@@ -353,8 +353,7 @@ int main( int ac, char** av )
             {
                 if( scan != p.scan && points.size() )
                 {
-                    if( points.back().valid_scan && p.valid_scan ) { for( const auto& i : points ) { ostream.write( i ); } }
-                    if( flush ) { ostream.flush(); }
+                    if( points.back().valid_scan && p.valid_scan ) { for( const auto& i : points ) { ostream.write( i ); } } // todo? improve performance? currently will flush on each point, which is inefficient, since it should be sufficient to flush once on the full scan
                     points.clear();
                 }
                 scan = p.scan;
@@ -362,8 +361,7 @@ int main( int ac, char** av )
             }
             else
             {
-                ostream.write( p );
-                if( flush ) { ostream.flush(); }
+                ostream.write( p ); // todo? improve performance? currently will flush on each point, which is inefficient, since it should be sufficient to flush once on the full scan
             }
         }
         //Profilerstop(); }
