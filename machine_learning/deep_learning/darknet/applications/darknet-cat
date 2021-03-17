@@ -117,6 +117,22 @@ def detect(net, meta, image, input_type, thresh=.25, hier_thresh=.5, nms=.45):
     free_detections(dets, num)
     return res
 
+def report_vram():
+    import subprocess
+    import xml.etree.ElementTree as ET
+
+    # get info from nvidia-smi as an XML document
+    outcome = subprocess.check_output(['nvidia-smi', '-q', '-x'])
+    my_pid = os.getpid()
+    smi_tree = ET.fromstring(outcome)
+
+    # find process_info tag whose pid child tag has text equal to the pid of this process
+    process_info = smi_tree.find(f'.//process_info/pid[.="{my_pid}"]..')
+
+    vram = process_info.find('used_memory').text
+    vram = vram.split()[0] # remove 'MiB'
+    print(vram)
+
 def say( m ): sys.stderr.write("darknet-cat: {}\n".format(m))
 
 def warn( m ): sys.stderr.write("darknet-cat: warning: {}\n".format(m))
@@ -163,11 +179,16 @@ if __name__ == '__main__':
     parser.add_argument( '--classes', help="number of classes", required=True, type=int)
     parser.add_argument( '--input-file', help="file to read image data from", type=argparse.FileType('rb'), default=sys.stdin.buffer)
     parser.add_argument( '--output-file', help="file to write detection results to", type=argparse.FileType('wb'), default=sys.stdout.buffer)
+    parser.add_argument( '--report-vram', help="report the GPU memory used to run an intstance of darknet-cat (as an integer in MiB), then exit.", action="store_true")
     args = parser.parse_args()
 
     # Calling load_net_custom with last param (batch) equal to 1, causes the network to
     # startup in inference mode and not allocate memory for training.
     net = load_net_custom(args.config.encode('utf-8'), args.weights.encode('utf-8'), 0, 1)
+
+    if args.report_vram:
+        report_vram()
+        sys.exit(0)
 
     meta = namedtuple("meta", "classes names") # create meta class directly rather than requiring a file
     meta.classes=args.classes
