@@ -353,14 +353,8 @@ int main( int ac, char** av )
             {
                 if( scan != p.scan && points.size() )
                 {
-                    if( points.back().valid_scan && p.valid_scan )
-                    {
-                        for( const auto& i : points )
-                        {
-                            ostream.write(i);
-                            if( flush ) { ostream.flush(); }
-                        }
-                    }
+                    if( points.back().valid_scan && p.valid_scan ) { for( const auto& i : points ) { ostream.write( i ); } }
+                    if( flush ) { ostream.flush(); }
                     points.clear();
                 }
                 scan = p.scan;
@@ -369,7 +363,7 @@ int main( int ac, char** av )
             else
             {
                 ostream.write( p );
-                if(flush) { ostream.flush(); }
+                if( flush ) { ostream.flush(); }
             }
         }
         //Profilerstop(); }
