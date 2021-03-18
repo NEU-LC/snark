@@ -27,20 +27,20 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <vector>
-#include <fstream>
-#include <unordered_map>
-#include <boost/bimap.hpp>
+#include "detail/file-util.h"
+#include "../../imaging/cv_mat/serialization.h"
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
+#include <boost/bimap.hpp>
 #include <ros/ros.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/fill_image.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
-#include "../../imaging/cv_mat/serialization.h"
-#include "../file-util.h"
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/fill_image.h>
+#include <vector>
+#include <fstream>
+#include <unordered_map>
 
 namespace {
 

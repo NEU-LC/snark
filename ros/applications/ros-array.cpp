@@ -27,15 +27,15 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <vector>
-#include <fstream>
+#include "detail/file-util.h"
+#include "std_msgs/traits.h"
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
-#include "../file-util.h"
-#include "./std_msgs/traits.h"
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
+#include <vector>
+#include <fstream>
 
 namespace {
 

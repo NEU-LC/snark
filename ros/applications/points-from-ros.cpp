@@ -27,7 +27,7 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "../file-util.h"
+#include "detail/file-util.h"
 #include <comma/application/command_line_options.h>
 #include <comma/application/verbose.h>
 #include <comma/base/exception.h>

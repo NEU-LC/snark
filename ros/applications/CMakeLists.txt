@@ -11,16 +11,18 @@ include_directories( "${ros_path}/include" )
 
 set( ros_libs roscpp roscpp_serialization rosbag rosbag_storage rostime rosconsole console_bridge cpp_common )
 
-add_executable( ros-array ros-array.cpp )
-target_link_libraries( ros-array snark_ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
+file( GLOB detail_source ${dir}/detail/*.cpp )
+
+add_executable( ros-array ros-array.cpp ${detail_source} )
+target_link_libraries( ros-array ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
 set_target_properties( ros-array PROPERTIES LINK_FLAGS_RELEASE -s )
 
-add_executable( ros-image ros-image.cpp )
-target_link_libraries( ros-image snark_ros ${ros_libs} snark_imaging ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
+add_executable( ros-image ros-image.cpp ${detail_source} )
+target_link_libraries( ros-image ${ros_libs} snark_imaging ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
 set_target_properties( ros-image PROPERTIES LINK_FLAGS_RELEASE -s )
 
-add_executable( points-from-ros points-from-ros.cpp )
-target_link_libraries( points-from-ros snark_ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
+add_executable( points-from-ros points-from-ros.cpp ${detail_source} )
+target_link_libraries( points-from-ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
 set_target_properties( points-from-ros PROPERTIES LINK_FLAGS_RELEASE -s )
 
 add_executable( points-to-ros points-to-ros.cpp )
