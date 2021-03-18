@@ -55,31 +55,42 @@ void bash_completion( unsigned const ac, char const * const * av )
     exit( 0 );
 }
 
-void usage( bool const verbose )
+void usage( bool )
 {
-    static const char* const indent="    ";
-
-    std::cerr << std::endl;
-    std::cerr << "Convert image from ros to cv image and vice versa. Binary i/o only." << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "Usage:" << std::endl;
-    std::cerr << indent << comma::verbose.app_name() << " <operation> [<options>...]" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "Options:" << std::endl;
-    std::cerr << "    --help,-h; print help and exit." << std::endl;
-    std::cerr << "    --node-name,--node=<name>; node name for this process, when not specified uses ros::init_options::AnonymousName flag." << std::endl;
-    std::cerr << "    --queue-size=[<n>]; default=1; ROS Subscriber queue size." << std::endl;
-    std::cerr << "    --from=<topic>; ros topic, mutually exclusive with --to." << std::endl;
-    std::cerr << "        --bags=[<bagfile>]; read from ros bag file." << std::endl;
-    std::cerr << "        --flush; flush stream after each stride." << std::endl;
-    std::cerr << "    --to=<topic>; ros topic, mutually exclusive with --from." << std::endl;
-    std::cerr << "        --frame-id=[<frame_id>]: ros header frame id." << std::endl;
-    std::cerr << "        --max-datagram-size=[<size>]: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)." << std::endl;
-    std::cerr << "        --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "examples" << std::endl;
-    std::cerr << "    todo" << std::endl;
-    std::cerr << std::endl;
+    std::cerr << "\nconvert image from ros to cv image and vice-versa";
+    std::cerr << "\n";
+    std::cerr << "\nusage: " << comma::verbose.app_name() << " --from=<topic> [<options>]";
+    std::cerr << "\n       " << comma::verbose.app_name() << " --to=<topic> [<options>]";
+    std::cerr << "\n";
+    std::cerr << "\ngeneral options:";
+    std::cerr << "\n    --help,-h:                 print help and exit";
+    std::cerr << "\n    --node,--node-name=<name>: default=ros_cv_image_<publisher|subscriber>";
+    std::cerr << "\n    --queue-size=[<n>]:        default=1; ROS queue size";
+    std::cerr << "\n";
+    std::cerr << "\n    when --node is not specified also sets ros::init_options::AnonymousName flag";
+    std::cerr << "\n";
+    std::cerr << "\nfrom options:";
+    std::cerr << "\n    --from=<topic>:   topic to read";
+    std::cerr << "\n    --bags=[<files>]: comma-separated list of bag files, wildcards accepted";
+    std::cerr << "\n    --flush:          flush stream after each image";
+    std::cerr << "\n";
+    std::cerr << "\nto options:";
+    std::cerr << "\n    --to=<topic>:                 topic to publish to";
+    std::cerr << "\n    --frame-id=[<frame_id>]:      ros header frame id";
+    std::cerr << "\n    --latch:                      latch last message for new subscribers";
+    std::cerr << "\n    --max-datagram-size=[<size>]: maximum datagram size for UDP";
+    std::cerr << "\n";
+    std::cerr << "\nexamples:";
+    std::cerr << "\n    read from and write to live topics:";
+    std::cerr << "\n    $ ros-image --from camera/image_raw | cv-cat \"view;null\"";
+    std::cerr << "\n    $ cat image.bin | ros-image --to camera/image_raw";
+    std::cerr << "\n";
+    std::cerr << "\n    read from bag files:";
+    std::cerr << "\n    $ ros-image --from camera/image_raw --bags a.bag,b.bag | cv-cat \"view;null\"";
+    std::cerr << "\n";
+    std::cerr << "\n    wildcard expansion need to be protected from expanding by bash";
+    std::cerr << "\n    $ ros-image --from camera/image_raw --bags \"*.bag\" | cv-cat \"view;null\"";
+    std::cerr << "\n" << std::endl;
 }
 
 void ros_init( char **av, boost::optional< std::string > node_name, std::string const& suffix )
