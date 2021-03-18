@@ -13,9 +13,11 @@ set( ros_libs roscpp roscpp_serialization rosbag rosbag_storage rostime rosconso
 
 add_executable( ros-array ros-array.cpp )
 target_link_libraries( ros-array snark_ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
+set_target_properties( ros-array PROPERTIES LINK_FLAGS_RELEASE -s )
 
 add_executable( ros-image ros-image.cpp )
 target_link_libraries( ros-image snark_ros ${ros_libs} snark_imaging ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
+set_target_properties( ros-image PROPERTIES LINK_FLAGS_RELEASE -s )
 
 add_executable( points-from-ros points-from-ros.cpp )
 target_link_libraries( points-from-ros snark_ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} ${catkin_LIBRARIES} )
