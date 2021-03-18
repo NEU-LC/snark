@@ -23,7 +23,7 @@ void bash_completion( unsigned const ac, char const * const * av )
     static char const * const arguments =
         " --help -h --node-name --node --queue-size"
         " --from --bags --flush"
-        " --to --max-datagram-size --latch --frame-id"
+        " --to --max-datagram-size --latch --frame"
         ;
     std::cout << arguments << std::endl;
     exit( 0 );
@@ -50,7 +50,7 @@ void usage( bool )
     std::cerr << "\n";
     std::cerr << "\nto options:";
     std::cerr << "\n    --to=<topic>:                 topic to publish to";
-    std::cerr << "\n    --frame-id=[<frame_id>]:      ros header frame id";
+    std::cerr << "\n    --frame=[<frame_id>]:         ros header frame id";
     std::cerr << "\n    --latch:                      latch last message for new subscribers";
     std::cerr << "\n    --max-datagram-size=[<size>]: maximum datagram size for UDP";
     std::cerr << "\n";
@@ -282,7 +282,7 @@ class ros_publisher : public cv_io
 public:
     ros_publisher( comma::command_line_options const& options )
     {
-        message_.header.frame_id = options.value< std::string >( "--frame-id", std::string() );
+        message_.header.frame_id = options.value< std::string >( "--frame", std::string() );
 
         publisher_ = node_.advertise< sensor_msgs::Image >( options.value< std::string >( "--to" )
                 , options.value< unsigned >( "--queue-size", 1U )
