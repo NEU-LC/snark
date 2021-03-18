@@ -1,40 +1,15 @@
-// This file is part of comma, a generic and flexible library
 // Copyright (c) 2017 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2021 Mission Systems Pty Ltd
 
-#include <vector>
-#include <fstream>
+#include "detail/file-util.h"
+#include "std_msgs/traits.h"
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
-#include "./std_msgs/traits.h"
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
+#include <vector>
+#include <fstream>
 
 namespace {
 
@@ -42,7 +17,7 @@ void bash_completion( unsigned const ac, char const * const * av )
 {
     static char const * const arguments[] = {
         " --binary -b --delimiter -d --fields -f --flush --format --help -h --precision --verbose -v",
-        " --dimension --dim --from node-name --to"
+        " --dimension --dim --from node-name --to --bags"
     };
     std::cout << arguments << std::endl;
     exit( 0 );
@@ -64,7 +39,7 @@ void usage( bool const verbose )
     std::cerr << "    --queue-size=[<n>]; default=1; ROS Subscriber queue size." << std::endl;
     std::cerr << "    --type=<data_type>; csv format types. One of b,ub,w,uw,i,ui,l,ul,f or d" << std::endl;
     std::cerr << "    --from=<topic>; ros topic, mutually exclusive with --to." << std::endl;
-    std::cerr << "        --bag=[<bagfile>]; read from ros bag file." << std::endl;
+    std::cerr << "        --bags=[<bagfiles>]; read from bag files." << std::endl;
     std::cerr << "        --flush; flush stream after each stride." << std::endl;
     std::cerr << "        --output-format; print output format and exit." << std::endl;
     std::cerr << "    --to=<topic>; ros topic, mutually exclusive with --from." << std::endl;
@@ -103,12 +78,15 @@ public:
     ros_subscriber( comma::command_line_options const& options )
         : flush( options.exists( "--flush" ) )
         , output_format( options.exists( "--output-format" ) )
-        , from_bag( options.exists( "--bag" ) )
+        , from_bag( options.exists( "--bags" ) )
     {
         if( from_bag )
         {
-            bag_.open( options.value< std::string >( "--bag" ) );
-            view_.addQuery( bag_, rosbag::TopicQuery( options.value< std::string >( "--from" ) ) );
+            for( auto name: comma::split( options.value< std::string >( "--bags", "" ), ',' ))
+            {
+                std::vector< std::string > expansion = snark::ros::glob( name );
+                bag_names.insert( bag_names.end(), expansion.begin(), expansion.end() );
+            }
         }
         else
         {
@@ -140,11 +118,18 @@ public:
     {
         if( from_bag )
         {
-            for( rosbag::MessageInstance const mi : view_ )
+            rosbag::Bag bag;
+            for( auto bag_name: bag_names )
             {
-                message_type const msg = mi.instantiate< array_type >();
-                if( output_format ) { std::cout << ros_layout_format< T >( msg->layout ) << std::endl; return; }
-                write( msg );
+                comma::verbose << "opening " << bag_name << std::endl;
+                rosbag::View view_;
+                bag.open( bag_name );
+                for( rosbag::MessageInstance const mi : rosbag::View( bag, rosbag::TopicQuery( topic )))
+                {
+                    message_type const msg = mi.instantiate< array_type >();
+                    write( msg );
+                }
+                bag.close();
             }
         }
         else
@@ -159,8 +144,8 @@ private:
     bool const from_bag;
     ros::NodeHandle node_;
     ros::Subscriber subscriber_;
-    rosbag::Bag bag_;
-    rosbag::View view_;
+    std::vector< std::string > bag_names;
+    std::string topic;
 };
 
 

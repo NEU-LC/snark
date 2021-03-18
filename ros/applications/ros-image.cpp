@@ -1,46 +1,20 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2019 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Copyright (c) 2021 Mission Systems Pty Ltd
 
-#include <vector>
-#include <fstream>
-#include <unordered_map>
-#include <glob.h>
-#include <boost/bimap.hpp>
+#include "detail/file-util.h"
+#include "../../imaging/cv_mat/serialization.h"
 #include <comma/io/stream.h>
 #include <comma/csv/stream.h>
 #include <comma/csv/traits.h>
+#include <boost/bimap.hpp>
 #include <ros/ros.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/fill_image.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
-#include "../../imaging/cv_mat/serialization.h"
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/fill_image.h>
+#include <vector>
+#include <fstream>
+#include <unordered_map>
 
 namespace {
 
@@ -49,37 +23,48 @@ void bash_completion( unsigned const ac, char const * const * av )
     static char const * const arguments =
         " --help -h --node-name --node --queue-size"
         " --from --bags --flush"
-        " --to --max-datagram-size --latch --frame-id"
+        " --to --max-datagram-size --latch --frame"
         ;
     std::cout << arguments << std::endl;
     exit( 0 );
 }
 
-void usage( bool const verbose )
+void usage( bool )
 {
-    static const char* const indent="    ";
-
-    std::cerr << std::endl;
-    std::cerr << "Convert image from ros to cv image and vice versa. Binary i/o only." << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "Usage:" << std::endl;
-    std::cerr << indent << comma::verbose.app_name() << " <operation> [<options>...]" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "Options:" << std::endl;
-    std::cerr << "    --help,-h; print help and exit." << std::endl;
-    std::cerr << "    --node-name,--node=<name>; node name for this process, when not specified uses ros::init_options::AnonymousName flag." << std::endl;
-    std::cerr << "    --queue-size=[<n>]; default=1; ROS Subscriber queue size." << std::endl;
-    std::cerr << "    --from=<topic>; ros topic, mutually exclusive with --to." << std::endl;
-    std::cerr << "        --bags=[<bagfile>]; read from ros bag file." << std::endl;
-    std::cerr << "        --flush; flush stream after each stride." << std::endl;
-    std::cerr << "    --to=<topic>; ros topic, mutually exclusive with --from." << std::endl;
-    std::cerr << "        --frame-id=[<frame_id>]: ros header frame id." << std::endl;
-    std::cerr << "        --max-datagram-size=[<size>]: If a UDP transport is used, specifies the maximum datagram size (see ros::TransportHints)." << std::endl;
-    std::cerr << "        --latch;  ROS publisher option; If true, the last message published on this topic will be saved and sent to new subscribers when they connect" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "examples" << std::endl;
-    std::cerr << "    todo" << std::endl;
-    std::cerr << std::endl;
+    std::cerr << "\nconvert image from ros to cv image and vice-versa";
+    std::cerr << "\n";
+    std::cerr << "\nusage: " << comma::verbose.app_name() << " --from=<topic> [<options>]";
+    std::cerr << "\n       " << comma::verbose.app_name() << " --to=<topic> [<options>]";
+    std::cerr << "\n";
+    std::cerr << "\ngeneral options:";
+    std::cerr << "\n    --help,-h:                 print help and exit";
+    std::cerr << "\n    --node,--node-name=<name>: default=ros_cv_image_<publisher|subscriber>";
+    std::cerr << "\n    --queue-size=[<n>]:        default=1; ROS queue size";
+    std::cerr << "\n";
+    std::cerr << "\n    when --node is not specified also sets ros::init_options::AnonymousName flag";
+    std::cerr << "\n";
+    std::cerr << "\nfrom options:";
+    std::cerr << "\n    --from=<topic>:   topic to read";
+    std::cerr << "\n    --bags=[<files>]: comma-separated list of bag files, wildcards accepted";
+    std::cerr << "\n    --flush:          flush stream after each image";
+    std::cerr << "\n";
+    std::cerr << "\nto options:";
+    std::cerr << "\n    --to=<topic>:                 topic to publish to";
+    std::cerr << "\n    --frame=[<frame_id>]:         ros header frame id";
+    std::cerr << "\n    --latch:                      latch last message for new subscribers";
+    std::cerr << "\n    --max-datagram-size=[<size>]: maximum datagram size for UDP";
+    std::cerr << "\n";
+    std::cerr << "\nexamples:";
+    std::cerr << "\n    read from and write to live topics:";
+    std::cerr << "\n    $ ros-image --from camera/image_raw | cv-cat \"view;null\"";
+    std::cerr << "\n    $ cat image.bin | ros-image --to camera/image_raw";
+    std::cerr << "\n";
+    std::cerr << "\n    read from bag files:";
+    std::cerr << "\n    $ ros-image --from camera/image_raw --bags a.bag,b.bag | cv-cat \"view;null\"";
+    std::cerr << "\n";
+    std::cerr << "\n    wildcard expansion need to be protected from expanding by bash";
+    std::cerr << "\n    $ ros-image --from camera/image_raw --bags \"*.bag\" | cv-cat \"view;null\"";
+    std::cerr << "\n" << std::endl;
 }
 
 void ros_init( char **av, boost::optional< std::string > node_name, std::string const& suffix )
@@ -227,7 +212,7 @@ public:
         {
             for( auto name: comma::split( options.value< std::string >( "--bags", "" ), ',' ))
             {
-                std::vector< std::string > expansion = glob( name );
+                std::vector< std::string > expansion = snark::ros::glob( name );
                 bag_names.insert( bag_names.end(), expansion.begin(), expansion.end() );
             }
         }
@@ -243,26 +228,6 @@ public:
                     , &ros_subscriber::process, this
                     , hints );
         }
-    }
-    
-    static std::vector< std::string > glob( const std::string& path )
-    {
-        glob_t globbuf;
-        int return_val = ::glob( &path[0], GLOB_TILDE, NULL, &globbuf );
-        std::vector< std::string > path_names;
-        if( return_val == 0 )
-        {
-            for( std::size_t i = 0; i < globbuf.gl_pathc; ++i )
-            {
-                path_names.push_back( std::string( globbuf.gl_pathv[i] ));
-            }
-        }
-        else
-        {
-            std::cerr << comma::verbose.app_name() << ": couldn't find: \"" << path << "\"" << std::endl;
-        }
-        globfree( &globbuf );
-        return path_names;
     }
 
     void write( message_type const msg )
@@ -283,14 +248,12 @@ public:
         if( from_bag )
         {
             rosbag::Bag bag;
-            std::vector< std::string > topics;
-            topics.push_back( topic );
             for( auto bag_name: bag_names )
             {
                 comma::verbose << "opening " << bag_name << std::endl;
                 rosbag::View view_;
                 bag.open( bag_name );
-                for( rosbag::MessageInstance const mi : rosbag::View( bag, rosbag::TopicQuery( topics )))
+                for( rosbag::MessageInstance const mi : rosbag::View( bag, rosbag::TopicQuery( topic )))
                 {
                     message_type const msg = mi.instantiate< sensor_msgs::Image >();
                     write( msg );
@@ -319,7 +282,7 @@ class ros_publisher : public cv_io
 public:
     ros_publisher( comma::command_line_options const& options )
     {
-        message_.header.frame_id = options.value< std::string >( "--frame-id", std::string() );
+        message_.header.frame_id = options.value< std::string >( "--frame", std::string() );
 
         publisher_ = node_.advertise< sensor_msgs::Image >( options.value< std::string >( "--to" )
                 , options.value< unsigned >( "--queue-size", 1U )

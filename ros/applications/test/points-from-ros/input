@@ -1,0 +1,8 @@
+output_fields[0]="points-from-ros --bags data/pointcloud.bag --topic /camera1/depth/color/points --output-fields"
+output_fields[1]="points-from-ros --bags data/pointcloud.bag --topic /camera1/depth/color/points --header --output-fields"
+output_fields[2]="points-from-ros --bags data/pointcloud.bag --topic /camera1/depth/color/points --fields x,y --output-fields"
+output_format[0]="points-from-ros --bags data/pointcloud.bag --topic /camera1/depth/color/points --output-format"
+output_format[1]="points-from-ros --bags data/pointcloud.bag --topic /camera1/depth/color/points --header --output-format"
+output_format[2]="points-from-ros --bags data/pointcloud.bag --topic /camera1/depth/color/points --fields x,y --output-format"
+basic[0]="points-from-ros --bags data/pointcloud.bag --topic /camera1/depth/color/points | csv-from-bin 3f,ui"
+header[0]="points-from-ros --bags data/pointcloud.bag --topic /camera1/depth/color/points --header | csv-from-bin t,ui,3f,ui"
