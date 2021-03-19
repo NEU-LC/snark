@@ -274,6 +274,7 @@ public:
                     write( msg );
                     break;
                 }
+                if( is_shutdown ) { break; }
             }
         }
         else
