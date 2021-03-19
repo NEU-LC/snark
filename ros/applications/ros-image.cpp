@@ -266,11 +266,10 @@ public:
                 rosbag::Bag bag( bag_name );
                 for( rosbag::MessageInstance const mi : rosbag::View( bag, rosbag::TopicQuery( topic )))
                 {
-                    if( is_shutdown ) { break; }
+                    if( is_shutdown ) { return; }
                     message_type const msg = mi.instantiate< sensor_msgs::Image >();
                     write( msg );
                 }
-                if( is_shutdown ) { break; }
             }
         }
         else
