@@ -79,6 +79,14 @@ void ros_init( char **av, boost::optional< std::string > node_name, std::string 
         node_options = ::ros::InitOption::AnonymousName;
     }
     ros::init( rac, av, *node_name, node_options );
+
+    #ifndef WIN32
+    // Undo ROS's ignoring of SIGPIPE (see roscpp/init.cpp:469)
+    sigset_t sigmask;
+    sigemptyset( &sigmask );
+    sigaddset( &sigmask, SIGPIPE );
+    sigprocmask( SIG_UNBLOCK, &sigmask, NULL );
+    #endif
 }
 
 class cv_io
