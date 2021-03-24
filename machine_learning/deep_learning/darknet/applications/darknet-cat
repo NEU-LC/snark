@@ -127,7 +127,7 @@ def report_vram():
     smi_tree = ET.fromstring(outcome)
 
     # find process_info tag whose pid child tag has text equal to the pid of this process
-    process_info = smi_tree.find(f'.//process_info/pid[.="{my_pid}"]..')
+    process_info = smi_tree.find(f'.//process_info/[pid="{my_pid}"]')
 
     vram = process_info.find('used_memory').text
     vram = vram.split()[0] # remove 'MiB'
