@@ -17,8 +17,6 @@
 #include <fstream>
 #include <unordered_map>
 
-namespace {
-
 void bash_completion( unsigned const ac, char const * const * av )
 {
     static char const * const arguments =
@@ -340,8 +338,6 @@ void ros_execute( char **av, comma::command_line_options const& options )
         publisher.publish();
     }
 }
-
-} // namespace {
 
 int main( int ac, char* av[] )
 {
