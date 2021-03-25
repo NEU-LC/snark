@@ -209,7 +209,7 @@ class ros_subscriber : public cv_io
 public:
     using message_type = typename sensor_msgs::Image::ConstPtr;
 
-    ros_subscriber( char** av, comma::command_line_options const& options )
+    ros_subscriber( comma::command_line_options const& options )
         : flush( options.exists( "--flush" ))
         , from_bag( options.exists( "--bags" ))
         , topic( options.value< std::string >( "--from" ))
@@ -228,8 +228,6 @@ public:
 
             ros::TransportHints hints;
             if( datagram ) { hints = ros::TransportHints().maxDatagramSize( *datagram ); }
-            auto node_name = options.optional< std::string >( "--node-name,--node" );
-            ros_init( av, node_name, "_subscriber" );
             node_.reset( new ros::NodeHandle() );
             subscriber_ = node_->subscribe( topic
                                           , options.value< unsigned >( "--queue-size", 1U )
@@ -253,7 +251,7 @@ public:
     void process( message_type const msg )
     {
         write( msg );
-        if( !std::cout.good() ) { ros::shutdown(); }
+        if( !std::cout.good() || is_shutdown ) { ros::shutdown(); }
     }
 
     void subscribe( void )
@@ -303,7 +301,7 @@ public:
 
     void publish()
     {
-        while( std::cin.good() )
+        while( std::cin.good() && !is_shutdown )
         {
             auto record = cv_strm.read< boost::posix_time::ptime >( std::cin );
             message_.header.seq++;
@@ -322,6 +320,7 @@ private:
     ros::NodeHandle node_;
     ros::Publisher publisher_;
     typename sensor_msgs::Image message_;
+    comma::signal_flag is_shutdown;
 };
 
 void ros_execute( char** av, comma::command_line_options const& options )
@@ -329,7 +328,8 @@ void ros_execute( char** av, comma::command_line_options const& options )
     auto node_name = options.optional< std::string >( "--node-name,--node" );
     if( options.exists( "--from" ))
     {
-        ros_subscriber subscriber( av, options );
+        if( !options.exists( "--bags" )) { ros_init( av, node_name, "_subscriber" ); }
+        ros_subscriber subscriber( options );
         subscriber.subscribe();
     }
     else
