@@ -337,6 +337,7 @@ void ros_execute( char** av, comma::command_line_options const& options )
         ros_init( av, node_name, "_publisher" );
         ros_publisher publisher( options );
         publisher.publish();
+        ros::shutdown();
     }
 }
 
