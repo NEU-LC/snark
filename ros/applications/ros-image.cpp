@@ -209,7 +209,7 @@ class ros_subscriber : public cv_io
 public:
     using message_type = typename sensor_msgs::Image::ConstPtr;
 
-    ros_subscriber( comma::command_line_options const& options )
+    ros_subscriber( char** av, comma::command_line_options const& options )
         : flush( options.exists( "--flush" ))
         , from_bag( options.exists( "--bags" ))
         , topic( options.value< std::string >( "--from" ))
@@ -228,6 +228,8 @@ public:
 
             ros::TransportHints hints;
             if( datagram ) { hints = ros::TransportHints().maxDatagramSize( *datagram ); }
+            auto node_name = options.optional< std::string >( "--node-name,--node" );
+            ros_init( av, node_name, "_subscriber" );
             node_.reset( new ros::NodeHandle() );
             subscriber_ = node_->subscribe( topic
                                           , options.value< unsigned >( "--queue-size", 1U )
@@ -327,8 +329,7 @@ void ros_execute( char** av, comma::command_line_options const& options )
     auto node_name = options.optional< std::string >( "--node-name,--node" );
     if( options.exists( "--from" ))
     {
-        ros_init( av, node_name, "_subscriber" );
-        ros_subscriber subscriber( options );
+        ros_subscriber subscriber( av, options );
         subscriber.subscribe();
     }
     else
