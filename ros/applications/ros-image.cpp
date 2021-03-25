@@ -37,7 +37,7 @@ void usage( bool )
     std::cerr << "\n";
     std::cerr << "\ngeneral options:";
     std::cerr << "\n    --help,-h:                 print help and exit";
-    std::cerr << "\n    --node,--node-name=<name>: default=ros_cv_image_<publisher|subscriber>";
+    std::cerr << "\n    --node,--node-name=<name>: default=ros_image_<publisher|subscriber>";
     std::cerr << "\n    --queue-size=[<n>]:        default=1; ROS queue size";
     std::cerr << "\n";
     std::cerr << "\n    when --node is not specified also sets ros::init_options::AnonymousName flag";
@@ -72,7 +72,7 @@ void ros_init( char **av, boost::optional< std::string > node_name, std::string 
     int rac = 1;
     if( !node_name )
     {
-        node_name = "ros_cv_image" + suffix;
+        node_name = "ros_image" + suffix;
         node_options = ::ros::InitOption::AnonymousName;
     }
     ros::init( rac, av, *node_name, node_options );
