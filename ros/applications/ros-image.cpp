@@ -210,8 +210,8 @@ public:
     using message_type = typename sensor_msgs::Image::ConstPtr;
 
     ros_subscriber( comma::command_line_options const& options )
-        : flush( options.exists( "--flush" ) )
-        , from_bag( options.exists( "--bags" ) )
+        : flush( options.exists( "--flush" ))
+        , from_bag( options.exists( "--bags" ))
         , topic( options.value< std::string >( "--from" ))
     {
         if( from_bag )
@@ -230,9 +230,9 @@ public:
             if( datagram ) { hints = ros::TransportHints().maxDatagramSize( *datagram ); }
             node_.reset( new ros::NodeHandle() );
             subscriber_ = node_->subscribe( topic
-                    , options.value< unsigned >( "--queue-size", 1U )
-                    , &ros_subscriber::process, this
-                    , hints );
+                                          , options.value< unsigned >( "--queue-size", 1U )
+                                          , &ros_subscriber::process, this
+                                          , hints );
         }
     }
 
@@ -244,7 +244,7 @@ public:
                                      , cv::Mat( cv::Size( msg->width, msg->height )
                                               , cv_format( msg->encoding )
                                               , ( void* )msg->data.data()
-                                              , cv::Mat::AUTO_STEP ) ) );
+                                              , cv::Mat::AUTO_STEP )));
         if( flush ) { std::cout.flush(); }
     }
 
@@ -294,8 +294,8 @@ public:
         message_.header.frame_id = options.value< std::string >( "--frame", std::string() );
 
         publisher_ = node_.advertise< sensor_msgs::Image >( options.value< std::string >( "--to" )
-                , options.value< unsigned >( "--queue-size", 1U )
-                , options.exists( "--latch" ) );
+                                                          , options.value< unsigned >( "--queue-size", 1U )
+                                                          , options.exists( "--latch" ));
         ros::spinOnce();
     }
 
@@ -322,10 +322,10 @@ private:
     typename sensor_msgs::Image message_;
 };
 
-void ros_execute( char **av, comma::command_line_options const& options )
+void ros_execute( char** av, comma::command_line_options const& options )
 {
     auto node_name = options.optional< std::string >( "--node-name,--node" );
-    if( options.exists( "--from" ) )
+    if( options.exists( "--from" ))
     {
         ros_init( av, node_name, "_subscriber" );
         ros_subscriber subscriber( options );
@@ -344,7 +344,7 @@ int main( int ac, char* av[] )
     try
     {
         comma::command_line_options options( ac, av, usage );
-        if( options.exists( "--bash-completion" ) ) { bash_completion( ac, av ); }
+        if( options.exists( "--bash-completion" )) { bash_completion( ac, av ); }
         options.assert_mutually_exclusive( "--from,--flush,--output-fields", "--to,--dimensions,--dim,--input-fields" );
         options.assert_exists( "--from,--to" );
         ros_execute( av, options );
@@ -354,4 +354,3 @@ int main( int ac, char* av[] )
     catch( ... ) { std::cerr << comma::verbose.app_name() << ": unknown exception" << std::endl; }
     return 1;
 }
-
