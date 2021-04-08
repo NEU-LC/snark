@@ -69,7 +69,8 @@ void xy_chart::update()
     for( auto s: series_ )
     {
         if( !s->updated() ) { continue; }
-        if( !extents_ ) { extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) ); }
+        if( !extents_ ) { extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() )
+                                                   , QPointF( std::numeric_limits< double >::lowest(), std::numeric_limits< double >::lowest() ) ); }
         if( !config_.min.x && extents_->first.x() > s->extents().first.x() ) { extents_->first.setX( s->extents().first.x() ); }
         if( !config_.max.x && extents_->second.x() < s->extents().second.x() ) { extents_->second.setX( s->extents().second.x() ); }
         if( !config_.min.y && extents_->first.y() > s->extents().first.y() ) { extents_->first.setY( s->extents().first.y() ); }

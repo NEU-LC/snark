@@ -46,7 +46,8 @@ xy::xy( QtCharts::QXYSeries* s, const series::config& c ): series_( s ), config_
 void xy::clear()
 {
     series_->clear();
-    extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) );
+    extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() )
+                             , QPointF( std::numeric_limits< double >::lowest(), std::numeric_limits< double >::lowest() ) );
     updated_ = false;
 }
 
