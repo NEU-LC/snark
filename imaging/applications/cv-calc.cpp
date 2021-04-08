@@ -170,7 +170,7 @@ static void usage( bool verbose=false )
     std::cerr << std::endl;
     std::cerr << "    header" << std::endl;
     std::cerr << "        --header-fields; output header fields and exit" << std::endl;
-    std::cerr << "        --header-format; output header fields and exit" << std::endl;
+    std::cerr << "        --header-format; output header format and exit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "    histogram" << std::endl;
     std::cerr << "        --interleave-channels,--interleave: interleave channel histograms for each value" << std::endl;
@@ -195,7 +195,11 @@ static void usage( bool verbose=false )
     std::cerr << "            <options>:<filename>[;size=<size>][;normalized][;<csv_options>]; fields: t,index,<shape_fields>" << std::endl;
     std::cerr << "            <deprecated-options>:<size>[,normalized]" << std::endl;
     std::cerr << "                <filename>: file name as in csv options." << std::endl;
-    std::cerr << "                <csv_options>: acfr csv options like fields, format etc." << std::endl;
+    std::cerr << "                <csv_options>: usual csv options" << std::endl;
+    std::cerr << "                    fields" << std::endl;
+    std::cerr << "                        t: timestamp to be matched with image timestamp" << std::endl;
+    std::cerr << "                        index: reverse index of roi rectangles to go into an image" << std::endl;
+    std::cerr << "                        <shape_fields>: min/x,min/y,max/x,max/y" << std::endl;
     std::cerr << "                <size>: number of primitives" << std::endl;
     std::cerr << "                             all images in the input stream must have same number of regions" << std::endl;
     std::cerr << "                             regions with zero width or height will be ignored" << std::endl;
@@ -510,19 +514,11 @@ template < typename shape_type, typename config_type > static void init_( std::v
 
 namespace roi {
 
-enum class status
-{
-    error = -2,
-    success = 0,
-    ignore = 1
-};
+enum class status { error = -2, success = 0, ignore = 1 };
 
 struct shapes
 {
-    struct config : public region::config
-    {
-        region::properties properties;
-    };
+    struct config : public region::config { region::properties properties; };
 
     struct rectangle : public region::rectangle
     {
@@ -530,7 +526,7 @@ struct shapes
         rectangle() {}
         rectangle( region::properties const& properties ) : properties( properties ) {}
 
-        std::pair< status, cv::Rect > validate( int const rows, int const cols, bool const permissive )
+        std::pair< status, cv::Rect > validate( int const rows, int const cols, bool const permissive ) const
         {
             ::extents ext = *this;
             if( properties.normalized ) { ext.unnormalise( rows, cols ); }
@@ -547,7 +543,6 @@ struct shapes
             if( ext.min.x < 0 || ext.min.y < 0 || ext.max.x >= cols || ext.max.y >= rows ) { return std::make_pair( status::ignore, cv::Rect() ); }
             return std::make_pair( status::success, rect );
         }
-
     };
 
     struct header_shapes { std::vector< shapes::rectangle > rectangles; };
@@ -582,10 +577,7 @@ public:
         properties() : weight( 1 ) {}
     };
 
-    struct config : public region::config
-    {
-        shapes::properties properties;
-    };
+    struct config : public region::config { shapes::properties properties; };
 
         //void draw( cv::Mat m ) const { cv::circle( m, center, radius, color, thickness, line_type, shift ); }
 
@@ -618,7 +610,6 @@ public:
                 if( properties.normalized ) { cv::circle( m, cv::Point2i( centre.x * m.cols, centre.y * m.rows ), radius * m.cols, properties.color, properties.weight, cv::LINE_AA ); }
                 else { cv::circle( m, centre, radius, properties.color, properties.weight, cv::LINE_AA ); }
             #endif
-            
             return true;
         }
     };
@@ -1559,32 +1550,26 @@ int main( int ac, char** av )
                 input_options.fields = comma::join( comma::csv::names< roi::shapes::header_shapes >( input_options.fields, true, sample.hdr_shapes ), ',' );
                 output_options.fields = comma::join( comma::csv::names< roi::shapes::header_shapes >( output_options.fields, true, sample.hdr_shapes ), ',' );
                 if( crop ) { output_options.fields = std::string(); output_options.format = comma::csv::format(); }// comma::join( comma::csv::names< snark::cv_mat::serialization::header >( output_options.fields, true ), ',' ); }
-
                 snark::cv_mat::serialization input_serialization( input_options );
                 snark::cv_mat::serialization output_serialization( output_options );
                 auto binary = csv.binary()
                     ? comma::csv::binary< roi::shapes::header_shapes >( csv, sample.hdr_shapes )
                     : comma::csv::binary< roi::shapes::header_shapes >(); // todo: sample seems not to take effect; debug
-
                 cv::Mat mask;
                 comma::uint64 count = 0;
-
                 while( std::cin.good() )
                 {
                     auto p = input_serialization.read< snark::cv_mat::serialization::header::buffer_t >( std::cin );
                     if( p.second.empty() ) { break; }
-
                     cv::Mat& mat = p.second;
                     ++count;
-
                     roi::shapes::header_shapes hdr_shapes = sample.hdr_shapes; // todo: quick and dirty; tear down, once todo above is sorted
                     binary.get( hdr_shapes, &input_serialization.header_buffer()[0] );
                     auto timestamp = input_serialization.get_header( &input_serialization.header_buffer()[0] ).timestamp;
                     if( sample.strm_shapes.rectangles ) { sample.strm_shapes.rectangles->read_at( hdr_shapes.rectangles, timestamp ); }
-
                     if( mask.rows != mat.rows || mask.cols != mat.cols ) { mask = cv::Mat::ones( mat.rows, mat.cols, CV_8U ); }
                     auto do_discard = true;
-                    for( auto& ext : hdr_shapes.rectangles )
+                    for( const auto& ext : hdr_shapes.rectangles )
                     {
                         auto result = ext.validate( mat.rows, mat.cols, permissive );
                         if( roi::status::error == result.first )
@@ -1629,10 +1614,8 @@ int main( int ac, char** av )
                 if( input_options.format.elements().empty() ) { input_options.format = comma::csv::format( "4i,t,3ui" ); }
                 if( output_options_string.empty() ) { output_options = input_options; }
                 if( verbose ) { std::cerr << name << "fields: " << input_options.fields << std::endl; std::cerr << name << "format: " << input_options.format.string() << std::endl; }
-
                 snark::cv_mat::serialization input_serialization( input_options );
                 snark::cv_mat::serialization output_serialization( output_options );
-
                 csv.fields = input_options.fields;
                 csv.format( input_options.format );
                 comma::csv::binary< ::extents > binary( csv );
