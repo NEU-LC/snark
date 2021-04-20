@@ -21,6 +21,10 @@ add_executable( ros-image ros-image.cpp ${detail_source} )
 target_link_libraries( ros-image ${ros_libs} snark_imaging ${snark_ALL_EXTERNAL_LIBRARIES} )
 set_target_properties( ros-image PROPERTIES LINK_FLAGS_RELEASE -s )
 
+add_executable( ros-points ros-points.cpp ${detail_source} )
+target_link_libraries( ros-points ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} )
+set_target_properties( ros-points PROPERTIES LINK_FLAGS_RELEASE -s )
+
 add_executable( points-from-ros points-from-ros.cpp ${detail_source} )
 target_link_libraries( points-from-ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} )
 set_target_properties( points-from-ros PROPERTIES LINK_FLAGS_RELEASE -s )
@@ -29,7 +33,7 @@ add_executable( points-to-ros points-to-ros.cpp )
 target_link_libraries( points-to-ros ${ros_libs} ${snark_ALL_EXTERNAL_LIBRARIES} )
 set_target_properties( points-to-ros PROPERTIES LINK_FLAGS_RELEASE -s )
 
-install( TARGETS ros-array ros-image points-from-ros points-to-ros
+install( TARGETS ros-array ros-image ros-points points-from-ros points-to-ros
          RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} COMPONENT Runtime )
 
 install( PROGRAMS ros-from-csv ros-to-csv

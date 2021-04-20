@@ -1,0 +1,12 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+source $( type -p comma-test-util ) || { echo "$scriptname: failed to source comma-test-util" >&2 ; exit 1 ; }
+
+for distro in noetic melodic kinetic; do
+    setup_script=/opt/ros/$distro/setup.bash
+    [[ -f $setup_script ]] && source $setup_script && break
+done
+[[ -f $setup_script ]] || { echo "$scriptname: couldn't source ros setup.bash script" >&2; exit 1; }
+
+comma_test_commands
