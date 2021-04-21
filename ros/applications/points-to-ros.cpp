@@ -311,6 +311,7 @@ private:
     
 int main( int argc, char** argv )
 {
+    std::cerr << "\nDEPRECATED: please use \"ros-points --to <topic>\"\n" << std::endl;
     try
     {
         comma::command_line_options options( argc, argv, usage );
