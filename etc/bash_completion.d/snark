@@ -6,7 +6,7 @@ _snark_bash_completion()
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     # These tests are necessary because bash will attempt completion on
     # ./name if there is a name in its completion list
-    # even if ./name does not exist 
+    # even if ./name does not exist
     if [[ -x "${COMP_WORDS[0]}" ]] ; then
         opts=$( "${COMP_WORDS[0]}" --bash-completion )
     elif type -p "${COMP_WORDS[0]}" > /dev/null 2> /dev/null ; then
@@ -29,8 +29,6 @@ complete -F _snark_bash_completion mat-convert
 complete -F _snark_bash_completion ocular-roboteye-thermal-cat
 complete -F _snark_bash_completion points-align
 complete -F _snark_bash_completion points-make
-complete -F _snark_bash_completion points-from-ros
-complete -F _snark_bash_completion points-to-ros
 complete -F _snark_bash_completion quickset-pantilt-web-control
 complete -F _snark_bash_completion ros-image
 complete -F _snark_bash_completion ros-points
