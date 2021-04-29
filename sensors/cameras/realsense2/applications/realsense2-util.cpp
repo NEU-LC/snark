@@ -67,10 +67,9 @@ void usage( bool const verbose )
     static const char* const indent="    ";
 
     std::cerr << std::endl;
-    std::cerr << "Read the data from realsense camera and convert into cv format." << std::endl;
+    std::cerr << "Show and configure realsense cameras" << std::endl;
     std::cerr << std::endl;
-    std::cerr << "Usage:" << std::endl;
-    std::cerr << indent << comma::verbose.app_name() << " <operation> [<options>...]" << std::endl;
+    std::cerr << "Usage: " << comma::verbose.app_name() << " <operation> [<options>...]" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Operations:" << std::endl;
     operations(4);
