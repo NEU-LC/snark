@@ -134,6 +134,7 @@ bool stream::update()
     static_assert( sizeof( qreal ) == 8 );
     size_ = buffers_.records.size();
     auto append = [&]( plotting::series::xy& s, unsigned int i, unsigned int j ) { s.append( buffers_.records.values()[i].t, buffers_.records.values()[i].series[j] ); }; // todo: support 3d data, time series, polar data
+    while( false ) {;} // TODO: wait for zoom to stop before updating
     if( buffers_.changed() )
     {
         for( unsigned int j = 0; j < series.size(); ++j )
