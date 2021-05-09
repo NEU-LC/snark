@@ -1,0 +1,24 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+for distro in noetic melodic kinetic; do
+    setup_script=/opt/ros/$distro/setup.bash
+    [[ -f $setup_script ]] && source $setup_script && break
+done
+[[ -f $setup_script ]] || { echo "$scriptname: couldn't source ros setup.bash script" >&2; exit 1; }
+
+num_points=2000
+bag_file=test_$$.bag
+topic=/points
+fields=t,id,x,y,z,block
+format=t,ui,3d,ui
+
+csv-random make --type 3d | head -n $num_points | csv-paste line-number - \
+    | csv-blocks group --fields scalar --span 1000 | csv-time-stamp \
+    | ros-points --to $topic --fields $fields  --format $format --output $bag_file
+
+echo -n "num_points="
+ros-points --from $topic --bags $bag_file --binary $format | csv-from-bin $format | wc -l
+
+rm $bag_file

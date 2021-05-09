@@ -26,11 +26,11 @@ static void bash_completion( unsigned int const ac, char const* const* av )
 
 static void usage( bool verbose = false )
 {
-    std::cerr << "\nstream data from an Innovusion lidar";
+    std::cerr << "\nStream data from an Innovusion lidar";
     std::cerr << "\n";
-    std::cerr << "\nusage: " << comma::verbose.app_name() << " [<options>]";
+    std::cerr << "\nUsage: " << comma::verbose.app_name() << " [<options>]";
     std::cerr << "\n";
-    std::cerr << "\noptions:";
+    std::cerr << "\nOptions:";
     std::cerr << "\n    --help,-h:             show this help";
     std::cerr << "\n    --verbose,-v:          more output to stderr";
     std::cerr << "\n    --debug;               even more output";
@@ -42,19 +42,23 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --output-format:       print output format for cooked or full data and exit";
     std::cerr << "\n    --sample-data=[<dir>]; TODO: read saved data from <dir>";
     std::cerr << "\n";
-    std::cerr << "\noutput types:";
+    std::cerr << "\nOutput types:";
     std::cerr << "\n    none:   no output, useful for benchmarking the underlying SDK";
     std::cerr << "\n    raw:    raw inno_frame data from SDK";
     std::cerr << "\n    cooked: regular binary data, one packet per point";
     std::cerr << "\n    full:   as for cooked but with additional underlying data";
     std::cerr << "\n";
-    std::cerr << "\nexample:";
+    std::cerr << "\nCoordinate frame:";
+    std::cerr << "\n    The inno_point struct in Innovusion SDK describes the sensor frame as";
+    std::cerr << "\n    x up, y right, and z forward. This driver follows that convention.";
+    std::cerr << "\n";
+    std::cerr << "\nExample:";
     std::cerr << "\n    " << comma::verbose.app_name() << " --address 192.168.10.40 \\";
     std::cerr << "\n        | io-publish tcp:4444 \\";
     std::cerr << "\n              --size $( " << comma::verbose.app_name() << " --output-format | csv-format size ) \\";
     std::cerr << "\n              -m 1000 --no-flush";
     std::cerr << "\n";
-    std::cerr << "\nusing Innovusion LIDAR API version " << inno_api_version();
+    std::cerr << "\nUsing Innovusion LIDAR API version " << inno_api_version();
     std::cerr << "\n";
     std::cerr << std::endl;
     exit( 0 );

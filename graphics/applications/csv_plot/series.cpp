@@ -46,13 +46,14 @@ xy::xy( QtCharts::QXYSeries* s, const series::config& c ): series_( s ), config_
 void xy::clear()
 {
     series_->clear();
-    extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() ), QPointF( std::numeric_limits< double >::min(), std::numeric_limits< double >::min() ) );
+    extents_ = std::make_pair( QPointF( std::numeric_limits< double >::max(), std::numeric_limits< double >::max() )
+                             , QPointF( std::numeric_limits< double >::lowest(), std::numeric_limits< double >::lowest() ) );
     updated_ = false;
 }
 
 void xy::append( boost::posix_time::ptime, const point& p )
 {
-    series_->append( QPoint( *p.x, *p.y ) ); // todo: support 3d data, time series, polar data (or template stream upon those)
+    series_->append( QPointF( *p.x, *p.y ) ); // todo: support 3d data, time series, polar data (or template stream upon those)
     if( extents_.first.x() > p.x ) { extents_.first.setX( *p.x ); }
     if( extents_.second.x() < p.x ) { extents_.second.setX( *p.x ); }
     if( extents_.first.y() > p.y ) { extents_.first.setY( *p.y ); }

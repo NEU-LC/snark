@@ -81,6 +81,11 @@ static void usage( bool verbose = false )
     std::cerr << "\n        track:       29982";
     std::cerr << "\n        measurement: 29984";
     std::cerr << "\n";
+    std::cerr << "\nCoordinate frame:";
+    std::cerr << "\n    The EchoFlight Radar User Guide in §5.1 Coordinate Systems describes the";
+    std::cerr << "\n    sensor frame as x left, y up, and z forward. This driver follows that";
+    std::cerr << "\n    convention.";
+    std::cerr << "\n";
     std::cerr << "\nExamples:";
     std::cerr << "\n    " << comma::verbose.app_name() << " status | csv-from-bin $( " << comma::verbose.app_name() << " status --output-format )";
     std::cerr << "\n    " << comma::verbose.app_name() << " track --sample-data=/path/to/data";

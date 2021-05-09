@@ -126,6 +126,7 @@ static void usage( bool )
     std::cerr << "output options:" << std::endl;
     std::cerr << "    --binary,-b[=<format>]: if present, output in binary equivalent of csv" << std::endl;
     std::cerr << "    --fields <fields>: e.g. t,x,y,z,scan" << std::endl;
+    std::cerr << "    --flush: if present, flush output stream after each write" << std::endl;
     std::cerr << "    --min-range=<value>: do not output points closer than <value>; default 0" << std::endl;
     std::cerr << "    --max-range=<value>: do not output points farther away than <value>; default output all points" << std::endl;
     std::cerr << "    --ntp=[<threshold>],[<\"permissive\">]: get data timestamps from ntp data in packets (default: system time from input stream)" << std::endl;
@@ -273,6 +274,7 @@ int main( int ac, char** av )
         comma::csv::options csv;
         csv.fields = fields;
         csv.full_xpath = true;
+        csv.flush = options.exists( "--flush" );
         if( options.exists( "--binary,-b" ) ) { csv.format( format ); }
         options.assert_mutually_exclusive( "--pcap,--thin,--udp-port,--proprietary,-q" );
         options.assert_mutually_exclusive( "--puck,--db" );
@@ -351,7 +353,7 @@ int main( int ac, char** av )
             {
                 if( scan != p.scan && points.size() )
                 {
-                    if( points.back().valid_scan && p.valid_scan ) { for( const auto& i : points ) { ostream.write(i); } }
+                    if( points.back().valid_scan && p.valid_scan ) { for( const auto& i : points ) { ostream.write( i ); } } // todo? improve performance? currently will flush on each point, which is inefficient, since it should be sufficient to flush once on the full scan
                     points.clear();
                 }
                 scan = p.scan;
@@ -359,7 +361,7 @@ int main( int ac, char** av )
             }
             else
             {
-                ostream.write( p );
+                ostream.write( p ); // todo? improve performance? currently will flush on each point, which is inefficient, since it should be sufficient to flush once on the full scan
             }
         }
         //Profilerstop(); }
