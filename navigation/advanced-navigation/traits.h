@@ -7,8 +7,6 @@
 #include <comma/visiting/traits.h>
 #include <string>
 
-using namespace snark::navigation::advanced_navigation;
-
 namespace comma { namespace visiting {
 
 template < unsigned int Size, bool Signed, bool Floating, std::size_t N > struct traits< boost::array<comma::packed::detail::endian< comma::packed::detail::little, Size,Signed,Floating>, N > >
@@ -20,9 +18,9 @@ template < unsigned int Size, bool Signed, bool Floating, std::size_t N > struct
 };
 
 template <>
-struct traits<messages::system_state>
+struct traits< snark::navigation::advanced_navigation::messages::system_state >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::system_state& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::system_state& p, Visitor& v )
     {
         v.apply( "system_status", p.system_status() );
         v.apply( "filter_status", p.filter_status() );
@@ -39,9 +37,9 @@ struct traits<messages::system_state>
 };
 
 template <>
-struct traits<messages::filter_status_description>
+struct traits< snark::navigation::advanced_navigation::messages::filter_status_description >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::filter_status_description& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::filter_status_description& p, Visitor& v )
     {
         v.apply( "status", p.status );
         v.apply( "orientation_filter_initialised", p.orientation_filter_initialised() );
@@ -62,9 +60,9 @@ struct traits<messages::filter_status_description>
 };
 
 template <>
-struct traits<messages::system_status_description>
+struct traits< snark::navigation::advanced_navigation::messages::system_status_description >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::system_status_description& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::system_status_description& p, Visitor& v )
     {
         v.apply( "status", p.status );
         v.apply( "system_failure", p.system_failure() );
@@ -87,9 +85,9 @@ struct traits<messages::system_status_description>
 };
 
 template <>
-struct traits< messages::raw_sensors >
+struct traits< snark::navigation::advanced_navigation::messages::raw_sensors >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::raw_sensors& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::raw_sensors& p, Visitor& v )
     {
         v.apply( "accelerometer", p.accelerometer );
         v.apply( "gyroscope", p.gyroscope );
@@ -101,9 +99,9 @@ struct traits< messages::raw_sensors >
 };
 
 template <>
-struct traits< messages::satellites >
+struct traits< snark::navigation::advanced_navigation::messages::satellites >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::satellites& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::satellites& p, Visitor& v )
     {
         v.apply( "hdop", p.hdop() );
         v.apply( "vdop", p.vdop() );
@@ -116,13 +114,13 @@ struct traits< messages::satellites >
 };
 
 template <>
-struct traits< messages::magnetic_calibration_configuration >
+struct traits< snark::navigation::advanced_navigation::messages::magnetic_calibration_configuration >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::magnetic_calibration_configuration& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::magnetic_calibration_configuration& p, Visitor& v )
     {
         v.apply("action", p.action());
     }
-    template < typename Key, class Visitor > static void visit( const Key&, messages::magnetic_calibration_configuration& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::navigation::advanced_navigation::messages::magnetic_calibration_configuration& p, Visitor& v )
     {
         auto a=p.action();
         v.apply("action", a);
@@ -131,9 +129,9 @@ struct traits< messages::magnetic_calibration_configuration >
 };
 
 template <>
-struct traits< messages::magnetic_calibration_status >
+struct traits< snark::navigation::advanced_navigation::messages::magnetic_calibration_status >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::magnetic_calibration_status& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::magnetic_calibration_status& p, Visitor& v )
     {
         v.apply("status", p.status());
         v.apply("progress", p.progress());

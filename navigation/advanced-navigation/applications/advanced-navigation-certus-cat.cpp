@@ -46,7 +46,7 @@ static void bash_completion()
               << std::endl;
 }
 
-class app_base : protected device
+class app_base : protected snark::navigation::advanced_navigation::device
 {
 public:
     app_base( const comma::command_line_options& options )
@@ -81,11 +81,13 @@ public:
     {}
 
 protected:
-    void handle_raw( messages::header* msg_header, const char* msg_data, std::size_t msg_data_length )
+    void handle_raw( snark::navigation::advanced_navigation::messages::header* msg_header
+                   , const char* msg_data
+                   , std::size_t msg_data_length )
     {
-        obuf.resize( messages::header::size + msg_data_length );
-        std::memcpy( &obuf[0], msg_header->data(), messages::header::size );
-        std::memcpy( &obuf[messages::header::size], msg_data, msg_data_length );
+        obuf.resize( snark::navigation::advanced_navigation::messages::header::size + msg_data_length );
+        std::memcpy( &obuf[0], msg_header->data(), snark::navigation::advanced_navigation::messages::header::size );
+        std::memcpy( &obuf[snark::navigation::advanced_navigation::messages::header::size], msg_data, msg_data_length );
         std::cout.write( &obuf[0], obuf.size() );
         if( flush ) { std::cout.flush(); }
     }

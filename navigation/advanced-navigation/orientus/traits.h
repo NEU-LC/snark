@@ -8,8 +8,6 @@
 #include <comma/visiting/traits.h>
 #include <string>
 
-using namespace snark::navigation::advanced_navigation;
-
 namespace comma { namespace visiting {
 
 template < unsigned int Size, bool Signed, bool Floating, std::size_t N >
@@ -37,9 +35,9 @@ template < typename T > struct traits< snark::timestamped< T > >
 };
 
 template <>
-struct traits< messages::header >
+struct traits< snark::navigation::advanced_navigation::messages::header >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::header& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::header& p, Visitor& v )
     {
         v.apply( "lrc", p.LRC() );
         v.apply( "id", p.id() );
@@ -49,9 +47,9 @@ struct traits< messages::header >
 };
 
 template <>
-struct traits< messages::system_state >
+struct traits< snark::navigation::advanced_navigation::messages::system_state >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::system_state& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::system_state& p, Visitor& v )
     {
         v.apply( "system_status", p.system_status() );
         v.apply( "filter_status", p.filter_status() );
@@ -64,9 +62,9 @@ struct traits< messages::system_state >
 };
 
 template <>
-struct traits< messages::raw_sensors >
+struct traits< snark::navigation::advanced_navigation::messages::raw_sensors >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::raw_sensors& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::raw_sensors& p, Visitor& v )
     {
         v.apply( "accelerometer", p.accelerometer );
         v.apply( "gyroscope", p.gyroscope );

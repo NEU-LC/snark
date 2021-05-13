@@ -16,6 +16,8 @@
 #include <regex>
 #include <thread>
 
+namespace messages = snark::navigation::advanced_navigation::messages;
+
 static unsigned int sleep_us = 10000;
 static bool flush;
 
@@ -183,13 +185,12 @@ struct app_i
     virtual void output_fields() = 0;
 };
 
-struct app_base : protected device
+struct app_base : protected snark::navigation::advanced_navigation::device
 {
     comma::io::select select;
     comma::signal_flag signaled;
 
-    app_base()
-        : device( "-" )
+    app_base() : device( "-" )
     {
         select.read().add( fd() );
     }
