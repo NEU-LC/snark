@@ -38,7 +38,7 @@ comma::io::file_descriptor serial_stream::fd()
 // -------------
 // io_stream
 // -------------
-io_stream::io_stream( const std::string& name, const advanced_navigation::options& options )
+io_stream::io_stream( const std::string& name )
     : is( name, comma::io::mode::binary, comma::io::mode::non_blocking )
 {
 //     std::cerr<<"io_stream::io_stream "<<name<<" "<<(bool)ios<<std::endl;

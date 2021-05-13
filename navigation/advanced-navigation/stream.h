@@ -43,7 +43,7 @@ struct serial_stream : public stream
 struct io_stream : public stream
 {
     comma::io::istream is;
-    io_stream(const std::string& name,const advanced_navigation::options& options);
+    io_stream(const std::string& name);
     std::size_t read_some(char* buf,std::size_t buf_size,std::size_t read_size);
     std::size_t write(const char* buf,std::size_t to_write);
     comma::io::file_descriptor fd();
