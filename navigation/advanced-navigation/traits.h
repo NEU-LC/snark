@@ -10,7 +10,7 @@
 using namespace snark::navigation::advanced_navigation;
 
 namespace comma { namespace visiting {
-    
+
 template < unsigned int Size, bool Signed, bool Floating, std::size_t N > struct traits< boost::array<comma::packed::detail::endian< comma::packed::detail::little, Size,Signed,Floating>, N > >
 {
     template< typename K, typename V > static void visit( const K& k, const boost::array<comma::packed::detail::endian< comma::packed::detail::little, Size,Signed,Floating>, N >& t, V& v )
@@ -142,4 +142,3 @@ struct traits< messages::magnetic_calibration_status >
 };
 
 } } // namespace comma { namespace visiting {
-    
