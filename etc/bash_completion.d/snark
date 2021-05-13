@@ -15,7 +15,9 @@ _snark_bash_completion()
     COMPREPLY=( $( compgen -f -d -W "${opts}" -- ${cur}) )
 }
 
+complete -F _snark_bash_completion advanced-navigation-certus-cat
 complete -F _snark_bash_completion advanced-navigation-spatial-to-csv
+complete -F _snark_bash_completion advanced-navigation-to-csv
 complete -F _snark_bash_completion basler-cat
 complete -F _snark_bash_completion basler-log
 complete -F _snark_bash_completion basler-log-summary
