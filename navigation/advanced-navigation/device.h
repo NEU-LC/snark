@@ -13,8 +13,8 @@ namespace snark { namespace navigation { namespace advanced_navigation {
 class device
 {
 public:
-    /// name is serial port or - for stdin
-    device( const std::string& name, const advanced_navigation::options& options );
+    /// name is serial or network port or - for stdin
+    device( const std::string& name, const advanced_navigation::options& options=advanced_navigation::options() );
     virtual ~device() {}
     void process();
     void send_ntrip( std::vector<char> buf );
