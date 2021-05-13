@@ -34,7 +34,7 @@ void usage(bool detail)
     std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " <what> [<options>]" << std::endl;
     std::cerr<< "    <what>: select data packet to output, default: navigation"<< std::endl;
-    std::cerr<< "    or " << comma::verbose.app_name() << "--send <command> --device <port> [<options>]"<< std::endl;
+    std::cerr<< "    or " << comma::verbose.app_name() << " --send <command> --device <port> [<options>]"<< std::endl;
     std::cerr << std::endl;
     std::cerr<< "what: " << std::endl;
     std::cerr<< "    all: combines system-state, raw-sensors and standard deviations into one record" << std::endl;
