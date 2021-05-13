@@ -14,10 +14,9 @@ bool flush;
 
 void usage( bool verbose )
 {
-    std::cerr << "\nconnect to Advanced Navigation Certus device and send commands or output data";
+    std::cerr << "\nconnect to Advanced Navigation Certus device and output data";
     std::cerr << "\n";
     std::cerr << "\nusage: " << comma::verbose.app_name() << " <options>";
-    std::cerr << "\n    or " << comma::verbose.app_name() << " --send <command> <options>";
     std::cerr << "\n";
     std::cerr << "\noptions:";
     std::cerr << "\n    --help,-h:              show help";
