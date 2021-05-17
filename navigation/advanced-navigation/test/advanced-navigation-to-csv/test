@@ -1,0 +1,21 @@
+#!/bin/bash
+
+source $( type -p comma-test-util ) || { echo "$0: failed to source comma-test-util" >&2 ; exit 1 ; }
+
+function read_packets()
+{
+    local packet=$1
+    local test_num=$2
+    local prefix=$( tr - _ <<< $packet )
+    [[ $test_num ]] && prefix=${prefix}_${test_num}
+    advanced-navigation-to-csv $packet \
+        | name-value-from-csv $( advanced-navigation-to-csv $packet --output-fields ) --line-number --prefix ${prefix}
+}
+
+cat ../data/packets-20-28 | read_packets all
+cat ../data/packets-20-28 | read_packets navigation
+cat ../data/packets-20-28 | read_packets raw-sensors 0
+cat ../data/packets-20-28 | read_packets system-state 0
+
+cat ../data/raw-sensors | read_packets raw-sensors 1
+cat ../data/system-state | read_packets system-state 1

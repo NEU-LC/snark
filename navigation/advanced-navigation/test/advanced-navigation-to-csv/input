@@ -1,0 +1,1 @@
+system_state="cat ../data/system-state | read_packets system-state"

@@ -553,6 +553,7 @@ macro( configure_testing build_option module_dir )
 endmacro()
 
 configure_testing( snark_build_geodesy_solar geodesy/solar/test )
+configure_testing( snark_build_navigation navigation )
 configure_testing( snark_build_ros ros/applications/test )
 configure_testing( snark_build_sensors_echodyne sensors/radars/echodyne )
 configure_testing( snark_build_sensors_ouster sensors/lidars/ouster )
