@@ -4,9 +4,9 @@
 
 namespace snark { namespace innovusion {
 
-static boost::posix_time::ptime inno_time_to_ptime( inno_timestamp_us_t start_of_frame, uint16_t offset_100us )
+static boost::posix_time::ptime inno_time_to_ptime( inno_timestamp_us_t start_of_frame, uint16_t offset_100us, int64_t timeframe_offset_us )
 {
-    uint64_t timestamp_us = static_cast< uint64_t >( start_of_frame ) + offset_100us * 100;
+    int64_t timestamp_us = static_cast< int64_t >( start_of_frame ) + static_cast< int64_t >( offset_100us ) * 100 + timeframe_offset_us;
 
     return boost::posix_time::from_time_t( timestamp_us / 1000000 ) + boost::posix_time::microseconds( timestamp_us % 1000000 );
 }
@@ -68,7 +68,7 @@ output_data_t::output_data_t()
     , value( 0 )
 {}
 
-output_data_t::output_data_t( const inno_frame* frame, unsigned int index )
+output_data_t::output_data_t( const inno_frame* frame, unsigned int index, int64_t timeframe_offset_us )
     : block( frame->idx )
     , x( frame->points[index].x )
     , y( frame->points[index].y )
@@ -76,19 +76,19 @@ output_data_t::output_data_t( const inno_frame* frame, unsigned int index )
     , radius( frame->points[index].radius )
     , value( frame->points[index].ref )
 {
-    t = inno_time_to_ptime( frame->ts_us_start, frame->points[index].ts_100us );
+    t = inno_time_to_ptime( frame->ts_us_start, frame->points[index].ts_100us, timeframe_offset_us );
 }
 
 output_data_full_t::output_data_full_t()
     : block( 0 )
 {}
 
-output_data_full_t::output_data_full_t( const inno_frame* frame_, unsigned int index )
+output_data_full_t::output_data_full_t( const inno_frame* frame_, unsigned int index, int64_t timeframe_offset_us )
     : block( frame_->idx )
     , frame( frame_ )
     , point( &(frame_->points[index]) )
 {
-    t = inno_time_to_ptime( frame_->ts_us_start, frame_->points[index].ts_100us );
+    t = inno_time_to_ptime( frame_->ts_us_start, frame_->points[index].ts_100us, timeframe_offset_us );
 }
 
 std::string alarm_type_to_string( inno_alarm alarm_type )
