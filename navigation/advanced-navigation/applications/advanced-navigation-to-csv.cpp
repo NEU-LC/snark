@@ -200,7 +200,7 @@ struct app_base : protected snark::navigation::advanced_navigation::device
         while( !signaled && std::cout.good() )
         {
             select.wait( boost::posix_time::microseconds( sleep_us ));
-            if( select.read().ready( fd() ) ) { device::process(); }
+            if( !signaled && select.read().ready( fd() ) ) { device::process(); }
         }
     }
 };
