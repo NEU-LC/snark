@@ -74,7 +74,8 @@ class xy_chart: public chart
         xy_chart( const chart::config_t& config, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
         void push_back( plotting::series::xy* s );        
         void update();
-        
+        void set_axis_limits( int min_x, int min_y, int max_x, int max_y );
+    
     private:
         boost::optional< std::pair< QPointF, QPointF > > extents_;
         QtCharts::QValueAxis* x_axis_;

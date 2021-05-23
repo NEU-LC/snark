@@ -115,11 +115,14 @@ static void usage( bool verbose = false )
     std::cerr << "    --window-size=<x>,<y>: initial window size; default=800,600" << std::endl;
     std::cerr << std::endl;
     std::cerr << "zooming and panning" << std::endl;
-    std::cerr << "    scroll to zoom in and out about the centre of the plot" << std::endl;
-    std::cerr << "    press the 'r' key to reset the plot to its original zoom level" << std::endl;
-    std::cerr << "    left-click and drag to zoom in" << std::endl;
-    std::cerr << "    right-click and drag to zoom out" << std::endl;
-    std::cerr << "    middle-click and drag to pan" << std::endl;
+    std::cerr << "    scroll wheel: zoom in and out about the mouse cursor" << std::endl;
+    std::cerr << "    left-click and drag: zoom into selected area" << std::endl;
+    std::cerr << "    right-click and drag: zoom out about the centre of the selected area" << std::endl;
+    std::cerr << "    +: zoom in about the centre of the plot" << std::endl;
+    std::cerr << "    -: zoom out about the centre of the plot" << std::endl;
+    std::cerr << "    r: reset the plot to its original zoom level" << std::endl;
+    std::cerr << "    arrow keys: pan" << std::endl;
+    std::cerr << "    middle-click and drag: pan" << std::endl;
     std::cerr << std::endl;
     if( verbose )
     {
@@ -185,7 +188,7 @@ static void usage( bool verbose = false )
         std::cerr << "                        'line-number;size=256;index;binary=ui' \\" << std::endl;
         std::cerr << "                        '-;binary=3ui' \\" << std::endl;
         std::cerr << "            | csv-plot '-;fields=block,x,series[0]/y,series[1]/y,series[2]/y;binary=5ui;series[0]=color:blue|title:blue;series[1]=color:green|title:green;series[2]=color:red|title:red;chart=histogram' \\" << std::endl;
-        std::cerr << "                       --chart='histogram;min/y=0;max/y=8000;axes/x/title=pixel value;axes/y/title=number of pixels'" << std::endl;
+        std::cerr << "                       --chart='histogram;min/y=0;max/y=8000;min/x=0;max/x=256;axes/x/title=pixel value;axes/y/title=number of pixels'" << std::endl;
         std::cerr << std::endl;
     }
     else
@@ -277,22 +280,12 @@ static void usage( bool verbose = false )
 //   ? totally rewrite everything using qml?
 
 // todo for Hamish
-// x fix: run histogram demo, try to zoom in and then zoom out - x axis gets squashed
+// - fix: run histogram demo, try to zoom in and then zoom out - x axis gets squashed
 //        and the only way to restory is pressing 'r'
-// . fix: if i select rectangle (in histogram demo), it zooms on y, but not on x; what i would expect: if i select
-//        a rectangle, whatever is in the rectangle should appear in the new zoomed view
+//   - this can be mitigated by adding min and max values for the x axis as well as the y axis
+//     - try without any min values for x or y -> no zooming possible at all
 // - help:
-//   . as a minimum, add zoom description in --help
 //   ? help menu or status line at the bottom with prompt (maybe it's too much too early)
-// . output to std::cerr: add application name to each message: e.g: std::cerr << "csv-plot: ..."
-//   (if csv-plot runs as a part of the script, the user will know the message is from csv-plot)
-// . move unnecessary includes to cpp file (e.g. <QPoint> is not used in the header)
-// . rename private members as following: panning -> _panning (or panning_ - your call)
-// . chart_view:
-//   . _last_x, _last_y: use Point _last; instead?
-// . main window
-//   . instead of snark::graphics::plotting::chart_view* v = new snark::graphics::plotting::chart_view( c.second )
-//     it's ok to write: auto v = new snark::graphics::plotting::chart_view( c.second )
 
 QT_USE_NAMESPACE
 

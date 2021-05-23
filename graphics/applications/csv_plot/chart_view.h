@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "charts.h"
 #include <iostream>  // todo: try without this
 #include <QWheelEvent>
 #include <QMouseEvent>

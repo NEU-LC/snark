@@ -109,4 +109,12 @@ void xy_chart::update()
     }
 }
 
+void xy_chart::set_axis_limits( int min_x, int min_y, int max_x, int max_y )
+{
+    x_axis_->setMin( min_x );
+    x_axis_->setMax( max_x );
+    y_axis_->setMin( min_y );
+    y_axis_->setMax( max_y );
+}
+
 } } } // namespace snark { namespace graphics { namespace plotting {

@@ -82,7 +82,7 @@ main_window::main_window( const std::vector< snark::graphics::plotting::stream::
         }
         streams_.push_back( s );
         for( auto& t: s->series ) { charts_[ t.config().chart ]->push_back( &t ); } // quick and dirty; todo? move to stream::make()? (then change series vector in stream to ptr_vector)
-    } 
+    }
     setCentralWidget( make_widget_( layout, charts_ ) );
     resize( size.first, size.second );
     QObject::connect( &timer_, &QTimer::timeout, this, &main_window::update );
