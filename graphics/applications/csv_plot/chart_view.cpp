@@ -117,11 +117,11 @@ void chart_view::rectangle_zoom( int scroll_angle, QRectF plot_area, QPoint& loc
     else                         { return;                          }
     plot_area.moveTo( ( 1 - zoom_percent ) * local_mouse_pos + zoom_percent * plot_area.topLeft() );
     plot_area.setSize( zoom_percent * plot_area.size() );
-    chart_->set_axis_limits( plot_area.bottomLeft().x(),
+    chart()->set_axis_limits( plot_area.bottomLeft().x(),
                              plot_area.bottomLeft().y(),
                              plot_area.topRight().x(),
                              plot_area.topRight().y() );
-    chart_->zoomIn( plot_area );
+    chart()->zoomIn( plot_area );
 }
 
 void chart_view::basic_zoom( int scroll_angle )
