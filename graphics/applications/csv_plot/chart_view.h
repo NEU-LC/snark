@@ -31,6 +31,7 @@ protected:
 private:
     enum class mouse_state { NONE, LEFT, MIDDLE, RIGHT };
     mouse_state mouse_click_state_;
+    plotting::chart* chart_;
     QPoint last_mouse_pos_;
     float zoom_factor_ = 0.8;
     QRectF rubber_band_box_;

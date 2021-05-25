@@ -53,6 +53,7 @@ class chart: public QChart
         virtual ~chart() {}
         virtual void push_back( plotting::series::xy* r ) = 0;
         virtual void update() = 0;
+        void zooming( bool is_zooming );
         const std::vector< plotting::series::xy* >& series() const { return series_; }
         const config_t& config() const { return config_; }
         
@@ -61,6 +62,7 @@ class chart: public QChart
         config_t config_;
         bool fixed_x_; // quick and dirty
         bool fixed_y_; // quick and dirty
+        bool zooming_;
         virtual void update_() {}
         
     private:
@@ -74,7 +76,6 @@ class xy_chart: public chart
         xy_chart( const chart::config_t& config, QGraphicsItem *parent = nullptr, Qt::WindowFlags window_flags = {} );
         void push_back( plotting::series::xy* s );        
         void update();
-        void set_axis_limits( int min_x, int min_y, int max_x, int max_y );
     
     private:
         boost::optional< std::pair< QPointF, QPointF > > extents_;

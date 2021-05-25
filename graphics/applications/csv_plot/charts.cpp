@@ -23,6 +23,7 @@ chart::chart( const chart::config_t& config, QGraphicsItem *parent, Qt::WindowFl
     , config_( config )
     , fixed_x_( config.min.x && config.max.x )
     , fixed_y_( config.min.y && config.max.y )
+    , zooming_( false )
 {
     setTitle( &config_.title[0] );
     if( !config_.legend ) { legend()->hide(); }
@@ -31,6 +32,11 @@ chart::chart( const chart::config_t& config, QGraphicsItem *parent, Qt::WindowFl
     grabGesture(Qt::PinchGesture);
 }
 
+void chart::zooming( bool is_zooming )
+{
+    zooming_ = is_zooming;
+}
+            
 xy_chart::xy_chart( const chart::config_t& config, QGraphicsItem *parent, Qt::WindowFlags window_flags )
     : chart( config, parent, window_flags )
     , x_axis_( new QValueAxis )
@@ -64,7 +70,7 @@ void xy_chart::push_back( plotting::series::xy* s )
 
 void xy_chart::update()
 {
-    if( fixed_x_ && fixed_y_ ) { return; }
+    if( zooming_ || ( fixed_x_ && fixed_y_ ) ) { return; }
     extents_.reset();
     for( auto s: series_ )
     {
@@ -107,14 +113,6 @@ void xy_chart::update()
             if( !config_.max.y && y_axis_->max() < extents_->second.y() ) { y_axis_->setMax( extents_->second.y() + my ); }
         }
     }
-}
-
-void xy_chart::set_axis_limits( int min_x, int min_y, int max_x, int max_y )
-{
-    x_axis_->setMin( min_x );
-    x_axis_->setMax( max_x );
-    y_axis_->setMin( min_y );
-    y_axis_->setMax( max_y );
 }
 
 } } } // namespace snark { namespace graphics { namespace plotting {

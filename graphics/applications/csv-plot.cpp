@@ -188,7 +188,7 @@ static void usage( bool verbose = false )
         std::cerr << "                        'line-number;size=256;index;binary=ui' \\" << std::endl;
         std::cerr << "                        '-;binary=3ui' \\" << std::endl;
         std::cerr << "            | csv-plot '-;fields=block,x,series[0]/y,series[1]/y,series[2]/y;binary=5ui;series[0]=color:blue|title:blue;series[1]=color:green|title:green;series[2]=color:red|title:red;chart=histogram' \\" << std::endl;
-        std::cerr << "                       --chart='histogram;min/y=0;max/y=8000;min/x=0;max/x=256;axes/x/title=pixel value;axes/y/title=number of pixels'" << std::endl;
+        std::cerr << "                       --chart='histogram;min/y=0;max/y=8000;axes/x/title=pixel value;axes/y/title=number of pixels'" << std::endl;
         std::cerr << std::endl;
     }
     else

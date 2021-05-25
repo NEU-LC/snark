@@ -7,6 +7,7 @@ namespace snark { namespace graphics { namespace plotting {
 chart_view::chart_view( QChart* chart, QWidget* parent )
     : QChartView( chart, parent )
     , mouse_click_state_( mouse_state::NONE )
+    , chart_( dynamic_cast<plotting::chart*>(chart) )
     , rubber_band_box_()
 {
     // setRubberBand( QChartView::RectangleRubberBand );  // rubber band: click and drag box thing
@@ -37,6 +38,7 @@ void chart_view::mousePressEvent( QMouseEvent* event )
         rubber_band_box_.setTopLeft( event->localPos() );
         break;
     case Qt::MiddleButton:
+        chart_->zooming( true );
         if ( mouse_click_state_ != mouse_state::NONE ) { break; }
         mouse_click_state_ = mouse_state::MIDDLE;
         last_mouse_pos_ = event->pos();
@@ -91,6 +93,7 @@ void chart_view::mouseReleaseEvent( QMouseEvent* event )
 
 QRectF chart_view::inverse_rubber_band_box()
 {
+    chart_->zooming( true );
     QRectF plot_area = chart()->plotArea();
     float height_ratio = plot_area.height() / rubber_band_box_.height();
     float width_ratio  = plot_area.width()  / rubber_band_box_.width();
@@ -111,21 +114,19 @@ QRectF chart_view::inverse_rubber_band_box()
 
 void chart_view::rectangle_zoom( int scroll_angle, QRectF plot_area, QPoint& local_mouse_pos )
 {
+    chart_->zooming( true );
     float zoom_percent;
     if      ( scroll_angle > 0 ) { zoom_percent =     zoom_factor_; }
     else if ( scroll_angle < 0 ) { zoom_percent = 1 / zoom_factor_; }
     else                         { return;                          }
     plot_area.moveTo( ( 1 - zoom_percent ) * local_mouse_pos + zoom_percent * plot_area.topLeft() );
     plot_area.setSize( zoom_percent * plot_area.size() );
-    chart()->set_axis_limits( plot_area.bottomLeft().x(),
-                             plot_area.bottomLeft().y(),
-                             plot_area.topRight().x(),
-                             plot_area.topRight().y() );
     chart()->zoomIn( plot_area );
 }
 
 void chart_view::basic_zoom( int scroll_angle )
 {
+    chart_->zooming( true );
     if      ( scroll_angle > 0 ) { chart()->zoom( 1.1 ); }
     else if ( scroll_angle < 0 ) { chart()->zoom( 0.9 ); }
 }
@@ -149,14 +150,14 @@ void chart_view::keyPressEvent( QKeyEvent* event )
 {
     switch ( event->key() )
     {
-        case Qt::Key_Plus: chart()->zoomIn(); break;
-        case Qt::Key_Minus: chart()->zoomOut(); break;
-        case Qt::Key_Left: chart()->scroll(-50, 0); break;
-        case Qt::Key_Right: chart()->scroll(50, 0); break;
-        case Qt::Key_Up: chart()->scroll(0, 50); break;
-        case Qt::Key_Down: chart()->scroll(0, -50); break;
-        case Qt::Key_R: chart()->zoomReset(); break;
-        default: QGraphicsView::keyPressEvent(event); break;
+        case Qt::Key_Plus:  chart_->zooming( true  ); chart()->zoomIn();       break;
+        case Qt::Key_Minus: chart_->zooming( true  ); chart()->zoomOut();      break;
+        case Qt::Key_Left:  chart_->zooming( true  ); chart()->scroll(-50, 0); break;
+        case Qt::Key_Right: chart_->zooming( true  ); chart()->scroll(50, 0);  break;
+        case Qt::Key_Up:    chart_->zooming( true  ); chart()->scroll(0, 50);  break;
+        case Qt::Key_Down:  chart_->zooming( true  ); chart()->scroll(0, -50); break;
+        case Qt::Key_R:     chart_->zooming( false ); chart()->zoomReset();    break;
+        default:            QGraphicsView::keyPressEvent(event);               break;
     }
 }
 
