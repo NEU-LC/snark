@@ -86,15 +86,6 @@ void ros_init( char **av, boost::optional< std::string > node_name, std::string 
     #endif
 }
 
-class cv_io
-{
-protected:
-    snark::cv_mat::serialization::options cv_opt;
-    snark::cv_mat::serialization cv_strm;
-
-    cv_io() : cv_strm( cv_opt ) {}
-};
-
 static unsigned ros_to_cv_format( std::string const& ros_encoding )
 {
     static const std::unordered_map< std::string, unsigned > map = {
@@ -201,13 +192,14 @@ static std::string cv_to_ros_format( unsigned const cv_encoding )
     return map.at( cv_encoding );
 }
 
-class ros_subscriber : public cv_io
+class ros_subscriber
 {
 public:
     using message_type = typename sensor_msgs::Image::ConstPtr;
 
     ros_subscriber( comma::command_line_options const& options )
-        : flush( options.exists( "--flush" ))
+        : cv_strm( snark::cv_mat::serialization::options() )
+        , flush( options.exists( "--flush" ))
         , from_bag( options.exists( "--bags" ))
         , topic( options.value< std::string >( "--from" ))
     {
@@ -274,6 +266,7 @@ public:
     }
 
 private:
+    snark::cv_mat::serialization cv_strm;
     bool const flush;
     bool const from_bag;
     std::unique_ptr< ros::NodeHandle > node_;
@@ -283,10 +276,11 @@ private:
     comma::signal_flag is_shutdown;
 };
 
-class ros_publisher : public cv_io
+class ros_publisher
 {
 public:
     ros_publisher( comma::command_line_options const& options )
+        : cv_strm( snark::cv_mat::serialization::options() )
     {
         message_.header.frame_id = options.value< std::string >( "--frame", std::string() );
 
@@ -314,6 +308,7 @@ public:
     }
 
 private:
+    snark::cv_mat::serialization cv_strm;
     ros::NodeHandle node_;
     ros::Publisher publisher_;
     typename sensor_msgs::Image message_;
