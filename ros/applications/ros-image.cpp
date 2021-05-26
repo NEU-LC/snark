@@ -210,11 +210,11 @@ public:
 
             ros::TransportHints hints;
             if( datagram ) { hints = ros::TransportHints().maxDatagramSize( *datagram ); }
-            node_.reset( new ros::NodeHandle() );
-            subscriber_ = node_->subscribe( topic
-                                          , options.value< unsigned >( "--queue-size", 1U )
-                                          , &ros_subscriber::process, this
-                                          , hints );
+            node.reset( new ros::NodeHandle() );
+            subscriber = node->subscribe( topic
+                                        , options.value< unsigned >( "--queue-size", 1U )
+                                        , &ros_subscriber::process, this
+                                        , hints );
         }
     }
 
@@ -259,8 +259,8 @@ private:
     snark::cv_mat::serialization cv_stream;
     bool const flush;
     bool const from_bag;
-    std::unique_ptr< ros::NodeHandle > node_;
-    ros::Subscriber subscriber_;
+    std::unique_ptr< ros::NodeHandle > node;
+    ros::Subscriber subscriber;
     std::vector< std::string > bag_names;
     std::string topic;
     comma::signal_flag is_shutdown;
@@ -271,11 +271,11 @@ class ros_publisher
 public:
     ros_publisher( comma::command_line_options const& options )
     {
-        message_.header.frame_id = options.value< std::string >( "--frame", std::string() );
+        message.header.frame_id = options.value< std::string >( "--frame", std::string() );
 
-        publisher_ = node_.advertise< sensor_msgs::Image >( options.value< std::string >( "--to" )
-                                                          , options.value< unsigned >( "--queue-size", 1U )
-                                                          , options.exists( "--latch" ));
+        publisher = node.advertise< sensor_msgs::Image >( options.value< std::string >( "--to" )
+                                                        , options.value< unsigned >( "--queue-size", 1U )
+                                                        , options.exists( "--latch" ));
         ros::spinOnce();
     }
 
@@ -284,23 +284,23 @@ public:
         while( std::cin.good() && !is_shutdown )
         {
             auto record = cv_stream.read< boost::posix_time::ptime >( std::cin );
-            message_.header.seq++;
-            message_.header.stamp = ros::Time::fromBoost( record.first );
-            sensor_msgs::fillImage( message_
+            message.header.seq++;
+            message.header.stamp = ros::Time::fromBoost( record.first );
+            sensor_msgs::fillImage( message
                                   , cv_to_ros_format( record.second.type() )
                                   , record.second.rows
                                   , record.second.cols
                                   , record.second.step
                                   , record.second.data );
-            publisher_.publish( message_ );
+            publisher.publish( message );
         }
     }
 
 private:
     snark::cv_mat::serialization cv_stream;
-    ros::NodeHandle node_;
-    ros::Publisher publisher_;
-    typename sensor_msgs::Image message_;
+    ros::NodeHandle node;
+    ros::Publisher publisher;
+    typename sensor_msgs::Image message;
     comma::signal_flag is_shutdown;
 };
 
