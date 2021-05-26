@@ -226,13 +226,10 @@ public:
 
     void write( message_type const msg )
     {
-        auto time = msg->header.stamp.toBoost();
         cv_stream.write( std::cout
-                       , std::make_pair( time
-                                       , cv::Mat( cv::Size( msg->width, msg->height )
-                                                , ros_to_cv_format( msg->encoding )
-                                                , ( void* )msg->data.data()
-                                                , cv::Mat::AUTO_STEP )));
+                       , std::make_pair( msg->header.stamp.toBoost()
+                                       , cv::Mat( msg->height, msg->width, ros_to_cv_format( msg->encoding )
+                                                , ( void* )msg->data.data(), cv::Mat::AUTO_STEP )));
         if( flush ) { std::cout.flush(); }
     }
 
