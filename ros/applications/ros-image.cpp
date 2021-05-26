@@ -5,17 +5,11 @@
 #include "../../imaging/cv_mat/serialization.h"
 #include <comma/io/stream.h>
 #include <comma/application/signal_flag.h>
-#include <comma/csv/stream.h>
-#include <comma/csv/traits.h>
-#include <boost/bimap.hpp>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/fill_image.h>
-#include <vector>
-#include <fstream>
-#include <unordered_map>
 
 void bash_completion( unsigned const ac, char const * const * av )
 {
