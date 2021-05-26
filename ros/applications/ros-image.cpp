@@ -250,8 +250,8 @@ public:
 
     void process( message_type const msg )
     {
-        write( msg );
-        if( !std::cout.good() || is_shutdown ) { ros::shutdown(); }
+        if( std::cout.good() && !is_shutdown ) { write( msg ); }
+        else { ros::shutdown(); }
     }
 
     void subscribe( void )
