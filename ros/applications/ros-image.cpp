@@ -198,8 +198,7 @@ public:
     using message_type = typename sensor_msgs::Image::ConstPtr;
 
     ros_subscriber( comma::command_line_options const& options )
-        : cv_strm( snark::cv_mat::serialization::options() )
-        , flush( options.exists( "--flush" ))
+        : flush( options.exists( "--flush" ))
         , from_bag( options.exists( "--bags" ))
         , topic( options.value< std::string >( "--from" ))
     {
@@ -280,7 +279,6 @@ class ros_publisher
 {
 public:
     ros_publisher( comma::command_line_options const& options )
-        : cv_strm( snark::cv_mat::serialization::options() )
     {
         message_.header.frame_id = options.value< std::string >( "--frame", std::string() );
 
