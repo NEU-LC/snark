@@ -227,12 +227,12 @@ public:
     void write( message_type const msg )
     {
         auto time = msg->header.stamp.toBoost();
-        cv_strm.write( std::cout
-                     , std::make_pair( time
-                                     , cv::Mat( cv::Size( msg->width, msg->height )
-                                              , ros_to_cv_format( msg->encoding )
-                                              , ( void* )msg->data.data()
-                                              , cv::Mat::AUTO_STEP )));
+        cv_stream.write( std::cout
+                       , std::make_pair( time
+                                       , cv::Mat( cv::Size( msg->width, msg->height )
+                                                , ros_to_cv_format( msg->encoding )
+                                                , ( void* )msg->data.data()
+                                                , cv::Mat::AUTO_STEP )));
         if( flush ) { std::cout.flush(); }
     }
 
@@ -265,7 +265,7 @@ public:
     }
 
 private:
-    snark::cv_mat::serialization cv_strm;
+    snark::cv_mat::serialization cv_stream;
     bool const flush;
     bool const from_bag;
     std::unique_ptr< ros::NodeHandle > node_;
@@ -292,7 +292,7 @@ public:
     {
         while( std::cin.good() && !is_shutdown )
         {
-            auto record = cv_strm.read< boost::posix_time::ptime >( std::cin );
+            auto record = cv_stream.read< boost::posix_time::ptime >( std::cin );
             message_.header.seq++;
             message_.header.stamp = ros::Time::fromBoost( record.first );
             sensor_msgs::fillImage( message_
@@ -306,7 +306,7 @@ public:
     }
 
 private:
-    snark::cv_mat::serialization cv_strm;
+    snark::cv_mat::serialization cv_stream;
     ros::NodeHandle node_;
     ros::Publisher publisher_;
     typename sensor_msgs::Image message_;
