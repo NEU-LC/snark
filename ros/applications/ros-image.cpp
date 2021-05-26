@@ -89,16 +89,13 @@ void ros_init( char **av, boost::optional< std::string > node_name, std::string 
 class cv_io
 {
 protected:
-    static unsigned cv_format( std::string const& ros_encoding );
-    static std::string ros_format( unsigned const cv_encoding );
-
     snark::cv_mat::serialization::options cv_opt;
     snark::cv_mat::serialization cv_strm;
 
     cv_io() : cv_strm( cv_opt ) {}
 };
 
-unsigned cv_io::cv_format( std::string const& ros_encoding )
+static unsigned ros_to_cv_format( std::string const& ros_encoding )
 {
     static const std::unordered_map< std::string, unsigned > map = {
         { "rgb8", CV_8UC3 },
@@ -151,7 +148,7 @@ unsigned cv_io::cv_format( std::string const& ros_encoding )
     return map.at( ros_encoding );
 }
 
-std::string cv_io::ros_format( unsigned const cv_encoding )
+static std::string cv_to_ros_format( unsigned const cv_encoding )
 {
     static const std::unordered_map< unsigned, std::string > map = {
         { CV_8UC3, "rgb8" },
@@ -242,7 +239,7 @@ public:
         cv_strm.write( std::cout
                      , std::make_pair( time
                                      , cv::Mat( cv::Size( msg->width, msg->height )
-                                              , cv_format( msg->encoding )
+                                              , ros_to_cv_format( msg->encoding )
                                               , ( void* )msg->data.data()
                                               , cv::Mat::AUTO_STEP )));
         if( flush ) { std::cout.flush(); }
@@ -307,7 +304,7 @@ public:
             message_.header.seq++;
             message_.header.stamp = ros::Time::fromBoost( record.first );
             sensor_msgs::fillImage( message_
-                                  , ros_format( record.second.type() )
+                                  , cv_to_ros_format( record.second.type() )
                                   , record.second.rows
                                   , record.second.cols
                                   , record.second.step
