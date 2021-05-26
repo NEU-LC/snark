@@ -229,8 +229,8 @@ public:
         cv_stream.write( std::cout
                        , std::make_pair( msg->header.stamp.toBoost()
                                        , cv::Mat( msg->height, msg->width, ros_to_cv_format( msg->encoding )
-                                                , ( void* )msg->data.data(), cv::Mat::AUTO_STEP )));
-        if( flush ) { std::cout.flush(); }
+                                                , ( void* )msg->data.data(), cv::Mat::AUTO_STEP ))
+                       , flush );
     }
 
     void process( message_type const msg )
