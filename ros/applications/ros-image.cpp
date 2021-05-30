@@ -5,17 +5,11 @@
 #include "../../imaging/cv_mat/serialization.h"
 #include <comma/io/stream.h>
 #include <comma/application/signal_flag.h>
-#include <comma/csv/stream.h>
-#include <comma/csv/traits.h>
-#include <boost/bimap.hpp>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/fill_image.h>
-#include <vector>
-#include <fstream>
-#include <unordered_map>
 
 void bash_completion( unsigned const ac, char const * const * av )
 {
@@ -86,19 +80,7 @@ void ros_init( char **av, boost::optional< std::string > node_name, std::string 
     #endif
 }
 
-class cv_io
-{
-protected:
-    static unsigned cv_format( std::string const& ros_encoding );
-    static std::string ros_format( unsigned const cv_encoding );
-
-    snark::cv_mat::serialization::options cv_opt;
-    snark::cv_mat::serialization cv_strm;
-
-    cv_io() : cv_strm( cv_opt ) {}
-};
-
-unsigned cv_io::cv_format( std::string const& ros_encoding )
+static unsigned ros_to_cv_format( std::string const& ros_encoding )
 {
     static const std::unordered_map< std::string, unsigned > map = {
         { "rgb8", CV_8UC3 },
@@ -151,7 +133,7 @@ unsigned cv_io::cv_format( std::string const& ros_encoding )
     return map.at( ros_encoding );
 }
 
-std::string cv_io::ros_format( unsigned const cv_encoding )
+static std::string cv_to_ros_format( unsigned const cv_encoding )
 {
     static const std::unordered_map< unsigned, std::string > map = {
         { CV_8UC3, "rgb8" },
@@ -204,7 +186,7 @@ std::string cv_io::ros_format( unsigned const cv_encoding )
     return map.at( cv_encoding );
 }
 
-class ros_subscriber : public cv_io
+class ros_subscriber
 {
 public:
     using message_type = typename sensor_msgs::Image::ConstPtr;
@@ -228,30 +210,27 @@ public:
 
             ros::TransportHints hints;
             if( datagram ) { hints = ros::TransportHints().maxDatagramSize( *datagram ); }
-            node_.reset( new ros::NodeHandle() );
-            subscriber_ = node_->subscribe( topic
-                                          , options.value< unsigned >( "--queue-size", 1U )
-                                          , &ros_subscriber::process, this
-                                          , hints );
+            node.reset( new ros::NodeHandle() );
+            subscriber = node->subscribe( topic
+                                        , options.value< unsigned >( "--queue-size", 1U )
+                                        , &ros_subscriber::process, this
+                                        , hints );
         }
     }
 
     void write( message_type const msg )
     {
-        auto time = msg->header.stamp.toBoost();
-        cv_strm.write( std::cout
-                     , std::make_pair( time
-                                     , cv::Mat( cv::Size( msg->width, msg->height )
-                                              , cv_format( msg->encoding )
-                                              , ( void* )msg->data.data()
-                                              , cv::Mat::AUTO_STEP )));
-        if( flush ) { std::cout.flush(); }
+        cv_stream.write( std::cout
+                       , std::make_pair( msg->header.stamp.toBoost()
+                                       , cv::Mat( msg->height, msg->width, ros_to_cv_format( msg->encoding )
+                                                , ( void* )msg->data.data(), cv::Mat::AUTO_STEP ))
+                       , flush );
     }
 
     void process( message_type const msg )
     {
-        write( msg );
-        if( !std::cout.good() || is_shutdown ) { ros::shutdown(); }
+        if( std::cout.good() && !is_shutdown ) { write( msg ); }
+        else { ros::shutdown(); }
     }
 
     void subscribe( void )
@@ -277,25 +256,26 @@ public:
     }
 
 private:
+    snark::cv_mat::serialization cv_stream;
     bool const flush;
     bool const from_bag;
-    std::unique_ptr< ros::NodeHandle > node_;
-    ros::Subscriber subscriber_;
+    std::unique_ptr< ros::NodeHandle > node;
+    ros::Subscriber subscriber;
     std::vector< std::string > bag_names;
     std::string topic;
     comma::signal_flag is_shutdown;
 };
 
-class ros_publisher : public cv_io
+class ros_publisher
 {
 public:
     ros_publisher( comma::command_line_options const& options )
     {
-        message_.header.frame_id = options.value< std::string >( "--frame", std::string() );
+        message.header.frame_id = options.value< std::string >( "--frame", std::string() );
 
-        publisher_ = node_.advertise< sensor_msgs::Image >( options.value< std::string >( "--to" )
-                                                          , options.value< unsigned >( "--queue-size", 1U )
-                                                          , options.exists( "--latch" ));
+        publisher = node.advertise< sensor_msgs::Image >( options.value< std::string >( "--to" )
+                                                        , options.value< unsigned >( "--queue-size", 1U )
+                                                        , options.exists( "--latch" ));
         ros::spinOnce();
     }
 
@@ -303,23 +283,24 @@ public:
     {
         while( std::cin.good() && !is_shutdown )
         {
-            auto record = cv_strm.read< boost::posix_time::ptime >( std::cin );
-            message_.header.seq++;
-            message_.header.stamp = ros::Time::fromBoost( record.first );
-            sensor_msgs::fillImage( message_
-                                  , ros_format( record.second.type() )
+            auto record = cv_stream.read< boost::posix_time::ptime >( std::cin );
+            message.header.seq++;
+            message.header.stamp = ros::Time::fromBoost( record.first );
+            sensor_msgs::fillImage( message
+                                  , cv_to_ros_format( record.second.type() )
                                   , record.second.rows
                                   , record.second.cols
                                   , record.second.step
                                   , record.second.data );
-            publisher_.publish( message_ );
+            publisher.publish( message );
         }
     }
 
 private:
-    ros::NodeHandle node_;
-    ros::Publisher publisher_;
-    typename sensor_msgs::Image message_;
+    snark::cv_mat::serialization cv_stream;
+    ros::NodeHandle node;
+    ros::Publisher publisher;
+    typename sensor_msgs::Image message;
     comma::signal_flag is_shutdown;
 };
 

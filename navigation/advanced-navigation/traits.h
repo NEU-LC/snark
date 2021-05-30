@@ -1,33 +1,4 @@
-// This file is part of snark, a generic and flexible library for robotics research
 // Copyright (c) 2017 The University of Sydney
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University of Sydney nor the
-//    names of its contributors may be used to endorse or promote products
-//    derived from this software without specific prior written permission.
-//
-// NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-// GRANTED BY THIS LICENSE.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-// HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-// BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-/// @author Navid Pirmarzdashti
 
 #pragma once
 
@@ -36,10 +7,8 @@
 #include <comma/visiting/traits.h>
 #include <string>
 
-using namespace snark::navigation::advanced_navigation;
-
 namespace comma { namespace visiting {
-    
+
 template < unsigned int Size, bool Signed, bool Floating, std::size_t N > struct traits< boost::array<comma::packed::detail::endian< comma::packed::detail::little, Size,Signed,Floating>, N > >
 {
     template< typename K, typename V > static void visit( const K& k, const boost::array<comma::packed::detail::endian< comma::packed::detail::little, Size,Signed,Floating>, N >& t, V& v )
@@ -49,9 +18,9 @@ template < unsigned int Size, bool Signed, bool Floating, std::size_t N > struct
 };
 
 template <>
-struct traits<messages::system_state>
+struct traits< snark::navigation::advanced_navigation::messages::system_state >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::system_state& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::system_state& p, Visitor& v )
     {
         v.apply( "system_status", p.system_status() );
         v.apply( "filter_status", p.filter_status() );
@@ -68,9 +37,9 @@ struct traits<messages::system_state>
 };
 
 template <>
-struct traits<messages::filter_status_description>
+struct traits< snark::navigation::advanced_navigation::messages::filter_status_description >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::filter_status_description& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::filter_status_description& p, Visitor& v )
     {
         v.apply( "status", p.status );
         v.apply( "orientation_filter_initialised", p.orientation_filter_initialised() );
@@ -91,9 +60,9 @@ struct traits<messages::filter_status_description>
 };
 
 template <>
-struct traits<messages::system_status_description>
+struct traits< snark::navigation::advanced_navigation::messages::system_status_description >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::system_status_description& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::system_status_description& p, Visitor& v )
     {
         v.apply( "status", p.status );
         v.apply( "system_failure", p.system_failure() );
@@ -116,9 +85,9 @@ struct traits<messages::system_status_description>
 };
 
 template <>
-struct traits< messages::raw_sensors >
+struct traits< snark::navigation::advanced_navigation::messages::raw_sensors >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::raw_sensors& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::raw_sensors& p, Visitor& v )
     {
         v.apply( "accelerometer", p.accelerometer );
         v.apply( "gyroscope", p.gyroscope );
@@ -130,9 +99,9 @@ struct traits< messages::raw_sensors >
 };
 
 template <>
-struct traits< messages::satellites >
+struct traits< snark::navigation::advanced_navigation::messages::satellites >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::satellites& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::satellites& p, Visitor& v )
     {
         v.apply( "hdop", p.hdop() );
         v.apply( "vdop", p.vdop() );
@@ -145,13 +114,13 @@ struct traits< messages::satellites >
 };
 
 template <>
-struct traits< messages::magnetic_calibration_configuration >
+struct traits< snark::navigation::advanced_navigation::messages::magnetic_calibration_configuration >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::magnetic_calibration_configuration& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::magnetic_calibration_configuration& p, Visitor& v )
     {
         v.apply("action", p.action());
     }
-    template < typename Key, class Visitor > static void visit( const Key&, messages::magnetic_calibration_configuration& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, snark::navigation::advanced_navigation::messages::magnetic_calibration_configuration& p, Visitor& v )
     {
         auto a=p.action();
         v.apply("action", a);
@@ -160,9 +129,9 @@ struct traits< messages::magnetic_calibration_configuration >
 };
 
 template <>
-struct traits< messages::magnetic_calibration_status >
+struct traits< snark::navigation::advanced_navigation::messages::magnetic_calibration_status >
 {
-    template < typename Key, class Visitor > static void visit( const Key&, const messages::magnetic_calibration_status& p, Visitor& v )
+    template < typename Key, class Visitor > static void visit( const Key&, const snark::navigation::advanced_navigation::messages::magnetic_calibration_status& p, Visitor& v )
     {
         v.apply("status", p.status());
         v.apply("progress", p.progress());
@@ -171,4 +140,3 @@ struct traits< messages::magnetic_calibration_status >
 };
 
 } } // namespace comma { namespace visiting {
-    

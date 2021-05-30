@@ -41,6 +41,7 @@ static void usage( bool verbose = false )
     std::cerr << "\n    --output-fields:       print output fields for cooked or full data and exit";
     std::cerr << "\n    --output-format:       print output format for cooked or full data and exit";
     std::cerr << "\n    --sample-data=[<dir>]; TODO: read saved data from <dir>";
+    std::cerr << "\n    --time-offset=[<sec>]; offset timestamps by given seconds";
     std::cerr << "\n";
     std::cerr << "\nOutput types:";
     std::cerr << "\n    none:   no output, useful for benchmarking the underlying SDK";
@@ -52,11 +53,17 @@ static void usage( bool verbose = false )
     std::cerr << "\n    The inno_point struct in Innovusion SDK describes the sensor frame as";
     std::cerr << "\n    x up, y right, and z forward. This driver follows that convention.";
     std::cerr << "\n";
-    std::cerr << "\nExample:";
+    std::cerr << "\nTime frame:";
+    std::cerr << "\n    The raw data is in TAI time. To convert to UTC apply a time offset";
+    std::cerr << "\n";
+    std::cerr << "\nExamples:";
     std::cerr << "\n    " << comma::verbose.app_name() << " --address 192.168.10.40 \\";
     std::cerr << "\n        | io-publish tcp:4444 \\";
     std::cerr << "\n              --size $( " << comma::verbose.app_name() << " --output-format | csv-format size ) \\";
     std::cerr << "\n              -m 1000 --no-flush";
+    std::cerr << "\n";
+    std::cerr << "\n    # convert timestamps to UTC";
+    std::cerr << "\n    " << comma::verbose.app_name() << " --address 192.168.10.40 --time-offset -37";
     std::cerr << "\n";
     std::cerr << "\nUsing Innovusion LIDAR API version " << inno_api_version();
     std::cerr << "\n";
@@ -77,6 +84,7 @@ output_type_t output_type_from_string( const std::string& output_type_str )
 
 static output_type_t output_type = output_type_t::cooked;
 static bool fatal_error = false;
+static int64_t timeframe_offset_us = 0;
 
 namespace snark { namespace innovusion {
 struct raw_output {};
@@ -97,6 +105,7 @@ struct app
         std::string address = options.value< std::string >( "--address", default_address );
         int port = options.value< unsigned int >( "--port", default_port );
         std::string name = options.value< std::string >( "--name", default_name );
+        timeframe_offset_us = options.value< int64_t >( "--time-offset", 0 ) * 1000000;
 
         inno_lidar_set_logs( STDERR_FILENO, STDERR_FILENO, nullptr );
         // There are two more log levels beyond INFO: TRACE and EVERYTHING,
@@ -154,7 +163,7 @@ struct app
 
         for( unsigned int i = 0; i < frame->points_number; i++ )
         {
-            os.write( T( frame, i ));
+            os.write( T( frame, i, timeframe_offset_us ));
         }
     }
 };

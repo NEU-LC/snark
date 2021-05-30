@@ -55,7 +55,7 @@ struct output_data_t
     comma::uint16 value;                // reflectance or intensity
 
     output_data_t();
-    output_data_t( const inno_frame* frame, unsigned int index );
+    output_data_t( const inno_frame* frame, unsigned int index, int64_t timeframe_offset_us );
 };
 
 // all of the point and frame data
@@ -67,7 +67,7 @@ struct output_data_full_t
     point_t point;
 
     output_data_full_t();
-    output_data_full_t( const inno_frame* frame, unsigned int index );
+    output_data_full_t( const inno_frame* frame, unsigned int index, int64_t timeframe_offset_us );
 };
 
 std::string alarm_type_to_string( inno_alarm alarm_type );
