@@ -31,11 +31,6 @@ chart::chart( const chart::config_t& config, QGraphicsItem *parent, Qt::WindowFl
     grabGesture(Qt::PanGesture);
     grabGesture(Qt::PinchGesture);
 }
-
-void chart::zooming( bool is_zooming )
-{
-    zooming_ = is_zooming;
-}
             
 xy_chart::xy_chart( const chart::config_t& config, QGraphicsItem *parent, Qt::WindowFlags window_flags )
     : chart( config, parent, window_flags )

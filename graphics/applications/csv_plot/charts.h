@@ -53,7 +53,7 @@ class chart: public QChart
         virtual ~chart() {}
         virtual void push_back( plotting::series::xy* r ) = 0;
         virtual void update() = 0;
-        void zooming( bool is_zooming );
+        void zooming( bool is_zooming ) { zooming_ = is_zooming; }
         const std::vector< plotting::series::xy* >& series() const { return series_; }
         const config_t& config() const { return config_; }
         

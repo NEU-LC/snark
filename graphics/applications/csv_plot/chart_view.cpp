@@ -28,11 +28,13 @@ void chart_view::mousePressEvent( QMouseEvent* event )
     switch ( event->button() )
     {
     case Qt::LeftButton:
+        chart_->zooming( true );
         if ( mouse_click_state_ != mouse_state::NONE ) { break; }
         mouse_click_state_ = mouse_state::LEFT;
         rubber_band_box_.setTopLeft( event->localPos() );
         break;
     case Qt::RightButton:
+        chart_->zooming( true );
         if ( mouse_click_state_ != mouse_state::NONE ) { break; }
         mouse_click_state_ = mouse_state::RIGHT;
         rubber_band_box_.setTopLeft( event->localPos() );
