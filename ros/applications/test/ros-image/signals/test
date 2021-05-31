@@ -1,0 +1,118 @@
+#!/bin/bash
+
+scriptname=$( basename $0 )
+
+function say() { echo "$scriptname: $*" >&2; }
+function die() { say "$@"; exit 1; }
+
+for distro in noetic melodic kinetic; do
+    setup_script=/opt/ros/$distro/setup.bash
+    [[ -f $setup_script ]] && source $setup_script && break
+done
+[[ -f $setup_script ]] || { die "couldn't source ros setup.bash script"; }
+
+function cleanup()
+{
+    [[ -d tmp_data ]] && rm -r tmp_data
+}
+
+trap cleanup EXIT
+
+function random_images()
+{
+    while : ; do
+        echo 400,400,24 | csv-time-stamp | csv-to-bin t,3ui
+        csv-random make --range 0,255 --output-binary --type ub --seed=$( csv-random true-random --once ) \
+            | head -c $(( 400 * 400 * 4 )) || return
+        sleep 1
+    done
+}
+
+function test_to_option()
+{
+    local signal=$1
+    echo -e "\n--- test_to_option $signal ---\n" >&2
+
+    random_images | timeout -s KILL 10 ros-image --to /test_image &
+    local timeout_pid=$!
+    local ros_image_pid=$( pgrep --parent $timeout_pid )
+    ( sleep 5; kill -$signal $ros_image_pid; ) &                       # send the kill after we set up the wait
+    wait $timeout_pid
+    local wait_exit_code=$?
+    echo "to/${signal}/timeout_exit_code=$wait_exit_code"
+}
+
+function test_from_option()
+{
+    local signal=$1
+    echo -e "\n--- test_from_option $signal ---\n" >&2
+
+    timeout -s KILL 20 ros-image --from /test_image > /dev/null &
+    local timeout_pid=$!
+    local ros_image_pid=$( pgrep --parent $timeout_pid )
+    ( sleep 5; kill -$signal $ros_image_pid; ) &                       # send the kill after we set up the wait
+    wait $timeout_pid
+    local wait_exit_code=$?
+    echo "from/${signal}/timeout_exit_code=$wait_exit_code"
+    say "done"
+}
+
+function make_bag_files()
+{
+    say "creating temporary bag files"
+    [[ -d tmp_data ]] || mkdir tmp_data
+    (
+        cd tmp_data
+        random_images | ros-image --to /test_image &
+        local ros_image_pid=$!
+        rosbag record /test_image --duration 30 >/dev/null
+        kill $ros_image_pid
+    )
+}
+
+function test_from_bags_option()
+{
+    local signal=$1
+    echo -e "\n--- test_from_bag_option $signal ---\n" >&2
+
+    # This should work but for some reason the exit code from "wait
+    # $timeout_pid" is not the exit code of the timeout command. This makes it
+    # impossible to determine whether the signal was successfully caught or
+    # ros-image was timed-out.
+    #
+    # TODO: fix this so this test can run
+    #
+    # We play to csv-play to slow down the output from ros-image, which
+    # otherwise will just dump out the bag files at maximum speed.
+    timeout -s KILL 20 ros-image --from /test_image --bags "tmp_data/*.bag" \
+        | csv-play --speed 0.1 --binary t,3ui,$(( 400 * 400 * 4 ))ub > /dev/null &
+    local parent_pid=$( ps --pid $! -o ppid --no-headers )
+    say "parent pid=$parent_pid"
+    local timeout_pid=$( pgrep --parent $parent_pid timeout )
+    say "timeout pid=$timeout_pid"
+    local ros_image_pid=$( pgrep --parent $timeout_pid )
+    say "ros-image pid=$ros_image_pid"
+    ( sleep 5; kill -$signal $ros_image_pid; ) &                       # send the kill after we set up the wait
+    say "waiting for $timeout_pid"
+    wait $timeout_pid
+    local wait_exit_code=$?
+    echo "from_bag/${signal}/timeout_exit_code=$wait_exit_code"
+}
+
+for signal in SIGTERM SIGPIPE SIGINT; do
+    test_to_option $signal
+done
+
+# publish to a ros topic so we have something to read from
+random_images | ros-image --to /test_image &
+background_pid=$!
+for signal in SIGTERM SIGPIPE SIGINT; do
+    test_from_option $signal
+done
+kill $background_pid
+
+# TODO: fix these tests
+# make_bag_files
+# for signal in SIGTERM SIGPIPE SIGINT; do
+#     test_from_bags_option $signal
+# done
