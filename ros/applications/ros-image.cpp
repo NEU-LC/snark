@@ -60,6 +60,17 @@ void usage( bool )
     std::cerr << "\n" << std::endl;
 }
 
+void unblock_signal( int signum )
+{
+    #ifndef WIN32
+    // Undo ROS's ignoring of SIGPIPE (see roscpp/init.cpp:469)
+    sigset_t sigmask;
+    sigemptyset( &sigmask );
+    sigaddset( &sigmask, signum );
+    sigprocmask( SIG_UNBLOCK, &sigmask, NULL );
+    #endif
+}
+
 void ros_init( char **av, boost::optional< std::string > node_name, std::string const& suffix )
 {
     uint32_t node_options = 0;
@@ -70,14 +81,6 @@ void ros_init( char **av, boost::optional< std::string > node_name, std::string 
         node_options = ::ros::InitOption::AnonymousName;
     }
     ros::init( rac, av, *node_name, node_options );
-
-    #ifndef WIN32
-    // Undo ROS's ignoring of SIGPIPE (see roscpp/init.cpp:469)
-    sigset_t sigmask;
-    sigemptyset( &sigmask );
-    sigaddset( &sigmask, SIGPIPE );
-    sigprocmask( SIG_UNBLOCK, &sigmask, NULL );
-    #endif
 }
 
 static unsigned ros_to_cv_format( std::string const& ros_encoding )
@@ -237,6 +240,7 @@ public:
     {
         if( from_bag )
         {
+            unblock_signal( SIGPIPE );  // so we can catch it in is_shutdown
             for( auto bag_name: bag_names )
             {
                 comma::verbose << "opening " << bag_name << std::endl;
