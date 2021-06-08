@@ -28,12 +28,14 @@ file< H >::file( const get_timestamp_functor& get_timestamp
                , bool force_filenames
                , bool exit_if_done
                , const std::vector< std::string >& filenames
-               , const std::vector< std::pair< unsigned int, unsigned int > >& ranges )
+               , const std::vector< std::pair< unsigned int, unsigned int > >& ranges
+               , const std::string& prefix )
     : get_timestamp_( get_timestamp )
     , type_( type )
     , quality_( quality )
     , do_index_( do_index )
     , numbered_( numbered )
+    , prefix_( prefix )
     , force_filenames_( force_filenames )
     , exit_if_done_( exit_if_done )
     , index_( 0 )
@@ -93,7 +95,7 @@ typename std::pair< H, cv::Mat > file< H >::operator()( typename std::pair< H, c
 template < typename H >
 std::string file< H >::make_filename_( const boost::posix_time::ptime& t )
 {
-    if( numbered_ ) { return boost::lexical_cast< std::string >( count_ ) + '.' + type_; }
+    if( numbered_ ) { return prefix_ == "" ? boost::lexical_cast< std::string >( count_ ) + '.' + type_ : prefix_ + '.' + boost::lexical_cast< std::string >( count_ ) + '.' + type_; }
     if( !force_filenames_ ) { return make_filename( t, type_, do_index_ ? boost::optional< unsigned int >( index_ ) : boost::none ); }
     if( filename_index_ >= filenames_.size() ) { return ""; }
     const std::string& filename = filenames_[ filename_index_++ ];
@@ -111,6 +113,7 @@ std::pair< typename file< H >::functor_t, bool > file< H >::make( boost::functio
     bool do_index = false;
     bool no_header = false;
     bool numbered = false;
+    std::string prefix;
     bool exit_if_done = false;
     std::vector< std::string > filenames;
     std::vector< std::pair< unsigned int, unsigned int > > ranges;
@@ -133,6 +136,10 @@ std::pair< typename file< H >::functor_t, bool > file< H >::make( boost::functio
         else if( s[i] == "exit-if-done" )
         { 
             exit_if_done = true;
+        }
+        else if( s[i].substr( 0, 7 ) == "prefix:" ) // quick and dirty
+        {
+            prefix = s[i].substr( 7 );
         }
         else if( s[i].substr( 0, 10 ) == "filenames:" ) // quick and dirty
         {
@@ -186,6 +193,7 @@ std::pair< typename file< H >::functor_t, bool > file< H >::make( boost::functio
         }
     }
     if( numbered && do_index ) { COMMA_THROW( comma::exception, "numbered and index are mutually exclusive in 'file=" << options << "'" ); }
+    if( !numbered && prefix != "" ) { COMMA_THROW( comma::exception, "prefix is implemented only for numbered (just ask); got: 'file=" << options << "'" ); }
     if( numbered && !filenames.empty() ) { COMMA_THROW( comma::exception, "numbered and filenames:... are mutually exclusive in 'file=" << options << "'" ); }
     if( do_index && !filenames.empty() ) { COMMA_THROW( comma::exception, "index and filenames:... are mutually exclusive in 'file=" << options << "'" ); }
     if( filenames.empty() && ranges.empty() && exit_if_done ) { COMMA_THROW( comma::exception, "exit-if-done, but no filenames, frames, or ranges in 'file=" << options << "'" ); }
@@ -206,7 +214,7 @@ std::pair< typename file< H >::functor_t, bool > file< H >::make( boost::functio
             }
         }
     }
-    return std::make_pair( file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, force_filenames, exit_if_done, filenames, ranges ), false );
+    return std::make_pair( file< H >( get_timestamp, s[0], no_header, quality, do_index, numbered, force_filenames, exit_if_done, filenames, ranges, prefix ), false );
 }
 
 template < typename H >
@@ -226,6 +234,7 @@ std::string file< H >::usage( unsigned int i )
     oss << indent << "        index: for each timestamp, files will be named as: <timestamp>.<index>.<extension>, e.g: 20170101T000000.123456.0.png, 20170101T000000.123456.1.png, etc" << std::endl;
     oss << indent << "        no-header: makes sense only for 'bin' format; if present, write image without header" << std::endl;
     oss << indent << "        numbered: output filenames will look like 0.png, 1.png, etc, i.e. <filename>: <frame-number>.<extension>" << std::endl;
+    oss << indent << "        prefix:<prefix>: if numbered, output filenames like blah.0.png, blah.1.png, etc" << std::endl;
     oss << indent << "        filenames:<filenames>: file with a list of filenames" << std::endl;
     oss << indent << "        frames:<filename>: file with a sorted list of unique desired frame numbers to save" << std::endl;
     oss << indent << "        ranges:<filename>: file with a sorted list of non-intersecting (but see ranges-union) desired ranges of frame numbers to save as <begin>,<end> pairs, where <end> is not included" << std::endl;

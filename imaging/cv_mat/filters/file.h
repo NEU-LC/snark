@@ -27,7 +27,8 @@ class file
             , bool force_filenames = false
             , bool exit_if_done = false
             , const std::vector< std::string >& filenames = std::vector< std::string >()
-            , const std::vector< std::pair< unsigned int, unsigned int > >& ranges = std::vector< std::pair< unsigned int, unsigned int > >() );
+            , const std::vector< std::pair< unsigned int, unsigned int > >& ranges = std::vector< std::pair< unsigned int, unsigned int > >()
+            , const std::string& prefix = "" );
 
         std::pair< H, cv::Mat > operator()( std::pair< H, cv::Mat > m );
         
@@ -43,6 +44,7 @@ class file
         boost::optional< int > quality_;
         bool do_index_;
         bool numbered_;
+        std::string prefix_;
         bool force_filenames_;
         bool exit_if_done_;
         snark::cv_mat::serialization serialization_;
