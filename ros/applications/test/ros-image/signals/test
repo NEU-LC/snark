@@ -14,6 +14,7 @@ done
 function cleanup()
 {
     [[ -d tmp_data ]] && rm -r tmp_data
+    [[ -f tmp_pipestatus ]] && rm tmp_pipestatus
 }
 
 trap cleanup EXIT
@@ -36,7 +37,11 @@ function test_to_option()
     random_images | timeout -s KILL 10 ros-image --to /test_image &
     local timeout_pid=$!
     local ros_image_pid=$( pgrep --parent $timeout_pid )
-    ( sleep 5; kill -$signal $ros_image_pid; ) &                       # send the kill after we set up the wait
+    {
+        sleep 5
+        say "sending $signal to $ros_image_pid"
+        kill -$signal $ros_image_pid
+    } &                       # send the kill after we set up the wait
     wait $timeout_pid
     local wait_exit_code=$?
     echo "to/${signal}/timeout_exit_code=$wait_exit_code"
@@ -50,11 +55,14 @@ function test_from_option()
     timeout -s KILL 20 ros-image --from /test_image > /dev/null &
     local timeout_pid=$!
     local ros_image_pid=$( pgrep --parent $timeout_pid )
-    ( sleep 5; kill -$signal $ros_image_pid; ) &                       # send the kill after we set up the wait
+    {
+        sleep 5
+        say "sending $signal to $ros_image_pid"
+        kill -$signal $ros_image_pid
+    } &                       # send the kill after we set up the wait
     wait $timeout_pid
     local wait_exit_code=$?
     echo "from/${signal}/timeout_exit_code=$wait_exit_code"
-    say "done"
 }
 
 function make_bag_files()
@@ -75,28 +83,27 @@ function test_from_bags_option()
     local signal=$1
     echo -e "\n--- test_from_bag_option $signal ---\n" >&2
 
-    # This should work but for some reason the exit code from "wait
-    # $timeout_pid" is not the exit code of the timeout command. This makes it
-    # impossible to determine whether the signal was successfully caught or
-    # ros-image was timed-out.
-    #
-    # TODO: fix this so this test can run
-    #
     # We play to csv-play to slow down the output from ros-image, which
-    # otherwise will just dump out the bag files at maximum speed.
-    timeout -s KILL 20 ros-image --from /test_image --bags "tmp_data/*.bag" \
-        | csv-play --speed 0.1 --binary t,3ui,$(( 400 * 400 * 4 ))ub > /dev/null &
-    local parent_pid=$( ps --pid $! -o ppid --no-headers )
-    say "parent pid=$parent_pid"
+    # otherwise will just dump out the bag files at maximum speed. That means
+    # we can't get the timeout pid from wait, as wait doesn't capture the pids
+    # of processes in a background pipeline.
+    {
+        timeout -s KILL 30 ros-image --from /test_image --bags "tmp_data/*.bag" \
+            | csv-play --speed 0.2 --binary t,3ui,$(( 400 * 400 * 4 ))ub > /dev/null
+        echo "${PIPESTATUS[@]}" > tmp_pipestatus
+    } &
+    local parent_pid=$!
     local timeout_pid=$( pgrep --parent $parent_pid timeout )
-    say "timeout pid=$timeout_pid"
     local ros_image_pid=$( pgrep --parent $timeout_pid )
-    say "ros-image pid=$ros_image_pid"
-    ( sleep 5; kill -$signal $ros_image_pid; ) &                       # send the kill after we set up the wait
-    say "waiting for $timeout_pid"
-    wait $timeout_pid
-    local wait_exit_code=$?
-    echo "from_bag/${signal}/timeout_exit_code=$wait_exit_code"
+    {
+        sleep 5
+        say "sending $signal to $ros_image_pid"
+        kill -$signal $ros_image_pid
+    } &                       # send the kill after we set up the wait
+    say "waiting for all processes"
+    wait
+    local timeout_exit_code=$( cut -f1 -d' ' < tmp_pipestatus )
+    echo "from_bag/${signal}/timeout_exit_code=$timeout_exit_code"
 }
 
 for signal in SIGTERM SIGPIPE SIGINT; do
@@ -111,8 +118,7 @@ for signal in SIGTERM SIGPIPE SIGINT; do
 done
 kill $background_pid
 
-# TODO: fix these tests
-# make_bag_files
-# for signal in SIGTERM SIGPIPE SIGINT; do
-#     test_from_bags_option $signal
-# done
+make_bag_files
+for signal in SIGTERM SIGPIPE SIGINT; do
+    test_from_bags_option $signal
+done
