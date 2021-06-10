@@ -29,22 +29,13 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import argparse
-import gzip
-import logging
-import os
-import signal
-import sys
+import argparse, gzip, logging, os, signal, sys, time
+import numpy as np
 # import warnings
-from time import gmtime
 from time import time as get_time
 
-import numpy as np
-
-try:
-    import os.errno as errno
-except ModuleNotFoundError:
-    import errno
+try: import os.errno as errno
+except ModuleNotFoundError: import errno
 
 __author__ = 'v.vlaskine'
 
@@ -111,53 +102,29 @@ examples
 
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(
-        description=description, epilog=epilog, formatter_class=argparse.RawTextHelpFormatter)
-
+    parser = argparse.ArgumentParser( description=description, epilog=epilog, formatter_class=argparse.RawTextHelpFormatter)
     input_options = parser.add_argument_group('input options')
-    input_options.add_argument(
-        '--batch-size', type=int, default=1,
-        help='todo: process input in batches of given size; default: %(default)i')
-    input_options.add_argument(
-        '--footer-size', type=int, default=0,
-        help='if a footer of given size in bytes is present, pass it to stdout with output tensor prepended')
-    input_options.add_argument(
-        '--header-size', type=int, default=0,
-        help='if a header of given size in bytes is present, pass it to stdout with output tensor appended')
-    input_options.add_argument(
-        '--input', '-i', type=str, help='input layer name; default: %(default)s')
-    input_options.add_argument(
-        '--input-shape', type=str, help='shape of a single input record as a comma-separated list')
+    input_options.add_argument( '--batch-size', type=int, default=1, help='todo: process input in batches of given size; default: %(default)i')
+    input_options.add_argument( '--footer-size', type=int, default=0, help='if a footer of given size in bytes is present, pass it to stdout with output tensor prepended')
+    input_options.add_argument( '--header-size', type=int, default=0, help='if a header of given size in bytes is present, pass it to stdout with output tensor appended')
+    input_options.add_argument( '--input', '-i', type=str, help='input layer name; default: %(default)s')
+    input_options.add_argument( '--input-shape', type=str, help='shape of a single input record as a comma-separated list')
 
     model_load_options = parser.add_argument_group('computational graph options')
-    model_load_options.add_argument(
-        '--frozen-graph', '--graph', type=str, help='path to frozen .pb graph file')
-    model_load_options.add_argument(
-        '--keep-devices', action="store_true",
-        help='do not clear devices on graph load, i.e. you plan to run inference in the same environment as training; has effect only in tensorflow 1.0 and higher')
-    model_load_options.add_argument(
-        '--keras-model', type=str, help='path to .json model file; h5 support: todo, just ask')
-    model_load_options.add_argument(
-        '--keras-weights', type=str, help='path to .h5 weight file')
-    model_load_options.add_argument(
-        '--session', default='session', type=str,
-        help='saved session filename (without extension); default: %(default)s')
-    model_load_options.add_argument(
-        '--session-dir', '--dir', default='.',
-        type=str, help='saved session directory; default: %(default)s')
+    model_load_options.add_argument( '--frozen-graph', '--graph', type=str, help='path to frozen .pb graph file')
+    model_load_options.add_argument( '--keep-devices', action="store_true", help='do not clear devices on graph load, i.e. you plan to run inference in the same environment as training; has effect only in tensorflow 1.0 and higher')
+    model_load_options.add_argument( '--keras-model', type=str, help='path to .json model file; h5 support: todo, just ask')
+    model_load_options.add_argument( '--keras-weights', type=str, help='path to .h5 weight file')
+    model_load_options.add_argument( '--session', default='session', type=str, help='saved session filename (without extension); default: %(default)s')
+    model_load_options.add_argument( '--session-dir', '--dir', default='.', type=str, help='saved session directory; default: %(default)s')
     # parser.add_argument( '--session-graph', '--graph', '--graph-file', default = 'session.meta', type = str, help = 'path to saved graph file; default: %(default)s' )
-    model_load_options.add_argument(
-        '--session-graph', type=str, help='path to saved graph file')
-    model_load_options.add_argument(
-        '--variable', '--var', nargs='*', type=str,
-        help='variables to pass to the model as name-value pairs, e.g: "y:5", "dim:[3,4,5]", etc')
+    model_load_options.add_argument( '--session-graph', type=str, help='path to saved graph file')
+    model_load_options.add_argument( '--variable', '--var', nargs='*', type=str, help='variables to pass to the model as name-value pairs, e.g: "y:5", "dim:[3,4,5]", etc')
 
     gpu_options = parser.add_argument_group('gpu options')
     # parser.add_argument( '--device', type = str, help = 'device to use, e.g. /cpu:0, /device:GPU:0, etc' )# parser.add_argument( '--device', type = str, default = "/cpu:0", help = 'device to use, e.g. /cpu:0, /device:GPU:0, etc; default: %(default)s' )
-    gpu_options.add_argument('--gpu-allow-growth', action="store_true",
-                             help='ATTENTION: for keras model always is set to true')
-    gpu_options.add_argument('--gpu-virtual-memory', type=float,
-                             help='(tf2 only) GPU memory to allocate in GBs. Use about 80%% of memory on laptops to bypass some CUDNN out of memory bugs.')
+    gpu_options.add_argument('--gpu-allow-growth', action="store_true", help='ATTENTION: for keras model always is set to true')
+    gpu_options.add_argument('--gpu-virtual-memory', type=float, help='(tf2 only) GPU memory to allocate in GBs. Use about 80%% of memory on laptops to bypass some CUDNN out of memory bugs.')
     # --gpu-virtual-memory: for some reason, allocating less memory for the virtual GPU fixes CUDNN out of memory bugs when creating graph.
 
     output_options = parser.add_argument_group('output options')
@@ -184,7 +151,7 @@ def parse_args(argv=None):
 
     args = parser.parse_args(argv)
     if not (args.tensor_shape or args.tensor_type or args.get_operations) and not (args.input or args.output):
-        die("Select operation (--input-shape, --input-tensor or --get-operations) or provide --input and --output to run inference.")
+        die("select operation (--input-shape, --input-tensor or --get-operations) or provide --input and --output to run inference.")
     if not args.frozen_graph and not args.keras_model: die("expected one of --keras-model or --frozen-graph")
     elif args.frozen_graph and args.keras_model: die("expected either --keras-model or --frozen-graph; got both")
     elif not args.get_operations:  # Inference mode
@@ -343,6 +310,10 @@ class tf2:
             self._outputs = None
             self._tensors = None
             self._graph = None
+            if ARGS.gpu_allow_growth: # quick and dirty: voodoo: still seems required for some tensorflow 2 versions
+                self.config = tf.compat.v1.ConfigProto()
+                self.config.gpu_options.allow_growth = True
+                self.session = tf.compat.v1.InteractiveSession(config=self.config) # very quick and dirty; it may be terribly wrong, but it does not work otherwise
             if len(tf.config.experimental.list_physical_devices('GPU')) == 1 and ARGS.gpu_virtual_memory:
                 tf.config.experimental.set_memory_growth(tf.config.experimental.list_physical_devices('GPU')[0], True)
                 tf.config.experimental.set_virtual_device_configuration(
@@ -362,19 +333,15 @@ class tf2:
                 else:
                     input_name = ARGS.input
                     output_names = parse_output_names(ARGS.output)
-                self._model = wrapped_import.prune(
-                    tf.nest.map_structure(self._graph.as_graph_element, input_name),
-                    tf.nest.map_structure(self._graph.as_graph_element, output_names))
+                self._model = wrapped_import.prune( tf.nest.map_structure(self._graph.as_graph_element, input_name), tf.nest.map_structure(self._graph.as_graph_element, output_names))
                 self._input = self._model.inputs[0]
                 self._outputs = self._model.outputs
             if keras_model:
                 if keras_model.endswith(".h5"):
                     self._model = tf.keras.models.load_model(keras_model, custom_objects={'tf': tf}, compile=False)
                 else:
-                    with open(keras_model, 'r') as file:
-                        self._model = tf.keras.models.model_from_json(file.read(), custom_objects={'tf': tf})
-                    if not keras_weights and not (ARGS.get_operations or ARGS.tensor_shape or ARGS.tensor_type):
-                        logging.warning("Keras model definition loaded, but weights not specified")
+                    with open(keras_model, 'r') as file: self._model = tf.keras.models.model_from_json(file.read(), custom_objects={'tf': tf})
+                    if not keras_weights and not (ARGS.get_operations or ARGS.tensor_shape or ARGS.tensor_type): logging.warning("Keras model definition loaded, but weights not specified")
                 if keras_weights: self._model.load_weights(keras_weights)
                 # To work with --input and --outputs re-create the model with the desired tensors
                 self._populate_tensors()
@@ -532,7 +499,7 @@ def main(args):
 if __name__ == '__main__':
     ARGS = parse_args()
     logging.basicConfig( format='%(filename)s: %(asctime)s.%(msecs)d: %(levelname)s: %(message)s', datefmt='%Y%m%dT%H%M%S', level=ARGS.loglevel)
-    logging.Formatter.converter = gmtime
-    logging.info('Arguments:')
+    logging.Formatter.converter = time.gmtime
+    logging.info('arguments:')
     logging.info(ARGS)
     main(ARGS)
