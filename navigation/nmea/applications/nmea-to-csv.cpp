@@ -56,7 +56,7 @@ static void usage( bool verbose )
     std::cerr << "    --help,-h: output help; --help --verbose: more help" << std::endl;
     std::cerr << "    --fields,-f=<fields>: select output fields" << std::endl;
     std::cerr << "    --ignore-parsing-errors: ignore the errors from nmea parsing, otherwise exit" << std::endl;
-    std::cerr << "    --permissive: parse even if checksum invalid, e.g. for debugging" << std::endl;
+    std::cerr << "    --permissive: skip the record, if checksum invalid" << std::endl;
     std::cerr << "    --output-all,--all: if present, output records on every gps update," << std::endl;
     std::cerr << "                        even if values of output fields have not changed" << std::endl;
     std::cerr << "    --output-on-gga-only: output on every GGA message only" << std::endl;
