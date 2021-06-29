@@ -51,9 +51,17 @@ string::string( const std::string& s, bool permissive ) // quick and dirty
     std::string::size_type p = s.find_last_of( '*' );
     if( !permissive && p == std::string::npos ) { return; }
     if( !permissive && p + 3 + has_cr != s.size() ) { return; }
-    unsigned char checksum = 16 * hex_to_int( s[ p + 1 ] ) + hex_to_int( s[ p + 2 ] );
     unsigned char sum = 0;
-    for( unsigned int i = 1; i < p; sum ^= s[i++] );
+    unsigned char checksum;
+    try
+    {
+        checksum = 16 * hex_to_int( s[ p + 1 ] ) + hex_to_int( s[ p + 2 ] );
+        for( unsigned int i = 1; i < p; sum ^= s[i++] );
+    }
+    catch( ... )
+    {
+        if( permissive ) { return; } else { throw; }
+    }
     if( !permissive && sum != checksum ) { return; }
     valid_ = true;
     values_ = comma::split( s.substr( 1, p - 1 ), ',' );
