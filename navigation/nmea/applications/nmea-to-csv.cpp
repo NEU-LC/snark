@@ -290,8 +290,8 @@ int main( int ac, char** av )
             nmea::string s( line, permissive );
             if( !s.valid() )
             {
-                if( permissive ) { if( verbose ) { std::cerr << "nmea-to-csv: invalid nmea string, but parse anyway: \"" << line << "\"" << std::endl; } }
-                else { if( verbose ) { std::cerr << "nmea-to-csv: discarded invalid nmea string: \"" << line << "\"" << std::endl; } continue; }
+                if( permissive ) { if( verbose ) { std::cerr << "nmea-to-csv: skipping invalid nmea string: \"" << line << "\"" << std::endl; } continue; }
+                else { if( verbose ) { std::cerr << "nmea-to-csv: invalid nmea string: \"" << line << "\"" << std::endl; } return 1; }
             }
             try
             {
