@@ -290,8 +290,9 @@ int main( int ac, char** av )
             nmea::string s( line ); // nmea::string s( line, permissive );
             if( !s.valid() )
             {
-                if( permissive ) { if( verbose ) { std::cerr << "nmea-to-csv: skipping invalid nmea string: \"" << line << "\"" << std::endl; } continue; }
-                else { if( verbose ) { std::cerr << "nmea-to-csv: invalid nmea string: \"" << line << "\"" << std::endl; } return 1; }
+                std::cerr << "nmea-to-csv: " << ( permissive ? "skipped": "got" ) << " invalid nmea string: \"" << line << "\"" << std::endl;
+                if( permissive ) { continue; }
+                return 1;
             }
             try
             {
@@ -312,14 +313,14 @@ int main( int ac, char** av )
             }
             catch( std::exception& ex )
             {
-                if( throw_on_parsing_errors ) { throw; }
                 std::cerr << "nmea-to-csv: " << ex.what() << " on nmea string: \"" << comma::join( s.values(), ',' ) << "\"" << std::endl;
+                if( throw_on_parsing_errors ) { throw; }
                 continue;
             }
             catch( ... )
             {
-                if( throw_on_parsing_errors ) { throw; }
                 std::cerr << "nmea-to-csv: unknown exception on nmea string: \"" <<  comma::join( s.values(), ',' ) << "\"" << std::endl;
+                if( throw_on_parsing_errors ) { throw; }
                 continue;
             }
             if( output_on_gga_only ) { if( s.message_type() == nmea::messages::gga::type ) { os.write( output_ ); } }
