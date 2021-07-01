@@ -7,8 +7,7 @@ static double deg2rad( double degrees ) { return degrees / 180.0 * M_PI; }
 TEST( nmea, GPGGA )
 {
     std::string line = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47";
-    bool permissive = false;
-    snark::nmea::string s( line, permissive );
+    snark::nmea::string s( line );
     EXPECT_FALSE( s.is_proprietary() );
     EXPECT_EQ( "GP", s.talker_id() );
     EXPECT_EQ( "GGA", s.message_type() );
@@ -32,8 +31,7 @@ TEST( nmea, GPGGA )
 TEST( nmea, GNGGA )
 {
     std::string line = "$GNGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*59";
-    bool permissive = false;
-    snark::nmea::string s( line, permissive );
+    snark::nmea::string s( line );
     EXPECT_FALSE( s.is_proprietary() );
     EXPECT_EQ( "GN", s.talker_id() );
     EXPECT_EQ( "GGA", s.message_type() );
@@ -57,8 +55,7 @@ TEST( nmea, GNGGA )
 TEST( nmea, GLGGA )
 {
     std::string line = "$GLGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*5B";
-    bool permissive = false;
-    snark::nmea::string s( line, permissive );
+    snark::nmea::string s( line );
     EXPECT_FALSE( s.is_proprietary() );
     EXPECT_EQ( "GL", s.talker_id() );
     EXPECT_EQ( "GGA", s.message_type() );
@@ -81,8 +78,7 @@ TEST( nmea, GLGGA )
 
 TEST( nmea, GNRMC ) {
     std::string line = "$GNRMC,232341.40,A,3648.2223524,N,12011.3811276,W,0.05,,061219,,,A*45";
-    bool permissive = false;
-    snark::nmea::string s( line, permissive );
+    snark::nmea::string s( line );
     EXPECT_FALSE( s.is_proprietary() );
     EXPECT_EQ( "GN", s.talker_id() );
     EXPECT_EQ( "RMC", s.message_type() );
@@ -103,8 +99,7 @@ TEST( nmea, GNRMC ) {
 TEST( nmea, trimble_AVR )
 {
     std::string line = "$PTNL,AVR,181059.6,+149.4688,Yaw,+0.0134,Tilt,,,60.191,3,2.5,6*00";
-    bool permissive = false;
-    snark::nmea::string s( line, permissive );
+    snark::nmea::string s( line );
     EXPECT_TRUE( s.is_proprietary() );
     EXPECT_EQ( "TNL", s.manufacturer_code() );
     EXPECT_EQ( snark::nmea::messages::trimble::manufacturer_code, s.manufacturer_code() );

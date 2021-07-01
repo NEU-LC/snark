@@ -287,7 +287,7 @@ int main( int ac, char** av )
             std::string line;
             std::getline( std::cin, line );
             if( line.empty() ) { continue; }
-            nmea::string s( line, permissive );
+            nmea::string s( line ); // nmea::string s( line, permissive );
             if( !s.valid() )
             {
                 if( permissive ) { if( verbose ) { std::cerr << "nmea-to-csv: skipping invalid nmea string: \"" << line << "\"" << std::endl; } continue; }
@@ -308,25 +308,23 @@ int main( int ac, char** av )
                 else if( s.message_type() == nmea::messages::rmc::type ) { valid=handle< nmea::messages::rmc>( s ); }
                 else if( s.message_type() == nmea::messages::zda::type ) { valid=handle(nmea::messages::zda(s)); }
                 else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } continue; }
+                if( !valid ) { continue; }
             }
             catch( std::exception& ex )
             {
                 if( throw_on_parsing_errors ) { throw; }
                 std::cerr << "nmea-to-csv: " << ex.what() << " on nmea string: \"" << comma::join( s.values(), ',' ) << "\"" << std::endl;
-                valid = false;
+                continue;
             }
             catch( ... )
             {
-                if( throw_on_parsing_errors ) {throw; }
+                if( throw_on_parsing_errors ) { throw; }
                 std::cerr << "nmea-to-csv: unknown exception on nmea string: \"" <<  comma::join( s.values(), ',' ) << "\"" << std::endl;
-                valid = false;
+                continue;
             }
-            if(valid)
-            {
-                if( output_on_gga_only ) { if( s.message_type() == nmea::messages::gga::type ) { os.write( output_ ); } }
-                else if( output_all ) { os.write( output_ ); }
-                else { output( fieldwise, output_, os ); }
-            }
+            if( output_on_gga_only ) { if( s.message_type() == nmea::messages::gga::type ) { os.write( output_ ); } }
+            else if( output_all ) { os.write( output_ ); }
+            else { output( fieldwise, output_, os ); }
         }
         return 0;
     }
