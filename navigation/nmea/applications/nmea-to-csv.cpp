@@ -55,7 +55,6 @@ static void usage( bool verbose )
     std::cerr << "options" << std::endl;
     std::cerr << "    --help,-h: output help; --help --verbose: more help" << std::endl;
     std::cerr << "    --fields,-f=<fields>: select output fields" << std::endl;
-    std::cerr << "    --ignore-parsing-errors: ignore the errors from nmea parsing, otherwise exit" << std::endl;
     std::cerr << "    --permissive: skip the record, if checksum invalid" << std::endl;
     std::cerr << "    --output-all,--all: if present, output records on every gps update," << std::endl;
     std::cerr << "                        even if values of output fields have not changed" << std::endl;
@@ -261,7 +260,7 @@ int main( int ac, char** av )
         bool output_on_gga_only = options.exists( "--output-on-gga-only" );
         bool verbose = options.exists( "--verbose,-v" );
         bool permissive = options.exists( "--permissive" );
-        auto const throw_on_parsing_errors = !options.exists( "--ignore-parsing-errors" );
+        if( options.exists( "--ignore-parsing-errors" ) ) { std::cerr << "nmea-to-csv: --ignore-parsing-errors: deprecated; use --permissive" << std::endl; return 1; }
         zda_only=!options.exists("--no-zda");
         comma::csv::options csv( options );
         csv.full_xpath = true; // for future, e.g. to plug in errors
@@ -283,11 +282,10 @@ int main( int ac, char** av )
         comma::csv::output_stream< output::type > os( std::cout, csv );
         while( std::cin.good() )
         {
-            bool valid=true;
             std::string line;
             std::getline( std::cin, line );
             if( line.empty() ) { continue; }
-            nmea::string s( line ); // nmea::string s( line, permissive );
+            nmea::string s( line );
             if( !s.valid() )
             {
                 std::cerr << "nmea-to-csv: " << ( permissive ? "skipped": "got" ) << " invalid nmea string: \"" << line << "\"" << std::endl;
@@ -300,32 +298,33 @@ int main( int ac, char** av )
                 {
                     if( s.manufacturer_code() == nmea::messages::trimble::manufacturer_code )
                     {
-                        if( static_cast< const nmea::messages::trimble::string& >( s ).message_type() == nmea::messages::trimble::avr::type ) { valid=handle< nmea::messages::trimble::avr >( s ); }
+                        if( static_cast< const nmea::messages::trimble::string& >( s ).message_type() == nmea::messages::trimble::avr::type ) { if( !handle< nmea::messages::trimble::avr >( s ) ) { continue; } }
                         else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented trimble message: \"" << line << "\"" << std::endl; } continue; }
                     }
-                    else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented proprietary nmea message: \"" << line << "\"" << std::endl; } continue; }
+                    else
+                    {
+                        if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented proprietary nmea message: \"" << line << "\"" << std::endl; }
+                        continue;
+                    }
                 }
-                else if( s.message_type() == nmea::messages::gga::type ) { valid=handle< nmea::messages::gga >( s ); }
-                else if( s.message_type() == nmea::messages::rmc::type ) { valid=handle< nmea::messages::rmc>( s ); }
-                else if( s.message_type() == nmea::messages::zda::type ) { valid=handle(nmea::messages::zda(s)); }
+                else if( s.message_type() == nmea::messages::gga::type ) { if( !handle< nmea::messages::gga >( s ) ) { continue; } }
+                else if( s.message_type() == nmea::messages::rmc::type ) { if( !handle< nmea::messages::rmc>( s ) ) { continue; } }
+                else if( s.message_type() == nmea::messages::zda::type ) { if( !handle(nmea::messages::zda( s ) ) ) { continue; } }
                 else { if( verbose ) { std::cerr << "nmea-to-csv: discarded unimplemented string: \"" << line << "\"" << std::endl; } continue; }
-                if( !valid ) { continue; }
+                if( output_on_gga_only ) { if( s.message_type() == nmea::messages::gga::type ) { os.write( output_ ); } }
+                else if( output_all ) { os.write( output_ ); }
+                else { output( fieldwise, output_, os ); }
             }
             catch( std::exception& ex )
             {
                 std::cerr << "nmea-to-csv: " << ex.what() << " on nmea string: \"" << comma::join( s.values(), ',' ) << "\"" << std::endl;
-                if( throw_on_parsing_errors ) { throw; }
-                continue;
+                if( !permissive ) { return 1; }
             }
             catch( ... )
             {
                 std::cerr << "nmea-to-csv: unknown exception on nmea string: \"" <<  comma::join( s.values(), ',' ) << "\"" << std::endl;
-                if( throw_on_parsing_errors ) { throw; }
-                continue;
+                if( !permissive ) { return 1; }
             }
-            if( output_on_gga_only ) { if( s.message_type() == nmea::messages::gga::type ) { os.write( output_ ); } }
-            else if( output_all ) { os.write( output_ ); }
-            else { output( fieldwise, output_, os ); }
         }
         return 0;
     }
