@@ -240,6 +240,7 @@ public:
     {
         if( from_bag )
         {
+            unblock_signal( SIGPIPE );  // so we can catch it in is_shutdown
             for( auto bag_name: bag_names )
             {
                 comma::verbose << "opening " << bag_name << std::endl;
@@ -309,7 +310,6 @@ private:
 
 void ros_execute( char** av, comma::command_line_options const& options )
 {
-    unblock_signal( SIGPIPE );  // so we can catch it
     std::string node_name = options.value< std::string >( "--node-name,--node", "" );
     if( options.exists( "--from" ))
     {

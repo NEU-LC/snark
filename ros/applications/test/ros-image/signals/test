@@ -106,14 +106,14 @@ function test_from_bags_option()
     echo "from_bag/${signal}/timeout_exit_code=$timeout_exit_code"
 }
 
-for signal in SIGTERM SIGPIPE SIGINT; do
+for signal in SIGTERM SIGINT; do
     test_to_option $signal
 done
 
 # publish to a ros topic so we have something to read from
 random_images | ros-image --to /test_image &
 background_pid=$!
-for signal in SIGTERM SIGPIPE SIGINT; do
+for signal in SIGTERM SIGINT; do
     test_from_option $signal
 done
 kill $background_pid
