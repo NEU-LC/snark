@@ -71,16 +71,16 @@ void unblock_signal( int signum )
     #endif
 }
 
-void ros_init( char **av, boost::optional< std::string > node_name, std::string const& suffix )
+void ros_init( char **av, std::string node_name, std::string const& suffix )
 {
     uint32_t node_options = 0;
     int rac = 1;
-    if( !node_name )
+    if( node_name.empty() )
     {
         node_name = "ros_image" + suffix;
         node_options = ::ros::InitOption::AnonymousName;
     }
-    ros::init( rac, av, *node_name, node_options );
+    ros::init( rac, av, node_name, node_options );
 }
 
 static unsigned ros_to_cv_format( std::string const& ros_encoding )
@@ -310,7 +310,7 @@ private:
 void ros_execute( char** av, comma::command_line_options const& options )
 {
     unblock_signal( SIGPIPE );  // so we can catch it
-    auto node_name = options.optional< std::string >( "--node-name,--node" );
+    std::string node_name = options.value< std::string >( "--node-name,--node", "" );
     if( options.exists( "--from" ))
     {
         if( !options.exists( "--bags" )) { ros_init( av, node_name, "_subscriber" ); }
