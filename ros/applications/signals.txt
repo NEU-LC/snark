@@ -1,0 +1,32 @@
+ROS signal handling
+-------------------
+(all code references are for ROS Melodic)
+
+SIGPIPE:
+ignored in roscpp/init.cpp:469
+Why? According to ROS Answers:
+---
+That code is pretty old, so it's hard to know, but I would guess that the
+purpose is to avoid the chance of receiving a SIGPIPE due to something bad
+happening to a socket, which could happen pretty often, given how many
+sockets we might be using and the variety of network conditions we're running
+in.
+
+I don't see a problem with unmasking SIGPIPE and catching it yourself. But
+you should know that you might get SIGPIPEs that are generated due to
+roscpp's sockets, as opposed to your own resources.
+---
+Ref: https://answers.ros.org/question/206670/sigpipe-conflict-and-unmasking/?answer=207310#post-id-207310
+
+Anecdotal observations of high-bandwidth sources running across a network
+reveal a lot of SIGPIPEs being caught if we unblock it
+
+SIGINT:
+roscpp/init.cpp:334 installs signal handler defined at
+roscpp/init.cpp:270 that calls ros::requestShutdown()
+unless node is started with ros::InitOption::NoSigintHandler
+
+Many places (e.g. roscpp/spinner.cpp:250) call disableAllSignalsInThisThread()
+(roscpp/common.cpp:49) which blocks all signals. There appears to be no place
+that unblocks these signals so presumably they remain blocked for the life of
+the thread.

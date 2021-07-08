@@ -73,12 +73,12 @@ void unblock_signal( int signum )
 
 void ros_init( char **av, std::string node_name, std::string const& suffix )
 {
-    uint32_t node_options = 0;
+    uint32_t node_options = ::ros::InitOption::NoSigintHandler;
     int rac = 1;
     if( node_name.empty() )
     {
         node_name = "ros_image" + suffix;
-        node_options = ::ros::InitOption::AnonymousName;
+        node_options |= ::ros::InitOption::AnonymousName;
     }
     ros::init( rac, av, node_name, node_options );
 }
