@@ -73,7 +73,7 @@ void usage( bool verbose )
         std::cerr << "\n    echo 1029 | " << comma::verbose.app_name() << " --status filter_status";
         std::cerr << "\n    " << comma::verbose.app_name() << " --status-description filter_status";
         std::cerr << "\n";
-        std::cerr << "\n  where <raw-data> is coming from advanced-navigation-certus-cat or similar";
+        std::cerr << "\n  where <raw-data> is coming from advanced-navigation-cat or similar";
     }
     else
     {

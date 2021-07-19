@@ -32,6 +32,8 @@ void usage(bool detail)
 {
     std::cerr<<"connect to Advanced Navigation Spatial device and output GPS data" << std::endl;
     std::cerr << std::endl;
+    std::cerr << "DEPRECATED - use \"advanced-navigation-cat | advanced-navigation-to-csv\" instead" << std::endl;
+    std::cerr << std::endl;
     std::cerr<< "usage: " << comma::verbose.app_name() << " <what> [<options>]" << std::endl;
     std::cerr<< "    <what>: select data packet to output, default: navigation"<< std::endl;
     std::cerr<< "    or " << comma::verbose.app_name() << " --send <command> --device <port> [<options>]"<< std::endl;
