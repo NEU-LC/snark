@@ -197,7 +197,10 @@ typename min< H >::value_type min< H >::operator()( const typename min< H >::val
     value_.first = n.first;
     if( value_.second.empty() ) { n.second.copyTo( value_.second ); }
     cv::min( n.second, value_.second, value_.second );
-    return value_; 
+    min< H >::value_type r; // quick and dirty
+    r.first = n.first;
+    value_.second.copyTo( r.second );
+    return r;
 }
 
 template < typename H >
@@ -206,7 +209,10 @@ typename max< H >::value_type max< H >::operator()( const typename max< H >::val
     value_.first = n.first;
     if( value_.second.empty() ) { n.second.copyTo( value_.second ); }
     cv::max( n.second, value_.second, value_.second );
-    return value_; 
+    max< H >::value_type r; // quick and dirty
+    r.first = n.first;
+    value_.second.copyTo( r.second );
+    return r;
 }
 
 } } }  // namespace snark { namespace cv_mat { namespace accumulated {
