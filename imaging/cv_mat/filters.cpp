@@ -2730,8 +2730,8 @@ static std::pair< functor_type, bool > make_filter_functor( const std::vector< s
     if( e[0] == "load" )
     {
         if( e.size() < 2 ) { COMMA_THROW( comma::exception, "please specify filename load=<filename>" ); }
-        // For the case where the file is just a file descriptor, no extenstion, use e[2]
-        return std::make_pair( filters::load< H >( e[1] ), true );
+        filters::load< H > f( e[1] ); // For the case where the file is just a file descriptor, no extenstion, use e[2]
+        return std::make_pair( f, !f.is_stream() );
     }
     if( e[0] == "blank" )
     {
@@ -3357,7 +3357,7 @@ static std::string usage_impl_()
     oss << "        load=<filename>: load image from file instead of taking an image on stdin; the main meaningful use would be in association with 'forked' image processing" << std::endl;
     oss << "            supported file types by filename extension:" << std::endl;
     oss << "                - .bin or <no filename extension>: file is in cv-cat binary format: <t>,<rows>,<cols>,<type>,<image data>" << std::endl;
-    oss << "                - otherwise whatever cv::imread supports" << std::endl;
+    oss << "                - otherwise whatever cv::imread and cv::VideoCapture support" << std::endl;
     oss << "        log=<options>: write images to files" << std::endl;
     oss << "            log=<filename>: write images to a single file" << std::endl;
     oss << "            log=<dirname>,size:<number of frames>: write images to files in a given directory, each file (except possibly the last one) containing <number of frames> frames" << std::endl;

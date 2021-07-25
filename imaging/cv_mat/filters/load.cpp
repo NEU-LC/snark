@@ -27,35 +27,51 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <fstream>
+#include <string>
+#include <opencv2/highgui/highgui.hpp>
+#include <comma/base/exception.h>
+#include <comma/csv/format.h>
+#include <comma/string/split.h>
+#include "../serialization.h"
 #include "load.h"
 
-#include <string>
-#include <fstream>
-#include <comma/base/exception.h>
-#include <comma/string/split.h>
-#include <comma/csv/format.h>
-#include <opencv2/highgui/highgui.hpp>
-#include "../serialization.h"
-
-namespace snark{ namespace cv_mat { namespace filters {
+namespace snark { namespace cv_mat { namespace filters {
 
 template < typename H >
 load< H >::load( const std::string& filename )
 {
     auto extension = comma::split( filename, '.' ).back();
-    if( extension.empty() || extension == "bin" ) // quick and dirty
+    try
     {
-        std::ifstream ifs( &filename[0] );
-        if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
-        serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
-        value = s.read< H >( ifs );
-        ifs.close();
+        if( extension.empty() || extension == "bin" ) // quick and dirty
+        {
+            std::ifstream ifs( &filename[0] );
+            if( !ifs.is_open() ) { COMMA_THROW( comma::exception, "failed to open \"" << filename << "\"" ); }
+            serialization s( "t,rows,cols,type", comma::csv::format( "t,3ui" ) ); // quick and dirty
+            _value = s.read< H >( ifs );
+            ifs.close();
+        }
+        else
+        {
+            _value.second = cv::imread( filename, -1 );
+            if( _value.second.data == NULL ) { _video_capture.open( filename ); }
+        }
     }
-    else
-    {
-        value.second = cv::imread( filename, -1 );
-    }
-    if( value.second.data == NULL ) { COMMA_THROW( comma::exception, "failed to load image from file \""<< filename << "\"" ); }
+    catch( std::exception& ex ) { COMMA_THROW( comma::exception, "failed to load image or video from file \""<< filename << "\" (" << ex.what() << ")" ); }
+    catch( ... ) { COMMA_THROW( comma::exception, "failed to load image or video from file \""<< filename << "\" (unknown exception)" ); }
+}
+
+template < typename H > bool load< H >::is_stream() const { return _value.second.empty(); }
+
+template < typename H >
+typename load< H >::value_type load< H >::operator()( typename load< H >::value_type m )
+{
+    if( !_value.second.empty() ) { return std::make_pair( _value.first, _value.second.clone() ); }
+    load< H >::value_type n;
+    n.first = m.first;
+    _video_capture >> n.second;
+    return n;
 }
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

@@ -32,19 +32,19 @@
 #include <string>
 #include <opencv2/core/core.hpp>
 
-namespace snark{ namespace cv_mat { namespace filters {
+namespace snark { namespace cv_mat { namespace filters {
 
 template < typename H >
-struct load
+class load
 {
-    typedef std::pair< H, cv::Mat > value_type;
-    value_type value;
-
-    // Set load as "bin" to load cv-cat format, else load using cv::imread
-    load( const std::string& filename );
-
-    value_type operator()( value_type ) const { return std::make_pair( value.first, value.second.clone() ); }
+    public:
+        typedef std::pair< H, cv::Mat > value_type;
+        load( const std::string& filename );
+        value_type operator()( value_type );
+        bool is_stream() const;
+    private:
+        value_type _value;
+        cv::VideoCapture _video_capture;
 };
-
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {
