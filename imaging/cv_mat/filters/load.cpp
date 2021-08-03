@@ -70,8 +70,8 @@ typename load< H >::value_type load< H >::operator()( typename load< H >::value_
     if( !_value.second.empty() ) { return std::make_pair( _value.first, _value.second.clone() ); }
     load< H >::value_type n;
     n.first = m.first;
-    _video_capture >> n.second;
-    return n;
+    try { _video_capture >> n.second; } catch( ... ) { return load< H >::value_type(); }
+    return n.second.empty() ? load< H >::value_type() : n;
 }
 
 } } }  // namespace snark { namespace cv_mat { namespace impl {

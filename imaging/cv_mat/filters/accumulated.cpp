@@ -211,20 +211,20 @@ typename max< H >::value_type max< H >::operator()( const typename max< H >::val
     cv::max( n.second, value_.second, value_.second );
 
     // maxinv; don't delete; example in videos/20210724...
-    //static bool flag = false;
-    //static max< H >::value_type q;
-    //static auto invert = []( cv::Mat m ) { for( unsigned char* c = const_cast< unsigned char* >( m.datastart ); c < m.dataend; *c = 255 - *c, ++c ); };
-    //flag = !flag;
-    //invert( value_.second );
-    //value_.second.copyTo( q.second );
-    //if( flag ) { invert( q.second ); }
-    //max< H >::value_type s; // quick and dirty
-    //s.first = n.first;
-    //n.second.copyTo( s.second );
-    //invert( s.second );
-    //cv::min( s.second, q.second, q.second );
-    //q.second.copyTo( s.second );
-    //return s;
+//    static bool flag = false;
+//    static max< H >::value_type q;
+//    static auto invert = []( cv::Mat m ) { for( unsigned char* c = const_cast< unsigned char* >( m.datastart ); c < m.dataend; *c = 255 - *c, ++c ); };
+//    flag = !flag;
+//    invert( value_.second );
+//    value_.second.copyTo( q.second );
+//    if( flag ) { invert( q.second ); }
+//    max< H >::value_type s; // quick and dirty
+//    s.first = n.first;
+//    n.second.copyTo( s.second );
+//    invert( s.second );
+//    cv::min( s.second, q.second, q.second );
+//    q.second.copyTo( s.second );
+//    return s;
 
     max< H >::value_type r; // quick and dirty
     r.first = n.first;

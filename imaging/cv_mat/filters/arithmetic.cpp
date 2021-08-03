@@ -27,14 +27,14 @@
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "arithmetic.h"
-
+#include <iostream>
 #include <string>
 #include <vector>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include "../utils.h"
+#include "arithmetic.h"
 
-namespace snark{ namespace cv_mat { namespace filters {
+namespace snark { namespace cv_mat { namespace filters {
     
 template < typename H >
 typename arithmetic< H >::operation arithmetic< H >::str_to_operation(const std::string& s)
@@ -46,6 +46,7 @@ typename arithmetic< H >::operation arithmetic< H >::str_to_operation(const std:
     else if( s == "absdiff" ) { return operation::absdiff; }
     else { COMMA_THROW(comma::exception, "unknown arithmetic operation: \"" << s << "\", expected: multiply, add, subtract or divide" ); }
 }
+
 template < typename H >
 typename std::string arithmetic< H >::operation_to_str(arithmetic< H >::operation op)
 {
@@ -61,13 +62,13 @@ typename std::string arithmetic< H >::operation_to_str(arithmetic< H >::operatio
     COMMA_THROW(comma::exception, "arithmetic: unknown operation: " << int(op));
 }
 
-template < typename H >
-arithmetic< H >::arithmetic( operation op ) : operation_(op) {}
+template < typename H > arithmetic< H >::arithmetic( operation op ) : operation_( op ) {}
 
 template < typename H >
 typename arithmetic< H >::value_type arithmetic< H >::operator()( value_type m, boost::function< value_type( value_type ) >& operand ) // have to pass mask by value, since filter functors may change on call
 {
-    const cv::Mat & rhs = operand( m ).second;
+    const cv::Mat& rhs = operand( m ).second;
+    if( rhs.empty() ) { return arithmetic< H >::value_type(); }
     if ( rhs.channels() != m.second.channels() ) { COMMA_THROW( comma::exception,  operation_to_str(operation_) << ": channel mis-match, input image channels: " << m.second.channels() << ", the operand channels: " << rhs.channels() ); }
     return apply_(m, rhs);
 }
@@ -84,7 +85,6 @@ typename arithmetic< H >::value_type arithmetic< H >::apply_(const value_type& m
         case operation::add:      cv::add(m.second, operand, n.second, cv::noArray(), m.second.type() );    break;
         case operation::absdiff:  cv::absdiff(m.second, operand, n.second); break;
     }
-    
     return n;
 }
     
