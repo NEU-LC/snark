@@ -1,3 +1,5 @@
+install( PROGRAMS echodyne-emulate DESTINATION ${CMAKE_INSTALL_PREFIX}/${snark_INSTALL_BIN_DIR} )
+
 source_group( echodyne-cat FILES echodyne-cat.cpp )
 add_executable( echodyne-cat echodyne-cat.cpp )
 set_target_properties( echodyne-cat PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE )

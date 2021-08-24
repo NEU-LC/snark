@@ -1,17 +1,18 @@
 #!/usr/bin/expect
 
-set port [lindex $argv 0]
-set scriptname [file tail $argv0]
-
-if {[string equal $port "-h"] || [string equal $port "--help"]} {
+proc usage {scriptname} {
     puts ""
-    puts "Emulate the command handler of an Echodyne radar"
+    puts "Emulate aspects of an Echodyne radar"
     puts ""
-    puts "Usage: $scriptname \[<port>]"
+    puts "Usage: $scriptname <operation> \[<options>]"
     puts ""
-    puts "Listens on <port> (default: 23) for Echodyne radar commands"
+    puts "    where <operation> is one of:"
+    puts "        commands (only operation currently supported)"
     puts ""
-    puts "Supports the following:"
+    puts "Options:"
+    puts "    --port <num>; listens on <port> (default: 23) for Echodyne radar commands"
+    puts ""
+    puts "commands operation supports the following:"
     puts "    GETSERIAL"
     puts "    SYS:TIME?"
     puts "    SYS:TIME <days>,<milliseconds>"
@@ -26,15 +27,33 @@ if {[string equal $port "-h"] || [string equal $port "--help"]} {
     puts ""
     puts "Example"
     puts "    In two separate terminals:"
-    puts "    $ $scriptname 2023"
+    puts "    $ $scriptname commands --port 2023"
     puts "    $ echodyne-cat <channel> --address 127.0.0.1 --port 2023"
     puts ""
     puts "    will set-up echodyne-cat to read from the raw radar data port for <channel>"
     puts ""
+}
+
+set scriptname [file tail $argv0]
+set operation [lindex $argv 0]
+
+if {[string equal $operation "-h"] || [string equal $operation "--help"]} {
+    usage $scriptname
     return 0
 }
 
-if {[string compare $port ""] == 0} { set port 23 }
+set port 23;                    # default
+
+set arglen [llength $argv]
+set index 1;                    # we've already picked up the operation arg
+while {$index < $arglen} {
+    set arg [lindex $argv $index]
+    switch -exact $arg {
+        --port { set port [lindex $argv [incr index]] }
+        default { puts "$scriptname: unknown option $arg"; return 1 }
+    }
+    incr index
+}
 
 # never timeout
 set timeout -1
