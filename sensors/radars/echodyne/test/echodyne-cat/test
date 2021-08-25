@@ -12,15 +12,15 @@ function cleanup()
     # We need to terminate echodyne-cat in order to see the output, since it's captured in a variable.
     echo "terminating echodyne-cat pid $echodyne_cat_pid" >&2
     [[ $echodyne_cat_pid ]] && kill $echodyne_cat_pid
-    [[ $echodyne_command_handler_emulator_pid ]] && kill $echodyne_command_handler_emulator_pid
+    [[ $echodyne_emulate_pid ]] && kill $echodyne_emulate_pid
     sleep 2                     # time for output to complete
 }
 
 trap cleanup EXIT
 
 # we set up a non-standard (not 23) command port so that we don't need sudo
-$( dirname $0 )/../../examples/echodyne-command-handler-emulator $command_port >&2 &
-echodyne_command_handler_emulator_pid=$!
+echodyne-emulate commands --port $command_port >&2 &
+echodyne_emulate_pid=$!
 
 function wait_for_port()
 {
@@ -67,7 +67,7 @@ function elapsed_ms()
     while [[ -z $( pgrep -l -g $echodyne_cat_pgid | grep echodyne-cat ) ]]; do sleep 0.5; done
     echo "echodyne-cat is ready" >&2
     sleep 1                     # just wait a little longer
-    
+
     for i in $( seq 0 $(( repeat-1 )) ); do
         header_content $i | csv-to-bin $header_format
         exists data_content && data_content $i | csv-to-bin $data_format
